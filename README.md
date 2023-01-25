@@ -11,8 +11,8 @@ This is a no-nonsense async Scala client for OpenAI API supporting all the avail
 * **Fine-tunes**: [createFineTune](https://beta.openai.com/docs/api-reference/fine-tunes/create), [listFineTunes](https://beta.openai.com/docs/api-reference/fine-tunes/list), [retrieveFineTune](https://beta.openai.com/docs/api-reference/fine-tunes/retrieve), [cancelFineTune](https://beta.openai.com/docs/api-reference/fine-tunes/cancel), [listFineTuneEvents](https://beta.openai.com/docs/api-reference/fine-tunes/events), and [deleteFineTuneModel](https://beta.openai.com/docs/api-reference/fine-tunes/delete-model)
 * **Moderations**: [createModeration](https://beta.openai.com/docs/api-reference/moderations/create)
  
-Note that in order to be consistent with the OpenAI API naming, the service function names match exactly the API endpoint names/descriptions with camelcase.
-Also, we aimed the lib to be self-contained and reduced dependencies as much as possible therefore we use only two libs `play-ahc-ws-standalone` and `play-ahc-ws-standalone`. Additionally, if dependency injection is required we use `scala-guice` lib.  
+Note that in order to be consistent with the OpenAI API naming, the service function names match exactly the API endpoint titles/descriptions with camelcase.
+Also, we aimed the lib to be self-contained with the fewest dependencies possible therefore we ended up using only two libs `play-ahc-ws-standalone` and `play-ahc-ws-standalone`. Additionally, if dependency injection is required we use `scala-guice` lib as well.  
 
 **✔️ Important**: this is a "community-maintained" library and, as such, has no relation to OpenAI company.
 
