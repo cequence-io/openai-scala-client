@@ -1,6 +1,6 @@
 # OpenAI Scala Client 🤖 [![version](https://img.shields.io/badge/version-0.0.1-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT)
 
-This is a no-nonsense async Scala client for OpenAI API supporting all the available endpoints and params (as defined [here](https://beta.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala). The supported calls: 
+This is a no-nonsense async Scala client for OpenAI API supporting all the available endpoints and params (as defined [here](https://beta.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala). The supported calls are: 
 
 * **Models**: [listModels](https://beta.openai.com/docs/api-reference/models/list), and [retrieveModel](https://beta.openai.com/docs/api-reference/models/retrieve)
 * **Completions**: [createCompletion](https://beta.openai.com/docs/api-reference/completions/create)
@@ -164,7 +164,7 @@ openai-scala-client {
 }
 ```
 
-3. _It all looks cool. I want to chat with about your research and development?_
+3. _It all looks cool. I want to chat with you about your research and development?_
 
    Just shoot us an email at [openai-scala-client@cequence.io](mailto:openai-scala-client@cequence.io?subject=Research%20andDevelopment).
 
