@@ -141,8 +141,6 @@ trait WSRequestHelper extends WSHelper {
     val request = getWSRequestOptional(Some(endPoint), endPointParam, params)
     val bodyParamsX = bodyParams.collect { case (fieldName, Some(jsValue)) => (fieldName.toString, jsValue) }
 
-    println(Json.prettyPrint(JsObject(bodyParamsX)))
-
     execPOSTAux(request, JsObject(bodyParamsX), Some(endPoint), acceptableStatusCodes)
   }
 
@@ -215,8 +213,6 @@ trait WSRequestHelper extends WSHelper {
   ): StandaloneWSRequest = {
     val paramsString = paramsOptionalAsString(params)
     val url = createUrl(endPoint, endPointParam) + paramsString
-
-    println(url)
 
     client.url(url)
   }

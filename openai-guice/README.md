@@ -1,9 +1,9 @@
 # OpenAI Scala Client - Guice [![version](https://img.shields.io/badge/version-0.0.1-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT)
 
-This module provides dependency injection support (by `Guice` library) for the OpenAI Scala client.
-The full project documentation can be found [here](../README.md).
+This module provides dependency injection for the OpenAI Scala client with a help of `Guice` library.
+Note that the full project documentation can be found [here](../README.md).
 
-## Installation
+## Installation 🚀
 
 The currently supported Scala versions are **2.12** and **2.13**.
 

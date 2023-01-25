@@ -1,20 +1,22 @@
-# OpenAI Scala Client [![version](https://img.shields.io/badge/version-0.0.1-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT)
+# OpenAI Scala Client 🤖 [![version](https://img.shields.io/badge/version-0.0.1-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT)
 
 This is a no-nonsense async Scala client for OpenAI API supporting all the available endpoints and params (as defined [here](https://beta.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala). The supported calls: 
 
-*  **Models**: [listModels](https://beta.openai.com/docs/api-reference/models/list), and [retrieveModel](https://beta.openai.com/docs/api-reference/models/retrieve)
-*  **Completions**: [createCompletion](https://beta.openai.com/docs/api-reference/completions/create)
-*  **Edits**: [createEdit](https://beta.openai.com/docs/api-reference/edits/create)
-*  **Images**: [createImage](https://beta.openai.com/docs/api-reference/images/create), [createImageEdit](https://beta.openai.com/docs/api-reference/images/create-edit), and [createImageVariation](https://beta.openai.com/docs/api-reference/images/create-variation)
-*  **Embeddings**: [createEmbeddings](https://beta.openai.com/docs/api-reference/embeddings/create)
-*  **Files**: [listFiles](https://beta.openai.com/docs/api-reference/files/list), [uploadFile](https://beta.openai.com/docs/api-reference/files/upload), [deleteFile](https://beta.openai.com/docs/api-reference/files/delete), [retrieveFile](https://beta.openai.com/docs/api-reference/files/retrieve), and [retrieveFileContent](https://beta.openai.com/docs/api-reference/files/retrieve-content)
-*  **Fine-tunes**: [createFineTune](https://beta.openai.com/docs/api-reference/fine-tunes/create), [listFineTunes](https://beta.openai.com/docs/api-reference/fine-tunes/list), [retrieveFineTune](https://beta.openai.com/docs/api-reference/fine-tunes/retrieve), [cancelFineTune](https://beta.openai.com/docs/api-reference/fine-tunes/cancel), [listFineTuneEvents](https://beta.openai.com/docs/api-reference/fine-tunes/events), and [deleteFineTuneModel](https://beta.openai.com/docs/api-reference/fine-tunes/delete-model)
-*  **Moderations**: [createModeration](https://beta.openai.com/docs/api-reference/moderations/create)
+* **Models**: [listModels](https://beta.openai.com/docs/api-reference/models/list), and [retrieveModel](https://beta.openai.com/docs/api-reference/models/retrieve)
+* **Completions**: [createCompletion](https://beta.openai.com/docs/api-reference/completions/create)
+* **Edits**: [createEdit](https://beta.openai.com/docs/api-reference/edits/create)
+* **Images**: [createImage](https://beta.openai.com/docs/api-reference/images/create), [createImageEdit](https://beta.openai.com/docs/api-reference/images/create-edit), and [createImageVariation](https://beta.openai.com/docs/api-reference/images/create-variation)
+* **Embeddings**: [createEmbeddings](https://beta.openai.com/docs/api-reference/embeddings/create)
+* **Files**: [listFiles](https://beta.openai.com/docs/api-reference/files/list), [uploadFile](https://beta.openai.com/docs/api-reference/files/upload), [deleteFile](https://beta.openai.com/docs/api-reference/files/delete), [retrieveFile](https://beta.openai.com/docs/api-reference/files/retrieve), and [retrieveFileContent](https://beta.openai.com/docs/api-reference/files/retrieve-content)
+* **Fine-tunes**: [createFineTune](https://beta.openai.com/docs/api-reference/fine-tunes/create), [listFineTunes](https://beta.openai.com/docs/api-reference/fine-tunes/list), [retrieveFineTune](https://beta.openai.com/docs/api-reference/fine-tunes/retrieve), [cancelFineTune](https://beta.openai.com/docs/api-reference/fine-tunes/cancel), [listFineTuneEvents](https://beta.openai.com/docs/api-reference/fine-tunes/events), and [deleteFineTuneModel](https://beta.openai.com/docs/api-reference/fine-tunes/delete-model)
+* **Moderations**: [createModeration](https://beta.openai.com/docs/api-reference/moderations/create)
+ 
+Note that in order to be consistent with the OpenAI API naming, the service function names match exactly the API endpoint names/descriptions with camelcase.
+Also, we aimed the lib to be self-contained and reduced dependencies as much as possible therefore we use only two libs `play-ahc-ws-standalone` and `play-ahc-ws-standalone`. Additionally, if dependency injection is required we use `scala-guice` lib.  
 
-Note that in order to be consistent with the OpenAI API naming, the service's function names match exactly the API endpoint names/descriptions with camelcase.
-We also aimed to reduce dependencies as much as possible therefore we aimed the lib to be self-contained and use only two libs `play-ahc-ws-standalone` and `play-ahc-ws-standalone`. Additionally, if dependency injection is required we use `scala-guice` lib.  
+**✔️ Important**: this is a "community-maintained" library and, as such, has no relation to OpenAI company.
 
-## Installation
+## Installation 🚀
 
 The currently supported Scala versions are **2.12** and **2.13** but **Scala 3**-version will come out soon.
 
@@ -34,25 +36,25 @@ or to *pom.xml* (if you use maven)
 </dependency>
 ```
 
-## Config
+## Config ⚙️
 
 - Env. variables: `OPENAI_SCALA_CLIENT_API_KEY` and optionally also `OPENAI_SCALA_CLIENT_ORG_ID` (if you have one)
 - File config: [openai-scala-client.conf](./openai-core/src/main/resources/openai-scala-client.conf)
 
-## Usage
+## Usage 👨‍🎓
 
 **I. Obtaining OpenAIService**
 
-First you need to provide an implicit execution context and akka materializer, e.g., as
+First you need to provide an implicit execution context as well as akka materializer, e.g., as
 
 ```scala
   implicit val ec = ExecutionContext.global
   implicit val materializer = Materializer(ActorSystem())
 ```
 
-Then you can get a service in one of the following ways:
+Then you can obtain a service in one of the following ways:
 
-- Default config (expects env. variables to be set as defined in `Config` section)
+- Default config (expects env. variable(s) to be set as defined in `Config` section)
 ```scala
   val service = OpenAIServiceFactory()
 ```
@@ -72,7 +74,7 @@ Then you can get a service in one of the following ways:
   )
 ```
 
-- Via dependecy injection (requires `openai-scala-guice` lib)
+- Via dependency injection (requires `openai-scala-guice` lib)
 
 ```scala
   class MyClass @Inject() (openAIService: OpenAIService) {...}
@@ -80,26 +82,26 @@ Then you can get a service in one of the following ways:
 
 **II. Calling functions**
 
-Note that all calls are async therefore they return `Future`s. Full documentation of each call, which includes the inputs and the settings, is provided in [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala) 
+Full documentation of each call with their respective inputs and settings is provided in [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala). Since all the calls are async they return responses wrapped in `Future`.
 
 Examples:
 
-- List models:
+- List models
 
 ```scala
   service.listModels.map(models =>
-    models.foreach(println(_))
+    models.foreach(println)
   )
 ```
 
-- Retrieve model:
+- Retrieve model
 ```scala
   service.retrieveModel(ModelId.text_davinci_003).map(model =>
     println(model.getOrElse("N/A"))
   )
 ```
 
-- Create completion:
+- Create completion
 ```scala
   val text = """Extract the name and mailing address from this email:
                |Dear Kelly,
@@ -109,12 +111,12 @@ Examples:
                |Maya
              """.stripMargin
 
-  service.createCompletion(text).map(completition =>
-    println(completition.choices.head.text)
+  service.createCompletion(text).map(completion =>
+    println(completion.choices.head.text)
   )
 ```
 
-- Create completion with a custom setting:
+- Create completion with a custom setting
 
 ```scala
   val text = """Extract the name and mailing address from this email:
@@ -129,26 +131,27 @@ Examples:
     text,
     settings = CreateCompletionSettings(
       model = ModelId.text_davinci_001,
-      max_tokens = Some(2000),
+      max_tokens = Some(1500),
       temperature = Some(0.9),
       presence_penalty = Some(0.2),
       frequency_penalty = Some(0.2)
     )
-  ).map(completition =>
-    println(completition.choices.head.text)
+  ).map(completion =>
+    println(completion.choices.head.text)
   )
 ```
 
 
-## FAQ
+## FAQ 🤔
 
-1. *Wen Scala 3?* 
+1. _Wen Scala 3?_ 
 
    Feb 2023
 
-2. I got a timeout exception. How can I change the timeout setting?
 
-   You can do it either by passing the `timeouts` param to `OpenAIServiceFactory` or if you use your own configuration file then you can set it there, such as: 
+2. _I got a timeout exception. How can I change the timeout setting?_
+
+   You can do it either by passing the `timeouts` param to `OpenAIServiceFactory` or, if you use your own configuration file, then you can simply add it there as: 
 
 ```
 openai-scala-client {
@@ -161,13 +164,17 @@ openai-scala-client {
 }
 ```
 
-## License
+3. _It all looks cool. I want to chat with about your research and development?_
+
+   Just shoot as an email at [openai-scala-client@cequence.io](mailto:openai-scala-client@cequence.io?subject=Research%20andDevelopment).
+
+## License ⚖️
 
 This library is available and published as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
 
-## Contributors
+## Contributors 🙏
 
-This project is open-source and welcomes any contribution or feedback ([here]()).
+This project is open-source and welcomes any contribution or feedback ([here](https://github.com/cequence-io/openai-scala-client/issues)).
 
 Development of this library has been supported by  [<img src="https://cequence.io/favicon-16x16.png"> - Cequence.io](https://cequence.io) - `The future of contracting` 
 

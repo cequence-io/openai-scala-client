@@ -1,9 +1,9 @@
 # OpenAI Scala Client - Core [![version](https://img.shields.io/badge/version-0.0.1-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT)
 
 This is the core module, which contains mostly domain classes and the [OpenAIService](./src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala) definition.
-The full project documentation can be found [here](../README.md).
+Note that the full project documentation can be found [here](../README.md).
 
-## Installation
+## Installation 🚀
 
 The currently supported Scala versions are **2.12** and **2.13**.
 
