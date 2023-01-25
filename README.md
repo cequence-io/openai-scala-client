@@ -166,7 +166,7 @@ openai-scala-client {
 
 3. _It all looks cool. I want to chat with about your research and development?_
 
-   Just shoot as an email at [openai-scala-client@cequence.io](mailto:openai-scala-client@cequence.io?subject=Research%20andDevelopment).
+   Just shoot us an email at [openai-scala-client@cequence.io](mailto:openai-scala-client@cequence.io?subject=Research%20andDevelopment).
 
 ## License ⚖️
 
