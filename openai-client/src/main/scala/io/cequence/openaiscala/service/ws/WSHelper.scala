@@ -28,6 +28,11 @@ trait WSHelper {
       .setRequestTimeout(timeouts.requestTimeout.getOrElse(DefaultTimeouts.requestTimeout))
       .build
     val asyncHttpClient = new DefaultAsyncHttpClient(asyncHttpClientConfig)
-    new StandaloneAhcWSClient(asyncHttpClient)
+    val client = new StandaloneAhcWSClient(asyncHttpClient)
+
+    // add a shutdown hook
+    scala.sys.addShutdownHook(client.close())
+
+    client
   }
 }
