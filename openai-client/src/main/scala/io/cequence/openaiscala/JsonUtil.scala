@@ -21,7 +21,7 @@ object JsonUtil {
       }
 
     def asSafeArray[T](implicit fjs: Reads[T]): Seq[T] =
-      json.asSafe[JsArray].value.map(
+      json.asSafe[JsArray].value.toSeq.map(
         _.asSafe[T]
       )
   }
