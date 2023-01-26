@@ -39,7 +39,7 @@ or to *pom.xml* (if you use maven)
 ## Config ⚙️
 
 - Env. variables: `OPENAI_SCALA_CLIENT_API_KEY` and optionally also `OPENAI_SCALA_CLIENT_ORG_ID` (if you have one)
-- File config: [openai-scala-client.conf](./openai-core/src/main/resources/openai-scala-client.conf)
+- File config: (default) [openai-scala-client.conf](./openai-core/src/main/resources/openai-scala-client.conf)
 
 ## Usage 👨‍🎓
 
@@ -164,7 +164,12 @@ openai-scala-client {
 }
 ```
 
-3. _It all looks cool. I want to chat with you about your research and development?_
+3. _I got an exception like `com.typesafe.config.ConfigException$UnresolvedSubstitution: openai-scala-client.conf @ jar:file:.../io/cequence/openai-scala-client_2.13/0.0.1/openai-scala-client_2.13-0.0.1.jar!/openai-scala-client.conf: 4: Could not resolve substitution to a value: ${OPENAI_SCALA_CLIENT_API_KEY}`. What should I do?_
+
+   Set the env. variable `OPENAI_SCALA_CLIENT_API_KEY`. If you don't have one register [here](https://beta.openai.com/signup).
+
+
+4. _It all looks cool. I want to chat with you about your research and development?_
 
    Just shoot us an email at [openai-scala-client@cequence.io](mailto:openai-scala-client@cequence.io?subject=Research%20andDevelopment).
 
