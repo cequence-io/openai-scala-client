@@ -12,7 +12,7 @@ This is a no-nonsense async Scala client for OpenAI API supporting all the avail
 * **Moderations**: [createModeration](https://beta.openai.com/docs/api-reference/moderations/create)
  
 Note that in order to be consistent with the OpenAI API naming, the service function names match exactly the API endpoint titles/descriptions with camelcase.
-Also, we aimed the lib to be self-contained with the fewest dependencies possible therefore we ended up using only two libs `play-ahc-ws-standalone` and `play-ahc-ws-standalone`. Additionally, if dependency injection is required we use `scala-guice` lib as well.  
+Also, we aimed the lib to be self-contained with the fewest dependencies possible therefore we ended up using only two libs `play-ahc-ws-standalone` and `play-ws-standalone-json` (at the top level). Additionally, if dependency injection is required we use `scala-guice` lib as well.  
 
 **✔️ Important**: this is a "community-maintained" library and, as such, has no relation to OpenAI company.
 
@@ -39,7 +39,7 @@ or to *pom.xml* (if you use maven)
 ## Config ⚙️
 
 - Env. variables: `OPENAI_SCALA_CLIENT_API_KEY` and optionally also `OPENAI_SCALA_CLIENT_ORG_ID` (if you have one)
-- File config: (default) [openai-scala-client.conf](./openai-core/src/main/resources/openai-scala-client.conf)
+- File config (default):  [openai-scala-client.conf](./openai-client/src/main/resources/openai-scala-client.conf)
 
 ## Usage 👨‍🎓
 
@@ -146,7 +146,7 @@ Examples:
 
 1. _Wen Scala 3?_ 
 
-   Feb 2023
+   Feb 2023. You are right; we chose the shortest month to do so :)
 
 
 2. _I got a timeout exception. How can I change the timeout setting?_
