@@ -16,6 +16,8 @@ Also, we aimed the lib to be self-contained with the fewest dependencies possibl
 
 **✔️ Important**: this is a "community-maintained" library and, as such, has no relation to OpenAI company.
 
+Also, check out an article about the lib/client on [Medium](https://medium.com/@0xbnd/openai-scala-client-is-out-d7577de934ad).
+
 ## Installation 🚀
 
 The currently supported Scala versions are **2.12** and **2.13** but **Scala 3**-version will come out soon.
@@ -82,7 +84,7 @@ Then you can obtain a service in one of the following ways:
 
 **II. Calling functions**
 
-Full documentation of each call with their respective inputs and settings is provided in [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala). Since all the calls are async they return responses wrapped in `Future`.
+Full documentation of each call with its respective inputs and settings is provided in [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala). Since all the calls are async they return responses wrapped in `Future`.
 
 Examples:
 
