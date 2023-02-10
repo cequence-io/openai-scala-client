@@ -113,7 +113,7 @@ trait ResponseStringMarshaller {
   def usageToString(usage: UsageInfo) =
     s"""Usage
        |-prompt tokens: ${usage.prompt_tokens}
-       |-completion tokens: ${usage.completion_tokens}
+       |-completion tokens: ${usage.completion_tokens.getOrElse("N/A")}
        |-total tokens: ${usage.total_tokens}
      """.stripMargin
 

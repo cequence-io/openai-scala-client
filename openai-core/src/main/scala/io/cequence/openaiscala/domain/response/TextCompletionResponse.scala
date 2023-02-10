@@ -19,8 +19,8 @@ case class TextCompletionChoiceInfo(
 
 case class UsageInfo(
   prompt_tokens: Int,
-  completion_tokens: Int,
-  total_tokens: Int
+  total_tokens: Int,
+  completion_tokens: Option[Int]
 )
 
 case class LogprobsInfo(
