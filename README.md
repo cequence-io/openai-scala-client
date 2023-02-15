@@ -16,11 +16,14 @@ Also, we aimed the lib to be self-contained with the fewest dependencies possibl
 
 **✔️ Important**: this is a "community-maintained" library and, as such, has no relation to OpenAI company.
 
-Also, check out an article about the lib/client on [Medium](https://medium.com/@0xbnd/openai-scala-client-is-out-d7577de934ad).
+👉 Check out an article about the lib/client on [Medium](https://medium.com/@0xbnd/openai-scala-client-is-out-d7577de934ad).
 
 ## Installation 🚀
 
-The currently supported Scala versions are **2.12** and **2.13** but **Scala 3**-version will come out soon.
+The currently supported Scala versions are **2.12** and **2.13** ~~but **Scala 3**-version will come out soon~~.
+
+**Update**: **Scala-3** version has been released on Feb 13th 2023. Enjoy! 🎉<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(Note that an optional module `openai-scala-guice` supports only Scala-2.12 and 2.13)  
 
 To pull the library you have to add the following dependency to your *build.sbt*
 
@@ -148,7 +151,8 @@ Examples:
 
 1. _Wen Scala 3?_ 
 
-   Feb 2023. You are right; we chose the shortest month to do so :)
+   ~~Feb 2023. You are right; we chose the shortest month to do so :)~~
+ **Done!**
 
 
 2. _I got a timeout exception. How can I change the timeout setting?_
