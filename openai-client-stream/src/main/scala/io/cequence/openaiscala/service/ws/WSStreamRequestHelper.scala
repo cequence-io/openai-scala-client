@@ -9,7 +9,7 @@ import akka.stream.scaladsl.{Flow, Framing, Source}
 import akka.util.ByteString
 import com.fasterxml.jackson.core.JsonParseException
 import io.cequence.openaiscala.{OpenAIScalaClientException, OpenAIScalaClientTimeoutException, OpenAIScalaClientUnknownHostException}
-import play.api.libs.json.{JsNull, JsObject, JsValue, Json}
+import play.api.libs.json.{JsNull, JsObject, JsString, JsValue, Json}
 import play.api.libs.ws.JsonBodyWritables._
 
 import java.net.UnknownHostException
@@ -32,7 +32,7 @@ trait WSStreamRequestHelper {
   private implicit val jsonMarshaller: Unmarshaller[ByteString, JsValue] =
     Unmarshaller.strict[ByteString, JsValue] { byteString =>
       val data = byteString.utf8String.stripPrefix(itemPrefix)
-      if (data.equals(endOfStreamToken)) JsNull else Json.parse(data)
+      if (data.equals(endOfStreamToken)) JsString(endOfStreamToken) else Json.parse(data)
     }
 
   protected def execJsonStreamAux(
@@ -56,8 +56,8 @@ trait WSStreamRequestHelper {
       }
     )
 
-    // filter the end of stream marked with JsNull
-    source.filter(_ != JsNull)
+    // take until you encounter the end of stream marked with DONE
+    source.takeWhile(_ != JsString(endOfStreamToken))
   }
 
   protected def execStreamRequestAux[T](

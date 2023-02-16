@@ -9,7 +9,7 @@ import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.service.ws.{Timeouts, WSStreamRequestHelper}
 import io.cequence.openaiscala.OpenAIScalaClientException
-import play.api.libs.json.JsValue
+import play.api.libs.json.{JsValue, Json}
 
 import scala.concurrent.ExecutionContext
 
