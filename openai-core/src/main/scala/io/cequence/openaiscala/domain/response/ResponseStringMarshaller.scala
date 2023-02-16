@@ -5,6 +5,19 @@ package io.cequence.openaiscala.domain.response
  */
 trait ResponseStringMarshaller {
 
+  def fineTuneToString(fileInfo: FineTuneJob) =
+    s"""File-tune Job
+       |-id: ${fileInfo.id}
+       |-model: ${fileInfo.model}
+       |-created at: ${fileInfo.created_at.toString}
+       |-fine-tune model: ${fileInfo.fine_tuned_model.getOrElse("N/A")}
+       |-organization id: ${fileInfo.organization_id}
+       |-status: ${fileInfo.status}
+       |-training files:\n${fileInfo.training_files.map(fileInfoToString).mkString("\n")}
+       |-validation files:\n${fileInfo.validation_files.map(fileInfoToString).mkString("\n")}
+       |-result files:\n${fileInfo.result_files.map(fileInfoToString).mkString("\n")}
+     """.stripMargin
+
   def fileInfoToString(fileInfo: FileInfo) =
     s"""File Info
        |-id: ${fileInfo.id}

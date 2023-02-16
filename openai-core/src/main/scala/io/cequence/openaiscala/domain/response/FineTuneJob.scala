@@ -24,8 +24,8 @@ case class FineTuneEvent(
 )
 
 case class FineTuneHyperparams(
-  batch_size: Int,
-  learning_rate_multiplier: Double,
+  batch_size: Option[Int],
+  learning_rate_multiplier: Option[Double],
   n_epochs: Int,
   prompt_loss_weight: Double
 )
