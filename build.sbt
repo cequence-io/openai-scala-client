@@ -11,6 +11,10 @@ lazy val client = (project in file("openai-client"))
   .dependsOn(core)
   .aggregate(core)
 
+lazy val client_stream = (project in file("openai-client-stream"))
+  .dependsOn(client)
+  .aggregate(client)
+
 lazy val guice = (project in file("openai-guice"))
   .dependsOn(client)
   .aggregate(client)
