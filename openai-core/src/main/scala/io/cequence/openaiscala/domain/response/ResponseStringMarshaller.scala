@@ -90,7 +90,7 @@ trait ResponseStringMarshaller {
        |-id: ${completion.id}
        |-model: ${completion.model}
        |-created" ${completion.created.toString}
-       |-usage: ${usageToString(completion.usage)}
+       |-usage: ${completion.usage.map(usageToString).getOrElse("N/A")}
        |-choices: ${completion.choices.map(completionChoiceToString).mkString("\n")}
      """.stripMargin
 

@@ -7,14 +7,14 @@ case class TextCompletionResponse(
   created: ju.Date,
   model: String,
   choices: Seq[TextCompletionChoiceInfo],
-  usage: UsageInfo
+  usage: Option[UsageInfo]
 )
 
 case class TextCompletionChoiceInfo(
   text: String,
   index: Int,
   logprobs: Option[LogprobsInfo],
-  finish_reason: String
+  finish_reason: Option[String]
 )
 
 case class UsageInfo(
