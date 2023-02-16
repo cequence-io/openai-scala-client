@@ -272,14 +272,12 @@ trait OpenAIService extends OpenAIServiceConsts {
    * Get fine-grained status updates for a fine-tune job.
    *
    * @param fineTuneId The ID of the fine-tune job to get events for.
-   * @param settings
    * @return fine tune events or None if not found
    *
    * @see <a href="https://beta.openai.com/docs/api-reference/fine-tunes/events">OpenAI Doc</a>
    */
   def listFineTuneEvents(
-    fineTuneId: String,
-    settings: ListFineTuneEventsSettings = DefaultSettings.ListFineTuneEvents
+    fineTuneId: String
   ): Future[Option[Seq[FineTuneEvent]]]
 
   /**

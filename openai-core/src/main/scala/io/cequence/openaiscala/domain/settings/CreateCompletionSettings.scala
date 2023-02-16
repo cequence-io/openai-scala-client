@@ -27,11 +27,6 @@ case class CreateCompletionSettings(
   // Use carefully and ensure that you have reasonable settings for max_tokens and stop. Defaults to 1.
   n: Option[Int] = None,
 
-  // Whether to stream back partial progress.
-  // If set, tokens will be sent as data-only server-sent events as they become available, with the stream terminated by a data: [DONE] message.
-  // Defaults to false.
-  stream: Option[Boolean] = None, // TODO: not supported yet
-
   // Include the log probabilities on the logprobs most likely tokens, as well the chosen tokens.
   // For example, if logprobs is 5, the API will return a list of the 5 most likely tokens.
   // The API will always return the logprob of the sampled token, so there may be up to logprobs+1 elements in the response.

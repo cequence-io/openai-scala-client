@@ -2,7 +2,7 @@ package io.cequence.openaiscala.service
 
 import akka.stream.Materializer
 import play.api.libs.ws.StandaloneWSRequest
-import play.api.libs.json.JsObject
+import play.api.libs.json.{JsNull, JsObject, JsValue}
 import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.JsonFormats._
 import com.typesafe.config.{Config, ConfigFactory}
@@ -10,7 +10,6 @@ import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.ConfigImplicits._
-import io.cequence.openaiscala.service.OpenAIService
 import io.cequence.openaiscala.service.ws.{Timeouts, WSRequestHelper}
 
 import java.io.File
@@ -108,34 +107,41 @@ private class OpenAIServiceImpl(
   ): Future[TextCompletionResponse] =
     execPOST(
       Command.completions,
-      bodyParams = jsonBodyParams(
-        Tag.prompt -> Some(prompt),
-        Tag.model -> Some(settings.model),
-        Tag.suffix -> settings.suffix,
-        Tag.max_tokens -> settings.max_tokens,
-        Tag.temperature -> settings.temperature,
-        Tag.top_p -> settings.top_p,
-        Tag.n -> settings.n,
-        Tag.stream -> settings.stream,
-        Tag.logprobs -> settings.logprobs,
-        Tag.echo -> settings.echo,
-        Tag.stop -> {
-          settings.stop.size match {
-            case 0 => None
-            case 1 => Some(settings.stop.head)
-            case _ => Some(settings.stop)
-          }
-        },
-        Tag.presence_penalty -> settings.presence_penalty,
-        Tag.frequency_penalty -> settings.frequency_penalty,
-        Tag.best_of -> settings.best_of,
-        Tag.logit_bias -> {
-          if (settings.logit_bias.isEmpty) None else Some(settings.logit_bias)
-        },
-        Tag.user -> settings.user
-      )
+      bodyParams = createBodyParamsForCompletion(prompt, settings, stream = false)
     ).map(
       _.asSafe[TextCompletionResponse]
+    )
+
+  protected def createBodyParamsForCompletion(
+    prompt: String,
+    settings: CreateCompletionSettings,
+    stream: Boolean
+  ) =
+    jsonBodyParams(
+      Tag.prompt -> Some(prompt),
+      Tag.model -> Some(settings.model),
+      Tag.suffix -> settings.suffix,
+      Tag.max_tokens -> settings.max_tokens,
+      Tag.temperature -> settings.temperature,
+      Tag.top_p -> settings.top_p,
+      Tag.n -> settings.n,
+      Tag.stream -> Some(stream),
+      Tag.logprobs -> settings.logprobs,
+      Tag.echo -> settings.echo,
+      Tag.stop -> {
+        settings.stop.size match {
+          case 0 => None
+          case 1 => Some(settings.stop.head)
+          case _ => Some(settings.stop)
+        }
+      },
+      Tag.presence_penalty -> settings.presence_penalty,
+      Tag.frequency_penalty -> settings.frequency_penalty,
+      Tag.best_of -> settings.best_of,
+      Tag.logit_bias -> {
+        if (settings.logit_bias.isEmpty) None else Some(settings.logit_bias)
+      },
+      Tag.user -> settings.user
     )
 
   override def createEdit(
@@ -356,14 +362,13 @@ private class OpenAIServiceImpl(
     )
 
   override def listFineTuneEvents(
-    fineTuneId: String,
-    settings: ListFineTuneEventsSettings
+    fineTuneId: String
   ): Future[Option[Seq[FineTuneEvent]]] =
     execGETWithStatus(
       Command.fine_tunes,
       endPointParam = Some(s"$fineTuneId/events"),
       params = Seq(
-        Tag.stream -> settings.stream
+        Tag.stream -> Some(false)
       )
     ).map { response =>
       handleNotFoundAndError(response).map(jsResponse =>
@@ -435,47 +440,13 @@ private class OpenAIServiceImpl(
   }
 }
 
-object OpenAIServiceFactory extends OpenAIServiceConsts {
+object OpenAIServiceFactory extends OpenAIServiceFactoryHelper[OpenAIService] {
 
-  def apply()(
-    implicit ec: ExecutionContext, materializer: Materializer
-  ): OpenAIService =
-    apply(ConfigFactory.load(configFileName))
-
-  def apply(
+  override def apply(
     apiKey: String,
     orgId: Option[String] = None,
     timeouts: Option[Timeouts] = None)(
     implicit ec: ExecutionContext, materializer: Materializer
   ): OpenAIService =
     new OpenAIServiceImpl(apiKey, orgId, timeouts)
-
-  def apply(
-    config: Config)(
-    implicit ec: ExecutionContext, materializer: Materializer
-  ): OpenAIService = {
-    def intTimeoutAux(fieldName: String) =
-      config.optionalInt(s"$configPrefix.timeouts.${fieldName}Sec").map(_ * 1000)
-
-    val timeouts = Timeouts(
-      requestTimeout = intTimeoutAux("requestTimeout"),
-      readTimeout = intTimeoutAux("readTimeout"),
-      connectTimeout = intTimeoutAux("connectTimeout"),
-      pooledConnectionIdleTimeout = intTimeoutAux("pooledConnectionIdleTimeout")
-    )
-
-    apply(
-      apiKey = config.getString(s"$configPrefix.apiKey"),
-      orgId = config.optionalString(s"$configPrefix.orgId"),
-      timeouts =
-        if (timeouts.requestTimeout.isDefined
-          || timeouts.readTimeout.isDefined
-          || timeouts.connectTimeout.isDefined
-          || timeouts.pooledConnectionIdleTimeout.isDefined
-        )
-          Some(timeouts)
-        else
-          None
-    )
-  }
 }
