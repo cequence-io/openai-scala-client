@@ -83,4 +83,16 @@ object JsonUtil {
       JsObject(fields)
     }
   }
+
+  object StringStringMapFormat extends Format[Map[String, String]] {
+    override def reads(json: JsValue): JsResult[Map[String, String]] = {
+      val resultJsons = json.asSafe[JsObject].fields.map { case (fieldName, jsValue) => (fieldName, jsValue.as[String]) }
+      JsSuccess(resultJsons.toMap)
+    }
+
+    override def writes(o: Map[String, String]): JsValue = {
+      val fields = o.map { case (fieldName, value) => (fieldName, JsString(value)) }
+      JsObject(fields)
+    }
+  }
 }
