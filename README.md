@@ -149,7 +149,7 @@ Examples:
 
 ## FAQ 🤔
 
-1. _Wen Scala 3?_ 
+1. _When Scala 3?_ 
 
    ~~Feb 2023. You are right; we chose the shortest month to do so :)~~
  **Done!**
