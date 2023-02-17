@@ -6,7 +6,7 @@ case class FineTuneJob(
   id: String,
   model: String,
   created_at: ju.Date,
-  events: Seq[FineTuneEvent],
+  events: Option[Seq[FineTuneEvent]],
   fine_tuned_model: Option[String],
   hyperparams: FineTuneHyperparams,
   organization_id: String,
