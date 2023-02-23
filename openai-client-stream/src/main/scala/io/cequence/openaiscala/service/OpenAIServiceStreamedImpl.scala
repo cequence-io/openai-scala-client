@@ -34,7 +34,7 @@ private trait OpenAIServiceStreamedExtraImpl extends OpenAIServiceStreamedExtra 
       Command.completions,
       "POST",
       bodyParams = createBodyParamsForCompletion(prompt, settings, stream = true)
-    ).map { json: JsValue =>
+    ).map { (json: JsValue) =>
       (json \ "error").toOption.map { error =>
         throw new OpenAIScalaClientException(error.toString())
       }.getOrElse(

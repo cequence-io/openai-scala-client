@@ -48,7 +48,7 @@ object MultipartWritable {
     }
 
     BodyWritable[MultipartFormData](
-      transform = { form: MultipartFormData =>
+      transform = { (form: MultipartFormData) =>
         // combined data source
         val dataSource: Source[ByteString, _] = Source.single(formatDataParts(form.dataParts))
 
