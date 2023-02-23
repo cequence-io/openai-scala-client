@@ -55,6 +55,6 @@ object JsonFormats {
     (__ \ "violence/graphic").format[Double]
   ) (ModerationCategoryScores.apply, unlift(ModerationCategoryScores.unapply))
 
-  implicit val moderationResultFormat = Json.format[ModerationResult]
-  implicit val moderationFormat = Json.format[ModerationResponse]
+  implicit val moderationResultFormat: Format[ModerationResult] = Json.format[ModerationResult]
+  implicit val moderationFormat: Format[ModerationResponse] = Json.format[ModerationResponse]
 }
