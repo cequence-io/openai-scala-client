@@ -2,7 +2,7 @@ import sbt.Keys.test
 
 ThisBuild / organization := "io.cequence"
 ThisBuild / scalaVersion := "2.12.15" // 2.13.10"
-ThisBuild / version := "0.2.0-SNAPSHOT" //
+ThisBuild / version := "0.2.0"
 ThisBuild / isSnapshot := false
 
 lazy val core = (project in file("openai-core"))
@@ -17,7 +17,7 @@ lazy val client_stream = (project in file("openai-client-stream"))
 
 lazy val guice = (project in file("openai-guice"))
   .dependsOn(client)
-  .aggregate(client)
+  .aggregate(client_stream)
 
 
 // POM settings for Sonatype
