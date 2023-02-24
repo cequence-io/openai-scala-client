@@ -81,7 +81,7 @@ Then you can obtain a service in one of the following ways.
   )
 ```
 
-**✔️ Important**: If you want to use streaming use `OpenAIServiceStreamedFactory` from `openai-scala-client-stream` lib instead of `OpenAIServiceFactory` (in the three examples above). Two additional functions - `createCompletionStreamed` and `listFineTuneEventsStreamed` provided by [OpenAIServiceStreamedExtra](./openai-client-stream/src/main/scala/io/cequence/openaiscala/service/OpenAIServiceStreamedExtra.scala) will be then available.
+**✔️ Important**: If you want streaming support use `OpenAIServiceStreamedFactory` from `openai-scala-client-stream` lib instead of `OpenAIServiceFactory` (in the three examples above). Two additional functions - `createCompletionStreamed` and `listFineTuneEventsStreamed` provided by [OpenAIServiceStreamedExtra](./openai-client-stream/src/main/scala/io/cequence/openaiscala/service/OpenAIServiceStreamedExtra.scala) will be then available.
 
 - Via dependency injection (requires `openai-scala-guice` lib)
 
