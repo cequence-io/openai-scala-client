@@ -1,6 +1,6 @@
-# OpenAI Scala Client 🤖 [![version](https://img.shields.io/badge/version-0.1.1-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT)
+# OpenAI Scala Client 🤖 [![version](https://img.shields.io/badge/version-0.2.0-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT)
 
-This is a no-nonsense async Scala client for OpenAI API supporting all the available endpoints and params (as defined [here](https://beta.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala). The supported calls are: 
+This is a no-nonsense async Scala client for OpenAI API supporting all the available endpoints and params **including streaming** (as defined [here](https://beta.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala). The supported calls are: 
 
 * **Models**: [listModels](https://beta.openai.com/docs/api-reference/models/list), and [retrieveModel](https://beta.openai.com/docs/api-reference/models/retrieve)
 * **Completions**: [createCompletion](https://beta.openai.com/docs/api-reference/completions/create)
@@ -28,7 +28,7 @@ The currently supported Scala versions are **2.12** and **2.13** ~~but **Scala 3
 To pull the library you have to add the following dependency to your *build.sbt*
 
 ```
-"io.cequence" %% "openai-scala-client" % "0.1.1"
+"io.cequence" %% "openai-scala-client" % "0.2.0"
 ```
 
 or to *pom.xml* (if you use maven)
@@ -37,9 +37,11 @@ or to *pom.xml* (if you use maven)
 <dependency>
     <groupId>io.cequence</groupId>
     <artifactId>openai-scala-client_2.12</artifactId>
-    <version>0.1.1</version>
+    <version>0.2.0</version>
 </dependency>
 ```
+
+If you want a streaming support use `"io.cequence" %% "openai-scala-client-stream" % "0.2.0"` instead.
 
 ## Config ⚙️
 
@@ -57,7 +59,7 @@ First you need to provide an implicit execution context as well as akka material
   implicit val materializer = Materializer(ActorSystem())
 ```
 
-Then you can obtain a service in one of the following ways:
+Then you can obtain a service in one of the following ways.
 
 - Default config (expects env. variable(s) to be set as defined in `Config` section)
 ```scala
@@ -78,6 +80,8 @@ Then you can obtain a service in one of the following ways:
      orgId = Some("your_org_id") // if you have one
   )
 ```
+
+**✔️ Important**: If you want to use streaming use `OpenAIServiceStreamedFactory` from `openai-scala-client-stream` lib instead of `OpenAIServiceFactory` (in the three examples above). Two additional functions - `createCompletionStreamed` and `listFineTuneEventsStreamed` provided by [OpenAIServiceStreamedExtra](./openai-client-stream/src/main/scala/io/cequence/openaiscala/service/OpenAIServiceStreamedExtra.scala) will be then available.
 
 - Via dependency injection (requires `openai-scala-guice` lib)
 
@@ -146,6 +150,25 @@ Examples:
   )
 ```
 
+- Create completion with streaming and a custom setting
+
+```scala
+  val source = service.createCompletionStreamed(
+    prompt = "Write me a Shakespeare poem about two cats playing baseball in Russia using at least 2 pages",
+    settings = CreateCompletionSettings(
+      model = ModelId.text_davinci_003,
+      max_tokens = Some(1500),
+      temperature = Some(0.9),
+      presence_penalty = Some(0.2),
+      frequency_penalty = Some(0.2)
+    )
+  )
+
+  source.map(completion => 
+    println(completion.choices.head.text)
+  ).runWith(Sink.ignore)
+```
+(For this to work you need to use `OpenAIServiceStreamedFactory` from `openai-scala-client-stream` lib)
 
 ## FAQ 🤔
 
