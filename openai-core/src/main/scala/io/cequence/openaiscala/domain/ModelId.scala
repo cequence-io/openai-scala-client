@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.domain
 
 /**
- * OpenAI models available as of `2023-01-19`.
+ * OpenAI models available as of `2023-03-07`.
  *
  * @since Jan 2023
  */
@@ -82,8 +82,14 @@ object ModelId {
   val text_moderation_latest = "text-moderation-latest"
   val text_moderation_stable = "text-moderation-stable"
 
-  // Other
+  // Audio
   val audio_transcribe_001 = "audio-transcribe-001"
+  val audio_transcribe_deprecated = "audio-transcribe-deprecated"
+  val whisper_1_2 = "whisper-1.2"
+
+  // Other
   val code_cushman_001 = "code-cushman-001"
   val cushman_2020_05_03 = "cushman:2020-05-03"
+  val gpt_3_5_turbo = "gpt-3.5-turbo"
+  val gpt_3_5_turbo_0301 = "gpt-3.5-turbo-0301"
 }
