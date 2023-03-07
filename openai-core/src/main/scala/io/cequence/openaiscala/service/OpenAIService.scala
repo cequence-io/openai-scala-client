@@ -185,7 +185,7 @@ trait OpenAIService extends OpenAIServiceConsts {
    */
   def deleteFile(
     fileId: String
-  ): Future[DeleteResponse.Value]
+  ): Future[DeleteResponse]
 
   /**
    * Returns information about a specific file.
@@ -290,7 +290,7 @@ trait OpenAIService extends OpenAIServiceConsts {
    */
   def deleteFineTuneModel(
     modelId: String
-  ): Future[DeleteResponse.Value]
+  ): Future[DeleteResponse]
 
   /**
    * Classifies if text violates OpenAI's Content Policy.

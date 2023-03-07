@@ -263,7 +263,7 @@ private class OpenAIServiceImpl(
 
   override def deleteFile(
     fileId: String
-  ): Future[DeleteResponse.Value] =
+  ): Future[DeleteResponse] =
     execDELETEWithStatus(
       Command.files,
       endPointParam = Some(fileId)
@@ -382,7 +382,7 @@ private class OpenAIServiceImpl(
 
   override def deleteFineTuneModel(
     modelId: String
-  ): Future[DeleteResponse.Value] =
+  ): Future[DeleteResponse] =
     execDELETEWithStatus(
       Command.models,
       endPointParam = Some(modelId)
