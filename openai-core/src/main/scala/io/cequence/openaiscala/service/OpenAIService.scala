@@ -7,7 +7,7 @@ import java.io.File
 import scala.concurrent.Future
 
 /**
- * Central service to access all public OpenAI WS endpoints as defined at <a href="https://beta.openai.com/docs/api-reference">the API ref. page</a>
+ * Central service to access all public OpenAI WS endpoints as defined at <a href="https://platform.openai.com/docs/api-reference">the API ref. page</a>
  *
  * The following services are supported:
  *
@@ -29,7 +29,7 @@ trait OpenAIService extends OpenAIServiceConsts {
    *
    * @return models
    *
-   * @see <a href="https://beta.openai.com/docs/api-reference/models/list">OpenAI Doc</a>
+   * @see <a href="https://platform.openai.com/docs/api-reference/models/list">OpenAI Doc</a>
    */
   def listModels: Future[Seq[ModelInfo]]
 
@@ -39,7 +39,7 @@ trait OpenAIService extends OpenAIServiceConsts {
    * @param modelId The ID of the model to use for this request
    * @return model or None if not found
    *
-   * @see <a href="https://beta.openai.com/docs/api-reference/models/retrieve">OpenAI Doc</a>
+   * @see <a href="https://platform.openai.com/docs/api-reference/models/retrieve">OpenAI Doc</a>
    */
   def retrieveModel(modelId: String): Future[Option[ModelInfo]]
 
@@ -61,7 +61,7 @@ trait OpenAIService extends OpenAIServiceConsts {
    * @param settings
    * @return text completion response
    *
-   * @see <a href="https://beta.openai.com/docs/api-reference/completions/create">OpenAI Doc</a>
+   * @see <a href="https://platform.openai.com/docs/api-reference/completions/create">OpenAI Doc</a>
    */
   def createCompletion(
     prompt: String,
@@ -76,7 +76,7 @@ trait OpenAIService extends OpenAIServiceConsts {
    * @param settings
    * @return text edit response
    *
-   * @see <a href="https://beta.openai.com/docs/api-reference/edits/create">OpenAI Doc</a>
+   * @see <a href="https://platform.openai.com/docs/api-reference/edits/create">OpenAI Doc</a>
    */
   def createEdit(
     input: String,
@@ -91,7 +91,7 @@ trait OpenAIService extends OpenAIServiceConsts {
    * @param settings
    * @return image response (might contain multiple data items - one per image)
    *
-   * @see <a href="https://beta.openai.com/docs/api-reference/images/create">OpenAI Doc</a>
+   * @see <a href="https://platform.openai.com/docs/api-reference/images/create">OpenAI Doc</a>
    */
   def createImage(
     prompt: String,
@@ -109,7 +109,7 @@ trait OpenAIService extends OpenAIServiceConsts {
    * @param settings
    * @return image response (might contain multiple data items - one per image)
    *
-   * @see <a href="https://beta.openai.com/docs/api-reference/images/create-edit">OpenAI Doc</a>
+   * @see <a href="https://platform.openai.com/docs/api-reference/images/create-edit">OpenAI Doc</a>
    */
   def createImageEdit(
     prompt: String,
@@ -125,7 +125,7 @@ trait OpenAIService extends OpenAIServiceConsts {
    * @param settings
    * @return image response (might contain multiple data items - one per image)
    *
-   * @see <a href="https://beta.openai.com/docs/api-reference/images/create-variation">OpenAI Doc</a>
+   * @see <a href="https://platform.openai.com/docs/api-reference/images/create-variation">OpenAI Doc</a>
    */
   def createImageVariation(
     image: File,
@@ -142,7 +142,7 @@ trait OpenAIService extends OpenAIServiceConsts {
    * @param settings
    * @return list of embeddings inside an envelope
    *
-   * @see <a href="https://beta.openai.com/docs/api-reference/embeddings/create">OpenAI Doc</a>
+   * @see <a href="https://platform.openai.com/docs/api-reference/embeddings/create">OpenAI Doc</a>
    */
   def createEmbeddings(
     input: Seq[String],
@@ -154,7 +154,7 @@ trait OpenAIService extends OpenAIServiceConsts {
    *
    * @return file infos
    *
-   * @see <a href="https://beta.openai.com/docs/api-reference/files/list">OpenAI Doc</a>
+   * @see <a href="https://platform.openai.com/docs/api-reference/files/list">OpenAI Doc</a>
    */
   def listFiles: Future[Seq[FileInfo]]
 
@@ -164,11 +164,11 @@ trait OpenAIService extends OpenAIServiceConsts {
    * Please contact us if you need to increase the storage limit.
    *
    * @param file Name of the JSON Lines file to be uploaded. If the purpose is set to "fine-tune",
-   *             each line is a JSON record with "prompt" and "completion" fields representing your <a href="https://beta.openai.com/docs/guides/fine-tuning/prepare-training-data">training examples</a>.
+   *             each line is a JSON record with "prompt" and "completion" fields representing your <a href="https://platform.openai.com/docs/guides/fine-tuning/prepare-training-data">training examples</a>.
    * @param settings
    * @return file info
    *
-   * @see <a href="https://beta.openai.com/docs/api-reference/files/upload">OpenAI Doc</a>
+   * @see <a href="https://platform.openai.com/docs/api-reference/files/upload">OpenAI Doc</a>
    */
   def uploadFile(
     file: File,
@@ -181,7 +181,7 @@ trait OpenAIService extends OpenAIServiceConsts {
    * @param fileId The ID of the file to use for this request
    * @return enum indicating whether the file was deleted
    *
-   * @see <a href="https://beta.openai.com/docs/api-reference/files/delete">OpenAI Doc</a>
+   * @see <a href="https://platform.openai.com/docs/api-reference/files/delete">OpenAI Doc</a>
    */
   def deleteFile(
     fileId: String
@@ -193,7 +193,7 @@ trait OpenAIService extends OpenAIServiceConsts {
    * @param fileId The ID of the file to use for this request
    * @return file info or None if not found
    *
-   * @see <a href="https://beta.openai.com/docs/api-reference/files/retrieve">OpenAI Doc</a>
+   * @see <a href="https://platform.openai.com/docs/api-reference/files/retrieve">OpenAI Doc</a>
    */
   def retrieveFile(
     fileId: String
@@ -205,7 +205,7 @@ trait OpenAIService extends OpenAIServiceConsts {
    * @param fileId The ID of the file to use for this request
    * @return file content or None if not found
    *
-   * @see <a href="https://beta.openai.com/docs/api-reference/files/retrieve-content">OpenAI Doc</a>
+   * @see <a href="https://platform.openai.com/docs/api-reference/files/retrieve-content">OpenAI Doc</a>
    */
   def retrieveFileContent(
     fileId: String
@@ -226,8 +226,8 @@ trait OpenAIService extends OpenAIServiceConsts {
    * @param settings
    * @return fine tune response
    *
-   * @see <a href="https://beta.openai.com/docs/api-reference/fine-tunes/create">OpenAI API Doc</a>
-   * @see <a href="https://beta.openai.com/docs/guides/fine-tuning">OpenAI Fine-Tuning Guide</a>
+   * @see <a href="https://platform.openai.com/docs/api-reference/fine-tunes/create">OpenAI API Doc</a>
+   * @see <a href="https://platform.openai.com/docs/guides/fine-tuning">OpenAI Fine-Tuning Guide</a>
    */
   def createFineTune(
     training_file: String,
@@ -240,7 +240,7 @@ trait OpenAIService extends OpenAIServiceConsts {
    *
    * @return fine tunes
    *
-   * @see <a href="https://beta.openai.com/docs/api-reference/fine-tunes/list">OpenAI Doc</a>
+   * @see <a href="https://platform.openai.com/docs/api-reference/fine-tunes/list">OpenAI Doc</a>
    */
   def listFineTunes: Future[Seq[FineTuneJob]]
 
@@ -250,7 +250,7 @@ trait OpenAIService extends OpenAIServiceConsts {
    * @param fineTuneId The ID of the fine-tune job
    * @return fine tune info
    *
-   * @see <a href="https://beta.openai.com/docs/api-reference/fine-tunes/retrieve">OpenAI Doc</a>
+   * @see <a href="https://platform.openai.com/docs/api-reference/fine-tunes/retrieve">OpenAI Doc</a>
    */
   def retrieveFineTune(
     fineTuneId: String
@@ -262,7 +262,7 @@ trait OpenAIService extends OpenAIServiceConsts {
    * @param fineTuneId The ID of the fine-tune job to cancel
    * @return fine tune info or None if not found
    *
-   * @see <a href="https://beta.openai.com/docs/api-reference/fine-tunes/cancel">OpenAI Doc</a>
+   * @see <a href="https://platform.openai.com/docs/api-reference/fine-tunes/cancel">OpenAI Doc</a>
    */
   def cancelFineTune(
     fineTuneId: String
@@ -274,7 +274,7 @@ trait OpenAIService extends OpenAIServiceConsts {
    * @param fineTuneId The ID of the fine-tune job to get events for.
    * @return fine tune events or None if not found
    *
-   * @see <a href="https://beta.openai.com/docs/api-reference/fine-tunes/events">OpenAI Doc</a>
+   * @see <a href="https://platform.openai.com/docs/api-reference/fine-tunes/events">OpenAI Doc</a>
    */
   def listFineTuneEvents(
     fineTuneId: String
@@ -286,7 +286,7 @@ trait OpenAIService extends OpenAIServiceConsts {
    * @param modelId The ID of the file to use for this request
    * @return enum indicating whether the model was deleted
    *
-   * @see <a href="https://beta.openai.com/docs/api-reference/fine-tunes/delete-model">OpenAI Doc</a>
+   * @see <a href="https://platform.openai.com/docs/api-reference/fine-tunes/delete-model">OpenAI Doc</a>
    */
   def deleteFineTuneModel(
     modelId: String
@@ -299,7 +299,7 @@ trait OpenAIService extends OpenAIServiceConsts {
    * @param settings
    * @return moderation results
    *
-   * @see <a href="https://beta.openai.com/docs/api-reference/moderations/create">OpenAI Doc</a>
+   * @see <a href="https://platform.openai.com/docs/api-reference/moderations/create">OpenAI Doc</a>
    */
   def createModeration(
     input: String,

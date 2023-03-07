@@ -2,14 +2,14 @@
 
 This is a no-nonsense async Scala client for OpenAI API supporting all the available endpoints and params **including streaming** (as defined [here](https://beta.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala). The supported calls are: 
 
-* **Models**: [listModels](https://beta.openai.com/docs/api-reference/models/list), and [retrieveModel](https://beta.openai.com/docs/api-reference/models/retrieve)
-* **Completions**: [createCompletion](https://beta.openai.com/docs/api-reference/completions/create)
-* **Edits**: [createEdit](https://beta.openai.com/docs/api-reference/edits/create)
-* **Images**: [createImage](https://beta.openai.com/docs/api-reference/images/create), [createImageEdit](https://beta.openai.com/docs/api-reference/images/create-edit), and [createImageVariation](https://beta.openai.com/docs/api-reference/images/create-variation)
-* **Embeddings**: [createEmbeddings](https://beta.openai.com/docs/api-reference/embeddings/create)
-* **Files**: [listFiles](https://beta.openai.com/docs/api-reference/files/list), [uploadFile](https://beta.openai.com/docs/api-reference/files/upload), [deleteFile](https://beta.openai.com/docs/api-reference/files/delete), [retrieveFile](https://beta.openai.com/docs/api-reference/files/retrieve), and [retrieveFileContent](https://beta.openai.com/docs/api-reference/files/retrieve-content)
-* **Fine-tunes**: [createFineTune](https://beta.openai.com/docs/api-reference/fine-tunes/create), [listFineTunes](https://beta.openai.com/docs/api-reference/fine-tunes/list), [retrieveFineTune](https://beta.openai.com/docs/api-reference/fine-tunes/retrieve), [cancelFineTune](https://beta.openai.com/docs/api-reference/fine-tunes/cancel), [listFineTuneEvents](https://beta.openai.com/docs/api-reference/fine-tunes/events), and [deleteFineTuneModel](https://beta.openai.com/docs/api-reference/fine-tunes/delete-model)
-* **Moderations**: [createModeration](https://beta.openai.com/docs/api-reference/moderations/create)
+* **Models**: [listModels](https://platform.openai.com/docs/api-reference/models/list), and [retrieveModel](https://platform.openai.com/docs/api-reference/models/retrieve)
+* **Completions**: [createCompletion](https://platform.openai.com/docs/api-reference/completions/create)
+* **Edits**: [createEdit](https://platform.openai.com/docs/api-reference/edits/create)
+* **Images**: [createImage](https://platform.openai.com/docs/api-reference/images/create), [createImageEdit](https://platform.openai.com/docs/api-reference/images/create-edit), and [createImageVariation](https://platform.openai.com/docs/api-reference/images/create-variation)
+* **Embeddings**: [createEmbeddings](https://platform.openai.com/docs/api-reference/embeddings/create)
+* **Files**: [listFiles](https://platform.openai.com/docs/api-reference/files/list), [uploadFile](https://platform.openai.com/docs/api-reference/files/upload), [deleteFile](https://platform.openai.com/docs/api-reference/files/delete), [retrieveFile](https://platform.openai.com/docs/api-reference/files/retrieve), and [retrieveFileContent](https://platform.openai.com/docs/api-reference/files/retrieve-content)
+* **Fine-tunes**: [createFineTune](https://platform.openai.com/docs/api-reference/fine-tunes/create), [listFineTunes](https://platform.openai.com/docs/api-reference/fine-tunes/list), [retrieveFineTune](https://platform.openai.com/docs/api-reference/fine-tunes/retrieve), [cancelFineTune](https://platform.openai.com/docs/api-reference/fine-tunes/cancel), [listFineTuneEvents](https://platform.openai.com/docs/api-reference/fine-tunes/events), and [deleteFineTuneModel](https://platform.openai.com/docs/api-reference/fine-tunes/delete-model)
+* **Moderations**: [createModeration](https://platform.openai.com/docs/api-reference/moderations/create)
  
 Note that in order to be consistent with the OpenAI API naming, the service function names match exactly the API endpoint titles/descriptions with camelcase.
 Also, we aimed the lib to be self-contained with the fewest dependencies possible therefore we ended up using only two libs `play-ahc-ws-standalone` and `play-ws-standalone-json` (at the top level). Additionally, if dependency injection is required we use `scala-guice` lib as well.  
