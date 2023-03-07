@@ -20,10 +20,7 @@ Also, we aimed the lib to be self-contained with the fewest dependencies possibl
 
 ## Installation 🚀
 
-The currently supported Scala versions are **2.12** and **2.13** ~~but **Scala 3**-version will come out soon~~.
-
-**Update**: **Scala-3** version has been released on Feb 13th 2023. Enjoy! 🎉<br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(Note that an optional module `openai-scala-guice` supports only Scala-2.12 and 2.13)  
+The currently supported Scala versions are **2.12, 2.13**, and **3**. Note that an optional module `openai-scala-guice` is available only for Scala 2.12 and 2.13.  
 
 To pull the library you have to add the following dependency to your *build.sbt*
 
