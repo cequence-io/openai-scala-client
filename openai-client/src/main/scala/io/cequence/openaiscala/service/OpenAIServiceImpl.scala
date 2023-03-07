@@ -2,10 +2,9 @@ package io.cequence.openaiscala.service
 
 import akka.stream.Materializer
 import play.api.libs.ws.StandaloneWSRequest
-import play.api.libs.json.{JsNull, JsObject, JsValue}
+import play.api.libs.json.JsObject
 import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.JsonFormats._
-import com.typesafe.config.{Config, ConfigFactory}
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
@@ -32,33 +31,8 @@ private class OpenAIServiceImpl(
   implicit val ec: ExecutionContext, val materializer: Materializer
 ) extends OpenAIService with WSRequestHelper {
 
-  protected object Command extends Enumeration {
-    val models = Value
-    val completions = Value
-    val edits = Value
-    val images_generations = Value("images/generations")
-    val images_edits = Value("images/edits")
-    val images_variations = Value("images/variations")
-    val embeddings = Value
-    val files = Value
-    val fine_tunes = Value("fine-tunes")
-    val moderations = Value
-
-    @Deprecated
-    val engines = Value
-  }
-
-  protected object Tag extends Enumeration {
-    val model, prompt, suffix, max_tokens, temperature, top_p, n, stream, logprobs, echo, stop,
-    presence_penalty, frequency_penalty, best_of, logit_bias, user,
-    input, image, mask, instruction, size, response_format, file, purpose, file_id,
-    training_file, validation_file, n_epochs, batch_size, learning_rate_multiplier, prompt_loss_weight,
-    compute_classification_metrics, classification_n_classes, classification_positive_class,
-    classification_betas, fine_tune_id = Value
-  }
-
-  override protected type PEP = Command.type
-  override protected type PT = Tag.type
+  override protected type PEP = Command.type#Value
+  override protected type PT = Tag.type#Value
 
 //  private val logger = LoggerFactory.getLogger("OpenAIService")
 
@@ -419,16 +393,16 @@ private class OpenAIServiceImpl(
   // aux
 
   override protected def getWSRequestOptional(
-    endPoint: Option[PEP#Value],
+    endPoint: Option[PEP],
     endPointParam: Option[String],
-    params: Seq[(PT#Value, Option[Any])] = Nil
+    params: Seq[(PT, Option[Any])] = Nil
   ) =
     addHeaders(super.getWSRequestOptional(endPoint, endPointParam, params))
 
   override protected def getWSRequest(
-    endPoint: Option[PEP#Value],
+    endPoint: Option[PEP],
     endPointParam: Option[String],
-    params: Seq[(PT#Value, Any)] = Nil
+    params: Seq[(PT, Any)] = Nil
   ) =
     addHeaders(super.getWSRequest(endPoint, endPointParam, params))
 

@@ -25,8 +25,8 @@ trait WSRequestHelper extends WSHelper {
 
   protected implicit val ec: ExecutionContext
 
-  protected type PEP <: Enumeration
-  protected type PT <: Enumeration
+  protected type PEP
+  protected type PT
 
   protected val serviceName: String = getClass.getSimpleName
 
@@ -40,18 +40,18 @@ trait WSRequestHelper extends WSHelper {
   /////////
 
   protected def execGET(
-    endPoint: PEP#Value,
+    endPoint: PEP,
     endPointParam: Option[String] = None,
-    params: Seq[(PT#Value, Option[Any])] = Nil
+    params: Seq[(PT, Option[Any])] = Nil
   ): Future[JsValue] =
     execGETWithStatus(
       endPoint, endPointParam, params
     ).map(handleErrorResponse)
 
   protected def execGETWithStatus(
-    endPoint: PEP#Value,
+    endPoint: PEP,
     endPointParam: Option[String] = None,
-    params: Seq[(PT#Value, Option[Any])] = Nil,
+    params: Seq[(PT, Option[Any])] = Nil,
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] = {
     val request = getWSRequestOptional(Some(endPoint), endPointParam, params)
@@ -61,7 +61,7 @@ trait WSRequestHelper extends WSHelper {
 
   protected def execGETJsonAux(
     request: StandaloneWSRequest,
-    endPointForLogging: Option[PEP#Value], // only for logging
+    endPointForLogging: Option[PEP], // only for logging
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] =
     execRequestJsonAux(
@@ -72,7 +72,7 @@ trait WSRequestHelper extends WSHelper {
 
   protected def execGETStringAux(
     request: StandaloneWSRequest,
-    endPointForLogging: Option[PEP#Value], // only for logging
+    endPointForLogging: Option[PEP], // only for logging
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichStringResponse] =
     execRequestStringAux(
@@ -86,22 +86,22 @@ trait WSRequestHelper extends WSHelper {
   //////////
 
   protected def execPOSTMultipart(
-    endPoint: PEP#Value,
+    endPoint: PEP,
     endPointParam: Option[String] = None,
-    params: Seq[(PT#Value, Option[Any])] = Nil,
-    fileParams: Seq[(PT#Value, File)] = Nil,
-    bodyParams: Seq[(PT#Value, Option[Any])] = Nil
+    params: Seq[(PT, Option[Any])] = Nil,
+    fileParams: Seq[(PT, File)] = Nil,
+    bodyParams: Seq[(PT, Option[Any])] = Nil
   ): Future[JsValue] =
     execPOSTMultipartWithStatus(
       endPoint, endPointParam, params, fileParams, bodyParams
     ).map(handleErrorResponse)
 
   protected def execPOSTMultipartWithStatus(
-    endPoint: PEP#Value,
+    endPoint: PEP,
     endPointParam: Option[String] = None,
-    params: Seq[(PT#Value, Option[Any])] = Nil,
-    fileParams: Seq[(PT#Value, File)] = Nil,
-    bodyParams: Seq[(PT#Value, Option[Any])] = Nil,
+    params: Seq[(PT, Option[Any])] = Nil,
+    fileParams: Seq[(PT, File)] = Nil,
+    bodyParams: Seq[(PT, Option[Any])] = Nil,
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] = {
     val request = getWSRequestOptional(Some(endPoint), endPointParam, params)
@@ -116,26 +116,26 @@ trait WSRequestHelper extends WSHelper {
       files = fileParams.map { case (key, file) => FilePart(key.toString, file.getPath) }
     )
 
-    implicit val writeable = writeableOf_MultipartFormData("utf-8")
+    implicit val writeable: BodyWritable[MultipartFormData] = writeableOf_MultipartFormData("utf-8")
 
     execPOSTAux(request, formData, Some(endPoint), acceptableStatusCodes)
   }
 
   protected def execPOST(
-    endPoint: PEP#Value,
+    endPoint: PEP,
     endPointParam: Option[String] = None,
-    params: Seq[(PT#Value, Option[Any])] = Nil,
-    bodyParams: Seq[(PT#Value, Option[JsValue])] = Nil
+    params: Seq[(PT, Option[Any])] = Nil,
+    bodyParams: Seq[(PT, Option[JsValue])] = Nil
   ): Future[JsValue] =
     execPOSTWithStatus(
       endPoint, endPointParam, params, bodyParams
     ).map(handleErrorResponse)
 
   protected def execPOSTWithStatus(
-    endPoint: PEP#Value,
+    endPoint: PEP,
     endPointParam: Option[String] = None,
-    params: Seq[(PT#Value, Option[Any])] = Nil,
-    bodyParams: Seq[(PT#Value, Option[JsValue])] = Nil,
+    params: Seq[(PT, Option[Any])] = Nil,
+    bodyParams: Seq[(PT, Option[JsValue])] = Nil,
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] = {
     val request = getWSRequestOptional(Some(endPoint), endPointParam, params)
@@ -147,7 +147,7 @@ trait WSRequestHelper extends WSHelper {
   protected def execPOSTAux[T: BodyWritable](
     request: StandaloneWSRequest,
     body: T,
-    endPointForLogging: Option[PEP#Value], // only for logging
+    endPointForLogging: Option[PEP], // only for logging
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ) =
     execRequestJsonAux(
@@ -161,18 +161,18 @@ trait WSRequestHelper extends WSHelper {
   ////////////
 
   protected def execDELETE(
-    endPoint: PEP#Value,
+    endPoint: PEP,
     endPointParam: Option[String] = None,
-    params: Seq[(PT#Value, Option[Any])] = Nil
+    params: Seq[(PT, Option[Any])] = Nil
   ): Future[JsValue] =
     execDELETEWithStatus(
       endPoint, endPointParam, params
     ).map(handleErrorResponse)
 
   protected def execDELETEWithStatus(
-    endPoint: PEP#Value,
+    endPoint: PEP,
     endPointParam: Option[String] = None,
-    params: Seq[(PT#Value, Option[Any])] = Nil,
+    params: Seq[(PT, Option[Any])] = Nil,
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] = {
     val request = getWSRequestOptional(Some(endPoint), endPointParam, params)
@@ -182,7 +182,7 @@ trait WSRequestHelper extends WSHelper {
 
   private def execDeleteAux(
     request: StandaloneWSRequest,
-    endPointForLogging: Option[PEP#Value], // only for logging
+    endPointForLogging: Option[PEP], // only for logging
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] =
     execRequestJsonAux(
@@ -196,9 +196,9 @@ trait WSRequestHelper extends WSHelper {
   ////////////////
 
   protected def getWSRequest(
-    endPoint: Option[PEP#Value],
+    endPoint: Option[PEP],
     endPointParam: Option[String],
-    params: Seq[(PT#Value, Any)]
+    params: Seq[(PT, Any)]
   ): StandaloneWSRequest = {
     val paramsString = paramsAsString(params)
     val url = createUrl(endPoint, endPointParam) + paramsString
@@ -207,9 +207,9 @@ trait WSRequestHelper extends WSHelper {
   }
 
   protected def getWSRequestOptional(
-    endPoint: Option[PEP#Value],
+    endPoint: Option[PEP],
     endPointParam: Option[String],
-    params: Seq[(PT#Value, Option[Any])]
+    params: Seq[(PT, Option[Any])]
   ): StandaloneWSRequest = {
     val paramsString = paramsOptionalAsString(params)
     val url = createUrl(endPoint, endPointParam) + paramsString
@@ -221,7 +221,7 @@ trait WSRequestHelper extends WSHelper {
     request: StandaloneWSRequest,
     exec: StandaloneWSRequest => Future[StandaloneWSRequest#Response],
     acceptableStatusCodes: Seq[Int] = Nil,
-    endPointForLogging: Option[PEP#Value] = None // only for logging
+    endPointForLogging: Option[PEP] = None // only for logging
   ): Future[RichJsResponse] =
     execRequestRaw(
       request,
@@ -243,7 +243,7 @@ trait WSRequestHelper extends WSHelper {
     request: StandaloneWSRequest,
     exec: StandaloneWSRequest => Future[StandaloneWSRequest#Response],
     acceptableStatusCodes: Seq[Int] = Nil,
-    endPointForLogging: Option[PEP#Value] = None // only for logging
+    endPointForLogging: Option[PEP] = None // only for logging
   ): Future[RichStringResponse] =
     execRequestRaw(
       request,
@@ -259,7 +259,7 @@ trait WSRequestHelper extends WSHelper {
     request: StandaloneWSRequest,
     exec: StandaloneWSRequest => Future[StandaloneWSRequest#Response],
     acceptableStatusCodes: Seq[Int] = Nil,
-    endPointForLogging: Option[PEP#Value] = None // only for logging
+    endPointForLogging: Option[PEP] = None // only for logging
   ): Future[Either[StandaloneWSRequest#Response, (Int, String)]] = {
     exec(request).map { response =>
       if (!acceptableStatusCodes.contains(response.status))
@@ -275,7 +275,7 @@ trait WSRequestHelper extends WSHelper {
   // aux
 
   protected def jsonBodyParams(
-    params: (PT#Value, Option[Any])*
+    params: (PT, Option[Any])*
   ) =
     params.map { case (paramName, value) => (paramName, value.map(toJson)) }
 
@@ -294,26 +294,26 @@ trait WSRequestHelper extends WSHelper {
         if (errorCode == 404) None else throw new OpenAIScalaClientException(s"Code ${errorCode} : ${message}")
     }
 
-  protected def paramsAsString(params: Seq[(PT#Value, Any)]) = {
+  protected def paramsAsString(params: Seq[(PT, Any)]) = {
     val string = params.map { case (tag, value) => s"$tag=$value" }.mkString("&")
 
     if (string.nonEmpty) s"?$string" else ""
   }
 
-  protected def paramsOptionalAsString(params: Seq[(PT#Value, Option[Any])]) = {
+  protected def paramsOptionalAsString(params: Seq[(PT, Option[Any])]) = {
     val string = params.collect { case (tag, Some(value)) => s"$tag=$value" }.mkString("&")
 
     if (string.nonEmpty) s"?$string" else ""
   }
 
   protected def createUrl(
-    endpoint: Option[PEP#Value],
+    endpoint: Option[PEP],
     value: Option[String] = None
   ) =
     coreUrl + endpoint.map(_.toString).getOrElse("") + value.map("/" + _).getOrElse("")
 
   protected def toOptionalParams(
-    params: Seq[(PT#Value, Any)]
+    params: Seq[(PT, Any)]
   ) =
     params.map { case (a, b) => (a, Some(b)) }
 

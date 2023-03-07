@@ -36,14 +36,14 @@ trait WSStreamRequestHelper {
     }
 
   protected def execJsonStreamAux(
-    endPoint: PEP#Value,
+    endPoint: PEP,
     method: String,
     endPointParam: Option[String] = None,
-    params: Seq[(PT#Value, Option[Any])] = Nil,
-    bodyParams: Seq[(PT#Value, Option[JsValue])] = Nil)(
+    params: Seq[(PT, Option[Any])] = Nil,
+    bodyParams: Seq[(PT, Option[JsValue])] = Nil)(
     implicit materializer: Materializer
   ): Source[JsValue, NotUsed] = {
-    val source = execStreamRequestAux(
+    val source = execStreamRequestAux[JsValue](
       endPoint,
       method,
       endPointParam,
@@ -61,11 +61,11 @@ trait WSStreamRequestHelper {
   }
 
   protected def execStreamRequestAux[T](
-    endPoint: PEP#Value,
+    endPoint: PEP,
     method: String,
     endPointParam: Option[String],
-    params: Seq[(PT#Value, Option[Any])],
-    bodyParams: Seq[(PT#Value, Option[JsValue])],
+    params: Seq[(PT, Option[Any])],
+    bodyParams: Seq[(PT, Option[JsValue])],
     framing: Flow[ByteString, ByteString, NotUsed],
     recoverBlock: PartialFunction[Throwable, T])(
     implicit um: Unmarshaller[ByteString, T], materializer: Materializer
