@@ -26,6 +26,11 @@ trait OpenAIServiceConsts {
       max_tokens = Some(1000)
     )
 
+    val CreateChatCompletion = CreateChatCompletionSettings(
+      model = ModelId.gpt_3_5_turbo,
+      max_tokens = Some(1000)
+    )
+
     val CreateEdit = CreateEditSettings(
       model = ModelId.text_davinci_edit_001,
       temperature = Some(0.7)

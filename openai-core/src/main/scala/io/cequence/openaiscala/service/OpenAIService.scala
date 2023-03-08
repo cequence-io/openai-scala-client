@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.service
 
+import io.cequence.openaiscala.domain.MessageSpec
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
 
@@ -67,6 +68,20 @@ trait OpenAIService extends OpenAIServiceConsts {
     prompt: String,
     settings: CreateCompletionSettings = DefaultSettings.CreateCompletion
   ): Future[TextCompletionResponse]
+
+  /**
+   * Creates a completion for the chat message(s).
+   *
+   * @param messages The messages to generate chat completions.
+   * @param settings
+   * @return chat completion response
+   *
+   * @see <a href="https://platform.openai.com/docs/api-reference/chat/create">OpenAI Doc</a>
+   */
+  def createChatCompletion(
+    messages: Seq[MessageSpec],
+    settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
+  ): Future[ChatCompletionResponse]
 
   /**
    * Creates a new edit for the provided input, instruction, and parameters.

@@ -85,6 +85,7 @@ object ModelId {
   // Audio
   val audio_transcribe_001 = "audio-transcribe-001"
   val audio_transcribe_deprecated = "audio-transcribe-deprecated"
+  val whisper_1 = "whisper-1"
   val whisper_1_2 = "whisper-1.2"
 
   // Other
