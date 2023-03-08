@@ -32,8 +32,9 @@ trait WSRequestHelper extends WSHelper {
 
   private val defaultAcceptableStatusCodes = Seq(200)
 
-  protected type RichJsResponse = Either[JsValue, (Int, String)]
-  protected type RichStringResponse = Either[String, (Int, String)]
+  protected type RichResponse[T] = Either[T, (Int, String)]
+  protected type RichJsResponse = RichResponse[JsValue]
+  protected type RichStringResponse = RichResponse[String]
 
   /////////
   // GET //
@@ -105,21 +106,41 @@ trait WSRequestHelper extends WSHelper {
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] = {
     val request = getWSRequestOptional(Some(endPoint), endPointParam, params)
-
-    // create a multipart form data holder contain classic data (key-value) parts as well as file parts
-    val formData = MultipartFormData(
-      dataParts = bodyParams.collect { case (key, Some(value)) =>
-        (key.toString, Seq(value.toString))
-      }.toMap,
-
-      // TODO: we can potentially use here header-file-names as well (if provided as function's params)
-      files = fileParams.map { case (key, file) => FilePart(key.toString, file.getPath) }
-    )
+    val formData = createMultipartFormData(fileParams, bodyParams)
 
     implicit val writeable: BodyWritable[MultipartFormData] = writeableOf_MultipartFormData("utf-8")
 
-    execPOSTAux(request, formData, Some(endPoint), acceptableStatusCodes)
+    execPOSTJsonAux(request, formData, Some(endPoint), acceptableStatusCodes)
   }
+
+  protected def execPOSTMultipartWithStatusString(
+    endPoint: PEP,
+    endPointParam: Option[String] = None,
+    params: Seq[(PT, Option[Any])] = Nil,
+    fileParams: Seq[(PT, File)] = Nil,
+    bodyParams: Seq[(PT, Option[Any])] = Nil,
+    acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
+  ): Future[RichStringResponse] = {
+    val request = getWSRequestOptional(Some(endPoint), endPointParam, params)
+    val formData = createMultipartFormData(fileParams, bodyParams)
+
+    implicit val writeable: BodyWritable[MultipartFormData] = writeableOf_MultipartFormData("utf-8")
+
+    execPOSTStringAux(request, formData, Some(endPoint), acceptableStatusCodes)
+  }
+
+  // create a multipart form data holder contain classic data (key-value) parts as well as file parts
+  private def createMultipartFormData(
+    fileParams: Seq[(PT, File)] = Nil,
+    bodyParams: Seq[(PT, Option[Any])] = Nil
+  ) = MultipartFormData(
+    dataParts = bodyParams.collect { case (key, Some(value)) =>
+      (key.toString, Seq(value.toString))
+    }.toMap,
+
+    // TODO: we can potentially use here header-file-names as well (if provided as function's params)
+    files = fileParams.map { case (key, file) => FilePart(key.toString, file.getPath) }
+  )
 
   protected def execPOST(
     endPoint: PEP,
@@ -141,16 +162,28 @@ trait WSRequestHelper extends WSHelper {
     val request = getWSRequestOptional(Some(endPoint), endPointParam, params)
     val bodyParamsX = bodyParams.collect { case (fieldName, Some(jsValue)) => (fieldName.toString, jsValue) }
 
-    execPOSTAux(request, JsObject(bodyParamsX), Some(endPoint), acceptableStatusCodes)
+    execPOSTJsonAux(request, JsObject(bodyParamsX), Some(endPoint), acceptableStatusCodes)
   }
 
-  protected def execPOSTAux[T: BodyWritable](
+  protected def execPOSTJsonAux[T: BodyWritable](
     request: StandaloneWSRequest,
     body: T,
     endPointForLogging: Option[PEP], // only for logging
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ) =
     execRequestJsonAux(
+      request, _.post(body),
+      acceptableStatusCodes,
+      endPointForLogging
+    )
+
+  protected def execPOSTStringAux[T: BodyWritable](
+    request: StandaloneWSRequest,
+    body: T,
+    endPointForLogging: Option[PEP], // only for logging
+    acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
+  ) =
+    execRequestStringAux(
       request, _.post(body),
       acceptableStatusCodes,
       endPointForLogging
@@ -279,9 +312,9 @@ trait WSRequestHelper extends WSHelper {
   ) =
     params.map { case (paramName, value) => (paramName, value.map(toJson)) }
 
-  protected def handleErrorResponse(response: RichJsResponse) =
+  protected def handleErrorResponse[T](response: RichResponse[T]) =
     response match {
-      case Left(json) => json
+      case Left(data) => data
 
       case Right((errorCode, message)) => throw new OpenAIScalaClientException(s"Code ${errorCode} : ${message}")
     }

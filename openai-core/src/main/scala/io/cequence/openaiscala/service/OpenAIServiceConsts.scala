@@ -49,6 +49,15 @@ trait OpenAIServiceConsts {
       model = ModelId.text_embedding_ada_002
     )
 
+    val CreateTranscription = CreateTranscriptionSettings(
+      model = ModelId.whisper_1,
+      language = Some("en")
+    )
+
+    val CreateTranslation = CreateTranslationSettings(
+      model = ModelId.whisper_1
+    )
+
     val UploadFile = UploadFileSettings(
       purpose = "fine-tune"
     )

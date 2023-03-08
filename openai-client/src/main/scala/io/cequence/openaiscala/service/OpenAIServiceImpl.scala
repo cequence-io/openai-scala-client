@@ -2,7 +2,7 @@ package io.cequence.openaiscala.service
 
 import akka.stream.Materializer
 import play.api.libs.ws.StandaloneWSRequest
-import play.api.libs.json.JsObject
+import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
 import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.OpenAIScalaClientException
@@ -258,6 +258,71 @@ private class OpenAIServiceImpl(
     ).map(
       _.asSafe[EmbeddingResponse]
     )
+
+  override def createAudioTranscription(
+    file: File,
+    prompt: Option[String],
+    settings: CreateTranscriptionSettings
+  ): Future[TranscriptResponse] =
+    execPOSTMultipartWithStatusString(
+      Command.audio_transcriptions,
+      fileParams = Seq(Tag.file -> file),
+      bodyParams = Seq(
+        Tag.prompt -> prompt,
+        Tag.model -> Some(settings.model),
+        Tag.response_format -> settings.response_format.map(_.toString),
+        Tag.temperature -> settings.temperature,
+        Tag.language -> settings.language
+      )
+    ).map(processAudioTranscriptResponse(settings.response_format))
+
+  override def createAudioTranslation(
+    file: File,
+    prompt: Option[String],
+    settings: CreateTranslationSettings
+  ): Future[TranscriptResponse] =
+    execPOSTMultipartWithStatusString(
+      Command.audio_translations,
+      fileParams = Seq(Tag.file -> file),
+      bodyParams = Seq(
+        Tag.prompt -> prompt,
+        Tag.model -> Some(settings.model),
+        Tag.response_format -> settings.response_format.map(_.toString),
+        Tag.temperature -> settings.temperature
+      )
+    ).map(processAudioTranscriptResponse(settings.response_format))
+
+  private def processAudioTranscriptResponse(
+    responseFormat: Option[TranscriptResponseFormatType.Value])(
+    stringRichResponse: RichStringResponse
+  ) = {
+    val stringResponse = handleErrorResponse(stringRichResponse)
+
+    def textFromJsonString(json: JsValue) =
+      (json.asSafe[JsObject] \ "text").toOption.map {
+        _.asSafe[String]
+      }.getOrElse(
+        throw new OpenAIScalaClientException(s"The attribute 'text' is not present in the response: ${stringResponse}.")
+      )
+
+    val FormatType = TranscriptResponseFormatType
+
+    responseFormat.getOrElse(FormatType.json) match {
+      case FormatType.json =>
+        val json = Json.parse(stringResponse)
+        TranscriptResponse(textFromJsonString(json))
+
+      case FormatType.verbose_json =>
+        val json = Json.parse(stringResponse)
+        TranscriptResponse(
+          text = textFromJsonString(json),
+          verboseJson = Some(Json.prettyPrint(json))
+        )
+
+      case FormatType.text | FormatType.srt | FormatType.vtt =>
+        TranscriptResponse(stringResponse)
+    }
+  }
 
   override def listFiles: Future[Seq[FileInfo]] =
     execGET(Command.files).map { response =>

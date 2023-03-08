@@ -165,6 +165,40 @@ trait OpenAIService extends OpenAIServiceConsts {
   ): Future[EmbeddingResponse]
 
   /**
+   * Transcribes audio into the input language.
+   *
+   * @param file The audio file to transcribe, in one of these formats: mp3, mp4, mpeg, mpga, m4a, wav, or webm.
+   * @param prompt An optional text to guide the model's style or continue a previous audio segment.
+   *               The prompt should match the audio language.
+   * @param settings
+   * @return transcription text
+   *
+   * @see <a href="https://platform.openai.com/docs/api-reference/audio/create">OpenAI Doc</a>
+   */
+  def createAudioTranscription(
+    file: File,
+    prompt: Option[String] = None,
+    settings: CreateTranscriptionSettings = DefaultSettings.CreateTranscription
+  ): Future[TranscriptResponse]
+
+  /**
+   * Translates audio into into English.
+   *
+   * @param file The audio file to translate, in one of these formats: mp3, mp4, mpeg, mpga, m4a, wav, or webm.
+   * @param prompt An optional text to guide the model's style or continue a previous audio segment.
+   *               The prompt should match the audio language.
+   * @param settings
+   * @return translation text
+   *
+   * @see <a href="https://platform.openai.com/docs/api-reference/audio/create">OpenAI Doc</a>
+   */
+  def createAudioTranslation(
+    file: File,
+    prompt: Option[String] = None,
+    settings: CreateTranslationSettings = DefaultSettings.CreateTranslation
+  ): Future[TranscriptResponse]
+
+  /**
    * Returns a list of files that belong to the user's organization.
    *
    * @return file infos
