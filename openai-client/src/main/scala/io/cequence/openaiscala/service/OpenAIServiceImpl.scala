@@ -9,6 +9,7 @@ import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.ConfigImplicits._
+import io.cequence.openaiscala.domain.MessageSpec
 import io.cequence.openaiscala.service.ws.{Timeouts, WSRequestHelper}
 
 import java.io.File
@@ -117,6 +118,52 @@ private class OpenAIServiceImpl(
       },
       Tag.user -> settings.user
     )
+
+  override def createChatCompletion(
+    messages: Seq[MessageSpec],
+    settings: CreateChatCompletionSettings
+  ): Future[ChatCompletionResponse] =
+    execPOST(
+      Command.chat_completions,
+      bodyParams = createBodyParamsForChatCompletion(messages, settings, stream = false)
+    ).map(
+      _.asSafe[ChatCompletionResponse]
+    )
+
+  protected def createBodyParamsForChatCompletion(
+    messages: Seq[MessageSpec],
+    settings: CreateChatCompletionSettings,
+    stream: Boolean
+  ) = {
+    assert(messages.nonEmpty, "At least one message expected.")
+
+    val messageJsons = messages.map { case MessageSpec(role, content) =>
+      Json.obj("role" -> role.toString.toLowerCase, "content" -> content)
+    }
+
+    jsonBodyParams(
+      Tag.messages -> Some(JsArray(messageJsons)),
+      Tag.model -> Some(settings.model),
+      Tag.temperature -> settings.temperature,
+      Tag.top_p -> settings.top_p,
+      Tag.n -> settings.n,
+      Tag.stream -> Some(stream),
+      Tag.stop -> {
+        settings.stop.size match {
+          case 0 => None
+          case 1 => Some(settings.stop.head)
+          case _ => Some(settings.stop)
+        }
+      },
+      Tag.max_tokens -> settings.max_tokens,
+      Tag.presence_penalty -> settings.presence_penalty,
+      Tag.frequency_penalty -> settings.frequency_penalty,
+      Tag.logit_bias -> {
+        if (settings.logit_bias.isEmpty) None else Some(settings.logit_bias)
+      },
+      Tag.user -> settings.user
+    )
+  }
 
   override def createEdit(
     input: String,

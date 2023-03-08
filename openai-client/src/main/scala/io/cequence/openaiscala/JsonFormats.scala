@@ -1,5 +1,8 @@
 package io.cequence.openaiscala
 
+import io.cequence.openaiscala.JsonUtil.JsonOps
+import io.cequence.openaiscala.domain.ChatRole
+
 import java.{util => ju}
 import io.cequence.openaiscala.domain.response._
 import play.api.libs.functional.syntax._
@@ -19,6 +22,29 @@ object JsonFormats {
   implicit val logprobsInfoFormat: Format[LogprobsInfo] = Json.format[LogprobsInfo]
   implicit val textCompletionChoiceInfoFormat: Format[TextCompletionChoiceInfo] = Json.format[TextCompletionChoiceInfo]
   implicit val textCompletionFormat: Format[TextCompletionResponse] = Json.format[TextCompletionResponse]
+
+  implicit object ChatRoleFormat extends Format[ChatRole] {
+    override def reads(json: JsValue): JsResult[ChatRole] = {
+      json.asSafe[String] match {
+        case "user" => JsSuccess(ChatRole.User)
+        case "assistant" => JsSuccess(ChatRole.Assistant)
+        case "system" => JsSuccess(ChatRole.System)
+        case x => JsError(s"$x is not a valid message role.")
+      }
+    }
+
+    override def writes(o: ChatRole): JsValue = {
+      JsString(o.toString.toLowerCase())
+    }
+  }
+
+  implicit val chatMessageFormat: Format[ChatMessage] = Json.format[ChatMessage]
+  implicit val chatCompletionChoiceInfoFormat: Format[ChatCompletionChoiceInfo] = Json.format[ChatCompletionChoiceInfo]
+  implicit val chatCompletionResponseFormat: Format[ChatCompletionResponse] = Json.format[ChatCompletionResponse]
+
+  implicit val chatChunkMessageFormat: Format[ChatChunkMessage] = Json.format[ChatChunkMessage]
+  implicit val chatCompletionChoiceChunkInfoFormat: Format[ChatCompletionChoiceChunkInfo] = Json.format[ChatCompletionChoiceChunkInfo]
+  implicit val chatCompletionChunkResponseFormat: Format[ChatCompletionChunkResponse] = Json.format[ChatCompletionChunkResponse]
 
   implicit val textEditChoiceInfoFormat: Format[TextEditChoiceInfo] = Json.format[TextEditChoiceInfo]
   implicit val textEditFormat: Format[TextEditResponse] = Json.format[TextEditResponse]

@@ -3,6 +3,7 @@ package io.cequence.openaiscala.service
 object Command extends Enumeration {
   val models = Value
   val completions = Value
+  val chat_completions = Value("chat/completions")
   val edits = Value
   val images_generations = Value("images/generations")
   val images_edits = Value("images/edits")
@@ -18,7 +19,7 @@ object Command extends Enumeration {
 
 object Tag extends Enumeration {
   val model, prompt, suffix, max_tokens, temperature, top_p, n, stream, logprobs, echo, stop,
-  presence_penalty, frequency_penalty, best_of, logit_bias, user,
+  presence_penalty, frequency_penalty, best_of, logit_bias, user, messages,
   input, image, mask, instruction, size, response_format, file, purpose, file_id,
   training_file, validation_file, n_epochs, batch_size, learning_rate_multiplier, prompt_loss_weight,
   compute_classification_metrics, classification_n_classes, classification_positive_class,
