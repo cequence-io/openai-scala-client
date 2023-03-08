@@ -2,8 +2,11 @@ package io.cequence.openaiscala.service
 
 import akka.NotUsed
 import akka.stream.scaladsl.Source
-import io.cequence.openaiscala.domain.response.{FineTuneEvent, TextCompletionResponse}
-import io.cequence.openaiscala.domain.settings.CreateCompletionSettings
+import io.cequence.openaiscala.domain.MessageSpec
+import io.cequence.openaiscala.domain.response.{ChatCompletionChunkResponse, ChatCompletionResponse, FineTuneEvent, TextCompletionResponse}
+import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, CreateCompletionSettings}
+
+import scala.concurrent.Future
 
 trait OpenAIServiceStreamedExtra extends OpenAIServiceConsts {
 
@@ -22,6 +25,20 @@ trait OpenAIServiceStreamedExtra extends OpenAIServiceConsts {
     prompt: String,
     settings: CreateCompletionSettings = DefaultSettings.CreateCompletion
   ): Source[TextCompletionResponse, NotUsed]
+
+  /**
+   * Creates a completion for the chat message(s) with streamed results.
+   *
+   * @param messages The messages to generate chat completions.
+   * @param settings
+   * @return chat completion response
+   *
+   * @see <a href="https://platform.openai.com/docs/api-reference/chat/create">OpenAI Doc</a>
+   */
+  def createChatCompletionStreamed(
+    messages: Seq[MessageSpec],
+    settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
+  ): Source[ChatCompletionChunkResponse, NotUsed]
 
   /**
    * Get fine-grained status updates for a fine-tune job with streamed results.
