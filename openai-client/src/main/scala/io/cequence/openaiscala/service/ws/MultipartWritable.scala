@@ -4,7 +4,6 @@ import akka.stream.Materializer
 import akka.stream.scaladsl.{FileIO, Source}
 import akka.util.ByteString
 import play.api.libs.ws.{BodyWritable, SourceBody}
-import play.shaded.ahc.io.netty.handler.codec.http.HttpHeaderNames
 
 import java.nio.file.Paths
 
@@ -13,6 +12,11 @@ import java.nio.file.Paths
  * rather then fully materializing, form data and files are concatenated as sources/streams before sending out.
  */
 object MultipartWritable {
+
+  object HttpHeaderNames {
+    val CONTENT_DISPOSITION = "content-disposition"
+    val CONTENT_TYPE = "content-type"
+  }
 
   /**
    * `Writeable` for `MultipartFormData`.
