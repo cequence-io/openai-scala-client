@@ -45,15 +45,6 @@ trait OpenAIService extends OpenAIServiceConsts {
   def retrieveModel(modelId: String): Future[Option[ModelInfo]]
 
   /**
-   * Retrieves version for a given model.
-   *
-   * @param modelId The ID of the model to use for this request
-   * @return model's version
-   */
-  @Deprecated
-  def retrieveModelVersions(modelId: String): Future[Option[Seq[String]]]
-
-  /**
    * Creates a completion for the provided prompt and parameters.
    *
    * @param prompt The prompt(s) to generate completions for, encoded as a string, array of strings, array of tokens, or array of token arrays.
@@ -214,6 +205,7 @@ trait OpenAIService extends OpenAIServiceConsts {
    *
    * @param file Name of the JSON Lines file to be uploaded. If the purpose is set to "fine-tune",
    *             each line is a JSON record with "prompt" and "completion" fields representing your <a href="https://platform.openai.com/docs/guides/fine-tuning/prepare-training-data">training examples</a>.
+   * @param displayFileName (Explicit) display file name; if not specified a full path is used instead.
    * @param settings
    * @return file info
    *

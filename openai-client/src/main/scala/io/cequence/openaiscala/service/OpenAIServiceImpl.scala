@@ -64,18 +64,6 @@ private class OpenAIServiceImpl(
       handleNotFoundAndError(response).map(_.asSafe[ModelInfo])
     }
 
-  override def retrieveModelVersions(
-    modelId: String
-  ): Future[Option[Seq[String]]] =
-    execGETWithStatus(
-      Command.models,
-      Some(s"$modelId/versions")
-    ).map { response =>
-      handleNotFoundAndError(response).map { json =>
-        json.asSafeArray[String]
-      }
-    }
-
   override def createCompletion(
     prompt: String,
     settings: CreateCompletionSettings
