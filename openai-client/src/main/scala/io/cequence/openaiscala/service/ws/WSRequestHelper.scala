@@ -86,22 +86,28 @@ trait WSRequestHelper extends WSHelper {
   // POST //
   //////////
 
+  /**
+   * @param fileParams - the third param in a tuple is a display (header) file name
+   */
   protected def execPOSTMultipart(
     endPoint: PEP,
     endPointParam: Option[String] = None,
     params: Seq[(PT, Option[Any])] = Nil,
-    fileParams: Seq[(PT, File)] = Nil,
+    fileParams: Seq[(PT, File, Option[String])] = Nil,
     bodyParams: Seq[(PT, Option[Any])] = Nil
   ): Future[JsValue] =
     execPOSTMultipartWithStatus(
       endPoint, endPointParam, params, fileParams, bodyParams
     ).map(handleErrorResponse)
 
+  /**
+   * @param fileParams - the third param in a tuple is a display (header) file name
+   */
   protected def execPOSTMultipartWithStatus(
     endPoint: PEP,
     endPointParam: Option[String] = None,
     params: Seq[(PT, Option[Any])] = Nil,
-    fileParams: Seq[(PT, File)] = Nil,
+    fileParams: Seq[(PT, File, Option[String])] = Nil,
     bodyParams: Seq[(PT, Option[Any])] = Nil,
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] = {
@@ -113,11 +119,14 @@ trait WSRequestHelper extends WSHelper {
     execPOSTJsonAux(request, formData, Some(endPoint), acceptableStatusCodes)
   }
 
+  /**
+   * @param fileParams - the third param in a tuple is a display (header) file name
+   */
   protected def execPOSTMultipartWithStatusString(
     endPoint: PEP,
     endPointParam: Option[String] = None,
     params: Seq[(PT, Option[Any])] = Nil,
-    fileParams: Seq[(PT, File)] = Nil,
+    fileParams: Seq[(PT, File, Option[String])] = Nil,
     bodyParams: Seq[(PT, Option[Any])] = Nil,
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichStringResponse] = {
@@ -131,15 +140,16 @@ trait WSRequestHelper extends WSHelper {
 
   // create a multipart form data holder contain classic data (key-value) parts as well as file parts
   private def createMultipartFormData(
-    fileParams: Seq[(PT, File)] = Nil,
+    fileParams: Seq[(PT, File, Option[String])] = Nil,
     bodyParams: Seq[(PT, Option[Any])] = Nil
   ) = MultipartFormData(
     dataParts = bodyParams.collect { case (key, Some(value)) =>
       (key.toString, Seq(value.toString))
     }.toMap,
 
-    // TODO: we can potentially use here header-file-names as well (if provided as function's params)
-    files = fileParams.map { case (key, file) => FilePart(key.toString, file.getPath) }
+    files = fileParams.map { case (key, file, headerFileName) =>
+      FilePart(key.toString, file.getPath, headerFileName)
+    }
   )
 
   protected def execPOST(

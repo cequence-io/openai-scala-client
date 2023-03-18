@@ -197,7 +197,7 @@ private class OpenAIServiceImpl(
   ): Future[ImageInfo] =
     execPOSTMultipart(
       Command.images_edits,
-      fileParams = Seq(Tag.image -> image) ++ mask.map((Tag.mask ->_)),
+      fileParams = Seq((Tag.image, image, None)) ++ mask.map((Tag.mask, _, None)),
       bodyParams = Seq(
         Tag.prompt -> Some(prompt),
         Tag.n -> settings.n,
@@ -215,7 +215,7 @@ private class OpenAIServiceImpl(
   ): Future[ImageInfo] =
     execPOSTMultipart(
       Command.images_variations,
-      fileParams = Seq(Tag.image -> image),
+      fileParams = Seq((Tag.image, image, None)),
       bodyParams = Seq(
         Tag.n -> settings.n,
         Tag.size -> settings.size.map(_.toString),
@@ -254,7 +254,7 @@ private class OpenAIServiceImpl(
   ): Future[TranscriptResponse] =
     execPOSTMultipartWithStatusString(
       Command.audio_transcriptions,
-      fileParams = Seq(Tag.file -> file),
+      fileParams = Seq((Tag.file, file, None)),
       bodyParams = Seq(
         Tag.prompt -> prompt,
         Tag.model -> Some(settings.model),
@@ -271,7 +271,7 @@ private class OpenAIServiceImpl(
   ): Future[TranscriptResponse] =
     execPOSTMultipartWithStatusString(
       Command.audio_translations,
-      fileParams = Seq(Tag.file -> file),
+      fileParams = Seq((Tag.file, file, None)),
       bodyParams = Seq(
         Tag.prompt -> prompt,
         Tag.model -> Some(settings.model),
@@ -323,11 +323,12 @@ private class OpenAIServiceImpl(
 
   override def uploadFile(
     file: File,
-    settings: UploadFileSettings = DefaultSettings.UploadFile
+    displayFileName: Option[String],
+    settings: UploadFileSettings
   ): Future[FileInfo] =
     execPOSTMultipart(
       Command.files,
-      fileParams = Seq(Tag.file -> file),
+      fileParams = Seq((Tag.file, file, displayFileName)),
       bodyParams = Seq(
         Tag.purpose -> Some(settings.purpose)
       )
@@ -478,7 +479,7 @@ private class OpenAIServiceImpl(
 
   override def createModeration(
     input: String,
-    settings: CreateModerationSettings = DefaultSettings.CreateModeration
+    settings: CreateModerationSettings
   ): Future[ModerationResponse] =
     execPOST(
       Command.moderations,

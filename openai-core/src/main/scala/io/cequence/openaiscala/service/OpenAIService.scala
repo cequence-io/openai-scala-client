@@ -213,6 +213,7 @@ trait OpenAIService extends OpenAIServiceConsts {
    */
   def uploadFile(
     file: File,
+    displayFileName: Option[String] = None,
     settings: UploadFileSettings = DefaultSettings.UploadFile
   ): Future[FileInfo]
 
