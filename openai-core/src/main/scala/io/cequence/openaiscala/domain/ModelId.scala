@@ -88,9 +88,17 @@ object ModelId {
   val whisper_1 = "whisper-1"
   val whisper_1_2 = "whisper-1.2"
 
+  // GPT-3.5 (ChatGPT)
+  val gpt_3_5_turbo = "gpt-3.5-turbo"
+  val gpt_3_5_turbo_0301 = "gpt-3.5-turbo-0301"
+
+  // GPT-4
+  val gpt_4 = "gpt-4" // 8k context
+  val gpt_4_0314 = "gpt-4-0314" // 8k context (March 14th snapshot)
+  val gpt_4_32k = "gpt-4-32k" // 32k context
+  val gpt_4_32k_0314 = "gpt-4-32k-0314" // 32k context (March 14th snapshot)
+
   // Other
   val code_cushman_001 = "code-cushman-001"
   val cushman_2020_05_03 = "cushman:2020-05-03"
-  val gpt_3_5_turbo = "gpt-3.5-turbo"
-  val gpt_3_5_turbo_0301 = "gpt-3.5-turbo-0301"
 }
