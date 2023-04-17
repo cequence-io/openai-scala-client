@@ -170,6 +170,25 @@ Examples:
 ```
 (For this to work you need to use `OpenAIServiceStreamedFactory` from `openai-scala-client-stream` lib)
 
+- Create chat completion 
+
+```scala
+  val createChatCompletionSettings = CreateChatCompletionSettings(
+    model = ModelId.gpt_3_5_turbo_0301
+  )
+
+  val messages: Seq[MessageSpec] = Seq(
+    MessageSpec(role = ChatRole.System, content = "You are a helpful assistant."),
+    MessageSpec(role = ChatRole.User, content = "Who won the world series in 2020?"),
+    MessageSpec(role = ChatRole.Assistant, content = "The Los Angeles Dodgers won the World Series in 2020."),
+    MessageSpec(role = ChatRole.User, content = "Where was it played"),
+)
+
+  service.createChatCompletion(messages = messages, settings = createChatCompletionSettings).map { chatCompletion =>
+  println(chatCompletion.choices.head.message.content)
+}
+```
+
 ## FAQ 🤔
 
 1. _Wen Scala 3?_ 
