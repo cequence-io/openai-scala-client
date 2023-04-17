@@ -174,7 +174,7 @@ Examples:
 
 ```scala
   val createChatCompletionSettings = CreateChatCompletionSettings(
-    model = ModelId.gpt_3_5_turbo_0301
+    model = ModelId.gpt_3_5_turbo
   )
 
   val messages: Seq[MessageSpec] = Seq(
@@ -182,11 +182,14 @@ Examples:
     MessageSpec(role = ChatRole.User, content = "Who won the world series in 2020?"),
     MessageSpec(role = ChatRole.Assistant, content = "The Los Angeles Dodgers won the World Series in 2020."),
     MessageSpec(role = ChatRole.User, content = "Where was it played"),
-)
+  )
 
-  service.createChatCompletion(messages = messages, settings = createChatCompletionSettings).map { chatCompletion =>
-  println(chatCompletion.choices.head.message.content)
-}
+  service.createChatCompletion(
+    messages = messages,
+    settings = createChatCompletionSettings
+  ).map { chatCompletion =>
+    println(chatCompletion.choices.head.message.content)
+  }
 ```
 
 ## FAQ 🤔
