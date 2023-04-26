@@ -1,5 +1,5 @@
 # OpenAI Scala Client 🤖
-[![version](https://img.shields.io/badge/version-0.3.1-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT) ![GitHub Stars](https://img.shields.io/github/stars/cequence-io/openai-scala-client?style=social) [![Twitter Follow](https://img.shields.io/twitter/follow/0xbnd?style=social)](https://twitter.com/0xbnd)
+[![version](https://img.shields.io/badge/version-0.3.2-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT) ![GitHub Stars](https://img.shields.io/github/stars/cequence-io/openai-scala-client?style=social) [![Twitter Follow](https://img.shields.io/twitter/follow/0xbnd?style=social)](https://twitter.com/0xbnd)
 
 This is a no-nonsense async Scala client for OpenAI API supporting all the available endpoints and params **including streaming**, the newest **ChatGPT completion**, and **voice routines** (as defined [here](https://beta.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala). The supported calls are: 
 
@@ -28,7 +28,7 @@ The currently supported Scala versions are **2.12, 2.13**, and **3**. Note that 
 To pull the library you have to add the following dependency to your *build.sbt*
 
 ```
-"io.cequence" %% "openai-scala-client" % "0.3.1"
+"io.cequence" %% "openai-scala-client" % "0.3.2"
 ```
 
 or to *pom.xml* (if you use maven)
@@ -37,11 +37,11 @@ or to *pom.xml* (if you use maven)
 <dependency>
     <groupId>io.cequence</groupId>
     <artifactId>openai-scala-client_2.12</artifactId>
-    <version>0.3.1</version>
+    <version>0.3.2</version>
 </dependency>
 ```
 
-If you want a streaming support use `"io.cequence" %% "openai-scala-client-stream" % "0.3.1"` instead.
+If you want a streaming support use `"io.cequence" %% "openai-scala-client-stream" % "0.3.2"` instead.
 
 ## Config ⚙️
 
