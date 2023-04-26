@@ -14,9 +14,6 @@ object Command extends Enumeration {
   val files = Value
   val fine_tunes = Value("fine-tunes")
   val moderations = Value
-
-  @Deprecated
-  val engines = Value
 }
 
 object Tag extends Enumeration {
