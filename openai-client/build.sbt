@@ -8,7 +8,7 @@ playWsVersion := {
   scalaVersion.value match {
     case "2.12.15" => "2.1.10"
     case "2.13.10" => "2.2.0-M3"
-    case "3.2.2" => "2.2.0-M3"
+    case "3.2.2" => "2.2.0-M2" // Version "2.2.0-M3" was produced by an unstable release: Scala 3.3.0-RC3
     case _ => "2.1.10"
   }
 }
