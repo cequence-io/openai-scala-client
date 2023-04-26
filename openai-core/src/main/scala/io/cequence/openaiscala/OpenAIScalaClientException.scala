@@ -11,3 +11,7 @@ class OpenAIScalaClientTimeoutException(message: String, cause: Throwable) exten
 class OpenAIScalaClientUnknownHostException(message: String, cause: Throwable) extends OpenAIScalaClientException(message, cause) {
   def this(message: String) = this(message, null)
 }
+
+class OpenAIScalaTokenCountExceededException(message: String, cause: Throwable) extends OpenAIScalaClientException(message, cause) {
+  def this(message: String) = this(message, null)
+}

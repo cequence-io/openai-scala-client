@@ -3,7 +3,7 @@ package io.cequence.openaiscala.service.ws
 import com.fasterxml.jackson.core.JsonParseException
 import com.fasterxml.jackson.databind.JsonMappingException
 import io.cequence.openaiscala.JsonUtil.toJson
-import io.cequence.openaiscala.{OpenAIScalaClientException, OpenAIScalaClientTimeoutException, OpenAIScalaClientUnknownHostException}
+import io.cequence.openaiscala.{OpenAIScalaClientException, OpenAIScalaClientTimeoutException, OpenAIScalaClientUnknownHostException, OpenAIScalaTokenCountExceededException}
 import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.libs.ws.{BodyWritable, StandaloneWSRequest}
 import play.api.libs.ws.JsonBodyWritables._
@@ -326,7 +326,14 @@ trait WSRequestHelper extends WSHelper {
     response match {
       case Left(data) => data
 
-      case Right((errorCode, message)) => throw new OpenAIScalaClientException(s"Code ${errorCode} : ${message}")
+      case Right((errorCode, message)) =>
+        val errorMessage = s"Code ${errorCode} : ${message}"
+        if (message.contains("Please reduce your prompt; or completion length") ||
+            message.contains("Please reduce the length of the messages")
+          )
+          throw new OpenAIScalaTokenCountExceededException(errorMessage)
+        else
+          throw new OpenAIScalaClientException(errorMessage)
     }
 
   protected def handleNotFoundAndError[T](response: Either[T, (Int, String)]): Option[T] =
