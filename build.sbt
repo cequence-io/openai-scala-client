@@ -1,7 +1,12 @@
 import sbt.Keys.test
 
+// Supported versions
+val scala212 = "2.12.15"
+val scala213 = "2.13.10"
+val scala3 = "3.2.2"
+
 ThisBuild / organization := "io.cequence"
-ThisBuild / scalaVersion := "2.12.15" // 2.13.10"
+ThisBuild / scalaVersion := scala212
 ThisBuild / version := "0.3.1"
 ThisBuild / isSnapshot := false
 
