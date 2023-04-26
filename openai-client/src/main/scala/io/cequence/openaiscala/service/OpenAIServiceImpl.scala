@@ -32,10 +32,8 @@ private class OpenAIServiceImpl(
   implicit val ec: ExecutionContext, val materializer: Materializer
 ) extends OpenAIService with WSRequestHelper {
 
-  override protected type PEP = Command.type#Value
-  override protected type PT = Tag.type#Value
-
-//  private val logger = LoggerFactory.getLogger("OpenAIService")
+  override protected type PEP = Command
+  override protected type PT = Tag
 
   override protected def timeouts: Timeouts =
     explTimeouts.getOrElse(

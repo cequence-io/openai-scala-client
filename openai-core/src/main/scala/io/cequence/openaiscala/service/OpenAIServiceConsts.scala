@@ -66,9 +66,6 @@ trait OpenAIServiceConsts {
     val CreateFineTune = CreateFineTuneSettings()
 
     // keep all OpenAI defaults
-    val ListFineTuneEvents = ListFineTuneEventsSettings()
-
-    // keep all OpenAI defaults
     val CreateModeration = CreateModerationSettings()
   }
 }
