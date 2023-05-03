@@ -5,11 +5,11 @@ This is a no-nonsense async Scala client for OpenAI API supporting all the avail
 
 * **Models**: [listModels](https://platform.openai.com/docs/api-reference/models/list), and [retrieveModel](https://platform.openai.com/docs/api-reference/models/retrieve)
 * **Completions**: [createCompletion](https://platform.openai.com/docs/api-reference/completions/create)
-* **Chat Completions**: [createChatCompletion](https://platform.openai.com/docs/api-reference/chat/create) - **new**🔥
+* **Chat Completions**: [createChatCompletion](https://platform.openai.com/docs/api-reference/chat/create)
 * **Edits**: [createEdit](https://platform.openai.com/docs/api-reference/edits/create)
 * **Images**: [createImage](https://platform.openai.com/docs/api-reference/images/create), [createImageEdit](https://platform.openai.com/docs/api-reference/images/create-edit), and [createImageVariation](https://platform.openai.com/docs/api-reference/images/create-variation)
 * **Embeddings**: [createEmbeddings](https://platform.openai.com/docs/api-reference/embeddings/create)
-* **Audio**: [createAudioTranscription](https://platform.openai.com/docs/api-reference/audio/create) - **new**🔥, [createAudioTranslation](https://platform.openai.com/docs/api-reference/audio/create) - **new**🔥 
+* **Audio**: [createAudioTranscription](https://platform.openai.com/docs/api-reference/audio/create), [createAudioTranslation](https://platform.openai.com/docs/api-reference/audio/create) 
 * **Files**: [listFiles](https://platform.openai.com/docs/api-reference/files/list), [uploadFile](https://platform.openai.com/docs/api-reference/files/upload), [deleteFile](https://platform.openai.com/docs/api-reference/files/delete), [retrieveFile](https://platform.openai.com/docs/api-reference/files/retrieve), and [retrieveFileContent](https://platform.openai.com/docs/api-reference/files/retrieve-content)
 * **Fine-tunes**: [createFineTune](https://platform.openai.com/docs/api-reference/fine-tunes/create), [listFineTunes](https://platform.openai.com/docs/api-reference/fine-tunes/list), [retrieveFineTune](https://platform.openai.com/docs/api-reference/fine-tunes/retrieve), [cancelFineTune](https://platform.openai.com/docs/api-reference/fine-tunes/cancel), [listFineTuneEvents](https://platform.openai.com/docs/api-reference/fine-tunes/events), and [deleteFineTuneModel](https://platform.openai.com/docs/api-reference/fine-tunes/delete-model)
 * **Moderations**: [createModeration](https://platform.openai.com/docs/api-reference/moderations/create)
@@ -20,6 +20,8 @@ Also, we aimed the lib to be self-contained with the fewest dependencies possibl
 **✔️ Important**: this is a "community-maintained" library and, as such, has no relation to OpenAI company.
 
 👉 Check out an article about the lib/client on [Medium](https://medium.com/@0xbnd/openai-scala-client-is-out-d7577de934ad).
+
+**🔥 New**: Try out also our [Scala client for Pinecone vector databse](https://github.com/cequence-io/pinecone-scala), or use both clients together! [This demo project](https://github.com/cequence-io/pinecone-openai-scala-demo) shows how to generate and store OpenAI embeddings (with `text-embedding-ada-002` model) into Pinecone and query them afterward. This combo is commonly used for autonomous AI agents, such as [babyAGI](https://github.com/yoheinakajima/babyagi) and [AutoGPT](https://github.com/Significant-Gravitas/Auto-GPT).
 
 ## Installation 🚀
 
