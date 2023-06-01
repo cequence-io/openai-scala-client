@@ -347,4 +347,9 @@ trait OpenAIService extends OpenAIServiceConsts {
     input: String,
     settings: CreateModerationSettings = DefaultSettings.CreateModeration
   ): Future[ModerationResponse]
+
+  /**
+   * Closes the underlying ws client, and releases all its resources.
+   */
+  def close: Unit
 }

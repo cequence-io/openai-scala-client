@@ -35,4 +35,7 @@ trait WSHelper {
 
     client
   }
+
+  def close =
+    client.close()
 }
