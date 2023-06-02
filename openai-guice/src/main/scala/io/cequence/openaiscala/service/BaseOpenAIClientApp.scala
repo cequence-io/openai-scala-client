@@ -13,6 +13,8 @@ trait BaseOpenAIClientApp extends GuiceContainer with App {
     new ServiceModule()
   )
 
+  protected val openAIService = instance[OpenAIService]
+
   // implicits
   protected implicit val system = instance[ActorSystem]
   protected implicit val materializer = instance[Materializer]
