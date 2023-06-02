@@ -61,6 +61,7 @@ object JsonFormats {
   implicit val fineTuneHyperparamsFormat: Format[FineTuneHyperparams] = Json.format[FineTuneHyperparams]
   implicit val fineTuneFormat: Format[FineTuneJob] = Json.format[FineTuneJob]
 
+  // somehow ModerationCategories.unapply is not working in Scala3
   implicit val moderationCategoriesFormat: Format[ModerationCategories] = (
     (__ \ "hate").format[Boolean] and
     (__ \ "hate/threatening").format[Boolean] and
@@ -69,8 +70,11 @@ object JsonFormats {
     (__ \ "sexual/minors").format[Boolean] and
     (__ \ "violence").format[Boolean] and
     (__ \ "violence/graphic").format[Boolean]
-  ) (ModerationCategories.apply, unlift(ModerationCategories.unapply))
+  )(ModerationCategories.apply, { (x: ModerationCategories) =>
+    (x.hate, x.hate_threatening, x.self_harm, x.sexual, x.sexual_minors, x.violence, x.violence_graphic)
+  })
 
+  // somehow ModerationCategoryScores.unapply is not working in Scala3
   implicit val moderationCategoryScoresFormat: Format[ModerationCategoryScores] = (
     (__ \ "hate").format[Double] and
     (__ \ "hate/threatening").format[Double] and
@@ -79,7 +83,9 @@ object JsonFormats {
     (__ \ "sexual/minors").format[Double] and
     (__ \ "violence").format[Double] and
     (__ \ "violence/graphic").format[Double]
-  ) (ModerationCategoryScores.apply, unlift(ModerationCategoryScores.unapply))
+  )(ModerationCategoryScores.apply, { (x: ModerationCategoryScores) =>
+    (x.hate, x.hate_threatening, x.self_harm, x.sexual, x.sexual_minors, x.violence, x.violence_graphic)
+  })
 
   implicit val moderationResultFormat: Format[ModerationResult] = Json.format[ModerationResult]
   implicit val moderationFormat: Format[ModerationResponse] = Json.format[ModerationResponse]
