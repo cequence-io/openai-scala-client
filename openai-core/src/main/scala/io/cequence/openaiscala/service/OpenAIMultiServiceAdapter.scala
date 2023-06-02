@@ -34,11 +34,18 @@ private class OpenAIMultiServiceRandomAccessAdapter(
   protected def calcIndex = Random.nextInt(count)
 }
 
+/**
+ * Load distribution for multiple OpenAIService instances using:
+ *  - rotation type (aka round robin)
+ *  - random access/order
+ */
 object OpenAIMultiServiceAdapter {
 
-  def ofRotationType(underlyings: Seq[OpenAIService]): OpenAIService =
+  // maybe calling it "round robin" would be better?
+  def ofRotationType(underlyings: OpenAIService*): OpenAIService =
     new OpenAIMultiServiceRotationAdapter(underlyings)
 
-  def ofRandomAccessType(underlyings: Seq[OpenAIService]): OpenAIService =
+  // TODO: rename to ofRandomOrder
+  def ofRandomAccessType(underlyings: OpenAIService*): OpenAIService =
     new OpenAIMultiServiceRandomAccessAdapter(underlyings)
 }
