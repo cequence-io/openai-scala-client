@@ -20,7 +20,7 @@ object Command extends Enumeration {
   case object moderations extends Command
 }
 
-sealed abstract class Tag(value: String = "") extends EnumValue(value)
+sealed abstract class Tag extends EnumValue()
 
 object Tag {
   case object model extends Tag

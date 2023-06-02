@@ -279,7 +279,7 @@ private class OpenAIServiceImpl(
     ).map(processAudioTranscriptResponse(settings.response_format))
 
   private def processAudioTranscriptResponse(
-    responseFormat: Option[TranscriptResponseFormatType.Value])(
+    responseFormat: Option[TranscriptResponseFormatType])(
     stringRichResponse: RichStringResponse
   ) = {
     val stringResponse = handleErrorResponse(stringRichResponse)
