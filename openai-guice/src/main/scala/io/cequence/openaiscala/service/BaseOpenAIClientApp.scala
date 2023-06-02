@@ -4,6 +4,8 @@ import akka.actor.ActorSystem
 import akka.stream.Materializer
 import org.slf4j.LoggerFactory
 
+import scala.concurrent.ExecutionContext
+
 trait BaseOpenAIClientApp extends GuiceContainer with App {
 
   // modules
@@ -16,7 +18,7 @@ trait BaseOpenAIClientApp extends GuiceContainer with App {
   protected val openAIService = instance[OpenAIService]
 
   // implicits
-  protected implicit val system = instance[ActorSystem]
-  protected implicit val materializer = instance[Materializer]
-  protected implicit val executionContext = materializer.executionContext
+  protected implicit val system: ActorSystem = instance[ActorSystem]
+  protected implicit val materializer: Materializer = instance[Materializer]
+  protected implicit val executionContext: ExecutionContext = materializer.executionContext
 }

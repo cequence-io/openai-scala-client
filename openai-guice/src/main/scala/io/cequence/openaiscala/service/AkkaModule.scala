@@ -28,7 +28,7 @@ object Providers {
 
 class AkkaModule(includeExecutionContext: Boolean = true) extends AbstractModule with ScalaModule {
 
-  override def configure() {
+  override def configure = {
     bind[ActorSystem].toProvider[Providers.ActorSystemProvider].asEagerSingleton()
     bind[Materializer].toProvider[Providers.MaterializerProvider].asEagerSingleton()
 
