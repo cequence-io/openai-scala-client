@@ -194,6 +194,58 @@ Examples:
   }
 ```
 
+**✔️ Important Note**: After you are done using the service, you should close it by calling (🔥 new) `service.close`. Otherwise, the underlying resources/threads won't be released.
+
+**III. Using multiple services (🔥 new)**
+
+- Load distribution with `OpenAIMultiServiceAdapter` - _rotation type_ aka "round robin"
+
+```scala
+  val service1 = OpenAIServiceFactory("your-api-key1")
+  val service2 = OpenAIServiceFactory("your-api-key2")
+  val service3 = OpenAIServiceFactory("your-api-key3")
+
+  val service = OpenAIMultiServiceAdapter.ofRotationType(service1, service2, service3)
+
+  service.listModels.map { models =>
+    models.foreach(println)
+    service.close
+  }
+```
+
+- Load distribution with `OpenAIMultiServiceAdapter` - _random order_ type
+
+```scala
+  val service1 = OpenAIServiceFactory("your-api-key1")
+  val service2 = OpenAIServiceFactory("your-api-key2")
+  val service3 = OpenAIServiceFactory("your-api-key3")
+
+  val service = OpenAIMultiServiceAdapter.ofRandomAccessType(service1, service2, service3)
+
+  service.listModels.map { models =>
+    models.foreach(println)
+    service.close
+  }
+```
+
+- Retries with `OpenAIRetryServiceAdapter`
+
+```scala
+  val serviceAux = ... // your service
+
+  // wrap it with the retry adapter
+  val service = OpenAIRetryServiceAdapter(
+    serviceAux,
+    maxAttempts = 10,
+    sleepOnFailureMs = Some(1000) // 1 second
+  )
+
+  service.listModels.map { models =>
+    models.foreach(println)
+    service.close
+  }
+```
+
 ## FAQ 🤔
 
 1. _Wen Scala 3?_ 
