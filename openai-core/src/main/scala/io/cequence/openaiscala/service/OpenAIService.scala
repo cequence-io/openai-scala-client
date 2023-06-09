@@ -1,8 +1,8 @@
 package io.cequence.openaiscala.service
 
 import io.cequence.openaiscala.domain.MessageSpec
-import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
+import io.cequence.openaiscala.domain.settings._
 
 import java.io.File
 import scala.concurrent.Future

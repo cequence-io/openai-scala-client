@@ -2,11 +2,11 @@ package io.cequence.openaiscala
 
 import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.domain.ChatRole
-
-import java.{util => ju}
 import io.cequence.openaiscala.domain.response._
 import play.api.libs.functional.syntax._
 import play.api.libs.json.{Format, Json, _}
+
+import java.{util => ju}
 
 object JsonFormats {
   private implicit val dateFormat: Format[ju.Date] = JsonUtil.SecDateFormat

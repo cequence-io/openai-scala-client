@@ -1,16 +1,15 @@
 package io.cequence.openaiscala.service
 
 import akka.stream.Materializer
-import play.api.libs.ws.StandaloneWSRequest
-import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
-import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.JsonFormats._
+import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.domain.response._
-import io.cequence.openaiscala.ConfigImplicits._
 import io.cequence.openaiscala.domain.MessageSpec
+import io.cequence.openaiscala.domain.response._
+import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.ws.{Timeouts, WSRequestHelper}
+import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
+import play.api.libs.ws.StandaloneWSRequest
 
 import java.io.File
 import scala.concurrent.{ExecutionContext, Future}

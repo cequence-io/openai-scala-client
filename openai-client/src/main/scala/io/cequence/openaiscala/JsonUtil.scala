@@ -1,9 +1,9 @@
 package io.cequence.openaiscala
 
-import java.{util => ju}
 import play.api.libs.json._
 
 import java.util.Date
+import java.{util => ju}
 
 object JsonUtil {
 

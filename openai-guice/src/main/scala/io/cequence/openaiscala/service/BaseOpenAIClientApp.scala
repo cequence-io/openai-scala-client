@@ -2,7 +2,6 @@ package io.cequence.openaiscala.service
 
 import akka.actor.ActorSystem
 import akka.stream.Materializer
-import org.slf4j.LoggerFactory
 
 import scala.concurrent.ExecutionContext
 

@@ -4,8 +4,8 @@ import akka.actor.ActorSystem
 import com.google.inject.{Guice, Injector, Module}
 import com.typesafe.config.Config
 import net.codingwell.scalaguice.InjectorExtensions._
-import scala.concurrent.duration._
 
+import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
 trait GuiceContainer {

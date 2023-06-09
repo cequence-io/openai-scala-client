@@ -4,7 +4,6 @@ import io.cequence.openaiscala.domain.MessageSpec
 import io.cequence.openaiscala.domain.settings._
 
 import java.io.File
-import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.Future
 
 trait OpenAIServiceWrapper extends OpenAIService {

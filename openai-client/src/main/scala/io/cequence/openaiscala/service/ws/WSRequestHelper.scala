@@ -3,12 +3,13 @@ package io.cequence.openaiscala.service.ws
 import com.fasterxml.jackson.core.JsonParseException
 import com.fasterxml.jackson.databind.JsonMappingException
 import io.cequence.openaiscala.JsonUtil.toJson
+import io.cequence.openaiscala.service.ws.MultipartWritable.writeableOf_MultipartFormData
 import io.cequence.openaiscala.{OpenAIScalaClientException, OpenAIScalaClientTimeoutException, OpenAIScalaClientUnknownHostException, OpenAIScalaTokenCountExceededException}
-import play.api.libs.json.{JsObject, JsValue, Json}
-import play.api.libs.ws.{BodyWritable, StandaloneWSRequest}
-import play.api.libs.ws.JsonBodyWritables._
+import play.api.libs.json.{JsObject, JsValue}
 import play.api.libs.ws.JsonBodyReadables._
-import MultipartWritable.writeableOf_MultipartFormData
+import play.api.libs.ws.JsonBodyWritables._
+import play.api.libs.ws.{BodyWritable, StandaloneWSRequest}
+
 import java.io.File
 import java.net.UnknownHostException
 import java.util.concurrent.TimeoutException

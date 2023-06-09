@@ -2,7 +2,7 @@ package io.cequence.openaiscala.service
 
 import akka.actor.ActorSystem
 import akka.stream.Materializer
-import com.google.inject.{AbstractModule, Injector, Provider}
+import com.google.inject.{AbstractModule, Provider}
 import com.typesafe.config.Config
 import net.codingwell.scalaguice.ScalaModule
 

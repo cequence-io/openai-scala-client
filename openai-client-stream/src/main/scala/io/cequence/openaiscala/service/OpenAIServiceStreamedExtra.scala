@@ -3,10 +3,8 @@ package io.cequence.openaiscala.service
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.domain.MessageSpec
-import io.cequence.openaiscala.domain.response.{ChatCompletionChunkResponse, ChatCompletionResponse, FineTuneEvent, TextCompletionResponse}
+import io.cequence.openaiscala.domain.response.{ChatCompletionChunkResponse, FineTuneEvent, TextCompletionResponse}
 import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, CreateCompletionSettings}
-
-import scala.concurrent.Future
 
 trait OpenAIServiceStreamedExtra extends OpenAIServiceConsts {
 
