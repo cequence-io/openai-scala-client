@@ -8,10 +8,10 @@ import java.util.Date
 object JsonUtil {
 
   implicit class JsonOps(val json: JsValue) {
-    def asSafe[T](implicit fjs: Reads[T]) =
+    def asSafe[T](implicit fjs: Reads[T]): T =
       try {
         json.validate[T] match {
-          case JsSuccess(value, path) => value
+          case JsSuccess(value, _) => value
           case JsError(errors) =>
             val errorString = errors.map { case (path, pathErrors) => s"JSON at path '${path}' contains the following errors: ${pathErrors.map(_.message).mkString(";")}" }.mkString("\n")
             throw new OpenAIScalaClientException(s"Unexpected JSON:\n'${Json.prettyPrint(json)}'. Cannot be parsed due to: $errorString")

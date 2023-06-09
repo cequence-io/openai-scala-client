@@ -15,7 +15,7 @@ private trait OpenAIMultiServiceAdapter extends OpenAIServiceWrapper {
   ): Future[T] =
     fun(underlyings(calcIndex))
 
-  override def close =
+  override def close: Unit =
     underlyings.foreach(_.close)
 }
 
@@ -24,14 +24,14 @@ private class OpenAIMultiServiceRotationAdapter(
 ) extends OpenAIMultiServiceAdapter {
   private val atomicCounter = new AtomicInteger()
 
-  protected def calcIndex =
+  protected def calcIndex: Int =
     atomicCounter.getAndUpdate(index => (index + 1) % count)
 }
 
 private class OpenAIMultiServiceRandomAccessAdapter(
   val underlyings: Seq[OpenAIService]
 ) extends OpenAIMultiServiceAdapter {
-  protected def calcIndex = Random.nextInt(count)
+  protected def calcIndex: Int = Random.nextInt(count)
 }
 
 /**

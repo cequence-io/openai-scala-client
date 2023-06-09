@@ -5,7 +5,7 @@ package io.cequence.openaiscala.domain.response
  */
 trait ResponseStringMarshaller {
 
-  def fineTuneToString(fileInfo: FineTuneJob) =
+  def fineTuneToString(fileInfo: FineTuneJob): String =
     s"""File-tune Job
        |-id: ${fileInfo.id}
        |-model: ${fileInfo.model}
@@ -18,7 +18,7 @@ trait ResponseStringMarshaller {
        |-result files:\n${fileInfo.result_files.map(fileInfoToString).mkString("\n")}
      """.stripMargin
 
-  def fileInfoToString(fileInfo: FileInfo) =
+  def fileInfoToString(fileInfo: FileInfo): String =
     s"""File Info
        |-id: ${fileInfo.id}
        |-filename: ${fileInfo.filename}
@@ -29,40 +29,40 @@ trait ResponseStringMarshaller {
        |-purpose: ${fileInfo.purpose}
      """.stripMargin
 
-  def imageToString(image: ImageInfo) =
+  def imageToString(image: ImageInfo): String =
     s"""Image
        |-created: ${image.created.toString}
        |-data: ${image.data.map(_.mkString(", ")).mkString("; ")}
      """.stripMargin
 
-  def embeddingToString(embedding: EmbeddingResponse) =
+  def embeddingToString(embedding: EmbeddingResponse): String =
     s"""Completion
        |-model: ${embedding.model}
        |-data: ${embedding.data.map(embeddingInfoToString).mkString("\n")}
        |-usage: ${usageToString(embedding.usage)},
      """.stripMargin
 
-  def embeddingInfoToString(embeddingInfo: EmbeddingInfo) =
+  def embeddingInfoToString(embeddingInfo: EmbeddingInfo): String =
     s"""Embedding Info
        |-index: ${embeddingInfo.index}
        |-embedding: ${embeddingInfo.embedding.mkString(", ")}
      """.stripMargin
 
-  def moderationToString(edit: ModerationResponse) =
+  def moderationToString(edit: ModerationResponse): String =
     s"""Moderation
        |-id: ${edit.id}
        |-model: ${edit.model}
        |-results: ${edit.results.map(moderationResultToString).mkString("\n")}
      """.stripMargin
 
-  def moderationResultToString(moderationResult: ModerationResult) =
+  def moderationResultToString(moderationResult: ModerationResult): String =
     s"""Moderation Result
        |-categories: ${moderationCategoriesToString(moderationResult.categories)}
        |-category scores: ${moderationCategoryScoresToString(moderationResult.category_scores)}
        |-flagged: ${moderationResult.flagged}
      """.stripMargin
 
-  def moderationCategoriesToString(moderationCategories: ModerationCategories) =
+  def moderationCategoriesToString(moderationCategories: ModerationCategories): String =
     s"""Moderation Categories
        |-hate: ${moderationCategories.hate}
        |-hate threatening: ${moderationCategories.hate_threatening}
@@ -73,7 +73,7 @@ trait ResponseStringMarshaller {
        |-violence_graphic: ${moderationCategories.violence_graphic}
      """.stripMargin
 
-  def moderationCategoryScoresToString(moderationCategoryScores: ModerationCategoryScores) =
+  def moderationCategoryScoresToString(moderationCategoryScores: ModerationCategoryScores): String =
     s"""Moderation Category Scores
        |-hate: ${moderationCategoryScores.hate}
        |-hate threatening: ${moderationCategoryScores.hate_threatening}
@@ -84,21 +84,21 @@ trait ResponseStringMarshaller {
        |-violence_graphic: ${moderationCategoryScores.violence_graphic}
      """.stripMargin
 
-  def editToString(edit: TextEditResponse) =
+  def editToString(edit: TextEditResponse): String =
     s"""Completion
        |-created: ${edit.created.toString}
        |-usage: ${usageToString(edit.usage)}
        |-choices: ${edit.choices.map(editChoiceToString).mkString("\n")}
      """.stripMargin
 
-  def editChoiceToString(choice: TextEditChoiceInfo) =
+  def editChoiceToString(choice: TextEditChoiceInfo): String =
     s"""Choice
        |-index: ${choice.index}
        |-text: ${choice.text}
        |-logprobs: ${choice.logprobs.map(logprobsToString).getOrElse("N/A")}
      """.stripMargin
 
-  def completionToString(completion: TextCompletionResponse) =
+  def completionToString(completion: TextCompletionResponse): String =
     s"""Completion
        |-id: ${completion.id}
        |-model: ${completion.model}
@@ -107,7 +107,7 @@ trait ResponseStringMarshaller {
        |-choices: ${completion.choices.map(completionChoiceToString).mkString("\n")}
      """.stripMargin
 
-  def completionChoiceToString(choice: TextCompletionChoiceInfo) =
+  def completionChoiceToString(choice: TextCompletionChoiceInfo): String =
     s"""Choice
        |-index: ${choice.index}
        |-text: ${choice.text}
@@ -115,7 +115,7 @@ trait ResponseStringMarshaller {
        |-finish reason: ${choice.finish_reason}
      """.stripMargin
 
-  def logprobsToString(logProb: LogprobsInfo) =
+  def logprobsToString(logProb: LogprobsInfo): String =
     s"""Logprobs
        |-tokens: ${logProb.tokens.mkString(", ")}
        |-token_logprobs: ${logProb.token_logprobs.mkString(", ")}
@@ -123,14 +123,14 @@ trait ResponseStringMarshaller {
        |-text_offset: ${logProb.text_offset.mkString(", ")}
      """.stripMargin
 
-  def usageToString(usage: UsageInfo) =
+  def usageToString(usage: UsageInfo): String =
     s"""Usage
        |-prompt tokens: ${usage.prompt_tokens}
        |-completion tokens: ${usage.completion_tokens.getOrElse("N/A")}
        |-total tokens: ${usage.total_tokens}
      """.stripMargin
 
-  def usageToString(usage: EmbeddingUsageInfo) =
+  def usageToString(usage: EmbeddingUsageInfo): String =
     s"""Usage
        |-prompt tokens: ${usage.prompt_tokens}
        |-total tokens: ${usage.total_tokens}
