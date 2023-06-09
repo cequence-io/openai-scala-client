@@ -14,53 +14,62 @@ import play.api.libs.json.JsValue
 
 import scala.concurrent.ExecutionContext
 
-/**
- * Private impl. class of [[OpenAIService]].
- *
- * @param apiKey
- * @param orgId
- * @param ec
- * @param materializer
- *
- * @since Jan 2023
- */
-private trait OpenAIServiceStreamedExtraImpl extends OpenAIServiceStreamedExtra with WSStreamRequestHelper {
+/** Private impl. class of [[OpenAIService]].
+  *
+  * @param apiKey
+  * @param orgId
+  * @param ec
+  * @param materializer
+  *
+  * @since Jan
+  *   2023
+  */
+private trait OpenAIServiceStreamedExtraImpl
+    extends OpenAIServiceStreamedExtra
+    with WSStreamRequestHelper {
   this: OpenAIServiceImpl =>
 
   override def createCompletionStreamed(
-    prompt: String,
-    settings: CreateCompletionSettings
+      prompt: String,
+      settings: CreateCompletionSettings
   ): Source[TextCompletionResponse, NotUsed] =
     execJsonStreamAux(
       Command.completions,
       "POST",
-      bodyParams = createBodyParamsForCompletion(prompt, settings, stream = true)
+      bodyParams =
+        createBodyParamsForCompletion(prompt, settings, stream = true)
     ).map { (json: JsValue) =>
-      (json \ "error").toOption.map { error =>
-        throw new OpenAIScalaClientException(error.toString())
-      }.getOrElse(
-        json.asSafe[TextCompletionResponse]
-      )
+      (json \ "error").toOption
+        .map { error =>
+          throw new OpenAIScalaClientException(error.toString())
+        }
+        .getOrElse(
+          json.asSafe[TextCompletionResponse]
+        )
     }
 
   override def createChatCompletionStreamed(
-    messages: Seq[MessageSpec],
-    settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
+      messages: Seq[MessageSpec],
+      settings: CreateChatCompletionSettings =
+        DefaultSettings.CreateChatCompletion
   ): Source[ChatCompletionChunkResponse, NotUsed] =
     execJsonStreamAux(
       Command.chat_completions,
       "POST",
-      bodyParams = createBodyParamsForChatCompletion(messages, settings, stream = true)
+      bodyParams =
+        createBodyParamsForChatCompletion(messages, settings, stream = true)
     ).map { (json: JsValue) =>
-      (json \ "error").toOption.map { error =>
-        throw new OpenAIScalaClientException(error.toString())
-      }.getOrElse(
-        json.asSafe[ChatCompletionChunkResponse]
-      )
+      (json \ "error").toOption
+        .map { error =>
+          throw new OpenAIScalaClientException(error.toString())
+        }
+        .getOrElse(
+          json.asSafe[ChatCompletionChunkResponse]
+        )
     }
 
   override def listFineTuneEventsStreamed(
-    fineTuneId: String
+      fineTuneId: String
   ): Source[FineTuneEvent, NotUsed] =
     execJsonStreamAux(
       Command.fine_tunes,
@@ -70,21 +79,29 @@ private trait OpenAIServiceStreamedExtraImpl extends OpenAIServiceStreamedExtra 
         Tag.stream -> Some(true)
       )
     ).map { json =>
-      (json \ "error").toOption.map { error =>
-        throw new OpenAIScalaClientException(error.toString())
-      }.getOrElse(
-        json.asSafe[FineTuneEvent]
-      )
+      (json \ "error").toOption
+        .map { error =>
+          throw new OpenAIScalaClientException(error.toString())
+        }
+        .getOrElse(
+          json.asSafe[FineTuneEvent]
+        )
     }
 }
 
-object OpenAIServiceStreamedFactory extends OpenAIServiceFactoryHelper[OpenAIService with OpenAIServiceStreamedExtra] {
+object OpenAIServiceStreamedFactory
+    extends OpenAIServiceFactoryHelper[
+      OpenAIService with OpenAIServiceStreamedExtra
+    ] {
 
   override def apply(
-    apiKey: String,
-    orgId: Option[String] = None,
-    timeouts: Option[Timeouts] = None)(
-    implicit ec: ExecutionContext, materializer: Materializer
+      apiKey: String,
+      orgId: Option[String] = None,
+      timeouts: Option[Timeouts] = None
+  )(implicit
+      ec: ExecutionContext,
+      materializer: Materializer
   ): OpenAIService with OpenAIServiceStreamedExtra =
-    new OpenAIServiceImpl(apiKey, orgId, timeouts) with OpenAIServiceStreamedExtraImpl
+    new OpenAIServiceImpl(apiKey, orgId, timeouts)
+      with OpenAIServiceStreamedExtraImpl
 }

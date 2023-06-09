@@ -1,19 +1,23 @@
 package io.cequence.openaiscala.service
 
-import io.cequence.openaiscala.{OpenAIScalaTokenCountExceededException, StackWalkerUtil}
+import io.cequence.openaiscala.{
+  OpenAIScalaTokenCountExceededException,
+  StackWalkerUtil
+}
 
 import scala.concurrent.{ExecutionContext, Future}
 
 private class OpenAIRetryServiceAdapter(
-  underlying: OpenAIService,
-  maxAttempts: Int,
-  sleepOnFailureMs: Option[Int] = None,
-  log: String => Unit = println)(
-  implicit ec: ExecutionContext
+    underlying: OpenAIService,
+    maxAttempts: Int,
+    sleepOnFailureMs: Option[Int] = None,
+    log: String => Unit = println
+)(implicit
+    ec: ExecutionContext
 ) extends OpenAIServiceWrapper {
 
   override protected def wrap[T](
-    fun: OpenAIService => Future[T]
+      fun: OpenAIService => Future[T]
   ): Future[T] = {
     // need to use StackWalker to get the caller function name
     fun.toString()
@@ -26,9 +30,8 @@ private class OpenAIRetryServiceAdapter(
   override def close =
     underlying.close
 
-  private def retry[T](
-    failureMessage: String)(
-    f: => Future[T]
+  private def retry[T](failureMessage: String)(
+      f: => Future[T]
   ): Future[T] = {
     def retryAux(attempt: Int): Future[T] =
       f.recoverWith {
@@ -38,7 +41,9 @@ private class OpenAIRetryServiceAdapter(
           throw e
         case e: Exception =>
           if (attempt < maxAttempts) {
-            log(s"${failureMessage}. ${e.getMessage}. Attempt ${attempt}. Retrying...")
+            log(
+              s"${failureMessage}. ${e.getMessage}. Attempt ${attempt}. Retrying..."
+            )
 
             sleepOnFailureMs.foreach(
               Thread.sleep(_)
@@ -53,14 +58,14 @@ private class OpenAIRetryServiceAdapter(
   }
 }
 
-
 object OpenAIRetryServiceAdapter {
   def apply(
-    underlying: OpenAIService,
-    maxAttempts: Int,
-    sleepOnFailureMs: Option[Int] = None,
-    log: String => Unit = println)(
-    implicit ec: ExecutionContext
+      underlying: OpenAIService,
+      maxAttempts: Int,
+      sleepOnFailureMs: Option[Int] = None,
+      log: String => Unit = println
+  )(implicit
+      ec: ExecutionContext
   ): OpenAIService =
     new OpenAIRetryServiceAdapter(
       underlying,

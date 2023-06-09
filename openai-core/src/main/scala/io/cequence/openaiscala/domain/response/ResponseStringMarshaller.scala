@@ -1,8 +1,7 @@
 package io.cequence.openaiscala.domain.response
 
-/**
- * Used only for debugging... can be removed later on
- */
+/** Used only for debugging... can be removed later on
+  */
 trait ResponseStringMarshaller {
 
   def fineTuneToString(fileInfo: FineTuneJob): String =
@@ -13,9 +12,15 @@ trait ResponseStringMarshaller {
        |-fine-tune model: ${fileInfo.fine_tuned_model.getOrElse("N/A")}
        |-organization id: ${fileInfo.organization_id}
        |-status: ${fileInfo.status}
-       |-training files:\n${fileInfo.training_files.map(fileInfoToString).mkString("\n")}
-       |-validation files:\n${fileInfo.validation_files.map(fileInfoToString).mkString("\n")}
-       |-result files:\n${fileInfo.result_files.map(fileInfoToString).mkString("\n")}
+       |-training files:\n${fileInfo.training_files
+        .map(fileInfoToString)
+        .mkString("\n")}
+       |-validation files:\n${fileInfo.validation_files
+        .map(fileInfoToString)
+        .mkString("\n")}
+       |-result files:\n${fileInfo.result_files
+        .map(fileInfoToString)
+        .mkString("\n")}
      """.stripMargin
 
   def fileInfoToString(fileInfo: FileInfo): String =
@@ -57,12 +62,18 @@ trait ResponseStringMarshaller {
 
   def moderationResultToString(moderationResult: ModerationResult): String =
     s"""Moderation Result
-       |-categories: ${moderationCategoriesToString(moderationResult.categories)}
-       |-category scores: ${moderationCategoryScoresToString(moderationResult.category_scores)}
+       |-categories: ${moderationCategoriesToString(
+        moderationResult.categories
+      )}
+       |-category scores: ${moderationCategoryScoresToString(
+        moderationResult.category_scores
+      )}
        |-flagged: ${moderationResult.flagged}
      """.stripMargin
 
-  def moderationCategoriesToString(moderationCategories: ModerationCategories): String =
+  def moderationCategoriesToString(
+      moderationCategories: ModerationCategories
+  ): String =
     s"""Moderation Categories
        |-hate: ${moderationCategories.hate}
        |-hate threatening: ${moderationCategories.hate_threatening}
@@ -73,7 +84,9 @@ trait ResponseStringMarshaller {
        |-violence_graphic: ${moderationCategories.violence_graphic}
      """.stripMargin
 
-  def moderationCategoryScoresToString(moderationCategoryScores: ModerationCategoryScores): String =
+  def moderationCategoryScoresToString(
+      moderationCategoryScores: ModerationCategoryScores
+  ): String =
     s"""Moderation Category Scores
        |-hate: ${moderationCategoryScores.hate}
        |-hate threatening: ${moderationCategoryScores.hate_threatening}
@@ -104,7 +117,9 @@ trait ResponseStringMarshaller {
        |-model: ${completion.model}
        |-created" ${completion.created.toString}
        |-usage: ${completion.usage.map(usageToString).getOrElse("N/A")}
-       |-choices: ${completion.choices.map(completionChoiceToString).mkString("\n")}
+       |-choices: ${completion.choices
+        .map(completionChoiceToString)
+        .mkString("\n")}
      """.stripMargin
 
   def completionChoiceToString(choice: TextCompletionChoiceInfo): String =
@@ -119,7 +134,9 @@ trait ResponseStringMarshaller {
     s"""Logprobs
        |-tokens: ${logProb.tokens.mkString(", ")}
        |-token_logprobs: ${logProb.token_logprobs.mkString(", ")}
-       |-top_logprobs: ${logProb.top_logprobs.map(_.mkString(",")).mkString("; ")}
+       |-top_logprobs: ${logProb.top_logprobs
+        .map(_.mkString(","))
+        .mkString("; ")}
        |-text_offset: ${logProb.text_offset.mkString(", ")}
      """.stripMargin
 
