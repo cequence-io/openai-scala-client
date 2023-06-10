@@ -1,0 +1,58 @@
+# Automatically generate Release Notes.
+# ~~~~~~~~~~~~~
+changelog:
+  exclude:
+    labels:
+      - "Type: Ignore"
+      - "type:ignore"
+  
+  categories:
+    - title: "Breaking Changes 🚨"
+      labels:
+        - "Type: Breaking Change"
+        - "type:breaking-change"
+
+    - title: "Amazing New Features ✨"
+      labels:
+        - "Type: Feature"
+        - "type:feature"
+        
+    - title: "Feature Improvements 👨‍💻"
+      labels:
+        - "Type: Enhancement"
+        - "type:enhancement"
+
+    - title: "Hotfixes 🔥"
+      labels:
+        - "Type: Hotfix"
+        - "type:hotfix"
+
+    - title: "Fixing Bugs 🐛"
+      labels:
+        - "Type: Bug"
+        - "type:bug"
+
+    - title: "Maintain Project 🤝"
+      labels:
+        - "Type: Maintainance"
+        - "type:maintainance"
+        - "Type: Docs"
+        - "type:docs"
+        - "Type: Doc"
+        - "type:doc"
+
+    - title: "Dependencies Changes ⬆️⬇️"
+      labels:
+        - "Type: Dependency"
+        - "type:dependency"
+
+    - title: "Improve Security 🚔"
+      labels:
+        - "Type: Security"
+        - "type:security"
+        - "security fix"
+        - "security vulnerability"
+
+    - title: "Other Changes 🛠"
+      labels:
+        - "*"
