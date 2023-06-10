@@ -7,6 +7,7 @@ object Retryable {
   ): Option[OpenAIScalaClientException] = Some(t).filter(apply)
 
   def apply(t: OpenAIScalaClientException): Boolean = t match {
+    // TODO: Need separate classes for rate-limit-error conditions (#16)
     case _: OpenAIScalaClientTimeoutException => true
     case _                                    => false
   }
