@@ -7,6 +7,7 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should
 import org.scalatest.wordspec.AnyWordSpecLike
 
+import java.io.File
 import scala.concurrent.Future
 
 class OpenAIServiceWrapperSpec
@@ -29,6 +30,9 @@ class OpenAIServiceWrapperSpec
       )
 
     val models = Seq(modelInfo)
+
+    val imageInfo =
+      ImageInfo(created = new java.util.Date(0L), Seq[Map[String, String]]())
 
     class MockWrapper(val underlying: OpenAIService)
         extends OpenAIServiceWrapper {
@@ -108,10 +112,20 @@ class OpenAIServiceWrapperSpec
     }
 
     "call wrap for createImage" in {
-      val response =
-        ImageInfo(created = new java.util.Date(0L), Seq[Map[String, String]]())
-      testWrapWith(response) {
+      testWrapWith(imageInfo) {
         _.createImage("test-prompt", DefaultSettings.CreateImage)
+      }
+    }
+
+    "call wrap for createImageEdit" in {
+      val testFile = mock[File]
+      testWrapWith(imageInfo) {
+        _.createImageEdit(
+          "test-prompt",
+          testFile,
+          None,
+          DefaultSettings.CreateImageEdit
+        )
       }
     }
 
