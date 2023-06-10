@@ -232,6 +232,11 @@ class OpenAIServiceWrapperSpec
       testWrapWith(response) { _.listFineTunes }
     }
 
+    "call wrap for cancelFineTune" in {
+      val response: Option[FineTuneJob] = None
+      testWrapWith(response) { _.retrieveFineTune("test-fine-tune-id") }
+    }
+
   }
 
 }
