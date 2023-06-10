@@ -33,6 +33,7 @@ class RetryHelpersSpec
 
     implicit val retrySettings: RetrySettings = RetrySettings()
     implicit val scheduler: Scheduler = actorSystem.scheduler
+    val successfulResult = 42
 
     "retry when encountering a retryable failure" in {
 
@@ -44,11 +45,11 @@ class RetryHelpersSpec
           Future.failed(
             new OpenAIScalaClientTimeoutException("retryable test exception")
           ),
-          Future.successful(42)
+          Future.successful(successfulResult)
         )
       val resultFuture = future.retry(() => mockRetryable.attempt(), attempts)
 
-      Await.result(resultFuture, 10.seconds) shouldBe 42
+      Await.result(resultFuture, 10.seconds) shouldBe successfulResult
       verify(mockRetryable, times(attempts)).attempt()
     }
 
@@ -63,7 +64,7 @@ class RetryHelpersSpec
       when(mockRetryable.attempt())
         .thenReturn(
           Future.failed(testException),
-          Future.successful(42)
+          Future.successful(successfulResult)
         )
       val resultFuture = future.retry(() => mockRetryable.attempt(), attempts)
 
@@ -73,10 +74,10 @@ class RetryHelpersSpec
 
     "not retry on success" in {
 
-      val future = Future.successful(42)
+      val future = Future.successful(successfulResult)
       val resultFuture = future.retryOnFailure
 
-      Await.result(resultFuture, 2.seconds) shouldBe 42
+      Await.result(resultFuture, 2.seconds) shouldBe successfulResult
     }
   }
 
