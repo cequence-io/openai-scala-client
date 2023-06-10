@@ -2,9 +2,7 @@ package io.cequence.openaiscala.service
 
 import io.cequence.openaiscala.domain.response.{ModelInfo, Permission}
 import org.mockito.scalatest.MockitoSugar
-import org.scalatest.concurrent.Futures.whenReady
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.concurrent.ScalaFutures.convertScalaFuture
 import org.scalatest.matchers.should
 import org.scalatest.wordspec.AnyWordSpecLike
 
