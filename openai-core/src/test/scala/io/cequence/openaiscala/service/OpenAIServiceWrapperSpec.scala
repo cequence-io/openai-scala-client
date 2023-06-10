@@ -69,8 +69,8 @@ class OpenAIServiceWrapperSpec
     }
 
     "call wrap for retrieveModel" in {
-      val fixture: Option[ModelInfo] = Some(modelInfo)
-      testWrapWith(fixture) { _.retrieveModel(modelInfo.id) }
+      val response: Option[ModelInfo] = Some(modelInfo)
+      testWrapWith(response) { _.retrieveModel(modelInfo.id) }
     }
 
     "call wrap for createCompletion" in {
