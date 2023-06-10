@@ -237,6 +237,16 @@ class OpenAIServiceWrapperSpec
       testWrapWith(response) { _.retrieveFineTune("test-fine-tune-id") }
     }
 
+    "call wrap for listFineTuneEvents" in {
+      val response: Option[Seq[FineTuneEvent]] = None
+      testWrapWith(response) { _. listFineTuneEvents("test-fine-tune-id") }
+    }
+
+    "call wrap for deleteFineTuneModel" in {
+      val response: DeleteResponse = DeleteResponse.Deleted
+      testWrapWith(response) { _.deleteFineTuneModel("test-fine-tune-id") }
+    }
+
   }
 
 }
