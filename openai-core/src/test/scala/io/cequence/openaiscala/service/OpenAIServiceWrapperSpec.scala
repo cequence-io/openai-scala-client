@@ -7,7 +7,6 @@ import org.scalatest.matchers.should
 import org.scalatest.wordspec.AnyWordSpecLike
 
 import scala.concurrent.Future
-import scala.concurrent.duration.DurationInt
 
 class OpenAIServiceWrapperSpec
     extends AnyWordSpecLike
@@ -18,7 +17,9 @@ class OpenAIServiceWrapperSpec
 
     class MockWrapper(val underlying: OpenAIService)
         extends OpenAIServiceWrapper {
-      override protected def wrap[T](fun: OpenAIService => Future[T]): Future[T] = {
+      override protected def wrap[T](
+          fun: OpenAIService => Future[T]
+      ): Future[T] = {
         fun(underlying)
       }
 
