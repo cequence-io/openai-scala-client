@@ -1,0 +1,28 @@
+# publish to Maven when a new release is made
+# ~~
+name: CD
+on:
+  release:
+    types: [ created ]
+
+jobs:
+  publish:
+    name: Publish to Maven
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: corretto
+          java-version: '11'
+          cache: 'sbt'
+
+      - name: Publish package
+        run: sbt ci-release
+        env:
+          PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
+          PGP_SECRET: ${{ secrets.PGP_SECRET }}
+          SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
