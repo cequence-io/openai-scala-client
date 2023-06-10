@@ -24,12 +24,12 @@ trait RetryHelpers extends RetrySupport {
 
   implicit class FutureWithRetry[T](f: Future[T]) {
 
-    def delay(implicit retrySettings: RetrySettings): FiniteDuration =
+    def delay(n: Integer)(implicit retrySettings: RetrySettings): FiniteDuration =
       FiniteDuration(
         scala.math.round(
           retrySettings.delayBase.length + scala.math.pow(
-            2.0,
-            retrySettings.delayExponent
+            retrySettings.delayExponent,
+            n.doubleValue()
           )
         ),
         retrySettings.delayBase.unit
@@ -46,7 +46,7 @@ trait RetryHelpers extends RetrySupport {
       try {
         if (attempts > 0) {
           attempt().recoverWith { case Retryable(_) =>
-            after(delay, scheduler) {
+            after(delay(attempts), scheduler) {
               retry(attempt, attempts - 1)
             }
           }
