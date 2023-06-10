@@ -24,7 +24,9 @@ trait RetryHelpers extends RetrySupport {
 
   implicit class FutureWithRetry[T](f: Future[T]) {
 
-    def delay(n: Integer)(implicit retrySettings: RetrySettings): FiniteDuration =
+    def delay(
+        n: Integer
+    )(implicit retrySettings: RetrySettings): FiniteDuration =
       FiniteDuration(
         scala.math.round(
           retrySettings.delayBase.length + scala.math.pow(
