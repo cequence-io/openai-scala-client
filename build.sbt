@@ -4,6 +4,7 @@ import sbt.Keys.test
 val scala212 = "2.12.15"
 val scala213 = "2.13.10"
 val scala3 = "3.2.2"
+val AkkaVersion = "2.6.1"
 
 ThisBuild / organization := "io.cequence"
 ThisBuild / scalaVersion := scala212
@@ -13,7 +14,8 @@ ThisBuild / isSnapshot := false
 lazy val commonSettings = Seq(
   libraryDependencies += "org.scalactic" %% "scalactic" % "3.2.16",
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.16" % Test,
-  libraryDependencies += "org.mockito" %% "mockito-scala-scalatest" % "1.17.14" % Test
+  libraryDependencies += "org.mockito" %% "mockito-scala-scalatest" % "1.17.14" % Test,
+  libraryDependencies += "com.typesafe.akka" %% "akka-actor-testkit-typed" % AkkaVersion % Test
 )
 
 lazy val core = (project in file("openai-core"))

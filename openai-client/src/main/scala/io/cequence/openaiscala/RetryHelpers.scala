@@ -13,21 +13,26 @@ object RetryHelpers {
   final case class RetrySettings(
       maxRetries: Integer = 5,
       delayBase: FiniteDuration = 2.seconds,
-      delayExponent: FiniteDuration = 2.seconds
+      delayExponent: Double = 2
   )
 }
 
 trait RetryHelpers extends RetrySupport {
 
-  val actorSystem: ActorSystem
+  def actorSystem: ActorSystem
   implicit val materializer: Materializer = Materializer(actorSystem)
 
   implicit class FutureWithRetry[T](f: Future[T]) {
 
     def delay(implicit retrySettings: RetrySettings): FiniteDuration =
-      retrySettings.delayBase + scala.math.pow(
-        2.0,
-        retrySettings.delayExponent.asInstanceOf[Double]
+      FiniteDuration(
+        scala.math.round(
+          retrySettings.delayBase.length + scala.math.pow(
+            2.0,
+            retrySettings.delayExponent
+          )
+        ),
+        retrySettings.delayBase.unit
       )
 
     def retry(
