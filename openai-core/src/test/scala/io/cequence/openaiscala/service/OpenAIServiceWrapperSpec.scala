@@ -198,9 +198,38 @@ class OpenAIServiceWrapperSpec
 
     "call wrap for retrieveFile" in {
       val response: Option[FileInfo] = None
+      testWrapWith(response) { _.retrieveFile("test-file-id") }
+    }
+
+    "call wrap for retrieveFileContent" in {
+      val response: Option[String] = None
+      testWrapWith(response) { _.retrieveFileContent("test-file-id") }
+    }
+
+    "call wrap for createFineTune" in {
+      def testFiles = Seq[FileInfo]()
+      val response = FineTuneJob(
+        id = "test-id",
+        model = "test-model",
+        created_at = new java.util.Date(0L),
+        events = None,
+        fine_tuned_model = None,
+        hyperparams = FineTuneHyperparams(None, None, 0, 0.0),
+        organization_id = "test-org",
+        result_files = testFiles,
+        status = "test-status",
+        validation_files = testFiles,
+        training_files = testFiles,
+        updated_at = new java.util.Date(0L)
+      )
       testWrapWith(response) {
-        _.retrieveFile("test-file-id")
+        _.createFineTune("test-file", None, DefaultSettings.CreateFineTune)
       }
+    }
+
+    "call wrap for listFineTunes" in {
+      val response = Seq[FineTuneJob]()
+      testWrapWith(response) { _.listFineTunes }
     }
 
   }
