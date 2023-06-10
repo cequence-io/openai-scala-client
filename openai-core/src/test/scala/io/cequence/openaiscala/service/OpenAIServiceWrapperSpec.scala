@@ -19,10 +19,12 @@ class OpenAIServiceWrapperSpec
 
   "OpenAIServiceWrapper" should {
 
+    val testDate = new java.util.Date(0L)
+
     val modelInfo =
       ModelInfo(
         "test-model",
-        new java.util.Date(0L),
+        testDate,
         owned_by = "test_owner",
         root = "test_root",
         parent = None,
@@ -34,7 +36,7 @@ class OpenAIServiceWrapperSpec
     val testFile = mock[File]
 
     val imageInfo =
-      ImageInfo(created = new java.util.Date(0L), Seq[Map[String, String]]())
+      ImageInfo(created = testDate, Seq[Map[String, String]]())
 
     val transcriptResponse = TranscriptResponse("test-response", None)
 
@@ -74,7 +76,7 @@ class OpenAIServiceWrapperSpec
     "call wrap for createCompletion" in {
       val completion = TextCompletionResponse(
         id = "test-id",
-        created = new java.util.Date(0L),
+        created = testDate,
         model = "test-model",
         choices = Seq[TextCompletionChoiceInfo](),
         usage = None
@@ -87,7 +89,7 @@ class OpenAIServiceWrapperSpec
     "call wrap for createChatCompletion" in {
       val completion = ChatCompletionResponse(
         id = "test-id",
-        created = new java.util.Date(0L),
+        created = testDate,
         model = "test-model",
         choices = Seq[ChatCompletionChoiceInfo](),
         usage = None
@@ -102,7 +104,7 @@ class OpenAIServiceWrapperSpec
 
     "call wrap for createEdit" in {
       val response = TextEditResponse(
-        created = new java.util.Date(0L),
+        created = testDate,
         choices = Seq[TextEditChoiceInfo](),
         usage = UsageInfo(0, 0, None)
       )
@@ -176,9 +178,9 @@ class OpenAIServiceWrapperSpec
 
     "call wrap for uploadFile" in {
       val response = FileInfo(
-        "test-id",
-        0,
-        new java.util.Date(0L),
+        id = "test-id",
+        bytes = 0,
+        created_at = testDate,
         filename = "test-filename",
         purpose = "test-purpose",
         status = "test-status",
@@ -211,7 +213,7 @@ class OpenAIServiceWrapperSpec
       val response = FineTuneJob(
         id = "test-id",
         model = "test-model",
-        created_at = new java.util.Date(0L),
+        created_at = testDate,
         events = None,
         fine_tuned_model = None,
         hyperparams = FineTuneHyperparams(None, None, 0, 0.0),
@@ -220,7 +222,7 @@ class OpenAIServiceWrapperSpec
         status = "test-status",
         validation_files = testFiles,
         training_files = testFiles,
-        updated_at = new java.util.Date(0L)
+        updated_at = testDate
       )
       testWrapWith(response) {
         _.createFineTune("test-file", None, DefaultSettings.CreateFineTune)
