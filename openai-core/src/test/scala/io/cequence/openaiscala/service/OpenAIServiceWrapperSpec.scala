@@ -92,6 +92,17 @@ class OpenAIServiceWrapperSpec
       }
     }
 
+    "call wrap for createEdit" in {
+      val response = TextEditResponse(
+        created = new java.util.Date(0L),
+        choices = Seq[TextEditChoiceInfo](),
+        usage = UsageInfo(0, 0, None)
+      )
+      testWrapWith(response) {
+        _.createEdit("test-input", "test-instructions", DefaultSettings.CreateEdit)
+      }
+    }
+
   }
 
 }
