@@ -10,6 +10,7 @@ import io.cequence.openaiscala.{
 }
 import org.mockito.scalatest.MockitoSugar
 import org.scalatest.BeforeAndAfterAll
+import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 
@@ -23,11 +24,15 @@ class RetryHelpersSpec
     with Matchers
     with BeforeAndAfterAll
     with MockitoSugar
+    with ScalaFutures
     with RetryHelpers {
 
   override def afterAll(): Unit = {
     TestKit.shutdownActorSystem(system)
   }
+
+  implicit val patience: PatienceConfig = PatienceConfig(timeout = 10.seconds)
+  override def patienceConfig: PatienceConfig = patience
 
   "RetryHelpers" should {
 
@@ -36,7 +41,6 @@ class RetryHelpersSpec
     val successfulResult = 42
 
     "retry when encountering a retryable failure" in {
-
       val attempts = 2
       val future = Promise[Int]().future
       val mockRetryable = mock[Retryable]
@@ -47,14 +51,16 @@ class RetryHelpersSpec
           ),
           Future.successful(successfulResult)
         )
-      val resultFuture = future.retry(() => mockRetryable.attempt(), attempts)
 
-      Await.result(resultFuture, 10.seconds) shouldBe successfulResult
-      verify(mockRetryable, times(attempts)).attempt()
+      val result = future.retry(() => mockRetryable.attempt(), attempts)
+
+      result.futureValue shouldBe successfulResult
+      whenReady(result) { _ =>
+        verify(mockRetryable, times(attempts)).attempt()
+      }
     }
 
     "not retry when encountering a non-retryable failure" in {
-
       val attempts = 2
       val future = Promise[Int]().future
       val mockRetryable = mock[Retryable]
@@ -73,11 +79,10 @@ class RetryHelpersSpec
     }
 
     "not retry on success" in {
-
       val future = Future.successful(successfulResult)
-      val resultFuture = future.retryOnFailure
+      val result = future.retryOnFailure
 
-      Await.result(resultFuture, 2.seconds) shouldBe successfulResult
+      result.futureValue shouldBe successfulResult
     }
   }
 
