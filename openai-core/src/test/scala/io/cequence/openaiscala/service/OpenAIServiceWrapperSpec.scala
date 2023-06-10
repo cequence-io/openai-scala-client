@@ -31,6 +31,8 @@ class OpenAIServiceWrapperSpec
 
     val models = Seq(modelInfo)
 
+    val testFile = mock[File]
+
     val imageInfo =
       ImageInfo(created = new java.util.Date(0L), Seq[Map[String, String]]())
 
@@ -118,7 +120,6 @@ class OpenAIServiceWrapperSpec
     }
 
     "call wrap for createImageEdit" in {
-      val testFile = mock[File]
       testWrapWith(imageInfo) {
         _.createImageEdit(
           "test-prompt",
@@ -127,6 +128,13 @@ class OpenAIServiceWrapperSpec
           DefaultSettings.CreateImageEdit
         )
       }
+    }
+
+    "call wrap for createImageVariation" in {
+      testWrapWith(imageInfo) {
+        _.createImageVariation(testFile, DefaultSettings.CreateImageVariation)
+      }
+
     }
 
   }
