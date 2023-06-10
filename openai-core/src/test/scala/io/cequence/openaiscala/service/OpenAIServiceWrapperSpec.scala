@@ -36,6 +36,8 @@ class OpenAIServiceWrapperSpec
     val imageInfo =
       ImageInfo(created = new java.util.Date(0L), Seq[Map[String, String]]())
 
+    val transcriptResponse = TranscriptResponse("test-response", None)
+
     class MockWrapper(val underlying: OpenAIService)
         extends OpenAIServiceWrapper {
       var called: Boolean = false
@@ -140,6 +142,25 @@ class OpenAIServiceWrapperSpec
       val response = EmbeddingResponse(Seq[EmbeddingInfo](), "test-model", EmbeddingUsageInfo(0, 0))
       testWrapWith(response) {
         _.createEmbeddings(Seq[String](), DefaultSettings.CreateEmbeddings)
+      }
+    }
+
+    "call wrap for createAudioTranscription" in {
+      testWrapWith(transcriptResponse) {
+        _.createAudioTranscription(testFile, Some("test-prompt"), DefaultSettings.CreateTranscription)
+      }
+    }
+
+    "call wrap for createAudioTranslation" in {
+      testWrapWith(transcriptResponse) {
+        _.createAudioTranslation(testFile, Some("test-prompt"), DefaultSettings.CreateTranslation)
+      }
+    }
+
+    "call wrap for listFiles" in {
+      val response = Seq[FileInfo]()
+      testWrapWith(response) {
+        _.listFiles
       }
     }
 
