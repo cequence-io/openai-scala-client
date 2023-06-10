@@ -99,7 +99,19 @@ class OpenAIServiceWrapperSpec
         usage = UsageInfo(0, 0, None)
       )
       testWrapWith(response) {
-        _.createEdit("test-input", "test-instructions", DefaultSettings.CreateEdit)
+        _.createEdit(
+          "test-input",
+          "test-instructions",
+          DefaultSettings.CreateEdit
+        )
+      }
+    }
+
+    "call wrap for createImage" in {
+      val response =
+        ImageInfo(created = new java.util.Date(0L), Seq[Map[String, String]]())
+      testWrapWith(response) {
+        _.createImage("test-prompt", DefaultSettings.CreateImage)
       }
     }
 
