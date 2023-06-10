@@ -43,7 +43,7 @@ class OpenAIServiceWrapperSpec
       override def close: Unit = {}
     }
 
-    def testWrapFor[T](fixture: T)(block: OpenAIService => Future[T]): Unit = {
+    def testWrapWith[T](fixture: T)(block: OpenAIService => Future[T]): Unit = {
       val mockService = mock[OpenAIService]
       val wrapper = new MockWrapper(mockService)
       when(block(mockService)).thenReturn(Future.successful(fixture))
@@ -55,12 +55,12 @@ class OpenAIServiceWrapperSpec
     }
 
     "call wrap for listModels" in {
-      testWrapFor(models) { _.listModels }
+      testWrapWith(models) { _.listModels }
     }
 
     "call wrap for retrieveModel" in {
       val fixture: Option[ModelInfo] = Some(modelInfo)
-      testWrapFor(fixture) { _.retrieveModel(modelInfo.id) }
+      testWrapWith(fixture) { _.retrieveModel(modelInfo.id) }
     }
 
     "call wrap for createCompletion" in {
@@ -71,7 +71,7 @@ class OpenAIServiceWrapperSpec
         choices = Seq[TextCompletionChoiceInfo](),
         usage = None
       )
-      testWrapFor(completion) {
+      testWrapWith(completion) {
         _.createCompletion("test-prompt", DefaultSettings.CreateCompletion)
       }
     }
@@ -84,7 +84,7 @@ class OpenAIServiceWrapperSpec
         choices = Seq[ChatCompletionChoiceInfo](),
         usage = None
       )
-      testWrapFor(completion) {
+      testWrapWith(completion) {
         _.createChatCompletion(
           Seq(MessageSpec(role = ChatRole.User, "test-prompt")),
           DefaultSettings.CreateChatCompletion
