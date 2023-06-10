@@ -16,7 +16,7 @@ private trait OpenAIMultiServiceAdapter extends OpenAIServiceWrapper {
     fun(underlyings(calcIndex))
 
   override def close =
-    underlyings.foreach(_.close)
+    underlyings.foreach(_.close())
 }
 
 private class OpenAIMultiServiceRotationAdapter(
