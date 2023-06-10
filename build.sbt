@@ -45,3 +45,32 @@ ThisBuild / sonatypeCredentialHost := "s01.oss.sonatype.org"
 ThisBuild / sonatypeRepository := "https://s01.oss.sonatype.org/service/local"
 
 ThisBuild / publishTo := sonatypePublishToBundle.value
+
+addCommandAlias(
+  "validateCode",
+  List(
+    "scalafix",
+    "scalafmtSbtCheck",
+    "scalafmtCheckAll",
+    "test:scalafix",
+    "test:scalafmtCheckAll"
+  ).mkString(";")
+)
+
+addCommandAlias(
+  "formatCode",
+  List(
+    "scalafmt",
+    "scalafmtSbt",
+    "Test/scalafmt"
+  ).mkString(";")
+)
+
+addCommandAlias(
+  "testWithCoverage",
+  List(
+    "coverage",
+    "test",
+    "coverageReport"
+  ).mkString(";")
+)
