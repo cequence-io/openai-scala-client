@@ -4,6 +4,7 @@ import io.cequence.openaiscala.{OpenAIScalaTokenCountExceededException, StackWal
 
 import scala.concurrent.{ExecutionContext, Future}
 
+@deprecated("Use io.cequence.openaiscala.RetryHelpers")
 private class OpenAIRetryServiceAdapter(
   underlying: OpenAIService,
   maxAttempts: Int,
