@@ -3,7 +3,11 @@ package iocequence.openaiscala
 import akka.actor.{ActorSystem, Scheduler}
 import akka.testkit.TestKit
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
-import io.cequence.openaiscala.{OpenAIScalaClientTimeoutException, RetryHelpers}
+import io.cequence.openaiscala.{
+  OpenAIScalaClientTimeoutException,
+  OpenAIScalaClientUnknownHostException,
+  RetryHelpers
+}
 import org.mockito.scalatest.MockitoSugar
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
@@ -30,7 +34,7 @@ class RetryHelpersSpec
     implicit val retrySettings: RetrySettings = RetrySettings()
     implicit val scheduler: Scheduler = actorSystem.scheduler
 
-    "retry on failure" in {
+    "retry when encountering a retryable failure" in {
 
       val attempts = 2
       val future = Promise[Int]().future
@@ -38,7 +42,7 @@ class RetryHelpersSpec
       when(mockRetryable.attempt())
         .thenReturn(
           Future.failed(
-            new OpenAIScalaClientTimeoutException("test exception")
+            new OpenAIScalaClientTimeoutException("retryable test exception")
           ),
           Future.successful(42)
         )
@@ -46,6 +50,25 @@ class RetryHelpersSpec
 
       Await.result(resultFuture, 10.seconds) shouldBe 42
       verify(mockRetryable, times(attempts)).attempt()
+    }
+
+    "not retry when encountering a non-retryable failure" in {
+
+      val attempts = 2
+      val future = Promise[Int]().future
+      val mockRetryable = mock[Retryable]
+      val testException = new OpenAIScalaClientUnknownHostException(
+        "non retryable test exception"
+      )
+      when(mockRetryable.attempt())
+        .thenReturn(
+          Future.failed(testException),
+          Future.successful(42)
+        )
+      val resultFuture = future.retry(() => mockRetryable.attempt(), attempts)
+
+      Await.result(resultFuture.failed, 10.seconds) should be(testException)
+      verify(mockRetryable, times(1)).attempt()
     }
 
     "not retry on success" in {
