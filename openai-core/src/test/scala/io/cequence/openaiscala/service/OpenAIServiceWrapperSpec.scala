@@ -134,7 +134,13 @@ class OpenAIServiceWrapperSpec
       testWrapWith(imageInfo) {
         _.createImageVariation(testFile, DefaultSettings.CreateImageVariation)
       }
+    }
 
+    "call wrap for createEmbeddings" in {
+      val response = EmbeddingResponse(Seq[EmbeddingInfo](), "test-model", EmbeddingUsageInfo(0, 0))
+      testWrapWith(response) {
+        _.createEmbeddings(Seq[String](), DefaultSettings.CreateEmbeddings)
+      }
     }
 
   }
