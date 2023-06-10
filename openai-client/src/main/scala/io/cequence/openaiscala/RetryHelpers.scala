@@ -30,7 +30,7 @@ trait RetryHelpers extends RetrySupport {
         retrySettings.delayExponent.asInstanceOf[Double]
       )
 
-    def retry[T](
+    def retry(
         attempt: () => Future[T],
         attempts: Int
     )(implicit
