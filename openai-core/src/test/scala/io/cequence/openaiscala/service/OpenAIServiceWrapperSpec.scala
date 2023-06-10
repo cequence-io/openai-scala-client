@@ -196,6 +196,13 @@ class OpenAIServiceWrapperSpec
       }
     }
 
+    "call wrap for retrieveFile" in {
+      val response: Option[FileInfo] = None
+      testWrapWith(response) {
+        _.retrieveFile("test-file-id")
+      }
+    }
+
   }
 
 }
