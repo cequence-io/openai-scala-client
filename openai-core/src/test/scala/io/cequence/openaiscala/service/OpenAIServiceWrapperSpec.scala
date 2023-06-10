@@ -29,10 +29,19 @@ class OpenAIServiceWrapperSpec
       override def close: Unit = {}
     }
 
-    "call wrap for listModels" in {
+    def testWrapFor[T](fixture: T)(block: (OpenAIService, MockWrapper) => Future[T]): Unit = {
       val mockService = mock[OpenAIService]
       val wrapper = new MockWrapper(mockService)
-      val testModels = Array(
+      val result = block(mockService, wrapper)
+      result.futureValue shouldBe fixture
+      result.futureValue should be(fixture)
+      whenReady(result) { _ =>
+        wrapper.called shouldBe true
+      }
+    }
+
+    "call wrap for listModels" in {
+      val fixture = Seq(
         ModelInfo(
           "test",
           new java.util.Date(0L),
@@ -42,13 +51,11 @@ class OpenAIServiceWrapperSpec
           permission = Array[Permission]()
         )
       )
-      when(mockService.listModels).thenReturn(Future.successful {
-        testModels
-      })
-      val result = wrapper.listModels
-      result.futureValue should be(testModels)
-      whenReady(result) { _: Seq[ModelInfo] =>
-        wrapper.called shouldBe true
+      testWrapFor(fixture) { (mockService, wrapper) =>
+        when(mockService.listModels).thenReturn(Future.successful {
+          fixture
+        })
+        wrapper.listModels
       }
     }
   }
