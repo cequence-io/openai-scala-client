@@ -139,7 +139,11 @@ class OpenAIServiceWrapperSpec
     }
 
     "call wrap for createEmbeddings" in {
-      val response = EmbeddingResponse(Seq[EmbeddingInfo](), "test-model", EmbeddingUsageInfo(0, 0))
+      val response = EmbeddingResponse(
+        Seq[EmbeddingInfo](),
+        "test-model",
+        EmbeddingUsageInfo(0, 0)
+      )
       testWrapWith(response) {
         _.createEmbeddings(Seq[String](), DefaultSettings.CreateEmbeddings)
       }
@@ -147,20 +151,41 @@ class OpenAIServiceWrapperSpec
 
     "call wrap for createAudioTranscription" in {
       testWrapWith(transcriptResponse) {
-        _.createAudioTranscription(testFile, Some("test-prompt"), DefaultSettings.CreateTranscription)
+        _.createAudioTranscription(
+          testFile,
+          Some("test-prompt"),
+          DefaultSettings.CreateTranscription
+        )
       }
     }
 
     "call wrap for createAudioTranslation" in {
       testWrapWith(transcriptResponse) {
-        _.createAudioTranslation(testFile, Some("test-prompt"), DefaultSettings.CreateTranslation)
+        _.createAudioTranslation(
+          testFile,
+          Some("test-prompt"),
+          DefaultSettings.CreateTranslation
+        )
       }
     }
 
     "call wrap for listFiles" in {
       val response = Seq[FileInfo]()
+      testWrapWith(response) { _.listFiles }
+    }
+
+    "call wrap for uploadFile" in {
+      val response = FileInfo(
+        "test-id",
+        0,
+        new java.util.Date(0L),
+        filename = "test-filename",
+        purpose = "test-purpose",
+        status = "test-status",
+        status_details = None
+      )
       testWrapWith(response) {
-        _.listFiles
+        _.uploadFile(testFile, Some("test-name"), DefaultSettings.UploadFile)
       }
     }
 
