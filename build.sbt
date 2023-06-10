@@ -10,17 +10,27 @@ ThisBuild / scalaVersion := scala212
 ThisBuild / version := "0.3.3"
 ThisBuild / isSnapshot := false
 
+lazy val commonSettings = Seq(
+  libraryDependencies += "org.scalactic" %% "scalactic" % "3.2.16",
+  libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.16" % Test,
+  libraryDependencies += "org.mockito" %% "mockito-scala-scalatest" % "1.17.14" % Test
+)
+
 lazy val core = (project in file("openai-core"))
+  .settings(commonSettings: _*)
 
 lazy val client = (project in file("openai-client"))
+  .settings(commonSettings: _*)
   .dependsOn(core)
   .aggregate(core)
 
 lazy val client_stream = (project in file("openai-client-stream"))
+  .settings(commonSettings: _*)
   .dependsOn(client)
   .aggregate(client)
 
 lazy val guice = (project in file("openai-guice"))
+  .settings(commonSettings: _*)
   .dependsOn(client)
   .aggregate(client_stream)
 
