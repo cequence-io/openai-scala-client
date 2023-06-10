@@ -189,6 +189,13 @@ class OpenAIServiceWrapperSpec
       }
     }
 
+    "call wrap for deleteFile" in {
+      val response: DeleteResponse = DeleteResponse.Deleted
+      testWrapWith(response) {
+        _.deleteFile("test-file-id")
+      }
+    }
+
   }
 
 }
