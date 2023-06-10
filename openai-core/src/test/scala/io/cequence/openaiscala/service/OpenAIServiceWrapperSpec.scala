@@ -16,6 +16,18 @@ class OpenAIServiceWrapperSpec
 
   "OpenAIServiceWrapper" should {
 
+    val modelInfo =
+      ModelInfo(
+        "test-model",
+        new java.util.Date(0L),
+        owned_by = "test_owner",
+        root = "test_root",
+        parent = None,
+        permission = Array[Permission]()
+    )
+
+    val models = Seq(modelInfo)
+
     class MockWrapper(val underlying: OpenAIService)
         extends OpenAIServiceWrapper {
       var called: Boolean = false
@@ -34,28 +46,27 @@ class OpenAIServiceWrapperSpec
       val wrapper = new MockWrapper(mockService)
       val result = block(mockService, wrapper)
       result.futureValue shouldBe fixture
-      result.futureValue should be(fixture)
       whenReady(result) { _ =>
         wrapper.called shouldBe true
       }
     }
 
     "call wrap for listModels" in {
-      val fixture = Seq(
-        ModelInfo(
-          "test",
-          new java.util.Date(0L),
-          owned_by = "test_owner",
-          root = "test_root",
-          parent = None,
-          permission = Array[Permission]()
-        )
-      )
-      testWrapFor(fixture) { (mockService, wrapper) =>
+      testWrapFor(models) { (mockService, wrapper) =>
         when(mockService.listModels).thenReturn(Future.successful {
-          fixture
+          models
         })
         wrapper.listModels
+      }
+    }
+
+    "call wrap for retrieveModel" in {
+      val fixture: Option[ModelInfo] = Some(modelInfo)
+      testWrapFor(fixture) { (mockService, wrapper) =>
+        when(mockService.retrieveModel(modelInfo.id)).thenReturn(Future.successful {
+          fixture
+        })
+        wrapper.retrieveModel(modelInfo.id)
       }
     }
   }
