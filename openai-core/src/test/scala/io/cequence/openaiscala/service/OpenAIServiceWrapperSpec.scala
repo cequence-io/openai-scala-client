@@ -1,6 +1,11 @@
 package io.cequence.openaiscala.service
 
-import io.cequence.openaiscala.domain.response.{ModelInfo, Permission}
+import io.cequence.openaiscala.domain.response.{
+  ModelInfo,
+  Permission,
+  TextCompletionChoiceInfo,
+  TextCompletionResponse
+}
 import org.mockito.scalatest.MockitoSugar
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should
@@ -12,6 +17,7 @@ class OpenAIServiceWrapperSpec
     extends AnyWordSpecLike
     with should.Matchers
     with ScalaFutures
+    with OpenAIServiceConsts
     with MockitoSugar {
 
   "OpenAIServiceWrapper" should {
@@ -24,7 +30,7 @@ class OpenAIServiceWrapperSpec
         root = "test_root",
         parent = None,
         permission = Array[Permission]()
-    )
+      )
 
     val models = Seq(modelInfo)
 
@@ -41,10 +47,11 @@ class OpenAIServiceWrapperSpec
       override def close: Unit = {}
     }
 
-    def testWrapFor[T](fixture: T)(block: (OpenAIService, MockWrapper) => Future[T]): Unit = {
+    def testWrapFor[T](fixture: T)(block: OpenAIService => Future[T]): Unit = {
       val mockService = mock[OpenAIService]
       val wrapper = new MockWrapper(mockService)
-      val result = block(mockService, wrapper)
+      when(block(mockService)).thenReturn(Future.successful(fixture))
+      val result = block(wrapper)
       result.futureValue shouldBe fixture
       whenReady(result) { _ =>
         wrapper.called shouldBe true
@@ -52,21 +59,24 @@ class OpenAIServiceWrapperSpec
     }
 
     "call wrap for listModels" in {
-      testWrapFor(models) { (mockService, wrapper) =>
-        when(mockService.listModels).thenReturn(Future.successful {
-          models
-        })
-        wrapper.listModels
-      }
+      testWrapFor(models) { _.listModels }
     }
 
     "call wrap for retrieveModel" in {
       val fixture: Option[ModelInfo] = Some(modelInfo)
-      testWrapFor(fixture) { (mockService, wrapper) =>
-        when(mockService.retrieveModel(modelInfo.id)).thenReturn(Future.successful {
-          fixture
-        })
-        wrapper.retrieveModel(modelInfo.id)
+      testWrapFor(fixture) { _.retrieveModel(modelInfo.id) }
+    }
+
+    "call wrap for createCompletion" in {
+      val completion = TextCompletionResponse(
+        id = "test-id",
+        created = new java.util.Date(0L),
+        model = "test-model",
+        choices = Seq[TextCompletionChoiceInfo](),
+        usage = None
+      )
+      testWrapFor(completion) {
+        _.createCompletion("test-prompt", DefaultSettings.CreateCompletion)
       }
     }
   }
