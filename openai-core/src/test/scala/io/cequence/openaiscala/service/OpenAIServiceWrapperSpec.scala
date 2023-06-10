@@ -1,11 +1,7 @@
 package io.cequence.openaiscala.service
 
-import io.cequence.openaiscala.domain.response.{
-  ModelInfo,
-  Permission,
-  TextCompletionChoiceInfo,
-  TextCompletionResponse
-}
+import io.cequence.openaiscala.domain.response._
+import io.cequence.openaiscala.domain.{ChatRole, MessageSpec}
 import org.mockito.scalatest.MockitoSugar
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should
@@ -79,6 +75,23 @@ class OpenAIServiceWrapperSpec
         _.createCompletion("test-prompt", DefaultSettings.CreateCompletion)
       }
     }
+
+    "call wrap for createChatCompletion" in {
+      val completion = ChatCompletionResponse(
+        id = "test-id",
+        created = new java.util.Date(0L),
+        model = "test-model",
+        choices = Seq[ChatCompletionChoiceInfo](),
+        usage = None
+      )
+      testWrapFor(completion) {
+        _.createChatCompletion(
+          Seq(MessageSpec(role = ChatRole.User, "test-prompt")),
+          DefaultSettings.CreateChatCompletion
+        )
+      }
+    }
+
   }
 
 }
