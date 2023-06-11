@@ -62,14 +62,17 @@ class RetryHelpersSpec
       )(test)
     }
 
+    def verifyNumAttempts[T](n : Int, f: Future[T], mock: Retryable): Unit =
+      whenReady(f) { _ =>
+        verify(mock, times(n)).attempt()
+      }
+
     "retry when encountering a retryable failure" in {
       val attempts = 2
       val ex = new OpenAIScalaClientTimeoutException("retryable test exception")
       testWithException(ex, attempts) { (mockRetryable, result) =>
         result.futureValue shouldBe successfulResult
-        whenReady(result) { _ =>
-          verify(mockRetryable, times(attempts)).attempt()
-        }
+        verifyNumAttempts(n = attempts, result, mockRetryable)
       }
     }
 
@@ -84,18 +87,14 @@ class RetryHelpersSpec
             result
           )
         } yield mockRetryable
-        whenReady(f) { mockRetryable =>
-          verify(mockRetryable, times(1)).attempt()
-        }
+        verifyNumAttempts(n = 1, f, mockRetryable)
       }
     }
 
     "not retry on success" in {
       testWithResults(attempts = 2, Seq(Future.successful(successfulResult))) { (mockRetryable, result) =>
         result.futureValue shouldBe successfulResult
-        whenReady(result.map(_ => mockRetryable)) {  mockRetryable =>
-          verify(mockRetryable, times(1)).attempt()
-        }
+        verifyNumAttempts(n = 1, result, mockRetryable)
       }
     }
   }
