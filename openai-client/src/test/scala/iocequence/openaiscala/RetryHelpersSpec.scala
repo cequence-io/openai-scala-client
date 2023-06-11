@@ -75,7 +75,6 @@ class RetryHelpersSpec
     }
 
     "not retry when encountering a non-retryable failure" in {
-      val attempts = 2
       val ex = new OpenAIScalaClientUnknownHostException(
         "non retryable test exception"
       )
