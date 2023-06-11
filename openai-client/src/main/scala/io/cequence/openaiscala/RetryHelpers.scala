@@ -1,7 +1,7 @@
 package io.cequence.openaiscala
 
 import akka.actor.{ActorSystem, Scheduler}
-import akka.pattern.{RetrySupport, after}
+import akka.pattern.after
 import akka.stream.Materializer
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 
@@ -17,7 +17,7 @@ object RetryHelpers {
   )
 }
 
-trait RetryHelpers extends RetrySupport {
+trait RetryHelpers {
 
   def actorSystem: ActorSystem
   implicit val materializer: Materializer = Materializer(actorSystem)
