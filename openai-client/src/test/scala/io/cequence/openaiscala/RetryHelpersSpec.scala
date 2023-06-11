@@ -1,14 +1,8 @@
-package iocequence.openaiscala
+package io.cequence.openaiscala
 
 import akka.actor.{ActorSystem, Scheduler}
 import akka.testkit.TestKit
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
-import io.cequence.openaiscala.{
-  OpenAIScalaClientException,
-  OpenAIScalaClientTimeoutException,
-  OpenAIScalaClientUnknownHostException,
-  RetryHelpers
-}
 import org.mockito.scalatest.MockitoSugar
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.RecoverMethods._
