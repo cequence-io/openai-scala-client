@@ -45,7 +45,6 @@ class RetryHelpersSpec
     def testWithException(ex: OpenAIScalaClientException, attempts: Int)(
         test: (Retryable, Future[Int]) => Unit
     ): Unit = {
-      val attempts = 2
       val future = Promise[Int]().future
       val mockRetryable = mock[Retryable]
       when(mockRetryable.attempt())
