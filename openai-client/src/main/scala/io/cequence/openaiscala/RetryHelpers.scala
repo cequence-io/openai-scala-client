@@ -24,15 +24,7 @@ trait RetryHelpers {
 
   implicit class FutureWithRetry[T](f: Future[T]) {
 
-    def retryOnFailure(implicit
-        retrySettings: RetrySettings,
-        ec: ExecutionContext,
-        scheduler: Scheduler
-    ): Future[T] = {
-      retry(() => f, retrySettings.maxRetries)
-    }
-
-    protected def delay(
+    def delay(
         n: Integer
     )(implicit retrySettings: RetrySettings): FiniteDuration =
       FiniteDuration(
@@ -45,7 +37,7 @@ trait RetryHelpers {
         retrySettings.delayOffset.unit
       )
 
-    protected def retry(
+    def retry(
         attempt: () => Future[T],
         attempts: Int
     )(implicit
@@ -68,5 +60,12 @@ trait RetryHelpers {
       }
     }
 
+    def retryOnFailure(implicit
+        retrySettings: RetrySettings,
+        ec: ExecutionContext,
+        scheduler: Scheduler
+    ): Future[T] = {
+      retry(() => f, retrySettings.maxRetries)
+    }
   }
 }
