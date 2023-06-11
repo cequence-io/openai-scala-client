@@ -42,18 +42,24 @@ class RetryHelpersSpec
     implicit val scheduler: Scheduler = actorSystem.scheduler
     val successfulResult = 42
 
-    def testWithException(ex: OpenAIScalaClientException, attempts: Int)(
+    def testWithResults(attempts: Int, results: Seq[Future[Int]])(
         test: (Retryable, Future[Int]) => Unit
     ): Unit = {
       val future = Promise[Int]().future
       val mockRetryable = mock[Retryable]
       when(mockRetryable.attempt())
-        .thenReturn(
-          Future.failed(ex),
-          Future.successful(successfulResult)
-        )
+        .thenReturn(results.head, results.takeRight(results.length - 1): _*)
       val result = future.retry(() => mockRetryable.attempt(), attempts)
       test(mockRetryable, result)
+    }
+
+    def testWithException(ex: OpenAIScalaClientException, attempts: Int)(
+        test: (Retryable, Future[Int]) => Unit
+    ): Unit = {
+      testWithResults(
+        attempts,
+        Seq(Future.failed(ex), Future.successful(successfulResult))
+      )(test)
     }
 
     "retry when encountering a retryable failure" in {
@@ -85,10 +91,12 @@ class RetryHelpersSpec
     }
 
     "not retry on success" in {
-      val future = Future.successful(successfulResult)
-      val result = future.retryOnFailure
-
-      result.futureValue shouldBe successfulResult
+      testWithResults(attempts = 2, Seq(Future.successful(successfulResult))) { (mockRetryable, result) =>
+        result.futureValue shouldBe successfulResult
+        whenReady(result.map(_ => mockRetryable)) {  mockRetryable =>
+          verify(mockRetryable, times(1)).attempt()
+        }
+      }
     }
   }
 
