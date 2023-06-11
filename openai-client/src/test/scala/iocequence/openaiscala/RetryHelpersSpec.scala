@@ -53,16 +53,14 @@ class RetryHelpersSpec
       test(mockRetryable, result)
     }
 
-    def testWithException(ex: OpenAIScalaClientException, attempts: Int)(
+    def testWithException(ex: OpenAIScalaClientException)(
         test: (Retryable, Future[Int]) => Unit
     ): Unit = {
-      testWithResults(
-        attempts,
-        Seq(Future.failed(ex), Future.successful(successfulResult))
-      )(test)
+      val results = Seq(Future.failed(ex), Future.successful(successfulResult))
+      testWithResults(results.length, results)(test)
     }
 
-    def verifyNumAttempts[T](n : Int, f: Future[T], mock: Retryable): Unit =
+    def verifyNumAttempts[T](n: Int, f: Future[T], mock: Retryable): Unit =
       whenReady(f) { _ =>
         verify(mock, times(n)).attempt()
       }
@@ -70,7 +68,7 @@ class RetryHelpersSpec
     "retry when encountering a retryable failure" in {
       val attempts = 2
       val ex = new OpenAIScalaClientTimeoutException("retryable test exception")
-      testWithException(ex, attempts) { (mockRetryable, result) =>
+      testWithException(ex) { (mockRetryable, result) =>
         result.futureValue shouldBe successfulResult
         verifyNumAttempts(n = attempts, result, mockRetryable)
       }
@@ -81,7 +79,7 @@ class RetryHelpersSpec
       val ex = new OpenAIScalaClientUnknownHostException(
         "non retryable test exception"
       )
-      testWithException(ex, attempts) { (mockRetryable, result) =>
+      testWithException(ex) { (mockRetryable, result) =>
         val f = for {
           _ <- recoverToExceptionIf[OpenAIScalaClientUnknownHostException](
             result
@@ -92,9 +90,10 @@ class RetryHelpersSpec
     }
 
     "not retry on success" in {
-      testWithResults(attempts = 2, Seq(Future.successful(successfulResult))) { (mockRetryable, result) =>
-        result.futureValue shouldBe successfulResult
-        verifyNumAttempts(n = 1, result, mockRetryable)
+      testWithResults(attempts = 2, Seq(Future.successful(successfulResult))) {
+        (mockRetryable, result) =>
+          result.futureValue shouldBe successfulResult
+          verifyNumAttempts(n = 1, result, mockRetryable)
       }
     }
   }
