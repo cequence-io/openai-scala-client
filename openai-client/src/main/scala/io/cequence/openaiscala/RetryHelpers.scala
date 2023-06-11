@@ -11,7 +11,7 @@ import scala.util.control.NonFatal
 
 object RetryHelpers {
   final case class RetrySettings(
-      maxRetries: Integer = 5,
+      maxRetries: Int = 5,
       delayBase: FiniteDuration = 2.seconds,
       delayExponent: Double = 2
   )
