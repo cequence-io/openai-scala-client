@@ -12,8 +12,8 @@ import scala.util.control.NonFatal
 object RetryHelpers {
   final case class RetrySettings(
       maxRetries: Int = 5,
-      delayBase: FiniteDuration = 2.seconds,
-      delayExponent: Double = 2
+      delayOffset: FiniteDuration = 2.seconds,
+      delayBase: Double = 2
   )
 }
 
@@ -29,12 +29,12 @@ trait RetryHelpers {
     )(implicit retrySettings: RetrySettings): FiniteDuration =
       FiniteDuration(
         scala.math.round(
-          retrySettings.delayBase.length + scala.math.pow(
-            retrySettings.delayExponent,
+          retrySettings.delayOffset.length + scala.math.pow(
+            retrySettings.delayBase,
             n.doubleValue()
           )
         ),
-        retrySettings.delayBase.unit
+        retrySettings.delayOffset.unit
       )
 
     def retry(
