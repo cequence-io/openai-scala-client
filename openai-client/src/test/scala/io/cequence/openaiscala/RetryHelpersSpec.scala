@@ -4,11 +4,11 @@ import akka.actor.{ActorSystem, Scheduler}
 import akka.testkit.TestKit
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import org.mockito.scalatest.MockitoSugar
-import org.scalatest.BeforeAndAfterAll
 import org.scalatest.RecoverMethods._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
+import org.scalatest.{BeforeAndAfterAll, Succeeded}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
@@ -32,9 +32,13 @@ class RetryHelpersSpec
 
   "RetryHelpers" should {
 
-    implicit val retrySettings: RetrySettings = RetrySettings()
     implicit val scheduler: Scheduler = actorSystem.scheduler
     val successfulResult = 42
+    implicit val retrySettings: RetrySettings = RetrySettings(
+      maxRetries = 5,
+      delayOffset = 0.seconds,
+      delayBase = 1
+    )
 
     def testWithResults(attempts: Int, results: Seq[Future[Int]])(
         test: (Retryable, Future[Int]) => Unit
@@ -89,6 +93,21 @@ class RetryHelpersSpec
           verifyNumAttempts(n = 1, result, mockRetryable)
       }
     }
+
+    "fail when max retries exceeded" in {
+      val ex = Future.failed {
+        new OpenAIScalaClientTimeoutException("retryable exception")
+      }
+      testWithResults(
+        attempts = 2,
+        Seq(ex, ex, ex, Future.successful(successfulResult))
+      ) { (_, result) =>
+        recoverToSucceededIf[OpenAIScalaClientTimeoutException](
+          result
+        ).futureValue shouldBe Succeeded
+      }
+    }
+
   }
 
   override def actorSystem: ActorSystem = system
