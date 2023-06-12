@@ -22,46 +22,15 @@ class RetryHelpersSpec
     with MockitoSugar
     with ScalaFutures
     with RetryHelpers {
+  val successfulResult = 42
+
+  implicit val patience: PatienceConfig = PatienceConfig(timeout = 10.seconds)
 
   override def afterAll(): Unit = {
     TestKit.shutdownActorSystem(system)
   }
 
-  implicit val patience: PatienceConfig = PatienceConfig(timeout = 10.seconds)
-  override def patienceConfig: PatienceConfig = patience
-
   "RetryHelpers" should {
-
-    implicit val scheduler: Scheduler = actorSystem.scheduler
-    val successfulResult = 42
-    implicit val retrySettings: RetrySettings = RetrySettings(
-      maxRetries = 5,
-      delayOffset = 0.seconds,
-      delayBase = 1
-    )
-
-    def testWithResults(attempts: Int, results: Seq[Future[Int]])(
-        test: (Retryable, Future[Int]) => Unit
-    ): Unit = {
-      val future = Promise[Int]().future
-      val mockRetryable = mock[Retryable]
-      when(mockRetryable.attempt())
-        .thenReturn(results.head, results.takeRight(results.length - 1): _*)
-      val result = future.retry(() => mockRetryable.attempt(), attempts)
-      test(mockRetryable, result)
-    }
-
-    def testWithException(ex: OpenAIScalaClientException)(
-        test: (Retryable, Future[Int]) => Unit
-    ): Unit = {
-      val results = Seq(Future.failed(ex), Future.successful(successfulResult))
-      testWithResults(results.length, results)(test)
-    }
-
-    def verifyNumAttempts[T](n: Int, f: Future[T], mock: Retryable): Unit =
-      whenReady(f) { _ =>
-        verify(mock, times(n)).attempt()
-      }
 
     "retry when encountering a retryable failure" in {
       val attempts = 2
@@ -109,6 +78,38 @@ class RetryHelpersSpec
     }
 
   }
+
+  implicit val scheduler: Scheduler = actorSystem.scheduler
+
+  override def patienceConfig: PatienceConfig = patience
+  implicit val retrySettings: RetrySettings = RetrySettings(
+    maxRetries = 5,
+    delayOffset = 0.seconds,
+    delayBase = 1
+  )
+
+  def testWithException(ex: OpenAIScalaClientException)(
+      test: (Retryable, Future[Int]) => Unit
+  ): Unit = {
+    val results = Seq(Future.failed(ex), Future.successful(successfulResult))
+    testWithResults(results.length, results)(test)
+  }
+
+  def testWithResults(attempts: Int, results: Seq[Future[Int]])(
+      test: (Retryable, Future[Int]) => Unit
+  ): Unit = {
+    val future = Promise[Int]().future
+    val mockRetryable = mock[Retryable]
+    when(mockRetryable.attempt())
+      .thenReturn(results.head, results.takeRight(results.length - 1): _*)
+    val result = future.retry(() => mockRetryable.attempt(), attempts)
+    test(mockRetryable, result)
+  }
+
+  def verifyNumAttempts[T](n: Int, f: Future[T], mock: Retryable): Unit =
+    whenReady(f) { _ =>
+      verify(mock, times(n)).attempt()
+    }
 
   override def actorSystem: ActorSystem = system
 }
