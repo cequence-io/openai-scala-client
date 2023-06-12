@@ -23,8 +23,8 @@ private class OpenAIRetryServiceAdapter(
     )
   }
 
-  override def close =
-    underlying.close
+  override def close(): Unit =
+    underlying.close()
 
   private def retry[T](
     failureMessage: String)(

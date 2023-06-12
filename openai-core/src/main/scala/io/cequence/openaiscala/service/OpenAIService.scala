@@ -351,5 +351,5 @@ trait OpenAIService extends OpenAIServiceConsts {
   /**
    * Closes the underlying ws client, and releases all its resources.
    */
-  def close: Unit
+  def close(): Unit
 }

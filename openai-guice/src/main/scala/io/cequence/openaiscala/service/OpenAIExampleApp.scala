@@ -5,7 +5,7 @@ object OpenAIExampleApp extends BaseOpenAIClientApp {
   openAIService.listModels.map(
     _.foreach(println)
   ).onComplete { _ =>
-    openAIService.close
+    openAIService.close()
     system.terminate
     System.exit(0)
   }
