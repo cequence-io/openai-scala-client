@@ -194,7 +194,7 @@ Examples:
   }
 ```
 
-**✔️ Important Note**: After you are done using the service, you should close it by calling (🔥 new) `service.close`. Otherwise, the underlying resources/threads won't be released.
+**✔️ Important Note**: After you are done using the service, you should close it by calling `service.close`. Otherwise, the underlying resources/threads won't be released.
 
 **III. Using multiple services (🔥 new)**
 
