@@ -18,11 +18,6 @@ case class ChatCompletionChoiceInfo(
   finish_reason: Option[String]
 )
 
-case class ChatMessage(
-  role: ChatRole,
-  content: String
-)
-
 // chunk - streamed
 case class ChatCompletionChunkResponse(
   id: String,
