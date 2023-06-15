@@ -18,20 +18,17 @@ object JsonFormats {
   JsonUtil.StringDoubleMapFormat
   JsonUtil.StringStringMapFormat
 
-  implicit val logprobsInfoFormat: Format[LogprobsInfo] =
-    Json.format[LogprobsInfo]
-  implicit val textCompletionChoiceInfoFormat
-      : Format[TextCompletionChoiceInfo] = Json.format[TextCompletionChoiceInfo]
-  implicit val textCompletionFormat: Format[TextCompletionResponse] =
-    Json.format[TextCompletionResponse]
+  implicit val logprobsInfoFormat: Format[LogprobsInfo] = Json.format[LogprobsInfo]
+  implicit val textCompletionChoiceInfoFormat: Format[TextCompletionChoiceInfo] = Json.format[TextCompletionChoiceInfo]
+  implicit val textCompletionFormat: Format[TextCompletionResponse] = Json.format[TextCompletionResponse]
 
   implicit object ChatRoleFormat extends Format[ChatRole] {
     override def reads(json: JsValue): JsResult[ChatRole] = {
       json.asSafe[String] match {
-        case "user"      => JsSuccess(ChatRole.User)
+        case "user" => JsSuccess(ChatRole.User)
         case "assistant" => JsSuccess(ChatRole.Assistant)
-        case "system"    => JsSuccess(ChatRole.System)
-        case x           => JsError(s"$x is not a valid message role.")
+        case "system" => JsSuccess(ChatRole.System)
+        case x => JsError(s"$x is not a valid message role.")
       }
     }
 
@@ -41,93 +38,54 @@ object JsonFormats {
   }
 
   implicit val chatMessageFormat: Format[ChatMessage] = Json.format[ChatMessage]
-  implicit val chatCompletionChoiceInfoFormat
-      : Format[ChatCompletionChoiceInfo] = Json.format[ChatCompletionChoiceInfo]
-  implicit val chatCompletionResponseFormat: Format[ChatCompletionResponse] =
-    Json.format[ChatCompletionResponse]
+  implicit val chatCompletionChoiceInfoFormat: Format[ChatCompletionChoiceInfo] = Json.format[ChatCompletionChoiceInfo]
+  implicit val chatCompletionResponseFormat: Format[ChatCompletionResponse] = Json.format[ChatCompletionResponse]
 
-  implicit val chatChunkMessageFormat: Format[ChatChunkMessage] =
-    Json.format[ChatChunkMessage]
-  implicit val chatCompletionChoiceChunkInfoFormat
-      : Format[ChatCompletionChoiceChunkInfo] =
-    Json.format[ChatCompletionChoiceChunkInfo]
-  implicit val chatCompletionChunkResponseFormat
-      : Format[ChatCompletionChunkResponse] =
-    Json.format[ChatCompletionChunkResponse]
+  implicit val chatChunkMessageFormat: Format[ChatChunkMessage] = Json.format[ChatChunkMessage]
+  implicit val chatCompletionChoiceChunkInfoFormat: Format[ChatCompletionChoiceChunkInfo] = Json.format[ChatCompletionChoiceChunkInfo]
+  implicit val chatCompletionChunkResponseFormat: Format[ChatCompletionChunkResponse] = Json.format[ChatCompletionChunkResponse]
 
-  implicit val textEditChoiceInfoFormat: Format[TextEditChoiceInfo] =
-    Json.format[TextEditChoiceInfo]
-  implicit val textEditFormat: Format[TextEditResponse] =
-    Json.format[TextEditResponse]
+  implicit val textEditChoiceInfoFormat: Format[TextEditChoiceInfo] = Json.format[TextEditChoiceInfo]
+  implicit val textEditFormat: Format[TextEditResponse] = Json.format[TextEditResponse]
 
   implicit val imageFormat: Format[ImageInfo] = Json.format[ImageInfo]
 
-  implicit val embeddingInfoFormat: Format[EmbeddingInfo] =
-    Json.format[EmbeddingInfo]
-  implicit val embeddingUsageInfoFormat: Format[EmbeddingUsageInfo] =
-    Json.format[EmbeddingUsageInfo]
-  implicit val embeddingFormat: Format[EmbeddingResponse] =
-    Json.format[EmbeddingResponse]
+  implicit val embeddingInfoFormat: Format[EmbeddingInfo] = Json.format[EmbeddingInfo]
+  implicit val embeddingUsageInfoFormat: Format[EmbeddingUsageInfo] = Json.format[EmbeddingUsageInfo]
+  implicit val embeddingFormat: Format[EmbeddingResponse] = Json.format[EmbeddingResponse]
 
   implicit val fileInfoFormat: Format[FileInfo] = Json.format[FileInfo]
 
-  implicit val fineTuneEventFormat: Format[FineTuneEvent] =
-    Json.format[FineTuneEvent]
-  implicit val fineTuneHyperparamsFormat: Format[FineTuneHyperparams] =
-    Json.format[FineTuneHyperparams]
+  implicit val fineTuneEventFormat: Format[FineTuneEvent] = Json.format[FineTuneEvent]
+  implicit val fineTuneHyperparamsFormat: Format[FineTuneHyperparams] = Json.format[FineTuneHyperparams]
   implicit val fineTuneFormat: Format[FineTuneJob] = Json.format[FineTuneJob]
 
   // somehow ModerationCategories.unapply is not working in Scala3
   implicit val moderationCategoriesFormat: Format[ModerationCategories] = (
     (__ \ "hate").format[Boolean] and
-      (__ \ "hate/threatening").format[Boolean] and
-      (__ \ "self-harm").format[Boolean] and
-      (__ \ "sexual").format[Boolean] and
-      (__ \ "sexual/minors").format[Boolean] and
-      (__ \ "violence").format[Boolean] and
-      (__ \ "violence/graphic").format[Boolean]
-  )(
-    ModerationCategories.apply,
-    { (x: ModerationCategories) =>
-      (
-        x.hate,
-        x.hate_threatening,
-        x.self_harm,
-        x.sexual,
-        x.sexual_minors,
-        x.violence,
-        x.violence_graphic
-      )
-    }
-  )
+    (__ \ "hate/threatening").format[Boolean] and
+    (__ \ "self-harm").format[Boolean] and
+    (__ \ "sexual").format[Boolean] and
+    (__ \ "sexual/minors").format[Boolean] and
+    (__ \ "violence").format[Boolean] and
+    (__ \ "violence/graphic").format[Boolean]
+  )(ModerationCategories.apply, { (x: ModerationCategories) =>
+    (x.hate, x.hate_threatening, x.self_harm, x.sexual, x.sexual_minors, x.violence, x.violence_graphic)
+  })
 
   // somehow ModerationCategoryScores.unapply is not working in Scala3
-  implicit val moderationCategoryScoresFormat
-      : Format[ModerationCategoryScores] = (
+  implicit val moderationCategoryScoresFormat: Format[ModerationCategoryScores] = (
     (__ \ "hate").format[Double] and
-      (__ \ "hate/threatening").format[Double] and
-      (__ \ "self-harm").format[Double] and
-      (__ \ "sexual").format[Double] and
-      (__ \ "sexual/minors").format[Double] and
-      (__ \ "violence").format[Double] and
-      (__ \ "violence/graphic").format[Double]
-  )(
-    ModerationCategoryScores.apply,
-    { (x: ModerationCategoryScores) =>
-      (
-        x.hate,
-        x.hate_threatening,
-        x.self_harm,
-        x.sexual,
-        x.sexual_minors,
-        x.violence,
-        x.violence_graphic
-      )
-    }
-  )
+    (__ \ "hate/threatening").format[Double] and
+    (__ \ "self-harm").format[Double] and
+    (__ \ "sexual").format[Double] and
+    (__ \ "sexual/minors").format[Double] and
+    (__ \ "violence").format[Double] and
+    (__ \ "violence/graphic").format[Double]
+  )(ModerationCategoryScores.apply, { (x: ModerationCategoryScores) =>
+    (x.hate, x.hate_threatening, x.self_harm, x.sexual, x.sexual_minors, x.violence, x.violence_graphic)
+  })
 
-  implicit val moderationResultFormat: Format[ModerationResult] =
-    Json.format[ModerationResult]
-  implicit val moderationFormat: Format[ModerationResponse] =
-    Json.format[ModerationResponse]
+  implicit val moderationResultFormat: Format[ModerationResult] = Json.format[ModerationResult]
+  implicit val moderationFormat: Format[ModerationResponse] = Json.format[ModerationResponse]
 }

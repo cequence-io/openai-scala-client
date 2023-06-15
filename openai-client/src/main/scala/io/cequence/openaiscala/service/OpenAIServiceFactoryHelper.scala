@@ -10,28 +10,23 @@ import scala.concurrent.ExecutionContext
 trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts {
 
   def apply(
-      apiKey: String,
-      orgId: Option[String] = None,
-      timeouts: Option[Timeouts] = None
-  )(implicit
-      ec: ExecutionContext,
-      materializer: Materializer
+    apiKey: String,
+    orgId: Option[String] = None,
+    timeouts: Option[Timeouts] = None)(
+    implicit ec: ExecutionContext, materializer: Materializer
   ): F
 
-  def apply()(implicit
-      ec: ExecutionContext,
-      materializer: Materializer
+  def apply()(
+    implicit ec: ExecutionContext, materializer: Materializer
   ): F =
     apply(ConfigFactory.load(configFileName))
 
-  def apply(config: Config)(implicit
-      ec: ExecutionContext,
-      materializer: Materializer
+  def apply(
+    config: Config)(
+    implicit ec: ExecutionContext, materializer: Materializer
   ): F = {
     def intTimeoutAux(fieldName: String) =
-      config
-        .optionalInt(s"$configPrefix.timeouts.${fieldName}Sec")
-        .map(_ * 1000)
+      config.optionalInt(s"$configPrefix.timeouts.${fieldName}Sec").map(_ * 1000)
 
     val timeouts = Timeouts(
       requestTimeout = intTimeoutAux("requestTimeout"),
@@ -44,8 +39,7 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts {
       apiKey = config.getString(s"$configPrefix.apiKey"),
       orgId = config.optionalString(s"$configPrefix.orgId"),
       timeouts =
-        if (
-          timeouts.requestTimeout.isDefined
+        if (timeouts.requestTimeout.isDefined
           || timeouts.readTimeout.isDefined
           || timeouts.connectTimeout.isDefined
           || timeouts.pooledConnectionIdleTimeout.isDefined
