@@ -20,6 +20,5 @@ trait BaseOpenAIClientApp extends GuiceContainer with App {
   // implicits
   protected implicit val system: ActorSystem = instance[ActorSystem]
   protected implicit val materializer: Materializer = instance[Materializer]
-  protected implicit val executionContext: ExecutionContext =
-    materializer.executionContext
+  protected implicit val executionContext: ExecutionContext = materializer.executionContext
 }

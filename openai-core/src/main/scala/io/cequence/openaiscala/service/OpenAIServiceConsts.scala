@@ -3,8 +3,9 @@ package io.cequence.openaiscala.service
 import io.cequence.openaiscala.domain.ModelId
 import io.cequence.openaiscala.domain.settings._
 
-/** Constants of [[OpenAIService]], mostly defaults
-  */
+/**
+ * Constants of [[OpenAIService]], mostly defaults
+ */
 trait OpenAIServiceConsts {
 
   protected val coreUrl = "https://api.openai.com/v1/"
@@ -25,11 +26,10 @@ trait OpenAIServiceConsts {
       max_tokens = Some(1000)
     )
 
-    val CreateChatCompletion: CreateChatCompletionSettings =
-      CreateChatCompletionSettings(
-        model = ModelId.gpt_3_5_turbo,
-        max_tokens = Some(1000)
-      )
+    val CreateChatCompletion: CreateChatCompletionSettings = CreateChatCompletionSettings(
+      model = ModelId.gpt_3_5_turbo,
+      max_tokens = Some(1000)
+    )
 
     val CreateEdit: CreateEditSettings = CreateEditSettings(
       model = ModelId.text_davinci_edit_001,
@@ -49,16 +49,14 @@ trait OpenAIServiceConsts {
       model = ModelId.text_embedding_ada_002
     )
 
-    val CreateTranscription: CreateTranscriptionSettings =
-      CreateTranscriptionSettings(
-        model = ModelId.whisper_1,
-        language = Some("en")
-      )
+    val CreateTranscription: CreateTranscriptionSettings = CreateTranscriptionSettings(
+      model = ModelId.whisper_1,
+      language = Some("en")
+    )
 
-    val CreateTranslation: CreateTranslationSettings =
-      CreateTranslationSettings(
-        model = ModelId.whisper_1
-      )
+    val CreateTranslation: CreateTranslationSettings = CreateTranslationSettings(
+      model = ModelId.whisper_1
+    )
 
     val UploadFile: UploadFileSettings = UploadFileSettings(
       purpose = "fine-tune"

@@ -11,7 +11,7 @@ private trait OpenAIMultiServiceAdapter extends OpenAIServiceWrapper {
   protected def calcIndex: Int
 
   override protected def wrap[T](
-      fun: OpenAIService => Future[T]
+    fun: OpenAIService => Future[T]
   ): Future[T] =
     fun(underlyings(calcIndex))
 
@@ -20,7 +20,7 @@ private trait OpenAIMultiServiceAdapter extends OpenAIServiceWrapper {
 }
 
 private class OpenAIMultiServiceRotationAdapter(
-    val underlyings: Seq[OpenAIService]
+  val underlyings: Seq[OpenAIService]
 ) extends OpenAIMultiServiceAdapter {
   private val atomicCounter = new AtomicInteger()
 
@@ -29,15 +29,16 @@ private class OpenAIMultiServiceRotationAdapter(
 }
 
 private class OpenAIMultiServiceRandomAccessAdapter(
-    val underlyings: Seq[OpenAIService]
+  val underlyings: Seq[OpenAIService]
 ) extends OpenAIMultiServiceAdapter {
   protected def calcIndex: Int = Random.nextInt(count)
 }
 
-/** Load distribution for multiple OpenAIService instances using:
-  *   - rotation type (aka round robin)
-  *   - random access/order
-  */
+/**
+ * Load distribution for multiple OpenAIService instances using:
+ *  - rotation type (aka round robin)
+ *  - random access/order
+ */
 object OpenAIMultiServiceAdapter {
 
   // maybe calling it "round robin" would be better?

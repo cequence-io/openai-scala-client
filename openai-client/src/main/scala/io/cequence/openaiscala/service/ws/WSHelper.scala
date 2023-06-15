@@ -22,20 +22,10 @@ trait WSHelper {
     import play.shaded.ahc.org.asynchttpclient._
 
     val asyncHttpClientConfig = new DefaultAsyncHttpClientConfig.Builder()
-      .setConnectTimeout(
-        timeouts.connectTimeout.getOrElse(DefaultTimeouts.connectTimeout)
-      )
-      .setReadTimeout(
-        timeouts.readTimeout.getOrElse(DefaultTimeouts.readTimeout)
-      )
-      .setPooledConnectionIdleTimeout(
-        timeouts.pooledConnectionIdleTimeout.getOrElse(
-          DefaultTimeouts.pooledConnectionIdleTimeout
-        )
-      )
-      .setRequestTimeout(
-        timeouts.requestTimeout.getOrElse(DefaultTimeouts.requestTimeout)
-      )
+      .setConnectTimeout(timeouts.connectTimeout.getOrElse(DefaultTimeouts.connectTimeout))
+      .setReadTimeout(timeouts.readTimeout.getOrElse(DefaultTimeouts.readTimeout))
+      .setPooledConnectionIdleTimeout(timeouts.pooledConnectionIdleTimeout.getOrElse(DefaultTimeouts.pooledConnectionIdleTimeout))
+      .setRequestTimeout(timeouts.requestTimeout.getOrElse(DefaultTimeouts.requestTimeout))
       .build
     val asyncHttpClient = new DefaultAsyncHttpClient(asyncHttpClientConfig)
     val client = new StandaloneAhcWSClient(asyncHttpClient)
