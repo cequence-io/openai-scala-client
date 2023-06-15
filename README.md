@@ -5,7 +5,7 @@ This is a no-nonsense async Scala client for OpenAI API supporting all the avail
 
 * **Models**: [listModels](https://platform.openai.com/docs/api-reference/models/list), and [retrieveModel](https://platform.openai.com/docs/api-reference/models/retrieve)
 * **Completions**: [createCompletion](https://platform.openai.com/docs/api-reference/completions/create)
-* **Chat Completions**: [createChatCompletion](https://platform.openai.com/docs/api-reference/chat/create)
+* **Chat Completions**: [createChatCompletion](https://platform.openai.com/docs/api-reference/chat/create), and [createChatFunCompletion](https://platform.openai.com/docs/api-reference/chat/create) **(🔥 new)**
 * **Edits**: [createEdit](https://platform.openai.com/docs/api-reference/edits/create)
 * **Images**: [createImage](https://platform.openai.com/docs/api-reference/images/create), [createImageEdit](https://platform.openai.com/docs/api-reference/images/create-edit), and [createImageVariation](https://platform.openai.com/docs/api-reference/images/create-variation)
 * **Embeddings**: [createEmbeddings](https://platform.openai.com/docs/api-reference/embeddings/create)
