@@ -7,13 +7,13 @@ import net.codingwell.scalaguice.ScalaModule
 
 object ConfigModule {
   class ConfigProvider extends Provider[Config] {
-    override def get: Config = ConfigFactory.load()
+    override def get = ConfigFactory.load()
   }
 }
 
 class ConfigModule extends AbstractModule with ScalaModule {
 
-  override def configure: Unit = {
+  override def configure = {
     bind[Config].toProvider[ConfigProvider].asEagerSingleton()
   }
 }

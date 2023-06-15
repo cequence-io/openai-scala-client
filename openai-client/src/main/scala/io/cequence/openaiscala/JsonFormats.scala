@@ -3,20 +3,21 @@ package io.cequence.openaiscala
 import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.domain.ChatRole
 
+import java.{util => ju}
 import io.cequence.openaiscala.domain.response._
 import play.api.libs.functional.syntax._
 import play.api.libs.json.{Format, Json, _}
 
 object JsonFormats {
-  JsonUtil.SecDateFormat
+  private implicit val dateFormat: Format[ju.Date] = JsonUtil.SecDateFormat
 
   implicit val PermissionFormat: Format[Permission] = Json.format[Permission]
   implicit val modelSpecFormat: Format[ModelInfo] = Json.format[ModelInfo]
 
   implicit val usageInfoFormat: Format[UsageInfo] = Json.format[UsageInfo]
 
-  JsonUtil.StringDoubleMapFormat
-  JsonUtil.StringStringMapFormat
+  private implicit val stringDoubleMapFormat: Format[Map[String, Double]] = JsonUtil.StringDoubleMapFormat
+  private implicit val stringStringMapFormat: Format[Map[String, String]] = JsonUtil.StringStringMapFormat
 
   implicit val logprobsInfoFormat: Format[LogprobsInfo] = Json.format[LogprobsInfo]
   implicit val textCompletionChoiceInfoFormat: Format[TextCompletionChoiceInfo] = Json.format[TextCompletionChoiceInfo]

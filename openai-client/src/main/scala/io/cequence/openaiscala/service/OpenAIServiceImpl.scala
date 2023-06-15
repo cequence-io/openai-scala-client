@@ -8,6 +8,7 @@ import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
+import io.cequence.openaiscala.ConfigImplicits._
 import io.cequence.openaiscala.domain.MessageSpec
 import io.cequence.openaiscala.service.ws.{Timeouts, WSRequestHelper}
 
@@ -76,7 +77,7 @@ private class OpenAIServiceImpl(
     prompt: String,
     settings: CreateCompletionSettings,
     stream: Boolean
-  ): Seq[(Tag, Option[JsValue])] =
+  ) =
     jsonBodyParams(
       Tag.prompt -> Some(prompt),
       Tag.model -> Some(settings.model),
@@ -119,7 +120,7 @@ private class OpenAIServiceImpl(
     messages: Seq[MessageSpec],
     settings: CreateChatCompletionSettings,
     stream: Boolean
-  ): Seq[(Tag, Option[JsValue])] = {
+  ) = {
     assert(messages.nonEmpty, "At least one message expected.")
 
     val messageJsons = messages.map { case MessageSpec(role, content) =>
@@ -494,14 +495,14 @@ private class OpenAIServiceImpl(
     endPoint: Option[PEP],
     endPointParam: Option[String],
     params: Seq[(PT, Option[Any])] = Nil
-  ): StandaloneWSRequest#Self =
+  ) =
     addHeaders(super.getWSRequestOptional(endPoint, endPointParam, params))
 
   override protected def getWSRequest(
     endPoint: Option[PEP],
     endPointParam: Option[String],
     params: Seq[(PT, Any)] = Nil
-  ): StandaloneWSRequest#Self =
+  ) =
     addHeaders(super.getWSRequest(endPoint, endPointParam, params))
 
   private def addHeaders(request: StandaloneWSRequest) = {
