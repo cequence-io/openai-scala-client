@@ -14,11 +14,11 @@ trait GuiceContainer {
 
   protected lazy val injector: Injector = Guice.createInjector(modules :_*)
 
-  protected lazy val config: Config = instance[Config]
+  protected lazy val config = instance[Config]
 
-  protected def instance[T: Manifest]: T = injector.instance[T]
+  protected def instance[T: Manifest] = injector.instance[T]
 
-  protected def result[T](future: Future[T]): T =
+  protected def result[T](future: Future[T]) =
     Await.result(future, 100.minutes)
 
   protected def terminate: Unit = {

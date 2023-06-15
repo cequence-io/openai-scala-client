@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.service.ws
 
 import akka.NotUsed
-import akka.http.scaladsl.common.EntityStreamingSupport
+import akka.http.scaladsl.common.{EntityStreamingSupport, JsonEntityStreamingSupport}
 import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
 import akka.stream.Materializer
 import akka.stream.scaladsl.Framing.FramingException
@@ -9,7 +9,7 @@ import akka.stream.scaladsl.{Flow, Framing, Source}
 import akka.util.ByteString
 import com.fasterxml.jackson.core.JsonParseException
 import io.cequence.openaiscala.{OpenAIScalaClientException, OpenAIScalaClientTimeoutException, OpenAIScalaClientUnknownHostException}
-import play.api.libs.json.{JsObject, JsString, JsValue, Json}
+import play.api.libs.json.{JsNull, JsObject, JsString, JsValue, Json}
 import play.api.libs.ws.JsonBodyWritables._
 
 import java.net.UnknownHostException
@@ -26,7 +26,8 @@ trait WSStreamRequestHelper {
   private val itemPrefix = "data: "
   private val endOfStreamToken = "[DONE]"
 
-  EntityStreamingSupport.json()
+  private implicit val jsonStreamingSupport: JsonEntityStreamingSupport =
+    EntityStreamingSupport.json()
 
   private implicit val jsonMarshaller: Unmarshaller[ByteString, JsValue] =
     Unmarshaller.strict[ByteString, JsValue] { byteString =>

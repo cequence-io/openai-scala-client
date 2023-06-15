@@ -10,9 +10,9 @@ trait OpenAIServiceConsts {
 
   protected val coreUrl = "https://api.openai.com/v1/"
 
-  protected val defaultRequestTimeout: Int = 120 * 1000 // two minute
+  protected val defaultRequestTimeout = 120 * 1000 // two minute
 
-  protected val defaultReadoutTimeout: Int = 120 * 1000 // two minute
+  protected val defaultReadoutTimeout = 120 * 1000 // two minute
 
   protected val configPrefix = "openai-scala-client"
 
@@ -20,52 +20,52 @@ trait OpenAIServiceConsts {
 
   object DefaultSettings {
 
-    val CreateCompletion: CreateCompletionSettings = CreateCompletionSettings(
+    val CreateCompletion = CreateCompletionSettings(
       model = ModelId.text_davinci_003,
       temperature = Some(0.7),
       max_tokens = Some(1000)
     )
 
-    val CreateChatCompletion: CreateChatCompletionSettings = CreateChatCompletionSettings(
+    val CreateChatCompletion = CreateChatCompletionSettings(
       model = ModelId.gpt_3_5_turbo,
       max_tokens = Some(1000)
     )
 
-    val CreateEdit: CreateEditSettings = CreateEditSettings(
+    val CreateEdit = CreateEditSettings(
       model = ModelId.text_davinci_edit_001,
       temperature = Some(0.7)
     )
 
     // keep all OpenAI defaults
-    val CreateImage: CreateImageSettings = CreateImageSettings()
+    val CreateImage = CreateImageSettings()
 
     // keep all OpenAI defaults
-    val CreateImageEdit: CreateImageSettings = CreateImageSettings()
+    val CreateImageEdit = CreateImageSettings()
 
     // keep all OpenAI defaults
-    val CreateImageVariation: CreateImageSettings = CreateImageSettings()
+    val CreateImageVariation = CreateImageSettings()
 
-    val CreateEmbeddings: CreateEmbeddingsSettings = CreateEmbeddingsSettings(
+    val CreateEmbeddings = CreateEmbeddingsSettings(
       model = ModelId.text_embedding_ada_002
     )
 
-    val CreateTranscription: CreateTranscriptionSettings = CreateTranscriptionSettings(
+    val CreateTranscription = CreateTranscriptionSettings(
       model = ModelId.whisper_1,
       language = Some("en")
     )
 
-    val CreateTranslation: CreateTranslationSettings = CreateTranslationSettings(
+    val CreateTranslation = CreateTranslationSettings(
       model = ModelId.whisper_1
     )
 
-    val UploadFile: UploadFileSettings = UploadFileSettings(
+    val UploadFile = UploadFileSettings(
       purpose = "fine-tune"
     )
 
     // keep all OpenAI defaults
-    val CreateFineTune: CreateFineTuneSettings = CreateFineTuneSettings()
+    val CreateFineTune = CreateFineTuneSettings()
 
     // keep all OpenAI defaults
-    val CreateModeration: CreateModerationSettings = CreateModerationSettings()
+    val CreateModeration = CreateModerationSettings()
   }
 }

@@ -36,6 +36,6 @@ trait WSHelper {
     client
   }
 
-  def close: Unit =
+  def close =
     client.close()
 }
