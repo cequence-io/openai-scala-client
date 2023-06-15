@@ -15,7 +15,7 @@ private trait OpenAIMultiServiceAdapter extends OpenAIServiceWrapper {
   ): Future[T] =
     fun(underlyings(calcIndex))
 
-  override def close =
+  override def close() =
     underlyings.foreach(_.close())
 }
 

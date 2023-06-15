@@ -16,7 +16,6 @@ private class OpenAIRetryServiceAdapter(
     fun: OpenAIService => Future[T]
   ): Future[T] = {
     // need to use StackWalker to get the caller function name
-    fun.toString()
     val functionName = StackWalkerUtil.functionName(2).get()
     retry(s"${functionName.capitalize} call failed")(
       fun(underlying)
