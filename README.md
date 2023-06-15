@@ -194,6 +194,7 @@ Examples:
   }
 ```
 
+
 **✔️ Important Note**: After you are done using the service, you should close it by calling (🔥 new) `service.close`. Otherwise, the underlying resources/threads won't be released.
 
 **III. Using multiple services (🔥 new)**
@@ -228,17 +229,48 @@ Examples:
   }
 ```
 
+- Create completion and retry on transient errors (e.g. rate limit error)
+```scala
+import akka.actor.{ActorSystem, Scheduler}
+import io.cequence.openaiscala.RetryHelpers
+import io.cequence.openaiscala.RetryHelpers.RetrySettings
+import io.cequence.openaiscala.domain.{ChatRole, MessageSpec}
+import io.cequence.openaiscala.service.{OpenAIService, OpenAIServiceFactory}
+
+import javax.inject.Inject
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.{ExecutionContext, Future}
+
+class MyCompletionService @Inject() (
+                                      val actorSystem: ActorSystem,
+                                      implicit val ec: ExecutionContext,
+                                      implicit val scheduler: Scheduler
+                                    )(val apiKey: String)
+  extends RetryHelpers {
+  val service: OpenAIService = OpenAIServiceFactory(apiKey)
+  implicit val retrySettings: RetrySettings =
+    RetrySettings(interval = 10.seconds)
+
+  def ask(prompt: String): Future[String] =
+    for {
+      completion <- service
+        .createChatCompletion(
+          List(MessageSpec(ChatRole.User, prompt))
+        )
+        .retryOnFailure
+    } yield completion.choices.head.message.content
+}
+```
+
 - Retries with `OpenAIRetryServiceAdapter`
 
 ```scala
   val serviceAux = ... // your service
 
+  implicit val retrySettings: RetrySettings = 
+    RetrySettings(maxAttempts = 10).constantInterval(10.seconds)
   // wrap it with the retry adapter
-  val service = OpenAIRetryServiceAdapter(
-    serviceAux,
-    maxAttempts = 10,
-    sleepOnFailureMs = Some(1000) // 1 second
-  )
+  val service = OpenAIRetryServiceAdapter(serviceAux)
 
   service.listModels.map { models =>
     models.foreach(println)
