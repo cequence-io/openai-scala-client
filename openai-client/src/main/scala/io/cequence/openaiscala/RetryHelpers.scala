@@ -18,6 +18,13 @@ object RetryHelpers {
     def constantInterval(interval: FiniteDuration): RetrySettings =
       copy(delayBase = 1).copy(delayOffset = interval)
   }
+  object RetrySettings {
+    def apply(interval: FiniteDuration): RetrySettings =
+      RetrySettings().constantInterval(
+        interval
+      )
+
+  }
 }
 
 trait RetryHelpers {
