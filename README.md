@@ -170,7 +170,7 @@ Examples:
     println(completion.choices.head.text)
   ).runWith(Sink.ignore)
 ```
-(For this to work you need to use `OpenAIServiceStreamedFactory` from `openai-scala-client-stream` lib)
+For this to work you need to use `OpenAIServiceStreamedFactory` from `openai-scala-client-stream` lib.
 
 - Create chat completion 
 
@@ -193,6 +193,54 @@ Examples:
     println(chatCompletion.choices.head.message.content)
   }
 ```
+
+- Create chat completion for functions (🔥 new) 
+
+```scala
+  val messages = Seq(
+    FunMessageSpec(role = ChatRole.User, content = Some("What's the weather like in Boston?")),
+  )
+
+  // as a param type we can use "number", "string", "boolean", "object", "array", and "null"
+  val functions = Seq(
+    FunctionSpec(
+      name = "get_current_weather",
+      description = Some("Get the current weather in a given location"),
+      parameters = Map(
+        "type" -> "object",
+        "properties" -> Map(
+          "location" -> Map(
+            "type" -> "string",
+            "description" -> "The city and state, e.g. San Francisco, CA",
+          ),
+          "unit" -> Map(
+            "type" -> "string",
+            "enum" -> Seq("celsius", "fahrenheit")
+          )
+        ),
+        "required" -> Seq("location"),
+      )
+    )
+  )
+
+  // if we want to force the model to use the above function as a response
+  // we can do so by passing: responseFunctionName = Some("set_current_location")`
+  service.createChatFunCompletion(
+    messages = messages,
+    functions = functions,
+    responseFunctionName = None
+  ).map { response =>
+    val chatFunCompletionMessage = response.choices.head.message
+    val functionCall = chatFunCompletionMessage.function_call
+
+    println("function call name      : " + functionCall.map(_.name).getOrElse("N/A"))
+    println("function call arguments : " + functionCall.map(_.arguments).getOrElse("N/A"))
+  }
+```
+Note that instead of `MessageSpec`, the `function_call` version of the chat completion uses the `FunMessageSpec` class to define messages - both as part of the request and the response.
+This extension of the standard chat completion is currently supported by the following `0613` models, all conveniently available in `ModelId` object:
+- `gpt-3.5-turbo-0613` (default), `gpt-3.5-turbo-16k-0613`, `gpt-4-0613`, and `gpt-4-32k-0613`.
+
 
 **✔️ Important Note**: After you are done using the service, you should close it by calling `service.close`. Otherwise, the underlying resources/threads won't be released.
 
