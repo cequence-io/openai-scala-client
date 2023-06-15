@@ -34,7 +34,7 @@ class RetryHelpersSpec
     "allow easy configuration of a constant interval" in {
       val interval = 10.seconds
       val result = RetrySettings(interval)
-      result.delayBase shouldBe 1
+      result.delayBase shouldBe 0
       result.delayOffset shouldBe interval
     }
   }

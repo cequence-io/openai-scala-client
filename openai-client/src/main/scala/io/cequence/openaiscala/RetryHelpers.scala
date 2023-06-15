@@ -16,7 +16,7 @@ object RetryHelpers {
       delayBase: Double = 2
   ) {
     def constantInterval(interval: FiniteDuration): RetrySettings =
-      copy(delayBase = 1).copy(delayOffset = interval)
+      copy(delayBase = 0).copy(delayOffset = interval)
   }
   object RetrySettings {
     def apply(interval: FiniteDuration): RetrySettings =
