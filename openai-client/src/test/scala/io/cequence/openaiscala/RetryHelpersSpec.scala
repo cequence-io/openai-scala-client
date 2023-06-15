@@ -2,7 +2,7 @@ package io.cequence.openaiscala
 
 import akka.actor.{ActorSystem, Scheduler}
 import akka.testkit.TestKit
-import io.cequence.openaiscala.RetryHelpers.RetrySettings
+import io.cequence.openaiscala.RetryHelpers.{RetrySettings, retry}
 import org.mockito.scalatest.MockitoSugar
 import org.scalatest.RecoverMethods._
 import org.scalatest.concurrent.ScalaFutures
@@ -111,7 +111,7 @@ class RetryHelpersSpec
     val mockRetryable = mock[Retryable]
     when(mockRetryable.attempt())
       .thenReturn(results.head, results.takeRight(results.length - 1): _*)
-    val result = future.retry(() => mockRetryable.attempt(), attempts)
+    val result = retry(() => mockRetryable.attempt(), attempts)
     test(mockRetryable, result)
   }
 
