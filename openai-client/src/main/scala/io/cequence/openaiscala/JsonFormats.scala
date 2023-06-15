@@ -49,11 +49,13 @@ object JsonFormats {
     Json.format[FunctionSpec]
   }
 
-  implicit val chatMessageFormat: Format[ChatMessage] = Json.format[ChatMessage]
   implicit val chatCompletionChoiceInfoFormat: Format[ChatCompletionChoiceInfo] = Json.format[ChatCompletionChoiceInfo]
   implicit val chatCompletionResponseFormat: Format[ChatCompletionResponse] = Json.format[ChatCompletionResponse]
 
-  implicit val chatChunkMessageFormat: Format[ChatChunkMessage] = Json.format[ChatChunkMessage]
+  implicit val chatFunCompletionChoiceInfoFormat: Format[ChatFunCompletionChoiceInfo] = Json.format[ChatFunCompletionChoiceInfo]
+  implicit val chatFunCompletionResponseFormat: Format[ChatFunCompletionResponse] = Json.format[ChatFunCompletionResponse]
+
+  implicit val chatChunkMessageFormat: Format[ChunkMessageSpec] = Json.format[ChunkMessageSpec]
   implicit val chatCompletionChoiceChunkInfoFormat: Format[ChatCompletionChoiceChunkInfo] = Json.format[ChatCompletionChoiceChunkInfo]
   implicit val chatCompletionChunkResponseFormat: Format[ChatCompletionChunkResponse] = Json.format[ChatCompletionChunkResponse]
 

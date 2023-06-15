@@ -16,6 +16,7 @@ trait GuiceContainer {
 
   protected lazy val config = instance[Config]
 
+  // TODO: for Scala3 this function has to be "inlined"
   protected def instance[T: Manifest] = injector.instance[T]
 
   protected def result[T](future: Future[T]) =

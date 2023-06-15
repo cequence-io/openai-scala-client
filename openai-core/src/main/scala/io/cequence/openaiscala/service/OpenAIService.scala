@@ -89,7 +89,7 @@ trait OpenAIService extends OpenAIServiceConsts {
     functions: Seq[FunctionSpec],
     responseFunctionName: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatFunCompletion
-  ): Future[ChatCompletionResponse]
+  ): Future[ChatFunCompletionResponse]
 
   /**
    * Creates a new edit for the provided input, instruction, and parameters.

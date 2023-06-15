@@ -15,12 +15,7 @@ import play.api.libs.json.{JsValue, Json}
 import scala.concurrent.ExecutionContext
 
 /**
- * Private impl. class of [[OpenAIService]].
- *
- * @param apiKey
- * @param orgId
- * @param ec
- * @param materializer
+ * Private impl. class of [[OpenAIServiceStreamedExtra]] which offers extra functions with streaming support.
  *
  * @since Jan 2023
  */

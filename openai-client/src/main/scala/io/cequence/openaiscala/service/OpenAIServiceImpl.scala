@@ -121,7 +121,7 @@ private class OpenAIServiceImpl(
     functions: Seq[FunctionSpec],
     responseFunctionName: Option[String],
     settings: CreateChatCompletionSettings
-  ): Future[ChatCompletionResponse] = {
+  ): Future[ChatFunCompletionResponse] = {
     val coreParams = createBodyParamsForChatCompletion(messages, settings, stream = false)
 
     val extraParams = jsonBodyParams(
@@ -133,7 +133,7 @@ private class OpenAIServiceImpl(
       EndPoint.chat_completions,
       bodyParams = coreParams ++ extraParams
     ).map(
-      _.asSafe[ChatCompletionResponse]
+      _.asSafe[ChatFunCompletionResponse]
     )
   }
 
