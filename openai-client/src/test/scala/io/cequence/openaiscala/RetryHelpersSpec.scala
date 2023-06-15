@@ -30,6 +30,15 @@ class RetryHelpersSpec
     TestKit.shutdownActorSystem(system)
   }
 
+  "RetrySettings" should {
+    "allow easy configuration of a constant interval" in {
+      val interval = 10.seconds
+      val result = RetrySettings().constantInterval(interval)
+      result.delayBase shouldBe 1
+      result.delayOffset shouldBe interval
+    }
+  }
+
   "RetryHelpers" should {
 
     "retry when encountering a retryable failure" in {
