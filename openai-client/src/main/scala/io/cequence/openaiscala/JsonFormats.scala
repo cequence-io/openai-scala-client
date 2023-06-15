@@ -42,8 +42,13 @@ object JsonFormats {
   implicit val functionCallSpecFormat: Format[FunctionCallSpec] = Json.format[FunctionCallSpec]
   implicit val messageSpecFormat: Format[MessageSpec] = Json.format[MessageSpec]
   implicit val funMessageSpecFormat: Format[FunMessageSpec] = Json.format[FunMessageSpec]
-  private implicit val stringAnyMapFormat: Format[Map[String, Any]] = JsonUtil.StringAnyMapFormat
-  implicit val functionSpecFormat: Format[FunctionSpec] = Json.format[FunctionSpec]
+
+  implicit val functionSpecFormat: Format[FunctionSpec] = {
+    // use just here for FunctionSpec
+    implicit val stringAnyMapFormat: Format[Map[String, Any]] = JsonUtil.StringAnyMapFormat
+    Json.format[FunctionSpec]
+  }
+
   implicit val chatMessageFormat: Format[ChatMessage] = Json.format[ChatMessage]
   implicit val chatCompletionChoiceInfoFormat: Format[ChatCompletionChoiceInfo] = Json.format[ChatCompletionChoiceInfo]
   implicit val chatCompletionResponseFormat: Format[ChatCompletionResponse] = Json.format[ChatCompletionResponse]
