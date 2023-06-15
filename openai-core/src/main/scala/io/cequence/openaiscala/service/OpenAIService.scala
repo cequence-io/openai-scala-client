@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.service
 
-import io.cequence.openaiscala.domain.{FunctionSpec, MessageSpec}
+import io.cequence.openaiscala.domain.{FunMessageSpec, FunctionSpec, MessageSpec}
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
 
@@ -84,11 +84,11 @@ trait OpenAIService extends OpenAIServiceConsts {
    * @return chat completion response
    * @see <a href="https://platform.openai.com/docs/api-reference/chat/create">OpenAI Doc</a>
    */
-  def createChatCompletionForFunctions(
-    messages: Seq[MessageSpec],
+  def createChatFunCompletion(
+    messages: Seq[FunMessageSpec],
     functions: Seq[FunctionSpec],
     responseFunctionName: Option[String] = None,
-    settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletionForFunctions
+    settings: CreateChatCompletionSettings = DefaultSettings.CreateChatFunCompletion
   ): Future[ChatCompletionResponse]
 
   /**

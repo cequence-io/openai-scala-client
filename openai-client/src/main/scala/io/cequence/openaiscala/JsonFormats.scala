@@ -1,7 +1,7 @@
 package io.cequence.openaiscala
 
 import io.cequence.openaiscala.JsonUtil.JsonOps
-import io.cequence.openaiscala.domain.{ChatRole, FunctionSpec, MessageSpec, FunctionCallSpec}
+import io.cequence.openaiscala.domain.{ChatRole, FunMessageSpec, FunctionCallSpec, FunctionSpec, MessageSpec}
 
 import java.{util => ju}
 import io.cequence.openaiscala.domain.response._
@@ -39,9 +39,10 @@ object JsonFormats {
     }
   }
 
-  implicit val messageSpecFormat: Format[MessageSpec] = Json.format[MessageSpec]
-  private implicit val stringAnyMapFormat: Format[Map[String, Any]] = JsonUtil.StringAnyMapFormat
   implicit val functionCallSpecFormat: Format[FunctionCallSpec] = Json.format[FunctionCallSpec]
+  implicit val messageSpecFormat: Format[MessageSpec] = Json.format[MessageSpec]
+  implicit val funMessageSpecFormat: Format[FunMessageSpec] = Json.format[FunMessageSpec]
+  private implicit val stringAnyMapFormat: Format[Map[String, Any]] = JsonUtil.StringAnyMapFormat
   implicit val functionSpecFormat: Format[FunctionSpec] = Json.format[FunctionSpec]
   implicit val chatMessageFormat: Format[ChatMessage] = Json.format[ChatMessage]
   implicit val chatCompletionChoiceInfoFormat: Format[ChatCompletionChoiceInfo] = Json.format[ChatCompletionChoiceInfo]

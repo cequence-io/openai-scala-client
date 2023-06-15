@@ -32,7 +32,7 @@ private trait OpenAIServiceStreamedExtraImpl extends OpenAIServiceStreamedExtra 
     settings: CreateCompletionSettings
   ): Source[TextCompletionResponse, NotUsed] =
     execJsonStreamAux(
-      Command.completions,
+      EndPoint.completions,
       "POST",
       bodyParams = createBodyParamsForCompletion(prompt, settings, stream = true)
     ).map { (json: JsValue) =>
@@ -48,7 +48,7 @@ private trait OpenAIServiceStreamedExtraImpl extends OpenAIServiceStreamedExtra 
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
   ): Source[ChatCompletionChunkResponse, NotUsed] =
     execJsonStreamAux(
-      Command.chat_completions,
+      EndPoint.chat_completions,
       "POST",
       bodyParams = createBodyParamsForChatCompletion(messages, settings, stream = true)
     ).map { (json: JsValue) =>
@@ -63,11 +63,11 @@ private trait OpenAIServiceStreamedExtraImpl extends OpenAIServiceStreamedExtra 
     fineTuneId: String
   ): Source[FineTuneEvent, NotUsed] =
     execJsonStreamAux(
-      Command.fine_tunes,
+      EndPoint.fine_tunes,
       "GET",
       endPointParam = Some(s"$fineTuneId/events"),
       params = Seq(
-        Tag.stream -> Some(true)
+        Param.stream -> Some(true)
       )
     ).map { json =>
       (json \ "error").toOption.map { error =>
