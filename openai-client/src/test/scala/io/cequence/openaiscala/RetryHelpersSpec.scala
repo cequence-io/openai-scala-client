@@ -2,7 +2,7 @@ package io.cequence.openaiscala
 
 import akka.actor.{ActorSystem, Scheduler}
 import akka.testkit.TestKit
-import io.cequence.openaiscala.RetryHelpers.{RetrySettings, retry}
+import io.cequence.openaiscala.RetryHelpers.{RetrySettings, delay, retry}
 import org.mockito.scalatest.MockitoSugar
 import org.scalatest.RecoverMethods._
 import org.scalatest.concurrent.ScalaFutures
@@ -84,6 +84,24 @@ class RetryHelpersSpec
           result
         ).futureValue shouldBe Succeeded
       }
+    }
+
+    "compute the correct delay when using constant interval" in {
+      val interval = 10.seconds
+      val settings = RetrySettings(interval)
+      delay(1)(settings) shouldBe interval
+      delay(5)(settings) shouldBe interval
+    }
+
+    "compute the correct delay when using strictly positive base" in {
+      val settings = RetrySettings(
+        maxRetries = 5,
+        delayOffset = 2.seconds,
+        delayBase = 2
+      )
+      delay(1)(settings) shouldBe 4.seconds
+      delay(2)(settings) shouldBe 6.seconds
+      delay(3)(settings) shouldBe 10.seconds
     }
 
   }
