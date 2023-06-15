@@ -24,16 +24,27 @@ lazy val guice = (project in file("openai-guice"))
   .dependsOn(client)
   .aggregate(client_stream)
 
-
 // POM settings for Sonatype
-ThisBuild / homepage := Some(url("https://github.com/cequence-io/openai-scala-client"))
+ThisBuild / homepage := Some(
+  url("https://github.com/cequence-io/openai-scala-client")
+)
 
 ThisBuild / sonatypeProfileName := "io.cequence"
 
-ThisBuild / scmInfo := Some(ScmInfo(url("https://github.com/cequence-io/openai-scala-client"), "scm:git@github.com:cequence-io/openai-scala-client.git"))
+ThisBuild / scmInfo := Some(
+  ScmInfo(
+    url("https://github.com/cequence-io/openai-scala-client"),
+    "scm:git@github.com:cequence-io/openai-scala-client.git"
+  )
+)
 
 ThisBuild / developers := List(
-  Developer("bnd", "Peter Banda", "peter.banda@protonmail.com", url("https://peterbanda.net"))
+  Developer(
+    "bnd",
+    "Peter Banda",
+    "peter.banda@protonmail.com",
+    url("https://peterbanda.net")
+  )
 )
 
 ThisBuild / licenses += "MIT" -> url("https://opensource.org/licenses/MIT")
@@ -45,3 +56,42 @@ ThisBuild / sonatypeCredentialHost := "s01.oss.sonatype.org"
 ThisBuild / sonatypeRepository := "https://s01.oss.sonatype.org/service/local"
 
 ThisBuild / publishTo := sonatypePublishToBundle.value
+
+addCommandAlias(
+  "validateCode",
+  List(
+    "scalafix",
+    "scalafmtSbtCheck",
+    "scalafmtCheckAll",
+    "test:scalafix",
+    "test:scalafmtCheckAll"
+  ).mkString(";")
+)
+
+addCommandAlias(
+  "formatCode",
+  List(
+    "scalafmt",
+    "scalafmtSbt",
+    "Test/scalafmt"
+  ).mkString(";")
+)
+
+addCommandAlias(
+  "testWithCoverage",
+  List(
+    "coverage",
+    "test",
+    "coverageReport"
+  ).mkString(";")
+)
+
+
+inThisBuild(
+  List(
+    scalacOptions += "-Ywarn-unused",
+    scalaVersion := "2.12.15",
+    semanticdbEnabled := true,
+    semanticdbVersion := scalafixSemanticdb.revision
+  )
+)
