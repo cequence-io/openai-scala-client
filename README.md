@@ -246,14 +246,14 @@ This extension of the standard chat completion is currently supported by the fol
 
 **III. Using multiple services (🔥 new)**
 
-- Load distribution with `OpenAIMultiServiceAdapter` - _rotation type_ aka "round robin"
+- Load distribution with `OpenAIMultiServiceAdapter` - _round robin_ (_rotation_) type
 
 ```scala
   val service1 = OpenAIServiceFactory("your-api-key1")
   val service2 = OpenAIServiceFactory("your-api-key2")
   val service3 = OpenAIServiceFactory("your-api-key3")
 
-  val service = OpenAIMultiServiceAdapter.ofRotationType(service1, service2, service3)
+  val service = OpenAIMultiServiceAdapter.ofRoundRobinType(service1, service2, service3)
 
   service.listModels.map { models =>
     models.foreach(println)
@@ -268,7 +268,7 @@ This extension of the standard chat completion is currently supported by the fol
   val service2 = OpenAIServiceFactory("your-api-key2")
   val service3 = OpenAIServiceFactory("your-api-key3")
 
-  val service = OpenAIMultiServiceAdapter.ofRandomAccessType(service1, service2, service3)
+  val service = OpenAIMultiServiceAdapter.ofRandomOrderType(service1, service2, service3)
 
   service.listModels.map { models =>
     models.foreach(println)
