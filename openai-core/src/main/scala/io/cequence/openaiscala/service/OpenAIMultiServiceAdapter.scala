@@ -41,11 +41,11 @@ private class OpenAIMultiServiceRandomAccessAdapter(
  */
 object OpenAIMultiServiceAdapter {
 
-  @Deprecated("Use ofRoundRobinType instead")
+  @deprecated("Use ofRoundRobinType instead")
   def ofRotationType(underlyings: OpenAIService*): OpenAIService =
     ofRoundRobinType(underlyings:_*)
 
-  @Deprecated("Use ofRandomOrderType instead")
+  @deprecated("Use ofRandomOrderType instead")
   def ofRandomAccessType(underlyings: OpenAIService*): OpenAIService =
     ofRandomOrderType(underlyings:_*)
 
