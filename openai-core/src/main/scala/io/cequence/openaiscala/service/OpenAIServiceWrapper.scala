@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.service
 
-import io.cequence.openaiscala.domain.MessageSpec
+import io.cequence.openaiscala.domain.{FunctionSpec, MessageSpec}
 import io.cequence.openaiscala.domain.settings._
 
 import java.io.File
@@ -28,6 +28,15 @@ trait OpenAIServiceWrapper extends OpenAIService {
 
   override def createChatCompletion(
     messages: Seq[MessageSpec],
+    settings: CreateChatCompletionSettings
+  ) = wrap(
+    _.createChatCompletion(messages, settings)
+  )
+
+  override def createChatCompletionForFunctions(
+    messages: Seq[MessageSpec],
+    functions: Seq[FunctionSpec],
+    responseFunctionName: Option[String],
     settings: CreateChatCompletionSettings
   ) = wrap(
     _.createChatCompletion(messages, settings)

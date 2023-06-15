@@ -9,7 +9,7 @@ import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.ConfigImplicits._
-import io.cequence.openaiscala.domain.MessageSpec
+import io.cequence.openaiscala.domain.{FunctionSpec, MessageSpec}
 import io.cequence.openaiscala.service.ws.{Timeouts, WSRequestHelper}
 
 import java.io.File
@@ -116,6 +116,27 @@ private class OpenAIServiceImpl(
       _.asSafe[ChatCompletionResponse]
     )
 
+  override def createChatCompletionForFunctions(
+    messages: Seq[MessageSpec],
+    functions: Seq[FunctionSpec],
+    responseFunctionName: Option[String],
+    settings: CreateChatCompletionSettings
+  ): Future[ChatCompletionResponse] = {
+    val coreParams = createBodyParamsForChatCompletion(messages, settings, stream = false)
+
+    val extraParams = jsonBodyParams(
+      Tag.functions -> Some(Json.toJson(functions)),
+      Tag.function_call -> responseFunctionName.map(name => Map("name" -> name)), // otherwise "auto" is used by default
+    )
+
+    execPOST(
+      Command.chat_completions,
+      bodyParams = coreParams ++ extraParams
+    ).map(
+      _.asSafe[ChatCompletionResponse]
+    )
+  }
+
   protected def createBodyParamsForChatCompletion(
     messages: Seq[MessageSpec],
     settings: CreateChatCompletionSettings,
@@ -123,9 +144,10 @@ private class OpenAIServiceImpl(
   ) = {
     assert(messages.nonEmpty, "At least one message expected.")
 
-    val messageJsons = messages.map { case MessageSpec(role, content) =>
-      Json.obj("role" -> role.toString.toLowerCase, "content" -> content)
-    }
+    val messageJsons = messages.map(Json.toJson(_)(messageSpecFormat))
+
+    // case MessageSpec(role, content, name, function_call) =>
+    //      Json.obj("role" -> role.toString.toLowerCase, "content" -> content)
 
     jsonBodyParams(
       Tag.messages -> Some(JsArray(messageJsons)),

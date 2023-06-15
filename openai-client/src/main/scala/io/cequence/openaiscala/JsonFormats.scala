@@ -1,7 +1,7 @@
 package io.cequence.openaiscala
 
 import io.cequence.openaiscala.JsonUtil.JsonOps
-import io.cequence.openaiscala.domain.ChatRole
+import io.cequence.openaiscala.domain.{ChatRole, FunctionSpec, MessageSpec, FunctionCallSpec}
 
 import java.{util => ju}
 import io.cequence.openaiscala.domain.response._
@@ -29,6 +29,7 @@ object JsonFormats {
         case "user" => JsSuccess(ChatRole.User)
         case "assistant" => JsSuccess(ChatRole.Assistant)
         case "system" => JsSuccess(ChatRole.System)
+        case "function" => JsSuccess(ChatRole.Function)
         case x => JsError(s"$x is not a valid message role.")
       }
     }
@@ -38,6 +39,10 @@ object JsonFormats {
     }
   }
 
+  implicit val messageSpecFormat: Format[MessageSpec] = Json.format[MessageSpec]
+  private implicit val stringAnyMapFormat: Format[Map[String, Any]] = JsonUtil.StringAnyMapFormat
+  implicit val FunctionCallSpec: Format[FunctionCallSpec] = Json.format[FunctionCallSpec]
+  implicit val functionSpecFormat: Format[FunctionSpec] = Json.format[FunctionSpec]
   implicit val chatMessageFormat: Format[ChatMessage] = Json.format[ChatMessage]
   implicit val chatCompletionChoiceInfoFormat: Format[ChatCompletionChoiceInfo] = Json.format[ChatCompletionChoiceInfo]
   implicit val chatCompletionResponseFormat: Format[ChatCompletionResponse] = Json.format[ChatCompletionResponse]

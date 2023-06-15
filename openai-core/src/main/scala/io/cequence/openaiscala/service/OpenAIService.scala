@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.service
 
-import io.cequence.openaiscala.domain.MessageSpec
+import io.cequence.openaiscala.domain.{FunctionSpec, MessageSpec}
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
 
@@ -61,17 +61,34 @@ trait OpenAIService extends OpenAIServiceConsts {
   ): Future[TextCompletionResponse]
 
   /**
-   * Creates a completion for the chat message(s).
+   * Creates a model response for the given chat conversation.
    *
-   * @param messages The messages to generate chat completions.
+   * @param messages A list of messages comprising the conversation so far.
    * @param settings
    * @return chat completion response
-   *
    * @see <a href="https://platform.openai.com/docs/api-reference/chat/create">OpenAI Doc</a>
    */
   def createChatCompletion(
     messages: Seq[MessageSpec],
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
+  ): Future[ChatCompletionResponse]
+
+  /**
+   * Creates a model response for the given chat conversation expecting a function call.
+   *
+   * @param messages             A list of messages comprising the conversation so far.
+   * @param functions            A list of functions the model may generate JSON inputs for.
+   * @param responseFunctionName If specified it forces the model to respond with a call to that function (must be listed in `functions`).
+   *                             Otherwise, the default "auto" mode is used where the model can pick between an end-user or calling a function.
+   * @param settings
+   * @return chat completion response
+   * @see <a href="https://platform.openai.com/docs/api-reference/chat/create">OpenAI Doc</a>
+   */
+  def createChatCompletionForFunctions(
+    messages: Seq[MessageSpec],
+    functions: Seq[FunctionSpec],
+    responseFunctionName: Option[String] = None,
+    settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletionForFunctions
   ): Future[ChatCompletionResponse]
 
   /**

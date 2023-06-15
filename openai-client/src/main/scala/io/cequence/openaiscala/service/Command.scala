@@ -59,4 +59,6 @@ object Tag {
   case object classification_positive_class extends Tag
   case object classification_betas extends Tag
   case object language extends Tag
+  case object functions extends Tag
+  case object function_call extends Tag
 }
