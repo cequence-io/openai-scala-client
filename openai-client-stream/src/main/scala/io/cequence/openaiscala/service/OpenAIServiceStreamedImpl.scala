@@ -15,12 +15,7 @@ import play.api.libs.json.{JsValue, Json}
 import scala.concurrent.ExecutionContext
 
 /**
- * Private impl. class of [[OpenAIService]].
- *
- * @param apiKey
- * @param orgId
- * @param ec
- * @param materializer
+ * Private impl. class of [[OpenAIServiceStreamedExtra]] which offers extra functions with streaming support.
  *
  * @since Jan 2023
  */
@@ -32,7 +27,7 @@ private trait OpenAIServiceStreamedExtraImpl extends OpenAIServiceStreamedExtra 
     settings: CreateCompletionSettings
   ): Source[TextCompletionResponse, NotUsed] =
     execJsonStreamAux(
-      Command.completions,
+      EndPoint.completions,
       "POST",
       bodyParams = createBodyParamsForCompletion(prompt, settings, stream = true)
     ).map { (json: JsValue) =>
@@ -48,7 +43,7 @@ private trait OpenAIServiceStreamedExtraImpl extends OpenAIServiceStreamedExtra 
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
   ): Source[ChatCompletionChunkResponse, NotUsed] =
     execJsonStreamAux(
-      Command.chat_completions,
+      EndPoint.chat_completions,
       "POST",
       bodyParams = createBodyParamsForChatCompletion(messages, settings, stream = true)
     ).map { (json: JsValue) =>
@@ -63,11 +58,11 @@ private trait OpenAIServiceStreamedExtraImpl extends OpenAIServiceStreamedExtra 
     fineTuneId: String
   ): Source[FineTuneEvent, NotUsed] =
     execJsonStreamAux(
-      Command.fine_tunes,
+      EndPoint.fine_tunes,
       "GET",
       endPointParam = Some(s"$fineTuneId/events"),
       params = Seq(
-        Tag.stream -> Some(true)
+        Param.stream -> Some(true)
       )
     ).map { json =>
       (json \ "error").toOption.map { error =>

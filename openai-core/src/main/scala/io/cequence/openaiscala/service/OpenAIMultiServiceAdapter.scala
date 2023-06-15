@@ -15,8 +15,8 @@ private trait OpenAIMultiServiceAdapter extends OpenAIServiceWrapper {
   ): Future[T] =
     fun(underlyings(calcIndex))
 
-  override def close =
-    underlyings.foreach(_.close)
+  override def close() =
+    underlyings.foreach(_.close())
 }
 
 private class OpenAIMultiServiceRotationAdapter(
@@ -41,11 +41,17 @@ private class OpenAIMultiServiceRandomAccessAdapter(
  */
 object OpenAIMultiServiceAdapter {
 
-  // maybe calling it "round robin" would be better?
+  @deprecated("Use ofRoundRobinType instead")
   def ofRotationType(underlyings: OpenAIService*): OpenAIService =
+    ofRoundRobinType(underlyings:_*)
+
+  @deprecated("Use ofRandomOrderType instead")
+  def ofRandomAccessType(underlyings: OpenAIService*): OpenAIService =
+    ofRandomOrderType(underlyings:_*)
+
+  def ofRoundRobinType(underlyings: OpenAIService*): OpenAIService =
     new OpenAIMultiServiceRotationAdapter(underlyings)
 
-  // TODO: rename to ofRandomOrder
-  def ofRandomAccessType(underlyings: OpenAIService*): OpenAIService =
+  def ofRandomOrderType(underlyings: OpenAIService*): OpenAIService =
     new OpenAIMultiServiceRandomAccessAdapter(underlyings)
 }

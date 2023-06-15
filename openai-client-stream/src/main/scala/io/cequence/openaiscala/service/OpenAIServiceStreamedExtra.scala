@@ -2,7 +2,7 @@ package io.cequence.openaiscala.service
 
 import akka.NotUsed
 import akka.stream.scaladsl.Source
-import io.cequence.openaiscala.domain.MessageSpec
+import io.cequence.openaiscala.domain.{FunctionSpec, MessageSpec}
 import io.cequence.openaiscala.domain.response.{ChatCompletionChunkResponse, ChatCompletionResponse, FineTuneEvent, TextCompletionResponse}
 import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, CreateCompletionSettings}
 
@@ -29,7 +29,7 @@ trait OpenAIServiceStreamedExtra extends OpenAIServiceConsts {
   /**
    * Creates a completion for the chat message(s) with streamed results.
    *
-   * @param messages The messages to generate chat completions.
+   * @param messages A list of messages comprising the conversation so far.
    * @param settings
    * @return chat completion response
    *

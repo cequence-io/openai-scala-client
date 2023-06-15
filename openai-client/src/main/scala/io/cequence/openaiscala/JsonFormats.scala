@@ -1,7 +1,7 @@
 package io.cequence.openaiscala
 
 import io.cequence.openaiscala.JsonUtil.JsonOps
-import io.cequence.openaiscala.domain.ChatRole
+import io.cequence.openaiscala.domain.{ChatRole, FunMessageSpec, FunctionCallSpec, FunctionSpec, MessageSpec}
 
 import java.{util => ju}
 import io.cequence.openaiscala.domain.response._
@@ -29,6 +29,7 @@ object JsonFormats {
         case "user" => JsSuccess(ChatRole.User)
         case "assistant" => JsSuccess(ChatRole.Assistant)
         case "system" => JsSuccess(ChatRole.System)
+        case "function" => JsSuccess(ChatRole.Function)
         case x => JsError(s"$x is not a valid message role.")
       }
     }
@@ -38,11 +39,23 @@ object JsonFormats {
     }
   }
 
-  implicit val chatMessageFormat: Format[ChatMessage] = Json.format[ChatMessage]
+  implicit val functionCallSpecFormat: Format[FunctionCallSpec] = Json.format[FunctionCallSpec]
+  implicit val messageSpecFormat: Format[MessageSpec] = Json.format[MessageSpec]
+  implicit val funMessageSpecFormat: Format[FunMessageSpec] = Json.format[FunMessageSpec]
+
+  implicit val functionSpecFormat: Format[FunctionSpec] = {
+    // use just here for FunctionSpec
+    implicit val stringAnyMapFormat: Format[Map[String, Any]] = JsonUtil.StringAnyMapFormat
+    Json.format[FunctionSpec]
+  }
+
   implicit val chatCompletionChoiceInfoFormat: Format[ChatCompletionChoiceInfo] = Json.format[ChatCompletionChoiceInfo]
   implicit val chatCompletionResponseFormat: Format[ChatCompletionResponse] = Json.format[ChatCompletionResponse]
 
-  implicit val chatChunkMessageFormat: Format[ChatChunkMessage] = Json.format[ChatChunkMessage]
+  implicit val chatFunCompletionChoiceInfoFormat: Format[ChatFunCompletionChoiceInfo] = Json.format[ChatFunCompletionChoiceInfo]
+  implicit val chatFunCompletionResponseFormat: Format[ChatFunCompletionResponse] = Json.format[ChatFunCompletionResponse]
+
+  implicit val chatChunkMessageFormat: Format[ChunkMessageSpec] = Json.format[ChunkMessageSpec]
   implicit val chatCompletionChoiceChunkInfoFormat: Format[ChatCompletionChoiceChunkInfo] = Json.format[ChatCompletionChoiceChunkInfo]
   implicit val chatCompletionChunkResponseFormat: Format[ChatCompletionChunkResponse] = Json.format[ChatCompletionChunkResponse]
 

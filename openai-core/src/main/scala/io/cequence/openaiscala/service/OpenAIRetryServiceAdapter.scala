@@ -18,15 +18,14 @@ private class OpenAIRetryServiceAdapter(
   ): Future[T] = {
     fun(underlying)
     // need to use StackWalker to get the caller function name
-    fun.toString()
     val functionName = StackWalkerUtil.functionName(2).get()
     retry(s"${functionName.capitalize} call failed")(
       fun(underlying)
     )
   }
 
-  override def close =
-    underlying.close
+  override def close(): Unit =
+    underlying.close()
 
   private def retry[T](
     failureMessage: String)(

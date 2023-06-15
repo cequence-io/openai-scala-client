@@ -2,14 +2,14 @@ package io.cequence.openaiscala.service
 
 import akka.stream.Materializer
 import play.api.libs.ws.StandaloneWSRequest
-import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
+import play.api.libs.json.{JsArray, JsNull, JsObject, JsValue, Json}
 import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.ConfigImplicits._
-import io.cequence.openaiscala.domain.MessageSpec
+import io.cequence.openaiscala.domain.{BaseMessageSpec, FunMessageSpec, FunctionSpec, MessageSpec}
 import io.cequence.openaiscala.service.ws.{Timeouts, WSRequestHelper}
 
 import java.io.File
@@ -32,8 +32,8 @@ private class OpenAIServiceImpl(
   implicit val ec: ExecutionContext, val materializer: Materializer
 ) extends OpenAIService with WSRequestHelper {
 
-  override protected type PEP = Command
-  override protected type PT = Tag
+  override protected type PEP = EndPoint
+  override protected type PT = Param
 
   override protected def timeouts: Timeouts =
     explTimeouts.getOrElse(
@@ -44,7 +44,7 @@ private class OpenAIServiceImpl(
     )
 
   override def listModels: Future[Seq[ModelInfo]] =
-    execGET(Command.models).map { response =>
+    execGET(EndPoint.models).map { response =>
       (response.asSafe[JsObject] \ "data").toOption.map {
         _.asSafeArray[ModelInfo]
       }.getOrElse(
@@ -56,7 +56,7 @@ private class OpenAIServiceImpl(
     modelId: String
   ): Future[Option[ModelInfo]] =
     execGETWithStatus(
-      Command.models,
+      EndPoint.models,
       Some(modelId)
     ).map { response =>
       handleNotFoundAndError(response).map(_.asSafe[ModelInfo])
@@ -67,7 +67,7 @@ private class OpenAIServiceImpl(
     settings: CreateCompletionSettings
   ): Future[TextCompletionResponse] =
     execPOST(
-      Command.completions,
+      EndPoint.completions,
       bodyParams = createBodyParamsForCompletion(prompt, settings, stream = false)
     ).map(
       _.asSafe[TextCompletionResponse]
@@ -79,30 +79,30 @@ private class OpenAIServiceImpl(
     stream: Boolean
   ) =
     jsonBodyParams(
-      Tag.prompt -> Some(prompt),
-      Tag.model -> Some(settings.model),
-      Tag.suffix -> settings.suffix,
-      Tag.max_tokens -> settings.max_tokens,
-      Tag.temperature -> settings.temperature,
-      Tag.top_p -> settings.top_p,
-      Tag.n -> settings.n,
-      Tag.stream -> Some(stream),
-      Tag.logprobs -> settings.logprobs,
-      Tag.echo -> settings.echo,
-      Tag.stop -> {
+      Param.prompt -> Some(prompt),
+      Param.model -> Some(settings.model),
+      Param.suffix -> settings.suffix,
+      Param.max_tokens -> settings.max_tokens,
+      Param.temperature -> settings.temperature,
+      Param.top_p -> settings.top_p,
+      Param.n -> settings.n,
+      Param.stream -> Some(stream),
+      Param.logprobs -> settings.logprobs,
+      Param.echo -> settings.echo,
+      Param.stop -> {
         settings.stop.size match {
           case 0 => None
           case 1 => Some(settings.stop.head)
           case _ => Some(settings.stop)
         }
       },
-      Tag.presence_penalty -> settings.presence_penalty,
-      Tag.frequency_penalty -> settings.frequency_penalty,
-      Tag.best_of -> settings.best_of,
-      Tag.logit_bias -> {
+      Param.presence_penalty -> settings.presence_penalty,
+      Param.frequency_penalty -> settings.frequency_penalty,
+      Param.best_of -> settings.best_of,
+      Param.logit_bias -> {
         if (settings.logit_bias.isEmpty) None else Some(settings.logit_bias)
       },
-      Tag.user -> settings.user
+      Param.user -> settings.user
     )
 
   override def createChatCompletion(
@@ -110,44 +110,71 @@ private class OpenAIServiceImpl(
     settings: CreateChatCompletionSettings
   ): Future[ChatCompletionResponse] =
     execPOST(
-      Command.chat_completions,
+      EndPoint.chat_completions,
       bodyParams = createBodyParamsForChatCompletion(messages, settings, stream = false)
     ).map(
       _.asSafe[ChatCompletionResponse]
     )
 
+  override def createChatFunCompletion(
+    messages: Seq[FunMessageSpec],
+    functions: Seq[FunctionSpec],
+    responseFunctionName: Option[String],
+    settings: CreateChatCompletionSettings
+  ): Future[ChatFunCompletionResponse] = {
+    val coreParams = createBodyParamsForChatCompletion(messages, settings, stream = false)
+
+    val extraParams = jsonBodyParams(
+      Param.functions -> Some(Json.toJson(functions)),
+      Param.function_call -> responseFunctionName.map(name => Map("name" -> name)), // otherwise "auto" is used by default
+    )
+
+    execPOST(
+      EndPoint.chat_completions,
+      bodyParams = coreParams ++ extraParams
+    ).map(
+      _.asSafe[ChatFunCompletionResponse]
+    )
+  }
+
   protected def createBodyParamsForChatCompletion(
-    messages: Seq[MessageSpec],
+    messages: Seq[BaseMessageSpec],
     settings: CreateChatCompletionSettings,
     stream: Boolean
   ) = {
     assert(messages.nonEmpty, "At least one message expected.")
-
-    val messageJsons = messages.map { case MessageSpec(role, content) =>
-      Json.obj("role" -> role.toString.toLowerCase, "content" -> content)
-    }
+    val messageJsons = messages.map(_ match {
+      case m: MessageSpec =>
+        Json.toJson(m)(messageSpecFormat)
+      case m: FunMessageSpec =>
+        val json = Json.toJson(m)(funMessageSpecFormat)
+        // if the content is empty, add a null value (expected by the API)
+        m.content.map(_ => json).getOrElse(
+          json.as[JsObject].+("content" -> JsNull)
+        )
+    })
 
     jsonBodyParams(
-      Tag.messages -> Some(JsArray(messageJsons)),
-      Tag.model -> Some(settings.model),
-      Tag.temperature -> settings.temperature,
-      Tag.top_p -> settings.top_p,
-      Tag.n -> settings.n,
-      Tag.stream -> Some(stream),
-      Tag.stop -> {
+      Param.messages -> Some(JsArray(messageJsons)),
+      Param.model -> Some(settings.model),
+      Param.temperature -> settings.temperature,
+      Param.top_p -> settings.top_p,
+      Param.n -> settings.n,
+      Param.stream -> Some(stream),
+      Param.stop -> {
         settings.stop.size match {
           case 0 => None
           case 1 => Some(settings.stop.head)
           case _ => Some(settings.stop)
         }
       },
-      Tag.max_tokens -> settings.max_tokens,
-      Tag.presence_penalty -> settings.presence_penalty,
-      Tag.frequency_penalty -> settings.frequency_penalty,
-      Tag.logit_bias -> {
+      Param.max_tokens -> settings.max_tokens,
+      Param.presence_penalty -> settings.presence_penalty,
+      Param.frequency_penalty -> settings.frequency_penalty,
+      Param.logit_bias -> {
         if (settings.logit_bias.isEmpty) None else Some(settings.logit_bias)
       },
-      Tag.user -> settings.user
+      Param.user -> settings.user
     )
   }
 
@@ -157,14 +184,14 @@ private class OpenAIServiceImpl(
     settings: CreateEditSettings
   ): Future[TextEditResponse] =
     execPOST(
-      Command.edits,
+      EndPoint.edits,
       bodyParams = jsonBodyParams(
-        Tag.model -> Some(settings.model),
-        Tag.input -> Some(input),
-        Tag.instruction -> Some(instruction),
-        Tag.n -> settings.n,
-        Tag.temperature -> settings.temperature,
-        Tag.top_p -> settings.top_p
+        Param.model -> Some(settings.model),
+        Param.input -> Some(input),
+        Param.instruction -> Some(instruction),
+        Param.n -> settings.n,
+        Param.temperature -> settings.temperature,
+        Param.top_p -> settings.top_p
       )
     ).map(
       _.asSafe[TextEditResponse]
@@ -175,13 +202,13 @@ private class OpenAIServiceImpl(
     settings: CreateImageSettings
   ): Future[ImageInfo] =
     execPOST(
-      Command.images_generations,
+      EndPoint.images_generations,
       bodyParams = jsonBodyParams(
-        Tag.prompt -> Some(prompt),
-        Tag.n -> settings.n,
-        Tag.size -> settings.size.map(_.toString),
-        Tag.response_format -> settings.response_format.map(_.toString),
-        Tag.user -> settings.user
+        Param.prompt -> Some(prompt),
+        Param.n -> settings.n,
+        Param.size -> settings.size.map(_.toString),
+        Param.response_format -> settings.response_format.map(_.toString),
+        Param.user -> settings.user
       )
     ).map(
       _.asSafe[ImageInfo]
@@ -194,14 +221,14 @@ private class OpenAIServiceImpl(
     settings: CreateImageSettings
   ): Future[ImageInfo] =
     execPOSTMultipart(
-      Command.images_edits,
-      fileParams = Seq((Tag.image, image, None)) ++ mask.map((Tag.mask, _, None)),
+      EndPoint.images_edits,
+      fileParams = Seq((Param.image, image, None)) ++ mask.map((Param.mask, _, None)),
       bodyParams = Seq(
-        Tag.prompt -> Some(prompt),
-        Tag.n -> settings.n,
-        Tag.size -> settings.size.map(_.toString),
-        Tag.response_format -> settings.response_format.map(_.toString),
-        Tag.user -> settings.user
+        Param.prompt -> Some(prompt),
+        Param.n -> settings.n,
+        Param.size -> settings.size.map(_.toString),
+        Param.response_format -> settings.response_format.map(_.toString),
+        Param.user -> settings.user
       )
     ).map(
       _.asSafe[ImageInfo]
@@ -212,13 +239,13 @@ private class OpenAIServiceImpl(
     settings: CreateImageSettings
   ): Future[ImageInfo] =
     execPOSTMultipart(
-      Command.images_variations,
-      fileParams = Seq((Tag.image, image, None)),
+      EndPoint.images_variations,
+      fileParams = Seq((Param.image, image, None)),
       bodyParams = Seq(
-        Tag.n -> settings.n,
-        Tag.size -> settings.size.map(_.toString),
-        Tag.response_format -> settings.response_format.map(_.toString),
-        Tag.user -> settings.user
+        Param.n -> settings.n,
+        Param.size -> settings.size.map(_.toString),
+        Param.response_format -> settings.response_format.map(_.toString),
+        Param.user -> settings.user
       )
     ).map(
       _.asSafe[ImageInfo]
@@ -229,17 +256,17 @@ private class OpenAIServiceImpl(
     settings: CreateEmbeddingsSettings
   ): Future[EmbeddingResponse] =
     execPOST(
-      Command.embeddings,
+      EndPoint.embeddings,
       bodyParams = jsonBodyParams(
-        Tag.input -> {
+        Param.input -> {
           input.size match {
             case 0 => None
             case 1 => Some(input.head)
             case _ => Some(input)
           }
         },
-        Tag.model -> Some(settings.model),
-        Tag.user -> settings.user
+        Param.model -> Some(settings.model),
+        Param.user -> settings.user
       )
     ).map(
       _.asSafe[EmbeddingResponse]
@@ -251,14 +278,14 @@ private class OpenAIServiceImpl(
     settings: CreateTranscriptionSettings
   ): Future[TranscriptResponse] =
     execPOSTMultipartWithStatusString(
-      Command.audio_transcriptions,
-      fileParams = Seq((Tag.file, file, None)),
+      EndPoint.audio_transcriptions,
+      fileParams = Seq((Param.file, file, None)),
       bodyParams = Seq(
-        Tag.prompt -> prompt,
-        Tag.model -> Some(settings.model),
-        Tag.response_format -> settings.response_format.map(_.toString),
-        Tag.temperature -> settings.temperature,
-        Tag.language -> settings.language
+        Param.prompt -> prompt,
+        Param.model -> Some(settings.model),
+        Param.response_format -> settings.response_format.map(_.toString),
+        Param.temperature -> settings.temperature,
+        Param.language -> settings.language
       )
     ).map(processAudioTranscriptResponse(settings.response_format))
 
@@ -268,13 +295,13 @@ private class OpenAIServiceImpl(
     settings: CreateTranslationSettings
   ): Future[TranscriptResponse] =
     execPOSTMultipartWithStatusString(
-      Command.audio_translations,
-      fileParams = Seq((Tag.file, file, None)),
+      EndPoint.audio_translations,
+      fileParams = Seq((Param.file, file, None)),
       bodyParams = Seq(
-        Tag.prompt -> prompt,
-        Tag.model -> Some(settings.model),
-        Tag.response_format -> settings.response_format.map(_.toString),
-        Tag.temperature -> settings.temperature
+        Param.prompt -> prompt,
+        Param.model -> Some(settings.model),
+        Param.response_format -> settings.response_format.map(_.toString),
+        Param.temperature -> settings.temperature
       )
     ).map(processAudioTranscriptResponse(settings.response_format))
 
@@ -311,7 +338,7 @@ private class OpenAIServiceImpl(
   }
 
   override def listFiles: Future[Seq[FileInfo]] =
-    execGET(Command.files).map { response =>
+    execGET(EndPoint.files).map { response =>
       (response.asSafe[JsObject] \ "data").toOption.map {
         _.asSafeArray[FileInfo]
       }.getOrElse(
@@ -325,10 +352,10 @@ private class OpenAIServiceImpl(
     settings: UploadFileSettings
   ): Future[FileInfo] =
     execPOSTMultipart(
-      Command.files,
-      fileParams = Seq((Tag.file, file, displayFileName)),
+      EndPoint.files,
+      fileParams = Seq((Param.file, file, displayFileName)),
       bodyParams = Seq(
-        Tag.purpose -> Some(settings.purpose)
+        Param.purpose -> Some(settings.purpose)
       )
     ).map(
       _.asSafe[FileInfo]
@@ -338,7 +365,7 @@ private class OpenAIServiceImpl(
     fileId: String
   ): Future[DeleteResponse] =
     execDELETEWithStatus(
-      Command.files,
+      EndPoint.files,
       endPointParam = Some(fileId)
     ).map( response =>
       handleNotFoundAndError(response).map(jsResponse =>
@@ -360,7 +387,7 @@ private class OpenAIServiceImpl(
     fileId: String
   ): Future[Option[FileInfo]] =
     execGETWithStatus(
-      Command.files,
+      EndPoint.files,
       endPointParam = Some(fileId)
     ).map { response =>
       handleNotFoundAndError(response).map(_.asSafe[FileInfo])
@@ -370,7 +397,7 @@ private class OpenAIServiceImpl(
   override def retrieveFileContent(
     fileId: String
   ): Future[Option[String]] = {
-    val endPoint = Command.files
+    val endPoint = EndPoint.files
     val endPointParam = Some(s"${fileId}/content")
 
     val request = getWSRequestOptional(Some(endPoint), endPointParam)
@@ -386,27 +413,27 @@ private class OpenAIServiceImpl(
     settings: CreateFineTuneSettings
   ): Future[FineTuneJob] =
     execPOST(
-      Command.fine_tunes,
+      EndPoint.fine_tunes,
       bodyParams = jsonBodyParams(
-        Tag.training_file -> Some(training_file),
-        Tag.validation_file -> validation_file,
-        Tag.model -> settings.model,
-        Tag.n_epochs -> settings.n_epochs,
-        Tag.batch_size -> settings.batch_size,
-        Tag.learning_rate_multiplier -> settings.learning_rate_multiplier,
-        Tag.prompt_loss_weight -> settings.prompt_loss_weight,
-        Tag.compute_classification_metrics -> settings.compute_classification_metrics,
-        Tag.classification_n_classes -> settings.classification_n_classes,
-        Tag.classification_positive_class -> settings.classification_positive_class,
-        Tag.classification_betas -> settings.classification_betas,
-        Tag.suffix -> settings.suffix
+        Param.training_file -> Some(training_file),
+        Param.validation_file -> validation_file,
+        Param.model -> settings.model,
+        Param.n_epochs -> settings.n_epochs,
+        Param.batch_size -> settings.batch_size,
+        Param.learning_rate_multiplier -> settings.learning_rate_multiplier,
+        Param.prompt_loss_weight -> settings.prompt_loss_weight,
+        Param.compute_classification_metrics -> settings.compute_classification_metrics,
+        Param.classification_n_classes -> settings.classification_n_classes,
+        Param.classification_positive_class -> settings.classification_positive_class,
+        Param.classification_betas -> settings.classification_betas,
+        Param.suffix -> settings.suffix
       )
     ).map(
       _.asSafe[FineTuneJob]
     )
 
   override def listFineTunes: Future[Seq[FineTuneJob]] =
-    execGET(Command.fine_tunes).map { response =>
+    execGET(EndPoint.fine_tunes).map { response =>
       (response.asSafe[JsObject] \ "data").toOption.map {
         _.asSafeArray[FineTuneJob]
       }.getOrElse(
@@ -418,7 +445,7 @@ private class OpenAIServiceImpl(
     fineTuneId: String
   ): Future[Option[FineTuneJob]] =
     execGETWithStatus(
-      Command.fine_tunes,
+      EndPoint.fine_tunes,
       endPointParam = Some(fineTuneId)
     ).map(response =>
       handleNotFoundAndError(response).map(_.asSafe[FineTuneJob])
@@ -428,7 +455,7 @@ private class OpenAIServiceImpl(
     fineTuneId: String
   ): Future[Option[FineTuneJob]] =
     execPOSTWithStatus(
-      Command.fine_tunes,
+      EndPoint.fine_tunes,
       endPointParam = Some(s"$fineTuneId/cancel")
     ).map(response =>
       handleNotFoundAndError(response).map(_.asSafe[FineTuneJob])
@@ -438,10 +465,10 @@ private class OpenAIServiceImpl(
     fineTuneId: String
   ): Future[Option[Seq[FineTuneEvent]]] =
     execGETWithStatus(
-      Command.fine_tunes,
+      EndPoint.fine_tunes,
       endPointParam = Some(s"$fineTuneId/events"),
       params = Seq(
-        Tag.stream -> Some(false)
+        Param.stream -> Some(false)
       )
     ).map { response =>
       handleNotFoundAndError(response).map(jsResponse =>
@@ -457,7 +484,7 @@ private class OpenAIServiceImpl(
     modelId: String
   ): Future[DeleteResponse] =
     execDELETEWithStatus(
-      Command.models,
+      EndPoint.models,
       endPointParam = Some(modelId)
     ).map( response =>
       handleNotFoundAndError(response).map(jsResponse =>
@@ -480,10 +507,10 @@ private class OpenAIServiceImpl(
     settings: CreateModerationSettings
   ): Future[ModerationResponse] =
     execPOST(
-      Command.moderations,
+      EndPoint.moderations,
       bodyParams = jsonBodyParams(
-        Tag.input -> Some(input),
-        Tag.model -> settings.model
+        Param.input -> Some(input),
+        Param.model -> settings.model
       )
     ).map(
       _.asSafe[ModerationResponse]

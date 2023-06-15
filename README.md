@@ -1,11 +1,11 @@
 # OpenAI Scala Client 🤖
-[![version](https://img.shields.io/badge/version-0.3.3-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT) ![GitHub Stars](https://img.shields.io/github/stars/cequence-io/openai-scala-client?style=social) [![Twitter Follow](https://img.shields.io/twitter/follow/0xbnd?style=social)](https://twitter.com/0xbnd)
+[![version](https://img.shields.io/badge/version-0.4.0-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT) ![GitHub Stars](https://img.shields.io/github/stars/cequence-io/openai-scala-client?style=social) [![Twitter Follow](https://img.shields.io/twitter/follow/0xbnd?style=social)](https://twitter.com/0xbnd)
 
 This is a no-nonsense async Scala client for OpenAI API supporting all the available endpoints and params **including streaming**, the newest **ChatGPT completion**, and **voice routines** (as defined [here](https://beta.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala). The supported calls are: 
 
 * **Models**: [listModels](https://platform.openai.com/docs/api-reference/models/list), and [retrieveModel](https://platform.openai.com/docs/api-reference/models/retrieve)
 * **Completions**: [createCompletion](https://platform.openai.com/docs/api-reference/completions/create)
-* **Chat Completions**: [createChatCompletion](https://platform.openai.com/docs/api-reference/chat/create)
+* **Chat Completions**: [createChatCompletion](https://platform.openai.com/docs/api-reference/chat/create), and [createChatFunCompletion](https://platform.openai.com/docs/api-reference/chat/create) **(🔥 new)**
 * **Edits**: [createEdit](https://platform.openai.com/docs/api-reference/edits/create)
 * **Images**: [createImage](https://platform.openai.com/docs/api-reference/images/create), [createImageEdit](https://platform.openai.com/docs/api-reference/images/create-edit), and [createImageVariation](https://platform.openai.com/docs/api-reference/images/create-variation)
 * **Embeddings**: [createEmbeddings](https://platform.openai.com/docs/api-reference/embeddings/create)
@@ -30,7 +30,7 @@ The currently supported Scala versions are **2.12, 2.13**, and **3**.
 To pull the library you have to add the following dependency to your *build.sbt*
 
 ```
-"io.cequence" %% "openai-scala-client" % "0.3.3"
+"io.cequence" %% "openai-scala-client" % "0.4.0"
 ```
 
 or to *pom.xml* (if you use maven)
@@ -39,11 +39,11 @@ or to *pom.xml* (if you use maven)
 <dependency>
     <groupId>io.cequence</groupId>
     <artifactId>openai-scala-client_2.12</artifactId>
-    <version>0.3.3</version>
+    <version>0.4.0</version>
 </dependency>
 ```
 
-If you want a streaming support use `"io.cequence" %% "openai-scala-client-stream" % "0.3.3"` instead.
+If you want a streaming support use `"io.cequence" %% "openai-scala-client-stream" % "0.4.0"` instead.
 
 ## Config ⚙️
 
@@ -170,7 +170,7 @@ Examples:
     println(completion.choices.head.text)
   ).runWith(Sink.ignore)
 ```
-(For this to work you need to use `OpenAIServiceStreamedFactory` from `openai-scala-client-stream` lib)
+For this to work you need to use `OpenAIServiceStreamedFactory` from `openai-scala-client-stream` lib.
 
 - Create chat completion 
 
@@ -194,23 +194,70 @@ Examples:
   }
 ```
 
+- Create chat completion for functions (🔥 new) 
+
+```scala
+  val messages = Seq(
+    FunMessageSpec(role = ChatRole.User, content = Some("What's the weather like in Boston?")),
+  )
+
+  // as a param type we can use "number", "string", "boolean", "object", "array", and "null"
+  val functions = Seq(
+    FunctionSpec(
+      name = "get_current_weather",
+      description = Some("Get the current weather in a given location"),
+      parameters = Map(
+        "type" -> "object",
+        "properties" -> Map(
+          "location" -> Map(
+            "type" -> "string",
+            "description" -> "The city and state, e.g. San Francisco, CA",
+          ),
+          "unit" -> Map(
+            "type" -> "string",
+            "enum" -> Seq("celsius", "fahrenheit")
+          )
+        ),
+        "required" -> Seq("location"),
+      )
+    )
+  )
+
+  // if we want to force the model to use the above function as a response
+  // we can do so by passing: responseFunctionName = Some("get_current_weather")`
+  service.createChatFunCompletion(
+    messages = messages,
+    functions = functions,
+    responseFunctionName = None
+  ).map { response =>
+    val chatFunCompletionMessage = response.choices.head.message
+    val functionCall = chatFunCompletionMessage.function_call
+
+    println("function call name      : " + functionCall.map(_.name).getOrElse("N/A"))
+    println("function call arguments : " + functionCall.map(_.arguments).getOrElse("N/A"))
+  }
+```
+Note that instead of `MessageSpec`, the `function_call` version of the chat completion uses the `FunMessageSpec` class to define messages - both as part of the request and the response.
+This extension of the standard chat completion is currently supported by the following `0613` models, all conveniently available in `ModelId` object:
+- `gpt-3.5-turbo-0613` (default), `gpt-3.5-turbo-16k-0613`, `gpt-4-0613`, and `gpt-4-32k-0613`.
+
 
 **✔️ Important Note**: After you are done using the service, you should close it by calling (🔥 new) `service.close`. Otherwise, the underlying resources/threads won't be released.
 
 **III. Using multiple services (🔥 new)**
 
-- Load distribution with `OpenAIMultiServiceAdapter` - _rotation type_ aka "round robin"
+- Load distribution with `OpenAIMultiServiceAdapter` - _round robin_ (_rotation_) type
 
 ```scala
   val service1 = OpenAIServiceFactory("your-api-key1")
   val service2 = OpenAIServiceFactory("your-api-key2")
   val service3 = OpenAIServiceFactory("your-api-key3")
 
-  val service = OpenAIMultiServiceAdapter.ofRotationType(service1, service2, service3)
+  val service = OpenAIMultiServiceAdapter.ofRoundRobinType(service1, service2, service3)
 
   service.listModels.map { models =>
     models.foreach(println)
-    service.close
+    service.close()
   }
 ```
 
@@ -221,11 +268,11 @@ Examples:
   val service2 = OpenAIServiceFactory("your-api-key2")
   val service3 = OpenAIServiceFactory("your-api-key3")
 
-  val service = OpenAIMultiServiceAdapter.ofRandomAccessType(service1, service2, service3)
+  val service = OpenAIMultiServiceAdapter.ofRandomOrderType(service1, service2, service3)
 
   service.listModels.map { models =>
     models.foreach(println)
-    service.close
+    service.close()
   }
 ```
 
