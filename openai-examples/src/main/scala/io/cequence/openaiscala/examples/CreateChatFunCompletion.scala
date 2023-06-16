@@ -4,7 +4,7 @@ import io.cequence.openaiscala.domain.{ChatRole, FunMessageSpec, FunctionSpec}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-object ChatFunCompletion extends Example {
+object CreateChatFunCompletion extends Example {
 
   val messages: Seq[FunMessageSpec] = Seq(
     FunMessageSpec(
@@ -58,5 +58,6 @@ object ChatFunCompletion extends Example {
             .map(_.arguments)
             .getOrElse("N/A")
         )
-      }.run()
+      }
+      .run()
 }
