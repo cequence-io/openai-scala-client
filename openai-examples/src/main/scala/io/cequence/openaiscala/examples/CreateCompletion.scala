@@ -1,8 +1,9 @@
 package io.cequence.openaiscala.examples
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
-object CreateCompletion extends Example {
+object CreateCompletion extends Example[Unit] {
   val text: String =
     """Extract the name and mailing address from this email:
       |Dear Kelly,
@@ -12,10 +13,9 @@ object CreateCompletion extends Example {
       |Maya
     """.stripMargin
 
-  def main(args: Array[String]): Unit =
+  def example: Future[Unit] =
     service
       .createCompletion(text)
       .map(completion => println(completion.choices.head.text))
-      .run()
 
 }
