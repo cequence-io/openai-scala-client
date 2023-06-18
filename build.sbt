@@ -4,6 +4,7 @@ import sbt.Keys.test
 val scala212 = "2.12.18"
 val scala213 = "2.13.11"
 val scala3 = "3.2.2"
+lazy val supportedScalaVersions = List(scala212, scala213, scala3)
 
 ThisBuild / organization := "io.cequence"
 ThisBuild / scalaVersion := scala212
@@ -11,14 +12,17 @@ ThisBuild / version := "0.4.0"
 ThisBuild / isSnapshot := false
 
 lazy val core = (project in file("openai-core"))
+  .settings(crossScalaVersions := supportedScalaVersions)
 
 lazy val client = (project in file("openai-client"))
   .dependsOn(core)
   .aggregate(core)
+  .settings(crossScalaVersions := supportedScalaVersions)
 
 lazy val client_stream = (project in file("openai-client-stream"))
   .dependsOn(client)
   .aggregate(client)
+  .settings(crossScalaVersions := supportedScalaVersions)
 
 lazy val guice = (project in file("openai-guice"))
   .dependsOn(client)
