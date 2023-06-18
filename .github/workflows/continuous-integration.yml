@@ -45,7 +45,7 @@ jobs:
           cache: 'sbt'
 
       - name: Build & Test
-        run: sbt ++${{ matrix.scala }} testWithCoverage
+        run: sbt ++${{ matrix.scala }} clean testWithCoverage
 
       - name: Upload coverage report (Cobertura)
         uses: actions/upload-artifact@v3.1.0
