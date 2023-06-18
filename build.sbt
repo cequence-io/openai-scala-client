@@ -27,6 +27,7 @@ lazy val client_stream = (project in file("openai-client-stream"))
 lazy val guice = (project in file("openai-guice"))
   .dependsOn(client)
   .aggregate(client_stream)
+  .settings(crossScalaVersions := supportedScalaVersions)
 
 // POM settings for Sonatype
 ThisBuild / homepage := Some(
