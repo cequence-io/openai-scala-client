@@ -51,13 +51,13 @@ jobs:
         uses: actions/upload-artifact@v3.1.0
         with:
           name: cobertura.xml
-          path: ${{github.workspace}}/target/scala-2.13/coverage-report/cobertura.xml
+          path: ${{github.workspace}}/target/scala-${{ matrix.scala }}/coverage-report/cobertura.xml
 
       - name: Upload coverage report (HTML)
         uses: actions/upload-artifact@v3.1.0
         with:
           name: scoverage-report-html
-          path: ${{github.workspace}}/target/scala-2.13/scoverage-report/
+          path: ${{github.workspace}}/target/scala-${{ matrix.scala }}/scoverage-report/
 
   optional-build:
     name: Build (Optional)
