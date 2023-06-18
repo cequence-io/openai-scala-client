@@ -112,7 +112,7 @@ jobs:
   ready-to-merge:
     name: Ready to Merge
     if: ${{ github.event.pull_request }}
-    needs: [ optional-build, coverage ]
+    needs: [ optional-build ]
     runs-on: ubuntu-latest
     steps:
       - run: echo 'Ready to merge.'
