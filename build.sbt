@@ -1,3 +1,5 @@
+import sbt.Keys.test
+
 // Supported versions
 val scala212 = "2.12.18"
 val scala213 = "2.13.11"
@@ -87,6 +89,7 @@ addCommandAlias(
     "coverageReport"
   ).mkString(";")
 )
+
 
 inThisBuild(
   List(
