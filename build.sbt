@@ -86,7 +86,6 @@ addCommandAlias(
   ).mkString(";")
 )
 
-
 inThisBuild(
   List(
     scalacOptions += "-Ywarn-unused",
