@@ -8,29 +8,36 @@ import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
-import io.cequence.openaiscala.ConfigImplicits._
-import io.cequence.openaiscala.domain.{BaseMessageSpec, FunMessageSpec, FunctionSpec, MessageSpec}
+import io.cequence.openaiscala.domain.{
+  BaseMessageSpec,
+  FunMessageSpec,
+  FunctionSpec,
+  MessageSpec
+}
 import io.cequence.openaiscala.service.ws.{Timeouts, WSRequestHelper}
 
 import java.io.File
 import scala.concurrent.{ExecutionContext, Future}
 
-/**
- * Private impl. class of [[OpenAIService]].
- *
- * @param apiKey
- * @param orgId
- * @param ec
- * @param materializer
- *
- * @since Jan 2023
- */
+/** Private impl. class of [[OpenAIService]].
+  *
+  * @param apiKey
+  * @param orgId
+  * @param ec
+  * @param materializer
+  *
+  * @since Jan
+  *   2023
+  */
 private class OpenAIServiceImpl(
-  apiKey: String,
-  orgId: Option[String] = None,
-  explTimeouts: Option[Timeouts] = None)(
-  implicit val ec: ExecutionContext, val materializer: Materializer
-) extends OpenAIService with WSRequestHelper {
+    apiKey: String,
+    orgId: Option[String] = None,
+    explTimeouts: Option[Timeouts] = None
+)(implicit
+    val ec: ExecutionContext,
+    val materializer: Materializer
+) extends OpenAIService
+    with WSRequestHelper {
 
   override protected type PEP = EndPoint
   override protected type PT = Param
@@ -45,15 +52,19 @@ private class OpenAIServiceImpl(
 
   override def listModels: Future[Seq[ModelInfo]] =
     execGET(EndPoint.models).map { response =>
-      (response.asSafe[JsObject] \ "data").toOption.map {
-        _.asSafeArray[ModelInfo]
-      }.getOrElse(
-        throw new OpenAIScalaClientException(s"The attribute 'data' is not present in the response: ${response.toString()}.")
-      )
+      (response.asSafe[JsObject] \ "data").toOption
+        .map {
+          _.asSafeArray[ModelInfo]
+        }
+        .getOrElse(
+          throw new OpenAIScalaClientException(
+            s"The attribute 'data' is not present in the response: ${response.toString()}."
+          )
+        )
     }
 
   override def retrieveModel(
-    modelId: String
+      modelId: String
   ): Future[Option[ModelInfo]] =
     execGETWithStatus(
       EndPoint.models,
@@ -63,21 +74,22 @@ private class OpenAIServiceImpl(
     }
 
   override def createCompletion(
-    prompt: String,
-    settings: CreateCompletionSettings
+      prompt: String,
+      settings: CreateCompletionSettings
   ): Future[TextCompletionResponse] =
     execPOST(
       EndPoint.completions,
-      bodyParams = createBodyParamsForCompletion(prompt, settings, stream = false)
+      bodyParams =
+        createBodyParamsForCompletion(prompt, settings, stream = false)
     ).map(
       _.asSafe[TextCompletionResponse]
     )
 
   protected def createBodyParamsForCompletion(
-    prompt: String,
-    settings: CreateCompletionSettings,
-    stream: Boolean
-  ) =
+      prompt: String,
+      settings: CreateCompletionSettings,
+      stream: Boolean
+  ): Seq[(Param, Option[JsValue])] =
     jsonBodyParams(
       Param.prompt -> Some(prompt),
       Param.model -> Some(settings.model),
@@ -106,27 +118,31 @@ private class OpenAIServiceImpl(
     )
 
   override def createChatCompletion(
-    messages: Seq[MessageSpec],
-    settings: CreateChatCompletionSettings
+      messages: Seq[MessageSpec],
+      settings: CreateChatCompletionSettings
   ): Future[ChatCompletionResponse] =
     execPOST(
       EndPoint.chat_completions,
-      bodyParams = createBodyParamsForChatCompletion(messages, settings, stream = false)
+      bodyParams =
+        createBodyParamsForChatCompletion(messages, settings, stream = false)
     ).map(
       _.asSafe[ChatCompletionResponse]
     )
 
   override def createChatFunCompletion(
-    messages: Seq[FunMessageSpec],
-    functions: Seq[FunctionSpec],
-    responseFunctionName: Option[String],
-    settings: CreateChatCompletionSettings
+      messages: Seq[FunMessageSpec],
+      functions: Seq[FunctionSpec],
+      responseFunctionName: Option[String],
+      settings: CreateChatCompletionSettings
   ): Future[ChatFunCompletionResponse] = {
-    val coreParams = createBodyParamsForChatCompletion(messages, settings, stream = false)
+    val coreParams =
+      createBodyParamsForChatCompletion(messages, settings, stream = false)
 
     val extraParams = jsonBodyParams(
       Param.functions -> Some(Json.toJson(functions)),
-      Param.function_call -> responseFunctionName.map(name => Map("name" -> name)), // otherwise "auto" is used by default
+      Param.function_call -> responseFunctionName.map(name =>
+        Map("name" -> name)
+      ) // otherwise "auto" is used by default
     )
 
     execPOST(
@@ -138,10 +154,10 @@ private class OpenAIServiceImpl(
   }
 
   protected def createBodyParamsForChatCompletion(
-    messages: Seq[BaseMessageSpec],
-    settings: CreateChatCompletionSettings,
-    stream: Boolean
-  ) = {
+      messages: Seq[BaseMessageSpec],
+      settings: CreateChatCompletionSettings,
+      stream: Boolean
+  ): Seq[(Param, Option[JsValue])] = {
     assert(messages.nonEmpty, "At least one message expected.")
     val messageJsons = messages.map(_ match {
       case m: MessageSpec =>
@@ -149,9 +165,11 @@ private class OpenAIServiceImpl(
       case m: FunMessageSpec =>
         val json = Json.toJson(m)(funMessageSpecFormat)
         // if the content is empty, add a null value (expected by the API)
-        m.content.map(_ => json).getOrElse(
-          json.as[JsObject].+("content" -> JsNull)
-        )
+        m.content
+          .map(_ => json)
+          .getOrElse(
+            json.as[JsObject].+("content" -> JsNull)
+          )
     })
 
     jsonBodyParams(
@@ -179,9 +197,9 @@ private class OpenAIServiceImpl(
   }
 
   override def createEdit(
-    input: String,
-    instruction: String,
-    settings: CreateEditSettings
+      input: String,
+      instruction: String,
+      settings: CreateEditSettings
   ): Future[TextEditResponse] =
     execPOST(
       EndPoint.edits,
@@ -198,8 +216,8 @@ private class OpenAIServiceImpl(
     )
 
   override def createImage(
-    prompt: String,
-    settings: CreateImageSettings
+      prompt: String,
+      settings: CreateImageSettings
   ): Future[ImageInfo] =
     execPOST(
       EndPoint.images_generations,
@@ -215,14 +233,15 @@ private class OpenAIServiceImpl(
     )
 
   override def createImageEdit(
-    prompt: String,
-    image: File,
-    mask: Option[File] = None,
-    settings: CreateImageSettings
+      prompt: String,
+      image: File,
+      mask: Option[File] = None,
+      settings: CreateImageSettings
   ): Future[ImageInfo] =
     execPOSTMultipart(
       EndPoint.images_edits,
-      fileParams = Seq((Param.image, image, None)) ++ mask.map((Param.mask, _, None)),
+      fileParams =
+        Seq((Param.image, image, None)) ++ mask.map((Param.mask, _, None)),
       bodyParams = Seq(
         Param.prompt -> Some(prompt),
         Param.n -> settings.n,
@@ -235,8 +254,8 @@ private class OpenAIServiceImpl(
     )
 
   override def createImageVariation(
-    image: File,
-    settings: CreateImageSettings
+      image: File,
+      settings: CreateImageSettings
   ): Future[ImageInfo] =
     execPOSTMultipart(
       EndPoint.images_variations,
@@ -252,8 +271,8 @@ private class OpenAIServiceImpl(
     )
 
   override def createEmbeddings(
-    input: Seq[String],
-    settings: CreateEmbeddingsSettings
+      input: Seq[String],
+      settings: CreateEmbeddingsSettings
   ): Future[EmbeddingResponse] =
     execPOST(
       EndPoint.embeddings,
@@ -273,9 +292,9 @@ private class OpenAIServiceImpl(
     )
 
   override def createAudioTranscription(
-    file: File,
-    prompt: Option[String],
-    settings: CreateTranscriptionSettings
+      file: File,
+      prompt: Option[String],
+      settings: CreateTranscriptionSettings
   ): Future[TranscriptResponse] =
     execPOSTMultipartWithStatusString(
       EndPoint.audio_transcriptions,
@@ -290,9 +309,9 @@ private class OpenAIServiceImpl(
     ).map(processAudioTranscriptResponse(settings.response_format))
 
   override def createAudioTranslation(
-    file: File,
-    prompt: Option[String],
-    settings: CreateTranslationSettings
+      file: File,
+      prompt: Option[String],
+      settings: CreateTranslationSettings
   ): Future[TranscriptResponse] =
     execPOSTMultipartWithStatusString(
       EndPoint.audio_translations,
@@ -306,17 +325,22 @@ private class OpenAIServiceImpl(
     ).map(processAudioTranscriptResponse(settings.response_format))
 
   private def processAudioTranscriptResponse(
-    responseFormat: Option[TranscriptResponseFormatType])(
-    stringRichResponse: RichStringResponse
+      responseFormat: Option[TranscriptResponseFormatType]
+  )(
+      stringRichResponse: RichStringResponse
   ) = {
     val stringResponse = handleErrorResponse(stringRichResponse)
 
     def textFromJsonString(json: JsValue) =
-      (json.asSafe[JsObject] \ "text").toOption.map {
-        _.asSafe[String]
-      }.getOrElse(
-        throw new OpenAIScalaClientException(s"The attribute 'text' is not present in the response: ${stringResponse}.")
-      )
+      (json.asSafe[JsObject] \ "text").toOption
+        .map {
+          _.asSafe[String]
+        }
+        .getOrElse(
+          throw new OpenAIScalaClientException(
+            s"The attribute 'text' is not present in the response: ${stringResponse}."
+          )
+        )
 
     val FormatType = TranscriptResponseFormatType
 
@@ -339,17 +363,21 @@ private class OpenAIServiceImpl(
 
   override def listFiles: Future[Seq[FileInfo]] =
     execGET(EndPoint.files).map { response =>
-      (response.asSafe[JsObject] \ "data").toOption.map {
-        _.asSafeArray[FileInfo]
-      }.getOrElse(
-        throw new OpenAIScalaClientException(s"The attribute 'data' is not present in the response: ${response.toString()}.")
-      )
+      (response.asSafe[JsObject] \ "data").toOption
+        .map {
+          _.asSafeArray[FileInfo]
+        }
+        .getOrElse(
+          throw new OpenAIScalaClientException(
+            s"The attribute 'data' is not present in the response: ${response.toString()}."
+          )
+        )
     }
 
   override def uploadFile(
-    file: File,
-    displayFileName: Option[String],
-    settings: UploadFileSettings
+      file: File,
+      displayFileName: Option[String],
+      settings: UploadFileSettings
   ): Future[FileInfo] =
     execPOSTMultipart(
       EndPoint.files,
@@ -362,29 +390,35 @@ private class OpenAIServiceImpl(
     )
 
   override def deleteFile(
-    fileId: String
+      fileId: String
   ): Future[DeleteResponse] =
     execDELETEWithStatus(
       EndPoint.files,
       endPointParam = Some(fileId)
-    ).map( response =>
-      handleNotFoundAndError(response).map(jsResponse =>
-        (jsResponse \ "deleted").toOption.map {
-          _.asSafe[Boolean] match {
-            case true => DeleteResponse.Deleted
-            case false => DeleteResponse.NotDeleted
-          }
-        }.getOrElse(
-          throw new OpenAIScalaClientException(s"The attribute 'deleted' is not present in the response: ${response.toString()}.")
+    ).map(response =>
+      handleNotFoundAndError(response)
+        .map(jsResponse =>
+          (jsResponse \ "deleted").toOption
+            .map {
+              _.asSafe[Boolean] match {
+                case true  => DeleteResponse.Deleted
+                case false => DeleteResponse.NotDeleted
+              }
+            }
+            .getOrElse(
+              throw new OpenAIScalaClientException(
+                s"The attribute 'deleted' is not present in the response: ${response.toString()}."
+              )
+            )
         )
-      ).getOrElse(
-        // we got a not-found http code (404)
-        DeleteResponse.NotFound
-      )
+        .getOrElse(
+          // we got a not-found http code (404)
+          DeleteResponse.NotFound
+        )
     )
 
   override def retrieveFile(
-    fileId: String
+      fileId: String
   ): Future[Option[FileInfo]] =
     execGETWithStatus(
       EndPoint.files,
@@ -395,7 +429,7 @@ private class OpenAIServiceImpl(
 
   // because the output type here is string we need to do bit of a manual request building and calling
   override def retrieveFileContent(
-    fileId: String
+      fileId: String
   ): Future[Option[String]] = {
     val endPoint = EndPoint.files
     val endPointParam = Some(s"${fileId}/content")
@@ -408,9 +442,9 @@ private class OpenAIServiceImpl(
   }
 
   override def createFineTune(
-    training_file: String,
-    validation_file: Option[String] = None,
-    settings: CreateFineTuneSettings
+      training_file: String,
+      validation_file: Option[String] = None,
+      settings: CreateFineTuneSettings
   ): Future[FineTuneJob] =
     execPOST(
       EndPoint.fine_tunes,
@@ -434,15 +468,19 @@ private class OpenAIServiceImpl(
 
   override def listFineTunes: Future[Seq[FineTuneJob]] =
     execGET(EndPoint.fine_tunes).map { response =>
-      (response.asSafe[JsObject] \ "data").toOption.map {
-        _.asSafeArray[FineTuneJob]
-      }.getOrElse(
-        throw new OpenAIScalaClientException(s"The attribute 'data' is not present in the response: ${response.toString()}.")
-      )
+      (response.asSafe[JsObject] \ "data").toOption
+        .map {
+          _.asSafeArray[FineTuneJob]
+        }
+        .getOrElse(
+          throw new OpenAIScalaClientException(
+            s"The attribute 'data' is not present in the response: ${response.toString()}."
+          )
+        )
     }
 
   override def retrieveFineTune(
-    fineTuneId: String
+      fineTuneId: String
   ): Future[Option[FineTuneJob]] =
     execGETWithStatus(
       EndPoint.fine_tunes,
@@ -452,7 +490,7 @@ private class OpenAIServiceImpl(
     )
 
   override def cancelFineTune(
-    fineTuneId: String
+      fineTuneId: String
   ): Future[Option[FineTuneJob]] =
     execPOSTWithStatus(
       EndPoint.fine_tunes,
@@ -462,7 +500,7 @@ private class OpenAIServiceImpl(
     )
 
   override def listFineTuneEvents(
-    fineTuneId: String
+      fineTuneId: String
   ): Future[Option[Seq[FineTuneEvent]]] =
     execGETWithStatus(
       EndPoint.fine_tunes,
@@ -472,39 +510,49 @@ private class OpenAIServiceImpl(
       )
     ).map { response =>
       handleNotFoundAndError(response).map(jsResponse =>
-        (jsResponse.asSafe[JsObject] \ "data").toOption.map {
-          _.asSafeArray[FineTuneEvent]
-        }.getOrElse(
-          throw new OpenAIScalaClientException(s"The attribute 'data' is not present in the response: ${response.toString()}.")
-        )
+        (jsResponse.asSafe[JsObject] \ "data").toOption
+          .map {
+            _.asSafeArray[FineTuneEvent]
+          }
+          .getOrElse(
+            throw new OpenAIScalaClientException(
+              s"The attribute 'data' is not present in the response: ${response.toString()}."
+            )
+          )
       )
     }
 
   override def deleteFineTuneModel(
-    modelId: String
+      modelId: String
   ): Future[DeleteResponse] =
     execDELETEWithStatus(
       EndPoint.models,
       endPointParam = Some(modelId)
-    ).map( response =>
-      handleNotFoundAndError(response).map(jsResponse =>
-        (jsResponse \ "deleted").toOption.map {
-          _.asSafe[Boolean] match {
-            case true => DeleteResponse.Deleted
-            case false => DeleteResponse.NotDeleted
-          }
-        }.getOrElse(
-          throw new OpenAIScalaClientException(s"The attribute 'deleted' is not present in the response: ${response.toString()}.")
+    ).map(response =>
+      handleNotFoundAndError(response)
+        .map(jsResponse =>
+          (jsResponse \ "deleted").toOption
+            .map {
+              _.asSafe[Boolean] match {
+                case true  => DeleteResponse.Deleted
+                case false => DeleteResponse.NotDeleted
+              }
+            }
+            .getOrElse(
+              throw new OpenAIScalaClientException(
+                s"The attribute 'deleted' is not present in the response: ${response.toString()}."
+              )
+            )
         )
-      ).getOrElse(
-        // we got a not-found http code (404)
-        DeleteResponse.NotFound
-      )
+        .getOrElse(
+          // we got a not-found http code (404)
+          DeleteResponse.NotFound
+        )
     )
 
   override def createModeration(
-    input: String,
-    settings: CreateModerationSettings
+      input: String,
+      settings: CreateModerationSettings
   ): Future[ModerationResponse] =
     execPOST(
       EndPoint.moderations,
@@ -519,34 +567,36 @@ private class OpenAIServiceImpl(
   // aux
 
   override protected def getWSRequestOptional(
-    endPoint: Option[PEP],
-    endPointParam: Option[String],
-    params: Seq[(PT, Option[Any])] = Nil
-  ) =
+      endPoint: Option[PEP],
+      endPointParam: Option[String],
+      params: Seq[(PT, Option[Any])] = Nil
+  ): StandaloneWSRequest#Self =
     addHeaders(super.getWSRequestOptional(endPoint, endPointParam, params))
 
   override protected def getWSRequest(
-    endPoint: Option[PEP],
-    endPointParam: Option[String],
-    params: Seq[(PT, Any)] = Nil
-  ) =
+      endPoint: Option[PEP],
+      endPointParam: Option[String],
+      params: Seq[(PT, Any)] = Nil
+  ): StandaloneWSRequest#Self =
     addHeaders(super.getWSRequest(endPoint, endPointParam, params))
 
   private def addHeaders(request: StandaloneWSRequest) = {
     val orgIdHeader = orgId.map(("OpenAI-Organization", _))
     val headers = orgIdHeader ++: Seq(("Authorization", s"Bearer $apiKey"))
 
-    request.addHttpHeaders(headers :_*)
+    request.addHttpHeaders(headers: _*)
   }
 }
 
 object OpenAIServiceFactory extends OpenAIServiceFactoryHelper[OpenAIService] {
 
   override def apply(
-    apiKey: String,
-    orgId: Option[String] = None,
-    timeouts: Option[Timeouts] = None)(
-    implicit ec: ExecutionContext, materializer: Materializer
+      apiKey: String,
+      orgId: Option[String] = None,
+      timeouts: Option[Timeouts] = None
+  )(implicit
+      ec: ExecutionContext,
+      materializer: Materializer
   ): OpenAIService =
     new OpenAIServiceImpl(apiKey, orgId, timeouts)
 }

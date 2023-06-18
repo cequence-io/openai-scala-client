@@ -1,10 +1,10 @@
 package io.cequence.openaiscala.domain
 
-/**
- * OpenAI models available as of `2023-03-07`.
- *
- * @since Jan 2023
- */
+/** OpenAI models available as of `2023-03-07`.
+  *
+  * @since Jan
+  *   2023
+  */
 object ModelId {
 
   // Ada
@@ -92,23 +92,31 @@ object ModelId {
   val whisper_1_2 = "whisper-1.2"
 
   // GPT-3.5 (ChatGPT)
-  val gpt_3_5_turbo = "gpt-3.5-turbo" // 4k context, uses the version 0301 till June 27th, then 0613
+  val gpt_3_5_turbo =
+    "gpt-3.5-turbo" // 4k context, uses the version 0301 till June 27th, then 0613
   @Deprecated // supported till 09/13/2023
-  val gpt_3_5_turbo_0301 = "gpt-3.5-turbo-0301" // 4k context (March 1st snapshot)
-  val gpt_3_5_turbo_0613 = "gpt-3.5-turbo-0613" // 4k context (June 13th snapshot), fine-tuned for function calling
+  val gpt_3_5_turbo_0301 =
+    "gpt-3.5-turbo-0301" // 4k context (March 1st snapshot)
+  val gpt_3_5_turbo_0613 =
+    "gpt-3.5-turbo-0613" // 4k context (June 13th snapshot), fine-tuned for function calling
   val gpt_3_5_turbo_16k = "gpt-3.5-turbo-16k" // 16k context
-  val gpt_3_5_turbo_16k_0613 = "gpt-3.5-turbo-16k-0613" // 16k context (June 13th snapshot), fine-tuned for function calling
+  val gpt_3_5_turbo_16k_0613 =
+    "gpt-3.5-turbo-16k-0613" // 16k context (June 13th snapshot), fine-tuned for function calling
 
   // GPT-4
-  val gpt_4 = "gpt-4" // 8k context, uses the version 0301 till June 27th, then 0613
+  val gpt_4 =
+    "gpt-4" // 8k context, uses the version 0301 till June 27th, then 0613
   @Deprecated // supported till 09/13/2023
   val gpt_4_0314 = "gpt-4-0314" // 8k context (March 14th snapshot)
-  val gpt_4_0613 = "gpt-4-0613" // 8k context (June 13th snapshot), fine-tuned for function calling
+  val gpt_4_0613 =
+    "gpt-4-0613" // 8k context (June 13th snapshot), fine-tuned for function calling
 
-  val gpt_4_32k = "gpt-4-32k" // 32k context, uses the version 0314 till June 27th, then 0613
+  val gpt_4_32k =
+    "gpt-4-32k" // 32k context, uses the version 0314 till June 27th, then 0613
   @Deprecated // supported till 09/13/2023
   val gpt_4_32k_0314 = "gpt-4-32k-0314" // 32k context (March 14th snapshot)
-  val gpt_4_32k_0613 = "gpt-4-32k-0613" // 32k context (June 13th snapshot), fine-tuned for function calling
+  val gpt_4_32k_0613 =
+    "gpt-4-32k-0613" // 32k context (June 13th snapshot), fine-tuned for function calling
 
   // Other
   @Deprecated
