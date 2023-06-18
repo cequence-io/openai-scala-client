@@ -32,7 +32,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        scala: [ '2.12.15', '2.13.10', '3.2.2' ]
+        scala: [ '2.12.15', '2.13.11', '3.2.2' ]
 
     steps:
       - uses: actions/checkout@v3
