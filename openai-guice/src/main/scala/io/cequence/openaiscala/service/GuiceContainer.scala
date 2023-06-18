@@ -3,21 +3,17 @@ package io.cequence.openaiscala.service
 import akka.actor.ActorSystem
 import com.google.inject.{Guice, Injector, Module}
 import com.typesafe.config.Config
-import net.codingwell.scalaguice.InjectorExtensions._
-import scala.concurrent.duration._
 
+import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
+import scala.reflect.ClassTag
 
 trait GuiceContainer {
 
-  protected def modules: Seq[Module]
-
   protected lazy val injector: Injector = Guice.createInjector(modules: _*)
-
   protected lazy val config: Config = instance[Config]
 
-  // TODO: for Scala3 this function has to be "inlined"
-  protected def instance[T: Manifest]: T = injector.instance[T]
+  protected def modules: Seq[Module]
 
   protected def result[T](future: Future[T]): T =
     Await.result(future, 100.minutes)
@@ -27,4 +23,8 @@ trait GuiceContainer {
     system.terminate
     Await.result(system.whenTerminated, 1.day)
   }
+
+  protected def instance[T: ClassTag]: T = injector.getInstance(
+    implicitly[ClassTag[T]].runtimeClass.asInstanceOf[Class[T]]
+  )
 }
