@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.service
 
 import akka.actor.ActorSystem
-import com.google.inject.{Guice, Injector, Module}
+import com.google.inject.{AbstractModule, Guice, Injector}
 import com.typesafe.config.Config
 
 import scala.concurrent.duration._
@@ -13,7 +13,7 @@ trait GuiceContainer {
   protected lazy val injector: Injector = Guice.createInjector(modules: _*)
   protected lazy val config: Config = instance[Config]
 
-  protected def modules: Seq[Module]
+  protected def modules: Seq[AbstractModule]
 
   protected def result[T](future: Future[T]): T =
     Await.result(future, 100.minutes)
