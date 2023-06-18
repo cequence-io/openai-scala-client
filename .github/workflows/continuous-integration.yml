@@ -70,12 +70,12 @@ jobs:
       matrix:
         distribution: [ 'corretto' ]
         jdk: [ '11' ]
-        scala: [ '2.12.15', '2.13.10', '3.2.2' ]
+        scala: [ '2.12.15', '2.13.11', '3.2.2' ]
         experimental: [ false ]
         include:
           - jdk: '17'
             distribution: 'corretto'
-            scala: '2.13.10'
+            scala: '2.13.11'
             experimental: true
 
     steps:
