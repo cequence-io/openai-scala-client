@@ -11,7 +11,7 @@ import io.cequence.openaiscala.domain.{
 
 import io.cequence.openaiscala.domain.response._
 import play.api.libs.functional.syntax._
-import play.api.libs.json.{Format, Json, _}
+import play.api.libs.json._
 
 object JsonFormats {
   JsonUtil.SecDateFormat
@@ -21,8 +21,40 @@ object JsonFormats {
 
   implicit val usageInfoFormat: Format[UsageInfo] = Json.format[UsageInfo]
 
-  JsonUtil.StringDoubleMapFormat
-  JsonUtil.StringStringMapFormat
+  implicit object StringDoubleMapFormat extends Format[Map[String, Double]] {
+    override def reads(json: JsValue): JsResult[Map[String, Double]] = {
+      val resultJsons = json.asSafe[JsObject].fields.map {
+        case (fieldName, jsValue) => (fieldName, jsValue.as[Double])
+      }
+      JsSuccess(resultJsons.toMap)
+    }
+
+    override def writes(o: Map[String, Double]): JsValue = {
+      val fields = o.map { case (fieldName, value) =>
+        (fieldName, JsNumber(value))
+      }
+      JsObject(fields)
+    }
+  }
+
+  implicit object StringStringMapFormat extends Format[Map[String, String]] {
+    override def reads(json: JsValue): JsResult[Map[String, String]] = {
+      val resultJsons = json.asSafe[JsObject].fields.map {
+        case (fieldName, jsValue) => (fieldName, jsValue.as[String])
+      }
+      JsSuccess(resultJsons.toMap)
+    }
+
+    override def writes(o: Map[String, String]): JsValue = {
+      val fields = o.map { case (fieldName, value) =>
+        (fieldName, JsString(value))
+      }
+      JsObject(fields)
+    }
+  }
+
+//  JsonUtil.StringDoubleMapFormat
+//  JsonUtil.StringStringMapFormat
 
   implicit val logprobsInfoFormat: Format[LogprobsInfo] =
     Json.format[LogprobsInfo]

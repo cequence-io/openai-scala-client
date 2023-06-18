@@ -1,13 +1,22 @@
 package io.cequence.openaiscala
 
-import java.{util => ju}
 import play.api.libs.json._
 
 import java.util.Date
+import java.{util => ju}
 
 object JsonUtil {
 
   implicit class JsonOps(val json: JsValue) {
+    def asSafeArray[T](implicit fjs: Reads[T]): Seq[T] =
+      json
+        .asSafe[JsArray]
+        .value
+        .toSeq
+        .map(
+          _.asSafe[T]
+        )
+
     def asSafe[T](implicit fjs: Reads[T]): T =
       try {
         json.validate[T] match {
@@ -28,38 +37,6 @@ object JsonUtil {
             s"Error thrown while processing a JSON '$json'. Cause: ${e.getMessage}"
           )
       }
-
-    def asSafeArray[T](implicit fjs: Reads[T]): Seq[T] =
-      json
-        .asSafe[JsArray]
-        .value
-        .toSeq
-        .map(
-          _.asSafe[T]
-        )
-  }
-
-  object SecDateFormat extends Format[ju.Date] {
-    override def reads(json: JsValue): JsResult[Date] = {
-      json match {
-        case JsString(s) =>
-          try {
-            val millis = s.toLong * 1000
-            JsSuccess(new ju.Date(millis))
-          } catch {
-            case _: NumberFormatException => JsError(s"$s is not a number.")
-          }
-
-        case JsNumber(n) =>
-          val millis = (n * 1000).toLong
-          JsSuccess(new ju.Date(millis))
-
-        case _ => JsError(s"String or number expected but got '$json'.")
-      }
-    }
-
-    override def writes(o: Date): JsValue =
-      JsNumber(Math.round(o.getTime.toDouble / 1000))
   }
 
   def toJson(value: Any): JsValue =
@@ -90,36 +67,27 @@ object JsonUtil {
           )
       }
 
-  object StringDoubleMapFormat extends Format[Map[String, Double]] {
-    override def reads(json: JsValue): JsResult[Map[String, Double]] = {
-      val resultJsons = json.asSafe[JsObject].fields.map {
-        case (fieldName, jsValue) => (fieldName, jsValue.as[Double])
+  object SecDateFormat extends Format[ju.Date] {
+    override def reads(json: JsValue): JsResult[Date] = {
+      json match {
+        case JsString(s) =>
+          try {
+            val millis = s.toLong * 1000
+            JsSuccess(new ju.Date(millis))
+          } catch {
+            case _: NumberFormatException => JsError(s"$s is not a number.")
+          }
+
+        case JsNumber(n) =>
+          val millis = (n * 1000).toLong
+          JsSuccess(new ju.Date(millis))
+
+        case _ => JsError(s"String or number expected but got '$json'.")
       }
-      JsSuccess(resultJsons.toMap)
     }
 
-    override def writes(o: Map[String, Double]): JsValue = {
-      val fields = o.map { case (fieldName, value) =>
-        (fieldName, JsNumber(value))
-      }
-      JsObject(fields)
-    }
-  }
-
-  object StringStringMapFormat extends Format[Map[String, String]] {
-    override def reads(json: JsValue): JsResult[Map[String, String]] = {
-      val resultJsons = json.asSafe[JsObject].fields.map {
-        case (fieldName, jsValue) => (fieldName, jsValue.as[String])
-      }
-      JsSuccess(resultJsons.toMap)
-    }
-
-    override def writes(o: Map[String, String]): JsValue = {
-      val fields = o.map { case (fieldName, value) =>
-        (fieldName, JsString(value))
-      }
-      JsObject(fields)
-    }
+    override def writes(o: Date): JsValue =
+      JsNumber(Math.round(o.getTime.toDouble / 1000))
   }
 
   object StringAnyMapFormat extends Format[Map[String, Any]] {
