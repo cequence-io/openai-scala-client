@@ -3,7 +3,7 @@ package io.cequence.openaiscala
 object Retryable {
 
   def unapply(
-      t: OpenAIScalaClientException
+    t: OpenAIScalaClientException
   ): Option[OpenAIScalaClientException] = Some(t).filter(apply)
 
   def apply(t: OpenAIScalaClientException): Boolean = t match {
@@ -14,22 +14,18 @@ object Retryable {
 
 }
 
-class OpenAIScalaClientException(message: String, cause: Throwable)
-    extends RuntimeException(message, cause) {
+class OpenAIScalaClientException(message: String, cause: Throwable) extends RuntimeException(message, cause) {
   def this(message: String) = this(message, null)
 }
 
-class OpenAIScalaClientTimeoutException(message: String, cause: Throwable)
-    extends OpenAIScalaClientException(message, cause) {
+class OpenAIScalaClientTimeoutException(message: String, cause: Throwable) extends OpenAIScalaClientException(message, cause) {
   def this(message: String) = this(message, null)
 }
 
-class OpenAIScalaClientUnknownHostException(message: String, cause: Throwable)
-    extends OpenAIScalaClientException(message, cause) {
+class OpenAIScalaClientUnknownHostException(message: String, cause: Throwable) extends OpenAIScalaClientException(message, cause) {
   def this(message: String) = this(message, null)
 }
 
-class OpenAIScalaTokenCountExceededException(message: String, cause: Throwable)
-    extends OpenAIScalaClientException(message, cause) {
+class OpenAIScalaTokenCountExceededException(message: String, cause: Throwable) extends OpenAIScalaClientException(message, cause) {
   def this(message: String) = this(message, null)
 }
