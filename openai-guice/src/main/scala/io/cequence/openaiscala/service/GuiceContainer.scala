@@ -9,7 +9,6 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
 trait GuiceContainer {
-
   protected def modules: Seq[Module]
 
   protected lazy val injector: Injector = Guice.createInjector(modules :_*)
@@ -22,7 +21,7 @@ trait GuiceContainer {
   protected def result[T](future: Future[T]) =
     Await.result(future, 100.minutes)
 
-  protected def terminate: Unit = {
+  protected def terminate(): Unit = {
     val system = instance[ActorSystem]
     system.terminate
     Await.result(system.whenTerminated, 1.day)
