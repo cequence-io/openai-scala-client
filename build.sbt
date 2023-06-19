@@ -4,7 +4,6 @@ import sbt.Keys.test
 val scala212 = "2.12.18"
 val scala213 = "2.13.11"
 val scala3 = "3.2.2"
-val AkkaVersion = "2.6.1"
 
 ThisBuild / organization := "io.cequence"
 ThisBuild / scalaVersion := scala212
@@ -14,9 +13,20 @@ ThisBuild / isSnapshot := false
 lazy val commonSettings = Seq(
   libraryDependencies += "org.scalactic" %% "scalactic" % "3.2.16",
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.16" % Test,
-  libraryDependencies += "org.mockito" %% "mockito-scala-scalatest" % "1.17.14" % Test,
-  libraryDependencies += "com.typesafe.akka" %% "akka-actor-testkit-typed" % AkkaVersion % Test
+  libraryDependencies ++= extraTestDependencies(scalaVersion.value)
 )
+
+def extraTestDependencies(scalaVersion: String) =
+  CrossVersion.partialVersion(scalaVersion) match {
+    case Some((2, _)) =>
+      Seq(
+        "org.mockito" %% "mockito-scala-scalatest" % "1.17.14" % Test,
+        "com.typesafe.akka" %% "akka-actor-testkit-typed" % "2.6.1" % Test
+      )
+
+    case _ =>
+      Nil
+  }
 
 lazy val core = (project in file("openai-core"))
   .settings(commonSettings: _*)
@@ -102,7 +112,7 @@ addCommandAlias(
 inThisBuild(
   List(
     scalacOptions += "-Ywarn-unused",
-    scalaVersion := "2.12.15",
+//    scalaVersion := "2.12.15",
     semanticdbEnabled := true,
     semanticdbVersion := scalafixSemanticdb.revision
   )
