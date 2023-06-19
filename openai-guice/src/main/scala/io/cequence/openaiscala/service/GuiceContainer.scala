@@ -7,6 +7,7 @@ import net.codingwell.scalaguice.InjectorExtensions._
 import scala.concurrent.duration._
 
 import scala.concurrent.{Await, Future}
+import scala.reflect.ClassTag
 
 trait GuiceContainer {
   protected def modules: Seq[Module]
@@ -15,8 +16,9 @@ trait GuiceContainer {
 
   protected lazy val config = instance[Config]
 
-  // TODO: for Scala3 this function has to be "inlined"
-  protected def instance[T: Manifest] = injector.instance[T]
+  protected def instance[T: ClassTag]: T = injector.getInstance(
+    implicitly[ClassTag[T]].runtimeClass.asInstanceOf[Class[T]]
+  )
 
   protected def result[T](future: Future[T]) =
     Await.result(future, 100.minutes)
