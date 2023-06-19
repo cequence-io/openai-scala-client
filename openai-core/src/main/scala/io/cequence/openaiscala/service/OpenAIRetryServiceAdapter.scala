@@ -4,6 +4,7 @@ import io.cequence.openaiscala.{OpenAIScalaTokenCountExceededException, StackWal
 
 import scala.concurrent.{ExecutionContext, Future}
 
+@deprecated("Use openai-client:io.ceqeunce.openaiscala.service.OpenAIRetryServiceAdapter or openai-client:io.cequence.openaiscala.RetryHelpers")
 private class OpenAIRetryServiceAdapter(
   underlying: OpenAIService,
   maxAttempts: Int,
@@ -15,6 +16,7 @@ private class OpenAIRetryServiceAdapter(
   override protected def wrap[T](
     fun: OpenAIService => Future[T]
   ): Future[T] = {
+    fun(underlying)
     // need to use StackWalker to get the caller function name
     val functionName = StackWalkerUtil.functionName(2).get()
     retry(s"${functionName.capitalize} call failed")(

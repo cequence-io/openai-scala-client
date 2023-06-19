@@ -4,23 +4,35 @@ import sbt.Keys.test
 val scala212 = "2.12.18"
 val scala213 = "2.13.11"
 val scala3 = "3.2.2"
+val AkkaVersion = "2.6.1"
 
 ThisBuild / organization := "io.cequence"
 ThisBuild / scalaVersion := scala212
 ThisBuild / version := "0.4.0"
 ThisBuild / isSnapshot := false
 
+lazy val commonSettings = Seq(
+  libraryDependencies += "org.scalactic" %% "scalactic" % "3.2.16",
+  libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.16" % Test,
+  libraryDependencies += "org.mockito" %% "mockito-scala-scalatest" % "1.17.14" % Test,
+  libraryDependencies += "com.typesafe.akka" %% "akka-actor-testkit-typed" % AkkaVersion % Test
+)
+
 lazy val core = (project in file("openai-core"))
+  .settings(commonSettings: _*)
 
 lazy val client = (project in file("openai-client"))
+  .settings(commonSettings: _*)
   .dependsOn(core)
   .aggregate(core)
 
 lazy val client_stream = (project in file("openai-client-stream"))
+  .settings(commonSettings: _*)
   .dependsOn(client)
   .aggregate(client)
 
 lazy val guice = (project in file("openai-guice"))
+  .settings(commonSettings: _*)
   .dependsOn(client)
   .aggregate(client_stream)
 
