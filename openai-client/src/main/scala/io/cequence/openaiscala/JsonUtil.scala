@@ -32,7 +32,7 @@ object JsonUtil {
     def asSafeArray[T](
       implicit fjs: Reads[T]
     ): Seq[T] =
-      json.asSafe[JsArray].value.map(_.asSafe[T])
+      json.asSafe[JsArray].value.map(_.asSafe[T]).toSeq
   }
 
   object SecDateFormat extends Format[ju.Date] {
