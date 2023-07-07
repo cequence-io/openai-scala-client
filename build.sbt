@@ -28,8 +28,7 @@ def extraTestDependencies(scalaVersion: String) =
       Nil
   }
 
-lazy val core = (project in file("openai-core"))
-  .settings(commonSettings: _*)
+lazy val core = (project in file("openai-core")).settings(commonSettings: _*)
 
 lazy val client = (project in file("openai-client"))
   .settings(commonSettings: _*)
@@ -107,7 +106,6 @@ addCommandAlias(
     "coverageReport"
   ).mkString(";")
 )
-
 
 inThisBuild(
   List(
