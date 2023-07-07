@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonParseException
 import com.fasterxml.jackson.databind.JsonMappingException
 import io.cequence.openaiscala.JsonUtil.toJson
 import io.cequence.openaiscala.{OpenAIScalaClientException, OpenAIScalaClientTimeoutException, OpenAIScalaClientUnknownHostException, OpenAIScalaTokenCountExceededException}
-import play.api.libs.json.{JsObject, JsValue, Json}
+import play.api.libs.json.{JsObject, JsValue}
 import play.api.libs.ws.{BodyWritable, StandaloneWSRequest}
 import play.api.libs.ws.JsonBodyWritables._
 import play.api.libs.ws.JsonBodyReadables._
@@ -140,7 +140,7 @@ trait WSRequestHelper extends WSHelper {
 
   // create a multipart form data holder contain classic data (key-value) parts as well as file parts
   private def createMultipartFormData(
-    fileParams: Seq[(PT, File, Option[String])] = Nil,
+    fileParams: Seq[(PT, File, Option[String])],
     bodyParams: Seq[(PT, Option[Any])] = Nil
   ) = MultipartFormData(
     dataParts = bodyParams.collect { case (key, Some(value)) =>
@@ -180,7 +180,7 @@ trait WSRequestHelper extends WSHelper {
     body: T,
     endPointForLogging: Option[PEP], // only for logging
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
-  ) =
+  ): Future[RichJsResponse] =
     execRequestJsonAux(
       request, _.post(body),
       acceptableStatusCodes,
@@ -192,7 +192,7 @@ trait WSRequestHelper extends WSHelper {
     body: T,
     endPointForLogging: Option[PEP], // only for logging
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
-  ) =
+  ): Future[RichStringResponse] =
     execRequestStringAux(
       request, _.post(body),
       acceptableStatusCodes,
@@ -319,10 +319,10 @@ trait WSRequestHelper extends WSHelper {
 
   protected def jsonBodyParams(
     params: (PT, Option[Any])*
-  ) =
+  ): Seq[(PT, Option[JsValue])] =
     params.map { case (paramName, value) => (paramName, value.map(toJson)) }
 
-  protected def handleErrorResponse[T](response: RichResponse[T]) =
+  protected def handleErrorResponse[T](response: RichResponse[T]): T =
     response match {
       case Left(data) => data
 
@@ -344,13 +344,13 @@ trait WSRequestHelper extends WSHelper {
         if (errorCode == 404) None else throw new OpenAIScalaClientException(s"Code ${errorCode} : ${message}")
     }
 
-  protected def paramsAsString(params: Seq[(PT, Any)]) = {
+  protected def paramsAsString(params: Seq[(PT, Any)]): String = {
     val string = params.map { case (tag, value) => s"$tag=$value" }.mkString("&")
 
     if (string.nonEmpty) s"?$string" else ""
   }
 
-  protected def paramsOptionalAsString(params: Seq[(PT, Option[Any])]) = {
+  protected def paramsOptionalAsString(params: Seq[(PT, Option[Any])]): String = {
     val string = params.collect { case (tag, Some(value)) => s"$tag=$value" }.mkString("&")
 
     if (string.nonEmpty) s"?$string" else ""
@@ -359,12 +359,12 @@ trait WSRequestHelper extends WSHelper {
   protected def createUrl(
     endpoint: Option[PEP],
     value: Option[String] = None
-  ) =
+  ): String =
     coreUrl + endpoint.map(_.toString).getOrElse("") + value.map("/" + _).getOrElse("")
 
   protected def toOptionalParams(
     params: Seq[(PT, Any)]
-  ) =
+  ): Seq[(PT, Some[Any])] =
     params.map { case (a, b) => (a, Some(b)) }
 
   // close

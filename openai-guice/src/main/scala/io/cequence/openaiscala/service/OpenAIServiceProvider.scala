@@ -11,5 +11,5 @@ private class OpenAIServiceProvider @Inject()(
   implicit ec: ExecutionContext, materializer: Materializer
 ) extends Provider[OpenAIService] {
 
-  override def get = OpenAIServiceFactory(config)
+  override def get: OpenAIService = OpenAIServiceFactory(config)
 }

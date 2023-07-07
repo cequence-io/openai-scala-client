@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.service
 
-import akka.actor.{ActorSystem, Scheduler}
+import akka.actor.Scheduler
 import io.cequence.openaiscala.{RetryHelpers, StackWalkerUtil}
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 
