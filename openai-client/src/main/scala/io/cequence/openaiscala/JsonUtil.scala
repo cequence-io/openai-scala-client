@@ -15,11 +15,9 @@ object JsonUtil {
         json.validate[T] match {
           case JsSuccess(value, _) => value
           case JsError(errors) =>
-            val errorString = errors
-              .map { case (path, pathErrors) =>
-                s"JSON at path '${path}' contains the following errors: ${pathErrors.map(_.message).mkString(";")}"
-              }
-              .mkString("\n")
+            val errorString = errors.map { case (path, pathErrors) =>
+              s"JSON at path '${path}' contains the following errors: ${pathErrors.map(_.message).mkString(";")}"
+            }.mkString("\n")
             throw new OpenAIScalaClientException(
               s"Unexpected JSON:\n'${Json.prettyPrint(json)}'. Cannot be parsed due to: $errorString"
             )
@@ -34,11 +32,7 @@ object JsonUtil {
     def asSafeArray[T](
       implicit fjs: Reads[T]
     ): Seq[T] =
-      json
-        .asSafe[JsArray]
-        .value
-        .toSeq
-        .map(_.asSafe[T])
+      json.asSafe[JsArray].value.map(_.asSafe[T])
   }
 
   object SecDateFormat extends Format[ju.Date] {
@@ -82,7 +76,9 @@ object JsonUtil {
         case x: Array[_]   => JsArray(x.map(toJson))
         case x: Seq[_]     => JsArray(x.map(toJson))
         case x: Map[String, _] =>
-          val jsonValues = x.map { case (fieldName, value) => (fieldName, toJson(value)) }
+          val jsonValues = x.map { case (fieldName, value) =>
+            (fieldName, toJson(value))
+          }
           JsObject(jsonValues)
         case _ =>
           throw new IllegalArgumentException(
@@ -92,42 +88,51 @@ object JsonUtil {
 
   object StringDoubleMapFormat extends Format[Map[String, Double]] {
     override def reads(json: JsValue): JsResult[Map[String, Double]] = {
-      val resultJsons = json.asSafe[JsObject].fields.map { case (fieldName, jsValue) =>
-        (fieldName, jsValue.as[Double])
-      }
+      val resultJsons =
+        json.asSafe[JsObject].fields.map { case (fieldName, jsValue) =>
+          (fieldName, jsValue.as[Double])
+        }
       JsSuccess(resultJsons.toMap)
     }
 
     override def writes(o: Map[String, Double]): JsValue = {
-      val fields = o.map { case (fieldName, value) => (fieldName, JsNumber(value)) }
+      val fields = o.map { case (fieldName, value) =>
+        (fieldName, JsNumber(value))
+      }
       JsObject(fields)
     }
   }
 
   object StringStringMapFormat extends Format[Map[String, String]] {
     override def reads(json: JsValue): JsResult[Map[String, String]] = {
-      val resultJsons = json.asSafe[JsObject].fields.map { case (fieldName, jsValue) =>
-        (fieldName, jsValue.as[String])
-      }
+      val resultJsons =
+        json.asSafe[JsObject].fields.map { case (fieldName, jsValue) =>
+          (fieldName, jsValue.as[String])
+        }
       JsSuccess(resultJsons.toMap)
     }
 
     override def writes(o: Map[String, String]): JsValue = {
-      val fields = o.map { case (fieldName, value) => (fieldName, JsString(value)) }
+      val fields = o.map { case (fieldName, value) =>
+        (fieldName, JsString(value))
+      }
       JsObject(fields)
     }
   }
 
   object StringAnyMapFormat extends Format[Map[String, Any]] {
     override def reads(json: JsValue): JsResult[Map[String, Any]] = {
-      val resultJsons = json.asSafe[JsObject].fields.map { case (fieldName, jsValue) =>
-        (fieldName, jsValue.toString)
-      }
+      val resultJsons =
+        json.asSafe[JsObject].fields.map { case (fieldName, jsValue) =>
+          (fieldName, jsValue.toString)
+        }
       JsSuccess(resultJsons.toMap)
     }
 
     override def writes(o: Map[String, Any]): JsValue = {
-      val fields = o.map { case (fieldName, value) => (fieldName, toJson(value)) }
+      val fields = o.map { case (fieldName, value) =>
+        (fieldName, toJson(value))
+      }
       JsObject(fields)
     }
   }

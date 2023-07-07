@@ -19,10 +19,10 @@ trait OpenAIServiceStreamedExtra extends OpenAIServiceConsts {
    * Creates a completion for the provided prompt and parameters with streamed results.
    *
    * @param prompt
-   *   The prompt(s) to generate completions for, encoded as a string, array of strings, array of
-   *   tokens, or array of token arrays. Note that <|endoftext|> is the document separator that the
-   *   model sees during training, so if a prompt is not specified the model will generate as if
-   *   from the beginning of a new document.
+   *   The prompt(s) to generate completions for, encoded as a string, array of strings, array
+   *   of tokens, or array of token arrays. Note that <|endoftext|> is the document separator
+   *   that the model sees during training, so if a prompt is not specified the model will
+   *   generate as if from the beginning of a new document.
    * @param settings
    * @return
    *   text completion response as a stream (source)

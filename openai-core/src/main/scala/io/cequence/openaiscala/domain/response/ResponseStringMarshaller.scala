@@ -57,8 +57,12 @@ trait ResponseStringMarshaller {
 
   def moderationResultToString(moderationResult: ModerationResult): String =
     s"""Moderation Result
-       |-categories: ${moderationCategoriesToString(moderationResult.categories)}
-       |-category scores: ${moderationCategoryScoresToString(moderationResult.category_scores)}
+       |-categories: ${moderationCategoriesToString(
+        moderationResult.categories
+      )}
+       |-category scores: ${moderationCategoryScoresToString(
+        moderationResult.category_scores
+      )}
        |-flagged: ${moderationResult.flagged}
      """.stripMargin
 
@@ -73,7 +77,9 @@ trait ResponseStringMarshaller {
        |-violence_graphic: ${moderationCategories.violence_graphic}
      """.stripMargin
 
-  def moderationCategoryScoresToString(moderationCategoryScores: ModerationCategoryScores): String =
+  def moderationCategoryScoresToString(
+    moderationCategoryScores: ModerationCategoryScores
+  ): String =
     s"""Moderation Category Scores
        |-hate: ${moderationCategoryScores.hate}
        |-hate threatening: ${moderationCategoryScores.hate_threatening}

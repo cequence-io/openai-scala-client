@@ -3,7 +3,8 @@ package io.cequence.openaiscala.domain
 /**
  * OpenAI models available as of `2023-03-07`.
  *
- * @since Jan 2023
+ * @since Jan
+ *   2023
  */
 object ModelId {
 

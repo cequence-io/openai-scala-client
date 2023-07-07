@@ -21,7 +21,8 @@ object JsonFormats {
   private implicit val stringStringMapFormat: Format[Map[String, String]] =
     JsonUtil.StringStringMapFormat
 
-  implicit val logprobsInfoFormat: Format[LogprobsInfo] = Json.format[LogprobsInfo]
+  implicit val logprobsInfoFormat: Format[LogprobsInfo] =
+    Json.format[LogprobsInfo]
   implicit val textCompletionChoiceInfoFormat: Format[TextCompletionChoiceInfo] =
     Json.format[TextCompletionChoiceInfo]
   implicit val textCompletionFormat: Format[TextCompletionResponse] =
@@ -43,13 +44,16 @@ object JsonFormats {
     }
   }
 
-  implicit val functionCallSpecFormat: Format[FunctionCallSpec] = Json.format[FunctionCallSpec]
+  implicit val functionCallSpecFormat: Format[FunctionCallSpec] =
+    Json.format[FunctionCallSpec]
   implicit val messageSpecFormat: Format[MessageSpec] = Json.format[MessageSpec]
-  implicit val funMessageSpecFormat: Format[FunMessageSpec] = Json.format[FunMessageSpec]
+  implicit val funMessageSpecFormat: Format[FunMessageSpec] =
+    Json.format[FunMessageSpec]
 
   implicit val functionSpecFormat: Format[FunctionSpec] = {
     // use just here for FunctionSpec
-    implicit val stringAnyMapFormat: Format[Map[String, Any]] = JsonUtil.StringAnyMapFormat
+    implicit val stringAnyMapFormat: Format[Map[String, Any]] =
+      JsonUtil.StringAnyMapFormat
     Json.format[FunctionSpec]
   }
 
@@ -63,7 +67,8 @@ object JsonFormats {
   implicit val chatFunCompletionResponseFormat: Format[ChatFunCompletionResponse] =
     Json.format[ChatFunCompletionResponse]
 
-  implicit val chatChunkMessageFormat: Format[ChunkMessageSpec] = Json.format[ChunkMessageSpec]
+  implicit val chatChunkMessageFormat: Format[ChunkMessageSpec] =
+    Json.format[ChunkMessageSpec]
   implicit val chatCompletionChoiceChunkInfoFormat: Format[ChatCompletionChoiceChunkInfo] =
     Json.format[ChatCompletionChoiceChunkInfo]
   implicit val chatCompletionChunkResponseFormat: Format[ChatCompletionChunkResponse] =
@@ -71,18 +76,22 @@ object JsonFormats {
 
   implicit val textEditChoiceInfoFormat: Format[TextEditChoiceInfo] =
     Json.format[TextEditChoiceInfo]
-  implicit val textEditFormat: Format[TextEditResponse] = Json.format[TextEditResponse]
+  implicit val textEditFormat: Format[TextEditResponse] =
+    Json.format[TextEditResponse]
 
   implicit val imageFormat: Format[ImageInfo] = Json.format[ImageInfo]
 
-  implicit val embeddingInfoFormat: Format[EmbeddingInfo] = Json.format[EmbeddingInfo]
+  implicit val embeddingInfoFormat: Format[EmbeddingInfo] =
+    Json.format[EmbeddingInfo]
   implicit val embeddingUsageInfoFormat: Format[EmbeddingUsageInfo] =
     Json.format[EmbeddingUsageInfo]
-  implicit val embeddingFormat: Format[EmbeddingResponse] = Json.format[EmbeddingResponse]
+  implicit val embeddingFormat: Format[EmbeddingResponse] =
+    Json.format[EmbeddingResponse]
 
   implicit val fileInfoFormat: Format[FileInfo] = Json.format[FileInfo]
 
-  implicit val fineTuneEventFormat: Format[FineTuneEvent] = Json.format[FineTuneEvent]
+  implicit val fineTuneEventFormat: Format[FineTuneEvent] =
+    Json.format[FineTuneEvent]
   implicit val fineTuneHyperparamsFormat: Format[FineTuneHyperparams] =
     Json.format[FineTuneHyperparams]
   implicit val fineTuneFormat: Format[FineTuneJob] = Json.format[FineTuneJob]
@@ -90,12 +99,12 @@ object JsonFormats {
   // somehow ModerationCategories.unapply is not working in Scala3
   implicit val moderationCategoriesFormat: Format[ModerationCategories] = (
     (__ \ "hate").format[Boolean] and
-    (__ \ "hate/threatening").format[Boolean] and
-    (__ \ "self-harm").format[Boolean] and
-    (__ \ "sexual").format[Boolean] and
-    (__ \ "sexual/minors").format[Boolean] and
-    (__ \ "violence").format[Boolean] and
-    (__ \ "violence/graphic").format[Boolean]
+      (__ \ "hate/threatening").format[Boolean] and
+      (__ \ "self-harm").format[Boolean] and
+      (__ \ "sexual").format[Boolean] and
+      (__ \ "sexual/minors").format[Boolean] and
+      (__ \ "violence").format[Boolean] and
+      (__ \ "violence/graphic").format[Boolean]
   )(
     ModerationCategories.apply,
     { (x: ModerationCategories) =>
@@ -114,12 +123,12 @@ object JsonFormats {
   // somehow ModerationCategoryScores.unapply is not working in Scala3
   implicit val moderationCategoryScoresFormat: Format[ModerationCategoryScores] = (
     (__ \ "hate").format[Double] and
-    (__ \ "hate/threatening").format[Double] and
-    (__ \ "self-harm").format[Double] and
-    (__ \ "sexual").format[Double] and
-    (__ \ "sexual/minors").format[Double] and
-    (__ \ "violence").format[Double] and
-    (__ \ "violence/graphic").format[Double]
+      (__ \ "hate/threatening").format[Double] and
+      (__ \ "self-harm").format[Double] and
+      (__ \ "sexual").format[Double] and
+      (__ \ "sexual/minors").format[Double] and
+      (__ \ "violence").format[Double] and
+      (__ \ "violence/graphic").format[Double]
   )(
     ModerationCategoryScores.apply,
     { (x: ModerationCategoryScores) =>
@@ -135,6 +144,8 @@ object JsonFormats {
     }
   )
 
-  implicit val moderationResultFormat: Format[ModerationResult] = Json.format[ModerationResult]
-  implicit val moderationFormat: Format[ModerationResponse] = Json.format[ModerationResponse]
+  implicit val moderationResultFormat: Format[ModerationResult] =
+    Json.format[ModerationResult]
+  implicit val moderationFormat: Format[ModerationResponse] =
+    Json.format[ModerationResponse]
 }

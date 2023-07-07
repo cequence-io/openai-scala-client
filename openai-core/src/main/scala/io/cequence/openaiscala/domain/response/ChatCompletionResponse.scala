@@ -29,7 +29,10 @@ case class ChatFunCompletionResponse(
   model: String,
   choices: Seq[ChatFunCompletionChoiceInfo],
   usage: Option[UsageInfo]
-) extends BaseChatCompletionResponse[FunMessageSpec, ChatFunCompletionChoiceInfo]
+) extends BaseChatCompletionResponse[
+      FunMessageSpec,
+      ChatFunCompletionChoiceInfo
+    ]
 
 sealed trait BaseChatCompletionChoiceInfo[M <: BaseMessageSpec] {
   val message: M

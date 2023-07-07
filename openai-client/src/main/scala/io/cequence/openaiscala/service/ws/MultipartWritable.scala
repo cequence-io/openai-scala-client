@@ -8,9 +8,9 @@ import play.api.libs.ws.{BodyWritable, SourceBody}
 import java.nio.file.Paths
 
 /**
- * Adapted from `play.api.http.writeableOf_MultipartFormData` but more efficient due to the fact
- * that, rather then fully materializing, form data and files are concatenated as sources/streams
- * before sending out.
+ * Adapted from `play.api.http.writeableOf_MultipartFormData` but more efficient due to the
+ * fact that, rather then fully materializing, form data and files are concatenated as
+ * sources/streams before sending out.
  */
 object MultipartWritable {
 
@@ -28,16 +28,17 @@ object MultipartWritable {
     implicit materializer: Materializer
   ): BodyWritable[MultipartFormData] = {
 
-    val boundary: String = "--------" + scala.util.Random.alphanumeric.take(20).mkString("")
+    val boundary: String =
+      "--------" + scala.util.Random.alphanumeric.take(20).mkString("")
 
     def encode(str: String) = ByteString.apply(str, charset)
 
     def formatDataParts(data: Map[String, Seq[String]]) = {
       val dataParts = data.flatMap { case (name, values) =>
-          values.map { value =>
-            s"--$boundary\r\n${HttpHeaderNames.CONTENT_DISPOSITION}: form-data; name=$name\r\n\r\n$value\r\n"
-          }
-        }.mkString("")
+        values.map { value =>
+          s"--$boundary\r\n${HttpHeaderNames.CONTENT_DISPOSITION}: form-data; name=$name\r\n\r\n$value\r\n"
+        }
+      }.mkString("")
 
       encode(dataParts)
     }
@@ -46,8 +47,8 @@ object MultipartWritable {
       val name = s""""${file.key}""""
       val filename = s""""${file.headerFileName.getOrElse(file.path)}""""
       val contentType = file.contentType.map { ct =>
-          s"${HttpHeaderNames.CONTENT_TYPE}: $ct\r\n"
-        }.getOrElse("")
+        s"${HttpHeaderNames.CONTENT_TYPE}: $ct\r\n"
+      }.getOrElse("")
 
       encode(
         s"--$boundary\r\n${HttpHeaderNames.CONTENT_DISPOSITION}: form-data; name=$name; filename=$filename\r\n$contentType\r\n"
@@ -57,7 +58,8 @@ object MultipartWritable {
     BodyWritable[MultipartFormData](
       transform = { (form: MultipartFormData) =>
         // combined data source
-        val dataSource: Source[ByteString, _] = Source.single(formatDataParts(form.dataParts))
+        val dataSource: Source[ByteString, _] =
+          Source.single(formatDataParts(form.dataParts))
 
         // files as sources
         val fileSources: Seq[Source[ByteString, _]] = form.files.map { file =>
@@ -69,7 +71,8 @@ object MultipartWritable {
         }
 
         // file sources combined
-        val combinedFileSource = fileSources.foldLeft(Source.empty[ByteString])(_.concat(_))
+        val combinedFileSource =
+          fileSources.foldLeft(Source.empty[ByteString])(_.concat(_))
 
         // all sources concatenated into one
         val finalSource =

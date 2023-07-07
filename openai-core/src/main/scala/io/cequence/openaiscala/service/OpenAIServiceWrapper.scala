@@ -39,7 +39,12 @@ trait OpenAIServiceWrapper extends OpenAIService {
     responseFunctionName: Option[String],
     settings: CreateChatCompletionSettings
   ): Future[ChatFunCompletionResponse] = wrap(
-    _.createChatFunCompletion(messages, functions, responseFunctionName, settings)
+    _.createChatFunCompletion(
+      messages,
+      functions,
+      responseFunctionName,
+      settings
+    )
   )
 
   override def createEdit(

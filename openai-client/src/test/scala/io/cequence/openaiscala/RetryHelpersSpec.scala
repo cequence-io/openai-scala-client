@@ -44,9 +44,13 @@ class RetryHelpersSpec
     "retry when encountering a retryable failure" in {
       val attempts = 2
       val ex = new OpenAIScalaClientTimeoutException("retryable test exception")
-      testWithException(ex) { (mockRetryable, result) =>
-        result.futureValue shouldBe successfulResult
-        verifyNumAttempts(n = attempts, result, mockRetryable)
+      testWithException(ex) {
+        (
+          mockRetryable,
+          result
+        ) =>
+          result.futureValue shouldBe successfulResult
+          verifyNumAttempts(n = attempts, result, mockRetryable)
       }
     }
 
@@ -54,19 +58,26 @@ class RetryHelpersSpec
       val ex = new OpenAIScalaClientUnknownHostException(
         "non retryable test exception"
       )
-      testWithException(ex) { (mockRetryable, result) =>
-        val f = for {
-          _ <- recoverToExceptionIf[OpenAIScalaClientUnknownHostException](
-            result
-          )
-        } yield mockRetryable
-        verifyNumAttempts(n = 1, f, mockRetryable)
+      testWithException(ex) {
+        (
+          mockRetryable,
+          result
+        ) =>
+          val f = for {
+            _ <- recoverToExceptionIf[OpenAIScalaClientUnknownHostException](
+              result
+            )
+          } yield mockRetryable
+          verifyNumAttempts(n = 1, f, mockRetryable)
       }
     }
 
     "not retry on success" in {
       testWithResults(attempts = 2, Seq(Future.successful(successfulResult))) {
-        (mockRetryable, result) =>
+        (
+          mockRetryable,
+          result
+        ) =>
           result.futureValue shouldBe successfulResult
           verifyNumAttempts(n = 1, result, mockRetryable)
       }
@@ -79,10 +90,14 @@ class RetryHelpersSpec
       testWithResults(
         attempts = 2,
         Seq(ex, ex, ex, Future.successful(successfulResult))
-      ) { (_, result) =>
-        recoverToSucceededIf[OpenAIScalaClientTimeoutException](
+      ) {
+        (
+          _,
           result
-        ).futureValue shouldBe Succeeded
+        ) =>
+          recoverToSucceededIf[OpenAIScalaClientTimeoutException](
+            result
+          ).futureValue shouldBe Succeeded
       }
     }
 
@@ -115,15 +130,20 @@ class RetryHelpersSpec
     delayBase = 1
   )
 
-  def testWithException(ex: OpenAIScalaClientException)(
-      test: (Retryable, Future[Int]) => Unit
+  def testWithException(
+    ex: OpenAIScalaClientException
+  )(
+    test: (Retryable, Future[Int]) => Unit
   ): Unit = {
     val results = Seq(Future.failed(ex), Future.successful(successfulResult))
     testWithResults(results.length, results)(test)
   }
 
-  def testWithResults(attempts: Int, results: Seq[Future[Int]])(
-      test: (Retryable, Future[Int]) => Unit
+  def testWithResults(
+    attempts: Int,
+    results: Seq[Future[Int]]
+  )(
+    test: (Retryable, Future[Int]) => Unit
   ): Unit = {
     val future = Promise[Int]().future
     val mockRetryable = mock[Retryable]
@@ -133,7 +153,11 @@ class RetryHelpersSpec
     test(mockRetryable, result)
   }
 
-  def verifyNumAttempts[T](n: Int, f: Future[T], mock: Retryable): Unit =
+  def verifyNumAttempts[T](
+    n: Int,
+    f: Future[T],
+    mock: Retryable
+  ): Unit =
     whenReady(f) { _ =>
       verify(mock, times(n)).attempt()
     }

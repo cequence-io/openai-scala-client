@@ -21,13 +21,17 @@ object Providers {
     override def get: Materializer = Materializer(system)
   }
 
-  class BlockingDispatchedExecutionContextProvider @Inject() (system: ActorSystem)
-      extends Provider[ExecutionContext] {
-    override def get: ExecutionContext = system.dispatchers.lookup("blocking-dispatcher")
+  class BlockingDispatchedExecutionContextProvider @Inject() (
+    system: ActorSystem
+  ) extends Provider[ExecutionContext] {
+    override def get: ExecutionContext =
+      system.dispatchers.lookup("blocking-dispatcher")
   }
 }
 
-class AkkaModule(includeExecutionContext: Boolean = true) extends AbstractModule with ScalaModule {
+class AkkaModule(includeExecutionContext: Boolean = true)
+    extends AbstractModule
+    with ScalaModule {
 
   override def configure: Unit = {
     bind[ActorSystem].toProvider[Providers.ActorSystemProvider].asEagerSingleton()

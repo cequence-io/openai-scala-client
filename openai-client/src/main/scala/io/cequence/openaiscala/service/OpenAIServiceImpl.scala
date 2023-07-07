@@ -8,7 +8,12 @@ import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
-import io.cequence.openaiscala.domain.{BaseMessageSpec, FunMessageSpec, FunctionSpec, MessageSpec}
+import io.cequence.openaiscala.domain.{
+  BaseMessageSpec,
+  FunMessageSpec,
+  FunctionSpec,
+  MessageSpec
+}
 import io.cequence.openaiscala.service.ws.{Timeouts, WSRequestHelper}
 
 import java.io.File
@@ -49,12 +54,12 @@ private class OpenAIServiceImpl(
   override def listModels: Future[Seq[ModelInfo]] =
     execGET(EndPoint.models).map { response =>
       (response.asSafe[JsObject] \ "data").toOption.map {
-          _.asSafeArray[ModelInfo]
-        }.getOrElse(
-          throw new OpenAIScalaClientException(
-            s"The attribute 'data' is not present in the response: ${response.toString()}."
-          )
+        _.asSafeArray[ModelInfo]
+      }.getOrElse(
+        throw new OpenAIScalaClientException(
+          s"The attribute 'data' is not present in the response: ${response.toString()}."
         )
+      )
     }
 
   override def retrieveModel(
@@ -127,7 +132,8 @@ private class OpenAIServiceImpl(
     responseFunctionName: Option[String],
     settings: CreateChatCompletionSettings
   ): Future[ChatFunCompletionResponse] = {
-    val coreParams = createBodyParamsForChatCompletion(messages, settings, stream = false)
+    val coreParams =
+      createBodyParamsForChatCompletion(messages, settings, stream = false)
 
     val extraParams = jsonBodyParams(
       Param.functions -> Some(Json.toJson(functions)),
@@ -156,7 +162,8 @@ private class OpenAIServiceImpl(
       case m: FunMessageSpec =>
         val json = Json.toJson(m)(funMessageSpecFormat)
         // if the content is empty, add a null value (expected by the API)
-        m.content.map(_ => json)
+        m.content
+          .map(_ => json)
           .getOrElse(
             json.as[JsObject].+("content" -> JsNull)
           )
@@ -383,18 +390,18 @@ private class OpenAIServiceImpl(
     ).map(response =>
       handleNotFoundAndError(response)
         .map(jsResponse =>
-          (jsResponse \ "deleted").toOption
-            .map {
-              _.asSafe[Boolean] match {
-                case true  => DeleteResponse.Deleted
-                case false => DeleteResponse.NotDeleted
-              }
-            }.getOrElse(
-              throw new OpenAIScalaClientException(
-                s"The attribute 'deleted' is not present in the response: ${response.toString()}."
-              )
+          (jsResponse \ "deleted").toOption.map {
+            _.asSafe[Boolean] match {
+              case true  => DeleteResponse.Deleted
+              case false => DeleteResponse.NotDeleted
+            }
+          }.getOrElse(
+            throw new OpenAIScalaClientException(
+              s"The attribute 'deleted' is not present in the response: ${response.toString()}."
             )
-        ).getOrElse(
+          )
+        )
+        .getOrElse(
           // we got a not-found http code (404)
           DeleteResponse.NotFound
         )
@@ -419,9 +426,7 @@ private class OpenAIServiceImpl(
 
     val request = getWSRequestOptional(Some(endPoint), endPointParam)
 
-    execGETStringAux(request, Some(endPoint)).map(response =>
-      handleNotFoundAndError(response)
-    )
+    execGETStringAux(request, Some(endPoint)).map(response => handleNotFoundAndError(response))
   }
 
   override def createFineTune(
@@ -466,9 +471,7 @@ private class OpenAIServiceImpl(
     execGETWithStatus(
       EndPoint.fine_tunes,
       endPointParam = Some(fineTuneId)
-    ).map(response =>
-      handleNotFoundAndError(response).map(_.asSafe[FineTuneJob])
-    )
+    ).map(response => handleNotFoundAndError(response).map(_.asSafe[FineTuneJob]))
 
   override def cancelFineTune(
     fineTuneId: String
@@ -476,9 +479,7 @@ private class OpenAIServiceImpl(
     execPOSTWithStatus(
       EndPoint.fine_tunes,
       endPointParam = Some(s"$fineTuneId/cancel")
-    ).map(response =>
-      handleNotFoundAndError(response).map(_.asSafe[FineTuneJob])
-    )
+    ).map(response => handleNotFoundAndError(response).map(_.asSafe[FineTuneJob]))
 
   override def listFineTuneEvents(
     fineTuneId: String
@@ -510,18 +511,18 @@ private class OpenAIServiceImpl(
     ).map(response =>
       handleNotFoundAndError(response)
         .map(jsResponse =>
-          (jsResponse \ "deleted").toOption
-            .map {
-              _.asSafe[Boolean] match {
-                case true  => DeleteResponse.Deleted
-                case false => DeleteResponse.NotDeleted
-              }
-            }.getOrElse(
-              throw new OpenAIScalaClientException(
-                s"The attribute 'deleted' is not present in the response: ${response.toString()}."
-              )
+          (jsResponse \ "deleted").toOption.map {
+            _.asSafe[Boolean] match {
+              case true  => DeleteResponse.Deleted
+              case false => DeleteResponse.NotDeleted
+            }
+          }.getOrElse(
+            throw new OpenAIScalaClientException(
+              s"The attribute 'deleted' is not present in the response: ${response.toString()}."
             )
-        ).getOrElse(
+          )
+        )
+        .getOrElse(
           // we got a not-found http code (404)
           DeleteResponse.NotFound
         )

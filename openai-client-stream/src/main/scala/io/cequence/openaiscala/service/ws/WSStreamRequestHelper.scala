@@ -37,7 +37,8 @@ trait WSStreamRequestHelper {
   private implicit val jsonMarshaller: Unmarshaller[ByteString, JsValue] =
     Unmarshaller.strict[ByteString, JsValue] { byteString =>
       val data = byteString.utf8String.stripPrefix(itemPrefix)
-      if (data.equals(endOfStreamToken)) JsString(endOfStreamToken) else Json.parse(data)
+      if (data.equals(endOfStreamToken)) JsString(endOfStreamToken)
+      else Json.parse(data)
     }
 
   protected def execJsonStreamAux(

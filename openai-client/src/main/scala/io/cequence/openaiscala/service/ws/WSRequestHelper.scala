@@ -131,7 +131,8 @@ trait WSRequestHelper extends WSHelper {
     val request = getWSRequestOptional(Some(endPoint), endPointParam, params)
     val formData = createMultipartFormData(fileParams, bodyParams)
 
-    implicit val writeable: BodyWritable[MultipartFormData] = writeableOf_MultipartFormData("utf-8")
+    implicit val writeable: BodyWritable[MultipartFormData] =
+      writeableOf_MultipartFormData("utf-8")
 
     execPOSTJsonAux(request, formData, Some(endPoint), acceptableStatusCodes)
   }
@@ -151,7 +152,8 @@ trait WSRequestHelper extends WSHelper {
     val request = getWSRequestOptional(Some(endPoint), endPointParam, params)
     val formData = createMultipartFormData(fileParams, bodyParams)
 
-    implicit val writeable: BodyWritable[MultipartFormData] = writeableOf_MultipartFormData("utf-8")
+    implicit val writeable: BodyWritable[MultipartFormData] =
+      writeableOf_MultipartFormData("utf-8")
 
     execPOSTStringAux(request, formData, Some(endPoint), acceptableStatusCodes)
   }
@@ -194,7 +196,12 @@ trait WSRequestHelper extends WSHelper {
       (fieldName.toString, jsValue)
     }
 
-    execPOSTJsonAux(request, JsObject(bodyParamsX), Some(endPoint), acceptableStatusCodes)
+    execPOSTJsonAux(
+      request,
+      JsObject(bodyParamsX),
+      Some(endPoint),
+      acceptableStatusCodes
+    )
   }
 
   protected def execPOSTJsonAux[T: BodyWritable](
@@ -382,17 +389,22 @@ trait WSRequestHelper extends WSHelper {
 
       case Right((errorCode, message)) =>
         if (errorCode == 404) None
-        else throw new OpenAIScalaClientException(s"Code ${errorCode} : ${message}")
+        else
+          throw new OpenAIScalaClientException(
+            s"Code ${errorCode} : ${message}"
+          )
     }
 
   protected def paramsAsString(params: Seq[(PT, Any)]): String = {
-    val string = params.map { case (tag, value) => s"$tag=$value" }.mkString("&")
+    val string =
+      params.map { case (tag, value) => s"$tag=$value" }.mkString("&")
 
     if (string.nonEmpty) s"?$string" else ""
   }
 
   protected def paramsOptionalAsString(params: Seq[(PT, Option[Any])]): String = {
-    val string = params.collect { case (tag, Some(value)) => s"$tag=$value" }.mkString("&")
+    val string =
+      params.collect { case (tag, Some(value)) => s"$tag=$value" }.mkString("&")
 
     if (string.nonEmpty) s"?$string" else ""
   }

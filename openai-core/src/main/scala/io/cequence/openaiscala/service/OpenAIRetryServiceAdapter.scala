@@ -42,7 +42,9 @@ private class OpenAIRetryServiceAdapter(
           throw e
         case e: Exception =>
           if (attempt < maxAttempts) {
-            log(s"${failureMessage}. ${e.getMessage}. Attempt ${attempt}. Retrying...")
+            log(
+              s"${failureMessage}. ${e.getMessage}. Attempt ${attempt}. Retrying..."
+            )
 
             sleepOnFailureMs.foreach(
               Thread.sleep(_)

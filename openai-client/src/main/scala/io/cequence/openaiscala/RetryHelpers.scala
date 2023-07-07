@@ -39,7 +39,9 @@ object RetryHelpers {
         if (attempt < maxAttempts) {
           fun().recoverWith { case Retryable(_) =>
             log.foreach(
-              _(s"${failureMessage.map(_ + ". ").getOrElse("")}Attempt ${attempt}. Retrying...")
+              _(
+                s"${failureMessage.map(_ + ". ").getOrElse("")}Attempt ${attempt}. Retrying..."
+              )
             )
 
             after(delay(attempt - 1), scheduler) {
@@ -85,7 +87,12 @@ trait RetryHelpers {
       ec: ExecutionContext,
       scheduler: Scheduler
     ): Future[T] = {
-      retry(() => f, maxAttempts = retrySettings.maxRetries + 1, failureMessage, log)
+      retry(
+        () => f,
+        maxAttempts = retrySettings.maxRetries + 1,
+        failureMessage,
+        log
+      )
     }
   }
 }

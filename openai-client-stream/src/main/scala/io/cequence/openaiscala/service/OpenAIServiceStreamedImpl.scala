@@ -15,8 +15,8 @@ import play.api.libs.json.JsValue
 import scala.concurrent.ExecutionContext
 
 /**
- * Private impl. class of [[OpenAIServiceStreamedExtra]] which offers extra functions with streaming
- * support.
+ * Private impl. class of [[OpenAIServiceStreamedExtra]] which offers extra functions with
+ * streaming support.
  *
  * @since Jan
  *   2023
@@ -35,13 +35,11 @@ private trait OpenAIServiceStreamedExtraImpl
       "POST",
       bodyParams = createBodyParamsForCompletion(prompt, settings, stream = true)
     ).map { (json: JsValue) =>
-      (json \ "error").toOption
-        .map { error =>
-          throw new OpenAIScalaClientException(error.toString())
-        }
-        .getOrElse(
-          json.asSafe[TextCompletionResponse]
-        )
+      (json \ "error").toOption.map { error =>
+        throw new OpenAIScalaClientException(error.toString())
+      }.getOrElse(
+        json.asSafe[TextCompletionResponse]
+      )
     }
 
   override def createChatCompletionStreamed(
@@ -53,13 +51,11 @@ private trait OpenAIServiceStreamedExtraImpl
       "POST",
       bodyParams = createBodyParamsForChatCompletion(messages, settings, stream = true)
     ).map { (json: JsValue) =>
-      (json \ "error").toOption
-        .map { error =>
-          throw new OpenAIScalaClientException(error.toString())
-        }
-        .getOrElse(
-          json.asSafe[ChatCompletionChunkResponse]
-        )
+      (json \ "error").toOption.map { error =>
+        throw new OpenAIScalaClientException(error.toString())
+      }.getOrElse(
+        json.asSafe[ChatCompletionChunkResponse]
+      )
     }
 
   override def listFineTuneEventsStreamed(
@@ -73,18 +69,18 @@ private trait OpenAIServiceStreamedExtraImpl
         Param.stream -> Some(true)
       )
     ).map { json =>
-      (json \ "error").toOption
-        .map { error =>
-          throw new OpenAIScalaClientException(error.toString())
-        }
-        .getOrElse(
-          json.asSafe[FineTuneEvent]
-        )
+      (json \ "error").toOption.map { error =>
+        throw new OpenAIScalaClientException(error.toString())
+      }.getOrElse(
+        json.asSafe[FineTuneEvent]
+      )
     }
 }
 
 object OpenAIServiceStreamedFactory
-    extends OpenAIServiceFactoryHelper[OpenAIService with OpenAIServiceStreamedExtra] {
+    extends OpenAIServiceFactoryHelper[
+      OpenAIService with OpenAIServiceStreamedExtra
+    ] {
 
   override def apply(
     apiKey: String,

@@ -31,8 +31,8 @@ import scala.concurrent.Future
 trait OpenAIService extends OpenAIServiceConsts {
 
   /**
-   * Lists the currently available models, and provides basic information about each one such as the
-   * owner and availability.
+   * Lists the currently available models, and provides basic information about each one such
+   * as the owner and availability.
    *
    * @return
    *   models
@@ -43,8 +43,8 @@ trait OpenAIService extends OpenAIServiceConsts {
   def listModels: Future[Seq[ModelInfo]]
 
   /**
-   * Retrieves a model instance, providing basic information about the model such as the owner and
-   * permissions.
+   * Retrieves a model instance, providing basic information about the model such as the owner
+   * and permissions.
    *
    * @param modelId
    *   The ID of the model to use for this request
@@ -60,16 +60,17 @@ trait OpenAIService extends OpenAIServiceConsts {
    * Creates a completion for the provided prompt and parameters.
    *
    * @param prompt
-   *   The prompt(s) to generate completions for, encoded as a string, array of strings, array of
-   *   tokens, or array of token arrays. Note that <|endoftext|> is the document separator that the
-   *   model sees during training, so if a prompt is not specified the model will generate as if
-   *   from the beginning of a new document.
+   *   The prompt(s) to generate completions for, encoded as a string, array of strings, array
+   *   of tokens, or array of token arrays. Note that <|endoftext|> is the document separator
+   *   that the model sees during training, so if a prompt is not specified the model will
+   *   generate as if from the beginning of a new document.
    * @param settings
    * @return
    *   text completion response
    *
    * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/completions/create">OpenAI Doc</a>
+   *   <a href="https://platform.openai.com/docs/api-reference/completions/create">OpenAI
+   *   Doc</a>
    */
   def createCompletion(
     prompt: String,
@@ -100,9 +101,9 @@ trait OpenAIService extends OpenAIServiceConsts {
    * @param functions
    *   A list of functions the model may generate JSON inputs for.
    * @param responseFunctionName
-   *   If specified it forces the model to respond with a call to that function (must be listed in
-   *   `functions`). Otherwise, the default "auto" mode is used where the model can pick between an
-   *   end-user or calling a function.
+   *   If specified it forces the model to respond with a call to that function (must be listed
+   *   in `functions`). Otherwise, the default "auto" mode is used where the model can pick
+   *   between an end-user or calling a function.
    * @param settings
    * @return
    *   chat completion response
@@ -162,15 +163,16 @@ trait OpenAIService extends OpenAIServiceConsts {
    *   The image to edit. Must be a valid PNG file, less than 4MB, and square. If mask is not
    *   provided, image must have transparency, which will be used as the mask.
    * @param mask
-   *   An additional image whose fully transparent areas (e.g. where alpha is zero) indicate where
-   *   image should be edited. Must be a valid PNG file, less than 4MB, and have the same dimensions
-   *   as image.
+   *   An additional image whose fully transparent areas (e.g. where alpha is zero) indicate
+   *   where image should be edited. Must be a valid PNG file, less than 4MB, and have the same
+   *   dimensions as image.
    * @param settings
    * @return
    *   image response (might contain multiple data items - one per image)
    *
    * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/images/create-edit">OpenAI Doc</a>
+   *   <a href="https://platform.openai.com/docs/api-reference/images/create-edit">OpenAI
+   *   Doc</a>
    */
   def createImageEdit(
     prompt: String,
@@ -183,8 +185,8 @@ trait OpenAIService extends OpenAIServiceConsts {
    * Creates a variation of a given image.
    *
    * @param image
-   *   The image to use as the basis for the variation(s). Must be a valid PNG file, less than 4MB,
-   *   and square.
+   *   The image to use as the basis for the variation(s). Must be a valid PNG file, less than
+   *   4MB, and square.
    * @param settings
    * @return
    *   image response (might contain multiple data items - one per image)
@@ -202,15 +204,16 @@ trait OpenAIService extends OpenAIServiceConsts {
    * Creates an embedding vector representing the input text.
    *
    * @param input
-   *   Input text to get embeddings for, encoded as a string or array of tokens. To get embeddings
-   *   for multiple inputs in a single request, pass an array of strings or array of token arrays.
-   *   Each input must not exceed 8192 tokens in length.
+   *   Input text to get embeddings for, encoded as a string or array of tokens. To get
+   *   embeddings for multiple inputs in a single request, pass an array of strings or array of
+   *   token arrays. Each input must not exceed 8192 tokens in length.
    * @param settings
    * @return
    *   list of embeddings inside an envelope
    *
    * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/embeddings/create">OpenAI Doc</a>
+   *   <a href="https://platform.openai.com/docs/api-reference/embeddings/create">OpenAI
+   *   Doc</a>
    */
   def createEmbeddings(
     input: Seq[String],
@@ -221,11 +224,11 @@ trait OpenAIService extends OpenAIServiceConsts {
    * Transcribes audio into the input language.
    *
    * @param file
-   *   The audio file to transcribe, in one of these formats: mp3, mp4, mpeg, mpga, m4a, wav, or
-   *   webm.
+   *   The audio file to transcribe, in one of these formats: mp3, mp4, mpeg, mpga, m4a, wav,
+   *   or webm.
    * @param prompt
-   *   An optional text to guide the model's style or continue a previous audio segment. The prompt
-   *   should match the audio language.
+   *   An optional text to guide the model's style or continue a previous audio segment. The
+   *   prompt should match the audio language.
    * @param settings
    * @return
    *   transcription text
@@ -246,8 +249,8 @@ trait OpenAIService extends OpenAIServiceConsts {
    *   The audio file to translate, in one of these formats: mp3, mp4, mpeg, mpga, m4a, wav, or
    *   webm.
    * @param prompt
-   *   An optional text to guide the model's style or continue a previous audio segment. The prompt
-   *   should match the audio language.
+   *   An optional text to guide the model's style or continue a previous audio segment. The
+   *   prompt should match the audio language.
    * @param settings
    * @return
    *   translation text
@@ -274,12 +277,12 @@ trait OpenAIService extends OpenAIServiceConsts {
 
   /**
    * Upload a file that contains document(s) to be used across various endpoints/features.
-   * Currently, the size of all the files uploaded by one organization can be up to 1 GB. Please
-   * contact us if you need to increase the storage limit.
+   * Currently, the size of all the files uploaded by one organization can be up to 1 GB.
+   * Please contact us if you need to increase the storage limit.
    *
    * @param file
-   *   Name of the JSON Lines file to be uploaded. If the purpose is set to "fine-tune", each line
-   *   is a JSON record with "prompt" and "completion" fields representing your <a
+   *   Name of the JSON Lines file to be uploaded. If the purpose is set to "fine-tune", each
+   *   line is a JSON record with "prompt" and "completion" fields representing your <a
    *   href="https://platform.openai.com/docs/guides/fine-tuning/prepare-training-data">training
    *   examples</a>.
    * @param displayFileName
@@ -344,29 +347,32 @@ trait OpenAIService extends OpenAIServiceConsts {
   ): Future[Option[String]]
 
   /**
-   * Creates a job that fine-tunes a specified model from a given dataset. Response includes details
-   * of the enqueued job including job status and the name of the fine-tuned models once complete.
+   * Creates a job that fine-tunes a specified model from a given dataset. Response includes
+   * details of the enqueued job including job status and the name of the fine-tuned models
+   * once complete.
    *
    * @param training_file
-   *   The ID of an uploaded file that contains training data. See <code>uploadFile</code> for how
-   *   to upload a file. Your dataset must be formatted as a JSONL file, where each training example
-   *   is a JSON object with the keys "prompt" and "completion". Additionally, you must upload your
-   *   file with the purpose fine-tune.
+   *   The ID of an uploaded file that contains training data. See <code>uploadFile</code> for
+   *   how to upload a file. Your dataset must be formatted as a JSONL file, where each
+   *   training example is a JSON object with the keys "prompt" and "completion". Additionally,
+   *   you must upload your file with the purpose fine-tune.
    * @param validation_file
-   *   The ID of an uploaded file that contains validation data. If you provide this file, the data
-   *   is used to generate validation metrics periodically during fine-tuning. These metrics can be
-   *   viewed in the fine-tuning results file. Your train and validation data should be mutually
-   *   exclusive. Your dataset must be formatted as a JSONL file, where each validation example is a
-   *   JSON object with the keys "prompt" and "completion". Additionally, you must upload your file
-   *   with the purpose fine-tune.
+   *   The ID of an uploaded file that contains validation data. If you provide this file, the
+   *   data is used to generate validation metrics periodically during fine-tuning. These
+   *   metrics can be viewed in the fine-tuning results file. Your train and validation data
+   *   should be mutually exclusive. Your dataset must be formatted as a JSONL file, where each
+   *   validation example is a JSON object with the keys "prompt" and "completion".
+   *   Additionally, you must upload your file with the purpose fine-tune.
    * @param settings
    * @return
    *   fine tune response
    *
    * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/fine-tunes/create">OpenAI API Doc</a>
+   *   <a href="https://platform.openai.com/docs/api-reference/fine-tunes/create">OpenAI API
+   *   Doc</a>
    * @see
-   *   <a href="https://platform.openai.com/docs/guides/fine-tuning">OpenAI Fine-Tuning Guide</a>
+   *   <a href="https://platform.openai.com/docs/guides/fine-tuning">OpenAI Fine-Tuning
+   *   Guide</a>
    */
   def createFineTune(
     training_file: String,
@@ -394,7 +400,8 @@ trait OpenAIService extends OpenAIServiceConsts {
    *   fine tune info
    *
    * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/fine-tunes/retrieve">OpenAI Doc</a>
+   *   <a href="https://platform.openai.com/docs/api-reference/fine-tunes/retrieve">OpenAI
+   *   Doc</a>
    */
   def retrieveFineTune(
     fineTuneId: String
@@ -409,7 +416,8 @@ trait OpenAIService extends OpenAIServiceConsts {
    *   fine tune info or None if not found
    *
    * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/fine-tunes/cancel">OpenAI Doc</a>
+   *   <a href="https://platform.openai.com/docs/api-reference/fine-tunes/cancel">OpenAI
+   *   Doc</a>
    */
   def cancelFineTune(
     fineTuneId: String
@@ -424,7 +432,8 @@ trait OpenAIService extends OpenAIServiceConsts {
    *   fine tune events or None if not found
    *
    * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/fine-tunes/events">OpenAI Doc</a>
+   *   <a href="https://platform.openai.com/docs/api-reference/fine-tunes/events">OpenAI
+   *   Doc</a>
    */
   def listFineTuneEvents(
     fineTuneId: String
@@ -456,7 +465,8 @@ trait OpenAIService extends OpenAIServiceConsts {
    *   moderation results
    *
    * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/moderations/create">OpenAI Doc</a>
+   *   <a href="https://platform.openai.com/docs/api-reference/moderations/create">OpenAI
+   *   Doc</a>
    */
   def createModeration(
     input: String,
