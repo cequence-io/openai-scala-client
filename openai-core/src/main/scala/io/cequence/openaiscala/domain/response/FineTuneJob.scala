@@ -14,7 +14,7 @@ case class FineTuneJob(
   status: String, // e.g. pending or cancelled
   validation_files: Seq[FileInfo],
   training_files: Seq[FileInfo],
-  updated_at: ju.Date,
+  updated_at: ju.Date
 )
 
 case class FineTuneEvent(

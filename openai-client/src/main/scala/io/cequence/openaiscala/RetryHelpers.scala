@@ -10,7 +10,8 @@ import scala.util.control.NonFatal
 
 object RetryHelpers {
   private[openaiscala] def delay(
-    n: Integer)(
+    n: Integer
+  )(
     implicit retrySettings: RetrySettings
   ): FiniteDuration =
     FiniteDuration(
@@ -27,7 +28,8 @@ object RetryHelpers {
     fun: () => Future[T],
     maxAttempts: Int,
     failureMessage: Option[String] = None,
-    log: Option[String => Unit] = Some(println))(
+    log: Option[String => Unit] = Some(println)
+  )(
     implicit ec: ExecutionContext,
     scheduler: Scheduler,
     retrySettings: RetrySettings
@@ -77,8 +79,11 @@ trait RetryHelpers {
 
     def retryOnFailure(
       failureMessage: Option[String] = None,
-      log: Option[String => Unit] = Some(println))(
-      implicit retrySettings: RetrySettings, ec: ExecutionContext, scheduler: Scheduler
+      log: Option[String => Unit] = Some(println)
+    )(
+      implicit retrySettings: RetrySettings,
+      ec: ExecutionContext,
+      scheduler: Scheduler
     ): Future[T] = {
       retry(() => f, maxAttempts = retrySettings.maxRetries + 1, failureMessage, log)
     }

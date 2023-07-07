@@ -4,12 +4,15 @@ import io.cequence.openaiscala.{OpenAIScalaTokenCountExceededException, StackWal
 
 import scala.concurrent.{ExecutionContext, Future}
 
-@deprecated("Use openai-client:io.cequence.openaiscala.service.OpenAIRetryServiceAdapter or openai-client:io.cequence.openaiscala.RetryHelpers")
+@deprecated(
+  "Use openai-client:io.cequence.openaiscala.service.OpenAIRetryServiceAdapter or openai-client:io.cequence.openaiscala.RetryHelpers"
+)
 private class OpenAIRetryServiceAdapter(
   underlying: OpenAIService,
   maxAttempts: Int,
   sleepOnFailureMs: Option[Int] = None,
-  log: String => Unit = println)(
+  log: String => Unit = println
+)(
   implicit ec: ExecutionContext
 ) extends OpenAIServiceWrapper {
 
@@ -27,7 +30,8 @@ private class OpenAIRetryServiceAdapter(
     underlying.close()
 
   private def retry[T](
-    failureMessage: String)(
+    failureMessage: String
+  )(
     f: => Future[T]
   ): Future[T] = {
     def retryAux(attempt: Int): Future[T] =
@@ -53,13 +57,13 @@ private class OpenAIRetryServiceAdapter(
   }
 }
 
-
 object OpenAIRetryServiceAdapter {
   def apply(
     underlying: OpenAIService,
     maxAttempts: Int,
     sleepOnFailureMs: Option[Int] = None,
-    log: String => Unit = println)(
+    log: String => Unit = println
+  )(
     implicit ec: ExecutionContext
   ): OpenAIService =
     new OpenAIRetryServiceAdapter(

@@ -36,18 +36,18 @@ private class OpenAIMultiServiceRandomAccessAdapter(
 
 /**
  * Load distribution for multiple OpenAIService instances using:
- *  - rotation type (aka round robin)
- *  - random access/order
+ *   - rotation type (aka round robin)
+ *   - random access/order
  */
 object OpenAIMultiServiceAdapter {
 
   @deprecated("Use ofRoundRobinType instead")
   def ofRotationType(underlyings: OpenAIService*): OpenAIService =
-    ofRoundRobinType(underlyings:_*)
+    ofRoundRobinType(underlyings: _*)
 
   @deprecated("Use ofRandomOrderType instead")
   def ofRandomAccessType(underlyings: OpenAIService*): OpenAIService =
-    ofRandomOrderType(underlyings:_*)
+    ofRandomOrderType(underlyings: _*)
 
   def ofRoundRobinType(underlyings: OpenAIService*): OpenAIService =
     new OpenAIMultiServiceRotationAdapter(underlyings)

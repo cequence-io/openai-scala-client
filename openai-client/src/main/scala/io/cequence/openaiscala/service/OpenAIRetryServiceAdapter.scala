@@ -8,8 +8,11 @@ import scala.concurrent.{ExecutionContext, Future}
 
 private class OpenAIRetryServiceAdapter(
   underlying: OpenAIService,
-  log: Option[String => Unit] = None)(
-  implicit ec: ExecutionContext, retrySettings: RetrySettings, scheduler: Scheduler
+  log: Option[String => Unit] = None
+)(
+  implicit ec: ExecutionContext,
+  retrySettings: RetrySettings,
+  scheduler: Scheduler
 ) extends OpenAIServiceWrapper
     with RetryHelpers {
 
@@ -31,7 +34,8 @@ private class OpenAIRetryServiceAdapter(
 object OpenAIRetryServiceAdapter {
   def apply(
     underlying: OpenAIService,
-    log: Option[String => Unit] = None)(
+    log: Option[String => Unit] = None
+  )(
     implicit ec: ExecutionContext,
     retrySettings: RetrySettings,
     scheduler: Scheduler

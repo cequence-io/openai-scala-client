@@ -11,7 +11,7 @@ import scala.reflect.ClassTag
 trait GuiceContainer {
   protected def modules: Seq[Module]
 
-  protected lazy val injector: Injector = Guice.createInjector(modules :_*)
+  protected lazy val injector: Injector = Guice.createInjector(modules: _*)
 
   protected lazy val config = instance[Config]
 

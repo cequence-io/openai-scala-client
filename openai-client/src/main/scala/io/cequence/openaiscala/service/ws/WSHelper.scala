@@ -24,7 +24,9 @@ trait WSHelper {
     val asyncHttpClientConfig = new DefaultAsyncHttpClientConfig.Builder()
       .setConnectTimeout(timeouts.connectTimeout.getOrElse(DefaultTimeouts.connectTimeout))
       .setReadTimeout(timeouts.readTimeout.getOrElse(DefaultTimeouts.readTimeout))
-      .setPooledConnectionIdleTimeout(timeouts.pooledConnectionIdleTimeout.getOrElse(DefaultTimeouts.pooledConnectionIdleTimeout))
+      .setPooledConnectionIdleTimeout(
+        timeouts.pooledConnectionIdleTimeout.getOrElse(DefaultTimeouts.pooledConnectionIdleTimeout)
+      )
       .setRequestTimeout(timeouts.requestTimeout.getOrElse(DefaultTimeouts.requestTimeout))
       .build
     val asyncHttpClient = new DefaultAsyncHttpClient(asyncHttpClientConfig)

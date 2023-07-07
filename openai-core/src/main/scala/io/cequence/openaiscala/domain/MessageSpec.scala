@@ -16,7 +16,7 @@ final case class MessageSpec(
   // The name of the author of this message. name is required if role is function, and
   // it should be the name of the function whose response is in the content.
   // May contain a-z, A-Z, 0-9, and underscores, with a maximum length of 64 characters.
-  name: Option[String] = None,
+  name: Option[String] = None
 ) extends BaseMessageSpec {
   override val contentOptional = Some(content)
 }

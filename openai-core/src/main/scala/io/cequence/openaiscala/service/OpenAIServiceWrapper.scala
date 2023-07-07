@@ -5,7 +5,7 @@ import io.cequence.openaiscala.domain.settings._
 
 import java.io.File
 import scala.concurrent.Future
-import io.cequence.openaiscala.domain.response.{ ChatCompletionResponse, ChatFunCompletionResponse, DeleteResponse, EmbeddingResponse, FileInfo, FineTuneEvent, FineTuneJob, ImageInfo, ModelInfo, ModerationResponse, TextCompletionResponse, TextEditResponse, TranscriptResponse }
+import io.cequence.openaiscala.domain.response._
 
 trait OpenAIServiceWrapper extends OpenAIService {
 

@@ -4,7 +4,10 @@ import io.cequence.openaiscala.domain.{BaseMessageSpec, ChatRole, FunMessageSpec
 
 import java.{util => ju}
 
-sealed trait BaseChatCompletionResponse[M <: BaseMessageSpec, C <: BaseChatCompletionChoiceInfo[M]] {
+sealed trait BaseChatCompletionResponse[
+  M <: BaseMessageSpec,
+  C <: BaseChatCompletionChoiceInfo[M]
+] {
   val id: String
   val created: ju.Date
   val model: String

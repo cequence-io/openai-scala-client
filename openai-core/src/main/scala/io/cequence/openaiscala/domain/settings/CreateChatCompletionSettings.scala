@@ -17,8 +17,6 @@ case class CreateChatCompletionSettings(
   // How many chat completion choices to generate for each input message. Defaults to 1.
   n: Option[Int] = None,
 
-//  stream
-
   // Up to 4 sequences where the API will stop generating further tokens.
   stop: Seq[String] = Nil, // Option[String or Array],
 

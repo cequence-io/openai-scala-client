@@ -3,7 +3,12 @@ package io.cequence.openaiscala.service.ws
 import com.fasterxml.jackson.core.JsonParseException
 import com.fasterxml.jackson.databind.JsonMappingException
 import io.cequence.openaiscala.JsonUtil.toJson
-import io.cequence.openaiscala.{OpenAIScalaClientException, OpenAIScalaClientTimeoutException, OpenAIScalaClientUnknownHostException, OpenAIScalaTokenCountExceededException}
+import io.cequence.openaiscala.{
+  OpenAIScalaClientException,
+  OpenAIScalaClientTimeoutException,
+  OpenAIScalaClientUnknownHostException,
+  OpenAIScalaTokenCountExceededException
+}
 import play.api.libs.json.{JsObject, JsValue}
 import play.api.libs.ws.{BodyWritable, StandaloneWSRequest}
 import play.api.libs.ws.JsonBodyWritables._
@@ -15,9 +20,11 @@ import java.util.concurrent.TimeoutException
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
- * Base class for web services with handy GET, POST, and DELETE request builders, and response handling
+ * Base class for web services with handy GET, POST, and DELETE request builders, and response
+ * handling
  *
- * @since Jan 2023
+ * @since Jan
+ *   2023
  */
 trait WSRequestHelper extends WSHelper {
 
@@ -46,7 +53,9 @@ trait WSRequestHelper extends WSHelper {
     params: Seq[(PT, Option[Any])] = Nil
   ): Future[JsValue] =
     execGETWithStatus(
-      endPoint, endPointParam, params
+      endPoint,
+      endPointParam,
+      params
     ).map(handleErrorResponse)
 
   protected def execGETWithStatus(
@@ -66,7 +75,8 @@ trait WSRequestHelper extends WSHelper {
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] =
     execRequestJsonAux(
-      request, _.get(),
+      request,
+      _.get(),
       acceptableStatusCodes,
       endPointForLogging
     )
@@ -77,7 +87,8 @@ trait WSRequestHelper extends WSHelper {
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichStringResponse] =
     execRequestStringAux(
-      request, _.get(),
+      request,
+      _.get(),
       acceptableStatusCodes,
       endPointForLogging
     )
@@ -87,7 +98,8 @@ trait WSRequestHelper extends WSHelper {
   //////////
 
   /**
-   * @param fileParams - the third param in a tuple is a display (header) file name
+   * @param fileParams
+   *   the third param in a tuple is a display (header) file name
    */
   protected def execPOSTMultipart(
     endPoint: PEP,
@@ -97,11 +109,16 @@ trait WSRequestHelper extends WSHelper {
     bodyParams: Seq[(PT, Option[Any])] = Nil
   ): Future[JsValue] =
     execPOSTMultipartWithStatus(
-      endPoint, endPointParam, params, fileParams, bodyParams
+      endPoint,
+      endPointParam,
+      params,
+      fileParams,
+      bodyParams
     ).map(handleErrorResponse)
 
   /**
-   * @param fileParams - the third param in a tuple is a display (header) file name
+   * @param fileParams
+   *   the third param in a tuple is a display (header) file name
    */
   protected def execPOSTMultipartWithStatus(
     endPoint: PEP,
@@ -120,7 +137,8 @@ trait WSRequestHelper extends WSHelper {
   }
 
   /**
-   * @param fileParams - the third param in a tuple is a display (header) file name
+   * @param fileParams
+   *   the third param in a tuple is a display (header) file name
    */
   protected def execPOSTMultipartWithStatusString(
     endPoint: PEP,
@@ -146,7 +164,6 @@ trait WSRequestHelper extends WSHelper {
     dataParts = bodyParams.collect { case (key, Some(value)) =>
       (key.toString, Seq(value.toString))
     }.toMap,
-
     files = fileParams.map { case (key, file, headerFileName) =>
       FilePart(key.toString, file.getPath, headerFileName)
     }
@@ -159,7 +176,10 @@ trait WSRequestHelper extends WSHelper {
     bodyParams: Seq[(PT, Option[JsValue])] = Nil
   ): Future[JsValue] =
     execPOSTWithStatus(
-      endPoint, endPointParam, params, bodyParams
+      endPoint,
+      endPointParam,
+      params,
+      bodyParams
     ).map(handleErrorResponse)
 
   protected def execPOSTWithStatus(
@@ -170,7 +190,9 @@ trait WSRequestHelper extends WSHelper {
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] = {
     val request = getWSRequestOptional(Some(endPoint), endPointParam, params)
-    val bodyParamsX = bodyParams.collect { case (fieldName, Some(jsValue)) => (fieldName.toString, jsValue) }
+    val bodyParamsX = bodyParams.collect { case (fieldName, Some(jsValue)) =>
+      (fieldName.toString, jsValue)
+    }
 
     execPOSTJsonAux(request, JsObject(bodyParamsX), Some(endPoint), acceptableStatusCodes)
   }
@@ -182,7 +204,8 @@ trait WSRequestHelper extends WSHelper {
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] =
     execRequestJsonAux(
-      request, _.post(body),
+      request,
+      _.post(body),
       acceptableStatusCodes,
       endPointForLogging
     )
@@ -194,7 +217,8 @@ trait WSRequestHelper extends WSHelper {
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichStringResponse] =
     execRequestStringAux(
-      request, _.post(body),
+      request,
+      _.post(body),
       acceptableStatusCodes,
       endPointForLogging
     )
@@ -209,7 +233,9 @@ trait WSRequestHelper extends WSHelper {
     params: Seq[(PT, Option[Any])] = Nil
   ): Future[JsValue] =
     execDELETEWithStatus(
-      endPoint, endPointParam, params
+      endPoint,
+      endPointParam,
+      params
     ).map(handleErrorResponse)
 
   protected def execDELETEWithStatus(
@@ -229,7 +255,8 @@ trait WSRequestHelper extends WSHelper {
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] =
     execRequestJsonAux(
-      request, _.delete(),
+      request,
+      _.delete(),
       acceptableStatusCodes,
       endPointForLogging
     )
@@ -276,8 +303,14 @@ trait WSRequestHelper extends WSHelper {
         try {
           Left(response.body[JsValue])
         } catch {
-          case _: JsonParseException => throw new OpenAIScalaClientException(s"$serviceName.${endPointForLogging.map(_.toString).getOrElse("")}: '${response.body}' is not a JSON.")
-          case _: JsonMappingException => throw new OpenAIScalaClientException(s"$serviceName.${endPointForLogging.map(_.toString).getOrElse("")}: '${response.body}' is an unmappable JSON.")
+          case _: JsonParseException =>
+            throw new OpenAIScalaClientException(
+              s"$serviceName.${endPointForLogging.map(_.toString).getOrElse("")}: '${response.body}' is not a JSON."
+            )
+          case _: JsonMappingException =>
+            throw new OpenAIScalaClientException(
+              s"$serviceName.${endPointForLogging.map(_.toString).getOrElse("")}: '${response.body}' is an unmappable JSON."
+            )
         }
       case Right(response) => Right(response)
     })
@@ -294,7 +327,7 @@ trait WSRequestHelper extends WSHelper {
       acceptableStatusCodes,
       endPointForLogging
     ).map(_ match {
-      case Left(response) => Left(response.body)
+      case Left(response)  => Left(response.body)
       case Right(response) => Right(response)
     })
 
@@ -311,8 +344,14 @@ trait WSRequestHelper extends WSHelper {
         Left(response)
     }
   }.recover {
-    case e: TimeoutException => throw new OpenAIScalaClientTimeoutException(s"$serviceName.${endPointForLogging.map(_.toString).getOrElse("")} timed out: ${e.getMessage}.")
-    case e: UnknownHostException => throw new OpenAIScalaClientUnknownHostException(s"$serviceName.${endPointForLogging.map(_.toString).getOrElse("")} cannot resolve a host name: ${e.getMessage}.")
+    case e: TimeoutException =>
+      throw new OpenAIScalaClientTimeoutException(
+        s"$serviceName.${endPointForLogging.map(_.toString).getOrElse("")} timed out: ${e.getMessage}."
+      )
+    case e: UnknownHostException =>
+      throw new OpenAIScalaClientUnknownHostException(
+        s"$serviceName.${endPointForLogging.map(_.toString).getOrElse("")} cannot resolve a host name: ${e.getMessage}."
+      )
   }
 
   // aux
@@ -328,9 +367,10 @@ trait WSRequestHelper extends WSHelper {
 
       case Right((errorCode, message)) =>
         val errorMessage = s"Code ${errorCode} : ${message}"
-        if (message.contains("Please reduce your prompt; or completion length") ||
-            message.contains("Please reduce the length of the messages")
-          )
+        if (
+          message.contains("Please reduce your prompt; or completion length") ||
+          message.contains("Please reduce the length of the messages")
+        )
           throw new OpenAIScalaTokenCountExceededException(errorMessage)
         else
           throw new OpenAIScalaClientException(errorMessage)
@@ -341,7 +381,8 @@ trait WSRequestHelper extends WSHelper {
       case Left(value) => Some(value)
 
       case Right((errorCode, message)) =>
-        if (errorCode == 404) None else throw new OpenAIScalaClientException(s"Code ${errorCode} : ${message}")
+        if (errorCode == 404) None
+        else throw new OpenAIScalaClientException(s"Code ${errorCode} : ${message}")
     }
 
   protected def paramsAsString(params: Seq[(PT, Any)]): String = {

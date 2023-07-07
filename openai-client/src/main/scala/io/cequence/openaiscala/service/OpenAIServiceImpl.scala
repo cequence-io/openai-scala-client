@@ -22,14 +22,18 @@ import scala.concurrent.{ExecutionContext, Future}
  * @param ec
  * @param materializer
  *
- * @since Jan 2023
+ * @since Jan
+ *   2023
  */
 private class OpenAIServiceImpl(
   apiKey: String,
   orgId: Option[String] = None,
-  explTimeouts: Option[Timeouts] = None)(
-  implicit val ec: ExecutionContext, val materializer: Materializer
-) extends OpenAIService with WSRequestHelper {
+  explTimeouts: Option[Timeouts] = None
+)(
+  implicit val ec: ExecutionContext,
+  val materializer: Materializer
+) extends OpenAIService
+    with WSRequestHelper {
 
   override protected type PEP = EndPoint
   override protected type PT = Param
@@ -45,10 +49,12 @@ private class OpenAIServiceImpl(
   override def listModels: Future[Seq[ModelInfo]] =
     execGET(EndPoint.models).map { response =>
       (response.asSafe[JsObject] \ "data").toOption.map {
-        _.asSafeArray[ModelInfo]
-      }.getOrElse(
-        throw new OpenAIScalaClientException(s"The attribute 'data' is not present in the response: ${response.toString()}.")
-      )
+          _.asSafeArray[ModelInfo]
+        }.getOrElse(
+          throw new OpenAIScalaClientException(
+            s"The attribute 'data' is not present in the response: ${response.toString()}."
+          )
+        )
     }
 
   override def retrieveModel(
@@ -125,7 +131,9 @@ private class OpenAIServiceImpl(
 
     val extraParams = jsonBodyParams(
       Param.functions -> Some(Json.toJson(functions)),
-      Param.function_call -> responseFunctionName.map(name => Map("name" -> name)), // otherwise "auto" is used by default
+      Param.function_call -> responseFunctionName.map(name =>
+        Map("name" -> name)
+      ) // otherwise "auto" is used by default
     )
 
     execPOST(
@@ -148,9 +156,10 @@ private class OpenAIServiceImpl(
       case m: FunMessageSpec =>
         val json = Json.toJson(m)(funMessageSpecFormat)
         // if the content is empty, add a null value (expected by the API)
-        m.content.map(_ => json).getOrElse(
-          json.as[JsObject].+("content" -> JsNull)
-        )
+        m.content.map(_ => json)
+          .getOrElse(
+            json.as[JsObject].+("content" -> JsNull)
+          )
     })
 
     jsonBodyParams(
@@ -305,17 +314,20 @@ private class OpenAIServiceImpl(
     ).map(processAudioTranscriptResponse(settings.response_format))
 
   private def processAudioTranscriptResponse(
-    responseFormat: Option[TranscriptResponseFormatType])(
+    responseFormat: Option[TranscriptResponseFormatType]
+  )(
     stringRichResponse: RichStringResponse
   ) = {
     val stringResponse = handleErrorResponse(stringRichResponse)
 
     def textFromJsonString(json: JsValue) =
-      (json.asSafe[JsObject] \ "text").toOption.map {
-        _.asSafe[String]
-      }.getOrElse(
-        throw new OpenAIScalaClientException(s"The attribute 'text' is not present in the response: ${stringResponse}.")
-      )
+      (json.asSafe[JsObject] \ "text").toOption
+        .map(_.asSafe[String])
+        .getOrElse(
+          throw new OpenAIScalaClientException(
+            s"The attribute 'text' is not present in the response: ${stringResponse}."
+          )
+        )
 
     val FormatType = TranscriptResponseFormatType
 
@@ -338,11 +350,13 @@ private class OpenAIServiceImpl(
 
   override def listFiles: Future[Seq[FileInfo]] =
     execGET(EndPoint.files).map { response =>
-      (response.asSafe[JsObject] \ "data").toOption.map {
-        _.asSafeArray[FileInfo]
-      }.getOrElse(
-        throw new OpenAIScalaClientException(s"The attribute 'data' is not present in the response: ${response.toString()}.")
-      )
+      (response.asSafe[JsObject] \ "data").toOption
+        .map(_.asSafeArray[FileInfo])
+        .getOrElse(
+          throw new OpenAIScalaClientException(
+            s"The attribute 'data' is not present in the response: ${response.toString()}."
+          )
+        )
     }
 
   override def uploadFile(
@@ -366,20 +380,24 @@ private class OpenAIServiceImpl(
     execDELETEWithStatus(
       EndPoint.files,
       endPointParam = Some(fileId)
-    ).map( response =>
-      handleNotFoundAndError(response).map(jsResponse =>
-        (jsResponse \ "deleted").toOption.map {
-          _.asSafe[Boolean] match {
-            case true => DeleteResponse.Deleted
-            case false => DeleteResponse.NotDeleted
-          }
-        }.getOrElse(
-          throw new OpenAIScalaClientException(s"The attribute 'deleted' is not present in the response: ${response.toString()}.")
+    ).map(response =>
+      handleNotFoundAndError(response)
+        .map(jsResponse =>
+          (jsResponse \ "deleted").toOption
+            .map {
+              _.asSafe[Boolean] match {
+                case true  => DeleteResponse.Deleted
+                case false => DeleteResponse.NotDeleted
+              }
+            }.getOrElse(
+              throw new OpenAIScalaClientException(
+                s"The attribute 'deleted' is not present in the response: ${response.toString()}."
+              )
+            )
+        ).getOrElse(
+          // we got a not-found http code (404)
+          DeleteResponse.NotFound
         )
-      ).getOrElse(
-        // we got a not-found http code (404)
-        DeleteResponse.NotFound
-      )
     )
 
   override def retrieveFile(
@@ -433,11 +451,13 @@ private class OpenAIServiceImpl(
 
   override def listFineTunes: Future[Seq[FineTuneJob]] =
     execGET(EndPoint.fine_tunes).map { response =>
-      (response.asSafe[JsObject] \ "data").toOption.map {
-        _.asSafeArray[FineTuneJob]
-      }.getOrElse(
-        throw new OpenAIScalaClientException(s"The attribute 'data' is not present in the response: ${response.toString()}.")
-      )
+      (response.asSafe[JsObject] \ "data").toOption
+        .map(_.asSafeArray[FineTuneJob])
+        .getOrElse(
+          throw new OpenAIScalaClientException(
+            s"The attribute 'data' is not present in the response: ${response.toString()}."
+          )
+        )
     }
 
   override def retrieveFineTune(
@@ -471,11 +491,13 @@ private class OpenAIServiceImpl(
       )
     ).map { response =>
       handleNotFoundAndError(response).map(jsResponse =>
-        (jsResponse.asSafe[JsObject] \ "data").toOption.map {
-          _.asSafeArray[FineTuneEvent]
-        }.getOrElse(
-          throw new OpenAIScalaClientException(s"The attribute 'data' is not present in the response: ${response.toString()}.")
-        )
+        (jsResponse.asSafe[JsObject] \ "data").toOption
+          .map(_.asSafeArray[FineTuneEvent])
+          .getOrElse(
+            throw new OpenAIScalaClientException(
+              s"The attribute 'data' is not present in the response: ${response.toString()}."
+            )
+          )
       )
     }
 
@@ -485,20 +507,24 @@ private class OpenAIServiceImpl(
     execDELETEWithStatus(
       EndPoint.models,
       endPointParam = Some(modelId)
-    ).map( response =>
-      handleNotFoundAndError(response).map(jsResponse =>
-        (jsResponse \ "deleted").toOption.map {
-          _.asSafe[Boolean] match {
-            case true => DeleteResponse.Deleted
-            case false => DeleteResponse.NotDeleted
-          }
-        }.getOrElse(
-          throw new OpenAIScalaClientException(s"The attribute 'deleted' is not present in the response: ${response.toString()}.")
+    ).map(response =>
+      handleNotFoundAndError(response)
+        .map(jsResponse =>
+          (jsResponse \ "deleted").toOption
+            .map {
+              _.asSafe[Boolean] match {
+                case true  => DeleteResponse.Deleted
+                case false => DeleteResponse.NotDeleted
+              }
+            }.getOrElse(
+              throw new OpenAIScalaClientException(
+                s"The attribute 'deleted' is not present in the response: ${response.toString()}."
+              )
+            )
+        ).getOrElse(
+          // we got a not-found http code (404)
+          DeleteResponse.NotFound
         )
-      ).getOrElse(
-        // we got a not-found http code (404)
-        DeleteResponse.NotFound
-      )
     )
 
   override def createModeration(
@@ -535,7 +561,7 @@ private class OpenAIServiceImpl(
     val orgIdHeader = orgId.map(("OpenAI-Organization", _))
     val headers = orgIdHeader ++: Seq(("Authorization", s"Bearer $apiKey"))
 
-    request.addHttpHeaders(headers :_*)
+    request.addHttpHeaders(headers: _*)
   }
 }
 
@@ -544,8 +570,10 @@ object OpenAIServiceFactory extends OpenAIServiceFactoryHelper[OpenAIService] {
   override def apply(
     apiKey: String,
     orgId: Option[String] = None,
-    timeouts: Option[Timeouts] = None)(
-    implicit ec: ExecutionContext, materializer: Materializer
+    timeouts: Option[Timeouts] = None
+  )(
+    implicit ec: ExecutionContext,
+    materializer: Materializer
   ): OpenAIService =
     new OpenAIServiceImpl(apiKey, orgId, timeouts)
 }

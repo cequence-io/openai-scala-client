@@ -13,15 +13,16 @@ object Providers {
 
   private val name = "main-actor-system"
 
-  class ActorSystemProvider @Inject()(config: Config) extends Provider[ActorSystem] {
+  class ActorSystemProvider @Inject() (config: Config) extends Provider[ActorSystem] {
     override def get: ActorSystem = ActorSystem(name, config)
   }
 
-  class MaterializerProvider @Inject()(system: ActorSystem) extends Provider[Materializer] {
+  class MaterializerProvider @Inject() (system: ActorSystem) extends Provider[Materializer] {
     override def get: Materializer = Materializer(system)
   }
 
-  class BlockingDispatchedExecutionContextProvider @Inject()(system: ActorSystem) extends Provider[ExecutionContext] {
+  class BlockingDispatchedExecutionContextProvider @Inject() (system: ActorSystem)
+      extends Provider[ExecutionContext] {
     override def get: ExecutionContext = system.dispatchers.lookup("blocking-dispatcher")
   }
 }
@@ -33,7 +34,9 @@ class AkkaModule(includeExecutionContext: Boolean = true) extends AbstractModule
     bind[Materializer].toProvider[Providers.MaterializerProvider].asEagerSingleton()
 
     if (includeExecutionContext) {
-      bind[ExecutionContext].toProvider[Providers.BlockingDispatchedExecutionContextProvider].asEagerSingleton()
+      bind[ExecutionContext]
+        .toProvider[Providers.BlockingDispatchedExecutionContextProvider]
+        .asEagerSingleton()
     }
   }
 }
