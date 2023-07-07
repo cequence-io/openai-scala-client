@@ -121,7 +121,7 @@ class RetryHelpersSpec
 
   }
 
-  implicit val scheduler: Scheduler = actorSystem.scheduler
+  implicit val scheduler: Scheduler = system.scheduler
 
   override def patienceConfig: PatienceConfig = patience
   implicit val retrySettings: RetrySettings = RetrySettings(
@@ -161,8 +161,6 @@ class RetryHelpersSpec
     whenReady(f) { _ =>
       verify(mock, times(n)).attempt()
     }
-
-  override def actorSystem: ActorSystem = system
 }
 
 trait Retryable {
