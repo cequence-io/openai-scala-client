@@ -13,7 +13,8 @@ ThisBuild / isSnapshot := false
 lazy val commonSettings = Seq(
   libraryDependencies += "org.scalactic" %% "scalactic" % "3.2.16",
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.16" % Test,
-  libraryDependencies ++= extraTestDependencies(scalaVersion.value)
+  libraryDependencies ++= extraTestDependencies(scalaVersion.value),
+  crossScalaVersions := List(scala212, scala213, scala3)
 )
 
 def extraTestDependencies(scalaVersion: String) =
