@@ -33,7 +33,7 @@ def extraTestDependencies(scalaVersion: String) =
     case Some((3, _)) =>
       Seq(
 //        "org.scala-lang.modules" %% "scala-java8-compat" % "1.0.2", //  % Test
-        "com.typesafe.akka" %% "akka-actor-testkit-typed" % "2.6.20" % Test exclude("org.scala-lang.modules", "scala-java8-compat")
+        "com.typesafe.akka" %% "akka-actor-testkit-typed" % "2.6.20" % Test exclude ("org.scala-lang.modules", "scala-java8-compat")
       )
 
     case _ =>
