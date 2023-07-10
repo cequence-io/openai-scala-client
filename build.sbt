@@ -19,10 +19,16 @@ lazy val commonSettings = Seq(
 
 def extraTestDependencies(scalaVersion: String) =
   CrossVersion.partialVersion(scalaVersion) match {
-    case Some((2, _)) =>
+    case Some((2, 12)) =>
       Seq(
         "org.mockito" %% "mockito-scala-scalatest" % "1.17.14" % Test,
         "com.typesafe.akka" %% "akka-actor-testkit-typed" % "2.6.1" % Test
+      )
+
+    case Some((2, 13)) =>
+      Seq(
+        "org.mockito" %% "mockito-scala-scalatest" % "1.17.14" % Test,
+        "com.typesafe.akka" %% "akka-actor-testkit-typed" % "2.6.20" % Test
       )
 
     case _ =>
