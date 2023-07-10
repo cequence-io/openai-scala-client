@@ -14,7 +14,7 @@ object Retryable {
     case _: OpenAIScalaEngineOverloadedException => true
 
     // otherwise don't retry
-    case _                                       => false
+    case _ => false
   }
 }
 
