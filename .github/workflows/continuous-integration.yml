@@ -32,7 +32,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        # cannot test on Scala 3.2.2 (mockito-scala-scalatest is not available)
+        # cannot test or even compile tests on Scala 3.2.2 (mockito-scala-scalatest is not available)
         scala: [ '2.12.18', '2.13.11']
 
     steps:
@@ -71,7 +71,8 @@ jobs:
       matrix:
         distribution: [ 'corretto' ]
         jdk: [ '11' ]
-        scala: [ '2.12.18', '2.13.11', '3.2.2' ]
+        # cannot test or even compile tests on Scala 3.2.2 (mockito-scala-scalatest is not available)
+        scala: [ '2.12.18', '2.13.11']
         experimental: [ false ]
         include:
           - jdk: '17'
