@@ -3,17 +3,13 @@ package io.cequence.openaiscala.service.ws
 import com.fasterxml.jackson.core.JsonParseException
 import com.fasterxml.jackson.databind.JsonMappingException
 import io.cequence.openaiscala.JsonUtil.toJson
-import io.cequence.openaiscala.{
-  OpenAIScalaClientException,
-  OpenAIScalaClientTimeoutException,
-  OpenAIScalaClientUnknownHostException,
-  OpenAIScalaTokenCountExceededException
-}
+import io.cequence.openaiscala._
 import play.api.libs.json.{JsObject, JsValue}
 import play.api.libs.ws.{BodyWritable, StandaloneWSRequest}
 import play.api.libs.ws.JsonBodyWritables._
 import play.api.libs.ws.JsonBodyReadables._
 import MultipartWritable.writeableOf_MultipartFormData
+
 import java.io.File
 import java.net.UnknownHostException
 import java.util.concurrent.TimeoutException
@@ -368,31 +364,38 @@ trait WSRequestHelper extends WSHelper {
   ): Seq[(PT, Option[JsValue])] =
     params.map { case (paramName, value) => (paramName, value.map(toJson)) }
 
-  protected def handleErrorResponse[T](response: RichResponse[T]): T =
-    response match {
-      case Left(data) => data
-
-      case Right((errorCode, message)) =>
-        val errorMessage = s"Code ${errorCode} : ${message}"
-        if (
-          message.contains("Please reduce your prompt; or completion length") ||
-          message.contains("Please reduce the length of the messages")
-        )
-          throw new OpenAIScalaTokenCountExceededException(errorMessage)
-        else
-          throw new OpenAIScalaClientException(errorMessage)
-    }
-
-  protected def handleNotFoundAndError[T](response: Either[T, (Int, String)]): Option[T] =
+  protected def handleNotFoundAndError[T](response: RichResponse[T]): Option[T] =
     response match {
       case Left(value) => Some(value)
 
       case Right((errorCode, message)) =>
         if (errorCode == 404) None
         else
-          throw new OpenAIScalaClientException(
-            s"Code ${errorCode} : ${message}"
-          )
+          Some(handleErrorResponse(response))
+    }
+
+  protected def handleErrorResponse[T](response: RichResponse[T]): T =
+    response match {
+      case Left(data) => data
+
+      case Right((errorCode, message)) =>
+        val errorMessage = s"Code ${errorCode} : ${message}"
+        errorCode match {
+          case 401 => throw new OpenAIScalaUnauthorizedException(errorMessage)
+          case 429 => throw new OpenAIScalaRateLimitException(errorMessage)
+          case 500 => throw new OpenAIScalaServerErrorException(errorMessage)
+          case 503 => throw new OpenAIScalaEngineOverloadedException(errorMessage)
+          case 400 =>
+            if (
+              message.contains("Please reduce your prompt; or completion length") ||
+              message.contains("Please reduce the length of the messages")
+            )
+              throw new OpenAIScalaTokenCountExceededException(errorMessage)
+            else
+              throw new OpenAIScalaClientException(errorMessage)
+
+          case _ => throw new OpenAIScalaClientException(errorMessage)
+        }
     }
 
   protected def paramsAsString(params: Seq[(PT, Any)]): String = {

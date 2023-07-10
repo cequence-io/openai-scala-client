@@ -7,11 +7,15 @@ object Retryable {
   ): Option[OpenAIScalaClientException] = Some(t).filter(apply)
 
   def apply(t: OpenAIScalaClientException): Boolean = t match {
-    // TODO: Need separate classes for rate-limit-error conditions (#16)
-    case _: OpenAIScalaClientTimeoutException => true
-    case _                                    => false
-  }
+    // we retry on these
+    case _: OpenAIScalaClientTimeoutException    => true
+    case _: OpenAIScalaRateLimitException        => true
+    case _: OpenAIScalaServerErrorException      => true
+    case _: OpenAIScalaEngineOverloadedException => true
 
+    // otherwise don't retry
+    case _                                       => false
+  }
 }
 
 class OpenAIScalaClientException(
@@ -36,6 +40,34 @@ class OpenAIScalaClientUnknownHostException(
 }
 
 class OpenAIScalaTokenCountExceededException(
+  message: String,
+  cause: Throwable
+) extends OpenAIScalaClientException(message, cause) {
+  def this(message: String) = this(message, null)
+}
+
+class OpenAIScalaUnauthorizedException(
+  message: String,
+  cause: Throwable
+) extends OpenAIScalaClientException(message, cause) {
+  def this(message: String) = this(message, null)
+}
+
+class OpenAIScalaRateLimitException(
+  message: String,
+  cause: Throwable
+) extends OpenAIScalaClientException(message, cause) {
+  def this(message: String) = this(message, null)
+}
+
+class OpenAIScalaServerErrorException(
+  message: String,
+  cause: Throwable
+) extends OpenAIScalaClientException(message, cause) {
+  def this(message: String) = this(message, null)
+}
+
+class OpenAIScalaEngineOverloadedException(
   message: String,
   cause: Throwable
 ) extends OpenAIScalaClientException(message, cause) {

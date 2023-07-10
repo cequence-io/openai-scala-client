@@ -2,6 +2,7 @@ package io.cequence.openaiscala.service
 
 import akka.actor.ActorSystem
 import akka.stream.Materializer
+import com.google.inject.{AbstractModule, Module}
 
 import scala.concurrent.ExecutionContext
 import net.codingwell.scalaguice.ScalaModule
@@ -9,7 +10,7 @@ import net.codingwell.scalaguice.ScalaModule
 trait BaseOpenAIClientApp extends GuiceContainer with App {
 
   // modules
-  override protected def modules: Seq[ScalaModule] = Seq(
+  override protected def modules: Seq[Module] = Seq(
     new ConfigModule(),
     new AkkaModule(),
     new ServiceModule()
