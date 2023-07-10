@@ -13,6 +13,7 @@ ThisBuild / isSnapshot := false
 lazy val commonSettings = Seq(
   libraryDependencies += "org.scalactic" %% "scalactic" % "3.2.16",
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.16" % Test,
+  libraryDependencies += "org.scalatestplus" %% "mockito-4-11" % "3.2.16.0" % Test,
   libraryDependencies ++= extraTestDependencies(scalaVersion.value),
   crossScalaVersions := List(scala212, scala213, scala3)
 )
@@ -21,13 +22,16 @@ def extraTestDependencies(scalaVersion: String) =
   CrossVersion.partialVersion(scalaVersion) match {
     case Some((2, 12)) =>
       Seq(
-        "org.mockito" %% "mockito-scala-scalatest" % "1.17.14" % Test,
         "com.typesafe.akka" %% "akka-actor-testkit-typed" % "2.6.1" % Test
       )
 
     case Some((2, 13)) =>
       Seq(
-        "org.mockito" %% "mockito-scala-scalatest" % "1.17.14" % Test,
+        "com.typesafe.akka" %% "akka-actor-testkit-typed" % "2.6.20" % Test
+      )
+
+    case Some((3, _)) =>
+      Seq(
         "com.typesafe.akka" %% "akka-actor-testkit-typed" % "2.6.20" % Test
       )
 

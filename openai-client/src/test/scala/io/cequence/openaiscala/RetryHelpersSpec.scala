@@ -3,7 +3,8 @@ package io.cequence.openaiscala
 import akka.actor.{ActorSystem, Scheduler}
 import akka.testkit.TestKit
 import io.cequence.openaiscala.RetryHelpers.{RetrySettings, delay, retry}
-import org.mockito.scalatest.MockitoSugar
+import org.mockito.Mockito._
+import org.scalatestplus.mockito.MockitoSugar
 import org.scalatest.RecoverMethods._
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
