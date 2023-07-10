@@ -32,7 +32,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        scala: [ '2.12.15', '2.13.10', '3.2.2' ]
+        scala: [ '2.12.18', '2.13.11', '3.2.2' ]
 
     steps:
       - uses: actions/checkout@v3
@@ -41,7 +41,7 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: 'corretto'
-          java-version: '8'
+          java-version: '9'
           cache: 'sbt'
 
       - name: Build & Test
@@ -70,12 +70,12 @@ jobs:
       matrix:
         distribution: [ 'corretto' ]
         jdk: [ '11' ]
-        scala: [ '2.12.15', '2.13.10', '3.2.2' ]
+        scala: [ '2.12.18', '2.13.11', '3.2.2' ]
         experimental: [ false ]
         include:
           - jdk: '17'
             distribution: 'corretto'
-            scala: '2.13.10'
+            scala: '2.13.11'
             experimental: true
 
     steps:
