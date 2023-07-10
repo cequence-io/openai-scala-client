@@ -24,7 +24,7 @@ trait GuiceContainer {
 
   protected def terminate(): Unit = {
     val system = instance[ActorSystem]
-    system.terminate
+    system.terminate()
     Await.result(system.whenTerminated, 1.day)
   }
 }

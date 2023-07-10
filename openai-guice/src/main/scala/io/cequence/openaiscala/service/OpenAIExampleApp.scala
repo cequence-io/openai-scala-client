@@ -8,7 +8,7 @@ object OpenAIExampleApp extends BaseOpenAIClientApp {
     )
     .onComplete { _ =>
       openAIService.close()
-      system.terminate
+      system.terminate()
       System.exit(0)
     }
 }
