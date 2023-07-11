@@ -8,7 +8,7 @@ import io.cequence.openaiscala.domain.settings._
  */
 trait OpenAIServiceConsts {
 
-  protected val coreUrl = "https://api.openai.com/v1/"
+  protected val defaultCoreUrl = "https://api.openai.com/v1/"
 
   protected val defaultRequestTimeout = 120 * 1000 // two minute
 

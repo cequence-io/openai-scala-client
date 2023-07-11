@@ -24,7 +24,7 @@ import scala.concurrent.ExecutionContext
 private trait OpenAIServiceStreamedExtraImpl
     extends OpenAIServiceStreamedExtra
     with WSStreamRequestHelper {
-  this: OpenAIServiceImpl =>
+  this: OpenAIServiceClassImpl =>
 
   override def createCompletionStreamed(
     prompt: String,
@@ -89,6 +89,11 @@ object OpenAIServiceStreamedFactory
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer
-  ): OpenAIService with OpenAIServiceStreamedExtra =
-    new OpenAIServiceImpl(apiKey, orgId, timeouts) with OpenAIServiceStreamedExtraImpl
+  ): OpenAIService with OpenAIServiceStreamedExtra = {
+    val orgIdHeader = orgId.map(("OpenAI-Organization", _))
+    val authHeaders = orgIdHeader ++: Seq(("Authorization", s"Bearer $apiKey"))
+
+    new OpenAIServiceClassImpl(defaultCoreUrl, authHeaders, timeouts)
+      with OpenAIServiceStreamedExtraImpl
+  }
 }

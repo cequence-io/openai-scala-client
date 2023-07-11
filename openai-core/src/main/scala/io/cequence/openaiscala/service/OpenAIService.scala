@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.service
 
-import io.cequence.openaiscala.domain.{FunMessageSpec, FunctionSpec, MessageSpec}
+import io.cequence.openaiscala.domain.{FunMessageSpec, FunctionSpec}
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
 
@@ -28,19 +28,7 @@ import scala.concurrent.Future
  * @since Jan
  *   2023
  */
-trait OpenAIService extends OpenAIServiceConsts {
-
-  /**
-   * Lists the currently available models, and provides basic information about each one such
-   * as the owner and availability.
-   *
-   * @return
-   *   models
-   *
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/models/list">OpenAI Doc</a>
-   */
-  def listModels: Future[Seq[ModelInfo]]
+trait OpenAIService extends OpenAICoreService with OpenAIServiceConsts {
 
   /**
    * Retrieves a model instance, providing basic information about the model such as the owner
@@ -55,43 +43,6 @@ trait OpenAIService extends OpenAIServiceConsts {
    *   <a href="https://platform.openai.com/docs/api-reference/models/retrieve">OpenAI Doc</a>
    */
   def retrieveModel(modelId: String): Future[Option[ModelInfo]]
-
-  /**
-   * Creates a completion for the provided prompt and parameters.
-   *
-   * @param prompt
-   *   The prompt(s) to generate completions for, encoded as a string, array of strings, array
-   *   of tokens, or array of token arrays. Note that <|endoftext|> is the document separator
-   *   that the model sees during training, so if a prompt is not specified the model will
-   *   generate as if from the beginning of a new document.
-   * @param settings
-   * @return
-   *   text completion response
-   *
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/completions/create">OpenAI
-   *   Doc</a>
-   */
-  def createCompletion(
-    prompt: String,
-    settings: CreateCompletionSettings = DefaultSettings.CreateCompletion
-  ): Future[TextCompletionResponse]
-
-  /**
-   * Creates a model response for the given chat conversation.
-   *
-   * @param messages
-   *   A list of messages comprising the conversation so far.
-   * @param settings
-   * @return
-   *   chat completion response
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/chat/create">OpenAI Doc</a>
-   */
-  def createChatCompletion(
-    messages: Seq[MessageSpec],
-    settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
-  ): Future[ChatCompletionResponse]
 
   /**
    * Creates a model response for the given chat conversation expecting a function call.
@@ -199,26 +150,6 @@ trait OpenAIService extends OpenAIServiceConsts {
     image: File,
     settings: CreateImageSettings = DefaultSettings.CreateImageVariation
   ): Future[ImageInfo]
-
-  /**
-   * Creates an embedding vector representing the input text.
-   *
-   * @param input
-   *   Input text to get embeddings for, encoded as a string or array of tokens. To get
-   *   embeddings for multiple inputs in a single request, pass an array of strings or array of
-   *   token arrays. Each input must not exceed 8192 tokens in length.
-   * @param settings
-   * @return
-   *   list of embeddings inside an envelope
-   *
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/embeddings/create">OpenAI
-   *   Doc</a>
-   */
-  def createEmbeddings(
-    input: Seq[String],
-    settings: CreateEmbeddingsSettings = DefaultSettings.CreateEmbeddings
-  ): Future[EmbeddingResponse]
 
   /**
    * Transcribes audio into the input language.
@@ -472,9 +403,4 @@ trait OpenAIService extends OpenAIServiceConsts {
     input: String,
     settings: CreateModerationSettings = DefaultSettings.CreateModeration
   ): Future[ModerationResponse]
-
-  /**
-   * Closes the underlying ws client, and releases all its resources.
-   */
-  def close(): Unit
 }

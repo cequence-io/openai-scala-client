@@ -368,7 +368,7 @@ trait WSRequestHelper extends WSHelper {
     response match {
       case Left(value) => Some(value)
 
-      case Right((errorCode, message)) =>
+      case Right((errorCode, _)) =>
         if (errorCode == 404) None
         else
           Some(handleErrorResponse(response))
