@@ -8,11 +8,7 @@ import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
-import io.cequence.openaiscala.domain.{
-  BaseMessageSpec,
-  FunMessageSpec,
-  MessageSpec
-}
+import io.cequence.openaiscala.domain.{BaseMessageSpec, FunMessageSpec, MessageSpec}
 import io.cequence.openaiscala.service.ws.{Timeouts, WSRequestHelper}
 
 import scala.concurrent.{ExecutionContext, Future}
