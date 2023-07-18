@@ -17,7 +17,7 @@ This is a no-nonsense async Scala client for OpenAI API supporting all the avail
 Note that in order to be consistent with the OpenAI API naming, the service function names match exactly the API endpoint titles/descriptions with camelcase.
 Also, we aimed the lib to be self-contained with the fewest dependencies possible therefore we ended up using only two libs `play-ahc-ws-standalone` and `play-ws-standalone-json` (at the top level). Additionally, if dependency injection is required we use `scala-guice` lib as well.  
 
-🔥 **New**: This lib supports also "OpenAI-API-compatible" providers such as [FastChat](https://github.com/lm-sys/FastChat), [Azure](https://learn.microsoft.com/en-us/azure/cognitive-services/openai/reference), or any other service with a custom URL. Check the examples below for more details. 
+🔥 **New**: This lib supports also "OpenAI-API-compatible" providers such as [FastChat](https://github.com/lm-sys/FastChat) (umbrella for open-source LLMs - Vicuna, Alpaca, LLaMA, fastchat-t5-3b-v1.0, mpt-7b-chat, etc.), [Azure](https://learn.microsoft.com/en-us/azure/cognitive-services/openai/reference), or any other similar service with a custom URL. Check the examples below for more details. 
 
 👉 Check out an article about the lib/client on [Medium](https://medium.com/@0xbnd/openai-scala-client-is-out-d7577de934ad).
 
