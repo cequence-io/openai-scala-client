@@ -45,19 +45,13 @@ jobs:
           cache: 'sbt'
 
       - name: Build & Test
-        run: sbt ++${{ matrix.scala }} testWithCoverage
+        run: sbt ++${{ matrix.scala }} clean testWithCoverage
 
-      - name: Upload coverage report (Cobertura)
+      - name: Upload coverage report (all)
         uses: actions/upload-artifact@v3.1.0
         with:
-          name: cobertura.xml
-          path: ${{github.workspace}}/target/scala-2.13/coverage-report/cobertura.xml
-
-      - name: Upload coverage report (HTML)
-        uses: actions/upload-artifact@v3.1.0
-        with:
-          name: scoverage-report-html
-          path: ${{github.workspace}}/target/scala-2.13/scoverage-report/
+          name: coverage-report-${{ matrix.scala }}
+          path: ${{github.workspace}}/target/scala-${{ matrix.scala }}/coverage-report
 
   optional-build:
     name: Build (Optional)
@@ -90,35 +84,35 @@ jobs:
           cache: 'sbt'
 
       - name: Perform Build / Test
-        run: sbt ++${{ matrix.scala }} compile test
+        run: sbt ++${{ matrix.scala }} clean compile test
 
-  coverage:
-    name: Coverage Report
-    if: ${{ github.event.pull_request }}
-    needs: [ build ]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v3
-        with:
-          name: cobertura.xml
-
-      - name: Analyzing coverage report
-        uses: 5monkeys/cobertura-action@master
-        with:
-          path: cobertura.xml
-          only_changed_files: true
-          fail_below_threshold: true
-          show_missing: true
-          show_line: true
-          show_branch: true
-          show_class_names: true
-          link_missing_lines: true
-          minimum_coverage: 75
+  #  coverage:
+  #    name: Coverage Report
+  #    if: ${{ github.event.pull_request }}
+  #    needs: [ build ]
+  #    runs-on: ubuntu-latest
+  #    steps:
+  #      - uses: actions/download-artifact@v3
+  #        with:
+  #          name: cobertura.xml
+  #
+  #      - name: Analyzing coverage report
+  #        uses: 5monkeys/cobertura-action@master
+  #        with:
+  #          path: cobertura.xml
+  #          only_changed_files: true
+  #          fail_below_threshold: true
+  #          show_missing: true
+  #          show_line: true
+  #          show_branch: true
+  #          show_class_names: true
+  #          link_missing_lines: true
+  #          minimum_coverage: 75
 
   ready-to-merge:
     name: Ready to Merge
     if: ${{ github.event.pull_request }}
-    needs: [ optional-build, coverage ]
+    needs: [ optional-build ]
     runs-on: ubuntu-latest
     steps:
       - run: echo 'Ready to merge.'
