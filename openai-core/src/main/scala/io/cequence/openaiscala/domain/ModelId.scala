@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.domain
 
 /**
- * OpenAI models available as of `2023-03-07`.
+ * OpenAI models available as of `2023-09-21`.
  *
  * @since Jan
  *   2023
@@ -40,6 +40,7 @@ object ModelId {
   val text_search_babbage_doc_001 = "text-search-babbage-doc-001"
   val text_search_babbage_query_001 = "text-search-babbage-query-001"
   val text_similarity_babbage_001 = "text-similarity-babbage-001"
+  val babbage_002 = "babbage-002"
 
   // Curie
   val curie = "curie"
@@ -64,6 +65,7 @@ object ModelId {
   val davinci_search_query = "davinci-search-query"
   val davinci_similarity = "davinci-similarity"
   val davinci_2020_05_03 = "davinci:2020-05-03"
+  val davinci_002 = "davinci-002"
 
   @Deprecated
   val code_davinci_001 = "code-davinci-001"
@@ -106,6 +108,8 @@ object ModelId {
   val gpt_3_5_turbo_16k = "gpt-3.5-turbo-16k"
   // 16k context (June 13th snapshot), fine-tuned for function calling
   val gpt_3_5_turbo_16k_0613 = "gpt-3.5-turbo-16k-0613"
+  val gpt_3_5_turbo_instruct_0914 = "gpt-3.5-turbo-instruct-0914"
+  val gpt_3_5_turbo_instruct = "gpt-3.5-turbo-instruct"
 
   // GPT-4
 
