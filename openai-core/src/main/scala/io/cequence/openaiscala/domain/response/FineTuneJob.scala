@@ -2,6 +2,7 @@ package io.cequence.openaiscala.domain.response
 
 import java.{util => ju}
 
+// TODO: adapt
 case class FineTuneJob(
   id: String,
   model: String,
@@ -10,10 +11,10 @@ case class FineTuneJob(
   fine_tuned_model: Option[String],
   hyperparams: FineTuneHyperparams,
   organization_id: String,
-  result_files: Seq[FileInfo],
   status: String, // e.g. pending or cancelled
   validation_files: Seq[FileInfo],
   training_files: Seq[FileInfo],
+  result_files: Seq[FileInfo],
   updated_at: ju.Date
 )
 
@@ -23,6 +24,7 @@ case class FineTuneEvent(
   message: String
 )
 
+// TODO: adapt
 case class FineTuneHyperparams(
   batch_size: Option[Int],
   learning_rate_multiplier: Option[Double],

@@ -327,7 +327,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
       EndPoint.fine_tunes,
       endPointParam = Some(s"$fineTuneId/events"),
       params = Seq(
-        Param.stream -> Some(false)
+        Param.stream -> Some(false) // TODO: is streaming still supported?
       )
     ).map { response =>
       handleNotFoundAndError(response).map(jsResponse =>

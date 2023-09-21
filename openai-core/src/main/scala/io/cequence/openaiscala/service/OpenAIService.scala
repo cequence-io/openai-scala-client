@@ -320,6 +320,7 @@ trait OpenAIService extends OpenAICoreService with OpenAIServiceConsts {
    * @see
    *   <a href="https://platform.openai.com/docs/api-reference/fine-tunes/list">OpenAI Doc</a>
    */
+  // TODO: add pagination: after: Option[String], limit: Option[Int]
   def listFineTunes: Future[Seq[FineTuneJob]]
 
   /**
@@ -366,6 +367,7 @@ trait OpenAIService extends OpenAICoreService with OpenAIServiceConsts {
    *   <a href="https://platform.openai.com/docs/api-reference/fine-tunes/events">OpenAI
    *   Doc</a>
    */
+  // TODO: add pagination: after: Option[String], limit: Option[Int]
   def listFineTuneEvents(
     fineTuneId: String
   ): Future[Option[Seq[FineTuneEvent]]]

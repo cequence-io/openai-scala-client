@@ -16,7 +16,7 @@ object EndPoint extends Enumeration {
   case object audio_transcriptions extends EndPoint("audio/transcriptions")
   case object audio_translations extends EndPoint("audio/translations")
   case object files extends EndPoint
-  case object fine_tunes extends EndPoint("fine-tunes")
+  case object fine_tunes extends EndPoint("fine_tuning/jobs")
   case object moderations extends EndPoint
 }
 
