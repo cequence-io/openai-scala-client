@@ -85,7 +85,7 @@ trait WSStreamRequestHelper {
     implicit um: Unmarshaller[ByteString, T],
     materializer: Materializer
   ): Source[T, NotUsed] = {
-    val request = getWSRequestOptional(Some(endPoint), endPointParam, params)
+    val request = getWSRequestOptional(Some(endPoint), endPointParam, toStringParams(params))
 
     val requestWithBody = if (bodyParams.nonEmpty) {
       val bodyParamsX = bodyParams.collect { case (fieldName, Some(jsValue)) =>

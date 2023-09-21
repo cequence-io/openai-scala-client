@@ -20,7 +20,7 @@ object OpenAIServiceFactory
     val orgIdHeader = orgId.map(("OpenAI-Organization", _))
     val authHeaders = orgIdHeader ++: Seq(("Authorization", s"Bearer $apiKey"))
 
-    apply(defaultCoreUrl, authHeaders, timeouts)
+    apply(defaultCoreUrl, authHeaders, Nil, timeouts)
   }
 
   /**
@@ -93,25 +93,34 @@ object OpenAIServiceFactory
     materializer: Materializer
   ): OpenAIService = {
     val coreUrl =
-      s"https://${resourceName}.openai.azure.com/openai/deployments/${deploymentId}/completions?api-version=${apiVersion}"
+      s"https://${resourceName}.openai.azure.com/openai/deployments/${deploymentId}/"
 
-    apply(coreUrl, authHeaders, timeouts)
+    val extraParams = Seq("api-version" -> apiVersion)
+
+    apply(
+      coreUrl,
+      authHeaders,
+      extraParams,
+      timeouts
+    )
   }
 
   def apply(
     coreUrl: String,
     authHeaders: Seq[(String, String)],
+    extraParams: Seq[(String, String)],
     timeouts: Option[Timeouts]
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer
   ): OpenAIService =
-    new OpenAIServiceClassImpl(coreUrl, authHeaders, timeouts)
+    new OpenAIServiceClassImpl(coreUrl, authHeaders, extraParams, timeouts)
 }
 
 private class OpenAIServiceClassImpl(
   val coreUrl: String,
   val authHeaders: Seq[(String, String)],
+  val extraParams: Seq[(String, String)],
   val explTimeouts: Option[Timeouts]
 )(
   implicit val ec: ExecutionContext,

@@ -60,7 +60,7 @@ trait WSRequestHelper extends WSHelper {
     params: Seq[(PT, Option[Any])] = Nil,
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] = {
-    val request = getWSRequestOptional(Some(endPoint), endPointParam, params)
+    val request = getWSRequestOptional(Some(endPoint), endPointParam, toStringParams(params))
 
     execGETJsonAux(request, Some(endPoint), acceptableStatusCodes)
   }
@@ -124,7 +124,7 @@ trait WSRequestHelper extends WSHelper {
     bodyParams: Seq[(PT, Option[Any])] = Nil,
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] = {
-    val request = getWSRequestOptional(Some(endPoint), endPointParam, params)
+    val request = getWSRequestOptional(Some(endPoint), endPointParam, toStringParams(params))
     val formData = createMultipartFormData(fileParams, bodyParams)
 
     implicit val writeable: BodyWritable[MultipartFormData] =
@@ -145,7 +145,7 @@ trait WSRequestHelper extends WSHelper {
     bodyParams: Seq[(PT, Option[Any])] = Nil,
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichStringResponse] = {
-    val request = getWSRequestOptional(Some(endPoint), endPointParam, params)
+    val request = getWSRequestOptional(Some(endPoint), endPointParam, toStringParams(params))
     val formData = createMultipartFormData(fileParams, bodyParams)
 
     implicit val writeable: BodyWritable[MultipartFormData] =
@@ -187,7 +187,7 @@ trait WSRequestHelper extends WSHelper {
     bodyParams: Seq[(PT, Option[JsValue])] = Nil,
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] = {
-    val request = getWSRequestOptional(Some(endPoint), endPointParam, params)
+    val request = getWSRequestOptional(Some(endPoint), endPointParam, toStringParams(params))
     val bodyParamsX = bodyParams.collect { case (fieldName, Some(jsValue)) =>
       (fieldName.toString, jsValue)
     }
@@ -247,7 +247,7 @@ trait WSRequestHelper extends WSHelper {
     params: Seq[(PT, Option[Any])] = Nil,
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] = {
-    val request = getWSRequestOptional(Some(endPoint), endPointParam, params)
+    val request = getWSRequestOptional(Some(endPoint), endPointParam, toStringParams(params))
 
     execDeleteAux(request, Some(endPoint), acceptableStatusCodes)
   }
@@ -271,7 +271,7 @@ trait WSRequestHelper extends WSHelper {
   protected def getWSRequest(
     endPoint: Option[PEP],
     endPointParam: Option[String],
-    params: Seq[(PT, Any)]
+    params: Seq[(String, Any)]
   ): StandaloneWSRequest = {
     val paramsString = paramsAsString(params)
     val url = createUrl(endPoint, endPointParam) + paramsString
@@ -282,7 +282,7 @@ trait WSRequestHelper extends WSHelper {
   protected def getWSRequestOptional(
     endPoint: Option[PEP],
     endPointParam: Option[String],
-    params: Seq[(PT, Option[Any])]
+    params: Seq[(String, Option[Any])]
   ): StandaloneWSRequest = {
     val paramsString = paramsOptionalAsString(params)
     val url = createUrl(endPoint, endPointParam) + paramsString
@@ -398,14 +398,14 @@ trait WSRequestHelper extends WSHelper {
         }
     }
 
-  protected def paramsAsString(params: Seq[(PT, Any)]): String = {
+  protected def paramsAsString(params: Seq[(String, Any)]): String = {
     val string =
       params.map { case (tag, value) => s"$tag=$value" }.mkString("&")
 
     if (string.nonEmpty) s"?$string" else ""
   }
 
-  protected def paramsOptionalAsString(params: Seq[(PT, Option[Any])]): String = {
+  protected def paramsOptionalAsString(params: Seq[(String, Option[Any])]): String = {
     val string =
       params.collect { case (tag, Some(value)) => s"$tag=$value" }.mkString("&")
 
@@ -422,6 +422,11 @@ trait WSRequestHelper extends WSHelper {
     params: Seq[(PT, Any)]
   ): Seq[(PT, Some[Any])] =
     params.map { case (a, b) => (a, Some(b)) }
+
+  protected def toStringParams(
+    params: Seq[(PT, Option[Any])]
+  ): Seq[(String, Option[Any])] =
+    params.map { case (a, b) => (a.toString, Some(b)) }
 
   // close
 

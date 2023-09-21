@@ -32,6 +32,7 @@ private trait OpenAICoreServiceImpl extends OpenAICoreService with WSRequestHelp
 
   protected val explTimeouts: Option[Timeouts]
   protected val authHeaders: Seq[(String, String)]
+  protected val extraParams: Seq[(String, String)]
 
   override protected def timeouts: Timeouts =
     explTimeouts.getOrElse(
@@ -175,14 +176,29 @@ private trait OpenAICoreServiceImpl extends OpenAICoreService with WSRequestHelp
   override protected def getWSRequestOptional(
     endPoint: Option[PEP],
     endPointParam: Option[String],
-    params: Seq[(PT, Option[Any])] = Nil
-  ): StandaloneWSRequest#Self =
-    super.getWSRequestOptional(endPoint, endPointParam, params).addHttpHeaders(authHeaders: _*)
+    params: Seq[(String, Option[Any])] = Nil
+  ): StandaloneWSRequest#Self = {
+    val extraStringParams = extraParams.map { case (tag, value) => (tag, Some(value)) }
+
+    super
+      .getWSRequestOptional(
+        endPoint,
+        endPointParam,
+        params ++ extraStringParams
+      )
+      .addHttpHeaders(authHeaders: _*)
+  }
 
   override protected def getWSRequest(
     endPoint: Option[PEP],
     endPointParam: Option[String],
-    params: Seq[(PT, Any)] = Nil
+    params: Seq[(String, Any)] = Nil
   ): StandaloneWSRequest#Self =
-    super.getWSRequest(endPoint, endPointParam, params).addHttpHeaders(authHeaders: _*)
+    super
+      .getWSRequest(
+        endPoint,
+        endPointParam,
+        params ++ extraParams
+      )
+      .addHttpHeaders(authHeaders: _*)
 }

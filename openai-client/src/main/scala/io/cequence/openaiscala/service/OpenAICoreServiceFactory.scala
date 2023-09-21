@@ -10,17 +10,19 @@ object OpenAICoreServiceFactory {
   def apply(
     coreUrl: String,
     authHeaders: Seq[(String, String)] = Nil,
+    extraParams: Seq[(String, String)] = Nil,
     timeouts: Option[Timeouts] = None
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer
   ): OpenAICoreService =
-    new OpenAICoreServiceClassImpl(coreUrl, authHeaders, timeouts)
+    new OpenAICoreServiceClassImpl(coreUrl, authHeaders, extraParams, timeouts)
 }
 
 private class OpenAICoreServiceClassImpl(
   val coreUrl: String,
   val authHeaders: Seq[(String, String)],
+  val extraParams: Seq[(String, String)],
   val explTimeouts: Option[Timeouts]
 )(
   implicit val ec: ExecutionContext,

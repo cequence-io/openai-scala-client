@@ -93,7 +93,7 @@ object OpenAIServiceStreamedFactory
     val orgIdHeader = orgId.map(("OpenAI-Organization", _))
     val authHeaders = orgIdHeader ++: Seq(("Authorization", s"Bearer $apiKey"))
 
-    new OpenAIServiceClassImpl(defaultCoreUrl, authHeaders, timeouts)
+    new OpenAIServiceClassImpl(defaultCoreUrl, authHeaders, Nil, timeouts)
       with OpenAIServiceStreamedExtraImpl
   }
 }
