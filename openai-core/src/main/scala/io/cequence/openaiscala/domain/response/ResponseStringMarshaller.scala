@@ -13,9 +13,10 @@ trait ResponseStringMarshaller {
        |-fine-tune model: ${fileInfo.fine_tuned_model.getOrElse("N/A")}
        |-organization id: ${fileInfo.organization_id}
        |-status: ${fileInfo.status}
-       |-training files:\n${fileInfo.training_files.map(fileInfoToString).mkString("\n")}
-       |-validation files:\n${fileInfo.validation_files.map(fileInfoToString).mkString("\n")}
-       |-result files:\n${fileInfo.result_files.map(fileInfoToString).mkString("\n")}
+       |-training file: ${fileInfo.training_file}
+       |-validation file: ${fileInfo.validation_file.getOrElse("N/A")}
+       |-result files: ${fileInfo.result_files.mkString(",")}
+       |-error: ${fileInfo.error.getOrElse("N/A")}
      """.stripMargin
 
   def fileInfoToString(fileInfo: FileInfo): String =
