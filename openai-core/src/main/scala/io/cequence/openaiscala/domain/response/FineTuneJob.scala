@@ -37,15 +37,14 @@ case class FineTuneJob(
 }
 
 case class FineTuneEvent(
+  id: String,
   created_at: ju.Date,
   level: String,
-  message: String
+  message: String,
+  data: Option[String]
 )
 
-// TODO: adapt
 case class FineTuneHyperparams(
-  batch_size: Option[Int],
-  learning_rate_multiplier: Option[Double],
-  n_epochs: Int,
-  prompt_loss_weight: Double
+  // the number of epochs or auto (if not specified initially)
+  n_epochs: Either[Int, String]
 )
