@@ -50,13 +50,21 @@ object Param {
   case object purpose extends Param
   case object training_file extends Param
   case object validation_file extends Param
+  case object hyperparameters extends Param
   case object n_epochs extends Param
+  @Deprecated
   case object batch_size extends Param
+  @Deprecated
   case object learning_rate_multiplier extends Param
+  @Deprecated
   case object prompt_loss_weight extends Param
+  @Deprecated
   case object compute_classification_metrics extends Param
+  @Deprecated
   case object classification_n_classes extends Param
+  @Deprecated
   case object classification_positive_class extends Param
+  @Deprecated
   case object classification_betas extends Param
   case object language extends Param
   case object functions extends Param
