@@ -1,7 +1,7 @@
 package io.cequence.openaiscala
 
 import java.{util => ju}
-import play.api.libs.json._
+import play.api.libs.json.{Format, _}
 
 import java.util.Date
 
@@ -135,5 +135,39 @@ object JsonUtil {
       }
       JsObject(fields)
     }
+  }
+
+  import play.api.libs.json._
+
+  private class EitherFormat[L, R](
+    leftFormat: Format[L],
+    rightFormat: Format[R]
+  ) extends Format[Either[L, R]] {
+
+    override def reads(json: JsValue): JsResult[Either[L, R]] = {
+      val left = leftFormat.reads(json)
+      val right = rightFormat.reads(json)
+
+      if (left.isSuccess) {
+        left.map(Left(_))
+      } else if (right.isSuccess) {
+        right.map(Right(_))
+      } else {
+        JsError(s"Unable to read Either type from JSON $json")
+      }
+    }
+
+    override def writes(o: Either[L, R]): JsValue =
+      o match {
+        case Left(value)  => leftFormat.writes(value)
+        case Right(value) => rightFormat.writes(value)
+      }
+  }
+
+  def eitherFormat[L: Format, R: Format]: Format[Either[L, R]] = {
+    val leftFormat = implicitly[Format[L]]
+    val rightFormat = implicitly[Format[R]]
+
+    new EitherFormat[L, R](leftFormat, rightFormat)
   }
 }
