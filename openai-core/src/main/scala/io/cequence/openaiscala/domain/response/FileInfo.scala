@@ -8,6 +8,6 @@ case class FileInfo(
   created_at: ju.Date,
   filename: String,
   purpose: String,
-  status: String,
+  status: String, // uploaded, processed, pending, error, deleting or deleted
   status_details: Option[String]
 )
