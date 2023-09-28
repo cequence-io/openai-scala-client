@@ -299,7 +299,7 @@ trait OpenAIService extends OpenAICoreService with OpenAIServiceConsts {
    *   fine tune response
    *
    * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/fine-tunes/create">OpenAI API
+   *   <a href="https://platform.openai.com/docs/api-reference/fine-tuning/create">OpenAI API
    *   Doc</a>
    * @see
    *   <a href="https://platform.openai.com/docs/guides/fine-tuning">OpenAI Fine-Tuning
@@ -318,7 +318,8 @@ trait OpenAIService extends OpenAICoreService with OpenAIServiceConsts {
    *   fine tunes
    *
    * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/fine-tunes/list">OpenAI Doc</a>
+   *   <a href="https://platform.openai.com/docs/api-reference/fine-tuning/undefined">OpenAI
+   *   Doc</a>
    */
   // TODO: add pagination: after: Option[String], limit: Option[Int]
   def listFineTunes: Future[Seq[FineTuneJob]]
@@ -332,7 +333,7 @@ trait OpenAIService extends OpenAICoreService with OpenAIServiceConsts {
    *   fine tune info
    *
    * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/fine-tunes/retrieve">OpenAI
+   *   <a href="https://platform.openai.com/docs/api-reference/fine-tuning/retrieve">OpenAI
    *   Doc</a>
    */
   def retrieveFineTune(
@@ -348,7 +349,7 @@ trait OpenAIService extends OpenAICoreService with OpenAIServiceConsts {
    *   fine tune info or None if not found
    *
    * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/fine-tunes/cancel">OpenAI
+   *   <a href="https://platform.openai.com/docs/api-reference/fine-tuning/cancel">OpenAI
    *   Doc</a>
    */
   def cancelFineTune(
@@ -364,7 +365,7 @@ trait OpenAIService extends OpenAICoreService with OpenAIServiceConsts {
    *   fine tune events or None if not found
    *
    * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/fine-tunes/events">OpenAI
+   *   <a href="https://platform.openai.com/docs/api-reference/fine-tuning/list-events">OpenAI
    *   Doc</a>
    */
   // TODO: add pagination: after: Option[String], limit: Option[Int]
@@ -381,8 +382,7 @@ trait OpenAIService extends OpenAICoreService with OpenAIServiceConsts {
    *   enum indicating whether the model was deleted
    *
    * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/fine-tunes/delete-model">OpenAI
-   *   Doc</a>
+   *   <a href="https://platform.openai.com/docs/api-reference/models/delete">OpenAI Doc</a>
    */
   def deleteFineTuneModel(
     modelId: String
