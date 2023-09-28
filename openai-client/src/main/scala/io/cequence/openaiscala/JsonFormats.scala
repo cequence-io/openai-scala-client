@@ -92,7 +92,8 @@ object JsonFormats {
 
   implicit val fineTuneEventFormat: Format[FineTuneEvent] =
     Json.format[FineTuneEvent]
-  implicit val eitherIntStringFormat = JsonUtil.eitherFormat[Int, String]
+  implicit val eitherIntStringFormat: Format[Either[Int, String]] =
+    JsonUtil.eitherFormat[Int, String]
   implicit val fineTuneHyperparamsFormat: Format[FineTuneHyperparams] =
     Json.format[FineTuneHyperparams]
   implicit val fineTuneFormat: Format[FineTuneJob] = Json.format[FineTuneJob]
