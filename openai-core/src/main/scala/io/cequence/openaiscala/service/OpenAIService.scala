@@ -28,7 +28,7 @@ import scala.concurrent.Future
  * @since Jan
  *   2023
  */
-trait OpenAIService extends OpenAICoreService with OpenAIServiceConsts {
+trait OpenAIService extends OpenAICoreService {
 
   /**
    * Retrieves a model instance, providing basic information about the model such as the owner
@@ -314,6 +314,10 @@ trait OpenAIService extends OpenAICoreService with OpenAIServiceConsts {
   /**
    * List your organization's fine-tuning jobs.
    *
+   * @param after
+   *   Identifier for the last job from the previous pagination request.
+   * @param limit
+   *   Number of fine-tuning jobs to retrieve.
    * @return
    *   fine tunes
    *
@@ -321,8 +325,10 @@ trait OpenAIService extends OpenAICoreService with OpenAIServiceConsts {
    *   <a href="https://platform.openai.com/docs/api-reference/fine-tuning/undefined">OpenAI
    *   Doc</a>
    */
-  // TODO: add pagination: after: Option[String], limit: Option[Int]
-  def listFineTunes: Future[Seq[FineTuneJob]]
+  def listFineTunes(
+    after: Option[String] = None,
+    limit: Option[Int] = None
+  ): Future[Seq[FineTuneJob]]
 
   /**
    * Gets info about the fine-tune job.
@@ -371,6 +377,8 @@ trait OpenAIService extends OpenAICoreService with OpenAIServiceConsts {
   // TODO: add pagination: after: Option[String], limit: Option[Int]
   def listFineTuneEvents(
     fineTuneId: String
+//    after: Option[String] = None,
+//    limit: Option[Int] = None
   ): Future[Option[Seq[FineTuneEvent]]]
 
   /**
