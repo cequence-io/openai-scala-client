@@ -67,8 +67,9 @@ trait OpenAIServiceConsts {
       purpose = "fine-tune"
     )
 
-    // keep all OpenAI defaults
-    val CreateFineTune = CreateFineTuneSettings()
+    val CreateFineTune = CreateFineTuneSettings(
+      model = ModelId.gpt_3_5_turbo_0613
+    )
 
     // keep all OpenAI defaults
     val CreateModeration = CreateModerationSettings()

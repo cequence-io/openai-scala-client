@@ -278,16 +278,11 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
       bodyParams = jsonBodyParams(
         Param.training_file -> Some(training_file),
         Param.validation_file -> validation_file,
-        Param.model -> settings.model,
-        Param.n_epochs -> settings.n_epochs,
-        Param.batch_size -> settings.batch_size,
-        Param.learning_rate_multiplier -> settings.learning_rate_multiplier,
-        Param.prompt_loss_weight -> settings.prompt_loss_weight,
-        Param.compute_classification_metrics -> settings.compute_classification_metrics,
-        Param.classification_n_classes -> settings.classification_n_classes,
-        Param.classification_positive_class -> settings.classification_positive_class,
-        Param.classification_betas -> settings.classification_betas,
-        Param.suffix -> settings.suffix
+        Param.model -> Some(settings.model),
+        Param.suffix -> settings.suffix,
+        Param.hyperparameters -> settings.n_epochs.map(epochs =>
+          Map(Param.n_epochs.toString -> epochs)
+        )
       )
     ).map(
       _.asSafe[FineTuneJob]
