@@ -28,7 +28,7 @@ case class FineTuneJob(
   // For fine-tuning jobs that have failed, this will contain more information on the cause of the failure.
   error: Option[String],
   // the hyperparameters used for the fine-tuning job. See the fine-tuning guide for more details.
-  hyperparameters: FineTuneHyperparams,
+  hyperparameters: FineTuneHyperparams
 ) {
   @Deprecated
   def updated_at = finished_at
