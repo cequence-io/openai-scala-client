@@ -139,8 +139,11 @@ trait OpenAIServiceWrapper extends OpenAIService {
     _.createFineTune(training_file, validation_file, settings)
   )
 
-  override def listFineTunes: Future[Seq[FineTuneJob]] = wrap(
-    _.listFineTunes
+  override def listFineTunes(
+    after: Option[String],
+    limit: Option[Int]
+  ): Future[Seq[FineTuneJob]] = wrap(
+    _.listFineTunes(after, limit)
   )
 
   override def retrieveFineTune(

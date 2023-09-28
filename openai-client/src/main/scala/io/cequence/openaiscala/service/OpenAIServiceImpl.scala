@@ -288,8 +288,17 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
       _.asSafe[FineTuneJob]
     )
 
-  override def listFineTunes: Future[Seq[FineTuneJob]] =
-    execGET(EndPoint.fine_tunes).map { response =>
+  override def listFineTunes(
+    after: Option[String] = None,
+    limit: Option[Int] = None
+  ): Future[Seq[FineTuneJob]] =
+    execGET(
+      EndPoint.fine_tunes,
+      params = Seq(
+        Param.after -> after,
+        Param.limit -> limit
+      )
+    ).map { response =>
       (response.asSafe[JsObject] \ "data").toOption
         .map(_.asSafeArray[FineTuneJob])
         .getOrElse(
