@@ -69,4 +69,6 @@ object Param {
   case object language extends Param
   case object functions extends Param
   case object function_call extends Param
+  case object after extends Param
+  case object limit extends Param
 }
