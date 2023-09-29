@@ -16,7 +16,7 @@ import scala.concurrent.Future
  *   - '''Models''': listModels, and retrieveModel
  *   - '''Completions''': createCompletion
  *   - '''Chat Completions''': createChatCompletion, and createChatFunCompletion
- *   - '''Edits''': createEdit
+ *   - '''Edits''': createEdit (deprecated)
  *   - '''Images''': createImage, createImageEdit, createImageVariation
  *   - '''Embeddings''': createEmbeddings
  *   - '''Audio''': createAudioTranscription, and createAudioTranslation
@@ -82,6 +82,7 @@ trait OpenAIService extends OpenAICoreService {
    * @see
    *   <a href="https://platform.openai.com/docs/api-reference/edits/create">OpenAI Doc</a>
    */
+  @Deprecated
   def createEdit(
     input: String,
     instruction: String,
