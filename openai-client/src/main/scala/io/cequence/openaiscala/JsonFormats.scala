@@ -52,8 +52,7 @@ object JsonFormats {
 
   implicit val functionSpecFormat: Format[FunctionSpec] = {
     // use just here for FunctionSpec
-    implicit val stringAnyMapFormat: Format[Map[String, Any]] =
-      JsonUtil.StringAnyMapFormat
+    implicit val stringAnyMapFormat: Format[Map[String, Any]] = JsonUtil.StringAnyMapFormat
     Json.format[FunctionSpec]
   }
 
@@ -90,8 +89,11 @@ object JsonFormats {
 
   implicit val fileInfoFormat: Format[FileInfo] = Json.format[FileInfo]
 
-  implicit val fineTuneEventFormat: Format[FineTuneEvent] =
+  implicit val fineTuneEventFormat: Format[FineTuneEvent] = {
+    implicit val stringAnyMapFormat: Format[Map[String, Any]] = JsonUtil.StringAnyMapFormat
     Json.format[FineTuneEvent]
+  }
+
   implicit val eitherIntStringFormat: Format[Either[Int, String]] =
     JsonUtil.eitherFormat[Int, String]
   implicit val fineTuneHyperparamsFormat: Format[FineTuneHyperparams] =

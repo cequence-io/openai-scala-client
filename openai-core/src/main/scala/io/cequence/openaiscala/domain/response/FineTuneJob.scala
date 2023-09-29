@@ -41,7 +41,7 @@ case class FineTuneEvent(
   created_at: ju.Date,
   level: String,
   message: String,
-  data: Option[String]
+  data: Option[Map[String, Any]]
 )
 
 case class FineTuneHyperparams(
