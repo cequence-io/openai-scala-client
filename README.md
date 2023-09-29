@@ -5,8 +5,8 @@ This is a no-nonsense async Scala client for OpenAI API supporting all the avail
 
 * **Models**: [listModels](https://platform.openai.com/docs/api-reference/models/list), and [retrieveModel](https://platform.openai.com/docs/api-reference/models/retrieve)
 * **Completions**: [createCompletion](https://platform.openai.com/docs/api-reference/completions/create)
-* **Chat Completions**: [createChatCompletion](https://platform.openai.com/docs/api-reference/chat/create), and [createChatFunCompletion](https://platform.openai.com/docs/api-reference/chat/create) **(🔥 new)**
-* **Edits**: [createEdit](https://platform.openai.com/docs/api-reference/edits/create)
+* **Chat Completions**: [createChatCompletion](https://platform.openai.com/docs/api-reference/chat/create), and [createChatFunCompletion](https://platform.openai.com/docs/api-reference/chat/create)
+* **Edits**: [createEdit](https://platform.openai.com/docs/api-reference/edits/create) (deprecated)
 * **Images**: [createImage](https://platform.openai.com/docs/api-reference/images/create), [createImageEdit](https://platform.openai.com/docs/api-reference/images/create-edit), and [createImageVariation](https://platform.openai.com/docs/api-reference/images/create-variation)
 * **Embeddings**: [createEmbeddings](https://platform.openai.com/docs/api-reference/embeddings/create)
 * **Audio**: [createAudioTranscription](https://platform.openai.com/docs/api-reference/audio/create), [createAudioTranslation](https://platform.openai.com/docs/api-reference/audio/create) 
@@ -19,7 +19,7 @@ Also, we aimed the lib to be self-contained with the fewest dependencies possibl
 
 🔥 **New**: This lib supports also "OpenAI-API-compatible" providers such as [FastChat](https://github.com/lm-sys/FastChat) (umbrella for open-source LLMs - Vicuna, Alpaca, LLaMA, fastchat-t5-3b-v1.0, mpt-7b-chat, etc.), [Azure](https://learn.microsoft.com/en-us/azure/cognitive-services/openai/reference), or any other similar service with a custom URL. Check the examples below for more details. 
 
-👉 Check out an article about the lib/client on [Medium](https://medium.com/@0xbnd/openai-scala-client-is-out-d7577de934ad).
+👉 For background information read an article about the lib/client on [Medium](https://medium.com/@0xbnd/openai-scala-client-is-out-d7577de934ad).
 
 Try out also our [Scala client for Pinecone vector database](https://github.com/cequence-io/pinecone-scala), or use both clients together! [This demo project](https://github.com/cequence-io/pinecone-openai-scala-demo) shows how to generate and store OpenAI embeddings (with `text-embedding-ada-002` model) into Pinecone and query them afterward. The OpenAI + Pinecone combo is commonly used for autonomous AI agents, such as [babyAGI](https://github.com/yoheinakajima/babyagi) and [AutoGPT](https://github.com/Significant-Gravitas/Auto-GPT).
 
@@ -85,35 +85,35 @@ Then you can obtain a service in one of the following ways.
   )
 ```
 
-- Minimal `OpenAICoreService` supporting `listModels`, `createCompletion`, `createChatCompletion`, and `createEmbeddings` calls - e.g. [FastChat](https://github.com/lm-sys/FastChat) service running on the port 8000 (🔥 new)
+- Minimal `OpenAICoreService` supporting `listModels`, `createCompletion`, `createChatCompletion`, and `createEmbeddings` calls - e.g. [FastChat](https://github.com/lm-sys/FastChat) service running on the port 8000
 
 ```scala
   val service = OpenAICoreServiceFactory("http://localhost:8000/v1/")
 ```
 
-- For Azure with API Key (🔥 new)
+- For Azure with API Key
 
 ```scala
   val service = OpenAIServiceFactory.forAzureWithApiKey(
     resourceName = "your-resource-name",
-    deploymentId = "your-deployment-id",
-    apiVersion = "2023-05-15", // example
+    deploymentId = "your-deployment-id", // usually model name such as "gpt-35-turbo"
+    apiVersion = "2023-05-15",           // newest version
     apiKey = "your_api_key"
   )
 ```
 
-- For Azure with Access Token (🔥 new)
+- For Azure with Access Token
 
 ```scala
   val service = OpenAIServiceFactory.forAzureWithAccessToken(
     resourceName = "your-resource-name",
-    deploymentId = "your-deployment-id",
-    apiVersion = "2023-05-15", // example
+    deploymentId = "your-deployment-id", // usually model name such as "gpt-35-turbo"
+    apiVersion = "2023-05-15",           // newest version
     accessToken = "your_access_token"
   )
 ```
 
-**✔️ Important**: If you want streaming support use `OpenAIServiceStreamedFactory` from `openai-scala-client-stream` lib instead of `OpenAIServiceFactory` (in the three examples above). Three additional functions - `createCompletionStreamed`, `createChatCompletionStreamed`, and `listFineTuneEventsStreamed` provided by [OpenAIServiceStreamedExtra](./openai-client-stream/src/main/scala/io/cequence/openaiscala/service/OpenAIServiceStreamedExtra.scala) will be then available.
+**✔️ Important**: If you want streaming support use `OpenAIServiceStreamedFactory` from `openai-scala-client-stream` lib instead of `OpenAIServiceFactory` (in the three examples above). Three additional functions - `createCompletionStreamed`, `createChatCompletionStreamed`, and `listFineTuneEventsStreamed` (deprecated) provided by [OpenAIServiceStreamedExtra](./openai-client-stream/src/main/scala/io/cequence/openaiscala/service/OpenAIServiceStreamedExtra.scala) will be then available.
 
 - Via dependency injection (requires `openai-scala-guice` lib)
 
