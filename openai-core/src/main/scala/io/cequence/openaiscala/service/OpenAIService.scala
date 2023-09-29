@@ -123,8 +123,7 @@ trait OpenAIService extends OpenAICoreService {
    *   image response (might contain multiple data items - one per image)
    *
    * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/images/create-edit">OpenAI
-   *   Doc</a>
+   *   <a https://platform.openai.com/docs/api-reference/images/createEdit">OpenAI Doc</a>
    */
   def createImageEdit(
     prompt: String,
@@ -144,7 +143,7 @@ trait OpenAIService extends OpenAICoreService {
    *   image response (might contain multiple data items - one per image)
    *
    * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/images/create-variation">OpenAI
+   *   <a href="https://platform.openai.com/docs/api-reference/images/createVariation">OpenAI
    *   Doc</a>
    */
   def createImageVariation(
@@ -375,11 +374,10 @@ trait OpenAIService extends OpenAICoreService {
    *   <a href="https://platform.openai.com/docs/api-reference/fine-tuning/list-events">OpenAI
    *   Doc</a>
    */
-  // TODO: add pagination: after: Option[String], limit: Option[Int]
   def listFineTuneEvents(
-    fineTuneId: String
-//    after: Option[String] = None,
-//    limit: Option[Int] = None
+    fineTuneId: String,
+    after: Option[String] = None,
+    limit: Option[Int] = None
   ): Future[Option[Seq[FineTuneEvent]]]
 
   /**

@@ -325,12 +325,16 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
     ).map(response => handleNotFoundAndError(response).map(_.asSafe[FineTuneJob]))
 
   override def listFineTuneEvents(
-    fineTuneId: String
+    fineTuneId: String,
+    after: Option[String] = None,
+    limit: Option[Int] = None
   ): Future[Option[Seq[FineTuneEvent]]] =
     execGETWithStatus(
       EndPoint.fine_tunes,
       endPointParam = Some(s"$fineTuneId/events"),
       params = Seq(
+        Param.after -> after,
+        Param.limit -> limit,
         Param.stream -> Some(false) // TODO: is streaming still supported?
       )
     ).map { response =>

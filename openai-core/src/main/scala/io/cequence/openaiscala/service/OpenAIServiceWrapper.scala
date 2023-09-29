@@ -159,9 +159,11 @@ trait OpenAIServiceWrapper extends OpenAIService {
   )
 
   override def listFineTuneEvents(
-    fineTuneId: String
+    fineTuneId: String,
+    after: Option[String],
+    limit: Option[Int]
   ): Future[Option[Seq[FineTuneEvent]]] = wrap(
-    _.listFineTuneEvents(fineTuneId)
+    _.listFineTuneEvents(fineTuneId, after, limit)
   )
 
   override def deleteFineTuneModel(
