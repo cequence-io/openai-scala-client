@@ -427,23 +427,4 @@ trait WSRequestHelper extends WSHelper {
     params: Seq[(PT, Option[Any])]
   ): Seq[(String, Option[Any])] =
     params.map { case (a, b) => (a.toString, b) }
-
-  // close
-
-  // Create Akka system for thread and streaming management
-  //  system.registerOnTermination {
-  //    System.exit(0)
-  //  }
-  //
-  //  implicit val materializer = SystemMaterializer(system).materializer
-  //
-  //  // Create the standalone WS client
-  //  // no argument defaults to a AhcWSClientConfig created from
-  //  // "AhcWSClientConfigFactory.forConfig(ConfigFactory.load, this.getClass.getClassLoader)"
-  //  val wsClient = StandaloneAhcWSClient()
-  //
-  //  call(wsClient)
-  //    .andThen { case _ => wsClient.close() }
-  //    .andThen { case _ => system.terminate() }
-
 }
