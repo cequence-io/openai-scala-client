@@ -63,7 +63,10 @@ trait OpenAIServiceStreamedExtra extends OpenAIServiceConsts {
    * @see
    *   <a href="https://beta.openai.com/docs/api-reference/fine-tunes/events">OpenAI Doc</a>
    */
+  @Deprecated
   def listFineTuneEventsStreamed(
-    fineTuneId: String
+    fineTuneId: String,
+    after: Option[String] = None,
+    limit: Option[Int] = None
   ): Source[FineTuneEvent, NotUsed]
 }
