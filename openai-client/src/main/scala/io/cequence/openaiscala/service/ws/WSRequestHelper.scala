@@ -426,7 +426,7 @@ trait WSRequestHelper extends WSHelper {
   protected def toStringParams(
     params: Seq[(PT, Option[Any])]
   ): Seq[(String, Option[Any])] =
-    params.map { case (a, b) => (a.toString, Some(b)) }
+    params.map { case (a, b) => (a.toString, b) }
 
   // close
 
