@@ -57,6 +57,11 @@ lazy val guice = (project in file("openai-guice"))
   .dependsOn(client)
   .aggregate(client_stream)
 
+lazy val count_tokens = (project in file("openai-count-tokens"))
+  .settings(commonSettings: _*)
+  .dependsOn(client)
+  .aggregate(client)
+
 // POM settings for Sonatype
 ThisBuild / homepage := Some(
   url("https://github.com/cequence-io/openai-scala-client")
