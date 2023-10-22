@@ -4,27 +4,13 @@ import com.knuddels.jtokkit.Encodings
 import com.knuddels.jtokkit.api.Encoding
 import io.cequence.openaiscala.domain.{ChatRole, FunMessageSpec, FunctionSpec, MessageSpec}
 
-trait OpenAICountTokensService {
-  def countMessageTokens(
-    messages: Seq[MessageSpec],
-    model: String
-  ): Int
-  def countFunMessageTokens(
-    messages: Seq[FunMessageSpec],
-    functions: Seq[FunctionSpec],
-    model: String,
-    responseFunctionName: Option[String]
-  ): Int
-}
-
-class OpenAICountTokensServiceF extends OpenAICountTokensService {
+class OpenAICountTokensService {
   private lazy val registry = Encodings.newLazyEncodingRegistry()
   private val encoding: Encoding = registry.getEncoding("cl100k_base").get()
-  override def countMessageTokens(
-    messages: Seq[MessageSpec],
-    model: String
+  def countMessageTokens(
+    messages: Seq[MessageSpec]
   ): Int = {
-    val (tokensPerMessage, tokensPerName) = (3, 1)
+    val (tokensPerMessage, tokensPerName) = (3, 0)
     messages.foldLeft(3) { case (acc, messageSpec) =>
       acc +
         tokensPerMessage +
@@ -34,10 +20,9 @@ class OpenAICountTokensServiceF extends OpenAICountTokensService {
     }
   }
 
-  override def countFunMessageTokens(
+  def countFunMessageTokens(
     messages: Seq[FunMessageSpec],
     functions: Seq[FunctionSpec],
-    model: String,
     responseFunctionName: Option[String]
   ): Int =
     messages
@@ -61,10 +46,10 @@ class OpenAICountTokensServiceF extends OpenAICountTokensService {
        } else 0) +
       responseFunctionName.map(name => stringTokens(name) + 4).getOrElse(0)
 
-  def stringTokens(s: String): Int =
+  private def stringTokens(s: String): Int =
     encoding.encode(s).size()
 
-  def messageTokensEstimate(message: FunMessageSpec): Int = {
+  private def messageTokensEstimate(message: FunMessageSpec): Int = {
     val components = List(
       Some(message.role.toString),
       message.content,

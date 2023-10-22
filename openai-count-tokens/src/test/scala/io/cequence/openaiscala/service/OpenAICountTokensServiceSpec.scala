@@ -27,18 +27,37 @@ class OpenAICountTokensServiceSpec
 
   trait TestCase {
     protected lazy val config: Config = ConfigFactory.load()
-    lazy val validateWithChatGPT = config.getBoolean("validateWithChatGPT")
-    lazy val sut: OpenAICountTokensService = new OpenAICountTokensServiceF()
-    lazy val openAIServiceExternal: OpenAIService = OpenAIServiceFactory(config)
+    private val verbose = false
+    private lazy val validateWithChatGPT = config.getBoolean("validateWithChatGPT")
+    protected lazy val sut: OpenAICountTokensService = new OpenAICountTokensService()
+    protected lazy val openAIServiceExternal: OpenAIService = OpenAIServiceFactory(config)
+
+    private def print(
+      expectedTokens: Int,
+      countedTokens: Int,
+      tokensFromOpenAI: Option[Int]
+    ): Unit = {
+      if (verbose) {
+        if (tokensFromOpenAI.isDefined) {
+          println(
+            "Test tokens counted: " + countedTokens + " tokens from OpenAI: " + tokensFromOpenAI + " expected: " + expectedTokens
+          )
+        } else {
+          println(
+            "Test tokens counted: " + countedTokens + " expected: " + expectedTokens
+          )
+        }
+      } else ()
+    }
 
     protected def checkTokensForMessageCall(
       messages: Seq[MessageSpec],
       usedTokens: Int,
-      model: String = "gpt-3.5-turbo"
+      model: String
     ): Unit = {
-      sut.countMessageTokens(messages, model = model) shouldEqual usedTokens
+      val countedTokens = sut.countMessageTokens(messages)
       if (validateWithChatGPT) {
-        openAIServiceExternal
+        val tokensFromOpenAI = openAIServiceExternal
           .createChatCompletion(
             messages,
             CreateChatCompletionSettings(
@@ -50,8 +69,13 @@ class OpenAICountTokensServiceSpec
           .futureValue
           .usage
           .get
-          .prompt_tokens shouldEqual usedTokens
+          .prompt_tokens
+        print(usedTokens, countedTokens, Some(tokensFromOpenAI))
+        tokensFromOpenAI shouldEqual usedTokens
+      } else {
+        print(usedTokens, countedTokens, None)
       }
+      countedTokens shouldEqual usedTokens
       ()
     }
 
@@ -62,27 +86,33 @@ class OpenAICountTokensServiceSpec
       responseFunctionName: Option[String] = None,
       model: String = "gpt-3.5-turbo"
     ): Unit = {
-      sut.countFunMessageTokens(
+      val countedTokens = sut.countFunMessageTokens(
         messages = messages,
         functions = functions,
-        model = model,
         responseFunctionName = responseFunctionName
-      ) shouldEqual usedTokens
-      openAIServiceExternal
-        .createChatFunCompletion(
-          messages = messages,
-          functions = functions,
-          settings = CreateChatCompletionSettings(
-            model = model,
-            temperature = Some(0.0),
-            max_tokens = Some(1)
-          ),
-          responseFunctionName = responseFunctionName
-        )
-        .futureValue
-        .usage
-        .get
-        .prompt_tokens shouldEqual usedTokens
+      )
+      if (validateWithChatGPT) {
+        val tokensFromOpenAI = openAIServiceExternal
+          .createChatFunCompletion(
+            messages = messages,
+            functions = functions,
+            settings = CreateChatCompletionSettings(
+              model = model,
+              temperature = Some(0.0),
+              max_tokens = Some(1)
+            ),
+            responseFunctionName = responseFunctionName
+          )
+          .futureValue
+          .usage
+          .get
+          .prompt_tokens
+        print(usedTokens, countedTokens, Some(tokensFromOpenAI))
+        tokensFromOpenAI shouldEqual usedTokens
+      } else {
+        print(usedTokens, countedTokens, None)
+      }
+      countedTokens shouldEqual usedTokens
       ()
     }
   }
@@ -94,13 +124,27 @@ class OpenAICountTokensServiceSpec
     }
     "counting tokens - only messages - gpt-3.5-turbo" in new TestCase {
       val messages: Seq[MessageSpec] = Seq(MessageSpec(ChatRole.User, "hello", None))
-      checkTokensForMessageCall(messages, usedTokens = 8)
+      checkTokensForMessageCall(messages, usedTokens = 8, model = "gpt-3.5-turbo")
+    }
+    "counting tokens - two messages - gpt-3.5-turbo" in new TestCase {
+      val messages: Seq[MessageSpec] = Seq(
+        MessageSpec(ChatRole.User, "hello", None),
+        MessageSpec(ChatRole.Assistant, "hello", Some("name"))
+      )
+      checkTokensForMessageCall(messages, usedTokens = 14, model = "gpt-3.5-turbo")
+    }
+    "counting tokens - two messages - gpt-4" in new TestCase {
+      val messages: Seq[MessageSpec] = Seq(
+        MessageSpec(ChatRole.User, "hello", None),
+        MessageSpec(ChatRole.Assistant, "hello world", Some("name"))
+      )
+      checkTokensForMessageCall(messages, usedTokens = 15, model = "gpt-4")
     }
   }
 
   "countFunMessageTokens" should {
     "counting tokens with function - nested description" in new TestCase {
-      val function1 = FunctionSpec(
+      private val function1 = FunctionSpec(
         name = "function",
         description = Some("description"),
         parameters = Map(
@@ -124,7 +168,7 @@ class OpenAICountTokensServiceSpec
       checkTokensForFunctionCall(Seq(function1), messages, usedTokens = 46)
     }
     "counting tokens with function - required field" in new TestCase {
-      val function1 = FunctionSpec(
+      private val function1 = FunctionSpec(
         name = "function",
         description = Some("description"),
         parameters = ListMap(
@@ -140,12 +184,12 @@ class OpenAICountTokensServiceSpec
       checkTokensForFunctionCall(Seq(function1), messages, usedTokens = 53)
     }
     "counting tokens with function - nested description, enums" in new TestCase {
-      val function1 = FunctionSpec(
+      private val function1 = FunctionSpec(
         name = "function",
-        description = Some("desctiption1"),
+        description = Some("description1"),
         parameters = ListMap(
           "type" -> "object",
-          "description" -> "desctiption2",
+          "description" -> "description2",
           "properties" -> ListMap(
             "mainField" -> ListMap("type" -> "string", "description" -> "description3"),
             "field number one" -> ListMap(
@@ -177,10 +221,10 @@ class OpenAICountTokensServiceSpec
       )
       val messages: Seq[FunMessageSpec] =
         Seq(FunMessageSpec(ChatRole.User, Some("hello"), None, None))
-      checkTokensForFunctionCall(Seq(function1), messages, usedTokens = 96)
+      checkTokensForFunctionCall(Seq(function1), messages, usedTokens = 93)
     }
     "counting tokens with function - two fields in object" in new TestCase {
-      val function1 = FunctionSpec(
+      private val function1 = FunctionSpec(
         name = "get_recipe",
         parameters = ListMap(
           "type" -> "object",
@@ -218,7 +262,7 @@ class OpenAICountTokensServiceSpec
       checkTokensForFunctionCall(Seq(function1), messages, usedTokens = 106)
     }
     "counting tokens with function - many messages" in new TestCase {
-      val function1 = FunctionSpec(
+      private val function1 = FunctionSpec(
         name = "do_stuff",
         parameters = ListMap("type" -> "object", "properties" -> ListMap())
       )
@@ -230,7 +274,7 @@ class OpenAICountTokensServiceSpec
       checkTokensForFunctionCall(Seq(function1), messages, usedTokens = 40)
     }
     "counting tokens with function - empty properties in object" in new TestCase {
-      val function1 = FunctionSpec(
+      private val function1 = FunctionSpec(
         name = "do_stuff",
         parameters = ListMap("type" -> "object", "properties" -> ListMap())
       )
@@ -242,7 +286,7 @@ class OpenAICountTokensServiceSpec
       checkTokensForFunctionCall(Seq(function1), messages, usedTokens = 35)
     }
     "counting tokens with function - gpt4 model" in new TestCase {
-      val function1 = FunctionSpec(
+      private val function1 = FunctionSpec(
         name = "function",
         description = Some("description"),
         parameters = Map(
@@ -266,7 +310,7 @@ class OpenAICountTokensServiceSpec
       checkTokensForFunctionCall(Seq(function1), messages, usedTokens = 46, model = "gpt-4")
     }
     "counting tokens with function - responseFunctionName is set to Some" in new TestCase {
-      val function1 = FunctionSpec(
+      private val function1 = FunctionSpec(
         name = "function",
         description = Some("description"),
         parameters = Map(
@@ -285,10 +329,10 @@ class OpenAICountTokensServiceSpec
           )
         )
       )
-      val messages: Seq[FunMessageSpec] =
+      private val messages: Seq[FunMessageSpec] =
         Seq(FunMessageSpec(ChatRole.User, Some("hello"), None, None))
-      val model = "gpt-3.5-turbo"
-      val responseFunctionName = Some("function")
+      private val model = "gpt-3.5-turbo"
+      private val responseFunctionName = Some("function")
       checkTokensForFunctionCall(
         Seq(function1),
         messages,
