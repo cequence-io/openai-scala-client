@@ -341,5 +341,47 @@ class OpenAICountTokensServiceSpec
         model = model
       )
     }
+    "counting tokens with function - array with enum" in new TestCase {
+      private val function1 = FunctionSpec(
+        name = "function",
+        description = Some("description"),
+        parameters = Map(
+          "type" -> "object",
+          "properties" -> ListMap(
+            "quality" -> ListMap(
+              "type" -> "object",
+              "properties" -> ListMap(
+                "pros" -> ListMap(
+                  "type" -> "array",
+                  "description" -> "Select few connected categories",
+                  "items" -> ListMap(
+                    "type" -> "string",
+                    "enum" -> List(
+                      "Basketball",
+                      "Football",
+                      "Golf",
+                      "F1",
+                      "Baseball",
+                      "Soccer"
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      private val messages: Seq[FunMessageSpec] =
+        Seq(FunMessageSpec(ChatRole.User, Some("hello"), None, None))
+      private val model = "gpt-3.5-turbo"
+      private val responseFunctionName = Some("function")
+      checkTokensForFunctionCall(
+        Seq(function1),
+        messages,
+        usedTokens = 78,
+        responseFunctionName = responseFunctionName,
+        model = model
+      )
+    }
   }
 }
