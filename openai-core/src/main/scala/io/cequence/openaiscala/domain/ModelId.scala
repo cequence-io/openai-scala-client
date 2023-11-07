@@ -125,6 +125,11 @@ object ModelId {
   val gpt_4_32k_0314 = "gpt-4-32k-0314"
   // 32k context (June 13th snapshot), fine-tuned for function calling
   val gpt_4_32k_0613 = "gpt-4-32k-0613"
+  // 128K context (with training data upto April 2023)
+  val gpt_4_turbo_preview = "gpt-4-1106-preview"
+  // 128K context (with training data upto April 2023)
+  // includes supports for vision in addition to gpt-4-turbo capabilities
+  val gpt_4_vision_preview = "gpt-4-vision-preview"
 
   // Other
   @Deprecated
