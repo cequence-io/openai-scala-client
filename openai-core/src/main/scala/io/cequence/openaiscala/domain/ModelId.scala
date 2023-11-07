@@ -110,6 +110,8 @@ object ModelId {
   val gpt_3_5_turbo_16k_0613 = "gpt-3.5-turbo-16k-0613"
   val gpt_3_5_turbo_instruct_0914 = "gpt-3.5-turbo-instruct-0914"
   val gpt_3_5_turbo_instruct = "gpt-3.5-turbo-instruct"
+  // 16k context , gpt_3_5_turbo will point to this model from Dec 11, 2023
+  val gpt_3_5_turbo_1106 = "gpt-3.5-turbo-1106"
 
   // GPT-4
 
