@@ -110,6 +110,8 @@ object ModelId {
   val gpt_3_5_turbo_16k_0613 = "gpt-3.5-turbo-16k-0613"
   val gpt_3_5_turbo_instruct_0914 = "gpt-3.5-turbo-instruct-0914"
   val gpt_3_5_turbo_instruct = "gpt-3.5-turbo-instruct"
+  // 16k context , gpt_3_5_turbo will point to this model from Dec 11, 2023
+  val gpt_3_5_turbo_1106 = "gpt-3.5-turbo-1106"
 
   // GPT-4
 
@@ -125,6 +127,11 @@ object ModelId {
   val gpt_4_32k_0314 = "gpt-4-32k-0314"
   // 32k context (June 13th snapshot), fine-tuned for function calling
   val gpt_4_32k_0613 = "gpt-4-32k-0613"
+  // 128K context (with training data upto April 2023)
+  val gpt_4_turbo_preview = "gpt-4-1106-preview"
+  // 128K context (with training data upto April 2023)
+  // includes supports for vision in addition to gpt-4-turbo capabilities
+  val gpt_4_vision_preview = "gpt-4-vision-preview"
 
   // Other
   @Deprecated
