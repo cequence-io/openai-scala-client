@@ -33,7 +33,7 @@ trait WSRequestHelper extends WSHelper {
 
   protected val serviceName: String = getClass.getSimpleName
 
-  private val defaultAcceptableStatusCodes = Seq(200)
+  private val defaultAcceptableStatusCodes = Seq(200, 201)
 
   protected type RichResponse[T] = Either[T, (Int, String)]
   protected type RichJsResponse = RichResponse[JsValue]
