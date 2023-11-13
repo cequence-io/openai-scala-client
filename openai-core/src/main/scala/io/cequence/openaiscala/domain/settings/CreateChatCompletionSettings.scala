@@ -1,5 +1,7 @@
 package io.cequence.openaiscala.domain.settings
 
+import io.cequence.openaiscala.domain.EnumValue
+
 case class CreateChatCompletionSettings(
   // ID of the model to use. Currently, only gpt-3.5-turbo and gpt-3.5-turbo-0301 are supported.
   model: String,
@@ -18,10 +20,11 @@ case class CreateChatCompletionSettings(
   n: Option[Int] = None,
 
   // Up to 4 sequences where the API will stop generating further tokens.
-  stop: Seq[String] = Nil, // Option[String or Array],
+  stop: Seq[String] = Nil, // Option[String or Array]
 
-  // The maximum number of tokens allowed for the generated answer.
-  // By default, the number of tokens the model can return will be (4096 - prompt tokens).
+  // The maximum number of tokens to generate in the chat completion.
+  // The total length of input tokens and generated tokens is limited by the model's context length.
+  // Defaults to inf.
   max_tokens: Option[Int] = None,
 
   // Number between -2.0 and 2.0.
@@ -44,5 +47,26 @@ case class CreateChatCompletionSettings(
   logit_bias: Map[String, Int] = Map(),
 
   // A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse.
-  user: Option[String] = None
+  user: Option[String] = None,
+
+  // The format that the model must output. Must be one of text or json_object.
+  // Setting to "json_object" enables JSON mode, which guarantees the message the model generates is valid JSON.
+  // Important: when using JSON mode, you must also instruct the model to produce JSON yourself via a system or user message.
+  // Without this, the model may generate an unending stream of whitespace until the generation reaches the token limit,
+  // resulting in a long-running and seemingly "stuck" request. Also note that the message content may be partially cut off
+  // if finish_reason="length", which indicates the generation exceeded max_tokens or the conversation exceeded the max context length.
+  // Defaults to text
+  response_format_type: Option[ChatCompletionResponseFormatType] = None, // NEW
+
+  // This feature is in Beta. If specified, our system will make a best effort to sample deterministically,
+  // such that repeated requests with the same seed and parameters should return the same result.
+  // Determinism is not guaranteed, and you should refer to the system_fingerprint response parameter to monitor changes in the backend.
+  seed: Option[Int] = None // NEW
 )
+
+sealed abstract class ChatCompletionResponseFormatType extends EnumValue()
+
+object ChatCompletionResponseFormatType {
+  case object text extends ChatCompletionResponseFormatType
+  case object json_object extends ChatCompletionResponseFormatType
+}

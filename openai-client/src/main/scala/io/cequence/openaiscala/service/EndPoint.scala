@@ -4,7 +4,7 @@ import io.cequence.openaiscala.domain.EnumValue
 
 sealed abstract class EndPoint(value: String = "") extends EnumValue(value)
 
-object EndPoint extends Enumeration {
+object EndPoint {
   case object models extends EndPoint
   case object completions extends EndPoint
   case object chat_completions extends EndPoint("chat/completions")
@@ -72,4 +72,6 @@ object Param {
   case object after extends Param
   case object limit extends Param
   case object seed extends Param
+  case object tools extends Param
+  case object tool_choice extends Param
 }

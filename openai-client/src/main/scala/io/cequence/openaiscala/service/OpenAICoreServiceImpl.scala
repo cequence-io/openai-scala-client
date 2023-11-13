@@ -147,7 +147,11 @@ private trait OpenAICoreServiceImpl extends OpenAICoreService with WSRequestHelp
       Param.logit_bias -> {
         if (settings.logit_bias.isEmpty) None else Some(settings.logit_bias)
       },
-      Param.user -> settings.user
+      Param.user -> settings.user,
+      Param.seed -> settings.seed,
+      Param.response_format -> settings.response_format_type.map { formatType =>
+        Map("type" -> formatType)
+      }
     )
   }
 
