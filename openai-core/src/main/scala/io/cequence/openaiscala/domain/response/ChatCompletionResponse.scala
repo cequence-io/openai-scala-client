@@ -11,6 +11,8 @@ sealed trait BaseChatCompletionResponse[
   val id: String
   val created: ju.Date
   val model: String
+  // new
+  val system_fingerprint: Option[String]
   val choices: Seq[C]
   val usage: Option[UsageInfo]
 }
@@ -19,6 +21,7 @@ case class ChatCompletionResponse(
   id: String,
   created: ju.Date,
   model: String,
+  system_fingerprint: Option[String], // new
   choices: Seq[ChatCompletionChoiceInfo],
   usage: Option[UsageInfo]
 ) extends BaseChatCompletionResponse[MessageSpec, ChatCompletionChoiceInfo]
@@ -27,6 +30,7 @@ case class ChatFunCompletionResponse(
   id: String,
   created: ju.Date,
   model: String,
+  system_fingerprint: Option[String], // new
   choices: Seq[ChatFunCompletionChoiceInfo],
   usage: Option[UsageInfo]
 ) extends BaseChatCompletionResponse[

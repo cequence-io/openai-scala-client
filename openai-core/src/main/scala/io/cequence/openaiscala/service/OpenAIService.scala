@@ -60,8 +60,10 @@ trait OpenAIService extends OpenAICoreService {
    *   chat completion response
    * @see
    *   <a href="https://platform.openai.com/docs/api-reference/chat/create">OpenAI Doc</a>
+   *
+   * Deprecated: use {@link OpenAIService.createChatToolCompletion} instead.
    */
-  @Deprecated("Use createChatToolCompletion instead")
+  @Deprecated
   def createChatFunCompletion(
     messages: Seq[FunMessageSpec],
     functions: Seq[FunctionSpec],
