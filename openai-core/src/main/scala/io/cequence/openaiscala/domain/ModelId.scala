@@ -101,6 +101,9 @@ object ModelId {
   val canary_tts = "canary-tts"
   val canary_whisper = "canary-whisper"
 
+  // Image gen
+  val dall_e_3 = "dall-e-3"
+  val dall_e_2 = "dall-e-2"
 
   // GPT-3.5 (ChatGPT)
 
