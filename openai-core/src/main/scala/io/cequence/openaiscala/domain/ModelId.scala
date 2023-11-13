@@ -95,6 +95,12 @@ object ModelId {
   val audio_transcribe_deprecated = "audio-transcribe-deprecated"
   val whisper_1 = "whisper-1"
   val whisper_1_2 = "whisper-1.2"
+  val tts_1_hd = "tts-1-hd"
+  val tts_1_1106 = "tts-1-1106"
+  val tts_1_hd_1106 = "tts-1-hd-1106"
+  val canary_tts = "canary-tts"
+  val canary_whisper = "canary-whisper"
+
 
   // GPT-3.5 (ChatGPT)
 
@@ -110,7 +116,7 @@ object ModelId {
   val gpt_3_5_turbo_16k_0613 = "gpt-3.5-turbo-16k-0613"
   val gpt_3_5_turbo_instruct_0914 = "gpt-3.5-turbo-instruct-0914"
   val gpt_3_5_turbo_instruct = "gpt-3.5-turbo-instruct"
-  // 16k context , gpt_3_5_turbo will point to this model from Dec 11, 2023
+  // 16k context, gpt_3_5_turbo will point to this model from Dec 11, 2023
   val gpt_3_5_turbo_1106 = "gpt-3.5-turbo-1106"
 
   // GPT-4
