@@ -80,9 +80,10 @@ trait OpenAIService extends OpenAICoreService {
    *   A list of tools the model may call. Currently, only functions are supported as a tool.
    *   Use this to provide a list of functions the model may generate JSON inputs for.
    * @param responseToolChoice
-   *  Controls which (if any) function/tool is called by the model.
-   *  Specifying a particular function forces the model to call that function (must be listed in `tools`).
-   *  Otherwise, the default "auto" mode is used where the model can pick between generating a message or calling a function.
+   *   Controls which (if any) function/tool is called by the model. Specifying a particular
+   *   function forces the model to call that function (must be listed in `tools`). Otherwise,
+   *   the default "auto" mode is used where the model can pick between generating a message or
+   *   calling a function.
    * @param settings
    * @return
    *   chat completion response
