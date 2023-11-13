@@ -12,7 +12,19 @@ object JsonFormats {
   private implicit val dateFormat: Format[ju.Date] = JsonUtil.SecDateFormat
 
   implicit val PermissionFormat: Format[Permission] = Json.format[Permission]
-  implicit val modelSpecFormat: Format[ModelInfo] = Json.format[ModelInfo]
+  implicit val modelSpecFormat: Format[ModelInfo] = {
+    val reads: Reads[ModelInfo] = (
+      (__ \ "id").read[String] and
+        (__ \ "created").read[ju.Date] and
+        (__ \ "owned_by").read[String] and
+        (__ \ "root").readNullable[String] and
+        (__ \ "parent").readNullable[String] and
+        (__ \ "permission").read[Seq[Permission]].orElse(Reads.pure(Nil))
+    )(ModelInfo.apply _)
+
+    val writes: Writes[ModelInfo] = Json.writes[ModelInfo]
+    Format(reads, writes)
+  }
 
   implicit val usageInfoFormat: Format[UsageInfo] = Json.format[UsageInfo]
 
