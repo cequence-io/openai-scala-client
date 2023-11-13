@@ -87,6 +87,7 @@ object JsonFormats {
   implicit val embeddingFormat: Format[EmbeddingResponse] =
     Json.format[EmbeddingResponse]
 
+  implicit val fileStatisticsFormat: Format[FileStatistics] = Json.format[FileStatistics]
   implicit val fileInfoFormat: Format[FileInfo] = Json.format[FileInfo]
 
   implicit val fineTuneEventFormat: Format[FineTuneEvent] = {
