@@ -1,12 +1,12 @@
 package io.cequence.openaiscala.service
 
-import play.api.libs.json.{JsObject, JsValue, Json}
+import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
 import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
-import io.cequence.openaiscala.domain.{FunMessageSpec, FunctionSpec}
+import io.cequence.openaiscala.domain.{FunMessageSpec, FunctionSpec, ToolSpec}
 
 import java.io.File
 import scala.concurrent.Future
@@ -52,6 +52,43 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
       _.asSafe[ChatFunCompletionResponse]
     )
   }
+
+  override def createChatToolCompletion(
+    messages: Seq[FunMessageSpec],
+    tools: Seq[ToolSpec],
+    responseToolChoice: Option[String] = None,
+    settings: CreateChatCompletionSettings = DefaultSettings.CreateChatFunCompletion
+  ): Future[ChatFunCompletionResponse] = {
+    val coreParams =
+      createBodyParamsForChatCompletion(messages, settings, stream = false)
+
+    val extraParams = jsonBodyParams(
+      Param.functions -> Some(JsArray(tools.map(toolToJson))),
+      Param.function_call -> responseToolChoice.map(name =>
+        Map(
+          "type" -> "function",
+          "function" -> Map("name" -> name)
+        )
+      ) // otherwise "auto" is used by default
+    )
+
+    execPOST(
+      EndPoint.chat_completions,
+      bodyParams = coreParams ++ extraParams
+    ).map(
+      _.asSafe[ChatFunCompletionResponse]
+    )
+  }
+
+  // handle new tool types here
+  private def toolToJson(tool: ToolSpec) =
+    tool match {
+      case x: FunctionSpec =>
+        Json.obj(
+          "type" -> "function",
+          "function" -> Json.toJson(x)
+        )
+    }
 
   override def createEdit(
     input: String,

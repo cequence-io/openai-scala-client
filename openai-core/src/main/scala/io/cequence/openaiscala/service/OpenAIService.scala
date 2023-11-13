@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.service
 
-import io.cequence.openaiscala.domain.{FunMessageSpec, FunctionSpec}
+import io.cequence.openaiscala.domain.{FunMessageSpec, FunctionSpec, ToolSpec}
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
 
@@ -61,10 +61,36 @@ trait OpenAIService extends OpenAICoreService {
    * @see
    *   <a href="https://platform.openai.com/docs/api-reference/chat/create">OpenAI Doc</a>
    */
+  @Deprecated("Use createChatToolCompletion instead")
   def createChatFunCompletion(
     messages: Seq[FunMessageSpec],
     functions: Seq[FunctionSpec],
     responseFunctionName: Option[String] = None,
+    settings: CreateChatCompletionSettings = DefaultSettings.CreateChatFunCompletion
+  ): Future[ChatFunCompletionResponse]
+
+  /**
+   * Creates a model response for the given chat conversation expecting a tool call.
+   *
+   * @param messages
+   *   A list of messages comprising the conversation so far.
+   * @param tools
+   *   A list of tools the model may call. Currently, only functions are supported as a tool.
+   *   Use this to provide a list of functions the model may generate JSON inputs for.
+   * @param responseToolChoice
+   *  Controls which (if any) function/tool is called by the model.
+   *  Specifying a particular function forces the model to call that function (must be listed in `tools`).
+   *  Otherwise, the default "auto" mode is used where the model can pick between generating a message or calling a function.
+   * @param settings
+   * @return
+   *   chat completion response
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/chat/create">OpenAI Doc</a>
+   */
+  def createChatToolCompletion(
+    messages: Seq[FunMessageSpec],
+    tools: Seq[ToolSpec],
+    responseToolChoice: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatFunCompletion
   ): Future[ChatFunCompletionResponse]
 
