@@ -93,7 +93,8 @@ private trait OpenAICoreServiceImpl extends OpenAICoreService with WSRequestHelp
       Param.logit_bias -> {
         if (settings.logit_bias.isEmpty) None else Some(settings.logit_bias)
       },
-      Param.user -> settings.user
+      Param.user -> settings.user,
+      Param.seed -> settings.seed
     )
 
   override def createChatCompletion(

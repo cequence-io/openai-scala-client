@@ -71,4 +71,5 @@ object Param {
   case object function_call extends Param
   case object after extends Param
   case object limit extends Param
+  case object seed extends Param
 }
