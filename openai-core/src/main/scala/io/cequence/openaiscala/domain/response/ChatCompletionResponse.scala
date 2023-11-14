@@ -1,11 +1,17 @@
 package io.cequence.openaiscala.domain.response
 
-import io.cequence.openaiscala.domain.{BaseMessageSpec, ChatRole, FunMessageSpec, MessageSpec}
+import io.cequence.openaiscala.domain.{
+  AssistantFunMessage,
+  AssistantMessage,
+  AssistantToolMessage,
+  BaseMessage,
+  ChatRole
+}
 
 import java.{util => ju}
 
 sealed trait BaseChatCompletionResponse[
-  M <: BaseMessageSpec,
+  M <: BaseMessage,
   C <: BaseChatCompletionChoiceInfo[M]
 ] {
   val id: String
@@ -24,7 +30,22 @@ case class ChatCompletionResponse(
   system_fingerprint: Option[String], // new
   choices: Seq[ChatCompletionChoiceInfo],
   usage: Option[UsageInfo]
-) extends BaseChatCompletionResponse[MessageSpec, ChatCompletionChoiceInfo]
+) extends BaseChatCompletionResponse[
+      AssistantMessage,
+      ChatCompletionChoiceInfo
+    ]
+
+case class ChatToolCompletionResponse(
+  id: String,
+  created: ju.Date,
+  model: String,
+  system_fingerprint: Option[String], // new
+  choices: Seq[ChatToolCompletionChoiceInfo],
+  usage: Option[UsageInfo]
+) extends BaseChatCompletionResponse[
+      AssistantToolMessage,
+      ChatToolCompletionChoiceInfo
+    ]
 
 case class ChatFunCompletionResponse(
   id: String,
@@ -34,33 +55,40 @@ case class ChatFunCompletionResponse(
   choices: Seq[ChatFunCompletionChoiceInfo],
   usage: Option[UsageInfo]
 ) extends BaseChatCompletionResponse[
-      FunMessageSpec,
+      AssistantFunMessage,
       ChatFunCompletionChoiceInfo
     ]
 
-sealed trait BaseChatCompletionChoiceInfo[M <: BaseMessageSpec] {
+sealed trait BaseChatCompletionChoiceInfo[M <: BaseMessage] {
   val message: M
   val index: Int
   val finish_reason: Option[String]
 }
 
 case class ChatCompletionChoiceInfo(
-  message: MessageSpec,
+  message: AssistantMessage,
   index: Int,
   finish_reason: Option[String]
-) extends BaseChatCompletionChoiceInfo[MessageSpec]
+) extends BaseChatCompletionChoiceInfo[AssistantMessage]
+
+case class ChatToolCompletionChoiceInfo(
+  message: AssistantToolMessage,
+  index: Int,
+  finish_reason: Option[String]
+) extends BaseChatCompletionChoiceInfo[AssistantToolMessage]
 
 case class ChatFunCompletionChoiceInfo(
-  message: FunMessageSpec,
+  message: AssistantFunMessage,
   index: Int,
   finish_reason: Option[String]
-) extends BaseChatCompletionChoiceInfo[FunMessageSpec]
+) extends BaseChatCompletionChoiceInfo[AssistantFunMessage]
 
 // chunk - streamed
 case class ChatCompletionChunkResponse(
   id: String,
   created: ju.Date,
   model: String,
+  system_fingerprint: Option[String], // new
   choices: Seq[ChatCompletionChoiceChunkInfo],
   usage: Option[UsageInfo]
 )
