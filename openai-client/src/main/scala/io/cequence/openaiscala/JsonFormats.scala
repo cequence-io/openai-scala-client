@@ -67,22 +67,27 @@ object JsonFormats {
   implicit val assistantMessageFormat: Format[AssistantMessage] = Json.format[AssistantMessage]
   implicit val assistantToolMessageReads: Reads[AssistantToolMessage] = (
     (__ \ "content").readNullable[String] and
-    (__ \ "name").readNullable[String] and
-    (__ \ "tool_calls").read[JsArray]
+      (__ \ "name").readNullable[String] and
+      (__ \ "tool_calls").read[JsArray]
   ) {
-    (content, name, tool_calls) =>
+    (
+      content,
+      name,
+      tool_calls
+    ) =>
       val idToolCalls = tool_calls.value.map { toolCall =>
         val callId = (toolCall \ "id").as[String]
         val callType = (toolCall \ "type").as[String]
         val call = callType match {
           case "function" => (toolCall \ "function").as[FunctionCallSpec]
-          case _ => throw new Exception(s"Unknown tool call type: $callType")
+          case _          => throw new Exception(s"Unknown tool call type: $callType")
         }
         (callId, call)
       }
       AssistantToolMessage(content, name, idToolCalls)
   }
-  implicit val assistantFunMessageFormat: Format[AssistantFunMessage] = Json.format[AssistantFunMessage]
+  implicit val assistantFunMessageFormat: Format[AssistantFunMessage] =
+    Json.format[AssistantFunMessage]
 
   implicit val funMessageFormat: Format[FunMessage] = Json.format[FunMessage]
 
@@ -105,7 +110,10 @@ object JsonFormats {
   }
 
   implicit val messageWrites: Writes[BaseMessage] = Writes { message: BaseMessage =>
-    def optionalJsObject(fieldName: String, value: Option[JsValue]) =
+    def optionalJsObject(
+      fieldName: String,
+      value: Option[JsValue]
+    ) =
       value.map(x => Json.obj(fieldName -> x)).getOrElse(Json.obj())
 
     val role = Json.obj("role" -> toJson(message.role))
@@ -145,7 +153,7 @@ object JsonFormats {
       case m: MessageSpec => toJson(m)
     }
 
-    json.as[JsObject]++role++name
+    json.as[JsObject] ++ role ++ name
   }
 
   implicit val toolWrites: Writes[ToolSpec] = Writes[ToolSpec] {

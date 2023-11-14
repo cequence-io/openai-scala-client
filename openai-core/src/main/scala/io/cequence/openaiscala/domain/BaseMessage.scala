@@ -47,7 +47,7 @@ final case class AssistantMessage(
 
   // An optional name for the participant. Provides the model information to differentiate between participants of the same role.
   // May contain a-z, A-Z, 0-9, and underscores, with a maximum length of 64 characters.
-  name: Option[String] = None,
+  name: Option[String] = None
 ) extends BaseMessage {
   override val role = ChatRole.Assistant
   override val nameOpt = name
