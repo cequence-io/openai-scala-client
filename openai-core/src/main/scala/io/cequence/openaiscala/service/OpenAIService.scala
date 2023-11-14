@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.service
 
-import io.cequence.openaiscala.domain.{FunMessageSpec, FunctionSpec, ToolSpec}
+import io.cequence.openaiscala.domain.{BaseMessage, FunMessage, FunctionSpec, ToolSpec}
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
 
@@ -65,7 +65,7 @@ trait OpenAIService extends OpenAICoreService {
    */
   @Deprecated
   def createChatFunCompletion(
-    messages: Seq[FunMessageSpec],
+    messages: Seq[BaseMessage],
     functions: Seq[FunctionSpec],
     responseFunctionName: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatFunCompletion
@@ -91,11 +91,11 @@ trait OpenAIService extends OpenAICoreService {
    *   <a href="https://platform.openai.com/docs/api-reference/chat/create">OpenAI Doc</a>
    */
   def createChatToolCompletion(
-    messages: Seq[FunMessageSpec],
+    messages: Seq[BaseMessage],
     tools: Seq[ToolSpec],
     responseToolChoice: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatFunCompletion
-  ): Future[ChatFunCompletionResponse]
+  ): Future[ChatToolCompletionResponse]
 
   /**
    * Creates a new edit for the provided input, instruction, and parameters.

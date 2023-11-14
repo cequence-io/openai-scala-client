@@ -6,7 +6,7 @@ import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
-import io.cequence.openaiscala.domain.{FunMessageSpec, FunctionSpec, ToolSpec}
+import io.cequence.openaiscala.domain.{BaseMessage, FunMessage, FunctionSpec, ToolSpec}
 
 import java.io.File
 import scala.concurrent.Future
@@ -30,7 +30,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
     }
 
   override def createChatFunCompletion(
-    messages: Seq[FunMessageSpec],
+    messages: Seq[BaseMessage],
     functions: Seq[FunctionSpec],
     responseFunctionName: Option[String],
     settings: CreateChatCompletionSettings
@@ -42,7 +42,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
       Param.functions -> Some(Json.toJson(functions)),
       Param.function_call -> responseFunctionName.map(name =>
         Map("name" -> name)
-      ) // otherwise "auto" is used by default
+      ) // otherwise "auto" is used by default (if functions are present)
     )
 
     execPOST(
@@ -54,41 +54,38 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
   }
 
   override def createChatToolCompletion(
-    messages: Seq[FunMessageSpec],
+    messages: Seq[BaseMessage],
     tools: Seq[ToolSpec],
     responseToolChoice: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatFunCompletion
-  ): Future[ChatFunCompletionResponse] = {
+  ): Future[ChatToolCompletionResponse] = {
     val coreParams =
       createBodyParamsForChatCompletion(messages, settings, stream = false)
 
+    val toolJsons = tools.map(
+      _ match {
+        case tool: FunctionSpec =>
+          Map("type" -> "function", "function" -> Json.toJson(tool))
+      }
+    )
+
     val extraParams = jsonBodyParams(
-      Param.functions -> Some(JsArray(tools.map(toolToJson))),
-      Param.function_call -> responseToolChoice.map(name =>
+      Param.tools -> Some(toolJsons),
+      Param.tool_choice -> responseToolChoice.map(name =>
         Map(
           "type" -> "function",
           "function" -> Map("name" -> name)
         )
-      ) // otherwise "auto" is used by default
+      ) // otherwise "auto" is used by default (if tools are present)
     )
 
     execPOST(
       EndPoint.chat_completions,
       bodyParams = coreParams ++ extraParams
     ).map(
-      _.asSafe[ChatFunCompletionResponse]
+      _.asSafe[ChatToolCompletionResponse]
     )
   }
-
-  // handle new tool types here
-  private def toolToJson(tool: ToolSpec) =
-    tool match {
-      case x: FunctionSpec =>
-        Json.obj(
-          "type" -> "function",
-          "function" -> Json.toJson(x)
-        )
-    }
 
   override def createEdit(
     input: String,
@@ -257,6 +254,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
       _.asSafe[FileInfo]
     )
 
+  // TODO: Azure return http code 204
   override def deleteFile(
     fileId: String
   ): Future[DeleteResponse] =
