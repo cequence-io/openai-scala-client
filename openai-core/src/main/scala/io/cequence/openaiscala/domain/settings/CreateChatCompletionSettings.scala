@@ -56,12 +56,12 @@ case class CreateChatCompletionSettings(
   // resulting in a long-running and seemingly "stuck" request. Also note that the message content may be partially cut off
   // if finish_reason="length", which indicates the generation exceeded max_tokens or the conversation exceeded the max context length.
   // Defaults to text
-  response_format_type: Option[ChatCompletionResponseFormatType] = None, // NEW
+  response_format_type: Option[ChatCompletionResponseFormatType] = None, // new
 
   // This feature is in Beta. If specified, our system will make a best effort to sample deterministically,
   // such that repeated requests with the same seed and parameters should return the same result.
   // Determinism is not guaranteed, and you should refer to the system_fingerprint response parameter to monitor changes in the backend.
-  seed: Option[Int] = None // NEW
+  seed: Option[Int] = None // new
 )
 
 sealed abstract class ChatCompletionResponseFormatType extends EnumValue()
