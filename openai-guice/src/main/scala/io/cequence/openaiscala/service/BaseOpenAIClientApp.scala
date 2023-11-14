@@ -22,4 +22,10 @@ trait BaseOpenAIClientApp extends GuiceContainer with App {
   protected implicit val materializer: Materializer = instance[Materializer]
   protected implicit val executionContext: ExecutionContext =
     materializer.executionContext
+
+  protected def closeAndExit() = {
+    openAIService.close()
+    system.terminate()
+    System.exit(0)
+  }
 }
