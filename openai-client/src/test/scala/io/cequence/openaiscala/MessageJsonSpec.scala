@@ -233,7 +233,8 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
         arguments = "{\n  \"location\": \"Boston, MA\"\n}"
       )
 
-      val message = AssistantToolMessage(tool_calls = Seq(("get_current_weather_1", toolCallSpec)))
+      val message =
+        AssistantToolMessage(tool_calls = Seq(("get_current_weather_1", toolCallSpec)))
       val json = toJson(message)
       val jsonKeys = json.keySet
 
@@ -245,13 +246,18 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
 
       json("role") shouldBe JsString("assistant")
       json("tool_calls").asOpt[JsArray] shouldBe defined
-      json("tool_calls") shouldBe JsArray(Seq(
-        Json.obj(
-          "id" -> JsString(toolId),
-          "type" -> JsString("function"),
-          "function" -> Json.obj("name" -> JsString(toolCallSpec.name), "arguments" -> JsString(toolCallSpec.arguments))
+      json("tool_calls") shouldBe JsArray(
+        Seq(
+          Json.obj(
+            "id" -> JsString(toolId),
+            "type" -> JsString("function"),
+            "function" -> Json.obj(
+              "name" -> JsString(toolCallSpec.name),
+              "arguments" -> JsString(toolCallSpec.arguments)
+            )
+          )
         )
-      ))
+      )
     }
   }
 
@@ -310,7 +316,10 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
 
       json("role") shouldBe JsString("assistant")
       json("function_call").asOpt[JsObject] shouldBe defined
-      json("function_call") shouldBe Json.obj("name" -> JsString(functionCallSpec.name), "arguments" -> JsString(functionCallSpec.arguments))
+      json("function_call") shouldBe Json.obj(
+        "name" -> JsString(functionCallSpec.name),
+        "arguments" -> JsString(functionCallSpec.arguments)
+      )
     }
   }
 
