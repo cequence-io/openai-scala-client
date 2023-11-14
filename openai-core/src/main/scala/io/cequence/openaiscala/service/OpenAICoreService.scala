@@ -2,7 +2,7 @@ package io.cequence.openaiscala.service
 
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.domain.MessageSpec
+import io.cequence.openaiscala.domain.{BaseMessage, SystemMessage}
 
 import scala.concurrent.Future
 
@@ -68,7 +68,7 @@ trait OpenAICoreService extends OpenAIServiceConsts {
    *   <a href="https://platform.openai.com/docs/api-reference/chat/create">OpenAI Doc</a>
    */
   def createChatCompletion(
-    messages: Seq[MessageSpec],
+    messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
   ): Future[ChatCompletionResponse]
 
