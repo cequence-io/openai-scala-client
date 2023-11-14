@@ -39,7 +39,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
       createBodyParamsForChatCompletion(messages, settings, stream = false)
 
     val extraParams = jsonBodyParams(
-      Param.functions -> Some(Json.toJson(functions)),
+      Param.functions -> Some(functions.map(Json.toJson(_)(functionSpecFormat))),
       Param.function_call -> responseFunctionName.map(name =>
         Map("name" -> name)
       ) // otherwise "auto" is used by default (if functions are present)

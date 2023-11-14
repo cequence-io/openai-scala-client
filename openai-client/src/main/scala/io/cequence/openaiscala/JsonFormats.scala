@@ -78,7 +78,7 @@ object JsonFormats {
       val idToolCalls = tool_calls.value.map { toolCall =>
         val callId = (toolCall \ "id").as[String]
         val callType = (toolCall \ "type").as[String]
-        val call = callType match {
+        val call: ToolCallSpec = callType match {
           case "function" => (toolCall \ "function").as[FunctionCallSpec]
           case _          => throw new Exception(s"Unknown tool call type: $callType")
         }
@@ -109,7 +109,7 @@ object JsonFormats {
     }
   }
 
-  implicit val messageWrites: Writes[BaseMessage] = Writes { message: BaseMessage =>
+  implicit val messageWrites: Writes[BaseMessage] = Writes { (message: BaseMessage) =>
     def optionalJsObject(
       fieldName: String,
       value: Option[JsValue]
