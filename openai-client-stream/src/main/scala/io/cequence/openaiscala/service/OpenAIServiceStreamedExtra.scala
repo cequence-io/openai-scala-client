@@ -2,7 +2,7 @@ package io.cequence.openaiscala.service
 
 import akka.NotUsed
 import akka.stream.scaladsl.Source
-import io.cequence.openaiscala.domain.MessageSpec
+import io.cequence.openaiscala.domain.{BaseMessage, SystemMessage}
 import io.cequence.openaiscala.domain.response.{
   ChatCompletionChunkResponse,
   FineTuneEvent,
@@ -48,7 +48,7 @@ trait OpenAIServiceStreamedExtra extends OpenAIServiceConsts {
    *   <a href="https://platform.openai.com/docs/api-reference/chat/create">OpenAI Doc</a>
    */
   def createChatCompletionStreamed(
-    messages: Seq[MessageSpec],
+    messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
   ): Source[ChatCompletionChunkResponse, NotUsed]
 

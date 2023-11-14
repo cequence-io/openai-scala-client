@@ -9,7 +9,7 @@ import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.service.ws.{Timeouts, WSStreamRequestHelper}
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.openaiscala.domain.MessageSpec
+import io.cequence.openaiscala.domain.{BaseMessage, SystemMessage}
 import play.api.libs.json.JsValue
 
 import scala.concurrent.ExecutionContext
@@ -43,7 +43,7 @@ private trait OpenAIServiceStreamedExtraImpl
     }
 
   override def createChatCompletionStreamed(
-    messages: Seq[MessageSpec],
+    messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
   ): Source[ChatCompletionChunkResponse, NotUsed] =
     execJsonStreamAux(
