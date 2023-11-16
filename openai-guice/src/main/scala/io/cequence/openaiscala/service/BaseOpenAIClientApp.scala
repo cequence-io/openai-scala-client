@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import akka.stream.Materializer
 import com.google.inject.Module
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 trait BaseOpenAIClientApp extends GuiceContainer with App {
 
@@ -23,9 +23,15 @@ trait BaseOpenAIClientApp extends GuiceContainer with App {
   protected implicit val executionContext: ExecutionContext =
     materializer.executionContext
 
-  protected def closeAndExit() = {
-    openAIService.close()
-    system.terminate()
-    System.exit(0)
+  implicit protected class FutureOps[T](f: Future[T]) {
+    def closeAndExit(): Unit =
+      f.recover { case e: Exception =>
+        e.printStackTrace()
+        System.exit(1)
+      }.onComplete { _ =>
+        openAIService.close()
+        system.terminate()
+        System.exit(0)
+      }
   }
 }
