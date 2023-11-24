@@ -74,4 +74,5 @@ object Param {
   case object seed extends Param
   case object tools extends Param
   case object tool_choice extends Param
+  case object encoding_format extends Param
 }

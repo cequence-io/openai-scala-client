@@ -160,6 +160,7 @@ private trait OpenAICoreServiceImpl extends OpenAICoreService with WSRequestHelp
           }
         },
         Param.model -> Some(settings.model),
+        Param.encoding_format -> settings.encoding_format.map(_.toString),
         Param.user -> settings.user
       )
     ).map(
