@@ -9,11 +9,11 @@ case class CreateFineTuneSettings(
   // Number of examples in each batch or "auto".
   // A larger batch size means that model parameters are updated less frequently, but with lower variance.
   // Defaults to auto
-  batch_size: Option[Int],
+  batch_size: Option[Int] = None,
 
   // Scaling factor for the learning rate or "auto". A smaller learning rate may be useful to avoid overfitting.
   // Defaults to auto
-  learning_rate_multiplier: Option[Int],
+  learning_rate_multiplier: Option[Int] = None,
 
   // The number of epochs to train the model for.
   // An epoch refers to one full cycle through the training dataset.

@@ -47,10 +47,10 @@ case class FineTuneEvent(
 case class FineTuneHyperparams(
   // Number of examples in each batch or "auto".
   // A larger batch size means that model parameters are updated less frequently, but with lower variance.
-  batch_size: Option[Either[String, Int]],
+  batch_size: Option[Either[Int, String]],
 
   // Scaling factor for the learning rate or "auto". A smaller learning rate may be useful to avoid overfitting.
-  learning_rate_multiplier: Option[Either[String, Int]],
+  learning_rate_multiplier: Option[Either[Int, String]],
 
   // the number of epochs or "auto" (if not specified initially)
   // "auto" decides the optimal number of epochs based on the size of the dataset.
