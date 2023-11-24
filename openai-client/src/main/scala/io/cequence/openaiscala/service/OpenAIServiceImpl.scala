@@ -315,9 +315,23 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
         Param.validation_file -> validation_file,
         Param.model -> Some(settings.model),
         Param.suffix -> settings.suffix,
-        Param.hyperparameters -> settings.n_epochs.map(epochs =>
-          Map(Param.n_epochs.toString -> epochs)
-        )
+        Param.hyperparameters -> {
+          if (
+            Seq(settings.batch_size, settings.learning_rate_multiplier, settings.n_epochs)
+              .exists(_.isDefined)
+          ) {
+            // all three params have "auto" as default value which we pass explicitly if not defined
+            Some(
+              Map(
+                Param.batch_size.toString -> settings.batch_size.getOrElse("auto"),
+                Param.learning_rate_multiplier.toString -> settings.learning_rate_multiplier
+                  .getOrElse("auto"),
+                Param.n_epochs.toString -> settings.n_epochs.getOrElse("auto")
+              )
+            )
+          } else
+            None
+        }
       )
     ).map(
       _.asSafe[FineTuneJob]

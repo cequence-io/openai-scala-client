@@ -52,9 +52,7 @@ object Param {
   case object validation_file extends Param
   case object hyperparameters extends Param
   case object n_epochs extends Param
-  @Deprecated
   case object batch_size extends Param
-  @Deprecated
   case object learning_rate_multiplier extends Param
   @Deprecated
   case object prompt_loss_weight extends Param
