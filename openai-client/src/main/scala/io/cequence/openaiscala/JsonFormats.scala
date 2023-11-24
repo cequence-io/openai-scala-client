@@ -211,6 +211,7 @@ object JsonFormats {
     JsonUtil.eitherFormat[Int, String]
   implicit val fineTuneHyperparamsFormat: Format[FineTuneHyperparams] =
     Json.format[FineTuneHyperparams]
+  implicit val fineTuneErrorFormat: Format[FineTuneError] = Json.format[FineTuneError]
   implicit val fineTuneFormat: Format[FineTuneJob] = Json.format[FineTuneJob]
 
   // somehow ModerationCategories.unapply is not working in Scala3
