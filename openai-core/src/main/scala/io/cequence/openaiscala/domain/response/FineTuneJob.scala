@@ -26,7 +26,7 @@ case class FineTuneJob(
   // the total number of billable tokens processed by this fine-tuning job. The value will be null if the fine-tuning job is still running.
   trained_tokens: Option[Int],
   // For fine-tuning jobs that have failed, this will contain more information on the cause of the failure.
-  error: Option[String],
+  error: Option[FineTuneError],
   // the hyperparameters used for the fine-tuning job. See the fine-tuning guide for more details.
   hyperparameters: FineTuneHyperparams
 ) {
@@ -45,6 +45,24 @@ case class FineTuneEvent(
 )
 
 case class FineTuneHyperparams(
-  // the number of epochs or auto (if not specified initially)
+  // Number of examples in each batch or "auto".
+  // A larger batch size means that model parameters are updated less frequently, but with lower variance.
+  batch_size: Option[Either[String, Int]],
+
+  // Scaling factor for the learning rate or "auto". A smaller learning rate may be useful to avoid overfitting.
+  learning_rate_multiplier: Option[Either[String, Int]],
+
+  // the number of epochs or "auto" (if not specified initially)
+  // "auto" decides the optimal number of epochs based on the size of the dataset.
   n_epochs: Either[Int, String]
+)
+
+case class FineTuneError(
+  // A machine-readable error code.
+  code: String,
+  // A human-readable error message.
+  message: String,
+  // The parameter that was invalid, usually training_file or validation_file.
+  // This field will be null if the failure was not parameter-specific
+  param: Option[String]
 )
