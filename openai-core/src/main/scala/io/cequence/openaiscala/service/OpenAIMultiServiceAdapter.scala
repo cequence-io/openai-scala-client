@@ -15,7 +15,7 @@ private trait OpenAIMultiServiceAdapter extends OpenAIServiceWrapper {
   ): Future[T] =
     fun(underlyings(calcIndex))
 
-  override def close() =
+  override def close(): Unit =
     underlyings.foreach(_.close())
 }
 
@@ -24,30 +24,30 @@ private class OpenAIMultiServiceRotationAdapter(
 ) extends OpenAIMultiServiceAdapter {
   private val atomicCounter = new AtomicInteger()
 
-  protected def calcIndex =
+  protected def calcIndex: Int =
     atomicCounter.getAndUpdate(index => (index + 1) % count)
 }
 
 private class OpenAIMultiServiceRandomAccessAdapter(
   val underlyings: Seq[OpenAIService]
 ) extends OpenAIMultiServiceAdapter {
-  protected def calcIndex = Random.nextInt(count)
+  protected def calcIndex: Int = Random.nextInt(count)
 }
 
 /**
  * Load distribution for multiple OpenAIService instances using:
- *  - rotation type (aka round robin)
- *  - random access/order
+ *   - rotation type (aka round robin)
+ *   - random access/order
  */
 object OpenAIMultiServiceAdapter {
 
   @deprecated("Use ofRoundRobinType instead")
   def ofRotationType(underlyings: OpenAIService*): OpenAIService =
-    ofRoundRobinType(underlyings:_*)
+    ofRoundRobinType(underlyings: _*)
 
   @deprecated("Use ofRandomOrderType instead")
   def ofRandomAccessType(underlyings: OpenAIService*): OpenAIService =
-    ofRandomOrderType(underlyings:_*)
+    ofRandomOrderType(underlyings: _*)
 
   def ofRoundRobinType(underlyings: OpenAIService*): OpenAIService =
     new OpenAIMultiServiceRotationAdapter(underlyings)

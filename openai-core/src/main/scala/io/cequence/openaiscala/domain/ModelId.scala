@@ -1,9 +1,10 @@
 package io.cequence.openaiscala.domain
 
 /**
- * OpenAI models available as of `2023-03-07`.
+ * OpenAI models available as of `2023-09-21`.
  *
- * @since Jan 2023
+ * @since Jan
+ *   2023
  */
 object ModelId {
 
@@ -39,6 +40,7 @@ object ModelId {
   val text_search_babbage_doc_001 = "text-search-babbage-doc-001"
   val text_search_babbage_query_001 = "text-search-babbage-query-001"
   val text_similarity_babbage_001 = "text-similarity-babbage-001"
+  val babbage_002 = "babbage-002"
 
   // Curie
   val curie = "curie"
@@ -63,8 +65,11 @@ object ModelId {
   val davinci_search_query = "davinci-search-query"
   val davinci_similarity = "davinci-similarity"
   val davinci_2020_05_03 = "davinci:2020-05-03"
+  val davinci_002 = "davinci-002"
+
   @Deprecated
   val code_davinci_001 = "code-davinci-001"
+
   @Deprecated
   val code_davinci_002 = "code-davinci-002"
   val code_davinci_edit_001 = "code-davinci-edit-001"
@@ -90,29 +95,57 @@ object ModelId {
   val audio_transcribe_deprecated = "audio-transcribe-deprecated"
   val whisper_1 = "whisper-1"
   val whisper_1_2 = "whisper-1.2"
+  val tts_1_hd = "tts-1-hd"
+  val tts_1_1106 = "tts-1-1106"
+  val tts_1_hd_1106 = "tts-1-hd-1106"
+  val canary_tts = "canary-tts"
+  val canary_whisper = "canary-whisper"
+
+  // Image gen
+  val dall_e_3 = "dall-e-3"
+  val dall_e_2 = "dall-e-2"
 
   // GPT-3.5 (ChatGPT)
-  val gpt_3_5_turbo = "gpt-3.5-turbo" // 4k context, uses the version 0301 till June 27th, then 0613
-  @Deprecated // supported till 09/13/2023
-  val gpt_3_5_turbo_0301 = "gpt-3.5-turbo-0301" // 4k context (March 1st snapshot)
-  val gpt_3_5_turbo_0613 = "gpt-3.5-turbo-0613" // 4k context (June 13th snapshot), fine-tuned for function calling
-  val gpt_3_5_turbo_16k = "gpt-3.5-turbo-16k" // 16k context
-  val gpt_3_5_turbo_16k_0613 = "gpt-3.5-turbo-16k-0613" // 16k context (June 13th snapshot), fine-tuned for function calling
+
+  // 4k context, uses the version 0301 till June 27th, then 0613
+  val gpt_3_5_turbo = "gpt-3.5-turbo"
+  @Deprecated // supported till 09/13/2023, 4k context (March 1st snapshot)
+  val gpt_3_5_turbo_0301 = "gpt-3.5-turbo-0301"
+  // 4k context (June 13th snapshot), fine-tuned for function calling
+  val gpt_3_5_turbo_0613 = "gpt-3.5-turbo-0613"
+  // 16k context
+  val gpt_3_5_turbo_16k = "gpt-3.5-turbo-16k"
+  // 16k context (June 13th snapshot), fine-tuned for function calling
+  val gpt_3_5_turbo_16k_0613 = "gpt-3.5-turbo-16k-0613"
+  val gpt_3_5_turbo_instruct_0914 = "gpt-3.5-turbo-instruct-0914"
+  val gpt_3_5_turbo_instruct = "gpt-3.5-turbo-instruct"
+  // 16k context, gpt_3_5_turbo will point to this model from Dec 11, 2023
+  val gpt_3_5_turbo_1106 = "gpt-3.5-turbo-1106"
 
   // GPT-4
-  val gpt_4 = "gpt-4" // 8k context, uses the version 0301 till June 27th, then 0613
-  @Deprecated // supported till 09/13/2023
-  val gpt_4_0314 = "gpt-4-0314" // 8k context (March 14th snapshot)
-  val gpt_4_0613 = "gpt-4-0613" // 8k context (June 13th snapshot), fine-tuned for function calling
 
-  val gpt_4_32k = "gpt-4-32k" // 32k context, uses the version 0314 till June 27th, then 0613
-  @Deprecated // supported till 09/13/2023
-  val gpt_4_32k_0314 = "gpt-4-32k-0314" // 32k context (March 14th snapshot)
-  val gpt_4_32k_0613 = "gpt-4-32k-0613" // 32k context (June 13th snapshot), fine-tuned for function calling
+  // 8k context, uses the version 0301 till June 27th, then 0613
+  val gpt_4 = "gpt-4"
+  @Deprecated // supported till 09/13/2023, 8k context (March 14th snapshot)
+  val gpt_4_0314 = "gpt-4-0314"
+  // 8k context (June 13th snapshot), fine-tuned for function calling
+  val gpt_4_0613 = "gpt-4-0613"
+  // 32k context, uses the version 0314 till June 27th, then 0613
+  val gpt_4_32k = "gpt-4-32k"
+  @Deprecated // supported till 09/13/2023, 32k context (March 14th snapshot)
+  val gpt_4_32k_0314 = "gpt-4-32k-0314"
+  // 32k context (June 13th snapshot), fine-tuned for function calling
+  val gpt_4_32k_0613 = "gpt-4-32k-0613"
+  // 128K context (with training data upto April 2023)
+  val gpt_4_turbo_preview = "gpt-4-1106-preview"
+  // 128K context (with training data upto April 2023)
+  // includes supports for vision in addition to gpt-4-turbo capabilities
+  val gpt_4_vision_preview = "gpt-4-vision-preview"
 
   // Other
   @Deprecated
   val code_cushman_001 = "code-cushman-001"
+
   @Deprecated
   val code_cushman_002 = "code-cushman-002"
   val cushman_2020_05_03 = "cushman:2020-05-03"

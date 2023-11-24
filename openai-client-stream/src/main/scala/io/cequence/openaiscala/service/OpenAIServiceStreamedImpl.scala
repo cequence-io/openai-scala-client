@@ -9,18 +9,22 @@ import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.service.ws.{Timeouts, WSStreamRequestHelper}
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.openaiscala.domain.MessageSpec
-import play.api.libs.json.{JsValue, Json}
+import io.cequence.openaiscala.domain.{BaseMessage, SystemMessage}
+import play.api.libs.json.JsValue
 
 import scala.concurrent.ExecutionContext
 
 /**
- * Private impl. class of [[OpenAIServiceStreamedExtra]] which offers extra functions with streaming support.
+ * Private impl. class of [[OpenAIServiceStreamedExtra]] which offers extra functions with
+ * streaming support.
  *
- * @since Jan 2023
+ * @since Jan
+ *   2023
  */
-private trait OpenAIServiceStreamedExtraImpl extends OpenAIServiceStreamedExtra with WSStreamRequestHelper {
-  this: OpenAIServiceImpl =>
+private trait OpenAIServiceStreamedExtraImpl
+    extends OpenAIServiceStreamedExtra
+    with WSStreamRequestHelper {
+  this: OpenAIServiceClassImpl =>
 
   override def createCompletionStreamed(
     prompt: String,
@@ -39,7 +43,7 @@ private trait OpenAIServiceStreamedExtraImpl extends OpenAIServiceStreamedExtra 
     }
 
   override def createChatCompletionStreamed(
-    messages: Seq[MessageSpec],
+    messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
   ): Source[ChatCompletionChunkResponse, NotUsed] =
     execJsonStreamAux(
@@ -55,13 +59,17 @@ private trait OpenAIServiceStreamedExtraImpl extends OpenAIServiceStreamedExtra 
     }
 
   override def listFineTuneEventsStreamed(
-    fineTuneId: String
+    fineTuneId: String,
+    after: Option[String],
+    limit: Option[Int]
   ): Source[FineTuneEvent, NotUsed] =
     execJsonStreamAux(
       EndPoint.fine_tunes,
       "GET",
       endPointParam = Some(s"$fineTuneId/events"),
       params = Seq(
+        Param.after -> after,
+        Param.limit -> limit,
         Param.stream -> Some(true)
       )
     ).map { json =>
@@ -73,13 +81,23 @@ private trait OpenAIServiceStreamedExtraImpl extends OpenAIServiceStreamedExtra 
     }
 }
 
-object OpenAIServiceStreamedFactory extends OpenAIServiceFactoryHelper[OpenAIService with OpenAIServiceStreamedExtra] {
+object OpenAIServiceStreamedFactory
+    extends OpenAIServiceFactoryHelper[
+      OpenAIService with OpenAIServiceStreamedExtra
+    ] {
 
   override def apply(
     apiKey: String,
     orgId: Option[String] = None,
-    timeouts: Option[Timeouts] = None)(
-    implicit ec: ExecutionContext, materializer: Materializer
-  ): OpenAIService with OpenAIServiceStreamedExtra =
-    new OpenAIServiceImpl(apiKey, orgId, timeouts) with OpenAIServiceStreamedExtraImpl
+    timeouts: Option[Timeouts] = None
+  )(
+    implicit ec: ExecutionContext,
+    materializer: Materializer
+  ): OpenAIService with OpenAIServiceStreamedExtra = {
+    val orgIdHeader = orgId.map(("OpenAI-Organization", _))
+    val authHeaders = orgIdHeader ++: Seq(("Authorization", s"Bearer $apiKey"))
+
+    new OpenAIServiceClassImpl(defaultCoreUrl, authHeaders, Nil, timeouts)
+      with OpenAIServiceStreamedExtraImpl
+  }
 }

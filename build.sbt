@@ -7,20 +7,53 @@ val scala3 = "3.2.2"
 
 ThisBuild / organization := "io.cequence"
 ThisBuild / scalaVersion := scala212
-ThisBuild / version := "0.4.0"
+ThisBuild / version := "0.5.0"
 ThisBuild / isSnapshot := false
 
-lazy val core = (project in file("openai-core"))
+lazy val commonSettings = Seq(
+  libraryDependencies += "org.scalactic" %% "scalactic" % "3.2.16",
+  libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.16" % Test,
+  libraryDependencies += "org.scalatestplus" %% "mockito-4-11" % "3.2.16.0" % Test,
+  libraryDependencies ++= extraTestDependencies(scalaVersion.value),
+  crossScalaVersions := List(scala212, scala213, scala3)
+)
+
+def extraTestDependencies(scalaVersion: String) =
+  CrossVersion.partialVersion(scalaVersion) match {
+    case Some((2, 12)) =>
+      Seq(
+        "com.typesafe.akka" %% "akka-actor-testkit-typed" % "2.6.1" % Test
+      )
+
+    case Some((2, 13)) =>
+      Seq(
+        "com.typesafe.akka" %% "akka-actor-testkit-typed" % "2.6.20" % Test
+      )
+
+    case Some((3, _)) =>
+      Seq(
+        // because of conflicting cross-version suffixes 2.13 vs 3 - scala-java8-compat, etc
+        "com.typesafe.akka" % "akka-actor-testkit-typed_2.13" % "2.6.20" % Test
+      )
+
+    case _ =>
+      Nil
+  }
+
+lazy val core = (project in file("openai-core")).settings(commonSettings: _*)
 
 lazy val client = (project in file("openai-client"))
+  .settings(commonSettings: _*)
   .dependsOn(core)
   .aggregate(core)
 
 lazy val client_stream = (project in file("openai-client-stream"))
+  .settings(commonSettings: _*)
   .dependsOn(client)
   .aggregate(client)
 
 lazy val guice = (project in file("openai-guice"))
+  .settings(commonSettings: _*)
   .dependsOn(client)
   .aggregate(client_stream)
 
@@ -90,11 +123,10 @@ addCommandAlias(
   ).mkString(";")
 )
 
-
 inThisBuild(
   List(
     scalacOptions += "-Ywarn-unused",
-    scalaVersion := "2.12.15",
+//    scalaVersion := "2.12.15",
     semanticdbEnabled := true,
     semanticdbVersion := scalafixSemanticdb.revision
   )

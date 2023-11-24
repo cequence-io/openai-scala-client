@@ -1,12 +1,11 @@
 package io.cequence.openaiscala.service
 
+// run me
 object OpenAIExampleApp extends BaseOpenAIClientApp {
 
-  openAIService.listModels.map(
-    _.foreach(println)
-  ).onComplete { _ =>
-    openAIService.close()
-    system.terminate
-    System.exit(0)
-  }
+  openAIService.listModels
+    .map(
+      _.sortBy(_.created).foreach(println)
+    )
+    .closeAndExit()
 }

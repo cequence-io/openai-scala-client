@@ -3,21 +3,24 @@ package io.cequence.openaiscala.service.ws
 import com.fasterxml.jackson.core.JsonParseException
 import com.fasterxml.jackson.databind.JsonMappingException
 import io.cequence.openaiscala.JsonUtil.toJson
-import io.cequence.openaiscala.{OpenAIScalaClientException, OpenAIScalaClientTimeoutException, OpenAIScalaClientUnknownHostException, OpenAIScalaTokenCountExceededException}
-import play.api.libs.json.{JsObject, JsValue, Json}
+import io.cequence.openaiscala._
+import play.api.libs.json.{JsObject, JsValue}
 import play.api.libs.ws.{BodyWritable, StandaloneWSRequest}
 import play.api.libs.ws.JsonBodyWritables._
 import play.api.libs.ws.JsonBodyReadables._
 import MultipartWritable.writeableOf_MultipartFormData
+
 import java.io.File
 import java.net.UnknownHostException
 import java.util.concurrent.TimeoutException
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
- * Base class for web services with handy GET, POST, and DELETE request builders, and response handling
+ * Base class for web services with handy GET, POST, and DELETE request builders, and response
+ * handling
  *
- * @since Jan 2023
+ * @since Jan
+ *   2023
  */
 trait WSRequestHelper extends WSHelper {
 
@@ -30,7 +33,7 @@ trait WSRequestHelper extends WSHelper {
 
   protected val serviceName: String = getClass.getSimpleName
 
-  private val defaultAcceptableStatusCodes = Seq(200)
+  private val defaultAcceptableStatusCodes = Seq(200, 201)
 
   protected type RichResponse[T] = Either[T, (Int, String)]
   protected type RichJsResponse = RichResponse[JsValue]
@@ -46,7 +49,9 @@ trait WSRequestHelper extends WSHelper {
     params: Seq[(PT, Option[Any])] = Nil
   ): Future[JsValue] =
     execGETWithStatus(
-      endPoint, endPointParam, params
+      endPoint,
+      endPointParam,
+      params
     ).map(handleErrorResponse)
 
   protected def execGETWithStatus(
@@ -55,7 +60,7 @@ trait WSRequestHelper extends WSHelper {
     params: Seq[(PT, Option[Any])] = Nil,
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] = {
-    val request = getWSRequestOptional(Some(endPoint), endPointParam, params)
+    val request = getWSRequestOptional(Some(endPoint), endPointParam, toStringParams(params))
 
     execGETJsonAux(request, Some(endPoint), acceptableStatusCodes)
   }
@@ -66,7 +71,8 @@ trait WSRequestHelper extends WSHelper {
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] =
     execRequestJsonAux(
-      request, _.get(),
+      request,
+      _.get(),
       acceptableStatusCodes,
       endPointForLogging
     )
@@ -77,7 +83,8 @@ trait WSRequestHelper extends WSHelper {
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichStringResponse] =
     execRequestStringAux(
-      request, _.get(),
+      request,
+      _.get(),
       acceptableStatusCodes,
       endPointForLogging
     )
@@ -87,7 +94,8 @@ trait WSRequestHelper extends WSHelper {
   //////////
 
   /**
-   * @param fileParams - the third param in a tuple is a display (header) file name
+   * @param fileParams
+   *   the third param in a tuple is a display (header) file name
    */
   protected def execPOSTMultipart(
     endPoint: PEP,
@@ -97,11 +105,16 @@ trait WSRequestHelper extends WSHelper {
     bodyParams: Seq[(PT, Option[Any])] = Nil
   ): Future[JsValue] =
     execPOSTMultipartWithStatus(
-      endPoint, endPointParam, params, fileParams, bodyParams
+      endPoint,
+      endPointParam,
+      params,
+      fileParams,
+      bodyParams
     ).map(handleErrorResponse)
 
   /**
-   * @param fileParams - the third param in a tuple is a display (header) file name
+   * @param fileParams
+   *   the third param in a tuple is a display (header) file name
    */
   protected def execPOSTMultipartWithStatus(
     endPoint: PEP,
@@ -111,16 +124,18 @@ trait WSRequestHelper extends WSHelper {
     bodyParams: Seq[(PT, Option[Any])] = Nil,
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] = {
-    val request = getWSRequestOptional(Some(endPoint), endPointParam, params)
+    val request = getWSRequestOptional(Some(endPoint), endPointParam, toStringParams(params))
     val formData = createMultipartFormData(fileParams, bodyParams)
 
-    implicit val writeable: BodyWritable[MultipartFormData] = writeableOf_MultipartFormData("utf-8")
+    implicit val writeable: BodyWritable[MultipartFormData] =
+      writeableOf_MultipartFormData("utf-8")
 
     execPOSTJsonAux(request, formData, Some(endPoint), acceptableStatusCodes)
   }
 
   /**
-   * @param fileParams - the third param in a tuple is a display (header) file name
+   * @param fileParams
+   *   the third param in a tuple is a display (header) file name
    */
   protected def execPOSTMultipartWithStatusString(
     endPoint: PEP,
@@ -130,23 +145,23 @@ trait WSRequestHelper extends WSHelper {
     bodyParams: Seq[(PT, Option[Any])] = Nil,
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichStringResponse] = {
-    val request = getWSRequestOptional(Some(endPoint), endPointParam, params)
+    val request = getWSRequestOptional(Some(endPoint), endPointParam, toStringParams(params))
     val formData = createMultipartFormData(fileParams, bodyParams)
 
-    implicit val writeable: BodyWritable[MultipartFormData] = writeableOf_MultipartFormData("utf-8")
+    implicit val writeable: BodyWritable[MultipartFormData] =
+      writeableOf_MultipartFormData("utf-8")
 
     execPOSTStringAux(request, formData, Some(endPoint), acceptableStatusCodes)
   }
 
   // create a multipart form data holder contain classic data (key-value) parts as well as file parts
   private def createMultipartFormData(
-    fileParams: Seq[(PT, File, Option[String])] = Nil,
+    fileParams: Seq[(PT, File, Option[String])],
     bodyParams: Seq[(PT, Option[Any])] = Nil
   ) = MultipartFormData(
     dataParts = bodyParams.collect { case (key, Some(value)) =>
       (key.toString, Seq(value.toString))
     }.toMap,
-
     files = fileParams.map { case (key, file, headerFileName) =>
       FilePart(key.toString, file.getPath, headerFileName)
     }
@@ -159,7 +174,10 @@ trait WSRequestHelper extends WSHelper {
     bodyParams: Seq[(PT, Option[JsValue])] = Nil
   ): Future[JsValue] =
     execPOSTWithStatus(
-      endPoint, endPointParam, params, bodyParams
+      endPoint,
+      endPointParam,
+      params,
+      bodyParams
     ).map(handleErrorResponse)
 
   protected def execPOSTWithStatus(
@@ -169,10 +187,17 @@ trait WSRequestHelper extends WSHelper {
     bodyParams: Seq[(PT, Option[JsValue])] = Nil,
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] = {
-    val request = getWSRequestOptional(Some(endPoint), endPointParam, params)
-    val bodyParamsX = bodyParams.collect { case (fieldName, Some(jsValue)) => (fieldName.toString, jsValue) }
+    val request = getWSRequestOptional(Some(endPoint), endPointParam, toStringParams(params))
+    val bodyParamsX = bodyParams.collect { case (fieldName, Some(jsValue)) =>
+      (fieldName.toString, jsValue)
+    }
 
-    execPOSTJsonAux(request, JsObject(bodyParamsX), Some(endPoint), acceptableStatusCodes)
+    execPOSTJsonAux(
+      request,
+      JsObject(bodyParamsX),
+      Some(endPoint),
+      acceptableStatusCodes
+    )
   }
 
   protected def execPOSTJsonAux[T: BodyWritable](
@@ -180,9 +205,10 @@ trait WSRequestHelper extends WSHelper {
     body: T,
     endPointForLogging: Option[PEP], // only for logging
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
-  ) =
+  ): Future[RichJsResponse] =
     execRequestJsonAux(
-      request, _.post(body),
+      request,
+      _.post(body),
       acceptableStatusCodes,
       endPointForLogging
     )
@@ -192,9 +218,10 @@ trait WSRequestHelper extends WSHelper {
     body: T,
     endPointForLogging: Option[PEP], // only for logging
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
-  ) =
+  ): Future[RichStringResponse] =
     execRequestStringAux(
-      request, _.post(body),
+      request,
+      _.post(body),
       acceptableStatusCodes,
       endPointForLogging
     )
@@ -209,7 +236,9 @@ trait WSRequestHelper extends WSHelper {
     params: Seq[(PT, Option[Any])] = Nil
   ): Future[JsValue] =
     execDELETEWithStatus(
-      endPoint, endPointParam, params
+      endPoint,
+      endPointParam,
+      params
     ).map(handleErrorResponse)
 
   protected def execDELETEWithStatus(
@@ -218,7 +247,7 @@ trait WSRequestHelper extends WSHelper {
     params: Seq[(PT, Option[Any])] = Nil,
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] = {
-    val request = getWSRequestOptional(Some(endPoint), endPointParam, params)
+    val request = getWSRequestOptional(Some(endPoint), endPointParam, toStringParams(params))
 
     execDeleteAux(request, Some(endPoint), acceptableStatusCodes)
   }
@@ -229,7 +258,8 @@ trait WSRequestHelper extends WSHelper {
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] =
     execRequestJsonAux(
-      request, _.delete(),
+      request,
+      _.delete(),
       acceptableStatusCodes,
       endPointForLogging
     )
@@ -241,7 +271,7 @@ trait WSRequestHelper extends WSHelper {
   protected def getWSRequest(
     endPoint: Option[PEP],
     endPointParam: Option[String],
-    params: Seq[(PT, Any)]
+    params: Seq[(String, Any)]
   ): StandaloneWSRequest = {
     val paramsString = paramsAsString(params)
     val url = createUrl(endPoint, endPointParam) + paramsString
@@ -252,7 +282,7 @@ trait WSRequestHelper extends WSHelper {
   protected def getWSRequestOptional(
     endPoint: Option[PEP],
     endPointParam: Option[String],
-    params: Seq[(PT, Option[Any])]
+    params: Seq[(String, Option[Any])]
   ): StandaloneWSRequest = {
     val paramsString = paramsOptionalAsString(params)
     val url = createUrl(endPoint, endPointParam) + paramsString
@@ -276,8 +306,14 @@ trait WSRequestHelper extends WSHelper {
         try {
           Left(response.body[JsValue])
         } catch {
-          case _: JsonParseException => throw new OpenAIScalaClientException(s"$serviceName.${endPointForLogging.map(_.toString).getOrElse("")}: '${response.body}' is not a JSON.")
-          case _: JsonMappingException => throw new OpenAIScalaClientException(s"$serviceName.${endPointForLogging.map(_.toString).getOrElse("")}: '${response.body}' is an unmappable JSON.")
+          case _: JsonParseException =>
+            throw new OpenAIScalaClientException(
+              s"$serviceName.${endPointForLogging.map(_.toString).getOrElse("")}: '${response.body}' is not a JSON."
+            )
+          case _: JsonMappingException =>
+            throw new OpenAIScalaClientException(
+              s"$serviceName.${endPointForLogging.map(_.toString).getOrElse("")}: '${response.body}' is an unmappable JSON."
+            )
         }
       case Right(response) => Right(response)
     })
@@ -294,7 +330,7 @@ trait WSRequestHelper extends WSHelper {
       acceptableStatusCodes,
       endPointForLogging
     ).map(_ match {
-      case Left(response) => Left(response.body)
+      case Left(response)  => Left(response.body)
       case Right(response) => Right(response)
     })
 
@@ -311,47 +347,67 @@ trait WSRequestHelper extends WSHelper {
         Left(response)
     }
   }.recover {
-    case e: TimeoutException => throw new OpenAIScalaClientTimeoutException(s"$serviceName.${endPointForLogging.map(_.toString).getOrElse("")} timed out: ${e.getMessage}.")
-    case e: UnknownHostException => throw new OpenAIScalaClientUnknownHostException(s"$serviceName.${endPointForLogging.map(_.toString).getOrElse("")} cannot resolve a host name: ${e.getMessage}.")
+    case e: TimeoutException =>
+      throw new OpenAIScalaClientTimeoutException(
+        s"$serviceName.${endPointForLogging.map(_.toString).getOrElse("")} timed out: ${e.getMessage}."
+      )
+    case e: UnknownHostException =>
+      throw new OpenAIScalaClientUnknownHostException(
+        s"$serviceName.${endPointForLogging.map(_.toString).getOrElse("")} cannot resolve a host name: ${e.getMessage}."
+      )
   }
 
   // aux
 
   protected def jsonBodyParams(
     params: (PT, Option[Any])*
-  ) =
+  ): Seq[(PT, Option[JsValue])] =
     params.map { case (paramName, value) => (paramName, value.map(toJson)) }
 
-  protected def handleErrorResponse[T](response: RichResponse[T]) =
+  protected def handleNotFoundAndError[T](response: RichResponse[T]): Option[T] =
+    response match {
+      case Left(value) => Some(value)
+
+      case Right((errorCode, _)) =>
+        if (errorCode == 404) None
+        else
+          Some(handleErrorResponse(response))
+    }
+
+  protected def handleErrorResponse[T](response: RichResponse[T]): T =
     response match {
       case Left(data) => data
 
       case Right((errorCode, message)) =>
         val errorMessage = s"Code ${errorCode} : ${message}"
-        if (message.contains("Please reduce your prompt; or completion length") ||
-            message.contains("Please reduce the length of the messages")
-          )
-          throw new OpenAIScalaTokenCountExceededException(errorMessage)
-        else
-          throw new OpenAIScalaClientException(errorMessage)
+        errorCode match {
+          case 401 => throw new OpenAIScalaUnauthorizedException(errorMessage)
+          case 429 => throw new OpenAIScalaRateLimitException(errorMessage)
+          case 500 => throw new OpenAIScalaServerErrorException(errorMessage)
+          case 503 => throw new OpenAIScalaEngineOverloadedException(errorMessage)
+          case 400 =>
+            if (
+              message.contains("Please reduce your prompt; or completion length") ||
+              message.contains("Please reduce the length of the messages")
+            )
+              throw new OpenAIScalaTokenCountExceededException(errorMessage)
+            else
+              throw new OpenAIScalaClientException(errorMessage)
+
+          case _ => throw new OpenAIScalaClientException(errorMessage)
+        }
     }
 
-  protected def handleNotFoundAndError[T](response: Either[T, (Int, String)]): Option[T] =
-    response match {
-      case Left(value) => Some(value)
-
-      case Right((errorCode, message)) =>
-        if (errorCode == 404) None else throw new OpenAIScalaClientException(s"Code ${errorCode} : ${message}")
-    }
-
-  protected def paramsAsString(params: Seq[(PT, Any)]) = {
-    val string = params.map { case (tag, value) => s"$tag=$value" }.mkString("&")
+  protected def paramsAsString(params: Seq[(String, Any)]): String = {
+    val string =
+      params.map { case (tag, value) => s"$tag=$value" }.mkString("&")
 
     if (string.nonEmpty) s"?$string" else ""
   }
 
-  protected def paramsOptionalAsString(params: Seq[(PT, Option[Any])]) = {
-    val string = params.collect { case (tag, Some(value)) => s"$tag=$value" }.mkString("&")
+  protected def paramsOptionalAsString(params: Seq[(String, Option[Any])]): String = {
+    val string =
+      params.collect { case (tag, Some(value)) => s"$tag=$value" }.mkString("&")
 
     if (string.nonEmpty) s"?$string" else ""
   }
@@ -359,30 +415,16 @@ trait WSRequestHelper extends WSHelper {
   protected def createUrl(
     endpoint: Option[PEP],
     value: Option[String] = None
-  ) =
+  ): String =
     coreUrl + endpoint.map(_.toString).getOrElse("") + value.map("/" + _).getOrElse("")
 
   protected def toOptionalParams(
     params: Seq[(PT, Any)]
-  ) =
+  ): Seq[(PT, Some[Any])] =
     params.map { case (a, b) => (a, Some(b)) }
 
-  // close
-
-  // Create Akka system for thread and streaming management
-  //  system.registerOnTermination {
-  //    System.exit(0)
-  //  }
-  //
-  //  implicit val materializer = SystemMaterializer(system).materializer
-  //
-  //  // Create the standalone WS client
-  //  // no argument defaults to a AhcWSClientConfig created from
-  //  // "AhcWSClientConfigFactory.forConfig(ConfigFactory.load, this.getClass.getClassLoader)"
-  //  val wsClient = StandaloneAhcWSClient()
-  //
-  //  call(wsClient)
-  //    .andThen { case _ => wsClient.close() }
-  //    .andThen { case _ => system.terminate() }
-
+  protected def toStringParams(
+    params: Seq[(PT, Option[Any])]
+  ): Seq[(String, Option[Any])] =
+    params.map { case (a, b) => (a.toString, b) }
 }

@@ -1,59 +1,78 @@
 package io.cequence.openaiscala.service
 
-import io.cequence.openaiscala.domain.{FunMessageSpec, FunctionSpec, MessageSpec}
+import io.cequence.openaiscala.domain.{BaseMessage, FunctionSpec, ToolSpec}
 import io.cequence.openaiscala.domain.settings._
 
 import java.io.File
-import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.Future
+import io.cequence.openaiscala.domain.response._
 
 trait OpenAIServiceWrapper extends OpenAIService {
 
-  override def listModels = wrap(
+  override def listModels: Future[Seq[ModelInfo]] = wrap(
     _.listModels
   )
 
   override def retrieveModel(
     modelId: String
-  ) = wrap(
+  ): Future[Option[ModelInfo]] = wrap(
     _.retrieveModel(modelId)
   )
 
   override def createCompletion(
     prompt: String,
     settings: CreateCompletionSettings
-  ) = wrap(
+  ): Future[TextCompletionResponse] = wrap(
     _.createCompletion(prompt, settings)
   )
 
   override def createChatCompletion(
-    messages: Seq[MessageSpec],
+    messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
-  ) = wrap(
+  ): Future[ChatCompletionResponse] = wrap(
     _.createChatCompletion(messages, settings)
   )
 
   override def createChatFunCompletion(
-    messages: Seq[FunMessageSpec],
+    messages: Seq[BaseMessage],
     functions: Seq[FunctionSpec],
     responseFunctionName: Option[String],
     settings: CreateChatCompletionSettings
+  ): Future[ChatFunCompletionResponse] = wrap(
+    _.createChatFunCompletion(
+      messages,
+      functions,
+      responseFunctionName,
+      settings
+    )
+  )
+
+  override def createChatToolCompletion(
+    messages: Seq[BaseMessage],
+    tools: Seq[ToolSpec],
+    responseToolChoice: Option[String],
+    settings: CreateChatCompletionSettings
   ) = wrap(
-    _.createChatFunCompletion(messages, functions, responseFunctionName, settings)
+    _.createChatToolCompletion(
+      messages,
+      tools,
+      responseToolChoice,
+      settings
+    )
   )
 
   override def createEdit(
     input: String,
     instruction: String,
     settings: CreateEditSettings
-  ) = wrap(
+  ): Future[TextEditResponse] = wrap(
     _.createEdit(input, instruction, settings)
   )
 
   override def createImage(
     prompt: String,
     settings: CreateImageSettings
-  ) = wrap(
+  ): Future[ImageInfo] = wrap(
     _.createImage(prompt, settings)
   )
 
@@ -62,21 +81,21 @@ trait OpenAIServiceWrapper extends OpenAIService {
     image: File,
     mask: Option[File],
     settings: CreateImageSettings
-  ) = wrap(
+  ): Future[ImageInfo] = wrap(
     _.createImageEdit(prompt, image, mask, settings)
   )
 
   override def createImageVariation(
     image: File,
     settings: CreateImageSettings
-  ) = wrap(
+  ): Future[ImageInfo] = wrap(
     _.createImageVariation(image, settings)
   )
 
   override def createEmbeddings(
     input: Seq[String],
     settings: CreateEmbeddingsSettings
-  ) = wrap(
+  ): Future[EmbeddingResponse] = wrap(
     _.createEmbeddings(input, settings)
   )
 
@@ -84,7 +103,7 @@ trait OpenAIServiceWrapper extends OpenAIService {
     file: File,
     prompt: Option[String],
     settings: CreateTranscriptionSettings
-  ) = wrap(
+  ): Future[TranscriptResponse] = wrap(
     _.createAudioTranscription(file, prompt, settings)
   )
 
@@ -92,11 +111,11 @@ trait OpenAIServiceWrapper extends OpenAIService {
     file: File,
     prompt: Option[String],
     settings: CreateTranslationSettings
-  ) = wrap(
+  ): Future[TranscriptResponse] = wrap(
     _.createAudioTranslation(file, prompt, settings)
   )
 
-  override def listFiles = wrap(
+  override def listFiles: Future[Seq[FileInfo]] = wrap(
     _.listFiles
   )
 
@@ -104,25 +123,25 @@ trait OpenAIServiceWrapper extends OpenAIService {
     file: File,
     displayFileName: Option[String],
     settings: UploadFileSettings
-  ) = wrap(
+  ): Future[FileInfo] = wrap(
     _.uploadFile(file, displayFileName, settings)
   )
 
   override def deleteFile(
     fileId: String
-  ) = wrap(
+  ): Future[DeleteResponse] = wrap(
     _.deleteFile(fileId)
   )
 
   override def retrieveFile(
     fileId: String
-  ) = wrap(
+  ): Future[Option[FileInfo]] = wrap(
     _.retrieveFile(fileId)
   )
 
   override def retrieveFileContent(
     fileId: String
-  ) = wrap(
+  ): Future[Option[String]] = wrap(
     _.retrieveFileContent(fileId)
   )
 
@@ -130,42 +149,47 @@ trait OpenAIServiceWrapper extends OpenAIService {
     training_file: String,
     validation_file: Option[String],
     settings: CreateFineTuneSettings
-  ) = wrap(
+  ): Future[FineTuneJob] = wrap(
     _.createFineTune(training_file, validation_file, settings)
   )
 
-  override def listFineTunes = wrap(
-    _.listFineTunes
+  override def listFineTunes(
+    after: Option[String],
+    limit: Option[Int]
+  ): Future[Seq[FineTuneJob]] = wrap(
+    _.listFineTunes(after, limit)
   )
 
   override def retrieveFineTune(
     fineTuneId: String
-  ) = wrap(
+  ): Future[Option[FineTuneJob]] = wrap(
     _.retrieveFineTune(fineTuneId)
   )
 
   override def cancelFineTune(
     fineTuneId: String
-  ) = wrap(
+  ): Future[Option[FineTuneJob]] = wrap(
     _.cancelFineTune(fineTuneId)
   )
 
   override def listFineTuneEvents(
-    fineTuneId: String
-  ) = wrap(
-    _.listFineTuneEvents(fineTuneId)
+    fineTuneId: String,
+    after: Option[String],
+    limit: Option[Int]
+  ): Future[Option[Seq[FineTuneEvent]]] = wrap(
+    _.listFineTuneEvents(fineTuneId, after, limit)
   )
 
   override def deleteFineTuneModel(
     modelId: String
-  ) = wrap(
+  ): Future[DeleteResponse] = wrap(
     _.deleteFineTuneModel(modelId)
   )
 
   override def createModeration(
     input: String,
     settings: CreateModerationSettings
-  ) = wrap(
+  ): Future[ModerationResponse] = wrap(
     _.createModeration(input, settings)
   )
 

@@ -8,7 +8,7 @@ import io.cequence.openaiscala.domain.settings._
  */
 trait OpenAIServiceConsts {
 
-  protected val coreUrl = "https://api.openai.com/v1/"
+  protected val defaultCoreUrl = "https://api.openai.com/v1/"
 
   protected val defaultRequestTimeout = 120 * 1000 // two minute
 
@@ -67,8 +67,9 @@ trait OpenAIServiceConsts {
       purpose = "fine-tune"
     )
 
-    // keep all OpenAI defaults
-    val CreateFineTune = CreateFineTuneSettings()
+    val CreateFineTune = CreateFineTuneSettings(
+      model = ModelId.gpt_3_5_turbo_0613
+    )
 
     // keep all OpenAI defaults
     val CreateModeration = CreateModerationSettings()
