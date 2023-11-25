@@ -1,9 +1,3 @@
-.*
-!.gitignore
-!.scalafmt.conf
-!.gitlab-ci.yml
-!.github
-script/
 /.idea
 target
 /*.iml
