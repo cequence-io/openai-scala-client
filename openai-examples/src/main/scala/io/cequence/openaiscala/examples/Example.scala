@@ -3,24 +3,31 @@ package io.cequence.openaiscala.examples
 import akka.actor.ActorSystem
 import akka.stream.Materializer
 import io.cequence.openaiscala.OpenAIScalaClientException
+import io.cequence.openaiscala.domain.response.ChatCompletionResponse
 import io.cequence.openaiscala.service.{OpenAIService, OpenAIServiceFactory}
 
-import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
 
-trait Example[T] {
+trait Example {
 
-  implicit val materializer: Materializer = Materializer(ActorSystem())
-  val service: OpenAIService = OpenAIServiceFactory(sys.env("OPENAI_API_KEY"))
+  implicit val system: ActorSystem = ActorSystem()
+  implicit val materializer: Materializer = Materializer(system)
+  implicit val ec = ExecutionContext.Implicits.global
+  val service: OpenAIService = OpenAIServiceFactory() // sys.env("OPENAI_API_KEY")
 
   def main(args: Array[String]): Unit = {
-    val f = example
-    f.recover { case e: OpenAIScalaClientException =>
+    run.recover { case e: OpenAIScalaClientException =>
       e.printStackTrace()
+      System.exit(1)
+    }.onComplete { _ =>
+      service.close()
+      System.exit(0)
     }
-    f.onComplete(_ => service.close())
   }
 
-  def example: Future[T]
+  protected def run: Future[_]
 
+  protected def printMessageContent(response: ChatCompletionResponse) =
+    println(response.choices.head.message.content)
 }
