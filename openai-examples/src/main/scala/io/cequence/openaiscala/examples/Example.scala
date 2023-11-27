@@ -13,7 +13,7 @@ trait Example {
 
   implicit val system: ActorSystem = ActorSystem()
   implicit val materializer: Materializer = Materializer(system)
-  implicit val ec = ExecutionContext.Implicits.global
+  implicit val ec: ExecutionContext = ExecutionContext.Implicits.global
   val service: OpenAIService = OpenAIServiceFactory() // sys.env("OPENAI_API_KEY")
 
   def main(args: Array[String]): Unit = {
