@@ -12,8 +12,6 @@ object CreateCompletion extends Example {
     """.stripMargin
 
   def run =
-    service
-      .createCompletion(text)
-      .map(completion => println(completion.choices.head.text))
+    service.createCompletion(text).map(completion => println(completion.choices.head.text))
 
 }

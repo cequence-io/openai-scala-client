@@ -44,14 +44,10 @@ object CreateChatFunCompletion extends Example {
         val functionCall = chatFunCompletionMessage.function_call
 
         println(
-          "function call name      : " + functionCall
-            .map(_.name)
-            .getOrElse("N/A")
+          "function call name      : " + functionCall.map(_.name).getOrElse("N/A")
         )
         println(
-          "function call arguments : " + functionCall
-            .map(_.arguments)
-            .getOrElse("N/A")
+          "function call arguments : " + functionCall.map(_.arguments).getOrElse("N/A")
         )
       }
 }

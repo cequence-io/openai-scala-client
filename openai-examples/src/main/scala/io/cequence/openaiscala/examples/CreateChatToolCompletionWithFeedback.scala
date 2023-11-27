@@ -13,7 +13,7 @@ object CreateChatToolCompletionWithFeedback extends Example {
 
   val introMessages = Seq(
     SystemMessage("You are a helpful assistant."),
-    UserMessage("What's the weather like in San Francisco, Tokyo, and Paris?"),
+    UserMessage("What's the weather like in San Francisco, Tokyo, and Paris?")
   )
 
   // as a param type we can use "number", "string", "boolean", "object", "array", and "null"
@@ -26,14 +26,14 @@ object CreateChatToolCompletionWithFeedback extends Example {
         "properties" -> Map(
           "location" -> Map(
             "type" -> "string",
-            "description" -> "The city and state, e.g. San Francisco, CA",
+            "description" -> "The city and state, e.g. San Francisco, CA"
           ),
           "unit" -> Map(
             "type" -> "string",
             "enum" -> Seq("celsius", "fahrenheit")
           )
         ),
-        "required" -> Seq("location"),
+        "required" -> Seq("location")
       )
     )
   )
@@ -52,7 +52,9 @@ object CreateChatToolCompletionWithFeedback extends Example {
       toolCalls = assistantToolMessage.tool_calls
 
       // we can handle only function calls (that will change in future)
-      functionCalls = toolCalls.collect { case (toolCallId, x: FunctionCallSpec) => (toolCallId, x) }
+      functionCalls = toolCalls.collect { case (toolCallId, x: FunctionCallSpec) =>
+        (toolCallId, x)
+      }
 
       available_functions = Map("get_current_weather" -> getCurrentWeather _)
 
@@ -62,10 +64,11 @@ object CreateChatToolCompletionWithFeedback extends Example {
 
         // this is not very generic, but it's ok for a demo
         val functionResponse = available_functions.get(functionName) match {
-          case Some(functionToCall) => functionToCall(
-            (functionArgsJson \ "location").as[String],
-            (functionArgsJson \ "unit").asOpt[String]
-          )
+          case Some(functionToCall) =>
+            functionToCall(
+              (functionArgsJson \ "location").as[String],
+              (functionArgsJson \ "unit").asOpt[String]
+            )
 
           case _ => throw new IllegalArgumentException(s"Unknown function: $functionName")
         }
@@ -88,7 +91,10 @@ object CreateChatToolCompletionWithFeedback extends Example {
     }
 
   // unit is ignored here
-  private def getCurrentWeather(location: String, unit: Option[String]) =
+  private def getCurrentWeather(
+    location: String,
+    unit: Option[String]
+  ) =
     location.toLowerCase() match {
       case loc if loc.contains("tokyo") =>
         Json.obj("location" -> "Tokyo", "temperature" -> "10", "unit" -> "celsius")

@@ -21,14 +21,14 @@ object CreateChatToolCompletion extends Example {
         "properties" -> Map(
           "location" -> Map(
             "type" -> "string",
-            "description" -> "The city and state, e.g. San Francisco, CA",
+            "description" -> "The city and state, e.g. San Francisco, CA"
           ),
           "unit" -> Map(
             "type" -> "string",
             "enum" -> Seq("celsius", "fahrenheit")
           )
         ),
-        "required" -> Seq("location"),
+        "required" -> Seq("location")
       )
     )
   )
@@ -43,7 +43,9 @@ object CreateChatToolCompletion extends Example {
       )
       .map { response =>
         val chatFunCompletionMessage = response.choices.head.message
-        val toolCalls = chatFunCompletionMessage.tool_calls.collect { case (id, x: FunctionCallSpec) => (id, x) }
+        val toolCalls = chatFunCompletionMessage.tool_calls.collect {
+          case (id, x: FunctionCallSpec) => (id, x)
+        }
 
         println(
           "tool call ids                : " + toolCalls.map(_._1).mkString(", ")
