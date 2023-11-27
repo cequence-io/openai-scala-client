@@ -1,17 +1,11 @@
 package io.cequence.openaiscala.examples
 
-import io.cequence.openaiscala.domain.{ChatRole, FunMessageSpec, FunctionSpec}
+import io.cequence.openaiscala.domain.{BaseMessage, FunctionSpec, UserMessage}
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+object CreateChatFunCompletion extends Example {
 
-object CreateChatFunCompletion extends Example[Unit] {
-
-  val messages: Seq[FunMessageSpec] = Seq(
-    FunMessageSpec(
-      role = ChatRole.User,
-      content = Some("What's the weather like in Boston?")
-    )
+  val messages: Seq[BaseMessage] = Seq(
+    UserMessage("What's the weather like in Boston?")
   )
 
   // as a param type we can use "number", "string", "boolean", "object", "array", and "null"
@@ -36,7 +30,7 @@ object CreateChatFunCompletion extends Example[Unit] {
     )
   )
 
-  def example: Future[Unit] =
+  def run =
     // if we want to force the model to use the above function as a response
     // we can do so by passing: responseFunctionName = Some("get_current_weather")`
     service
@@ -60,5 +54,4 @@ object CreateChatFunCompletion extends Example[Unit] {
             .getOrElse("N/A")
         )
       }
-
 }
