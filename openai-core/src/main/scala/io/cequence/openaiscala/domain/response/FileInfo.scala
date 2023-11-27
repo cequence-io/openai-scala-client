@@ -8,10 +8,12 @@ case class FileInfo(
   created_at: ju.Date,
   updated_at: Option[ju.Date],
   filename: String,
+  // The intended purpose of the file.
+  // Supported values are fine-tune, fine-tune-results, assistants, and assistants_output.
   purpose: String,
   status: String, // uploaded, processed, pending, error, deleting or deleted
   status_details: Option[String],
-  statistics: Option[FileStatistics]
+  statistics: Option[FileStatistics] // provided by Azure
 )
 
 case class FileStatistics(
