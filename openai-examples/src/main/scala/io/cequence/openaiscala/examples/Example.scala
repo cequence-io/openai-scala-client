@@ -2,7 +2,6 @@ package io.cequence.openaiscala.examples
 
 import akka.actor.ActorSystem
 import akka.stream.Materializer
-import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.response.ChatCompletionResponse
 import io.cequence.openaiscala.service.{OpenAIService, OpenAIServiceFactory}
 

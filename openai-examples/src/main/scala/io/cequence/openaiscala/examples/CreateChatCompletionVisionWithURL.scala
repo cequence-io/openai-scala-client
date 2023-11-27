@@ -5,9 +5,9 @@ import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 
 import scala.concurrent.Future
 
-object GPTVisionWithURL extends Example {
+object CreateChatCompletionVisionWithURL extends Example {
 
-  val messages = Seq(
+  val messages: Seq[BaseMessage] = Seq(
     SystemMessage("You are a helpful assistant."),
     UserSeqMessage(
       Seq(
@@ -22,7 +22,7 @@ object GPTVisionWithURL extends Example {
   override protected def run: Future[_] =
     service
       .createChatCompletion(
-        messages = messages,
+        messages,
         settings = CreateChatCompletionSettings(
           model = ModelId.gpt_4_vision_preview,
           temperature = Some(0),

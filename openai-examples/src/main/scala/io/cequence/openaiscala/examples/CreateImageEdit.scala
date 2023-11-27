@@ -3,7 +3,7 @@ package io.cequence.openaiscala.examples
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings._
 
-object CreateEditImage extends Example {
+object CreateImageEdit extends Example {
 
   private val localOtterImagePath = sys.env("EXAMPLE_OTTER_IMAGE_PATH")
   override protected def run =

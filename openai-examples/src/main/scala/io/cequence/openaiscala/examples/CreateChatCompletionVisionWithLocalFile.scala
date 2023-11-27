@@ -9,7 +9,7 @@ import java.util.Base64
 import javax.imageio.ImageIO
 import scala.concurrent.Future
 
-object GPTVisionWithLocalFile extends Example {
+object CreateChatCompletionVisionWithLocalFile extends Example {
 
   // provide a local jpeg here
   private val localImagePath = sys.env("EXAMPLE_IMAGE_PATH")
@@ -17,7 +17,7 @@ object GPTVisionWithLocalFile extends Example {
   private val imageBase64Source =
     Base64.getEncoder.encodeToString(imageToBytes(bufferedImage, "jpeg"))
 
-  val messages = Seq(
+  val messages: Seq[BaseMessage] = Seq(
     SystemMessage("You are a helpful assistant."),
     UserSeqMessage(
       Seq(
@@ -30,7 +30,7 @@ object GPTVisionWithLocalFile extends Example {
   override protected def run: Future[_] =
     service
       .createChatCompletion(
-        messages = messages,
+        messages,
         settings = CreateChatCompletionSettings(
           model = ModelId.gpt_4_vision_preview,
           temperature = Some(0),

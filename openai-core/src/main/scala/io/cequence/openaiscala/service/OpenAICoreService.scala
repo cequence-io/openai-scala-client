@@ -2,7 +2,7 @@ package io.cequence.openaiscala.service
 
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.domain.{BaseMessage, SystemMessage}
+import io.cequence.openaiscala.domain.BaseMessage
 
 import scala.concurrent.Future
 
