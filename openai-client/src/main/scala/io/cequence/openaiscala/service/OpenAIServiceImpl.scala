@@ -113,10 +113,13 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
     execPOST(
       EndPoint.images_generations,
       bodyParams = jsonBodyParams(
+        Param.model -> settings.model,
         Param.prompt -> Some(prompt),
         Param.n -> settings.n,
         Param.size -> settings.size.map(_.toString),
         Param.response_format -> settings.response_format.map(_.toString),
+        Param.quality -> settings.quality.map(_.toString),
+        Param.style -> settings.style.map(_.toString),
         Param.user -> settings.user
       )
     ).map(
