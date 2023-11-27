@@ -57,7 +57,10 @@ lazy val guice = (project in file("openai-guice"))
   .dependsOn(client)
   .aggregate(client_stream)
 
-lazy val examples = (project in file("openai-examples")).dependsOn(client).aggregate(client)
+lazy val examples = (project in file("openai-examples"))
+  .settings(commonSettings: _*)
+  .dependsOn(client)
+  .aggregate(client)
 
 // POM settings for Sonatype
 ThisBuild / homepage := Some(
