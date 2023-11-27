@@ -94,7 +94,7 @@ trait OpenAIService extends OpenAICoreService {
     messages: Seq[BaseMessage],
     tools: Seq[ToolSpec],
     responseToolChoice: Option[String] = None,
-    settings: CreateChatCompletionSettings = DefaultSettings.CreateChatFunCompletion
+    settings: CreateChatCompletionSettings = DefaultSettings.CreateChatToolCompletion
   ): Future[ChatToolCompletionResponse]
 
   /**

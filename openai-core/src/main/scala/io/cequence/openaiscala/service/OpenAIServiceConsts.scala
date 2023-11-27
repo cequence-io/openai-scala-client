@@ -27,12 +27,17 @@ trait OpenAIServiceConsts {
     )
 
     val CreateChatCompletion = CreateChatCompletionSettings(
-      model = ModelId.gpt_3_5_turbo,
+      model = ModelId.gpt_3_5_turbo_1106,
       max_tokens = Some(1000)
     )
 
     val CreateChatFunCompletion = CreateChatCompletionSettings(
-      model = ModelId.gpt_3_5_turbo_0613,
+      model = ModelId.gpt_3_5_turbo_1106,
+      max_tokens = Some(1000)
+    )
+
+    val CreateChatToolCompletion = CreateChatCompletionSettings(
+      model = ModelId.gpt_3_5_turbo_1106,
       max_tokens = Some(1000)
     )
 
