@@ -73,4 +73,6 @@ object Param {
   case object tools extends Param
   case object tool_choice extends Param
   case object encoding_format extends Param
+  case object quality extends Param
+  case object style extends Param
 }

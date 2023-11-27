@@ -130,12 +130,13 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
     prompt: String,
     image: File,
     mask: Option[File] = None,
-    settings: CreateImageSettings
+    settings: CreateImageEditSettings
   ): Future[ImageInfo] =
     execPOSTMultipart(
       EndPoint.images_edits,
       fileParams = Seq((Param.image, image, None)) ++ mask.map((Param.mask, _, None)),
       bodyParams = Seq(
+        Param.model -> settings.model,
         Param.prompt -> Some(prompt),
         Param.n -> settings.n,
         Param.size -> settings.size.map(_.toString),

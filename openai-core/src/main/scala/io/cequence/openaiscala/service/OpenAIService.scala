@@ -122,7 +122,7 @@ trait OpenAIService extends OpenAICoreService {
    * Creates an image given a prompt.
    *
    * @param prompt
-   *   A text description of the desired image(s). The maximum length is 1000 characters.
+   *   A text description of the desired image(s). The maximum length is 1000 characters for dall-e-2 and 4000 characters for dall-e-3.
    * @param settings
    * @return
    *   image response (might contain multiple data items - one per image)
@@ -158,7 +158,7 @@ trait OpenAIService extends OpenAICoreService {
     prompt: String,
     image: File,
     mask: Option[File] = None,
-    settings: CreateImageSettings = DefaultSettings.CreateImageEdit
+    settings: CreateImageEditSettings = DefaultSettings.CreateImageEdit
   ): Future[ImageInfo]
 
   /**

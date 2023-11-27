@@ -80,7 +80,7 @@ trait OpenAIServiceWrapper extends OpenAIService {
     prompt: String,
     image: File,
     mask: Option[File],
-    settings: CreateImageSettings
+    settings: CreateImageEditSettings
   ): Future[ImageInfo] = wrap(
     _.createImageEdit(prompt, image, mask, settings)
   )

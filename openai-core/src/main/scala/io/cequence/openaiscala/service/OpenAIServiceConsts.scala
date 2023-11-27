@@ -50,7 +50,7 @@ trait OpenAIServiceConsts {
     val CreateImage = CreateImageSettings()
 
     // keep all OpenAI defaults
-    val CreateImageEdit = CreateImageSettings()
+    val CreateImageEdit = CreateImageEditSettings()
 
     // keep all OpenAI defaults
     val CreateImageVariation = CreateImageSettings()
