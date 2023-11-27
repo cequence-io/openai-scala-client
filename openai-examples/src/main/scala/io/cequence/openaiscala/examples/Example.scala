@@ -17,13 +17,19 @@ trait Example {
   val service: OpenAIService = OpenAIServiceFactory() // sys.env("OPENAI_API_KEY")
 
   def main(args: Array[String]): Unit = {
-    run.recover { case e: OpenAIScalaClientException =>
+    run.recover { case e: Exception =>
       e.printStackTrace()
+      closeAll()
       System.exit(1)
     }.onComplete { _ =>
-      service.close()
+      closeAll()
       System.exit(0)
     }
+  }
+
+  private def closeAll() = {
+    service.close()
+    system.terminate()
   }
 
   protected def run: Future[_]
