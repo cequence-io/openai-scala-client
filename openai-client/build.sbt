@@ -18,3 +18,8 @@ libraryDependencies ++= Seq(
   "com.typesafe.play" %% "play-ahc-ws-standalone" % playWsVersion.value,
   "com.typesafe.play" %% "play-ws-standalone-json" % playWsVersion.value
 )
+
+libraryDependencies ++= Seq(
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
+  "ch.qos.logback" % "logback-classic" % "1.4.7"
+)
