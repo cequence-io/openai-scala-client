@@ -178,7 +178,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
         Param.model -> Some(settings.model),
         Param.voice -> Some(settings.voice.toString),
         Param.speed -> settings.speed,
-        Param.response_format -> settings.response_format.map(_.toString),
+        Param.response_format -> settings.response_format.map(_.toString)
       )
     )
 
