@@ -124,7 +124,8 @@ trait OpenAIService extends OpenAICoreService {
    * Creates an image given a prompt.
    *
    * @param prompt
-   *   A text description of the desired image(s). The maximum length is 1000 characters for dall-e-2 and 4000 characters for dall-e-3.
+   *   A text description of the desired image(s). The maximum length is 1000 characters for
+   *   dall-e-2 and 4000 characters for dall-e-3.
    * @param settings
    * @return
    *   image response (might contain multiple data items - one per image)
@@ -190,9 +191,10 @@ trait OpenAIService extends OpenAICoreService {
    *
    * @param settings
    * @return
-   * The audio file content.
+   *   The audio file content.
    * @see
-   * <a href="https://platform.openai.com/docs/api-reference/audio/createSpeech">OpenAI Doc</a>
+   *   <a href="https://platform.openai.com/docs/api-reference/audio/createSpeech">OpenAI
+   *   Doc</a>
    */
   def createAudioSpeech(
     input: String,
@@ -213,7 +215,9 @@ trait OpenAIService extends OpenAICoreService {
    *   transcription text
    *
    * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/audio/create">OpenAI Doc</a>
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/audio/createTranscription">OpenAI
+   *   Doc</a>
    */
   def createAudioTranscription(
     file: File,
@@ -235,7 +239,8 @@ trait OpenAIService extends OpenAICoreService {
    *   translation text
    *
    * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/audio/create">OpenAI Doc</a>
+   *   <a href="https://platform.openai.com/docs/api-reference/audio/createTranslation">OpenAI
+   *   Doc</a>
    */
   def createAudioTranslation(
     file: File,
