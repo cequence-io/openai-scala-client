@@ -4,7 +4,7 @@ import io.cequence.openaiscala.domain.EnumValue
 
 sealed abstract class EndPoint(value: String = "") extends EnumValue(value)
 
-object EndPoint extends Enumeration {
+object EndPoint {
   case object models extends EndPoint
   case object completions extends EndPoint
   case object chat_completions extends EndPoint("chat/completions")
@@ -13,6 +13,7 @@ object EndPoint extends Enumeration {
   case object images_edits extends EndPoint("images/edits")
   case object images_variations extends EndPoint("images/variations")
   case object embeddings extends EndPoint
+  case object audio_speech extends EndPoint("audio/speech")
   case object audio_transcriptions extends EndPoint("audio/transcriptions")
   case object audio_translations extends EndPoint("audio/translations")
   case object files extends EndPoint
@@ -52,9 +53,7 @@ object Param {
   case object validation_file extends Param
   case object hyperparameters extends Param
   case object n_epochs extends Param
-  @Deprecated
   case object batch_size extends Param
-  @Deprecated
   case object learning_rate_multiplier extends Param
   @Deprecated
   case object prompt_loss_weight extends Param
@@ -71,4 +70,12 @@ object Param {
   case object function_call extends Param
   case object after extends Param
   case object limit extends Param
+  case object seed extends Param
+  case object tools extends Param
+  case object tool_choice extends Param
+  case object encoding_format extends Param
+  case object quality extends Param
+  case object style extends Param
+  case object voice extends Param
+  case object speed extends Param
 }

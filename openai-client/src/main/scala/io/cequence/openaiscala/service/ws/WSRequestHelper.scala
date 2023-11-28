@@ -9,11 +9,14 @@ import play.api.libs.ws.{BodyWritable, StandaloneWSRequest}
 import play.api.libs.ws.JsonBodyWritables._
 import play.api.libs.ws.JsonBodyReadables._
 import MultipartWritable.writeableOf_MultipartFormData
+import akka.stream.scaladsl.Source
+import akka.util.ByteString
 
 import java.io.File
 import java.net.UnknownHostException
 import java.util.concurrent.TimeoutException
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Either
 
 /**
  * Base class for web services with handy GET, POST, and DELETE request builders, and response
@@ -33,11 +36,12 @@ trait WSRequestHelper extends WSHelper {
 
   protected val serviceName: String = getClass.getSimpleName
 
-  private val defaultAcceptableStatusCodes = Seq(200)
+  private val defaultAcceptableStatusCodes = Seq(200, 201)
 
   protected type RichResponse[T] = Either[T, (Int, String)]
   protected type RichJsResponse = RichResponse[JsValue]
   protected type RichStringResponse = RichResponse[String]
+  protected type RichSourceResponse = RichResponse[Source[ByteString, _]]
 
   /////////
   // GET //
@@ -70,7 +74,7 @@ trait WSRequestHelper extends WSHelper {
     endPointForLogging: Option[PEP], // only for logging
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] =
-    execRequestJsonAux(
+    execRequestAux(ResponseConverters.json)(
       request,
       _.get(),
       acceptableStatusCodes,
@@ -82,7 +86,7 @@ trait WSRequestHelper extends WSHelper {
     endPointForLogging: Option[PEP], // only for logging
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichStringResponse] =
-    execRequestStringAux(
+    execRequestAux(ResponseConverters.string)(
       request,
       _.get(),
       acceptableStatusCodes,
@@ -200,13 +204,46 @@ trait WSRequestHelper extends WSHelper {
     )
   }
 
+  protected def execPOSTSource(
+    endPoint: PEP,
+    endPointParam: Option[String] = None,
+    params: Seq[(PT, Option[Any])] = Nil,
+    bodyParams: Seq[(PT, Option[JsValue])] = Nil
+  ): Future[Source[ByteString, _]] =
+    execPOSTSourceWithStatus(
+      endPoint,
+      endPointParam,
+      params,
+      bodyParams
+    ).map(handleErrorResponse)
+
+  protected def execPOSTSourceWithStatus(
+    endPoint: PEP,
+    endPointParam: Option[String] = None,
+    params: Seq[(PT, Option[Any])] = Nil,
+    bodyParams: Seq[(PT, Option[JsValue])] = Nil,
+    acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
+  ): Future[RichSourceResponse] = {
+    val request = getWSRequestOptional(Some(endPoint), endPointParam, toStringParams(params))
+    val bodyParamsX = bodyParams.collect { case (fieldName, Some(jsValue)) =>
+      (fieldName.toString, jsValue)
+    }
+
+    execPOSTSourceAux(
+      request,
+      JsObject(bodyParamsX),
+      Some(endPoint),
+      acceptableStatusCodes
+    )
+  }
+
   protected def execPOSTJsonAux[T: BodyWritable](
     request: StandaloneWSRequest,
     body: T,
     endPointForLogging: Option[PEP], // only for logging
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] =
-    execRequestJsonAux(
+    execRequestAux(ResponseConverters.json)(
       request,
       _.post(body),
       acceptableStatusCodes,
@@ -219,7 +256,20 @@ trait WSRequestHelper extends WSHelper {
     endPointForLogging: Option[PEP], // only for logging
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichStringResponse] =
-    execRequestStringAux(
+    execRequestAux(ResponseConverters.string)(
+      request,
+      _.post(body),
+      acceptableStatusCodes,
+      endPointForLogging
+    )
+
+  protected def execPOSTSourceAux[T: BodyWritable](
+    request: StandaloneWSRequest,
+    body: T,
+    endPointForLogging: Option[PEP], // only for logging
+    acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
+  ): Future[RichSourceResponse] =
+    execRequestAux(ResponseConverters.source)(
       request,
       _.post(body),
       acceptableStatusCodes,
@@ -257,7 +307,7 @@ trait WSRequestHelper extends WSHelper {
     endPointForLogging: Option[PEP], // only for logging
     acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes
   ): Future[RichJsResponse] =
-    execRequestJsonAux(
+    execRequestAux(ResponseConverters.json)(
       request,
       _.delete(),
       acceptableStatusCodes,
@@ -290,21 +340,52 @@ trait WSRequestHelper extends WSHelper {
     client.url(url)
   }
 
-  private def execRequestJsonAux(
+  private def execRequestAux[T](
+    responseConverter: ResponseConverters.ResponseConverter[T]
+  )(
     request: StandaloneWSRequest,
     exec: StandaloneWSRequest => Future[StandaloneWSRequest#Response],
-    acceptableStatusCodes: Seq[Int] = Nil,
-    endPointForLogging: Option[PEP] = None // only for logging
-  ): Future[RichJsResponse] =
+    acceptableStatusCodes: Seq[Int],
+    endPointForLogging: Option[PEP] // only for logging
+  ): Future[RichResponse[T]] =
     execRequestRaw(
       request,
       exec,
       acceptableStatusCodes,
       endPointForLogging
     ).map(_ match {
-      case Left(response) =>
+      case Left(response)  => Left(responseConverter.apply(response, endPointForLogging))
+      case Right(response) => Right(response)
+    })
+
+  private object ResponseConverters {
+
+    type ResponseConverter[T] = (
+      StandaloneWSRequest#Response,
+      Option[PEP] // for logging
+    ) => T
+
+    val string: ResponseConverter[String] = {
+      (
+        response,
+        _
+      ) => response.body
+    }
+
+    val source: ResponseConverter[Source[ByteString, _]] = {
+      (
+        response,
+        _
+      ) => response.bodyAsSource
+    }
+
+    val json: ResponseConverter[JsValue] = {
+      (
+        response,
+        endPointForLogging
+      ) =>
         try {
-          Left(response.body[JsValue])
+          response.body[JsValue]
         } catch {
           case _: JsonParseException =>
             throw new OpenAIScalaClientException(
@@ -315,24 +396,8 @@ trait WSRequestHelper extends WSHelper {
               s"$serviceName.${endPointForLogging.map(_.toString).getOrElse("")}: '${response.body}' is an unmappable JSON."
             )
         }
-      case Right(response) => Right(response)
-    })
-
-  private def execRequestStringAux(
-    request: StandaloneWSRequest,
-    exec: StandaloneWSRequest => Future[StandaloneWSRequest#Response],
-    acceptableStatusCodes: Seq[Int] = Nil,
-    endPointForLogging: Option[PEP] = None // only for logging
-  ): Future[RichStringResponse] =
-    execRequestRaw(
-      request,
-      exec,
-      acceptableStatusCodes,
-      endPointForLogging
-    ).map(_ match {
-      case Left(response)  => Left(response.body)
-      case Right(response) => Right(response)
-    })
+    }
+  }
 
   private def execRequestRaw(
     request: StandaloneWSRequest,

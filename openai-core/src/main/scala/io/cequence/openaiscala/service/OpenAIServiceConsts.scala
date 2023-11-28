@@ -27,12 +27,17 @@ trait OpenAIServiceConsts {
     )
 
     val CreateChatCompletion = CreateChatCompletionSettings(
-      model = ModelId.gpt_3_5_turbo,
+      model = ModelId.gpt_3_5_turbo_1106,
       max_tokens = Some(1000)
     )
 
     val CreateChatFunCompletion = CreateChatCompletionSettings(
-      model = ModelId.gpt_3_5_turbo_0613,
+      model = ModelId.gpt_3_5_turbo_1106,
+      max_tokens = Some(1000)
+    )
+
+    val CreateChatToolCompletion = CreateChatCompletionSettings(
+      model = ModelId.gpt_3_5_turbo_1106,
       max_tokens = Some(1000)
     )
 
@@ -45,13 +50,18 @@ trait OpenAIServiceConsts {
     val CreateImage = CreateImageSettings()
 
     // keep all OpenAI defaults
-    val CreateImageEdit = CreateImageSettings()
+    val CreateImageEdit = CreateImageEditSettings()
 
     // keep all OpenAI defaults
-    val CreateImageVariation = CreateImageSettings()
+    val CreateImageVariation = CreateImageEditSettings()
 
     val CreateEmbeddings = CreateEmbeddingsSettings(
       model = ModelId.text_embedding_ada_002
+    )
+
+    val CreateSpeech = CreateSpeechSettings(
+      model = ModelId.tts_1_1106,
+      voice = VoiceType.shimmer
     )
 
     val CreateTranscription = CreateTranscriptionSettings(

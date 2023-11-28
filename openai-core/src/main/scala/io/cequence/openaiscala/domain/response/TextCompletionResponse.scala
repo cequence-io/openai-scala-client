@@ -6,6 +6,7 @@ case class TextCompletionResponse(
   id: String,
   created: ju.Date,
   model: String,
+  system_fingerprint: Option[String], // NEW
   choices: Seq[TextCompletionChoiceInfo],
   usage: Option[UsageInfo]
 )

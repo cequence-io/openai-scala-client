@@ -1,12 +1,14 @@
 package io.cequence.openaiscala.service
 
-import play.api.libs.json.{JsObject, JsValue, Json}
+import akka.stream.scaladsl.Source
+import akka.util.ByteString
+import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
 import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
-import io.cequence.openaiscala.domain.{FunMessageSpec, FunctionSpec}
+import io.cequence.openaiscala.domain.{BaseMessage, FunMessage, FunctionSpec, ToolSpec}
 
 import java.io.File
 import scala.concurrent.Future
@@ -30,7 +32,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
     }
 
   override def createChatFunCompletion(
-    messages: Seq[FunMessageSpec],
+    messages: Seq[BaseMessage],
     functions: Seq[FunctionSpec],
     responseFunctionName: Option[String],
     settings: CreateChatCompletionSettings
@@ -39,10 +41,10 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
       createBodyParamsForChatCompletion(messages, settings, stream = false)
 
     val extraParams = jsonBodyParams(
-      Param.functions -> Some(Json.toJson(functions)),
+      Param.functions -> Some(functions.map(Json.toJson(_)(functionSpecFormat))),
       Param.function_call -> responseFunctionName.map(name =>
         Map("name" -> name)
-      ) // otherwise "auto" is used by default
+      ) // otherwise "auto" is used by default (if functions are present)
     )
 
     execPOST(
@@ -50,6 +52,40 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
       bodyParams = coreParams ++ extraParams
     ).map(
       _.asSafe[ChatFunCompletionResponse]
+    )
+  }
+
+  override def createChatToolCompletion(
+    messages: Seq[BaseMessage],
+    tools: Seq[ToolSpec],
+    responseToolChoice: Option[String] = None,
+    settings: CreateChatCompletionSettings = DefaultSettings.CreateChatFunCompletion
+  ): Future[ChatToolCompletionResponse] = {
+    val coreParams =
+      createBodyParamsForChatCompletion(messages, settings, stream = false)
+
+    val toolJsons = tools.map(
+      _ match {
+        case tool: FunctionSpec =>
+          Map("type" -> "function", "function" -> Json.toJson(tool))
+      }
+    )
+
+    val extraParams = jsonBodyParams(
+      Param.tools -> Some(toolJsons),
+      Param.tool_choice -> responseToolChoice.map(name =>
+        Map(
+          "type" -> "function",
+          "function" -> Map("name" -> name)
+        )
+      ) // otherwise "auto" is used by default (if tools are present)
+    )
+
+    execPOST(
+      EndPoint.chat_completions,
+      bodyParams = coreParams ++ extraParams
+    ).map(
+      _.asSafe[ChatToolCompletionResponse]
     )
   }
 
@@ -79,10 +115,13 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
     execPOST(
       EndPoint.images_generations,
       bodyParams = jsonBodyParams(
+        Param.model -> settings.model,
         Param.prompt -> Some(prompt),
         Param.n -> settings.n,
         Param.size -> settings.size.map(_.toString),
         Param.response_format -> settings.response_format.map(_.toString),
+        Param.quality -> settings.quality.map(_.toString),
+        Param.style -> settings.style.map(_.toString),
         Param.user -> settings.user
       )
     ).map(
@@ -93,12 +132,13 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
     prompt: String,
     image: File,
     mask: Option[File] = None,
-    settings: CreateImageSettings
+    settings: CreateImageEditSettings
   ): Future[ImageInfo] =
     execPOSTMultipart(
       EndPoint.images_edits,
       fileParams = Seq((Param.image, image, None)) ++ mask.map((Param.mask, _, None)),
       bodyParams = Seq(
+        Param.model -> settings.model,
         Param.prompt -> Some(prompt),
         Param.n -> settings.n,
         Param.size -> settings.size.map(_.toString),
@@ -111,12 +151,13 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
 
   override def createImageVariation(
     image: File,
-    settings: CreateImageSettings
+    settings: CreateImageEditSettings
   ): Future[ImageInfo] =
     execPOSTMultipart(
       EndPoint.images_variations,
       fileParams = Seq((Param.image, image, None)),
       bodyParams = Seq(
+        Param.model -> settings.model,
         Param.n -> settings.n,
         Param.size -> settings.size.map(_.toString),
         Param.response_format -> settings.response_format.map(_.toString),
@@ -124,6 +165,21 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
       )
     ).map(
       _.asSafe[ImageInfo]
+    )
+
+  def createAudioSpeech(
+    input: String,
+    settings: CreateSpeechSettings = DefaultSettings.CreateSpeech
+  ): Future[Source[ByteString, _]] =
+    execPOSTSource(
+      EndPoint.audio_speech,
+      bodyParams = jsonBodyParams(
+        Param.input -> Some(input),
+        Param.model -> Some(settings.model),
+        Param.voice -> Some(settings.voice.toString),
+        Param.speed -> settings.speed,
+        Param.response_format -> settings.response_format.map(_.toString)
+      )
     )
 
   override def createAudioTranscription(
@@ -220,6 +276,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
       _.asSafe[FileInfo]
     )
 
+  // TODO: Azure return http code 204
   override def deleteFile(
     fileId: String
   ): Future[DeleteResponse] =
@@ -280,9 +337,23 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
         Param.validation_file -> validation_file,
         Param.model -> Some(settings.model),
         Param.suffix -> settings.suffix,
-        Param.hyperparameters -> settings.n_epochs.map(epochs =>
-          Map(Param.n_epochs.toString -> epochs)
-        )
+        Param.hyperparameters -> {
+          if (
+            Seq(settings.batch_size, settings.learning_rate_multiplier, settings.n_epochs)
+              .exists(_.isDefined)
+          ) {
+            // all three params have "auto" as default value which we pass explicitly if not defined
+            Some(
+              Map(
+                Param.batch_size.toString -> settings.batch_size.getOrElse("auto"),
+                Param.learning_rate_multiplier.toString -> settings.learning_rate_multiplier
+                  .getOrElse("auto"),
+                Param.n_epochs.toString -> settings.n_epochs.getOrElse("auto")
+              )
+            )
+          } else
+            None
+        }
       )
     ).map(
       _.asSafe[FineTuneJob]

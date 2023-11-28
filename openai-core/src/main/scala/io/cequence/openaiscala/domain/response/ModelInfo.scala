@@ -6,8 +6,11 @@ case class ModelInfo(
   id: String,
   created: ju.Date,
   owned_by: String,
-  root: String,
+  @Deprecated
+  root: Option[String],
+  @Deprecated
   parent: Option[String],
+  @Deprecated
   permission: Seq[Permission]
 )
 

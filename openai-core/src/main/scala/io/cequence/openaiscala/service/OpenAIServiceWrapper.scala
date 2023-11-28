@@ -1,6 +1,8 @@
 package io.cequence.openaiscala.service
 
-import io.cequence.openaiscala.domain.{FunMessageSpec, FunctionSpec, MessageSpec}
+import akka.stream.scaladsl.Source
+import akka.util.ByteString
+import io.cequence.openaiscala.domain.{BaseMessage, FunctionSpec, ToolSpec}
 import io.cequence.openaiscala.domain.settings._
 
 import java.io.File
@@ -27,14 +29,14 @@ trait OpenAIServiceWrapper extends OpenAIService {
   )
 
   override def createChatCompletion(
-    messages: Seq[MessageSpec],
+    messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
   ): Future[ChatCompletionResponse] = wrap(
     _.createChatCompletion(messages, settings)
   )
 
   override def createChatFunCompletion(
-    messages: Seq[FunMessageSpec],
+    messages: Seq[BaseMessage],
     functions: Seq[FunctionSpec],
     responseFunctionName: Option[String],
     settings: CreateChatCompletionSettings
@@ -43,6 +45,20 @@ trait OpenAIServiceWrapper extends OpenAIService {
       messages,
       functions,
       responseFunctionName,
+      settings
+    )
+  )
+
+  override def createChatToolCompletion(
+    messages: Seq[BaseMessage],
+    tools: Seq[ToolSpec],
+    responseToolChoice: Option[String],
+    settings: CreateChatCompletionSettings
+  ) = wrap(
+    _.createChatToolCompletion(
+      messages,
+      tools,
+      responseToolChoice,
       settings
     )
   )
@@ -66,14 +82,14 @@ trait OpenAIServiceWrapper extends OpenAIService {
     prompt: String,
     image: File,
     mask: Option[File],
-    settings: CreateImageSettings
+    settings: CreateImageEditSettings
   ): Future[ImageInfo] = wrap(
     _.createImageEdit(prompt, image, mask, settings)
   )
 
   override def createImageVariation(
     image: File,
-    settings: CreateImageSettings
+    settings: CreateImageEditSettings
   ): Future[ImageInfo] = wrap(
     _.createImageVariation(image, settings)
   )
@@ -83,6 +99,13 @@ trait OpenAIServiceWrapper extends OpenAIService {
     settings: CreateEmbeddingsSettings
   ): Future[EmbeddingResponse] = wrap(
     _.createEmbeddings(input, settings)
+  )
+
+  override def createAudioSpeech(
+    input: String,
+    settings: CreateSpeechSettings = DefaultSettings.CreateSpeech
+  ): Future[Source[ByteString, _]] = wrap(
+    _.createAudioSpeech(input, settings)
   )
 
   override def createAudioTranscription(

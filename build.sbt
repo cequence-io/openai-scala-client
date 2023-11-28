@@ -62,6 +62,11 @@ lazy val count_tokens = (project in file("openai-count-tokens"))
   .dependsOn(client)
   .aggregate(client)
 
+lazy val examples = (project in file("openai-examples"))
+  .settings(commonSettings: _*)
+  .dependsOn(client)
+  .aggregate(client)
+
 // POM settings for Sonatype
 ThisBuild / homepage := Some(
   url("https://github.com/cequence-io/openai-scala-client")

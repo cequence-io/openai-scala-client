@@ -7,12 +7,25 @@ import java.{util => ju}
 import io.cequence.openaiscala.domain.response._
 import play.api.libs.functional.syntax._
 import play.api.libs.json.{Format, Json, _}
+import Json.{obj, toJson}
 
 object JsonFormats {
   private implicit val dateFormat: Format[ju.Date] = JsonUtil.SecDateFormat
 
   implicit val PermissionFormat: Format[Permission] = Json.format[Permission]
-  implicit val modelSpecFormat: Format[ModelInfo] = Json.format[ModelInfo]
+  implicit val modelSpecFormat: Format[ModelInfo] = {
+    val reads: Reads[ModelInfo] = (
+      (__ \ "id").read[String] and
+        (__ \ "created").read[ju.Date] and
+        (__ \ "owned_by").read[String] and
+        (__ \ "root").readNullable[String] and
+        (__ \ "parent").readNullable[String] and
+        (__ \ "permission").read[Seq[Permission]].orElse(Reads.pure(Nil))
+    )(ModelInfo.apply _)
+
+    val writes: Writes[ModelInfo] = Json.writes[ModelInfo]
+    Format(reads, writes)
+  }
 
   implicit val usageInfoFormat: Format[UsageInfo] = Json.format[UsageInfo]
 
@@ -31,10 +44,11 @@ object JsonFormats {
   implicit object ChatRoleFormat extends Format[ChatRole] {
     override def reads(json: JsValue): JsResult[ChatRole] = {
       json.asSafe[String] match {
+        case "system"    => JsSuccess(ChatRole.System)
         case "user"      => JsSuccess(ChatRole.User)
         case "assistant" => JsSuccess(ChatRole.Assistant)
-        case "system"    => JsSuccess(ChatRole.System)
         case "function"  => JsSuccess(ChatRole.Function)
+        case "tool"      => JsSuccess(ChatRole.Tool)
         case x           => JsError(s"$x is not a valid message role.")
       }
     }
@@ -46,9 +60,38 @@ object JsonFormats {
 
   implicit val functionCallSpecFormat: Format[FunctionCallSpec] =
     Json.format[FunctionCallSpec]
+
+  implicit val systemMessageFormat: Format[SystemMessage] = Json.format[SystemMessage]
+  implicit val userMessageFormat: Format[UserMessage] = Json.format[UserMessage]
+  implicit val toolMessageFormat: Format[ToolMessage] = Json.format[ToolMessage]
+  implicit val assistantMessageFormat: Format[AssistantMessage] = Json.format[AssistantMessage]
+  implicit val assistantToolMessageReads: Reads[AssistantToolMessage] = (
+    (__ \ "content").readNullable[String] and
+      (__ \ "name").readNullable[String] and
+      (__ \ "tool_calls").read[JsArray]
+  ) {
+    (
+      content,
+      name,
+      tool_calls
+    ) =>
+      val idToolCalls = tool_calls.value.toSeq.map { toolCall =>
+        val callId = (toolCall \ "id").as[String]
+        val callType = (toolCall \ "type").as[String]
+        val call: ToolCallSpec = callType match {
+          case "function" => (toolCall \ "function").as[FunctionCallSpec]
+          case _          => throw new Exception(s"Unknown tool call type: $callType")
+        }
+        (callId, call)
+      }
+      AssistantToolMessage(content, name, idToolCalls)
+  }
+  implicit val assistantFunMessageFormat: Format[AssistantFunMessage] =
+    Json.format[AssistantFunMessage]
+
+  implicit val funMessageFormat: Format[FunMessage] = Json.format[FunMessage]
+
   implicit val messageSpecFormat: Format[MessageSpec] = Json.format[MessageSpec]
-  implicit val funMessageSpecFormat: Format[FunMessageSpec] =
-    Json.format[FunMessageSpec]
 
   implicit val functionSpecFormat: Format[FunctionSpec] = {
     // use just here for FunctionSpec
@@ -56,10 +99,79 @@ object JsonFormats {
     Json.format[FunctionSpec]
   }
 
+  implicit val contentWrites: Writes[Content] = Writes[Content] {
+    _ match {
+      case c: TextContent =>
+        Json.obj("type" -> "text", "text" -> c.text)
+
+      case c: ImageURLContent =>
+        Json.obj("type" -> "image_url", "image_url" -> Json.obj("url" -> c.url))
+    }
+  }
+
+  implicit val messageWrites: Writes[BaseMessage] = Writes { (message: BaseMessage) =>
+    def optionalJsObject(
+      fieldName: String,
+      value: Option[JsValue]
+    ) =
+      value.map(x => Json.obj(fieldName -> x)).getOrElse(Json.obj())
+
+    val role = Json.obj("role" -> toJson(message.role))
+    val name = optionalJsObject("name", message.nameOpt.map(JsString(_)))
+
+    val json = message match {
+      case m: SystemMessage => toJson(m)
+
+      case m: UserMessage => toJson(m)
+
+      case m: UserSeqMessage => Json.obj("content" -> toJson(m.content))
+
+      case m: AssistantMessage => toJson(m)
+
+      case m: AssistantToolMessage =>
+        val calls = m.tool_calls.map { case (callId, call) =>
+          call match {
+            case c: FunctionCallSpec =>
+              Json.obj("id" -> callId, "type" -> "function", "function" -> toJson(c))
+          }
+        }
+
+        optionalJsObject(
+          "tool_calls",
+          if (calls.nonEmpty) Some(JsArray(calls)) else None
+        ) ++ optionalJsObject(
+          "content",
+          m.content.map(JsString(_))
+        )
+
+      case m: AssistantFunMessage => toJson(m)
+
+      case m: ToolMessage => toJson(m)
+
+      case m: FunMessage => toJson(m)
+
+      case m: MessageSpec => toJson(m)
+    }
+
+    json.as[JsObject] ++ role ++ name
+  }
+
+  implicit val toolWrites: Writes[ToolSpec] = Writes[ToolSpec] {
+    _ match {
+      case x: FunctionSpec =>
+        Json.obj("type" -> "function", "function" -> Json.toJson(x))
+    }
+  }
+
   implicit val chatCompletionChoiceInfoFormat: Format[ChatCompletionChoiceInfo] =
     Json.format[ChatCompletionChoiceInfo]
   implicit val chatCompletionResponseFormat: Format[ChatCompletionResponse] =
     Json.format[ChatCompletionResponse]
+
+  implicit val chatToolCompletionChoiceInfoReads: Reads[ChatToolCompletionChoiceInfo] =
+    Json.reads[ChatToolCompletionChoiceInfo]
+  implicit val chatToolCompletionResponseReads: Reads[ChatToolCompletionResponse] =
+    Json.reads[ChatToolCompletionResponse]
 
   implicit val chatFunCompletionChoiceInfoFormat: Format[ChatFunCompletionChoiceInfo] =
     Json.format[ChatFunCompletionChoiceInfo]
@@ -87,6 +199,7 @@ object JsonFormats {
   implicit val embeddingFormat: Format[EmbeddingResponse] =
     Json.format[EmbeddingResponse]
 
+  implicit val fileStatisticsFormat: Format[FileStatistics] = Json.format[FileStatistics]
   implicit val fileInfoFormat: Format[FileInfo] = Json.format[FileInfo]
 
   implicit val fineTuneEventFormat: Format[FineTuneEvent] = {
@@ -98,6 +211,7 @@ object JsonFormats {
     JsonUtil.eitherFormat[Int, String]
   implicit val fineTuneHyperparamsFormat: Format[FineTuneHyperparams] =
     Json.format[FineTuneHyperparams]
+  implicit val fineTuneErrorFormat: Format[FineTuneError] = Json.format[FineTuneError]
   implicit val fineTuneFormat: Format[FineTuneJob] = Json.format[FineTuneJob]
 
   // somehow ModerationCategories.unapply is not working in Scala3

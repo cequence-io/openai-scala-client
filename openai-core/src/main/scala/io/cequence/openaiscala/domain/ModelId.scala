@@ -95,6 +95,15 @@ object ModelId {
   val audio_transcribe_deprecated = "audio-transcribe-deprecated"
   val whisper_1 = "whisper-1"
   val whisper_1_2 = "whisper-1.2"
+  val tts_1_hd = "tts-1-hd"
+  val tts_1_1106 = "tts-1-1106"
+  val tts_1_hd_1106 = "tts-1-hd-1106"
+  val canary_tts = "canary-tts"
+  val canary_whisper = "canary-whisper"
+
+  // Image gen
+  val dall_e_3 = "dall-e-3"
+  val dall_e_2 = "dall-e-2"
 
   // GPT-3.5 (ChatGPT)
 
@@ -110,6 +119,8 @@ object ModelId {
   val gpt_3_5_turbo_16k_0613 = "gpt-3.5-turbo-16k-0613"
   val gpt_3_5_turbo_instruct_0914 = "gpt-3.5-turbo-instruct-0914"
   val gpt_3_5_turbo_instruct = "gpt-3.5-turbo-instruct"
+  // 16k context, gpt_3_5_turbo will point to this model from Dec 11, 2023
+  val gpt_3_5_turbo_1106 = "gpt-3.5-turbo-1106"
 
   // GPT-4
 
@@ -125,6 +136,11 @@ object ModelId {
   val gpt_4_32k_0314 = "gpt-4-32k-0314"
   // 32k context (June 13th snapshot), fine-tuned for function calling
   val gpt_4_32k_0613 = "gpt-4-32k-0613"
+  // 128K context (with training data upto April 2023)
+  val gpt_4_turbo_preview = "gpt-4-1106-preview"
+  // 128K context (with training data upto April 2023)
+  // includes supports for vision in addition to gpt-4-turbo capabilities
+  val gpt_4_vision_preview = "gpt-4-vision-preview"
 
   // Other
   @Deprecated

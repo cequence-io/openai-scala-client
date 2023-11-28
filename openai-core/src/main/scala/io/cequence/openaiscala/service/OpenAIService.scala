@@ -1,6 +1,8 @@
 package io.cequence.openaiscala.service
 
-import io.cequence.openaiscala.domain.{FunMessageSpec, FunctionSpec}
+import akka.stream.scaladsl.Source
+import akka.util.ByteString
+import io.cequence.openaiscala.domain.{BaseMessage, FunctionSpec, ToolSpec}
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
 
@@ -60,13 +62,42 @@ trait OpenAIService extends OpenAICoreService {
    *   chat completion response
    * @see
    *   <a href="https://platform.openai.com/docs/api-reference/chat/create">OpenAI Doc</a>
+   *
+   * Deprecated: use {@link OpenAIService.createChatToolCompletion} instead.
    */
+  @Deprecated
   def createChatFunCompletion(
-    messages: Seq[FunMessageSpec],
+    messages: Seq[BaseMessage],
     functions: Seq[FunctionSpec],
     responseFunctionName: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatFunCompletion
   ): Future[ChatFunCompletionResponse]
+
+  /**
+   * Creates a model response for the given chat conversation expecting a tool call.
+   *
+   * @param messages
+   *   A list of messages comprising the conversation so far.
+   * @param tools
+   *   A list of tools the model may call. Currently, only functions are supported as a tool.
+   *   Use this to provide a list of functions the model may generate JSON inputs for.
+   * @param responseToolChoice
+   *   Controls which (if any) function/tool is called by the model. Specifying a particular
+   *   function forces the model to call that function (must be listed in `tools`). Otherwise,
+   *   the default "auto" mode is used where the model can pick between generating a message or
+   *   calling a function.
+   * @param settings
+   * @return
+   *   chat completion response
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/chat/create">OpenAI Doc</a>
+   */
+  def createChatToolCompletion(
+    messages: Seq[BaseMessage],
+    tools: Seq[ToolSpec],
+    responseToolChoice: Option[String] = None,
+    settings: CreateChatCompletionSettings = DefaultSettings.CreateChatToolCompletion
+  ): Future[ChatToolCompletionResponse]
 
   /**
    * Creates a new edit for the provided input, instruction, and parameters.
@@ -93,7 +124,8 @@ trait OpenAIService extends OpenAICoreService {
    * Creates an image given a prompt.
    *
    * @param prompt
-   *   A text description of the desired image(s). The maximum length is 1000 characters.
+   *   A text description of the desired image(s). The maximum length is 1000 characters for
+   *   dall-e-2 and 4000 characters for dall-e-3.
    * @param settings
    * @return
    *   image response (might contain multiple data items - one per image)
@@ -129,7 +161,7 @@ trait OpenAIService extends OpenAICoreService {
     prompt: String,
     image: File,
     mask: Option[File] = None,
-    settings: CreateImageSettings = DefaultSettings.CreateImageEdit
+    settings: CreateImageEditSettings = DefaultSettings.CreateImageEdit
   ): Future[ImageInfo]
 
   /**
@@ -148,8 +180,26 @@ trait OpenAIService extends OpenAICoreService {
    */
   def createImageVariation(
     image: File,
-    settings: CreateImageSettings = DefaultSettings.CreateImageVariation
+    settings: CreateImageEditSettings = DefaultSettings.CreateImageVariation
   ): Future[ImageInfo]
+
+  /**
+   * Generates audio from the input text.
+   *
+   * @param input
+   *   The text to generate audio for. The maximum length is 4096 characters.
+   *
+   * @param settings
+   * @return
+   *   The audio file content.
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/audio/createSpeech">OpenAI
+   *   Doc</a>
+   */
+  def createAudioSpeech(
+    input: String,
+    settings: CreateSpeechSettings = DefaultSettings.CreateSpeech
+  ): Future[Source[ByteString, _]]
 
   /**
    * Transcribes audio into the input language.
@@ -165,7 +215,9 @@ trait OpenAIService extends OpenAICoreService {
    *   transcription text
    *
    * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/audio/create">OpenAI Doc</a>
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/audio/createTranscription">OpenAI
+   *   Doc</a>
    */
   def createAudioTranscription(
     file: File,
@@ -187,7 +239,8 @@ trait OpenAIService extends OpenAICoreService {
    *   translation text
    *
    * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/audio/create">OpenAI Doc</a>
+   *   <a href="https://platform.openai.com/docs/api-reference/audio/createTranslation">OpenAI
+   *   Doc</a>
    */
   def createAudioTranslation(
     file: File,

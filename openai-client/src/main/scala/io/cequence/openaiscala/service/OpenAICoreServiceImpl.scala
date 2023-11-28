@@ -8,7 +8,7 @@ import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
-import io.cequence.openaiscala.domain.{BaseMessageSpec, FunMessageSpec, MessageSpec}
+import io.cequence.openaiscala.domain.{BaseMessage, FunMessage, SystemMessage, UserMessage}
 import io.cequence.openaiscala.service.ws.{Timeouts, WSRequestHelper}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -93,11 +93,12 @@ private trait OpenAICoreServiceImpl extends OpenAICoreService with WSRequestHelp
       Param.logit_bias -> {
         if (settings.logit_bias.isEmpty) None else Some(settings.logit_bias)
       },
-      Param.user -> settings.user
+      Param.user -> settings.user,
+      Param.seed -> settings.seed
     )
 
   override def createChatCompletion(
-    messages: Seq[MessageSpec],
+    messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
   ): Future[ChatCompletionResponse] =
     execPOST(
@@ -108,26 +109,16 @@ private trait OpenAICoreServiceImpl extends OpenAICoreService with WSRequestHelp
     )
 
   protected def createBodyParamsForChatCompletion(
-    messages: Seq[BaseMessageSpec],
+    messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings,
     stream: Boolean
   ): Seq[(Param, Option[JsValue])] = {
     assert(messages.nonEmpty, "At least one message expected.")
-    val messageJsons = messages.map(_ match {
-      case m: MessageSpec =>
-        Json.toJson(m)(messageSpecFormat)
-      case m: FunMessageSpec =>
-        val json = Json.toJson(m)(funMessageSpecFormat)
-        // if the content is empty, add a null value (expected by the API)
-        m.content
-          .map(_ => json)
-          .getOrElse(
-            json.as[JsObject].+("content" -> JsNull)
-          )
-    })
+
+    val messageJsons = messages.map(Json.toJson(_)(messageWrites))
 
     jsonBodyParams(
-      Param.messages -> Some(JsArray(messageJsons)),
+      Param.messages -> Some(messageJsons),
       Param.model -> Some(settings.model),
       Param.temperature -> settings.temperature,
       Param.top_p -> settings.top_p,
@@ -146,7 +137,11 @@ private trait OpenAICoreServiceImpl extends OpenAICoreService with WSRequestHelp
       Param.logit_bias -> {
         if (settings.logit_bias.isEmpty) None else Some(settings.logit_bias)
       },
-      Param.user -> settings.user
+      Param.user -> settings.user,
+      Param.seed -> settings.seed,
+      Param.response_format -> settings.response_format_type.map { formatType =>
+        Map("type" -> formatType)
+      }
     )
   }
 
@@ -165,6 +160,7 @@ private trait OpenAICoreServiceImpl extends OpenAICoreService with WSRequestHelp
           }
         },
         Param.model -> Some(settings.model),
+        Param.encoding_format -> settings.encoding_format.map(_.toString),
         Param.user -> settings.user
       )
     ).map(

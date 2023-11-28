@@ -38,7 +38,7 @@ case class CreateCompletionSettings(
 
   // Up to 4 sequences where the API will stop generating further tokens.
   // The returned text will not contain the stop sequence.
-  stop: Seq[String] = Nil, // Option[String or Array],
+  stop: Seq[String] = Nil, // Option[String or Array]
 
   // Number between -2.0 and 2.0.
   // Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
@@ -66,5 +66,9 @@ case class CreateCompletionSettings(
   logit_bias: Map[String, Int] = Map(),
 
   // A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse.
-  user: Option[String] = None
+  user: Option[String] = None,
+
+  // If specified, our system will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result.
+  // Determinism is not guaranteed, and you should refer to the system_fingerprint response parameter to monitor changes in the backend.
+  seed: Option[Int] = None // NEW
 )
