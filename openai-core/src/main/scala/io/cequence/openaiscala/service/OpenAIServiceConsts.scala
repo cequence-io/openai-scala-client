@@ -53,10 +53,15 @@ trait OpenAIServiceConsts {
     val CreateImageEdit = CreateImageEditSettings()
 
     // keep all OpenAI defaults
-    val CreateImageVariation = CreateImageSettings()
+    val CreateImageVariation = CreateImageEditSettings()
 
     val CreateEmbeddings = CreateEmbeddingsSettings(
       model = ModelId.text_embedding_ada_002
+    )
+
+    val CreateSpeech = CreateSpeechSettings(
+      model = ModelId.tts_1_1106,
+      voice = VoiceType.shimmer
     )
 
     val CreateTranscription = CreateTranscriptionSettings(

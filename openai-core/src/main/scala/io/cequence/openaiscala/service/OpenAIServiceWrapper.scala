@@ -1,5 +1,7 @@
 package io.cequence.openaiscala.service
 
+import akka.stream.scaladsl.Source
+import akka.util.ByteString
 import io.cequence.openaiscala.domain.{BaseMessage, FunctionSpec, ToolSpec}
 import io.cequence.openaiscala.domain.settings._
 
@@ -87,7 +89,7 @@ trait OpenAIServiceWrapper extends OpenAIService {
 
   override def createImageVariation(
     image: File,
-    settings: CreateImageSettings
+    settings: CreateImageEditSettings
   ): Future[ImageInfo] = wrap(
     _.createImageVariation(image, settings)
   )
@@ -97,6 +99,13 @@ trait OpenAIServiceWrapper extends OpenAIService {
     settings: CreateEmbeddingsSettings
   ): Future[EmbeddingResponse] = wrap(
     _.createEmbeddings(input, settings)
+  )
+
+  override def createAudioSpeech(
+    input: String,
+    settings: CreateSpeechSettings = DefaultSettings.CreateSpeech
+  ): Future[Source[ByteString, _]] = wrap(
+    _.createAudioSpeech(input, settings)
   )
 
   override def createAudioTranscription(

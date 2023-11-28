@@ -149,12 +149,13 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
 
   override def createImageVariation(
     image: File,
-    settings: CreateImageSettings
+    settings: CreateImageEditSettings
   ): Future[ImageInfo] =
     execPOSTMultipart(
       EndPoint.images_variations,
       fileParams = Seq((Param.image, image, None)),
       bodyParams = Seq(
+        Param.model -> settings.model,
         Param.n -> settings.n,
         Param.size -> settings.size.map(_.toString),
         Param.response_format -> settings.response_format.map(_.toString),
@@ -162,6 +163,21 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
       )
     ).map(
       _.asSafe[ImageInfo]
+    )
+
+  def createAudioSpeech(
+    input: String,
+    settings: CreateSpeechSettings = DefaultSettings.CreateSpeech
+  ): Future[Source[ByteString, _]] =
+    execPOSTSource(
+      EndPoint.audio_speech,
+      bodyParams = jsonBodyParams(
+        Param.input -> Some(input),
+        Param.model -> Some(settings.model),
+        Param.voice -> Some(settings.voice.toString),
+        Param.speed -> settings.speed,
+        Param.response_format -> settings.response_format.map(_.toString),
+      )
     )
 
   override def createAudioTranscription(

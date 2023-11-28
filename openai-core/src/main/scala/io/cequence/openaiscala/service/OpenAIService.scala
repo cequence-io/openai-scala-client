@@ -1,5 +1,7 @@
 package io.cequence.openaiscala.service
 
+import akka.stream.scaladsl.Source
+import akka.util.ByteString
 import io.cequence.openaiscala.domain.{BaseMessage, FunctionSpec, ToolSpec}
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
@@ -177,8 +179,25 @@ trait OpenAIService extends OpenAICoreService {
    */
   def createImageVariation(
     image: File,
-    settings: CreateImageSettings = DefaultSettings.CreateImageVariation
+    settings: CreateImageEditSettings = DefaultSettings.CreateImageVariation
   ): Future[ImageInfo]
+
+  /**
+   * Generates audio from the input text.
+   *
+   * @param input
+   *   The text to generate audio for. The maximum length is 4096 characters.
+   *
+   * @param settings
+   * @return
+   * The audio file content.
+   * @see
+   * <a href="https://platform.openai.com/docs/api-reference/audio/createSpeech">OpenAI Doc</a>
+   */
+  def createAudioSpeech(
+    input: String,
+    settings: CreateSpeechSettings = DefaultSettings.CreateSpeech
+  ): Future[Source[ByteString, _]]
 
   /**
    * Transcribes audio into the input language.

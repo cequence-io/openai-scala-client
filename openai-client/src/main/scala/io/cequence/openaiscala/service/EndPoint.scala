@@ -13,6 +13,7 @@ object EndPoint {
   case object images_edits extends EndPoint("images/edits")
   case object images_variations extends EndPoint("images/variations")
   case object embeddings extends EndPoint
+  case object audio_speech extends EndPoint("audio/speech")
   case object audio_transcriptions extends EndPoint("audio/transcriptions")
   case object audio_translations extends EndPoint("audio/translations")
   case object files extends EndPoint
@@ -75,4 +76,6 @@ object Param {
   case object encoding_format extends Param
   case object quality extends Param
   case object style extends Param
+  case object voice extends Param
+  case object speed extends Param
 }
