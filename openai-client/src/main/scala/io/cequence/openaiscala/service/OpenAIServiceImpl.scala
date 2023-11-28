@@ -1,5 +1,7 @@
 package io.cequence.openaiscala.service
 
+import akka.stream.scaladsl.Source
+import akka.util.ByteString
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
 import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.JsonFormats._
