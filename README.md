@@ -182,6 +182,20 @@ Examples:
   )
 ```
 
+- 🔥 **New**: Count used tokens before calling `createChatCompletions` or `createChatFunCompletions`, this help you select proper model ex. `gpt-3.5-turbo` or `gpt-3.5-turbo-16k` and reduce costs.
+
+```scala
+import io.cequence.openaiscala.service.OpenAICountTokensService
+import io.cequence.openaiscala.domain.{ChatRole, FunMessageSpec, FunctionSpec}
+
+val messages: Seq[FunMessageSpec] = ??? // messages to be sent to OpenAI
+val function: FunctionSpec = ??? // function to be called
+
+val service = new OpenAICountTokensService()
+
+val tokens = service.countFunMessageTokens(messages, List(function), Some(function.name))
+```
+
 - Create completion with streaming and a custom setting
 
 ```scala
