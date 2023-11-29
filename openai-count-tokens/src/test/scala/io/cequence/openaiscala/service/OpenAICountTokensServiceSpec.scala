@@ -12,30 +12,35 @@ import io.cequence.openaiscala.domain.{
 }
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import akka.actor.ActorSystem
+import akka.stream.Materializer
 import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
-import org.scalatest.BeforeAndAfterAll
+import org.scalatest.{BeforeAndAfterAll, Tag}
 
 import scala.collection.immutable.ListMap
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
 
+// TODO: ignore this test
 class OpenAICountTokensServiceSpec
-    extends TestKit(ActorSystem("OpenAICountTokensServiceSpec"))
-    with AnyWordSpecLike
+    extends AnyWordSpecLike
     with Matchers
     with BeforeAndAfterAll
     with MockitoSugar
     with ScalaFutures {
+
+//  extends TestKit(ActorSystem("OpenAICountTokensServiceSpec"))
 
   protected implicit val patience: PatienceConfig = PatienceConfig(timeout = 10.seconds)
 
   trait TestCase extends OpenAICountTokensHelper {
     protected lazy val config: Config = ConfigFactory.load()
     private val verbose = false
+    implicit val system: ActorSystem = ActorSystem()
+    implicit val materializer: Materializer = Materializer(system)
     private lazy val validateWithChatGPT = config.getBoolean("validateWithChatGPT")
     protected lazy val openAIServiceExternal: OpenAIService = OpenAIServiceFactory(config)
 
