@@ -28,7 +28,7 @@ or to *pom.xml* (if you use maven)
 ## Usage
 
 ```scala
-import io.cequence.openaiscala.service.OpenAICountTokensService
+import io.cequence.openaiscala.service.OpenAICountTokensHelper
 import io.cequence.openaiscala.domain.{ChatRole, FunMessageSpec, FunctionSpec}
 
 val messages: Seq[FunMessageSpec] = ??? // messages to be sent to OpenAI

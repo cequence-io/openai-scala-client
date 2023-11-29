@@ -6,8 +6,9 @@ import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
 
 //rewritten from https://github.com/hmarr/openai-chat-tokens
+// TODO: consider using a json schema; also avoid using mutable data structures
 object OpenAIFunctionsImpl {
-  def formatFunctionDefinitions(functions: List[FunctionSpec]): String = {
+  def formatFunctionDefinitions(functions: Seq[FunctionSpec]): String = {
     val lines = ListBuffer("namespace functions {", "")
     for (f: FunctionSpec <- functions) {
       if (f.description.isDefined) {
@@ -39,7 +40,9 @@ object OpenAIFunctionsImpl {
       case Some(r) => r.asInstanceOf[Seq[String]]
       case None    => Seq.empty[String]
     }
+
     val lines = scala.collection.mutable.ArrayBuffer[String]()
+
     for ((name, param) <- properties) {
       val paramAsInstance = param.asInstanceOf[Map[String, Any]]
       paramAsInstance.get("description") match {
@@ -47,13 +50,16 @@ object OpenAIFunctionsImpl {
           lines += s"// ${v}"
         case _ => ()
       }
+
       val paramType = formatType(paramAsInstance, indent)
+
       if (required.contains(name)) {
         lines += s"$name: $paramType,"
       } else {
         lines += s"$name?: $paramType,"
       }
     }
+
     lines.map(line => " " * indent + line).mkString("\n")
   }
 
@@ -63,6 +69,7 @@ object OpenAIFunctionsImpl {
   ): String = {
     implicit val ctMSA: ClassTag[Map[String, Any]] = ClassTag(classOf[Map[String, Any]])
     implicit val ctSS: ClassTag[Seq[String]] = ClassTag(classOf[Seq[String]])
+
     param.get("type") match {
       case Some("string") =>
         param.get("enum") match {

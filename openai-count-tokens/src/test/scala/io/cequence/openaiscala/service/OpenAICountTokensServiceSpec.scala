@@ -1,7 +1,15 @@
 package io.cequence.openaiscala.service
 
 import akka.testkit.TestKit
-import io.cequence.openaiscala.domain.{ChatRole, FunMessageSpec, FunctionSpec, MessageSpec}
+import io.cequence.openaiscala.domain.{
+  AssistantFunMessage,
+  BaseMessage,
+  ChatRole,
+  FunctionSpec,
+  MessageSpec,
+  SystemMessage,
+  UserMessage
+}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import akka.actor.ActorSystem
 import com.typesafe.config.{Config, ConfigFactory}
@@ -25,11 +33,10 @@ class OpenAICountTokensServiceSpec
 
   protected implicit val patience: PatienceConfig = PatienceConfig(timeout = 10.seconds)
 
-  trait TestCase {
+  trait TestCase extends OpenAICountTokensHelper {
     protected lazy val config: Config = ConfigFactory.load()
     private val verbose = false
     private lazy val validateWithChatGPT = config.getBoolean("validateWithChatGPT")
-    protected lazy val sut: OpenAICountTokensService = new OpenAICountTokensService()
     protected lazy val openAIServiceExternal: OpenAIService = OpenAIServiceFactory(config)
 
     private def print(
@@ -51,11 +58,12 @@ class OpenAICountTokensServiceSpec
     }
 
     protected def checkTokensForMessageCall(
-      messages: Seq[MessageSpec],
+      messages: Seq[BaseMessage],
       usedTokens: Int,
       model: String
     ): Unit = {
-      val countedTokens = sut.countMessageTokens(messages)
+      val countedTokens = countMessageTokens(model, messages)
+
       if (validateWithChatGPT) {
         val tokensFromOpenAI = openAIServiceExternal
           .createChatCompletion(
@@ -70,6 +78,7 @@ class OpenAICountTokensServiceSpec
           .usage
           .get
           .prompt_tokens
+
         print(usedTokens, countedTokens, Some(tokensFromOpenAI))
         tokensFromOpenAI shouldEqual usedTokens
       } else {
@@ -81,16 +90,18 @@ class OpenAICountTokensServiceSpec
 
     protected def checkTokensForFunctionCall(
       functions: Seq[FunctionSpec],
-      messages: Seq[FunMessageSpec],
+      messages: Seq[BaseMessage],
       usedTokens: Int,
       responseFunctionName: Option[String] = None,
       model: String = "gpt-3.5-turbo"
     ): Unit = {
-      val countedTokens = sut.countFunMessageTokens(
+      val countedTokens = countFunMessageTokens(
+        model,
         messages = messages,
         functions = functions,
         responseFunctionName = responseFunctionName
       )
+
       if (validateWithChatGPT) {
         val tokensFromOpenAI = openAIServiceExternal
           .createChatFunCompletion(
@@ -122,10 +133,12 @@ class OpenAICountTokensServiceSpec
       val messages: Seq[MessageSpec] = Seq(MessageSpec(ChatRole.User, "hello", None))
       checkTokensForMessageCall(messages, usedTokens = 8, model = "gpt-4")
     }
+
     "counting tokens - only messages - gpt-3.5-turbo" in new TestCase {
       val messages: Seq[MessageSpec] = Seq(MessageSpec(ChatRole.User, "hello", None))
       checkTokensForMessageCall(messages, usedTokens = 8, model = "gpt-3.5-turbo")
     }
+
     "counting tokens - two messages - gpt-3.5-turbo" in new TestCase {
       val messages: Seq[MessageSpec] = Seq(
         MessageSpec(ChatRole.User, "hello", None),
@@ -133,6 +146,7 @@ class OpenAICountTokensServiceSpec
       )
       checkTokensForMessageCall(messages, usedTokens = 14, model = "gpt-3.5-turbo")
     }
+
     "counting tokens - two messages - gpt-4" in new TestCase {
       val messages: Seq[MessageSpec] = Seq(
         MessageSpec(ChatRole.User, "hello", None),
@@ -163,10 +177,12 @@ class OpenAICountTokensServiceSpec
           )
         )
       )
-      val messages: Seq[FunMessageSpec] =
-        Seq(FunMessageSpec(ChatRole.User, Some("hello"), None, None))
+
+      val messages: Seq[BaseMessage] = Seq(UserMessage("hello"))
+
       checkTokensForFunctionCall(Seq(function1), messages, usedTokens = 46)
     }
+
     "counting tokens with function - required field" in new TestCase {
       private val function1 = FunctionSpec(
         name = "function",
@@ -179,10 +195,11 @@ class OpenAICountTokensServiceSpec
           "required" -> List("title")
         )
       )
-      val messages: Seq[FunMessageSpec] =
-        Seq(FunMessageSpec(ChatRole.User, Some("text1\ntext2\ntext3\n"), None, None))
+      val messages: Seq[BaseMessage] = Seq(UserMessage("text1\ntext2\ntext3\n"))
+
       checkTokensForFunctionCall(Seq(function1), messages, usedTokens = 53)
     }
+
     "counting tokens with function - nested description, enums" in new TestCase {
       private val function1 = FunctionSpec(
         name = "function",
@@ -219,10 +236,11 @@ class OpenAICountTokensServiceSpec
           )
         )
       )
-      val messages: Seq[FunMessageSpec] =
-        Seq(FunMessageSpec(ChatRole.User, Some("hello"), None, None))
+      val messages: Seq[BaseMessage] = Seq(UserMessage("hello"))
+
       checkTokensForFunctionCall(Seq(function1), messages, usedTokens = 93)
     }
+
     "counting tokens with function - two fields in object" in new TestCase {
       private val function1 = FunctionSpec(
         name = "get_recipe",
@@ -257,34 +275,38 @@ class OpenAICountTokensServiceSpec
           )
         )
       )
-      val messages: Seq[FunMessageSpec] =
-        Seq(FunMessageSpec(ChatRole.User, Some("hello"), None, None))
+      val messages: Seq[BaseMessage] = Seq(UserMessage("hello"))
+
       checkTokensForFunctionCall(Seq(function1), messages, usedTokens = 106)
     }
+
     "counting tokens with function - many messages" in new TestCase {
       private val function1 = FunctionSpec(
         name = "do_stuff",
         parameters = ListMap("type" -> "object", "properties" -> ListMap())
       )
-      val messages: Seq[FunMessageSpec] = Seq(
-        FunMessageSpec(ChatRole.System, Some("Hello:"), None, None),
-        FunMessageSpec(ChatRole.System, Some("Hello"), None, None),
-        FunMessageSpec(ChatRole.User, Some("Hi there"), None, None)
+      val messages: Seq[BaseMessage] = Seq(
+        SystemMessage("Hello:"),
+        SystemMessage("Hello"),
+        UserMessage("Hi there")
       )
+
       checkTokensForFunctionCall(Seq(function1), messages, usedTokens = 40)
     }
+
     "counting tokens with function - empty properties in object" in new TestCase {
       private val function1 = FunctionSpec(
         name = "do_stuff",
         parameters = ListMap("type" -> "object", "properties" -> ListMap())
       )
-      val messages: Seq[FunMessageSpec] =
+      val messages: Seq[BaseMessage] =
         Seq(
-          FunMessageSpec(ChatRole.System, Some("Hello:"), None, None),
-          FunMessageSpec(ChatRole.User, Some("Hi there"), None, None)
+          SystemMessage("Hello:"),
+          UserMessage("Hi there")
         )
       checkTokensForFunctionCall(Seq(function1), messages, usedTokens = 35)
     }
+
     "counting tokens with function - gpt4 model" in new TestCase {
       private val function1 = FunctionSpec(
         name = "function",
@@ -305,10 +327,11 @@ class OpenAICountTokensServiceSpec
           )
         )
       )
-      val messages: Seq[FunMessageSpec] =
-        Seq(FunMessageSpec(ChatRole.User, Some("hello"), None, None))
+      val messages: Seq[BaseMessage] = Seq(UserMessage("hello"))
+
       checkTokensForFunctionCall(Seq(function1), messages, usedTokens = 46, model = "gpt-4")
     }
+
     "counting tokens with function - responseFunctionName is set to Some" in new TestCase {
       private val function1 = FunctionSpec(
         name = "function",
@@ -329,8 +352,9 @@ class OpenAICountTokensServiceSpec
           )
         )
       )
-      private val messages: Seq[FunMessageSpec] =
-        Seq(FunMessageSpec(ChatRole.User, Some("hello"), None, None))
+
+      val messages: Seq[BaseMessage] = Seq(UserMessage("hello"))
+
       private val model = "gpt-3.5-turbo"
       private val responseFunctionName = Some("function")
       checkTokensForFunctionCall(
@@ -341,6 +365,7 @@ class OpenAICountTokensServiceSpec
         model = model
       )
     }
+
     "counting tokens with function - array with enum" in new TestCase {
       private val function1 = FunctionSpec(
         name = "function",
@@ -371,8 +396,9 @@ class OpenAICountTokensServiceSpec
           )
         )
       )
-      private val messages: Seq[FunMessageSpec] =
-        Seq(FunMessageSpec(ChatRole.User, Some("hello"), None, None))
+
+      val messages: Seq[BaseMessage] = Seq(UserMessage("hello"))
+
       private val model = "gpt-3.5-turbo"
       private val responseFunctionName = Some("function")
       checkTokensForFunctionCall(
