@@ -18,7 +18,8 @@ trait OpenAICountTokensHelper {
     val encoding = registry.getEncodingForModel(model).orElseThrow
     val (tokensPerMessage, tokensPerName) = tokensPerMessageAndName(model)
 
-    val sum = messages.map(countMessageTokensAux(tokensPerMessage, tokensPerName, encoding)).sum
+    val sum =
+      messages.map(countMessageTokensAux(tokensPerMessage, tokensPerName, encoding)).sum
 
     sum + 3 // every reply is primed with <|start|>assistant<|message|>
   }
@@ -36,13 +37,14 @@ trait OpenAICountTokensHelper {
   private def countMessageTokensAux(
     tokensPerMessage: Int,
     tokensPerName: Int,
-    encoding: Encoding)(
+    encoding: Encoding
+  )(
     message: BaseMessage
   ) = {
     tokensPerMessage +
-    countContentAndExtra(encoding, message) +
-    encoding.countTokens(message.role.toString) +
-    message.nameOpt.map { name => encoding.countTokens(name) + tokensPerName }.getOrElse(0)
+      countContentAndExtra(encoding, message) +
+      encoding.countTokens(message.role.toString) +
+      message.nameOpt.map { name => encoding.countTokens(name) + tokensPerName }.getOrElse(0)
   }
 
   private def tokensPerMessageAndName(model: String) =
@@ -126,26 +128,30 @@ trait OpenAICountTokensHelper {
     def countMessageTokens(message: BaseMessage) =
       countMessageTokensAux(tokensPerMessage, tokensPerName, encoding)(message)
 
-    val messagesTokensCount = messages.foldLeft((false, 0)) {  case ((paddedSystem, count), message) =>
-      val (newPaddedFlag, paddedMessage) = if (message.role == ChatRole.System && !paddedSystem) {
-        message match {
-          case m: SystemMessage =>
-            (true, m.copy(content = m.content + "\n"))
-          case m: MessageSpec if m.role == ChatRole.System =>
-            (true, m.copy(content = m.content + "\n"))
-          case _ =>
-            throw new IllegalArgumentException(s"Unexpected message: $message")
-        }
-      } else {
-        (paddedSystem, message)
-      }
+    val messagesTokensCount = messages
+      .foldLeft((false, 0)) { case ((paddedSystem, count), message) =>
+        val (newPaddedFlag, paddedMessage) =
+          if (message.role == ChatRole.System && !paddedSystem) {
+            message match {
+              case m: SystemMessage =>
+                (true, m.copy(content = m.content + "\n"))
+              case m: MessageSpec if m.role == ChatRole.System =>
+                (true, m.copy(content = m.content + "\n"))
+              case _ =>
+                throw new IllegalArgumentException(s"Unexpected message: $message")
+            }
+          } else {
+            (paddedSystem, message)
+          }
 
-      (newPaddedFlag, count + countMessageTokens(paddedMessage))
-    }._2
+        (newPaddedFlag, count + countMessageTokens(paddedMessage))
+      }
+      ._2
 
     val functionsTokensCount = functionsTokensEstimate(encoding, functions)
     val systemRoleAdjustment = if (messages.exists(m => m.role == ChatRole.System)) -4 else 0
-    val responseFunctionNameCount = responseFunctionName.map(name => encoding.countTokens(name) + 4).getOrElse(0)
+    val responseFunctionNameCount =
+      responseFunctionName.map(name => encoding.countTokens(name) + 4).getOrElse(0)
 
     messagesTokensCount + functionsTokensCount + systemRoleAdjustment + responseFunctionNameCount + 3
   }
