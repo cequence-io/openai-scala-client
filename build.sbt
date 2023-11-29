@@ -58,7 +58,10 @@ lazy val guice = (project in file("openai-guice"))
   .aggregate(client_stream)
 
 lazy val count_tokens = (project in file("openai-count-tokens"))
-  .settings(commonSettings: _*)
+  .settings(
+    definedTestNames in Test := Nil,
+    commonSettings: _*
+  )
   .dependsOn(client)
   .aggregate(client)
 
