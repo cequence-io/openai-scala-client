@@ -7,7 +7,7 @@ val scala3 = "3.2.2"
 
 ThisBuild / organization := "io.cequence"
 ThisBuild / scalaVersion := scala212
-ThisBuild / version := "0.5.0"
+ThisBuild / version := "0.5.3-RC.1"
 ThisBuild / isSnapshot := false
 
 lazy val commonSettings = Seq(
@@ -59,8 +59,7 @@ lazy val guice = (project in file("openai-guice"))
 
 lazy val count_tokens = (project in file("openai-count-tokens"))
   .settings(
-    definedTestNames in Test := Nil,
-    commonSettings: _*
+    commonSettings ++ Seq(definedTestNames in Test := Nil): _*
   )
   .dependsOn(client)
   .aggregate(client)
