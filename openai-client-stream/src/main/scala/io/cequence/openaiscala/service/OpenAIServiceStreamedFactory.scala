@@ -5,9 +5,10 @@ import io.cequence.openaiscala.service.ws.Timeouts
 
 import scala.concurrent.ExecutionContext
 
-object OpenAIServiceFactory
-    extends OpenAIServiceFactoryHelper[OpenAIService]
-    with OpenAIServiceConsts {
+object OpenAIServiceStreamedFactory
+    extends OpenAIServiceFactoryHelper[
+      OpenAIService with OpenAIServiceStreamedExtra
+    ] {
 
   override def customInstance(
     coreUrl: String,
@@ -17,16 +18,7 @@ object OpenAIServiceFactory
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer
-  ): OpenAIService =
+  ): OpenAIService with OpenAIServiceStreamedExtra =
     new OpenAIServiceClassImpl(coreUrl, authHeaders, extraParams, timeouts)
+      with OpenAIServiceStreamedExtraImpl
 }
-
-private class OpenAIServiceClassImpl(
-  val coreUrl: String,
-  val authHeaders: Seq[(String, String)],
-  val extraParams: Seq[(String, String)],
-  val explTimeouts: Option[Timeouts]
-)(
-  implicit val ec: ExecutionContext,
-  val materializer: Materializer
-) extends OpenAIServiceImpl
