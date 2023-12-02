@@ -17,11 +17,11 @@ import scala.concurrent.Future
  *
  *   - '''Models''': listModels, and retrieveModel
  *   - '''Completions''': createCompletion
- *   - '''Chat Completions''': createChatCompletion, and createChatFunCompletion
+ *   - '''Chat Completions''': createChatCompletion, createChatFunCompletion, and createChatToolCompletion
  *   - '''Edits''': createEdit (deprecated)
  *   - '''Images''': createImage, createImageEdit, createImageVariation
  *   - '''Embeddings''': createEmbeddings
- *   - '''Audio''': createAudioTranscription, and createAudioTranslation
+ *   - '''Audio''': createAudioTranscription, createAudioTranslation, and createAudioSpeech
  *   - '''Files''': listFiles, uploadFile, deleteFile, retrieveFile, and retrieveFileContent
  *   - '''Fine-tunes''': createFineTune, listFineTunes, retrieveFineTune, cancelFineTune,
  *     listFineTuneEvents, and deleteFineTuneModel
