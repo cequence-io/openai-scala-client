@@ -2,7 +2,13 @@ package io.cequence.openaiscala.service
 
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import io.cequence.openaiscala.domain.{BaseMessage, FunctionSpec, ToolSpec}
+import io.cequence.openaiscala.domain.{
+  BaseMessage,
+  FunctionSpec,
+  Thread,
+  ThreadMessage,
+  ToolSpec
+}
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
 
@@ -17,7 +23,8 @@ import scala.concurrent.Future
  *
  *   - '''Models''': listModels, and retrieveModel
  *   - '''Completions''': createCompletion
- *   - '''Chat Completions''': createChatCompletion, createChatFunCompletion, and createChatToolCompletion
+ *   - '''Chat Completions''': createChatCompletion, createChatFunCompletion, and
+ *     createChatToolCompletion
  *   - '''Edits''': createEdit (deprecated)
  *   - '''Images''': createImage, createImageEdit, createImageVariation
  *   - '''Embeddings''': createEmbeddings
@@ -26,6 +33,7 @@ import scala.concurrent.Future
  *   - '''Fine-tunes''': createFineTune, listFineTunes, retrieveFineTune, cancelFineTune,
  *     listFineTuneEvents, and deleteFineTuneModel
  *   - '''Moderations''': createModeration
+ *   - '''Threads''': createThread, retrieveThread, modifyThread, and deleteThread
  *
  * @since Jan
  *   2023
@@ -465,4 +473,70 @@ trait OpenAIService extends OpenAICoreService {
     input: String,
     settings: CreateModerationSettings = DefaultSettings.CreateModeration
   ): Future[ModerationResponse]
+
+  /**
+   * Creates a thread.
+   *
+   * @param messages
+   *   A list of messages to start the thread with.
+   * @param metadata
+   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
+   *   storing additional information about the object in a structured format. Keys can be a
+   *   maximum of 64 characters long and values can be a maxium of 512 characters long.
+   * @return
+   *   A thread object.
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/threads/createThread">OpenAI
+   *   Doc</a>
+   */
+  def createThread(
+    messages: Seq[ThreadMessage] = Nil,
+    metadata: Map[String, String] = Map()
+  ): Future[Thread]
+
+  /**
+   * Retrieves a thread.
+   *
+   * @param threadId
+   *   The ID of the thread to retrieve.
+   * @return
+   *   The thread object matching the specified ID.
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/threads/getThread">OpenAI
+   *   Doc</a>
+   */
+  def retrieveThread(threadId: String): Future[Option[Thread]]
+
+  /**
+   * Modifies a thread.
+   *
+   * @param threadId
+   *   The ID of the thread to modify. Only the metadata can be modified.
+   * @param metadata
+   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
+   *   storing additional information about the object in a structured format. Keys can be a
+   *   maximum of 64 characters long and values can be a maxium of 512 characters long.
+   * @return
+   *   The modified thread object matching the specified ID.
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/threads/modifyThread">OpenAI
+   *   Doc</a>
+   */
+  def modifyThread(
+    threadId: String,
+    metadata: Map[String, String] = Map()
+  ): Future[Thread]
+
+  /**
+   * Deletes a thread.
+   *
+   * @param threadId
+   *   TThe ID of the thread to delete.
+   * @return
+   *   Deletion status
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/threads/deleteThread">OpenAI
+   *   Doc</a>
+   */
+  def deleteThread(threadId: String): Future[DeleteResponse]
 }
