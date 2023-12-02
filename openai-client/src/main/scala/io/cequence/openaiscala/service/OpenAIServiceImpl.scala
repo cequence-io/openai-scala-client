@@ -8,7 +8,13 @@ import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
-import io.cequence.openaiscala.domain.{BaseMessage, FunMessage, FunctionSpec, ToolSpec}
+import io.cequence.openaiscala.domain.{
+  BaseMessage,
+  Thread,
+  FunctionSpec,
+  ThreadMessage,
+  ToolSpec
+}
 
 import java.io.File
 import scala.concurrent.Future
@@ -276,7 +282,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
       _.asSafe[FileInfo]
     )
 
-  // TODO: Azure return http code 204
+  // TODO: Azure returns http code 204
   override def deleteFile(
     fileId: String
   ): Future[DeleteResponse] =
@@ -458,5 +464,81 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
       )
     ).map(
       _.asSafe[ModerationResponse]
+    )
+
+  override def createThread(
+    messages: Seq[ThreadMessage],
+    metadata: Map[String, String]
+  ): Future[Thread] =
+    execPOST(
+      EndPoint.threads,
+      bodyParams = jsonBodyParams(
+        Param.messages -> (
+          if (messages.nonEmpty)
+            Some(messages.map(Json.toJson(_)(threadMessageFormat)))
+          else None
+        ),
+        Param.metadata -> (
+          if (metadata.nonEmpty)
+            Some(metadata)
+          else None
+        )
+      )
+    ).map(
+      _.asSafe[Thread]
+    )
+
+  override def retrieveThread(
+    threadId: String
+  ): Future[Option[Thread]] =
+    execGETWithStatus(
+      EndPoint.threads,
+      Some(threadId)
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafe[Thread])
+    }
+
+  override def modifyThread(
+    threadId: String,
+    metadata: Map[String, String]
+  ): Future[Thread] =
+    execPOST(
+      EndPoint.threads,
+      endPointParam = Some(threadId),
+      bodyParams = jsonBodyParams(
+        Param.metadata -> (
+          if (metadata.nonEmpty)
+            Some(metadata)
+          else None
+        )
+      )
+    ).map(
+      _.asSafe[Thread]
+    )
+
+  override def deleteThread(
+    threadId: String
+  ): Future[DeleteResponse] =
+    execDELETEWithStatus(
+      EndPoint.threads,
+      endPointParam = Some(threadId)
+    ).map(response =>
+      handleNotFoundAndError(response)
+        .map(jsResponse =>
+          (jsResponse \ "deleted").toOption.map {
+            _.asSafe[Boolean] match {
+              case true  => DeleteResponse.Deleted
+              case false => DeleteResponse.NotDeleted
+            }
+          }.getOrElse(
+            throw new OpenAIScalaClientException(
+              s"The attribute 'deleted' is not present in the response: ${response.toString()}."
+            )
+          )
+        )
+        .getOrElse(
+          // we got a not-found http code (404)
+          DeleteResponse.NotFound
+        )
     )
 }
