@@ -2,7 +2,13 @@ package io.cequence.openaiscala.service
 
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import io.cequence.openaiscala.domain.{BaseMessage, FunctionSpec, ToolSpec}
+import io.cequence.openaiscala.domain.{
+  BaseMessage,
+  FunctionSpec,
+  ThreadMessage,
+  Thread,
+  ToolSpec
+}
 import io.cequence.openaiscala.domain.settings._
 
 import java.io.File
@@ -200,6 +206,32 @@ trait OpenAIServiceWrapper extends OpenAIService {
     settings: CreateModerationSettings
   ): Future[ModerationResponse] = wrap(
     _.createModeration(input, settings)
+  )
+
+  override def createThread(
+    messages: Seq[ThreadMessage],
+    metadata: Map[String, String]
+  ): Future[Thread] = wrap(
+    _.createThread(messages, metadata)
+  )
+
+  override def retrieveThread(
+    threadId: String
+  ): Future[Option[Thread]] = wrap(
+    _.retrieveThread(threadId)
+  )
+
+  override def modifyThread(
+    threadId: String,
+    metadata: Map[String, String]
+  ): Future[Thread] = wrap(
+    _.modifyThread(threadId, metadata)
+  )
+
+  override def deleteThread(
+    threadId: String
+  ): Future[DeleteResponse] = wrap(
+    _.deleteThread(threadId)
   )
 
   protected def wrap[T](
