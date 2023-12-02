@@ -7,7 +7,7 @@ import java.{util => ju}
 import io.cequence.openaiscala.domain.response._
 import play.api.libs.functional.syntax._
 import play.api.libs.json.{Format, Json, _}
-import Json.{obj, toJson}
+import Json.toJson
 
 object JsonFormats {
   private implicit val dateFormat: Format[ju.Date] = JsonUtil.SecDateFormat
@@ -266,4 +266,8 @@ object JsonFormats {
     Json.format[ModerationResult]
   implicit val moderationFormat: Format[ModerationResponse] =
     Json.format[ModerationResponse]
+  implicit val threadMessageFormat: Format[ThreadMessage] =
+    Json.format[ThreadMessage]
+  implicit val threadFormat: Format[Thread] =
+    Json.format[Thread]
 }
