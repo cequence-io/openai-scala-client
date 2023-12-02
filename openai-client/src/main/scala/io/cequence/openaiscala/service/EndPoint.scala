@@ -19,6 +19,7 @@ object EndPoint {
   case object files extends EndPoint
   case object fine_tunes extends EndPoint("fine_tuning/jobs")
   case object moderations extends EndPoint
+  case object threads extends EndPoint
 }
 
 sealed abstract class Param extends EnumValue()
@@ -78,4 +79,5 @@ object Param {
   case object style extends Param
   case object voice extends Param
   case object speed extends Param
+  case object metadata extends Param
 }
