@@ -180,7 +180,7 @@ object JsonUtil {
       case JsString(value) =>
         valueMap.get(value) match {
           case Some(v) => JsSuccess(v)
-          case None => JsError(s"$value is not a valid enum value.")
+          case None    => JsError(s"$value is not a valid enum value.")
         }
       case _ => JsError("String value expected")
     }
