@@ -1,8 +1,8 @@
 package io.cequence.openaiscala.service
 
-import io.cequence.openaiscala.domain.EnumValue
+import io.cequence.openaiscala.domain.{EnumValue, NamedEnumValue}
 
-sealed abstract class EndPoint(value: String = "") extends EnumValue(value)
+sealed abstract class EndPoint(value: String = "") extends NamedEnumValue(value)
 
 object EndPoint {
   case object models extends EndPoint
@@ -22,7 +22,7 @@ object EndPoint {
   case object threads extends EndPoint
 }
 
-sealed abstract class Param extends EnumValue()
+sealed trait Param extends EnumValue
 
 object Param {
   case object model extends Param

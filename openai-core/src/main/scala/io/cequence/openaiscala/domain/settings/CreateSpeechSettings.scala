@@ -18,7 +18,7 @@ case class CreateSpeechSettings(
   speed: Option[Double] = None
 )
 
-sealed abstract class SpeechResponseFormatType extends EnumValue()
+sealed trait SpeechResponseFormatType extends EnumValue
 
 object SpeechResponseFormatType {
   case object mp3 extends SpeechResponseFormatType
@@ -27,7 +27,7 @@ object SpeechResponseFormatType {
   case object flac extends SpeechResponseFormatType
 }
 
-sealed abstract class VoiceType extends EnumValue()
+sealed trait VoiceType extends EnumValue
 
 object VoiceType {
   case object alloy extends VoiceType

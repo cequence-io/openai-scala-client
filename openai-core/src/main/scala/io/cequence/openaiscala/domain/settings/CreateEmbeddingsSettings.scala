@@ -14,7 +14,7 @@ case class CreateEmbeddingsSettings(
   user: Option[String] = None
 )
 
-sealed abstract class EmbeddingsEncodingFormat extends EnumValue()
+sealed trait EmbeddingsEncodingFormat extends EnumValue
 
 object EmbeddingsEncodingFormat {
   case object float extends EmbeddingsEncodingFormat

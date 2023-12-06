@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.domain.settings
 
-import io.cequence.openaiscala.domain.EnumValue
+import io.cequence.openaiscala.domain.{EnumValue, NamedEnumValue}
 
 case class CreateImageSettings(
   // The model to use for image generation. Defaults to dall-e-2
@@ -33,7 +33,7 @@ case class CreateImageSettings(
   user: Option[String] = None
 )
 
-sealed abstract class ImageSizeType(value: String) extends EnumValue(value)
+sealed abstract class ImageSizeType(value: String) extends NamedEnumValue(value)
 
 object ImageSizeType {
 
@@ -45,21 +45,21 @@ object ImageSizeType {
 
 }
 
-sealed abstract class ImageResponseFormatType extends EnumValue()
+sealed trait ImageResponseFormatType extends EnumValue
 
 object ImageResponseFormatType {
   case object url extends ImageResponseFormatType
   case object b64_json extends ImageResponseFormatType
 }
 
-sealed abstract class ImageQualityType extends EnumValue()
+sealed trait ImageQualityType extends EnumValue
 
 object ImageQualityType {
   case object standard extends ImageQualityType
   case object hd extends ImageQualityType
 }
 
-sealed abstract class ImageStyleType extends EnumValue()
+sealed trait ImageStyleType extends EnumValue
 
 object ImageStyleType {
   case object vivid extends ImageStyleType

@@ -1,6 +1,8 @@
 package io.cequence.openaiscala.domain
 
-sealed trait ChatRole
+sealed trait ChatRole extends EnumValue {
+  override def toString: String = super.toString.toLowerCase
+}
 
 object ChatRole {
   case object User extends ChatRole

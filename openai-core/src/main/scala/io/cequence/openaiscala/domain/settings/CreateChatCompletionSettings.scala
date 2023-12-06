@@ -64,7 +64,7 @@ case class CreateChatCompletionSettings(
   seed: Option[Int] = None // new
 )
 
-sealed abstract class ChatCompletionResponseFormatType extends EnumValue()
+sealed trait ChatCompletionResponseFormatType extends EnumValue
 
 object ChatCompletionResponseFormatType {
   case object text extends ChatCompletionResponseFormatType

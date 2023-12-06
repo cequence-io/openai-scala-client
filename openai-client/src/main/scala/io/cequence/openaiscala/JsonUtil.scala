@@ -1,5 +1,7 @@
 package io.cequence.openaiscala
 
+import io.cequence.openaiscala.domain.EnumValue
+
 import java.{util => ju}
 import play.api.libs.json.{Format, _}
 
@@ -169,5 +171,24 @@ object JsonUtil {
     val rightFormat = implicitly[Format[R]]
 
     new EitherFormat[L, R](leftFormat, rightFormat)
+  }
+
+  def enumFormat[T <: EnumValue](values: T*): Format[T] = {
+    val valueMap = values.map(v => v.toString -> v).toMap
+
+    val reads: Reads[T] = Reads {
+      case JsString(value) =>
+        valueMap.get(value) match {
+          case Some(v) => JsSuccess(v)
+          case None => JsError(s"$value is not a valid enum value.")
+        }
+      case _ => JsError("String value expected")
+    }
+
+    val writes: Writes[T] = Writes { (v: T) =>
+      JsString(v.toString)
+    }
+
+    Format(reads, writes)
   }
 }

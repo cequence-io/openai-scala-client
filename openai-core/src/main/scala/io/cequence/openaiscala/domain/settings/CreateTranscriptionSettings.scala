@@ -21,7 +21,7 @@ case class CreateTranscriptionSettings(
   language: Option[String] = None
 )
 
-sealed abstract class TranscriptResponseFormatType extends EnumValue()
+sealed trait TranscriptResponseFormatType extends EnumValue
 
 object TranscriptResponseFormatType {
   case object json extends TranscriptResponseFormatType
