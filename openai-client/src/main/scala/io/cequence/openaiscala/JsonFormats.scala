@@ -1,6 +1,6 @@
 package io.cequence.openaiscala
 
-import io.cequence.openaiscala.JsonUtil.JsonOps
+import io.cequence.openaiscala.JsonUtil.{JsonOps, enumFormat}
 import io.cequence.openaiscala.domain._
 
 import java.{util => ju}
@@ -41,22 +41,13 @@ object JsonFormats {
   implicit val textCompletionFormat: Format[TextCompletionResponse] =
     Json.format[TextCompletionResponse]
 
-  implicit object ChatRoleFormat extends Format[ChatRole] {
-    override def reads(json: JsValue): JsResult[ChatRole] = {
-      json.asSafe[String] match {
-        case "system"    => JsSuccess(ChatRole.System)
-        case "user"      => JsSuccess(ChatRole.User)
-        case "assistant" => JsSuccess(ChatRole.Assistant)
-        case "function"  => JsSuccess(ChatRole.Function)
-        case "tool"      => JsSuccess(ChatRole.Tool)
-        case x           => JsError(s"$x is not a valid message role.")
-      }
-    }
-
-    override def writes(o: ChatRole): JsValue = {
-      JsString(o.toString.toLowerCase())
-    }
-  }
+  implicit val chatRoleFormat: Format[ChatRole] = enumFormat[ChatRole](
+    ChatRole.User,
+    ChatRole.System,
+    ChatRole.Assistant,
+    ChatRole.Function,
+    ChatRole.Tool
+  )
 
   implicit val functionCallSpecFormat: Format[FunctionCallSpec] =
     Json.format[FunctionCallSpec]
@@ -270,4 +261,34 @@ object JsonFormats {
     Json.format[ThreadMessage]
   implicit val threadFormat: Format[Thread] =
     Json.format[Thread]
+
+  implicit val fileIdFormat: Format[FileId] =
+    Json.format[FileId]
+
+  implicit val threadMessageContentTypeFormat: Format[ThreadMessageContentType] =
+    enumFormat[ThreadMessageContentType](
+      ThreadMessageContentType.image_file,
+      ThreadMessageContentType.text
+    )
+
+  implicit val fileAnnotationTypeFormat: Format[FileAnnotationType] =
+    enumFormat[FileAnnotationType](
+      FileAnnotationType.file_citation,
+      FileAnnotationType.file_path
+    )
+
+  implicit val fileCitationFormat: Format[FileCitation] =
+    Json.format[FileCitation]
+
+  implicit val threadMessageTextFormat: Format[ThreadMessageText] =
+    Json.format[ThreadMessageText]
+
+  implicit val threadMessageContentFormat: Format[ThreadMessageContent] =
+    Json.format[ThreadMessageContent]
+
+  implicit val fileAnnotationFormat: Format[FileAnnotation] =
+    Json.format[FileAnnotation]
+
+  implicit val threadFullMessageFormat: Format[ThreadFullMessage] =
+    Json.format[ThreadFullMessage]
 }
