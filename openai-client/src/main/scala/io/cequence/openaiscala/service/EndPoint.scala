@@ -80,4 +80,7 @@ object Param {
   case object voice extends Param
   case object speed extends Param
   case object metadata extends Param
+  case object role extends Param
+  case object content extends Param
+  case object file_ids extends Param
 }

@@ -4,8 +4,10 @@ import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.cequence.openaiscala.domain.{
   BaseMessage,
+  ChatRole,
   FunctionSpec,
   Thread,
+  ThreadFullMessage,
   ThreadMessage,
   ToolSpec
 }
@@ -539,4 +541,53 @@ trait OpenAIService extends OpenAICoreService {
    *   Doc</a>
    */
   def deleteThread(threadId: String): Future[DeleteResponse]
+
+  /**
+   * Creates a thread message.
+   *
+   * @param threadId
+   *   The ID of the thread to create a message for.
+   * @param role
+   *   The role of the entity that is creating the message. Currently only user is supported.
+   * @param content
+   *   The content of the message.
+   * @param fileIds
+   *   A list of File IDs that the message should use. There can be a maximum of 10 files
+   *   attached to a message. Useful for tools like retrieval and code_interpreter that can
+   *   access and use files.
+   * @param metadata
+   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
+   *   storing additional information about the object in a structured format. Keys can be a
+   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
+   * @return
+   *   A thread message object.
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/messages/createMessage">OpenAI
+   *   Doc</a>
+   */
+  def createThreadMessage(
+    threadId: String,
+    content: String,
+    role: ChatRole = ChatRole.User,
+    fileIds: Seq[String] = Nil,
+    metadata: Map[String, String] = Map()
+  ): Future[ThreadFullMessage]
+
+  /**
+   * Retrieves a thread message.
+   *
+   * @param threadId
+   *The ID of the thread to which this message belongs.
+   * @param messageId
+   * The ID of the message to retrieve.
+   * @return
+   * The message object matching the specified ID.
+   * @see
+   * <a href="https://platform.openai.com/docs/api-reference/messages/getMessage">OpenAI
+   * Doc</a>
+   */
+  def retrieveThreadMessage(
+    threadId: String,
+    messageId: String,
+  ): Future[Option[ThreadFullMessage]]
 }

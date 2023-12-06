@@ -10,8 +10,10 @@ import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.{
   BaseMessage,
-  Thread,
+  ChatRole,
   FunctionSpec,
+  Thread,
+  ThreadFullMessage,
   ThreadMessage,
   ToolSpec
 }
@@ -541,4 +543,43 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
           DeleteResponse.NotFound
         )
     )
+
+  override def createThreadMessage(
+    threadId: String,
+    content: String,
+    role: ChatRole,
+    fileIds: Seq[String] = Nil,
+    metadata: Map[String, String] = Map()
+  ): Future[ThreadFullMessage] =
+    execPOST(
+      EndPoint.threads,
+      endPointParam = Some(s"$threadId/messages"),
+      bodyParams = jsonBodyParams(
+        Param.role -> Some(role.toString),
+        Param.content -> Some(content),
+        Param.file_ids -> (
+          if (fileIds.nonEmpty)
+            Some(fileIds)
+          else None
+        ),
+        Param.metadata -> (
+          if (metadata.nonEmpty)
+            Some(metadata)
+          else None
+        )
+      )
+    ).map(
+      _.asSafe[ThreadFullMessage]
+    )
+
+  override def retrieveThreadMessage(
+    threadId: String,
+    messageId: String
+  ): Future[Option[ThreadFullMessage]] =
+    execGETWithStatus(
+      EndPoint.threads,
+      endPointParam = Some(s"$threadId/messages/$messageId"),
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafe[ThreadFullMessage])
+    }
 }

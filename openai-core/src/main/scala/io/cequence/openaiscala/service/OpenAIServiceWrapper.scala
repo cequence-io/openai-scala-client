@@ -4,9 +4,11 @@ import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.cequence.openaiscala.domain.{
   BaseMessage,
+  ChatRole,
   FunctionSpec,
-  ThreadMessage,
   Thread,
+  ThreadFullMessage,
+  ThreadMessage,
   ToolSpec
 }
 import io.cequence.openaiscala.domain.settings._
@@ -232,6 +234,23 @@ trait OpenAIServiceWrapper extends OpenAIService {
     threadId: String
   ): Future[DeleteResponse] = wrap(
     _.deleteThread(threadId)
+  )
+
+  override def createThreadMessage(
+    threadId: String,
+    content: String,
+    role: ChatRole,
+    fileIds: Seq[String] = Nil,
+    metadata: Map[String, String] = Map()
+  ): Future[ThreadFullMessage] = wrap(
+    _.createThreadMessage(threadId, content, role, fileIds, metadata)
+  )
+
+  override def retrieveThreadMessage(
+    threadId: String,
+    messageId: String
+  ): Future[Option[ThreadFullMessage]] = wrap(
+    _.retrieveThreadMessage(threadId, messageId)
   )
 
   protected def wrap[T](
