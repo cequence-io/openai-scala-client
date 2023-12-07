@@ -226,7 +226,7 @@ trait OpenAIServiceWrapper extends OpenAIService {
   override def modifyThread(
     threadId: String,
     metadata: Map[String, String]
-  ): Future[Thread] = wrap(
+  ): Future[Option[Thread]] = wrap(
     _.modifyThread(threadId, metadata)
   )
 
@@ -251,6 +251,14 @@ trait OpenAIServiceWrapper extends OpenAIService {
     messageId: String
   ): Future[Option[ThreadFullMessage]] = wrap(
     _.retrieveThreadMessage(threadId, messageId)
+  )
+
+  override def modifyThreadMessage(
+    threadId: String,
+    messageId: String,
+    metadata: Map[String, String]
+  ): Future[Option[ThreadFullMessage]] = wrap(
+    _.modifyThreadMessage(threadId, messageId, metadata)
   )
 
   protected def wrap[T](

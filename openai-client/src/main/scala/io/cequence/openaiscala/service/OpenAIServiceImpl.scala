@@ -503,8 +503,8 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
   override def modifyThread(
     threadId: String,
     metadata: Map[String, String]
-  ): Future[Thread] =
-    execPOST(
+  ): Future[Option[Thread]] =
+    execPOSTWithStatus(
       EndPoint.threads,
       endPointParam = Some(threadId),
       bodyParams = jsonBodyParams(
@@ -514,9 +514,9 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
           else None
         )
       )
-    ).map(
-      _.asSafe[Thread]
-    )
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafe[Thread])
+    }
 
   override def deleteThread(
     threadId: String
@@ -578,7 +578,26 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
   ): Future[Option[ThreadFullMessage]] =
     execGETWithStatus(
       EndPoint.threads,
+      endPointParam = Some(s"$threadId/messages/$messageId")
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafe[ThreadFullMessage])
+    }
+
+  override def modifyThreadMessage(
+    threadId: String,
+    messageId: String,
+    metadata: Map[String, String]
+  ): Future[Option[ThreadFullMessage]] =
+    execPOSTWithStatus(
+      EndPoint.threads,
       endPointParam = Some(s"$threadId/messages/$messageId"),
+      bodyParams = jsonBodyParams(
+        Param.metadata -> (
+          if (metadata.nonEmpty)
+            Some(metadata)
+          else None
+        )
+      )
     ).map { response =>
       handleNotFoundAndError(response).map(_.asSafe[ThreadFullMessage])
     }

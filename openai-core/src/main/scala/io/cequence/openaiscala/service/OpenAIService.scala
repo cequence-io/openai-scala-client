@@ -527,7 +527,7 @@ trait OpenAIService extends OpenAICoreService {
   def modifyThread(
     threadId: String,
     metadata: Map[String, String] = Map()
-  ): Future[Thread]
+  ): Future[Option[Thread]]
 
   /**
    * Deletes a thread.
@@ -577,17 +577,40 @@ trait OpenAIService extends OpenAICoreService {
    * Retrieves a thread message.
    *
    * @param threadId
-   *The ID of the thread to which this message belongs.
+   *   The ID of the thread to which this message belongs.
    * @param messageId
-   * The ID of the message to retrieve.
+   *   The ID of the message to retrieve.
    * @return
-   * The message object matching the specified ID.
+   *   The message object matching the specified ID.
    * @see
-   * <a href="https://platform.openai.com/docs/api-reference/messages/getMessage">OpenAI
-   * Doc</a>
+   *   <a href="https://platform.openai.com/docs/api-reference/messages/getMessage">OpenAI
+   *   Doc</a>
    */
   def retrieveThreadMessage(
     threadId: String,
+    messageId: String
+  ): Future[Option[ThreadFullMessage]]
+
+  /**
+   * Modifies a thread message.
+   *
+   * @param threadId
+   *   The ID of the thread to which this message belongs.
+   * @param messageId
+   *   The ID of the message to modify.
+   * @param metadata
+   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
+   *   storing additional information about the object in a structured format. Keys can be a
+   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
+   * @return
+   *   The modified message object.
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/messages/modifyMessage">OpenAI
+   *   Doc</a>
+   */
+  def modifyThreadMessage(
+    threadId: String,
     messageId: String,
+    metadata: Map[String, String] = Map()
   ): Future[Option[ThreadFullMessage]]
 }
