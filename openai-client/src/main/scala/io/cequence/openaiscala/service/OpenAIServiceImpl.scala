@@ -601,4 +601,30 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
     ).map { response =>
       handleNotFoundAndError(response).map(_.asSafe[ThreadFullMessage])
     }
+
+  override def listThreadMessages(
+    threadId: String,
+    limit: Option[Int] = None,
+    order: Option[String] = None,
+    after: Option[String] = None,
+    before: Option[String] = None
+  ): Future[Seq[ThreadFullMessage]] =
+    execGET(
+      EndPoint.threads,
+      endPointParam = Some(s"$threadId/messages"),
+      params = Seq(
+        Param.limit -> limit,
+        Param.order -> order,
+        Param.after -> after,
+        Param.before -> before
+      )
+    ).map { response =>
+      (response.asSafe[JsObject] \ "data").toOption
+        .map(_.asSafeArray[ThreadFullMessage])
+        .getOrElse(
+          throw new OpenAIScalaClientException(
+            s"The attribute 'data' is not present in the response: ${response.toString()}."
+          )
+        )
+    }
 }

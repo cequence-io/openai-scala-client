@@ -261,6 +261,16 @@ trait OpenAIServiceWrapper extends OpenAIService {
     _.modifyThreadMessage(threadId, messageId, metadata)
   )
 
+  override def listThreadMessages(
+    threadId: String,
+    limit: Option[Int] = None,
+    order: Option[String] = None,
+    after: Option[String] = None,
+    before: Option[String] = None
+  ): Future[Seq[ThreadFullMessage]] = wrap(
+    _.listThreadMessages(threadId, limit, order, after, before)
+  )
+
   protected def wrap[T](
     fun: OpenAIService => Future[T]
   ): Future[T]

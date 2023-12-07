@@ -83,4 +83,6 @@ object Param {
   case object role extends Param
   case object content extends Param
   case object file_ids extends Param
+  case object order extends Param
+  case object before extends Param
 }
