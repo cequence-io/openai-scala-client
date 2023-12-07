@@ -1,7 +1,7 @@
 package io.cequence.openaiscala
 
 import io.cequence.openaiscala.JsonUtil.{JsonOps, enumFormat}
-import io.cequence.openaiscala.domain._
+import io.cequence.openaiscala.domain.{ThreadMessageFile, _}
 
 import java.{util => ju}
 import io.cequence.openaiscala.domain.response._
@@ -291,4 +291,7 @@ object JsonFormats {
 
   implicit val threadFullMessageFormat: Format[ThreadFullMessage] =
     Json.format[ThreadFullMessage]
+
+  implicit val threadMessageFileFormat: Format[ThreadMessageFile] =
+    Json.format[ThreadMessageFile]
 }
