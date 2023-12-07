@@ -6,9 +6,11 @@ import io.cequence.openaiscala.domain.{
   BaseMessage,
   ChatRole,
   FunctionSpec,
+  SortOrder,
   Thread,
   ThreadFullMessage,
   ThreadMessage,
+  ThreadMessageFile,
   ToolSpec
 }
 import io.cequence.openaiscala.domain.settings._
@@ -240,8 +242,8 @@ trait OpenAIServiceWrapper extends OpenAIService {
     threadId: String,
     content: String,
     role: ChatRole,
-    fileIds: Seq[String] = Nil,
-    metadata: Map[String, String] = Map()
+    fileIds: Seq[String],
+    metadata: Map[String, String]
   ): Future[ThreadFullMessage] = wrap(
     _.createThreadMessage(threadId, content, role, fileIds, metadata)
   )
@@ -263,12 +265,31 @@ trait OpenAIServiceWrapper extends OpenAIService {
 
   override def listThreadMessages(
     threadId: String,
-    limit: Option[Int] = None,
-    order: Option[String] = None,
-    after: Option[String] = None,
-    before: Option[String] = None
+    limit: Option[Int],
+    order: Option[SortOrder],
+    after: Option[String],
+    before: Option[String]
   ): Future[Seq[ThreadFullMessage]] = wrap(
     _.listThreadMessages(threadId, limit, order, after, before)
+  )
+
+  override def retrieveThreadMessageFile(
+    threadId: String,
+    messageId: String,
+    fileId: String
+  ): Future[Option[ThreadMessageFile]] = wrap(
+    _.retrieveThreadMessageFile(threadId, messageId, fileId)
+  )
+
+  override def listThreadMessageFiles(
+    threadId: String,
+    messageId: String,
+    limit: Option[Int],
+    order: Option[SortOrder],
+    after: Option[String],
+    before: Option[String]
+  ): Future[Seq[ThreadMessageFile]] = wrap(
+    _.listThreadMessageFiles(threadId, messageId, limit, order, after, before)
   )
 
   protected def wrap[T](

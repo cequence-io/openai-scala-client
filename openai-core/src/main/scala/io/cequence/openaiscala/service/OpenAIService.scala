@@ -6,9 +6,11 @@ import io.cequence.openaiscala.domain.{
   BaseMessage,
   ChatRole,
   FunctionSpec,
+  SortOrder,
   Thread,
   ThreadFullMessage,
   ThreadMessage,
+  ThreadMessageFile,
   ToolSpec
 }
 import io.cequence.openaiscala.domain.settings._
@@ -36,6 +38,8 @@ import scala.concurrent.Future
  *     listFineTuneEvents, and deleteFineTuneModel
  *   - '''Moderations''': createModeration
  *   - '''Threads''': createThread, retrieveThread, modifyThread, and deleteThread
+ *   - '''Thread Messages''': createThreadMessage, retrieveThreadMessage, modifyThreadMessage,
+ *     and listThreadMessages
  *
  * @since Jan
  *   2023
@@ -644,8 +648,68 @@ trait OpenAIService extends OpenAICoreService {
   def listThreadMessages(
     threadId: String,
     limit: Option[Int] = None,
-    order: Option[String] = None,
+    order: Option[SortOrder] = None,
     after: Option[String] = None,
     before: Option[String] = None
   ): Future[Seq[ThreadFullMessage]]
+
+  /**
+   * Retrieves a thread message file.
+   *
+   * @param threadId
+   *   The ID of the thread to which the message and File belong.
+   * @param messageId
+   *   The ID of the message the file belongs to.
+   * @param fileId
+   *   The ID of the file being retrieved.
+   * @return
+   *   The thread message file object.
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/messages/getMessageFile">OpenAI
+   *   Doc</a>
+   */
+  def retrieveThreadMessageFile(
+    threadId: String,
+    messageId: String,
+    fileId: String
+  ): Future[Option[ThreadMessageFile]]
+
+  /**
+   * Returns a list of message files.
+   *
+   * @param threadId
+   *   The ID of the thread that the message and files belong to.
+   * @param messageId
+   *   TThe ID of the message the file belongs to.
+   * @param limit
+   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
+   *   the default is 20. Defaults to 20
+   * @param order
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
+   *   for descending order. Defaults to desc
+   * @param after
+   *   A cursor for use in pagination. after is an object ID that defines your place in the
+   *   list. For instance, if you make a list request and receive 100 objects, ending with
+   *   obj_foo, your subsequent call can include after=obj_foo in order to fetch the next page
+   *   of the list.
+   * @param before
+   *   A cursor for use in pagination. before is an object ID that defines your place in the
+   *   list. For instance, if you make a list request and receive 100 objects, ending with
+   *   obj_foo, your subsequent call can include before=obj_foo in order to fetch the previous
+   *   page of the list.
+   * @return
+   *   thread message files
+   * @see
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/messages/listMessageFiles">OpenAI
+   *   Doc</a>
+   */
+  def listThreadMessageFiles(
+    threadId: String,
+    messageId: String,
+    limit: Option[Int] = None,
+    order: Option[SortOrder] = None,
+    after: Option[String] = None,
+    before: Option[String] = None
+  ): Future[Seq[ThreadMessageFile]]
 }

@@ -8,15 +8,7 @@ import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
-import io.cequence.openaiscala.domain.{
-  BaseMessage,
-  ChatRole,
-  FunctionSpec,
-  Thread,
-  ThreadFullMessage,
-  ThreadMessage,
-  ToolSpec
-}
+import io.cequence.openaiscala.domain.{BaseMessage, ChatRole, FunctionSpec, SortOrder, Thread, ThreadFullMessage, ThreadMessage, ThreadMessageFile, ToolSpec}
 
 import java.io.File
 import scala.concurrent.Future
@@ -604,10 +596,10 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
 
   override def listThreadMessages(
     threadId: String,
-    limit: Option[Int] = None,
-    order: Option[String] = None,
-    after: Option[String] = None,
-    before: Option[String] = None
+    limit: Option[Int],
+    order: Option[SortOrder],
+    after: Option[String],
+    before: Option[String]
   ): Future[Seq[ThreadFullMessage]] =
     execGET(
       EndPoint.threads,
@@ -621,6 +613,45 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
     ).map { response =>
       (response.asSafe[JsObject] \ "data").toOption
         .map(_.asSafeArray[ThreadFullMessage])
+        .getOrElse(
+          throw new OpenAIScalaClientException(
+            s"The attribute 'data' is not present in the response: ${response.toString()}."
+          )
+        )
+    }
+
+  override def retrieveThreadMessageFile(
+    threadId: String,
+    messageId: String,
+    fileId: String
+  ): Future[Option[ThreadMessageFile]] =
+    execGETWithStatus(
+      EndPoint.threads,
+      endPointParam = Some(s"$threadId/messages/$messageId/files/$fileId")
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafe[ThreadMessageFile])
+    }
+
+  override def listThreadMessageFiles(
+    threadId: String,
+    messageId: String,
+    limit: Option[Int],
+    order: Option[SortOrder],
+    after: Option[String],
+    before: Option[String]
+  ): Future[Seq[ThreadMessageFile]] =
+    execGET(
+      EndPoint.threads,
+      endPointParam = Some(s"$threadId/messages/$messageId/files"),
+      params = Seq(
+        Param.limit -> limit,
+        Param.order -> order,
+        Param.after -> after,
+        Param.before -> before
+      )
+    ).map { response =>
+      (response.asSafe[JsObject] \ "data").toOption
+        .map(_.asSafeArray[ThreadMessageFile])
         .getOrElse(
           throw new OpenAIScalaClientException(
             s"The attribute 'data' is not present in the response: ${response.toString()}."
