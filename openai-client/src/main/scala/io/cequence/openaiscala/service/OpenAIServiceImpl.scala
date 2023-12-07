@@ -8,7 +8,17 @@ import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
-import io.cequence.openaiscala.domain.{BaseMessage, ChatRole, FunctionSpec, SortOrder, Thread, ThreadFullMessage, ThreadMessage, ThreadMessageFile, ToolSpec}
+import io.cequence.openaiscala.domain.{
+  BaseMessage,
+  ChatRole,
+  FunctionSpec,
+  SortOrder,
+  Thread,
+  ThreadFullMessage,
+  ThreadMessage,
+  ThreadMessageFile,
+  ToolSpec
+}
 
 import java.io.File
 import scala.concurrent.Future
