@@ -5,7 +5,7 @@ object RetrieveThread extends Example {
   override protected def run =
     for {
       thread <- service.retrieveThread(
-        "thread_r0uAuizlDYmx9de3pFVwuFsZ"
+        "thread_c6fFMmUw30l30SzG2KdUViMn"
       )
     } yield {
       println(thread)
