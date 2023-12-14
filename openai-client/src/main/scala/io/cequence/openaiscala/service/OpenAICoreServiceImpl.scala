@@ -140,7 +140,7 @@ private trait OpenAICoreServiceImpl extends OpenAICoreService with WSRequestHelp
       Param.user -> settings.user,
       Param.seed -> settings.seed,
       Param.response_format -> settings.response_format_type.map { formatType =>
-        Map("type" -> formatType)
+        Map("type" -> formatType.toString)
       }
     )
   }
