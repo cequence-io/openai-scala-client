@@ -46,6 +46,16 @@ case class CreateChatCompletionSettings(
   // values like -100 or 100 should result in a ban or exclusive selection of the relevant token.
   logit_bias: Map[String, Int] = Map(),
 
+  // Whether to return log probabilities of the output tokens or not.
+  // If true, returns the log probabilities of each output token returned in the content of message.
+  // This option is currently not available on the gpt-4-vision-preview model.
+  // Defaults to false
+  logprobs: Option[Boolean] = None,
+
+  // An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability.
+  // logprobs must be set to true if this parameter is used.
+  top_logprobs: Option[Int] = None,
+
   // A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse.
   user: Option[String] = None,
 

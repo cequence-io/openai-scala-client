@@ -85,4 +85,5 @@ object Param {
   case object file_ids extends Param
   case object order extends Param
   case object before extends Param
+  case object top_logprobs extends Param
 }
