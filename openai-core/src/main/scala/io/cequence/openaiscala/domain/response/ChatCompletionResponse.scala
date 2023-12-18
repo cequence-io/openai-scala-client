@@ -68,7 +68,8 @@ sealed trait BaseChatCompletionChoiceInfo[M <: BaseMessage] {
 case class ChatCompletionChoiceInfo(
   message: AssistantMessage,
   index: Int,
-  finish_reason: Option[String]
+  finish_reason: Option[String],
+  logprobs: Option[Logprobs]
 ) extends BaseChatCompletionChoiceInfo[AssistantMessage]
 
 case class ChatToolCompletionChoiceInfo(
@@ -82,6 +83,25 @@ case class ChatFunCompletionChoiceInfo(
   index: Int,
   finish_reason: Option[String]
 ) extends BaseChatCompletionChoiceInfo[AssistantFunMessage]
+
+case class Logprobs(
+  content: Seq[LogprobInfo]
+)
+
+case class LogprobInfo(
+  token: String,
+  logprob: Double,
+  bytes: Seq[Byte],
+  // List of the most likely tokens and their log probability, at this token position.
+  // In rare cases, there may be fewer than the number of requested top_logprobs returned.
+  top_logprobs: Seq[TopLogprobInfo]
+)
+
+case class TopLogprobInfo(
+  token: String,
+  logprob: Double,
+  bytes: Seq[Short]
+)
 
 // chunk - streamed
 case class ChatCompletionChunkResponse(

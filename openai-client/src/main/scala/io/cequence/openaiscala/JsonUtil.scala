@@ -27,7 +27,7 @@ object JsonUtil {
       } catch {
         case e: Exception =>
           throw new OpenAIScalaClientException(
-            s"Error thrown while processing a JSON '$json'. Cause: ${e.getMessage}"
+            s"Error thrown while processing a JSON '${Json.prettyPrint(json)}'. Cause: ${e.getMessage}"
           )
       }
 

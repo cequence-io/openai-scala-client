@@ -12,7 +12,7 @@ import Json.toJson
 object JsonFormats {
   private implicit val dateFormat: Format[ju.Date] = JsonUtil.SecDateFormat
 
-  implicit val PermissionFormat: Format[Permission] = Json.format[Permission]
+  implicit val permissionFormat: Format[Permission] = Json.format[Permission]
   implicit val modelSpecFormat: Format[ModelInfo] = {
     val reads: Reads[ModelInfo] = (
       (__ \ "id").read[String] and
@@ -153,6 +153,13 @@ object JsonFormats {
         Json.obj("type" -> "function", "function" -> Json.toJson(x))
     }
   }
+
+  implicit val topLogprobInfoormat: Format[TopLogprobInfo] =
+    Json.format[TopLogprobInfo]
+  implicit val logprobInfoFormat: Format[LogprobInfo] =
+    Json.format[LogprobInfo]
+  implicit val logprobsFormat: Format[Logprobs] =
+    Json.format[Logprobs]
 
   implicit val chatCompletionChoiceInfoFormat: Format[ChatCompletionChoiceInfo] =
     Json.format[ChatCompletionChoiceInfo]
