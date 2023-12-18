@@ -28,7 +28,9 @@ object CreateChatCompletionWithLogprobs extends Example {
         printMessageContent(response)
         val logprobs = response.choices.head.logprobs.map(_.content).getOrElse(Nil)
         logprobs.foreach { logprob =>
-          println(s"Logprob: ${logprob.token} -> ${logprob.logprob}, top: ${logprob.top_logprobs.map(_.token).mkString(", ")}")
+          println(
+            s"Logprob: ${logprob.token} -> ${logprob.logprob}, top: ${logprob.top_logprobs.map(_.token).mkString(", ")}"
+          )
         }
       }
 }
