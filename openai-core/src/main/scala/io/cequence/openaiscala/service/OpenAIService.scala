@@ -27,7 +27,7 @@ import scala.concurrent.Future
  *
  *   - '''Models''': listModels, and retrieveModel
  *   - '''Completions''': createCompletion
- *   - '''Chat Completions''': createChatCompletion, createChatFunCompletion, and
+ *   - '''Chat Completions''': createChatCompletion, createChatFunCompletion (deprecated), and
  *     createChatToolCompletion
  *   - '''Edits''': createEdit (deprecated)
  *   - '''Images''': createImage, createImageEdit, createImageVariation
@@ -39,7 +39,7 @@ import scala.concurrent.Future
  *   - '''Moderations''': createModeration
  *   - '''Threads''': createThread, retrieveThread, modifyThread, and deleteThread
  *   - '''Thread Messages''': createThreadMessage, retrieveThreadMessage, modifyThreadMessage,
- *     and listThreadMessages
+ *     listThreadMessages, retrieveThreadMessageFile, and listThreadMessageFiles
  *
  * @since Jan
  *   2023
