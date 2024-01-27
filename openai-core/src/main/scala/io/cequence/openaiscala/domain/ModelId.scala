@@ -20,7 +20,6 @@ object ModelId {
   val code_search_ada_code_001 = "code-search-ada-code-001"
   @Deprecated // will be turned off on Jan 4th
   val code_search_ada_text_001 = "code-search-ada-text-001"
-  val text_embedding_ada_002 = "text-embedding-ada-002"
   @Deprecated // will be turned off on Jan 4th
   val text_search_ada_doc_001 = "text-search-ada-doc-001"
   @Deprecated // will be turned off on Jan 4th
@@ -117,6 +116,12 @@ object ModelId {
   // Moderation
   val text_moderation_latest = "text-moderation-latest"
   val text_moderation_stable = "text-moderation-stable"
+  val text_moderation_007 = "text-moderation-007"
+
+  // Embeddings
+  val text_embedding_ada_002 = "text-embedding-ada-002"
+  val text_embedding_3_large = "text-embedding-3-large"
+  val text_embedding_3_small = "text-embedding-3-small"
 
   // Audio
   val audio_transcribe_001 = "audio-transcribe-001"
@@ -164,8 +169,12 @@ object ModelId {
   val gpt_4_32k_0314 = "gpt-4-32k-0314"
   // 32k context (June 13th snapshot), fine-tuned for function calling
   val gpt_4_32k_0613 = "gpt-4-32k-0613"
-  // 128K context (with training data upto April 2023)
-  val gpt_4_turbo_preview = "gpt-4-1106-preview"
+  // name alias, which will always point to the latest GPT-4 Turbo preview model
+  val gpt_4_turbo_preview = "gpt-4-turbo-preview"
+  // 128K context (with training data upto April 2023) - Nov 6th 2023 snapshot
+  val gpt_4_1106_preview = "gpt-4-1106-preview"
+  // 128K context (with training data upto April 2023) - Jan 25th 2024 snapshot
+  val gpt_4_0125_preview = "gpt-4-0125-preview"
   // 128K context (with training data upto April 2023)
   // includes supports for vision in addition to gpt-4-turbo capabilities
   val gpt_4_vision_preview = "gpt-4-vision-preview"
