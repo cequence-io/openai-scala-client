@@ -140,16 +140,20 @@ object ModelId {
 
   // GPT-3.5 (ChatGPT)
 
-  // 4k context, uses the version 0301 till June 27th, then 0613
+  // The default ‘gpt-3.5-turbo’ will point to gpt-3.5-turbo-0125 starting Feb 15th.
   val gpt_3_5_turbo = "gpt-3.5-turbo"
   @Deprecated // supported till 09/13/2023, 4k context (March 1st snapshot)
   val gpt_3_5_turbo_0301 = "gpt-3.5-turbo-0301"
   // 4k context (June 13th snapshot), fine-tuned for function calling
   val gpt_3_5_turbo_0613 = "gpt-3.5-turbo-0613"
+
   // 16k context
   val gpt_3_5_turbo_16k = "gpt-3.5-turbo-16k"
   // 16k context (June 13th snapshot), fine-tuned for function calling
   val gpt_3_5_turbo_16k_0613 = "gpt-3.5-turbo-16k-0613"
+  // 16k context (Jan 25th 2024 snapshot)
+  val gpt_3_5_turbo_0125 = "gpt-3.5-turbo-0125"
+
   val gpt_3_5_turbo_instruct_0914 = "gpt-3.5-turbo-instruct-0914"
   val gpt_3_5_turbo_instruct = "gpt-3.5-turbo-instruct"
   // 16k context, gpt_3_5_turbo will point to this model from Dec 11, 2023
