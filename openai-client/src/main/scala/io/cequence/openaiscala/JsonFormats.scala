@@ -308,13 +308,13 @@ object JsonFormats {
   implicit val assistantToolFunctionFormat: Format[AssistantTool.Function] =
     Json.format[AssistantTool.Function]
 
+  implicit val functionToolFormat: Format[AssistantTool.FunctionTool] =
+    (JsPath \ "function")
+      .format[AssistantTool.Function]
+      .inmap[AssistantTool.FunctionTool](AssistantTool.FunctionTool.apply, _.function)
+
   implicit val assistantToolFormat: Format[AssistantTool] = {
     val typeDiscriminatorKey = "type"
-
-    val functionToolFormat: Format[AssistantTool.FunctionTool] =
-      (JsPath \ "function")
-        .format[AssistantTool.Function]
-        .inmap[AssistantTool.FunctionTool](AssistantTool.FunctionTool.apply, _.function)
 
     Format[AssistantTool](
       (json: JsValue) => {
@@ -338,10 +338,10 @@ object JsonFormats {
     )
   }
 
-  implicit val assistantFormat: Format[Assistant] = Json.format[Assistant]
-
   implicit val assistantIdFormat: Format[AssistantId] = Json.valueFormat[AssistantId]
 
-  implicit val assistantFileFormat: Format[AssistantFile] = Json.format[AssistantFile]
+  implicit val assistantFormat: Format[Assistant] = Json.format[Assistant]
+
+  lazy implicit val assistantFileFormat: Format[AssistantFile] = Json.format[AssistantFile]
 
 }

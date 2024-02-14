@@ -767,4 +767,30 @@ trait OpenAIService extends OpenAICoreService {
     fileId: String
   ): Future[AssistantFile]
 
+  /**
+   * @param limit
+   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
+   *   the default is 20.
+   * @param order
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
+   *   for descending order.
+   * @param after
+   *   A cursor for use in pagination. after is an object ID that defines your place in the
+   *   list. For instance, if you make a list request and receive 100 objects, ending with
+   *   `obj_foo`, your subsequent call can include `after=obj_foo` in order to fetch the next
+   *   page of the list.
+   * @param before
+   *   A cursor for use in pagination. before is an object ID that defines your place in the
+   *   list. For instance, if you make a list request and receive 100 objects, ending with
+   *   `obj_foo`, your subsequent call can include `before=obj_foo`` in order to fetch the
+   *   previous page of the list.
+   */
+  def listAssistants(
+    limit: Option[Int] = None, // TODO: default 20 or None?
+    // FIXME: not very nice API, high cohesion among these params, should be enclosed as e.g. Pagination
+    order: Option[SortOrder] = None,
+    after: Option[String] = None,
+    before: Option[String] = None
+  ): Future[Seq[Assistant]]
+
 }
