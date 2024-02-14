@@ -765,4 +765,21 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
     ).map { response =>
       handleNotFoundAndError(response).map(_.asSafe[Assistant])
     }
+
+  /**
+   * Retrieves an AssistantFile.
+   *
+   * @param assistantId
+   * The ID of the assistant who the file belongs to.
+   * @param fileId
+   * The ID of the file we're getting.
+   */
+  override def retrieveAssistantFile(assistantId: String, fileId: String): Future[Option[AssistantFile]] =
+    execGETWithStatus(
+      EndPoint.assistants,
+      Some(s"$assistantId/files/$fileId")
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafe[AssistantFile])
+    }
+
 }
