@@ -732,30 +732,6 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
     }
   }
 
-  /**
-   * Returns a list of assistant files.
-   *
-   * @param assistantId
-   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
-   *   the default is 20.
-   * @param limit
-   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
-   *   for descending order.
-   * @param order
-   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
-   *   for descending order.
-   * @param after
-   *   A cursor for use in pagination. after is an object ID that defines your place in the
-   *   list. For instance, if you make a list request and receive 100 objects, ending with
-   *   `obj_foo`, your subsequent call can include `after=obj_foo` in order to fetch the next
-   *   page of the list.
-   * @param before
-   *   A cursor for use in pagination. before is an object ID that defines your place in the
-   *   list. For instance, if you make a list request and receive 100 objects, ending with
-   *   `obj_foo`, your subsequent call can include `before=obj_foo` in order to fetch the
-   *   previous page of the list.
-   * @return
-   */
   override def listAssistantFiles(
     assistantId: String,
     limit: Option[Int],
@@ -780,5 +756,13 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
             s"The attribute 'data' is not present in the response: ${response.toString()}."
           )
         )
+    }
+
+  override def retrieveAssistant(assistantId: String): Future[Option[Assistant]] =
+    execGETWithStatus(
+      EndPoint.assistants,
+      Some(assistantId)
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafe[Assistant])
     }
 }

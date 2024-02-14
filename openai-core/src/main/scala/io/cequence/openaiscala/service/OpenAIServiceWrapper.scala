@@ -335,6 +335,9 @@ trait OpenAIServiceWrapper extends OpenAIService {
       _.listAssistantFiles(assistantId, limit, order, after, before)
     )
 
+  override def retrieveAssistant(assistantId: String): Future[Option[Assistant]] =
+    wrap(_.retrieveAssistant(assistantId))
+
   protected def wrap[T](
     fun: OpenAIService => Future[T]
   ): Future[T]
