@@ -431,7 +431,8 @@ trait WSRequestHelper extends WSHelper {
 
   protected def handleNotFoundAndError[T](response: RichResponse[T]): Option[T] =
     response match {
-      case Left(value) => Some(value)
+      case Left(value) =>
+        Some(value)
 
       case Right((errorCode, _)) =>
         if (errorCode == 404) None

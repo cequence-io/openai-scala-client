@@ -817,7 +817,6 @@ trait OpenAIService extends OpenAICoreService {
    *   list. For instance, if you make a list request and receive 100 objects, ending with
    *   `obj_foo`, your subsequent call can include `before=obj_foo` in order to fetch the
    *   previous page of the list.
-   * @return
    */
   def listAssistantFiles(
     assistantId: String,
@@ -826,5 +825,13 @@ trait OpenAIService extends OpenAICoreService {
     after: Option[String] = None,
     before: Option[String] = None
   ): Future[Seq[AssistantFile]]
+
+  /**
+   * Retrieves an assistant.
+   *
+   * @param assistantId
+   *   The ID of the assistant to retrieve.
+   */
+  def retrieveAssistant(assistantId: String): Future[Option[Assistant]]
 
 }
