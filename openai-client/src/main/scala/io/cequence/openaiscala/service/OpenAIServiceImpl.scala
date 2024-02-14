@@ -707,4 +707,29 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
     ).map(_.asSafe[AssistantFile])
   }
 
+  override def listAssistants(
+    limit: Option[Int],
+    order: Option[SortOrder],
+    after: Option[String],
+    before: Option[String]
+  ): Future[Seq[Assistant]] = {
+    execGET(
+      EndPoint.assistants,
+      params = Seq(
+        Param.limit -> limit,
+        Param.order -> order,
+        Param.after -> after,
+        Param.before -> before
+      )
+    ).map { response =>
+      (response.asSafe[JsObject] \ "data").toOption
+        .map(_.asSafeArray[Assistant])
+        .getOrElse(
+          throw new OpenAIScalaClientException(
+            s"The attribute 'data' is not present in the response: ${response.toString()}."
+          )
+        )
+    }
+  }
+
 }
