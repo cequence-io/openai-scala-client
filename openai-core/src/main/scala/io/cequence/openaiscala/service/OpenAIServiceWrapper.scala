@@ -324,6 +324,17 @@ trait OpenAIServiceWrapper extends OpenAIService {
       _.listAssistants(limit, order, after, before)
     )
 
+  override def listAssistantFiles(
+    assistantId: String,
+    limit: Option[Int],
+    order: Option[SortOrder],
+    after: Option[String],
+    before: Option[String]
+  ): Future[Seq[AssistantFile]] =
+    wrap(
+      _.listAssistantFiles(assistantId, limit, order, after, before)
+    )
+
   protected def wrap[T](
     fun: OpenAIService => Future[T]
   ): Future[T]

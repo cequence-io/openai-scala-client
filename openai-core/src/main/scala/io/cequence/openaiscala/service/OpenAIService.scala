@@ -768,6 +768,8 @@ trait OpenAIService extends OpenAICoreService {
   ): Future[AssistantFile]
 
   /**
+   * Returns a list of assistants.
+   *
    * @param limit
    *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
    *   the default is 20.
@@ -792,5 +794,32 @@ trait OpenAIService extends OpenAICoreService {
     after: Option[String] = None,
     before: Option[String] = None
   ): Future[Seq[Assistant]]
+
+  /**
+   * Returns a list of assistant files.
+   *
+   * @param assistantId
+   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 20.
+   * @param limit
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc for descending order.
+   * @param order
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc for descending order.
+   * @param after
+   *   A cursor for use in pagination. after is an object ID that defines your place in the list. For instance,
+   *   if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include
+   *   `after=obj_foo` in order to fetch the next page of the list.
+   * @param before
+   *   A cursor for use in pagination. before is an object ID that defines your place in the list. For instance,
+   *   if you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent call can include
+   *   `before=obj_foo` in order to fetch the previous page of the list.
+   * @return
+   */
+  def listAssistantFiles(
+    assistantId: String,
+    limit: Option[Int] = None,
+    order: Option[SortOrder] = None,
+    after: Option[String] = None,
+    before: Option[String] = None
+  ): Future[Seq[AssistantFile]]
 
 }
