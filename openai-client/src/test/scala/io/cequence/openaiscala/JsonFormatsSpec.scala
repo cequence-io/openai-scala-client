@@ -1,6 +1,6 @@
 package io.cequence.openaiscala
 
-import io.cequence.openaiscala.domain.AssistantTool
+import io.cequence.openaiscala.domain.{AssistantTool, FileId}
 import io.cequence.openaiscala.domain.AssistantTool.CodeInterpreterTool
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
@@ -40,6 +40,10 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       val function = AssistantTool.Function("description", "name", Some("parameters"))
       testCodec[AssistantTool](AssistantTool.FunctionTool(function), functionToolJson, Pretty)
     }
+
+//    "serialize and deserialize a file ID" in {
+//      testCodec(FileId("some-file-id"), """"some-file-id"""")
+//    }
 
   }
 

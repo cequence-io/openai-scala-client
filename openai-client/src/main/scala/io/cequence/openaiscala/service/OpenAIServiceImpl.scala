@@ -677,7 +677,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
     description: Option[String],
     instructions: Option[String],
     tools: Seq[AssistantTool],
-    fileIds: Seq[FileId],
+    fileIds: Seq[String],
     metadata: Map[String, String]
   ): Future[Assistant] = {
     execPOST(
@@ -692,6 +692,19 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
         Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
       )
     ).map(_.asSafe[Assistant])
+  }
+
+  override def createAssistantFile(
+    assistantId: String,
+    fileId: String
+  ): Future[AssistantFile] = {
+    execPOST(
+      EndPoint.assistants,
+      endPointParam = Some(s"$assistantId/files"),
+      bodyParams = jsonBodyParams(
+        Param.file_id -> Some(fileId)
+      )
+    ).map(_.asSafe[AssistantFile])
   }
 
 }

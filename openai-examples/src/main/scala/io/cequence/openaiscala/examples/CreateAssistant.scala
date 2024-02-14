@@ -1,5 +1,5 @@
 package io.cequence.openaiscala.examples
-import io.cequence.openaiscala.domain.{AssistantTool, ModelId}
+import io.cequence.openaiscala.domain.{AssistantTool, FileId, ModelId}
 
 import scala.concurrent.Future
 
@@ -12,6 +12,7 @@ object CreateAssistant extends Example {
         instructions = Some(
           "You are a personal math tutor. When asked a question, write and run Python code to answer the question."
         ),
+        fileIds = Seq("file-id"),
         tools = Seq(AssistantTool.CodeInterpreterTool)
       )
     } yield println(assistant)
