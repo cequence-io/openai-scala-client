@@ -3,8 +3,10 @@ package io.cequence.openaiscala.service
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.cequence.openaiscala.domain.{
+  AssistantTool,
   BaseMessage,
   ChatRole,
+  FileId,
   FunctionSpec,
   SortOrder,
   Thread,
@@ -290,6 +292,18 @@ trait OpenAIServiceWrapper extends OpenAIService {
     before: Option[String]
   ): Future[Seq[ThreadMessageFile]] = wrap(
     _.listThreadMessageFiles(threadId, messageId, limit, order, after, before)
+  )
+
+  override def createAssistant(
+    model: String,
+    name: Option[String],
+    description: Option[String],
+    instructions: Option[String],
+    tools: Seq[AssistantTool],
+    fileIds: Seq[FileId],
+    metadata: Map[String, String]
+  ): Future[Assistant] = wrap(
+    _.createAssistant(model, name, description, instructions, tools, fileIds, metadata)
   )
 
   protected def wrap[T](

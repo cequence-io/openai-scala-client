@@ -20,6 +20,8 @@ object EndPoint {
   case object fine_tunes extends EndPoint("fine_tuning/jobs")
   case object moderations extends EndPoint
   case object threads extends EndPoint
+
+  case object assistants extends EndPoint
 }
 
 sealed trait Param extends EnumValue
@@ -46,6 +48,7 @@ object Param {
   case object image extends Param
   case object mask extends Param
   case object instruction extends Param
+  case object instructions extends Param
   case object size extends Param
   case object response_format extends Param
   case object file extends Param
@@ -86,4 +89,6 @@ object Param {
   case object order extends Param
   case object before extends Param
   case object top_logprobs extends Param
+  case object name extends Param
+  case object description extends Param
 }

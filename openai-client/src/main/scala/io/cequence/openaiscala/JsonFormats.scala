@@ -301,4 +301,44 @@ object JsonFormats {
 
   implicit val threadMessageFileFormat: Format[ThreadMessageFile] =
     Json.format[ThreadMessageFile]
+
+  implicit val assistantToolTypeFormat: Format[AssistantTool.Type] =
+    JsonUtil.enumFormat[AssistantTool.Type](AssistantTool.Type.values: _*)
+
+  implicit val assistantToolFunctionFormat: Format[AssistantTool.Function] =
+    Json.format[AssistantTool.Function]
+
+  implicit val assistantToolFormat: Format[AssistantTool] = {
+    val typeDiscriminatorKey = "type"
+
+    val functionToolFormat: Format[AssistantTool.FunctionTool] =
+      (JsPath \ "function")
+        .format[AssistantTool.Function]
+        .inmap[AssistantTool.FunctionTool](AssistantTool.FunctionTool.apply, _.function)
+
+    Format[AssistantTool](
+      (json: JsValue) => {
+        (json \ typeDiscriminatorKey).validate[AssistantTool.Type].flatMap {
+          case AssistantTool.Type.code_interpreter =>
+            JsSuccess(AssistantTool.CodeInterpreterTool)
+          case AssistantTool.Type.retrieval => JsSuccess(AssistantTool.RetrievalTool)
+          case AssistantTool.Type.function =>
+            json.validate[AssistantTool.FunctionTool](functionToolFormat)
+        }
+      },
+      { (tool: AssistantTool) =>
+        val commonJson = Json.obj(typeDiscriminatorKey -> tool.`type`.toString)
+        tool match {
+          case AssistantTool.CodeInterpreterTool => commonJson
+          case AssistantTool.RetrievalTool       => commonJson
+          case ft: AssistantTool.FunctionTool =>
+            commonJson ++ Json.toJson(ft)(functionToolFormat).as[JsObject]
+        }
+      }
+    )
+  }
+
+  implicit val assistantFormat: Format[Assistant] =
+    Json.format[Assistant]
+
 }

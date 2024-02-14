@@ -9,8 +9,10 @@ import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.{
+  AssistantTool,
   BaseMessage,
   ChatRole,
+  FileId,
   FunctionSpec,
   SortOrder,
   Thread,
@@ -668,4 +670,28 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
           )
         )
     }
+
+  override def createAssistant(
+    model: String,
+    name: Option[String],
+    description: Option[String],
+    instructions: Option[String],
+    tools: Seq[AssistantTool],
+    fileIds: Seq[FileId],
+    metadata: Map[String, String]
+  ): Future[Assistant] = {
+    execPOST(
+      EndPoint.assistants,
+      bodyParams = jsonBodyParams(
+        Param.model -> Some(model),
+        Param.name -> Some(name),
+        Param.description -> Some(description),
+        Param.instructions -> Some(instructions),
+        Param.tools -> Some(Json.toJson(tools)),
+        Param.file_ids -> (if (fileIds.nonEmpty) Some(fileIds) else None),
+        Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
+      )
+    ).map(_.asSafe[Assistant])
+  }
+
 }
