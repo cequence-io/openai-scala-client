@@ -748,7 +748,23 @@ trait OpenAIService extends OpenAICoreService {
     description: Option[String] = None,
     instructions: Option[String] = None,
     tools: Seq[AssistantTool] = Seq.empty[AssistantTool],
-    fileIds: Seq[FileId] = Seq.empty,
+    fileIds: Seq[String] = Seq.empty,
     metadata: Map[String, String] = Map.empty
   ): Future[Assistant]
+
+  /**
+   * Create an assistant file by attaching a File to an assistant.
+   *
+   * @param assistantId
+   *   The ID of the assistant for which to create a File.
+   * @param fileId
+   *   A File ID (with purpose="assistants") that the assistant should use. Useful for tools
+   *   like `retrieval` and `code_interpreter` that can access files.
+   * @return
+   */
+  def createAssistantFile(
+    assistantId: String,
+    fileId: String
+  ): Future[AssistantFile]
+
 }

@@ -300,11 +300,19 @@ trait OpenAIServiceWrapper extends OpenAIService {
     description: Option[String],
     instructions: Option[String],
     tools: Seq[AssistantTool],
-    fileIds: Seq[FileId],
+    fileIds: Seq[String],
     metadata: Map[String, String]
   ): Future[Assistant] = wrap(
     _.createAssistant(model, name, description, instructions, tools, fileIds, metadata)
   )
+
+  override def createAssistantFile(
+    assistantId: String,
+    fileId: String
+  ): Future[AssistantFile] =
+    wrap(
+      _.createAssistantFile(assistantId, fileId)
+    )
 
   protected def wrap[T](
     fun: OpenAIService => Future[T]
