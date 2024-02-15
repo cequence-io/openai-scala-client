@@ -41,10 +41,6 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       testCodec[AssistantTool](AssistantTool.FunctionTool(function), functionToolJson, Pretty)
     }
 
-//    "serialize and deserialize a file ID" in {
-//      testCodec(FileId("some-file-id"), """"some-file-id"""")
-//    }
-
   }
 
   private def testCodec[A](
