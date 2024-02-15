@@ -760,7 +760,10 @@ trait OpenAIService extends OpenAICoreService {
    * @param fileId
    *   A File ID (with purpose="assistants") that the assistant should use. Useful for tools
    *   like `retrieval` and `code_interpreter` that can access files.
-   * @return
+   * @see
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/assistants/createAssistantFile">OpenAI
+   *   Doc</a>
    */
   def createAssistantFile(
     assistantId: String,
@@ -786,6 +789,10 @@ trait OpenAIService extends OpenAICoreService {
    *   list. For instance, if you make a list request and receive 100 objects, ending with
    *   `obj_foo`, your subsequent call can include `before=obj_foo`` in order to fetch the
    *   previous page of the list.
+   * @see
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/assistants/listAssistants">OpenAI
+   *   Doc</a>
    */
   def listAssistants(
     limit: Option[Int] = None, // TODO: default 20 or None?
@@ -817,6 +824,9 @@ trait OpenAIService extends OpenAICoreService {
    *   list. For instance, if you make a list request and receive 100 objects, ending with
    *   `obj_foo`, your subsequent call can include `before=obj_foo` in order to fetch the
    *   previous page of the list.
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/assistants/listAssistantFiles">OpenAI
+   *   Doc</a>
    */
   def listAssistantFiles(
     assistantId: String,
@@ -831,6 +841,9 @@ trait OpenAIService extends OpenAICoreService {
    *
    * @param assistantId
    *   The ID of the assistant to retrieve.
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/assistants/retrieveAssistant">OpenAI
+   *   Doc</a>
    */
   def retrieveAssistant(assistantId: String): Future[Option[Assistant]]
 
@@ -841,7 +854,49 @@ trait OpenAIService extends OpenAICoreService {
    *   The ID of the assistant who the file belongs to.
    * @param fileId
    *   The ID of the file we're getting.
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/assistants/retrieveAssistantFile">OpenAI
+   *   Doc</a>
    */
   def retrieveAssistantFile(assistantId: String, fileId: String): Future[Option[AssistantFile]]
+
+  /**
+   * Modifies an assistant.
+   *
+   * @param assistantId
+   * @param model
+   *   ID of the model to use. You can use the List models API to see all of your available models,
+   *   or see our Model overview for descriptions of them.
+   * @param name
+   *   The name of the assistant. The maximum length is 256 characters.
+   * @param description
+   *   The description of the assistant. The maximum length is 512 characters.
+   * @param instructions
+   *   The system instructions that the assistant uses. The maximum length is 32768 characters.
+   * @param tools
+   *   A list of tool enabled on the assistant. There can be a maximum of 128 tools per assistant. Tools can be of types
+   *   code_interpreter, retrieval, or function.
+   * @param fileIds
+   *   A list of File IDs attached to this assistant. There can be a maximum of 20 files attached to the assistant.
+   *   Files are ordered by their creation date in ascending order. If a file was previously attached to the list but
+   *   does not show up in the list, it will be deleted from the assistant.
+   * @param metadata
+   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for storing additional
+   *   information about the object in a structured format. Keys can be a maximum of 64 characters long and values
+   *   can be a maxium of 512 characters long.
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/assistants/modifyAssistant">OpenAI
+   *   Doc</a>
+   */
+  def modifyAssistant(
+    assistantId: String,
+    model: Option[String] = None,
+    name: Option[String] = None,
+    description: Option[String] = None,
+    instructions: Option[String] = None,
+    tools: Seq[AssistantTool] = Seq.empty[AssistantTool],
+    fileIds: Seq[String] = Seq.empty,
+    metadata: Map[String, String] = Map.empty
+  ): Future[Option[Assistant]]
 
 }
