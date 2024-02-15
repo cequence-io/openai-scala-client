@@ -823,8 +823,7 @@ trait OpenAIService extends OpenAICoreService {
    *   A cursor for use in pagination. before is an object ID that defines your place in the
    *   list. For instance, if you make a list request and receive 100 objects, ending with
    *   `obj_foo`, your subsequent call can include `before=obj_foo` in order to fetch the
-   *   previous page of the list.
-   *   <a
+   *   previous page of the list. <a
    *   href="https://platform.openai.com/docs/api-reference/assistants/listAssistantFiles">OpenAI
    *   Doc</a>
    */
@@ -840,8 +839,7 @@ trait OpenAIService extends OpenAICoreService {
    * Retrieves an assistant.
    *
    * @param assistantId
-   *   The ID of the assistant to retrieve.
-   *   <a
+   *   The ID of the assistant to retrieve. <a
    *   href="https://platform.openai.com/docs/api-reference/assistants/retrieveAssistant">OpenAI
    *   Doc</a>
    */
@@ -853,20 +851,22 @@ trait OpenAIService extends OpenAICoreService {
    * @param assistantId
    *   The ID of the assistant who the file belongs to.
    * @param fileId
-   *   The ID of the file we're getting.
-   *   <a
+   *   The ID of the file we're getting. <a
    *   href="https://platform.openai.com/docs/api-reference/assistants/retrieveAssistantFile">OpenAI
    *   Doc</a>
    */
-  def retrieveAssistantFile(assistantId: String, fileId: String): Future[Option[AssistantFile]]
+  def retrieveAssistantFile(
+    assistantId: String,
+    fileId: String
+  ): Future[Option[AssistantFile]]
 
   /**
    * Modifies an assistant.
    *
    * @param assistantId
    * @param model
-   *   ID of the model to use. You can use the List models API to see all of your available models,
-   *   or see our Model overview for descriptions of them.
+   *   ID of the model to use. You can use the List models API to see all of your available
+   *   models, or see our Model overview for descriptions of them.
    * @param name
    *   The name of the assistant. The maximum length is 256 characters.
    * @param description
@@ -874,17 +874,17 @@ trait OpenAIService extends OpenAICoreService {
    * @param instructions
    *   The system instructions that the assistant uses. The maximum length is 32768 characters.
    * @param tools
-   *   A list of tool enabled on the assistant. There can be a maximum of 128 tools per assistant. Tools can be of types
-   *   code_interpreter, retrieval, or function.
+   *   A list of tool enabled on the assistant. There can be a maximum of 128 tools per
+   *   assistant. Tools can be of types code_interpreter, retrieval, or function.
    * @param fileIds
-   *   A list of File IDs attached to this assistant. There can be a maximum of 20 files attached to the assistant.
-   *   Files are ordered by their creation date in ascending order. If a file was previously attached to the list but
-   *   does not show up in the list, it will be deleted from the assistant.
+   *   A list of File IDs attached to this assistant. There can be a maximum of 20 files
+   *   attached to the assistant. Files are ordered by their creation date in ascending order.
+   *   If a file was previously attached to the list but does not show up in the list, it will
+   *   be deleted from the assistant.
    * @param metadata
-   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for storing additional
-   *   information about the object in a structured format. Keys can be a maximum of 64 characters long and values
-   *   can be a maxium of 512 characters long.
-   *   <a
+   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
+   *   storing additional information about the object in a structured format. Keys can be a
+   *   maximum of 64 characters long and values can be a maxium of 512 characters long. <a
    *   href="https://platform.openai.com/docs/api-reference/assistants/modifyAssistant">OpenAI
    *   Doc</a>
    */
@@ -898,5 +898,30 @@ trait OpenAIService extends OpenAICoreService {
     fileIds: Seq[String] = Seq.empty,
     metadata: Map[String, String] = Map.empty
   ): Future[Option[Assistant]]
+
+  /**
+   * Delete an assistant.
+   *
+   * @param assistantId
+   *   The ID of the assistant to delete. <a
+   *   href="https://platform.openai.com/docs/api-reference/assistants/deleteAssistant">OpenAI
+   *   Doc</a>
+   */
+  def deleteAssistant(assistantId: String): Future[DeleteResponse]
+
+  /**
+   * Delete an assistant file.
+   *
+   * @param assistantId
+   *   The ID of the assistant that the file belongs to.
+   * @param fileId
+   *   The ID of the file to delete. <a
+   *   href="https://platform.openai.com/docs/api-reference/assistants/deleteAssistantFile">OpenAI
+   *   Doc</a>
+   */
+  def deleteAssistantFile(
+    assistantId: String,
+    fileId: String
+  ): Future[DeleteResponse]
 
 }

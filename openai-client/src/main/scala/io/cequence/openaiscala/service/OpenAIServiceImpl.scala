@@ -810,4 +810,55 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
       handleNotFoundAndError(response).map(_.asSafe[Assistant])
     }
 
+  override def deleteAssistant(assistantId: String): Future[DeleteResponse] =
+    execDELETEWithStatus(
+      EndPoint.assistants,
+      endPointParam = Some(assistantId)
+    ).map(response =>
+      handleNotFoundAndError(response)
+        .map(jsResponse =>
+          (jsResponse \ "deleted").toOption.map {
+            _.asSafe[Boolean] match {
+              case true  => DeleteResponse.Deleted
+              case false => DeleteResponse.NotDeleted
+            }
+          }.getOrElse(
+            throw new OpenAIScalaClientException(
+              s"The attribute 'deleted' is not present in the response: ${response.toString()}."
+            )
+          )
+        )
+        .getOrElse(
+          // we got a not-found http code (404)
+          DeleteResponse.NotFound
+        )
+    )
+
+  override def deleteAssistantFile(
+    assistantId: String,
+    fileId: String
+  ): Future[DeleteResponse] =
+    execDELETEWithStatus(
+      EndPoint.assistants,
+      endPointParam = Some(s"$assistantId/files/$fileId")
+    ).map(response =>
+      handleNotFoundAndError(response)
+        .map(jsResponse =>
+          (jsResponse \ "deleted").toOption.map {
+            _.asSafe[Boolean] match {
+              case true  => DeleteResponse.Deleted
+              case false => DeleteResponse.NotDeleted
+            }
+          }.getOrElse(
+            throw new OpenAIScalaClientException(
+              s"The attribute 'deleted' is not present in the response: ${response.toString()}."
+            )
+          )
+        )
+        .getOrElse(
+          // we got a not-found http code (404)
+          DeleteResponse.NotFound
+        )
+    )
+
 }
