@@ -28,7 +28,7 @@ object AssistantTool {
     // FIXME: description should be optional in request and mandatory in response
     description: String,
     name: String,
-    parameters: Option[String]
+    parameters: Option[String] // TODO: check representation
   )
 
 }

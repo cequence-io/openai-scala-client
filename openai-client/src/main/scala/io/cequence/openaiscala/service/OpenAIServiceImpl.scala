@@ -2,17 +2,15 @@ package io.cequence.openaiscala.service
 
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
-import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.JsonFormats._
+import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
+import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.{
   AssistantTool,
   BaseMessage,
   ChatRole,
-  FileId,
   FunctionSpec,
   SortOrder,
   Thread,
@@ -21,6 +19,7 @@ import io.cequence.openaiscala.domain.{
   ThreadMessageFile,
   ToolSpec
 }
+import play.api.libs.json.{JsObject, JsValue, Json}
 
 import java.io.File
 import scala.concurrent.Future
@@ -770,16 +769,45 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
    * Retrieves an AssistantFile.
    *
    * @param assistantId
-   * The ID of the assistant who the file belongs to.
+   *   The ID of the assistant who the file belongs to.
    * @param fileId
-   * The ID of the file we're getting.
+   *   The ID of the file we're getting.
    */
-  override def retrieveAssistantFile(assistantId: String, fileId: String): Future[Option[AssistantFile]] =
+  override def retrieveAssistantFile(
+    assistantId: String,
+    fileId: String
+  ): Future[Option[AssistantFile]] =
     execGETWithStatus(
       EndPoint.assistants,
       Some(s"$assistantId/files/$fileId")
     ).map { response =>
       handleNotFoundAndError(response).map(_.asSafe[AssistantFile])
+    }
+
+  override def modifyAssistant(
+    assistantId: String,
+    model: Option[String],
+    name: Option[String],
+    description: Option[String],
+    instructions: Option[String],
+    tools: Seq[AssistantTool],
+    fileIds: Seq[String],
+    metadata: Map[String, String]
+  ): Future[Option[Assistant]] =
+    execPOSTWithStatus(
+      EndPoint.assistants,
+      endPointParam = Some(assistantId),
+      bodyParams = jsonBodyParams(
+        Param.model -> model,
+        Param.name -> name,
+        Param.description -> description,
+        Param.instructions -> instructions,
+        Param.tools -> Some(Json.toJson(tools)),
+        Param.file_ids -> (if (fileIds.nonEmpty) Some(fileIds) else None),
+        Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
+      )
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafe[Assistant])
     }
 
 }
