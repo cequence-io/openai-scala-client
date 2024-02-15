@@ -233,14 +233,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
   ) = {
     val stringResponse = handleErrorResponse(stringRichResponse)
 
-    def textFromJsonString(json: JsValue) =
-      (json.asSafe[JsObject] \ "text").toOption
-        .map(_.asSafe[String])
-        .getOrElse(
-          throw new OpenAIScalaClientException(
-            s"The attribute 'text' is not present in the response: ${stringResponse}."
-          )
-        )
+    def textFromJsonString(json: JsValue) = readAttribute(json, "text").asSafe[String]
 
     val FormatType = TranscriptResponseFormatType
 
@@ -263,13 +256,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
 
   override def listFiles: Future[Seq[FileInfo]] =
     execGET(EndPoint.files).map { response =>
-      (response.asSafe[JsObject] \ "data").toOption
-        .map(_.asSafeArray[FileInfo])
-        .getOrElse(
-          throw new OpenAIScalaClientException(
-            s"The attribute 'data' is not present in the response: ${response.toString()}."
-          )
-        )
+      readAttribute(response, "data").asSafeArray[FileInfo]
     }
 
   override def uploadFile(
@@ -294,25 +281,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
     execDELETEWithStatus(
       EndPoint.files,
       endPointParam = Some(fileId)
-    ).map(response =>
-      handleNotFoundAndError(response)
-        .map(jsResponse =>
-          (jsResponse \ "deleted").toOption.map {
-            _.asSafe[Boolean] match {
-              case true  => DeleteResponse.Deleted
-              case false => DeleteResponse.NotDeleted
-            }
-          }.getOrElse(
-            throw new OpenAIScalaClientException(
-              s"The attribute 'deleted' is not present in the response: ${response.toString()}."
-            )
-          )
-        )
-        .getOrElse(
-          // we got a not-found http code (404)
-          DeleteResponse.NotFound
-        )
-    )
+    ).map(handleDeleteEndpointResponse)
 
   override def retrieveFile(
     fileId: String
@@ -381,13 +350,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
         Param.limit -> limit
       )
     ).map { response =>
-      (response.asSafe[JsObject] \ "data").toOption
-        .map(_.asSafeArray[FineTuneJob])
-        .getOrElse(
-          throw new OpenAIScalaClientException(
-            s"The attribute 'data' is not present in the response: ${response.toString()}."
-          )
-        )
+      readAttribute(response, "data").asSafeArray[FineTuneJob]
     }
 
   override def retrieveFineTune(
@@ -421,13 +384,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
       )
     ).map { response =>
       handleNotFoundAndError(response).map(jsResponse =>
-        (jsResponse.asSafe[JsObject] \ "data").toOption
-          .map(_.asSafeArray[FineTuneEvent])
-          .getOrElse(
-            throw new OpenAIScalaClientException(
-              s"The attribute 'data' is not present in the response: ${response.toString()}."
-            )
-          )
+        readAttribute(jsResponse, "data").asSafeArray[FineTuneEvent]
       )
     }
 
@@ -437,25 +394,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
     execDELETEWithStatus(
       EndPoint.models,
       endPointParam = Some(modelId)
-    ).map(response =>
-      handleNotFoundAndError(response)
-        .map(jsResponse =>
-          (jsResponse \ "deleted").toOption.map {
-            _.asSafe[Boolean] match {
-              case true  => DeleteResponse.Deleted
-              case false => DeleteResponse.NotDeleted
-            }
-          }.getOrElse(
-            throw new OpenAIScalaClientException(
-              s"The attribute 'deleted' is not present in the response: ${response.toString()}."
-            )
-          )
-        )
-        .getOrElse(
-          // we got a not-found http code (404)
-          DeleteResponse.NotFound
-        )
-    )
+    ).map(handleDeleteEndpointResponse)
 
   override def createModeration(
     input: String,
@@ -527,25 +466,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
     execDELETEWithStatus(
       EndPoint.threads,
       endPointParam = Some(threadId)
-    ).map(response =>
-      handleNotFoundAndError(response)
-        .map(jsResponse =>
-          (jsResponse \ "deleted").toOption.map {
-            _.asSafe[Boolean] match {
-              case true  => DeleteResponse.Deleted
-              case false => DeleteResponse.NotDeleted
-            }
-          }.getOrElse(
-            throw new OpenAIScalaClientException(
-              s"The attribute 'deleted' is not present in the response: ${response.toString()}."
-            )
-          )
-        )
-        .getOrElse(
-          // we got a not-found http code (404)
-          DeleteResponse.NotFound
-        )
-    )
+    ).map(handleDeleteEndpointResponse)
 
   override def createThreadMessage(
     threadId: String,
@@ -622,13 +543,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
         Param.before -> before
       )
     ).map { response =>
-      (response.asSafe[JsObject] \ "data").toOption
-        .map(_.asSafeArray[ThreadFullMessage])
-        .getOrElse(
-          throw new OpenAIScalaClientException(
-            s"The attribute 'data' is not present in the response: ${response.toString()}."
-          )
-        )
+      readAttribute(response, "data").asSafeArray[ThreadFullMessage]
     }
 
   override def retrieveThreadMessageFile(
@@ -661,13 +576,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
         Param.before -> before
       )
     ).map { response =>
-      (response.asSafe[JsObject] \ "data").toOption
-        .map(_.asSafeArray[ThreadMessageFile])
-        .getOrElse(
-          throw new OpenAIScalaClientException(
-            s"The attribute 'data' is not present in the response: ${response.toString()}."
-          )
-        )
+      readAttribute(response, "data").asSafeArray[ThreadMessageFile]
     }
 
   override def createAssistant(
@@ -721,13 +630,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
         Param.before -> before
       )
     ).map { response =>
-      (response.asSafe[JsObject] \ "data").toOption
-        .map(_.asSafeArray[Assistant])
-        .getOrElse(
-          throw new OpenAIScalaClientException(
-            s"The attribute 'data' is not present in the response: ${response.toString()}."
-          )
-        )
+      readAttribute(response, "data").asSafeArray[Assistant]
     }
   }
 
@@ -748,13 +651,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
         Param.before -> before
       )
     ).map { response =>
-      (response.asSafe[JsObject] \ "data").toOption
-        .map(_.asSafeArray[AssistantFile])
-        .getOrElse(
-          throw new OpenAIScalaClientException(
-            s"The attribute 'data' is not present in the response: ${response.toString()}."
-          )
-        )
+      readAttribute(response, "data").asSafeArray[AssistantFile]
     }
 
   override def retrieveAssistant(assistantId: String): Future[Option[Assistant]] =
@@ -765,14 +662,6 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
       handleNotFoundAndError(response).map(_.asSafe[Assistant])
     }
 
-  /**
-   * Retrieves an AssistantFile.
-   *
-   * @param assistantId
-   *   The ID of the assistant who the file belongs to.
-   * @param fileId
-   *   The ID of the file we're getting.
-   */
   override def retrieveAssistantFile(
     assistantId: String,
     fileId: String
@@ -814,25 +703,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
     execDELETEWithStatus(
       EndPoint.assistants,
       endPointParam = Some(assistantId)
-    ).map(response =>
-      handleNotFoundAndError(response)
-        .map(jsResponse =>
-          (jsResponse \ "deleted").toOption.map {
-            _.asSafe[Boolean] match {
-              case true  => DeleteResponse.Deleted
-              case false => DeleteResponse.NotDeleted
-            }
-          }.getOrElse(
-            throw new OpenAIScalaClientException(
-              s"The attribute 'deleted' is not present in the response: ${response.toString()}."
-            )
-          )
-        )
-        .getOrElse(
-          // we got a not-found http code (404)
-          DeleteResponse.NotFound
-        )
-    )
+    ).map(handleDeleteEndpointResponse)
 
   override def deleteAssistantFile(
     assistantId: String,
@@ -841,24 +712,30 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
     execDELETEWithStatus(
       EndPoint.assistants,
       endPointParam = Some(s"$assistantId/files/$fileId")
-    ).map(response =>
-      handleNotFoundAndError(response)
-        .map(jsResponse =>
-          (jsResponse \ "deleted").toOption.map {
-            _.asSafe[Boolean] match {
-              case true  => DeleteResponse.Deleted
-              case false => DeleteResponse.NotDeleted
-            }
-          }.getOrElse(
-            throw new OpenAIScalaClientException(
-              s"The attribute 'deleted' is not present in the response: ${response.toString()}."
-            )
-          )
-        )
-        .getOrElse(
-          // we got a not-found http code (404)
-          DeleteResponse.NotFound
-        )
+    ).map(handleDeleteEndpointResponse)
+
+  private def handleDeleteEndpointResponse(response: RichJsResponse): DeleteResponse = {
+    handleNotFoundAndError(response)
+      .map(jsResponse =>
+        readAttribute(jsResponse, "deleted").asSafe[Boolean] match {
+          case true  => DeleteResponse.Deleted
+          case false => DeleteResponse.NotDeleted
+        }
+      )
+      .getOrElse(
+        // we got a not-found http code (404)
+        DeleteResponse.NotFound
+      )
+  }
+
+  private def readAttribute(
+    json: JsValue,
+    attribute: String
+  ): JsValue =
+    (json.asSafe[JsObject] \ attribute).toOption.getOrElse(
+      throw new OpenAIScalaClientException(
+        s"The attribute '$attribute' is not present in the response: ${json.toString()}."
+      )
     )
 
 }
