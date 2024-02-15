@@ -367,7 +367,17 @@ trait OpenAIServiceWrapper extends OpenAIService {
       )
     )
 
+  override def deleteAssistant(assistantId: String): Future[DeleteResponse] =
+    wrap(_.deleteAssistant(assistantId))
+
+  override def deleteAssistantFile(
+    assistantId: String,
+    fileId: String
+  ): Future[DeleteResponse] =
+    wrap(_.deleteAssistantFile(assistantId, fileId))
+
   protected def wrap[T](
     fun: OpenAIService => Future[T]
   ): Future[T]
+
 }
