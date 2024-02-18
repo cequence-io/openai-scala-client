@@ -8,6 +8,7 @@ import io.cequence.openaiscala.domain.{
   ChatRole,
   FileId,
   FunctionSpec,
+  Pagination,
   SortOrder,
   Thread,
   ThreadFullMessage,
@@ -267,12 +268,10 @@ trait OpenAIServiceWrapper extends OpenAIService {
 
   override def listThreadMessages(
     threadId: String,
-    limit: Option[Int],
-    order: Option[SortOrder],
-    after: Option[String],
-    before: Option[String]
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder]
   ): Future[Seq[ThreadFullMessage]] = wrap(
-    _.listThreadMessages(threadId, limit, order, after, before)
+    _.listThreadMessages(threadId, pagination, order)
   )
 
   override def retrieveThreadMessageFile(
@@ -286,12 +285,10 @@ trait OpenAIServiceWrapper extends OpenAIService {
   override def listThreadMessageFiles(
     threadId: String,
     messageId: String,
-    limit: Option[Int],
-    order: Option[SortOrder],
-    after: Option[String],
-    before: Option[String]
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder]
   ): Future[Seq[ThreadMessageFile]] = wrap(
-    _.listThreadMessageFiles(threadId, messageId, limit, order, after, before)
+    _.listThreadMessageFiles(threadId, messageId, pagination, order)
   )
 
   override def createAssistant(
@@ -315,24 +312,20 @@ trait OpenAIServiceWrapper extends OpenAIService {
     )
 
   override def listAssistants(
-    limit: Option[Int],
-    order: Option[SortOrder],
-    after: Option[String],
-    before: Option[String]
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder]
   ): Future[Seq[Assistant]] =
     wrap(
-      _.listAssistants(limit, order, after, before)
+      _.listAssistants(pagination, order)
     )
 
   override def listAssistantFiles(
     assistantId: String,
-    limit: Option[Int],
-    order: Option[SortOrder],
-    after: Option[String],
-    before: Option[String]
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder]
   ): Future[Seq[AssistantFile]] =
     wrap(
-      _.listAssistantFiles(assistantId, limit, order, after, before)
+      _.listAssistantFiles(assistantId, pagination, order)
     )
 
   override def retrieveAssistant(assistantId: String): Future[Option[Assistant]] =

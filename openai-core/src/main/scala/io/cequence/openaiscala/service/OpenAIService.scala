@@ -8,6 +8,7 @@ import io.cequence.openaiscala.domain.{
   ChatRole,
   FileId,
   FunctionSpec,
+  Pagination,
   SortOrder,
   Thread,
   ThreadFullMessage,
@@ -649,10 +650,8 @@ trait OpenAIService extends OpenAICoreService {
    */
   def listThreadMessages(
     threadId: String,
-    limit: Option[Int] = None,
-    order: Option[SortOrder] = None,
-    after: Option[String] = None,
-    before: Option[String] = None
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None
   ): Future[Seq[ThreadFullMessage]]
 
   /**
@@ -709,10 +708,8 @@ trait OpenAIService extends OpenAICoreService {
   def listThreadMessageFiles(
     threadId: String,
     messageId: String,
-    limit: Option[Int] = None,
-    order: Option[SortOrder] = None,
-    after: Option[String] = None,
-    before: Option[String] = None
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None
   ): Future[Seq[ThreadMessageFile]]
 
   /**
@@ -795,11 +792,8 @@ trait OpenAIService extends OpenAICoreService {
    *   Doc</a>
    */
   def listAssistants(
-    limit: Option[Int] = None,
-    // FIXME: not very nice API, high cohesion among these params, should be enclosed as e.g. Pagination
-    order: Option[SortOrder] = None,
-    after: Option[String] = None,
-    before: Option[String] = None
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None
   ): Future[Seq[Assistant]]
 
   /**
@@ -829,10 +823,8 @@ trait OpenAIService extends OpenAICoreService {
    */
   def listAssistantFiles(
     assistantId: String,
-    limit: Option[Int] = None,
-    order: Option[SortOrder] = None,
-    after: Option[String] = None,
-    before: Option[String] = None
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None
   ): Future[Seq[AssistantFile]]
 
   /**

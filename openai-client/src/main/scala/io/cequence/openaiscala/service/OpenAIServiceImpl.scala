@@ -12,6 +12,7 @@ import io.cequence.openaiscala.domain.{
   BaseMessage,
   ChatRole,
   FunctionSpec,
+  Pagination,
   SortOrder,
   Thread,
   ThreadFullMessage,
@@ -528,20 +529,13 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
 
   override def listThreadMessages(
     threadId: String,
-    limit: Option[Int],
-    order: Option[SortOrder],
-    after: Option[String],
-    before: Option[String]
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder]
   ): Future[Seq[ThreadFullMessage]] =
     execGET(
       EndPoint.threads,
       endPointParam = Some(s"$threadId/messages"),
-      params = Seq(
-        Param.limit -> limit,
-        Param.order -> order,
-        Param.after -> after,
-        Param.before -> before
-      )
+      params = paginationParams(pagination) :+ Param.order -> order
     ).map { response =>
       readAttribute(response, "data").asSafeArray[ThreadFullMessage]
     }
@@ -561,20 +555,13 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
   override def listThreadMessageFiles(
     threadId: String,
     messageId: String,
-    limit: Option[Int],
-    order: Option[SortOrder],
-    after: Option[String],
-    before: Option[String]
+    pagination: Pagination,
+    order: Option[SortOrder]
   ): Future[Seq[ThreadMessageFile]] =
     execGET(
       EndPoint.threads,
       endPointParam = Some(s"$threadId/messages/$messageId/files"),
-      params = Seq(
-        Param.limit -> limit,
-        Param.order -> order,
-        Param.after -> after,
-        Param.before -> before
-      )
+      params = paginationParams(pagination) :+ Param.order -> order
     ).map { response =>
       readAttribute(response, "data").asSafeArray[ThreadMessageFile]
     }
@@ -616,19 +603,12 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
   }
 
   override def listAssistants(
-    limit: Option[Int],
-    order: Option[SortOrder],
-    after: Option[String],
-    before: Option[String]
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder]
   ): Future[Seq[Assistant]] = {
     execGET(
       EndPoint.assistants,
-      params = Seq(
-        Param.limit -> limit,
-        Param.order -> order,
-        Param.after -> after,
-        Param.before -> before
-      )
+      params = paginationParams(pagination) :+ Param.order -> order
     ).map { response =>
       readAttribute(response, "data").asSafeArray[Assistant]
     }
@@ -636,20 +616,13 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
 
   override def listAssistantFiles(
     assistantId: String,
-    limit: Option[Int],
-    order: Option[SortOrder],
-    after: Option[String],
-    before: Option[String]
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder]
   ): Future[Seq[AssistantFile]] =
     execGET(
       EndPoint.assistants,
       endPointParam = Some(s"$assistantId/files"),
-      params = Seq(
-        Param.limit -> limit,
-        Param.order -> order,
-        Param.after -> after,
-        Param.before -> before
-      )
+      params = paginationParams(pagination) :+ Param.order -> order
     ).map { response =>
       readAttribute(response, "data").asSafeArray[AssistantFile]
     }
@@ -736,6 +709,13 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
       throw new OpenAIScalaClientException(
         s"The attribute '$attribute' is not present in the response: ${json.toString()}."
       )
+    )
+
+  private def paginationParams(pagination: Pagination) =
+    Seq(
+      Param.limit -> pagination.limit,
+      Param.after -> pagination.after,
+      Param.before -> pagination.before
     )
 
 }
