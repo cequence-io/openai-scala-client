@@ -795,7 +795,7 @@ trait OpenAIService extends OpenAICoreService {
    *   Doc</a>
    */
   def listAssistants(
-    limit: Option[Int] = None, // TODO: default 20 or None?
+    limit: Option[Int] = None,
     // FIXME: not very nice API, high cohesion among these params, should be enclosed as e.g. Pagination
     order: Option[SortOrder] = None,
     after: Option[String] = None,

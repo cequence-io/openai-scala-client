@@ -1,7 +1,11 @@
 package io.cequence.openaiscala
 
-import io.cequence.openaiscala.domain.{AssistantTool, FileId}
-import io.cequence.openaiscala.domain.AssistantTool.CodeInterpreterTool
+import io.cequence.openaiscala.domain.{
+  AssistantTool,
+  CodeInterpreterSpec,
+  FunctionSpec,
+  RetrievalSpec
+}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import play.api.libs.json.{Format, Json}
@@ -20,25 +24,28 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
     """{
        |  "type" : "function",
        |  "function" : {
-       |    "description" : "description",
        |    "name" : "name",
-       |    "parameters" : "parameters"
+       |    "description" : "description",
+       |    "parameters" : { }
        |  }
        |}""".stripMargin
 
   "JSON Formats" should {
 
     "serialize and deserialize a code interpreter tool" in {
-      testCodec[AssistantTool](CodeInterpreterTool, """{"type":"code_interpreter"}""")
+      testCodec[AssistantTool](CodeInterpreterSpec, """{"type":"code_interpreter"}""")
     }
 
     "serialize and deserialize a retrieval tool" in {
-      testCodec[AssistantTool](AssistantTool.RetrievalTool, """{"type":"retrieval"}""")
+      testCodec[AssistantTool](RetrievalSpec, """{"type":"retrieval"}""")
     }
 
     "serialize and deserialize a function tool" in {
-      val function = AssistantTool.Function("description", "name", Some("parameters"))
-      testCodec[AssistantTool](AssistantTool.FunctionTool(function), functionToolJson, Pretty)
+      testCodec[AssistantTool](
+        FunctionSpec("name", Some("description"), Map.empty),
+        functionToolJson,
+        Pretty
+      )
     }
 
   }

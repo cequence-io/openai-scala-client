@@ -8,10 +8,6 @@ final case class Assistant(
   // The identifier, which can be referenced in API endpoints.
   id: AssistantId,
 
-  // TODO: check whether ChatRole.Assistant can be used here?
-  // The object type, which is always assistant.
-  `object`: String = "assistant",
-
   // The Unix timestamp (in seconds) for when the assistant was created.
   created_at: ju.Date,
 
@@ -23,7 +19,7 @@ final case class Assistant(
 
   // ID of the model to use. You can use the List models API to see all of your available models,
   // or see our Model overview for descriptions of them.
-  model: String, // TODO: check whether ModelId can be used here?
+  model: String,
 
   // The system instructions that the assistant uses. The maximum length is 32768 characters.
   instructions: Option[String],
