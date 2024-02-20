@@ -92,4 +92,6 @@ object Param {
   case object top_logprobs extends Param
   case object name extends Param
   case object description extends Param
+  case object assistant_id extends Param
+  case object additional_instructions extends Param
 }

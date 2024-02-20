@@ -9,6 +9,7 @@ import io.cequence.openaiscala.domain.{
   FileId,
   FunctionSpec,
   Pagination,
+  RunTool,
   SortOrder,
   Thread,
   ThreadFullMessage,
@@ -491,7 +492,7 @@ trait OpenAIService extends OpenAICoreService {
    * @param metadata
    *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
    *   storing additional information about the object in a structured format. Keys can be a
-   *   maximum of 64 characters long and values can be a maxium of 512 characters long.
+   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
    * @return
    *   A thread object.
    * @see
@@ -524,7 +525,7 @@ trait OpenAIService extends OpenAICoreService {
    * @param metadata
    *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
    *   storing additional information about the object in a structured format. Keys can be a
-   *   maximum of 64 characters long and values can be a maxium of 512 characters long.
+   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
    * @return
    *   The modified thread object matching the specified ID.
    * @see
@@ -733,7 +734,7 @@ trait OpenAIService extends OpenAICoreService {
    * @param metadata
    *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
    *   storing additional information about the object in a structured format. Keys can be a
-   *   maximum of 64 characters long and values can be a maxium of 512 characters long.
+   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
    * @see
    *   <a
    *   href="https://platform.openai.com/docs/api-reference/assistants/createAssistant">OpenAI
@@ -876,7 +877,7 @@ trait OpenAIService extends OpenAICoreService {
    * @param metadata
    *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
    *   storing additional information about the object in a structured format. Keys can be a
-   *   maximum of 64 characters long and values can be a maxium of 512 characters long. <a
+   *   maximum of 64 characters long and values can be a maximum of 512 characters long. <a
    *   href="https://platform.openai.com/docs/api-reference/assistants/modifyAssistant">OpenAI
    *   Doc</a>
    */
@@ -915,5 +916,42 @@ trait OpenAIService extends OpenAICoreService {
     assistantId: String,
     fileId: String
   ): Future[DeleteResponse]
+
+  /**
+   * Create a run.
+   *
+   * @param threadId
+   *   The ID of the thread to run.
+   * @param assistantId
+   *   The ID of the assistant to use to execute this run.
+   * @param model
+   *   The ID of the Model to be used to execute this run. If a value is provided here, it will
+   *   override the model associated with the assistant. If not, the model associated with the
+   *   assistant will be used.
+   * @param instructions
+   *   Overrides the instructions of the assistant. This is useful for modifying the behavior
+   *   on a per-run basis.
+   * @param additionalInstructions
+   *   Appends additional instructions at the end of the instructions for the run. This is
+   *   useful for modifying the behavior on a per-run basis without overriding other
+   *   instructions.
+   * @param toolSpec
+   *   Override the tools the assistant can use for this run. This is useful for modifying the
+   *   behavior on a per-run basis.
+   * @param metadata
+   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
+   *   storing additional information about the object in a structured format. Keys can be a
+   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
+   * @return
+   */
+  def createRun(
+    threadId: String,
+    assistantId: String,
+    model: String,
+    instructions: Option[String] = None,
+    additionalInstructions: Option[String] = None,
+    tools: Seq[RunTool] = Seq.empty,
+    metadata: Map[String, Any] = Map.empty
+  ): Future[Run]
 
 }

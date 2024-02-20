@@ -1,6 +1,6 @@
 package io.cequence.openaiscala
 
-import io.cequence.openaiscala.JsonUtil.{JsonOps, enumFormat}
+import io.cequence.openaiscala.JsonUtil.enumFormat
 import io.cequence.openaiscala.domain.{ThreadMessageFile, _}
 
 import java.{util => ju}
@@ -126,6 +126,37 @@ object JsonFormats {
         }
       },
       { (tool: AssistantTool) =>
+        val commonJson = Json.obj {
+          val discriminatorValue = tool match {
+            case CodeInterpreterSpec   => "code_interpreter"
+            case RetrievalSpec         => "retrieval"
+            case FunctionSpec(_, _, _) => "function"
+          }
+          typeDiscriminatorKey -> discriminatorValue
+        }
+        tool match {
+          case CodeInterpreterSpec => commonJson
+          case RetrievalSpec       => commonJson
+          case ft: FunctionSpec =>
+            commonJson ++ Json.toJson(ft)(assistantsFunctionSpecFormat).as[JsObject]
+        }
+      }
+    )
+  }
+
+  implicit val runToolFormat: Format[RunTool] = {
+    val typeDiscriminatorKey = "type"
+
+    Format[RunTool](
+      (json: JsValue) => {
+        (json \ typeDiscriminatorKey).validate[String].flatMap {
+          case "code_interpreter" => JsSuccess(CodeInterpreterSpec)
+          case "retrieval"        => JsSuccess(RetrievalSpec)
+          case "function"         => json.validate[FunctionSpec](assistantsFunctionSpecFormat)
+          case _                  => JsError("Unknown type")
+        }
+      },
+      { (tool: RunTool) =>
         val commonJson = Json.obj {
           val discriminatorValue = tool match {
             case CodeInterpreterSpec   => "code_interpreter"
@@ -361,5 +392,13 @@ object JsonFormats {
   implicit val assistantFormat: Format[Assistant] = Json.format[Assistant]
 
   lazy implicit val assistantFileFormat: Format[AssistantFile] = Json.format[AssistantFile]
+
+  implicit val runUsageFormat: Format[Run.Usage] = Json.format[Run.Usage]
+  implicit val runStatusFormat: Format[Run.Status] =
+    enumFormat[Run.Status](Run.Status.values: _*)
+  implicit val runErrorCodeFormat: Format[Run.Error.Code] =
+    enumFormat[Run.Error.Code](Run.Error.Code.values: _*)
+  implicit val runErrorFormat: Format[Run.Error] = Json.format[Run.Error]
+  implicit val runFormat: Format[Run] = Json.format[Run]
 
 }

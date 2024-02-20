@@ -1,11 +1,6 @@
 package io.cequence.openaiscala
 
-import io.cequence.openaiscala.domain.{
-  AssistantTool,
-  CodeInterpreterSpec,
-  FunctionSpec,
-  RetrievalSpec
-}
+import io.cequence.openaiscala.domain.{AssistantTool, CodeInterpreterSpec, FunctionSpec, RetrievalSpec, RunTool}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import play.api.libs.json.{Format, Json}
@@ -42,6 +37,22 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
 
     "serialize and deserialize a function tool" in {
       testCodec[AssistantTool](
+        FunctionSpec("name", Some("description"), Map.empty),
+        functionToolJson,
+        Pretty
+      )
+    }
+
+    "serialize and deserialize a code interpreter as a run tool" in {
+      testCodec[RunTool](CodeInterpreterSpec, """{"type":"code_interpreter"}""")
+    }
+
+    "serialize and edeserialize a retrieval as a run tool" in {
+      testCodec[RunTool](RetrievalSpec, """{"type":"retrieval"}""")
+    }
+
+    "serialize and deserialize a function as a run tool" in {
+      testCodec[RunTool](
         FunctionSpec("name", Some("description"), Map.empty),
         functionToolJson,
         Pretty

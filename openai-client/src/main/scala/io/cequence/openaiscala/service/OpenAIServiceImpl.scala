@@ -13,6 +13,7 @@ import io.cequence.openaiscala.domain.{
   ChatRole,
   FunctionSpec,
   Pagination,
+  RunTool,
   SortOrder,
   Thread,
   ThreadFullMessage,
@@ -699,6 +700,29 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
         // we got a not-found http code (404)
         DeleteResponse.NotFound
       )
+  }
+
+  override def createRun(
+    threadId: String,
+    assistantId: String,
+    model: String,
+    instructions: Option[String] = None,
+    additionalInstructions: Option[String] = None,
+    tools: Seq[RunTool] = Seq.empty,
+    metadata: Map[String, Any] = Map.empty
+  ): Future[Run] = {
+    execPOST(
+      EndPoint.threads,
+      endPointParam = Some(s"$threadId/runs"),
+      bodyParams = jsonBodyParams(
+        Param.assistant_id -> Some(assistantId),
+        Param.model -> Some(model),
+        Param.instructions -> instructions,
+        Param.additional_instructions -> additionalInstructions,
+        Param.tools -> Some(Json.toJson(tools)),
+        Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
+      )
+    ).map(_.asSafe[Run])
   }
 
   private def readAttribute(

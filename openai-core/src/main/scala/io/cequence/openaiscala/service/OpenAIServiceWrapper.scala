@@ -9,6 +9,7 @@ import io.cequence.openaiscala.domain.{
   FileId,
   FunctionSpec,
   Pagination,
+  RunTool,
   SortOrder,
   Thread,
   ThreadFullMessage,
@@ -368,6 +369,27 @@ trait OpenAIServiceWrapper extends OpenAIService {
     fileId: String
   ): Future[DeleteResponse] =
     wrap(_.deleteAssistantFile(assistantId, fileId))
+
+  override def createRun(
+    threadId: String,
+    assistantId: String,
+    model: String,
+    instructions: Option[String],
+    additionalInstructions: Option[String],
+    tools: Seq[RunTool],
+    metadata: Map[String, Any]
+  ): Future[Run] =
+    wrap(
+      _.createRun(
+        threadId,
+        assistantId,
+        model,
+        instructions,
+        additionalInstructions,
+        tools,
+        metadata
+      )
+    )
 
   protected def wrap[T](
     fun: OpenAIService => Future[T]
