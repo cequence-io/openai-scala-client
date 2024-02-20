@@ -1,6 +1,12 @@
 package io.cequence.openaiscala
 
-import io.cequence.openaiscala.domain.{AssistantTool, CodeInterpreterSpec, FunctionSpec, RetrievalSpec, RunTool}
+import io.cequence.openaiscala.domain.{
+  AssistantTool,
+  CodeInterpreterSpec,
+  FunctionSpec,
+  RetrievalSpec,
+  RunTool
+}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import play.api.libs.json.{Format, Json}

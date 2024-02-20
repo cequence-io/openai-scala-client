@@ -748,6 +748,82 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
       )
     ).map(_.asSafe[Run])
 
+  override def listRuns(
+    threadId: String,
+    pagination: Pagination,
+    order: Option[SortOrder]
+  ): Future[Seq[Run]] =
+    execGET(
+      EndPoint.threads,
+      endPointParam = Some(s"$threadId/runs"),
+      params = paginationParams(pagination) :+ Param.order -> order
+    ).map { response =>
+      readAttribute(response, "data").asSafeArray[Run]
+    }
+
+  override def listRunSteps(
+    threadId: String,
+    runId: String,
+    pagination: Pagination,
+    order: Option[SortOrder]
+  ): Future[Seq[RunStep]] =
+    execGET(
+      EndPoint.threads,
+      endPointParam = Some(s"$threadId/runs/$runId/steps"),
+      params = paginationParams(pagination) :+ Param.order -> order
+    ).map { response =>
+      readAttribute(response, "data").asSafeArray[RunStep]
+    }
+
+  override def retrieveRun(
+    threadId: String,
+    runId: String
+  ): Future[Option[Run]] =
+    execGETWithStatus(
+      EndPoint.threads,
+      endPointParam = Some(s"$threadId/runs/$runId")
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafe[Run])
+    }
+
+  override def retrieveRunStep(
+    threadId: String,
+    runId: String,
+    stepId: String
+  ): Future[Option[RunStep]] =
+    execGETWithStatus(
+      EndPoint.threads,
+      endPointParam = Some(s"$threadId/runs/$runId/steps/$stepId")
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafe[RunStep])
+    }
+
+  override def modifyRun(
+    threadId: String,
+    runId: String,
+    metadata: Map[String, String]
+  ): Future[Option[Run]] =
+    execPOSTWithStatus(
+      EndPoint.threads,
+      endPointParam = Some(s"$threadId/runs/$runId"),
+      bodyParams = jsonBodyParams(
+        Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
+      )
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafe[Run])
+    }
+
+  override def cancelRun(
+    threadId: String,
+    runId: String
+  ): Future[Option[Run]] =
+    execPOSTWithStatus(
+      EndPoint.threads,
+      endPointParam = Some(s"$threadId/runs/$runId/cancel")
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafe[Run])
+    }
+
   private def readAttribute(
     json: JsValue,
     attribute: String

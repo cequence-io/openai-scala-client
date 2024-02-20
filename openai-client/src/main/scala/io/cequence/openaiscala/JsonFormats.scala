@@ -8,6 +8,11 @@ import io.cequence.openaiscala.domain.response._
 import play.api.libs.functional.syntax._
 import play.api.libs.json.{Format, Json, _}
 import Json.toJson
+import io.cequence.openaiscala.domain.response.ToolCall.{
+  CodeInterpreterCall,
+  FunctionCall,
+  RetrievalCall
+}
 
 object JsonFormats {
   private implicit val dateFormat: Format[ju.Date] = JsonUtil.SecDateFormat
@@ -393,6 +398,29 @@ object JsonFormats {
 
   lazy implicit val assistantFileFormat: Format[AssistantFile] = Json.format[AssistantFile]
 
+  implicit val toolCallFormat: Format[ToolCall] = Format(
+    (JsPath \ "type").read[String].flatMap {
+      case "code_interpreter" => Reads.pure(CodeInterpreterCall)
+      case "retrieval"        => Reads.pure(RetrievalCall)
+      case "function" =>
+        ((JsPath \ "function" \ "name").read[String] and
+          (JsPath \ "function" \ "arguments").read[String])(FunctionCall.apply _)
+      case _ => Reads(_ => JsError("Unknown type"))
+    },
+    _ match {
+      case CodeInterpreterCall => Json.obj("type" -> "code_interpreter")
+      case RetrievalCall       => Json.obj("type" -> "retrieval")
+      case FunctionCall(name, arguments) =>
+        Json.obj(
+          "type" -> "function",
+          "function" -> Json.obj(
+            "name" -> name,
+            "arguments" -> arguments
+          )
+        )
+    }
+  )
+
   implicit val runUsageFormat: Format[Run.Usage] = Json.format[Run.Usage]
   implicit val runStatusFormat: Format[Run.Status] =
     enumFormat[Run.Status](Run.Status.values: _*)
@@ -402,5 +430,15 @@ object JsonFormats {
   implicit val runFormat: Format[Run] = Json.format[Run]
 
   implicit val threadToCreate: Format[ThreadToCreate] = Json.format[ThreadToCreate]
+
+  implicit val runStepTypeFormat: Format[RunStep.Type] =
+    enumFormat[RunStep.Type](RunStep.Type.values: _*)
+  implicit val runStepStatusFormat: Format[RunStep.Status] =
+    enumFormat[RunStep.Status](RunStep.Status.values: _*)
+  implicit val runStepDetailsFormat: Format[RunStep.Details] = Json.format[RunStep.Details]
+  implicit val runStepErrorCodeFormat: Format[RunStep.Error.Code] =
+    enumFormat[RunStep.Error.Code](RunStep.Error.Code.values: _*)
+  implicit val runStepErrorFormat: Format[RunStep.Error] = Json.format[RunStep.Error]
+  implicit val runStepFormat: Format[RunStep] = Json.format[RunStep]
 
 }

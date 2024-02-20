@@ -21,6 +21,7 @@ import io.cequence.openaiscala.domain.{
 }
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
+import sun.tools.jconsole.inspector.ThreadDialog
 
 import java.io.File
 import scala.concurrent.Future
@@ -944,7 +945,6 @@ trait OpenAIService extends OpenAICoreService {
    *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
    *   storing additional information about the object in a structured format. Keys can be a
    *   maximum of 64 characters long and values can be a maximum of 512 characters long.
-   * @return
    */
   def createRun(
     threadId: String,
@@ -963,17 +963,19 @@ trait OpenAIService extends OpenAICoreService {
    *   The ID of the assistant to use to execute this run.
    * @param thread
    * @param model
-   *   The ID of the Model to be used to execute this run. If a value is provided here, it will override the model
-   *   associated with the assistant. If not, the model associated with the assistant will be used.
+   *   The ID of the Model to be used to execute this run. If a value is provided here, it will
+   *   override the model associated with the assistant. If not, the model associated with the
+   *   assistant will be used.
    * @param instructions
-   *   Override the default system message of the assistant. This is useful for modifying the behavior on a per-run basis.
+   *   Override the default system message of the assistant. This is useful for modifying the
+   *   behavior on a per-run basis.
    * @param tools
-   *   Override the tools the assistant can use for this run. This is useful for modifying the behavior on a per-run basis.
+   *   Override the tools the assistant can use for this run. This is useful for modifying the
+   *   behavior on a per-run basis.
    * @param metadata
-   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for storing additional
-   *   information about the object in a structured format. Keys can be a maximum of 64 characters long and values
-   *   can be a maximum of 512 characters long.
-   * @return
+   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
+   *   storing additional information about the object in a structured format. Keys can be a
+   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
    */
   def createThreadAndRun(
     assistantId: AssistantId,
@@ -983,5 +985,99 @@ trait OpenAIService extends OpenAICoreService {
     tools: Seq[RunTool] = Seq.empty,
     metadata: Map[String, Any] = Map.empty
   ): Future[Run]
+
+  /**
+   * Returns a list of runs belonging to a thread.
+   *
+   * @param threadId
+   *   The ID of the thread the run belongs to.
+   * @param pagination
+   * @param order
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
+   *   for descending order.
+   */
+  def listRuns(
+    threadId: String,
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None
+  ): Future[Seq[Run]]
+
+  /**
+   * Returns a list of run steps belonging to a run.
+   *
+   * @param threadId
+   *   The ID of the thread the run and run steps belong to.
+   * @param runId
+   *   The ID of the run the run steps belong to.
+   * @param pagination
+   * @param order
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
+   *   for descending order.
+   */
+  def listRunSteps(
+    threadId: String,
+    runId: String,
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None
+  ): Future[Seq[RunStep]]
+
+  /**
+   * Retrieves a run.
+   *
+   * @param threadId
+   *   The ID of the thread that was run.
+   * @param runId
+   *   The ID of the run to retrieve.
+   */
+  def retrieveRun(
+    threadId: String,
+    runId: String
+  ): Future[Option[Run]]
+
+  /**
+   * Retrieves a run step.
+   *
+   * @param threadId
+   *   The ID of the thread to which the run and run step belongs.
+   * @param runId
+   *   The ID of the run to which the run step belongs.
+   * @param stepId
+   *   The ID of the run step to retrieve.
+   */
+  def retrieveRunStep(
+    threadId: String,
+    runId: String,
+    stepId: String
+  ): Future[Option[RunStep]]
+
+  /**
+   * Modifies a run.
+   *
+   * @param threadId
+   *   The ID of the thread that was run.
+   * @param runId
+   *   The ID of the run to modify.
+   * @param metadata
+   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
+   *   storing additional information about the object in a structured format. Keys can be a
+   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
+   */
+  def modifyRun(
+    threadId: String,
+    runId: String,
+    metadata: Map[String, String] = Map.empty
+  ): Future[Option[Run]]
+
+  /**
+   * Cancels a run that is in_progress.
+   * @param threadId
+   *   The ID of the thread to which this run belongs.
+   * @param runId
+   *   The ID of the run to cancel.
+   */
+  def cancelRun(
+    threadId: String,
+    runId: String
+  ): Future[Option[Run]]
 
 }

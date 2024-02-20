@@ -405,6 +405,59 @@ trait OpenAIServiceWrapper extends OpenAIService {
       _.createThreadAndRun(assistantId, thread, model, instructions, tools, metadata)
     )
 
+  override def listRuns(
+    threadId: String,
+    pagination: Pagination,
+    order: Option[SortOrder]
+  ): Future[Seq[Run]] =
+    wrap(
+      _.listRuns(threadId, pagination, order)
+    )
+
+  override def listRunSteps(
+    threadId: String,
+    runId: String,
+    pagination: Pagination,
+    order: Option[SortOrder]
+  ): Future[Seq[RunStep]] =
+    wrap(
+      _.listRunSteps(threadId, runId, pagination, order)
+    )
+
+  override def retrieveRun(
+    threadId: String,
+    runId: String
+  ): Future[Option[Run]] =
+    wrap(
+      _.retrieveRun(threadId, runId)
+    )
+
+  override def retrieveRunStep(
+    threadId: String,
+    runId: String,
+    stepId: String
+  ): Future[Option[RunStep]] =
+    wrap(
+      _.retrieveRunStep(threadId, runId, stepId)
+    )
+
+  override def modifyRun(
+    threadId: String,
+    runId: String,
+    metadata: Map[String, String]
+  ): Future[Option[Run]] =
+    wrap(
+      _.modifyRun(threadId, runId, metadata)
+    )
+
+  override def cancelRun(
+    threadId: String,
+    runId: String
+  ): Future[Option[Run]] =
+    wrap(
+      _.cancelRun(threadId, runId)
+    )
+
   protected def wrap[T](
     fun: OpenAIService => Future[T]
   ): Future[T]
