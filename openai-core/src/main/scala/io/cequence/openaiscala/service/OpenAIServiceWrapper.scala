@@ -3,6 +3,7 @@ package io.cequence.openaiscala.service
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.cequence.openaiscala.domain.{
+  AssistantId,
   AssistantTool,
   BaseMessage,
   ChatRole,
@@ -15,6 +16,7 @@ import io.cequence.openaiscala.domain.{
   ThreadFullMessage,
   ThreadMessage,
   ThreadMessageFile,
+  ThreadToCreate,
   ToolSpec
 }
 import io.cequence.openaiscala.domain.settings._
@@ -373,7 +375,7 @@ trait OpenAIServiceWrapper extends OpenAIService {
   override def createRun(
     threadId: String,
     assistantId: String,
-    model: String,
+    model: Option[String],
     instructions: Option[String],
     additionalInstructions: Option[String],
     tools: Seq[RunTool],
@@ -389,6 +391,18 @@ trait OpenAIServiceWrapper extends OpenAIService {
         tools,
         metadata
       )
+    )
+
+  override def createThreadAndRun(
+    assistantId: AssistantId,
+    thread: ThreadToCreate,
+    model: Option[String],
+    instructions: Option[String],
+    tools: Seq[RunTool],
+    metadata: Map[String, Any]
+  ): Future[Run] =
+    wrap(
+      _.createThreadAndRun(assistantId, thread, model, instructions, tools, metadata)
     )
 
   protected def wrap[T](

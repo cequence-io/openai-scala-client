@@ -401,4 +401,6 @@ object JsonFormats {
   implicit val runErrorFormat: Format[Run.Error] = Json.format[Run.Error]
   implicit val runFormat: Format[Run] = Json.format[Run]
 
+  implicit val threadToCreate: Format[ThreadToCreate] = Json.format[ThreadToCreate]
+
 }

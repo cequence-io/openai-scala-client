@@ -8,6 +8,7 @@ import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.{
+  AssistantId,
   AssistantTool,
   BaseMessage,
   ChatRole,
@@ -19,6 +20,7 @@ import io.cequence.openaiscala.domain.{
   ThreadFullMessage,
   ThreadMessage,
   ThreadMessageFile,
+  ThreadToCreate,
   ToolSpec
 }
 import play.api.libs.json.{JsObject, JsValue, Json}
@@ -705,7 +707,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
   override def createRun(
     threadId: String,
     assistantId: String,
-    model: String,
+    model: Option[String] = None,
     instructions: Option[String] = None,
     additionalInstructions: Option[String] = None,
     tools: Seq[RunTool] = Seq.empty,
@@ -724,6 +726,27 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
       )
     ).map(_.asSafe[Run])
   }
+
+  override def createThreadAndRun(
+    assistantId: AssistantId,
+    thread: ThreadToCreate,
+    model: Option[String],
+    instructions: Option[String],
+    tools: Seq[RunTool],
+    metadata: Map[String, Any]
+  ): Future[Run] =
+    execPOST(
+      EndPoint.threads,
+      endPointParam = Some(s"runs"),
+      bodyParams = jsonBodyParams(
+        Param.assistant_id -> Some(assistantId.id),
+        Param.thread -> Some(Json.toJson(thread)),
+        Param.model -> model,
+        Param.instructions -> instructions,
+        Param.tools -> Some(Json.toJson(tools)),
+        Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
+      )
+    ).map(_.asSafe[Run])
 
   private def readAttribute(
     json: JsValue,

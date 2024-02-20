@@ -3,6 +3,7 @@ package io.cequence.openaiscala.service
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.cequence.openaiscala.domain.{
+  AssistantId,
   AssistantTool,
   BaseMessage,
   ChatRole,
@@ -15,6 +16,7 @@ import io.cequence.openaiscala.domain.{
   ThreadFullMessage,
   ThreadMessage,
   ThreadMessageFile,
+  ThreadToCreate,
   ToolSpec
 }
 import io.cequence.openaiscala.domain.settings._
@@ -947,9 +949,37 @@ trait OpenAIService extends OpenAICoreService {
   def createRun(
     threadId: String,
     assistantId: String,
-    model: String,
+    model: Option[String] = None,
     instructions: Option[String] = None,
     additionalInstructions: Option[String] = None,
+    tools: Seq[RunTool] = Seq.empty,
+    metadata: Map[String, Any] = Map.empty
+  ): Future[Run]
+
+  /**
+   * Create a thread and run it in one request.
+   *
+   * @param assistantId
+   *   The ID of the assistant to use to execute this run.
+   * @param thread
+   * @param model
+   *   The ID of the Model to be used to execute this run. If a value is provided here, it will override the model
+   *   associated with the assistant. If not, the model associated with the assistant will be used.
+   * @param instructions
+   *   Override the default system message of the assistant. This is useful for modifying the behavior on a per-run basis.
+   * @param tools
+   *   Override the tools the assistant can use for this run. This is useful for modifying the behavior on a per-run basis.
+   * @param metadata
+   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for storing additional
+   *   information about the object in a structured format. Keys can be a maximum of 64 characters long and values
+   *   can be a maximum of 512 characters long.
+   * @return
+   */
+  def createThreadAndRun(
+    assistantId: AssistantId,
+    thread: ThreadToCreate,
+    model: Option[String] = None,
+    instructions: Option[String] = None,
     tools: Seq[RunTool] = Seq.empty,
     metadata: Map[String, Any] = Map.empty
   ): Future[Run]

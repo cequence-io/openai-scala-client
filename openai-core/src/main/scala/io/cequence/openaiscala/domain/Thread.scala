@@ -33,3 +33,8 @@ case class ThreadMessage(
   // Keys can be a maximum of 64 characters long and values can be a maximum of 512 characters long.
   metadata: Map[String, String] = Map()
 )
+
+final case class ThreadToCreate(
+  messages: Seq[ThreadMessage],
+  metadata: Map[String, String]
+)
