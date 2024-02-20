@@ -21,6 +21,7 @@ import io.cequence.openaiscala.domain.{
   ThreadMessage,
   ThreadMessageFile,
   ThreadToCreate,
+  ToolOutput,
   ToolSpec
 }
 import play.api.libs.json.{JsObject, JsValue, Json}
@@ -808,6 +809,21 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
       endPointParam = Some(s"$threadId/runs/$runId"),
       bodyParams = jsonBodyParams(
         Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
+      )
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafe[Run])
+    }
+
+  override def submitToolOutputsToRun(
+    threadId: String,
+    runId: String,
+    toolOutputs: Seq[ToolOutput]
+  ): Future[Option[Run]] =
+    execPOSTWithStatus(
+      EndPoint.threads,
+      endPointParam = Some(s"$threadId/runs/$runId/submit_tool_outputs"),
+      bodyParams = jsonBodyParams(
+        Param.tool_outputs -> Some(Json.toJson(toolOutputs))
       )
     ).map { response =>
       handleNotFoundAndError(response).map(_.asSafe[Run])

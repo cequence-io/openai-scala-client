@@ -17,6 +17,7 @@ import io.cequence.openaiscala.domain.{
   ThreadMessage,
   ThreadMessageFile,
   ThreadToCreate,
+  ToolOutput,
   ToolSpec
 }
 import io.cequence.openaiscala.domain.settings._
@@ -1066,6 +1067,24 @@ trait OpenAIService extends OpenAICoreService {
     threadId: String,
     runId: String,
     metadata: Map[String, String] = Map.empty
+  ): Future[Option[Run]]
+
+  /**
+   * When a run has the status: "requires_action" and required_action.type is
+   * submit_tool_outputs, this endpoint can be used to submit the outputs from the tool calls
+   * once they're all completed. All outputs must be submitted in a single request.
+   *
+   * @param threadId
+   *   The ID of the thread to which this run belongs.
+   * @param runId
+   *   The ID of the run that requires the tool output submission.
+   * @param toolOutputs
+   *   A list of tools for which the outputs are being submitted.
+   */
+  def submitToolOutputsToRun(
+    threadId: String,
+    runId: String,
+    toolOutputs: Seq[ToolOutput]
   ): Future[Option[Run]]
 
   /**

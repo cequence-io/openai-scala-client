@@ -17,6 +17,7 @@ import io.cequence.openaiscala.domain.{
   ThreadMessage,
   ThreadMessageFile,
   ThreadToCreate,
+  ToolOutput,
   ToolSpec
 }
 import io.cequence.openaiscala.domain.settings._
@@ -448,6 +449,15 @@ trait OpenAIServiceWrapper extends OpenAIService {
   ): Future[Option[Run]] =
     wrap(
       _.modifyRun(threadId, runId, metadata)
+    )
+
+  override def submitToolOutputsToRun(
+    threadId: String,
+    runId: String,
+    toolOutputs: Seq[ToolOutput]
+  ): Future[Option[Run]] =
+    wrap(
+      _.submitToolOutputsToRun(threadId, runId, toolOutputs)
     )
 
   override def cancelRun(

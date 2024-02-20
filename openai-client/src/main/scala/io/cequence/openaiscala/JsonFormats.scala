@@ -441,4 +441,6 @@ object JsonFormats {
   implicit val runStepErrorFormat: Format[RunStep.Error] = Json.format[RunStep.Error]
   implicit val runStepFormat: Format[RunStep] = Json.format[RunStep]
 
+  implicit val toolOutputFormat: Format[ToolOutput] = Json.format[ToolOutput]
+
 }
