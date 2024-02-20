@@ -12,6 +12,8 @@ import org.scalatest.wordspec.AnyWordSpecLike
 import play.api.libs.json.{Format, Json}
 import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.JsonFormatsSpec.{Compact, JsonPrintMode, Pretty}
+import io.cequence.openaiscala.domain.response.{Run, ToolCall}
+import io.cequence.openaiscala.domain.response.Run.ActionToContinueRun
 
 object JsonFormatsSpec {
   sealed trait JsonPrintMode
@@ -65,6 +67,36 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       )
     }
 
+    "serialize and deserialize a required action to continue run" in {
+      val requiredActionToContinueRun =
+        ActionToContinueRun(
+          Run.SubmitToolOutputs(
+            Seq(
+              ToolCall.CodeInterpreterCall,
+              ToolCall.RetrievalCall,
+              ToolCall.FunctionCall("name", "arguments")
+            )
+          )
+        )
+      val expectedJson =
+        """{
+            |  "submit_tool_outputs" : {
+            |    "tool_calls" : [ {
+            |      "type" : "code_interpreter"
+            |    }, {
+            |      "type" : "retrieval"
+            |    }, {
+            |      "type" : "function",
+            |      "function" : {
+            |        "name" : "name",
+            |        "arguments" : "arguments"
+            |      }
+            |    } ]
+            |  },
+            |  "type" : "submit_tool_outputs"
+            |}""".stripMargin
+      testCodec[ActionToContinueRun](requiredActionToContinueRun, expectedJson, Pretty)
+    }
   }
 
   private def testCodec[A](

@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.domain.response
 
+import io.cequence.openaiscala.domain.response.Run.ActionToContinueRun
 import io.cequence.openaiscala.domain.{EnumValue, RunTool}
 
 import java.{util => ju}
@@ -52,7 +53,7 @@ final case class Run(
   thread_id: String,
   assistant_id: String,
   status: Run.Status,
-  required_action: Option[String],
+  required_action: Option[ActionToContinueRun],
   last_error: Option[Run.Error],
   expires_at: ju.Date,
   started_at: Option[ju.Date],
@@ -89,13 +90,13 @@ object Run {
    * @param submit_tool_outputs
    *   Details on the tool outputs needed for this run to continue.
    */
-  final case class Action(submit_tool_outputs: Run.SubmitToolOutputs)
+  final case class ActionToContinueRun(submit_tool_outputs: Run.SubmitToolOutputs)
 
   /**
    * @param tool_calls
    *   A list of the relevant tool calls.
    */
-  final case class SubmitToolOutputs(tool_calls: List[ToolCall])
+  final case class SubmitToolOutputs(tool_calls: Seq[ToolCall])
 
   /**
    * @param code

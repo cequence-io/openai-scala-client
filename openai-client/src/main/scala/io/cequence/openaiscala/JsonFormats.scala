@@ -8,6 +8,7 @@ import io.cequence.openaiscala.domain.response._
 import play.api.libs.functional.syntax._
 import play.api.libs.json.{Format, Json, _}
 import Json.toJson
+import io.cequence.openaiscala.domain.response.Run.ActionToContinueRun
 import io.cequence.openaiscala.domain.response.ToolCall.{
   CodeInterpreterCall,
   FunctionCall,
@@ -427,6 +428,19 @@ object JsonFormats {
   implicit val runErrorCodeFormat: Format[Run.Error.Code] =
     enumFormat[Run.Error.Code](Run.Error.Code.values: _*)
   implicit val runErrorFormat: Format[Run.Error] = Json.format[Run.Error]
+
+  implicit val submitToolOutputsFormat: Format[Run.SubmitToolOutputs] =
+    Json.format[Run.SubmitToolOutputs]
+
+  implicit val actionToContinueRunFormat: Format[Run.ActionToContinueRun] = {
+    val implicitWriter = Json.writes[Run.ActionToContinueRun]
+
+    val writes = (action: ActionToContinueRun) => {
+      implicitWriter.writes(action) + ("type" -> JsString("submit_tool_outputs"))
+    }
+    Format(Json.reads[Run.ActionToContinueRun], Writes(writes))
+  }
+
   implicit val runFormat: Format[Run] = Json.format[Run]
 
   implicit val threadToCreate: Format[ThreadToCreate] = Json.format[ThreadToCreate]
