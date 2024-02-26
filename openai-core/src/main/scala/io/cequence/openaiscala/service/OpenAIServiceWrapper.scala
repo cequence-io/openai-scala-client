@@ -3,9 +3,12 @@ package io.cequence.openaiscala.service
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.cequence.openaiscala.domain.{
+  AssistantTool,
   BaseMessage,
   ChatRole,
+  FileId,
   FunctionSpec,
+  Pagination,
   SortOrder,
   Thread,
   ThreadFullMessage,
@@ -265,12 +268,10 @@ trait OpenAIServiceWrapper extends OpenAIService {
 
   override def listThreadMessages(
     threadId: String,
-    limit: Option[Int],
-    order: Option[SortOrder],
-    after: Option[String],
-    before: Option[String]
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder]
   ): Future[Seq[ThreadFullMessage]] = wrap(
-    _.listThreadMessages(threadId, limit, order, after, before)
+    _.listThreadMessages(threadId, pagination, order)
   )
 
   override def retrieveThreadMessageFile(
@@ -284,15 +285,92 @@ trait OpenAIServiceWrapper extends OpenAIService {
   override def listThreadMessageFiles(
     threadId: String,
     messageId: String,
-    limit: Option[Int],
-    order: Option[SortOrder],
-    after: Option[String],
-    before: Option[String]
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder]
   ): Future[Seq[ThreadMessageFile]] = wrap(
-    _.listThreadMessageFiles(threadId, messageId, limit, order, after, before)
+    _.listThreadMessageFiles(threadId, messageId, pagination, order)
   )
+
+  override def createAssistant(
+    model: String,
+    name: Option[String],
+    description: Option[String],
+    instructions: Option[String],
+    tools: Seq[AssistantTool],
+    fileIds: Seq[String],
+    metadata: Map[String, String]
+  ): Future[Assistant] = wrap(
+    _.createAssistant(model, name, description, instructions, tools, fileIds, metadata)
+  )
+
+  override def createAssistantFile(
+    assistantId: String,
+    fileId: String
+  ): Future[AssistantFile] =
+    wrap(
+      _.createAssistantFile(assistantId, fileId)
+    )
+
+  override def listAssistants(
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder]
+  ): Future[Seq[Assistant]] =
+    wrap(
+      _.listAssistants(pagination, order)
+    )
+
+  override def listAssistantFiles(
+    assistantId: String,
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder]
+  ): Future[Seq[AssistantFile]] =
+    wrap(
+      _.listAssistantFiles(assistantId, pagination, order)
+    )
+
+  override def retrieveAssistant(assistantId: String): Future[Option[Assistant]] =
+    wrap(_.retrieveAssistant(assistantId))
+
+  override def retrieveAssistantFile(
+    assistantId: String,
+    fileId: String
+  ): Future[Option[AssistantFile]] =
+    wrap(_.retrieveAssistantFile(assistantId, fileId))
+
+  override def modifyAssistant(
+    assistantId: String,
+    model: Option[String],
+    name: Option[String],
+    description: Option[String],
+    instructions: Option[String],
+    tools: Seq[AssistantTool],
+    fileIds: Seq[String],
+    metadata: Map[String, String]
+  ): Future[Option[Assistant]] =
+    wrap(
+      _.modifyAssistant(
+        assistantId,
+        model,
+        name,
+        description,
+        instructions,
+        tools,
+        fileIds,
+        metadata
+      )
+    )
+
+  override def deleteAssistant(assistantId: String): Future[DeleteResponse] =
+    wrap(_.deleteAssistant(assistantId))
+
+  override def deleteAssistantFile(
+    assistantId: String,
+    fileId: String
+  ): Future[DeleteResponse] =
+    wrap(_.deleteAssistantFile(assistantId, fileId))
 
   protected def wrap[T](
     fun: OpenAIService => Future[T]
   ): Future[T]
+
 }

@@ -90,6 +90,60 @@ object JsonFormats {
     Json.format[FunctionSpec]
   }
 
+  val assistantsFunctionSpecFormat: Format[FunctionSpec] = {
+    implicit val stringAnyMapFormat: Format[Map[String, Any]] = JsonUtil.StringAnyMapFormat
+
+    val assistantsFunctionSpecWrites: Writes[FunctionSpec] = new Writes[FunctionSpec] {
+      def writes(fs: FunctionSpec): JsValue = Json.obj(
+        "type" -> "function",
+        "function" -> Json.obj(
+          "name" -> fs.name,
+          "description" -> fs.description,
+          "parameters" -> fs.parameters
+        )
+      )
+    }
+
+    val assistantsFunctionSpecReads: Reads[FunctionSpec] = (
+      (JsPath \ "function" \ "name").read[String] and
+        (JsPath \ "function" \ "description").readNullable[String] and
+        (JsPath \ "function" \ "parameters").read[Map[String, Any]]
+    )(FunctionSpec.apply _)
+
+    Format(assistantsFunctionSpecReads, assistantsFunctionSpecWrites)
+  }
+
+  implicit val assistantToolFormat: Format[AssistantTool] = {
+    val typeDiscriminatorKey = "type"
+
+    Format[AssistantTool](
+      (json: JsValue) => {
+        (json \ typeDiscriminatorKey).validate[String].flatMap {
+          case "code_interpreter" => JsSuccess(CodeInterpreterSpec)
+          case "retrieval"        => JsSuccess(RetrievalSpec)
+          case "function"         => json.validate[FunctionSpec](assistantsFunctionSpecFormat)
+          case _                  => JsError("Unknown type")
+        }
+      },
+      { (tool: AssistantTool) =>
+        val commonJson = Json.obj {
+          val discriminatorValue = tool match {
+            case CodeInterpreterSpec   => "code_interpreter"
+            case RetrievalSpec         => "retrieval"
+            case FunctionSpec(_, _, _) => "function"
+          }
+          typeDiscriminatorKey -> discriminatorValue
+        }
+        tool match {
+          case CodeInterpreterSpec => commonJson
+          case RetrievalSpec       => commonJson
+          case ft: FunctionSpec =>
+            commonJson ++ Json.toJson(ft)(assistantsFunctionSpecFormat).as[JsObject]
+        }
+      }
+    )
+  }
+
   implicit val contentWrites: Writes[Content] = Writes[Content] {
     _ match {
       case c: TextContent =>
@@ -301,4 +355,11 @@ object JsonFormats {
 
   implicit val threadMessageFileFormat: Format[ThreadMessageFile] =
     Json.format[ThreadMessageFile]
+
+  implicit val assistantIdFormat: Format[AssistantId] = Json.valueFormat[AssistantId]
+
+  implicit val assistantFormat: Format[Assistant] = Json.format[Assistant]
+
+  lazy implicit val assistantFileFormat: Format[AssistantFile] = Json.format[AssistantFile]
+
 }

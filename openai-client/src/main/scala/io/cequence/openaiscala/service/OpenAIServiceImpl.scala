@@ -2,16 +2,17 @@ package io.cequence.openaiscala.service
 
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
-import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.JsonFormats._
+import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
+import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.{
+  AssistantTool,
   BaseMessage,
   ChatRole,
   FunctionSpec,
+  Pagination,
   SortOrder,
   Thread,
   ThreadFullMessage,
@@ -19,6 +20,7 @@ import io.cequence.openaiscala.domain.{
   ThreadMessageFile,
   ToolSpec
 }
+import play.api.libs.json.{JsObject, JsValue, Json}
 
 import java.io.File
 import scala.concurrent.Future
@@ -232,14 +234,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
   ) = {
     val stringResponse = handleErrorResponse(stringRichResponse)
 
-    def textFromJsonString(json: JsValue) =
-      (json.asSafe[JsObject] \ "text").toOption
-        .map(_.asSafe[String])
-        .getOrElse(
-          throw new OpenAIScalaClientException(
-            s"The attribute 'text' is not present in the response: ${stringResponse}."
-          )
-        )
+    def textFromJsonString(json: JsValue) = readAttribute(json, "text").asSafe[String]
 
     val FormatType = TranscriptResponseFormatType
 
@@ -262,13 +257,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
 
   override def listFiles: Future[Seq[FileInfo]] =
     execGET(EndPoint.files).map { response =>
-      (response.asSafe[JsObject] \ "data").toOption
-        .map(_.asSafeArray[FileInfo])
-        .getOrElse(
-          throw new OpenAIScalaClientException(
-            s"The attribute 'data' is not present in the response: ${response.toString()}."
-          )
-        )
+      readAttribute(response, "data").asSafeArray[FileInfo]
     }
 
   override def uploadFile(
@@ -293,25 +282,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
     execDELETEWithStatus(
       EndPoint.files,
       endPointParam = Some(fileId)
-    ).map(response =>
-      handleNotFoundAndError(response)
-        .map(jsResponse =>
-          (jsResponse \ "deleted").toOption.map {
-            _.asSafe[Boolean] match {
-              case true  => DeleteResponse.Deleted
-              case false => DeleteResponse.NotDeleted
-            }
-          }.getOrElse(
-            throw new OpenAIScalaClientException(
-              s"The attribute 'deleted' is not present in the response: ${response.toString()}."
-            )
-          )
-        )
-        .getOrElse(
-          // we got a not-found http code (404)
-          DeleteResponse.NotFound
-        )
-    )
+    ).map(handleDeleteEndpointResponse)
 
   override def retrieveFile(
     fileId: String
@@ -380,13 +351,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
         Param.limit -> limit
       )
     ).map { response =>
-      (response.asSafe[JsObject] \ "data").toOption
-        .map(_.asSafeArray[FineTuneJob])
-        .getOrElse(
-          throw new OpenAIScalaClientException(
-            s"The attribute 'data' is not present in the response: ${response.toString()}."
-          )
-        )
+      readAttribute(response, "data").asSafeArray[FineTuneJob]
     }
 
   override def retrieveFineTune(
@@ -420,13 +385,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
       )
     ).map { response =>
       handleNotFoundAndError(response).map(jsResponse =>
-        (jsResponse.asSafe[JsObject] \ "data").toOption
-          .map(_.asSafeArray[FineTuneEvent])
-          .getOrElse(
-            throw new OpenAIScalaClientException(
-              s"The attribute 'data' is not present in the response: ${response.toString()}."
-            )
-          )
+        readAttribute(jsResponse, "data").asSafeArray[FineTuneEvent]
       )
     }
 
@@ -436,25 +395,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
     execDELETEWithStatus(
       EndPoint.models,
       endPointParam = Some(modelId)
-    ).map(response =>
-      handleNotFoundAndError(response)
-        .map(jsResponse =>
-          (jsResponse \ "deleted").toOption.map {
-            _.asSafe[Boolean] match {
-              case true  => DeleteResponse.Deleted
-              case false => DeleteResponse.NotDeleted
-            }
-          }.getOrElse(
-            throw new OpenAIScalaClientException(
-              s"The attribute 'deleted' is not present in the response: ${response.toString()}."
-            )
-          )
-        )
-        .getOrElse(
-          // we got a not-found http code (404)
-          DeleteResponse.NotFound
-        )
-    )
+    ).map(handleDeleteEndpointResponse)
 
   override def createModeration(
     input: String,
@@ -526,25 +467,7 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
     execDELETEWithStatus(
       EndPoint.threads,
       endPointParam = Some(threadId)
-    ).map(response =>
-      handleNotFoundAndError(response)
-        .map(jsResponse =>
-          (jsResponse \ "deleted").toOption.map {
-            _.asSafe[Boolean] match {
-              case true  => DeleteResponse.Deleted
-              case false => DeleteResponse.NotDeleted
-            }
-          }.getOrElse(
-            throw new OpenAIScalaClientException(
-              s"The attribute 'deleted' is not present in the response: ${response.toString()}."
-            )
-          )
-        )
-        .getOrElse(
-          // we got a not-found http code (404)
-          DeleteResponse.NotFound
-        )
-    )
+    ).map(handleDeleteEndpointResponse)
 
   override def createThreadMessage(
     threadId: String,
@@ -606,28 +529,15 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
 
   override def listThreadMessages(
     threadId: String,
-    limit: Option[Int],
-    order: Option[SortOrder],
-    after: Option[String],
-    before: Option[String]
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder]
   ): Future[Seq[ThreadFullMessage]] =
     execGET(
       EndPoint.threads,
       endPointParam = Some(s"$threadId/messages"),
-      params = Seq(
-        Param.limit -> limit,
-        Param.order -> order,
-        Param.after -> after,
-        Param.before -> before
-      )
+      params = paginationParams(pagination) :+ Param.order -> order
     ).map { response =>
-      (response.asSafe[JsObject] \ "data").toOption
-        .map(_.asSafeArray[ThreadFullMessage])
-        .getOrElse(
-          throw new OpenAIScalaClientException(
-            s"The attribute 'data' is not present in the response: ${response.toString()}."
-          )
-        )
+      readAttribute(response, "data").asSafeArray[ThreadFullMessage]
     }
 
   override def retrieveThreadMessageFile(
@@ -645,27 +555,167 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
   override def listThreadMessageFiles(
     threadId: String,
     messageId: String,
-    limit: Option[Int],
-    order: Option[SortOrder],
-    after: Option[String],
-    before: Option[String]
+    pagination: Pagination,
+    order: Option[SortOrder]
   ): Future[Seq[ThreadMessageFile]] =
     execGET(
       EndPoint.threads,
       endPointParam = Some(s"$threadId/messages/$messageId/files"),
-      params = Seq(
-        Param.limit -> limit,
-        Param.order -> order,
-        Param.after -> after,
-        Param.before -> before
+      params = paginationParams(pagination) :+ Param.order -> order
+    ).map { response =>
+      readAttribute(response, "data").asSafeArray[ThreadMessageFile]
+    }
+
+  override def createAssistant(
+    model: String,
+    name: Option[String],
+    description: Option[String],
+    instructions: Option[String],
+    tools: Seq[AssistantTool],
+    fileIds: Seq[String],
+    metadata: Map[String, String]
+  ): Future[Assistant] = {
+    execPOST(
+      EndPoint.assistants,
+      bodyParams = jsonBodyParams(
+        Param.model -> Some(model),
+        Param.name -> Some(name),
+        Param.description -> Some(description),
+        Param.instructions -> Some(instructions),
+        Param.tools -> Some(Json.toJson(tools)),
+        Param.file_ids -> (if (fileIds.nonEmpty) Some(fileIds) else None),
+        Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
+      )
+    ).map(_.asSafe[Assistant])
+  }
+
+  override def createAssistantFile(
+    assistantId: String,
+    fileId: String
+  ): Future[AssistantFile] = {
+    execPOST(
+      EndPoint.assistants,
+      endPointParam = Some(s"$assistantId/files"),
+      bodyParams = jsonBodyParams(
+        Param.file_id -> Some(fileId)
+      )
+    ).map(_.asSafe[AssistantFile])
+  }
+
+  override def listAssistants(
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder]
+  ): Future[Seq[Assistant]] = {
+    execGET(
+      EndPoint.assistants,
+      params = paginationParams(pagination) :+ Param.order -> order
+    ).map { response =>
+      readAttribute(response, "data").asSafeArray[Assistant]
+    }
+  }
+
+  override def listAssistantFiles(
+    assistantId: String,
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder]
+  ): Future[Seq[AssistantFile]] =
+    execGET(
+      EndPoint.assistants,
+      endPointParam = Some(s"$assistantId/files"),
+      params = paginationParams(pagination) :+ Param.order -> order
+    ).map { response =>
+      readAttribute(response, "data").asSafeArray[AssistantFile]
+    }
+
+  override def retrieveAssistant(assistantId: String): Future[Option[Assistant]] =
+    execGETWithStatus(
+      EndPoint.assistants,
+      Some(assistantId)
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafe[Assistant])
+    }
+
+  override def retrieveAssistantFile(
+    assistantId: String,
+    fileId: String
+  ): Future[Option[AssistantFile]] =
+    execGETWithStatus(
+      EndPoint.assistants,
+      Some(s"$assistantId/files/$fileId")
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafe[AssistantFile])
+    }
+
+  override def modifyAssistant(
+    assistantId: String,
+    model: Option[String],
+    name: Option[String],
+    description: Option[String],
+    instructions: Option[String],
+    tools: Seq[AssistantTool],
+    fileIds: Seq[String],
+    metadata: Map[String, String]
+  ): Future[Option[Assistant]] =
+    execPOSTWithStatus(
+      EndPoint.assistants,
+      endPointParam = Some(assistantId),
+      bodyParams = jsonBodyParams(
+        Param.model -> model,
+        Param.name -> name,
+        Param.description -> description,
+        Param.instructions -> instructions,
+        Param.tools -> Some(Json.toJson(tools)),
+        Param.file_ids -> (if (fileIds.nonEmpty) Some(fileIds) else None),
+        Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
       )
     ).map { response =>
-      (response.asSafe[JsObject] \ "data").toOption
-        .map(_.asSafeArray[ThreadMessageFile])
-        .getOrElse(
-          throw new OpenAIScalaClientException(
-            s"The attribute 'data' is not present in the response: ${response.toString()}."
-          )
-        )
+      handleNotFoundAndError(response).map(_.asSafe[Assistant])
     }
+
+  override def deleteAssistant(assistantId: String): Future[DeleteResponse] =
+    execDELETEWithStatus(
+      EndPoint.assistants,
+      endPointParam = Some(assistantId)
+    ).map(handleDeleteEndpointResponse)
+
+  override def deleteAssistantFile(
+    assistantId: String,
+    fileId: String
+  ): Future[DeleteResponse] =
+    execDELETEWithStatus(
+      EndPoint.assistants,
+      endPointParam = Some(s"$assistantId/files/$fileId")
+    ).map(handleDeleteEndpointResponse)
+
+  private def handleDeleteEndpointResponse(response: RichJsResponse): DeleteResponse = {
+    handleNotFoundAndError(response)
+      .map(jsResponse =>
+        readAttribute(jsResponse, "deleted").asSafe[Boolean] match {
+          case true  => DeleteResponse.Deleted
+          case false => DeleteResponse.NotDeleted
+        }
+      )
+      .getOrElse(
+        // we got a not-found http code (404)
+        DeleteResponse.NotFound
+      )
+  }
+
+  private def readAttribute(
+    json: JsValue,
+    attribute: String
+  ): JsValue =
+    (json.asSafe[JsObject] \ attribute).toOption.getOrElse(
+      throw new OpenAIScalaClientException(
+        s"The attribute '$attribute' is not present in the response: ${json.toString()}."
+      )
+    )
+
+  private def paginationParams(pagination: Pagination) =
+    Seq(
+      Param.limit -> pagination.limit,
+      Param.after -> pagination.after,
+      Param.before -> pagination.before
+    )
+
 }
