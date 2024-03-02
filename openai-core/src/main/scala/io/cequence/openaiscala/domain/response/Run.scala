@@ -96,7 +96,7 @@ object Run {
    * @param tool_calls
    *   A list of the relevant tool calls.
    */
-  final case class SubmitToolOutputs(tool_calls: Seq[ToolCall])
+  final case class SubmitToolOutputs(tool_calls: List[ToolCall])
 
   /**
    * @param code

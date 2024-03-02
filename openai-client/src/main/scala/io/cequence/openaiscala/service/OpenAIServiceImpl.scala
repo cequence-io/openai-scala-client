@@ -4,26 +4,10 @@ import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.JsonUtil.JsonOps
-import io.cequence.openaiscala.OpenAIScalaClientException
+import io.cequence.openaiscala.{OpenAIScalaClientException, RunApiJsonFormats}
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.domain.{
-  AssistantId,
-  AssistantTool,
-  BaseMessage,
-  ChatRole,
-  FunctionSpec,
-  Pagination,
-  RunTool,
-  SortOrder,
-  Thread,
-  ThreadFullMessage,
-  ThreadMessage,
-  ThreadMessageFile,
-  ThreadToCreate,
-  ToolOutput,
-  ToolSpec
-}
+import io.cequence.openaiscala.domain.{AssistantId, AssistantTool, BaseMessage, ChatRole, FunctionSpec, Pagination, RunTool, SortOrder, Thread, ThreadFullMessage, ThreadMessage, ThreadMessageFile, ThreadToCreate, ToolOutput, ToolSpec}
 import play.api.libs.json.{JsObject, JsValue, Json}
 
 import java.io.File
@@ -35,7 +19,7 @@ import scala.concurrent.Future
  * @since Jan
  *   2023
  */
-private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService {
+private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService with RunApiJsonFormats {
 
   override def retrieveModel(
     modelId: String

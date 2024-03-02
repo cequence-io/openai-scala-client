@@ -1,27 +1,15 @@
 package io.cequence.openaiscala
 
-import io.cequence.openaiscala.domain.{
-  AssistantTool,
-  CodeInterpreterSpec,
-  FunctionSpec,
-  RetrievalSpec,
-  RunTool
-}
+import io.cequence.openaiscala.JsonFormats._
+import io.cequence.openaiscala.JsonPrintMode.Pretty
+import io.cequence.openaiscala.domain._
+import io.cequence.openaiscala.domain.response.Run.ActionToContinueRun
+import io.cequence.openaiscala.domain.response.{Run, ToolCall}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
-import play.api.libs.json.{Format, Json}
-import io.cequence.openaiscala.JsonFormats._
-import io.cequence.openaiscala.JsonFormatsSpec.{Compact, JsonPrintMode, Pretty}
-import io.cequence.openaiscala.domain.response.{Run, ToolCall}
-import io.cequence.openaiscala.domain.response.Run.ActionToContinueRun
 
-object JsonFormatsSpec {
-  sealed trait JsonPrintMode
-  case object Compact extends JsonPrintMode
-  case object Pretty extends JsonPrintMode
-}
 
-class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
+class JsonFormatsSpec extends AnyWordSpecLike with Matchers with RunApiJsonFormats {
 
   private val functionToolJson =
     """{
@@ -55,7 +43,7 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       testCodec[RunTool](CodeInterpreterSpec, """{"type":"code_interpreter"}""")
     }
 
-    "serialize and edeserialize a retrieval as a run tool" in {
+    "serialize and deserialize a retrieval as a run tool" in {
       testCodec[RunTool](RetrievalSpec, """{"type":"retrieval"}""")
     }
 
@@ -71,7 +59,7 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       val requiredActionToContinueRun =
         ActionToContinueRun(
           Run.SubmitToolOutputs(
-            Seq(
+            List(
               ToolCall.CodeInterpreterCall,
               ToolCall.RetrievalCall,
               ToolCall.FunctionCall("name", "arguments")
@@ -97,23 +85,9 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
             |}""".stripMargin
       testCodec[ActionToContinueRun](requiredActionToContinueRun, expectedJson, Pretty)
     }
+
   }
 
-  private def testCodec[A](
-    value: A,
-    json: String,
-    printMode: JsonPrintMode = Compact
-  )(
-    implicit format: Format[A]
-  ): Unit = {
-    val jsValue = Json.toJson(value)
-    val serialized = printMode match {
-      case Compact => jsValue.toString()
-      case Pretty  => Json.prettyPrint(jsValue)
-    }
-    serialized shouldBe json
 
-    Json.parse(json).as[A] shouldBe value
-  }
 
 }

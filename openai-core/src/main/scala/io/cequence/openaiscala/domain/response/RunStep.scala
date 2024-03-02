@@ -49,7 +49,7 @@ final case class RunStep(
   run_id: String,
   `type`: RunStep.Type,
   status: RunStep.Status,
-  step_details: RunStep.Details,
+  step_details: RunStep.StepDetails,
   last_error: Option[RunStep.Error],
   expired_at: java.util.Date,
   cancelled_at: Option[java.util.Date],
@@ -82,11 +82,37 @@ object RunStep {
     def values: Seq[Status] = Seq(in_progress, cancelled, failed, completed)
   }
 
-  final case class Details(
-    messageId: String,
-    // TODO: proper toolCalls model
-    toolCalls: String
+  // TODO: rename
+  final case class StepToolCall(
+    id: String,
+    details: ToolCallDetails
   )
+
+  sealed trait ToolCallDetails
+  object ToolCallDetails {
+    case class CodeInterpreterToolCallDetails(input: String, outputs: Seq[CodeInterpreterCallOutput])
+        extends ToolCallDetails
+    case class RetrievalToolCall(retrieval: Map[String, Any]) extends ToolCallDetails
+    case class FunctionToolCall(function: FunctionCallOutput) extends ToolCallDetails
+  }
+
+  final case class FunctionCallOutput(
+    name: String,
+    arguments: String,
+    outputs: Option[String]
+  )
+
+  sealed trait CodeInterpreterCallOutput
+  object CodeInterpreterCallOutput {
+    final case class LogOutput(logs: String) extends CodeInterpreterCallOutput
+    final case class ImageOutput(fileId: String) extends CodeInterpreterCallOutput
+  }
+
+  sealed trait StepDetails
+  object StepDetails {
+    final case class MessageCreation(message_id: String) extends StepDetails
+    final case class ToolCalls(tool_calls: Seq[StepToolCall]) extends StepDetails
+  }
 
   final case class Error(
     code: Error.Code,

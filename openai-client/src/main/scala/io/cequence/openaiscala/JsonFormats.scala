@@ -1,21 +1,16 @@
 package io.cequence.openaiscala
 
 import io.cequence.openaiscala.JsonUtil.enumFormat
+import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.{ThreadMessageFile, _}
+import play.api.libs.functional.syntax._
+import play.api.libs.json.Json.toJson
+import play.api.libs.json.{Format, Json, _}
 
 import java.{util => ju}
-import io.cequence.openaiscala.domain.response._
-import play.api.libs.functional.syntax._
-import play.api.libs.json.{Format, Json, _}
-import Json.toJson
-import io.cequence.openaiscala.domain.response.Run.ActionToContinueRun
-import io.cequence.openaiscala.domain.response.ToolCall.{
-  CodeInterpreterCall,
-  FunctionCall,
-  RetrievalCall
-}
 
 object JsonFormats {
+
   private implicit val dateFormat: Format[ju.Date] = JsonUtil.SecDateFormat
 
   implicit val permissionFormat: Format[Permission] = Json.format[Permission]
@@ -150,36 +145,7 @@ object JsonFormats {
     )
   }
 
-  implicit val runToolFormat: Format[RunTool] = {
-    val typeDiscriminatorKey = "type"
 
-    Format[RunTool](
-      (json: JsValue) => {
-        (json \ typeDiscriminatorKey).validate[String].flatMap {
-          case "code_interpreter" => JsSuccess(CodeInterpreterSpec)
-          case "retrieval"        => JsSuccess(RetrievalSpec)
-          case "function"         => json.validate[FunctionSpec](assistantsFunctionSpecFormat)
-          case _                  => JsError("Unknown type")
-        }
-      },
-      { (tool: RunTool) =>
-        val commonJson = Json.obj {
-          val discriminatorValue = tool match {
-            case CodeInterpreterSpec   => "code_interpreter"
-            case RetrievalSpec         => "retrieval"
-            case FunctionSpec(_, _, _) => "function"
-          }
-          typeDiscriminatorKey -> discriminatorValue
-        }
-        tool match {
-          case CodeInterpreterSpec => commonJson
-          case RetrievalSpec       => commonJson
-          case ft: FunctionSpec =>
-            commonJson ++ Json.toJson(ft)(assistantsFunctionSpecFormat).as[JsObject]
-        }
-      }
-    )
-  }
 
   implicit val contentWrites: Writes[Content] = Writes[Content] {
     _ match {
@@ -399,62 +365,6 @@ object JsonFormats {
 
   lazy implicit val assistantFileFormat: Format[AssistantFile] = Json.format[AssistantFile]
 
-  implicit val toolCallFormat: Format[ToolCall] = Format(
-    (JsPath \ "type").read[String].flatMap {
-      case "code_interpreter" => Reads.pure(CodeInterpreterCall)
-      case "retrieval"        => Reads.pure(RetrievalCall)
-      case "function" =>
-        ((JsPath \ "function" \ "name").read[String] and
-          (JsPath \ "function" \ "arguments").read[String])(FunctionCall.apply _)
-      case _ => Reads(_ => JsError("Unknown type"))
-    },
-    _ match {
-      case CodeInterpreterCall => Json.obj("type" -> "code_interpreter")
-      case RetrievalCall       => Json.obj("type" -> "retrieval")
-      case FunctionCall(name, arguments) =>
-        Json.obj(
-          "type" -> "function",
-          "function" -> Json.obj(
-            "name" -> name,
-            "arguments" -> arguments
-          )
-        )
-    }
-  )
-
-  implicit val runUsageFormat: Format[Run.Usage] = Json.format[Run.Usage]
-  implicit val runStatusFormat: Format[Run.Status] =
-    enumFormat[Run.Status](Run.Status.values: _*)
-  implicit val runErrorCodeFormat: Format[Run.Error.Code] =
-    enumFormat[Run.Error.Code](Run.Error.Code.values: _*)
-  implicit val runErrorFormat: Format[Run.Error] = Json.format[Run.Error]
-
-  implicit val submitToolOutputsFormat: Format[Run.SubmitToolOutputs] =
-    Json.format[Run.SubmitToolOutputs]
-
-  implicit val actionToContinueRunFormat: Format[Run.ActionToContinueRun] = {
-    val implicitWriter = Json.writes[Run.ActionToContinueRun]
-
-    val writes = (action: ActionToContinueRun) => {
-      implicitWriter.writes(action) + ("type" -> JsString("submit_tool_outputs"))
-    }
-    Format(Json.reads[Run.ActionToContinueRun], Writes(writes))
-  }
-
-  implicit val runFormat: Format[Run] = Json.format[Run]
-
   implicit val threadToCreate: Format[ThreadToCreate] = Json.format[ThreadToCreate]
-
-  implicit val runStepTypeFormat: Format[RunStep.Type] =
-    enumFormat[RunStep.Type](RunStep.Type.values: _*)
-  implicit val runStepStatusFormat: Format[RunStep.Status] =
-    enumFormat[RunStep.Status](RunStep.Status.values: _*)
-  implicit val runStepDetailsFormat: Format[RunStep.Details] = Json.format[RunStep.Details]
-  implicit val runStepErrorCodeFormat: Format[RunStep.Error.Code] =
-    enumFormat[RunStep.Error.Code](RunStep.Error.Code.values: _*)
-  implicit val runStepErrorFormat: Format[RunStep.Error] = Json.format[RunStep.Error]
-  implicit val runStepFormat: Format[RunStep] = Json.format[RunStep]
-
-  implicit val toolOutputFormat: Format[ToolOutput] = Json.format[ToolOutput]
 
 }
