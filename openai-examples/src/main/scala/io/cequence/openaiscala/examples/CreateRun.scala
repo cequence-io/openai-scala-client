@@ -18,7 +18,6 @@ object CreateRun extends Example {
           FunctionSpec(
             name = "function-name",
             description = Some("calculates something"),
-            // parameters = Map("parameter" -> "parameter-value")
             Map.empty
           )
         ),
