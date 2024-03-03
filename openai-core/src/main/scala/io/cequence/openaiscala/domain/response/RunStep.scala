@@ -90,8 +90,10 @@ object RunStep {
 
   sealed trait ToolCallDetails
   object ToolCallDetails {
-    case class CodeInterpreterToolCallDetails(input: String, outputs: Seq[CodeInterpreterCallOutput])
-        extends ToolCallDetails
+    case class CodeInterpreterToolCallDetails(
+      input: String,
+      outputs: Seq[CodeInterpreterCallOutput]
+    ) extends ToolCallDetails
     case class RetrievalToolCall(retrieval: Map[String, Any]) extends ToolCallDetails
     case class FunctionToolCall(function: FunctionCallOutput) extends ToolCallDetails
   }

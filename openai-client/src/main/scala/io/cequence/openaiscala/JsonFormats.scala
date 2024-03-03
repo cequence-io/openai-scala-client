@@ -145,8 +145,6 @@ object JsonFormats {
     )
   }
 
-
-
   implicit val contentWrites: Writes[Content] = Writes[Content] {
     _ match {
       case c: TextContent =>

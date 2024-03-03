@@ -110,7 +110,10 @@ class RunApiJsonFormatsSpec extends AnyWordSpecLike with Matchers with RunApiJso
         List(
           RunStep.StepToolCall(
             "call_abc12345",
-            ToolCallDetails.FunctionToolCall(RunStep.FunctionCallOutput("name", "arguments", Some("outputs from the function")))
+            ToolCallDetails.FunctionToolCall(
+              RunStep
+                .FunctionCallOutput("name", "arguments", Some("outputs from the function"))
+            )
           )
         )
       )

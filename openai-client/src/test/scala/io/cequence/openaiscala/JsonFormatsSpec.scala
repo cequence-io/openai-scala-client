@@ -8,7 +8,6 @@ import io.cequence.openaiscala.domain.response.{Run, ToolCall}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 
-
 class JsonFormatsSpec extends AnyWordSpecLike with Matchers with RunApiJsonFormats {
 
   private val functionToolJson =
@@ -87,7 +86,5 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with RunApiJsonForma
     }
 
   }
-
-
 
 }

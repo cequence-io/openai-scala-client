@@ -162,14 +162,21 @@ trait RunApiJsonFormats {
             (json \ "code_interpreter").validate[JsValue].flatMap { interpreterJson =>
               for {
                 input <- (interpreterJson \ "input").validate[String]
-                outputs <- (interpreterJson \ "outputs").validate[Seq[CodeInterpreterCallOutput]](Reads.seq(codeInterpreterCallOutputFormat))
+                outputs <- (interpreterJson \ "outputs")
+                  .validate[Seq[CodeInterpreterCallOutput]](
+                    Reads.seq(codeInterpreterCallOutputFormat)
+                  )
               } yield ToolCallDetails.CodeInterpreterToolCallDetails(input, outputs)
             }
           case "retrieval" =>
             implicit val mapFormat = StringAnyMapFormat
-            (json \ "retrieval").validate[Map[String, Any]].map(ToolCallDetails.RetrievalToolCall)
+            (json \ "retrieval")
+              .validate[Map[String, Any]]
+              .map(ToolCallDetails.RetrievalToolCall)
           case "function" =>
-            (json \ "function").validate[FunctionCallOutput](functionCallOutputFormat).map(ToolCallDetails.FunctionToolCall)
+            (json \ "function")
+              .validate[FunctionCallOutput](functionCallOutputFormat)
+              .map(ToolCallDetails.FunctionToolCall)
         }
       } yield StepToolCall(id, details)
     }
@@ -181,7 +188,7 @@ trait RunApiJsonFormats {
       case d: ToolCallDetails.CodeInterpreterToolCallDetails =>
         base ++ Json.obj(
           "code_interpreter" -> Json.toJson(d)(codeInterpreterToolCallDetailsFormat),
-          "type" -> "code_interpreter",
+          "type" -> "code_interpreter"
         )
       case d: ToolCallDetails.RetrievalToolCall =>
         base ++ Json.toJsObject(d)(retrievalToolCallFormat) ++ Json.obj("type" -> "retrieval")
