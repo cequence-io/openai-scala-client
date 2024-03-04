@@ -1,15 +1,16 @@
 package io.cequence.openaiscala
 
-import io.cequence.openaiscala.JsonUtil.{JsonOps, enumFormat}
+import io.cequence.openaiscala.JsonUtil.enumFormat
+import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.{ThreadMessageFile, _}
+import play.api.libs.functional.syntax._
+import play.api.libs.json.Json.toJson
+import play.api.libs.json.{Format, Json, _}
 
 import java.{util => ju}
-import io.cequence.openaiscala.domain.response._
-import play.api.libs.functional.syntax._
-import play.api.libs.json.{Format, Json, _}
-import Json.toJson
 
 object JsonFormats {
+
   private implicit val dateFormat: Format[ju.Date] = JsonUtil.SecDateFormat
 
   implicit val permissionFormat: Format[Permission] = Json.format[Permission]
@@ -361,5 +362,7 @@ object JsonFormats {
   implicit val assistantFormat: Format[Assistant] = Json.format[Assistant]
 
   lazy implicit val assistantFileFormat: Format[AssistantFile] = Json.format[AssistantFile]
+
+  implicit val threadToCreate: Format[ThreadToCreate] = Json.format[ThreadToCreate]
 
 }

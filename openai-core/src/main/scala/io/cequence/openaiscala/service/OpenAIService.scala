@@ -3,21 +3,26 @@ package io.cequence.openaiscala.service
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.cequence.openaiscala.domain.{
+  AssistantId,
   AssistantTool,
   BaseMessage,
   ChatRole,
   FileId,
   FunctionSpec,
   Pagination,
+  RunTool,
   SortOrder,
   Thread,
   ThreadFullMessage,
   ThreadMessage,
   ThreadMessageFile,
+  ThreadToCreate,
+  ToolOutput,
   ToolSpec
 }
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
+import sun.tools.jconsole.inspector.ThreadDialog
 
 import java.io.File
 import scala.concurrent.Future
@@ -491,7 +496,7 @@ trait OpenAIService extends OpenAICoreService {
    * @param metadata
    *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
    *   storing additional information about the object in a structured format. Keys can be a
-   *   maximum of 64 characters long and values can be a maxium of 512 characters long.
+   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
    * @return
    *   A thread object.
    * @see
@@ -524,7 +529,7 @@ trait OpenAIService extends OpenAICoreService {
    * @param metadata
    *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
    *   storing additional information about the object in a structured format. Keys can be a
-   *   maximum of 64 characters long and values can be a maxium of 512 characters long.
+   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
    * @return
    *   The modified thread object matching the specified ID.
    * @see
@@ -733,7 +738,7 @@ trait OpenAIService extends OpenAICoreService {
    * @param metadata
    *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
    *   storing additional information about the object in a structured format. Keys can be a
-   *   maximum of 64 characters long and values can be a maxium of 512 characters long.
+   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
    * @see
    *   <a
    *   href="https://platform.openai.com/docs/api-reference/assistants/createAssistant">OpenAI
@@ -876,7 +881,7 @@ trait OpenAIService extends OpenAICoreService {
    * @param metadata
    *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
    *   storing additional information about the object in a structured format. Keys can be a
-   *   maximum of 64 characters long and values can be a maxium of 512 characters long. <a
+   *   maximum of 64 characters long and values can be a maximum of 512 characters long. <a
    *   href="https://platform.openai.com/docs/api-reference/assistants/modifyAssistant">OpenAI
    *   Doc</a>
    */
@@ -915,5 +920,183 @@ trait OpenAIService extends OpenAICoreService {
     assistantId: String,
     fileId: String
   ): Future[DeleteResponse]
+
+  /**
+   * Create a run.
+   *
+   * @param threadId
+   *   The ID of the thread to run.
+   * @param assistantId
+   *   The ID of the assistant to use to execute this run.
+   * @param model
+   *   The ID of the Model to be used to execute this run. If a value is provided here, it will
+   *   override the model associated with the assistant. If not, the model associated with the
+   *   assistant will be used.
+   * @param instructions
+   *   Overrides the instructions of the assistant. This is useful for modifying the behavior
+   *   on a per-run basis.
+   * @param additionalInstructions
+   *   Appends additional instructions at the end of the instructions for the run. This is
+   *   useful for modifying the behavior on a per-run basis without overriding other
+   *   instructions.
+   * @param toolSpec
+   *   Override the tools the assistant can use for this run. This is useful for modifying the
+   *   behavior on a per-run basis.
+   * @param metadata
+   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
+   *   storing additional information about the object in a structured format. Keys can be a
+   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
+   */
+  def createRun(
+    threadId: String,
+    assistantId: String,
+    model: Option[String] = None,
+    instructions: Option[String] = None,
+    additionalInstructions: Option[String] = None,
+    tools: Seq[RunTool] = Seq.empty,
+    metadata: Map[String, Any] = Map.empty
+  ): Future[Run]
+
+  /**
+   * Create a thread and run it in one request.
+   *
+   * @param assistantId
+   *   The ID of the assistant to use to execute this run.
+   * @param thread
+   * @param model
+   *   The ID of the Model to be used to execute this run. If a value is provided here, it will
+   *   override the model associated with the assistant. If not, the model associated with the
+   *   assistant will be used.
+   * @param instructions
+   *   Override the default system message of the assistant. This is useful for modifying the
+   *   behavior on a per-run basis.
+   * @param tools
+   *   Override the tools the assistant can use for this run. This is useful for modifying the
+   *   behavior on a per-run basis.
+   * @param metadata
+   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
+   *   storing additional information about the object in a structured format. Keys can be a
+   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
+   */
+  def createThreadAndRun(
+    assistantId: AssistantId,
+    thread: ThreadToCreate,
+    model: Option[String] = None,
+    instructions: Option[String] = None,
+    tools: Seq[RunTool] = Seq.empty,
+    metadata: Map[String, Any] = Map.empty
+  ): Future[Run]
+
+  /**
+   * Returns a list of runs belonging to a thread.
+   *
+   * @param threadId
+   *   The ID of the thread the run belongs to.
+   * @param pagination
+   * @param order
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
+   *   for descending order.
+   */
+  def listRuns(
+    threadId: String,
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None
+  ): Future[Seq[Run]]
+
+  /**
+   * Returns a list of run steps belonging to a run.
+   *
+   * @param threadId
+   *   The ID of the thread the run and run steps belong to.
+   * @param runId
+   *   The ID of the run the run steps belong to.
+   * @param pagination
+   * @param order
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
+   *   for descending order.
+   */
+  def listRunSteps(
+    threadId: String,
+    runId: String,
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None
+  ): Future[Seq[RunStep]]
+
+  /**
+   * Retrieves a run.
+   *
+   * @param threadId
+   *   The ID of the thread that was run.
+   * @param runId
+   *   The ID of the run to retrieve.
+   */
+  def retrieveRun(
+    threadId: String,
+    runId: String
+  ): Future[Option[Run]]
+
+  /**
+   * Retrieves a run step.
+   *
+   * @param threadId
+   *   The ID of the thread to which the run and run step belongs.
+   * @param runId
+   *   The ID of the run to which the run step belongs.
+   * @param stepId
+   *   The ID of the run step to retrieve.
+   */
+  def retrieveRunStep(
+    threadId: String,
+    runId: String,
+    stepId: String
+  ): Future[Option[RunStep]]
+
+  /**
+   * Modifies a run.
+   *
+   * @param threadId
+   *   The ID of the thread that was run.
+   * @param runId
+   *   The ID of the run to modify.
+   * @param metadata
+   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
+   *   storing additional information about the object in a structured format. Keys can be a
+   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
+   */
+  def modifyRun(
+    threadId: String,
+    runId: String,
+    metadata: Map[String, String] = Map.empty
+  ): Future[Option[Run]]
+
+  /**
+   * When a run has the status: "requires_action" and required_action.type is
+   * submit_tool_outputs, this endpoint can be used to submit the outputs from the tool calls
+   * once they're all completed. All outputs must be submitted in a single request.
+   *
+   * @param threadId
+   *   The ID of the thread to which this run belongs.
+   * @param runId
+   *   The ID of the run that requires the tool output submission.
+   * @param toolOutputs
+   *   A list of tools for which the outputs are being submitted.
+   */
+  def submitToolOutputsToRun(
+    threadId: String,
+    runId: String,
+    toolOutputs: Seq[ToolOutput]
+  ): Future[Option[Run]]
+
+  /**
+   * Cancels a run that is in_progress.
+   * @param threadId
+   *   The ID of the thread to which this run belongs.
+   * @param runId
+   *   The ID of the run to cancel.
+   */
+  def cancelRun(
+    threadId: String,
+    runId: String
+  ): Future[Option[Run]]
 
 }

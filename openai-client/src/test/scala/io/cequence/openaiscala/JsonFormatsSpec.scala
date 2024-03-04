@@ -1,24 +1,14 @@
 package io.cequence.openaiscala
 
-import io.cequence.openaiscala.domain.{
-  AssistantTool,
-  CodeInterpreterSpec,
-  FunctionSpec,
-  RetrievalSpec
-}
+import io.cequence.openaiscala.JsonFormats._
+import io.cequence.openaiscala.JsonPrintMode.Pretty
+import io.cequence.openaiscala.domain._
+import io.cequence.openaiscala.domain.response.Run.ActionToContinueRun
+import io.cequence.openaiscala.domain.response.{Run, ToolCall}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
-import play.api.libs.json.{Format, Json}
-import io.cequence.openaiscala.JsonFormats._
-import io.cequence.openaiscala.JsonFormatsSpec.{Compact, JsonPrintMode, Pretty}
 
-object JsonFormatsSpec {
-  sealed trait JsonPrintMode
-  case object Compact extends JsonPrintMode
-  case object Pretty extends JsonPrintMode
-}
-
-class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
+class JsonFormatsSpec extends AnyWordSpecLike with Matchers with RunApiJsonFormats {
 
   private val functionToolJson =
     """{
@@ -48,23 +38,53 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       )
     }
 
-  }
-
-  private def testCodec[A](
-    value: A,
-    json: String,
-    printMode: JsonPrintMode = Compact
-  )(
-    implicit format: Format[A]
-  ): Unit = {
-    val jsValue = Json.toJson(value)
-    val serialized = printMode match {
-      case Compact => jsValue.toString()
-      case Pretty  => Json.prettyPrint(jsValue)
+    "serialize and deserialize a code interpreter as a run tool" in {
+      testCodec[RunTool](CodeInterpreterSpec, """{"type":"code_interpreter"}""")
     }
-    serialized shouldBe json
 
-    Json.parse(json).as[A] shouldBe value
+    "serialize and deserialize a retrieval as a run tool" in {
+      testCodec[RunTool](RetrievalSpec, """{"type":"retrieval"}""")
+    }
+
+    "serialize and deserialize a function as a run tool" in {
+      testCodec[RunTool](
+        FunctionSpec("name", Some("description"), Map.empty),
+        functionToolJson,
+        Pretty
+      )
+    }
+
+    "serialize and deserialize a required action to continue run" in {
+      val requiredActionToContinueRun =
+        ActionToContinueRun(
+          Run.SubmitToolOutputs(
+            List(
+              ToolCall.CodeInterpreterCall,
+              ToolCall.RetrievalCall,
+              ToolCall.FunctionCall("name", "arguments")
+            )
+          )
+        )
+      val expectedJson =
+        """{
+            |  "submit_tool_outputs" : {
+            |    "tool_calls" : [ {
+            |      "type" : "code_interpreter"
+            |    }, {
+            |      "type" : "retrieval"
+            |    }, {
+            |      "type" : "function",
+            |      "function" : {
+            |        "name" : "name",
+            |        "arguments" : "arguments"
+            |      }
+            |    } ]
+            |  },
+            |  "type" : "submit_tool_outputs"
+            |}""".stripMargin
+      testCodec[ActionToContinueRun](requiredActionToContinueRun, expectedJson, Pretty)
+    }
+
   }
 
 }

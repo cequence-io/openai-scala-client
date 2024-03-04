@@ -3,17 +3,21 @@ package io.cequence.openaiscala.service
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.cequence.openaiscala.domain.{
+  AssistantId,
   AssistantTool,
   BaseMessage,
   ChatRole,
   FileId,
   FunctionSpec,
   Pagination,
+  RunTool,
   SortOrder,
   Thread,
   ThreadFullMessage,
   ThreadMessage,
   ThreadMessageFile,
+  ThreadToCreate,
+  ToolOutput,
   ToolSpec
 }
 import io.cequence.openaiscala.domain.settings._
@@ -368,6 +372,101 @@ trait OpenAIServiceWrapper extends OpenAIService {
     fileId: String
   ): Future[DeleteResponse] =
     wrap(_.deleteAssistantFile(assistantId, fileId))
+
+  override def createRun(
+    threadId: String,
+    assistantId: String,
+    model: Option[String],
+    instructions: Option[String],
+    additionalInstructions: Option[String],
+    tools: Seq[RunTool],
+    metadata: Map[String, Any]
+  ): Future[Run] =
+    wrap(
+      _.createRun(
+        threadId,
+        assistantId,
+        model,
+        instructions,
+        additionalInstructions,
+        tools,
+        metadata
+      )
+    )
+
+  override def createThreadAndRun(
+    assistantId: AssistantId,
+    thread: ThreadToCreate,
+    model: Option[String],
+    instructions: Option[String],
+    tools: Seq[RunTool],
+    metadata: Map[String, Any]
+  ): Future[Run] =
+    wrap(
+      _.createThreadAndRun(assistantId, thread, model, instructions, tools, metadata)
+    )
+
+  override def listRuns(
+    threadId: String,
+    pagination: Pagination,
+    order: Option[SortOrder]
+  ): Future[Seq[Run]] =
+    wrap(
+      _.listRuns(threadId, pagination, order)
+    )
+
+  override def listRunSteps(
+    threadId: String,
+    runId: String,
+    pagination: Pagination,
+    order: Option[SortOrder]
+  ): Future[Seq[RunStep]] =
+    wrap(
+      _.listRunSteps(threadId, runId, pagination, order)
+    )
+
+  override def retrieveRun(
+    threadId: String,
+    runId: String
+  ): Future[Option[Run]] =
+    wrap(
+      _.retrieveRun(threadId, runId)
+    )
+
+  override def retrieveRunStep(
+    threadId: String,
+    runId: String,
+    stepId: String
+  ): Future[Option[RunStep]] =
+    wrap(
+      _.retrieveRunStep(threadId, runId, stepId)
+    )
+
+  override def modifyRun(
+    threadId: String,
+    runId: String,
+    metadata: Map[String, String]
+  ): Future[Option[Run]] =
+    wrap(
+      _.modifyRun(threadId, runId, metadata)
+    )
+
+  override def submitToolOutputsToRun(
+    threadId: String,
+    runId: String,
+    toolOutputs: Seq[ToolOutput]
+  ): Future[Option[Run]] =
+    wrap(
+      _.submitToolOutputsToRun(threadId, runId, toolOutputs)
+    )
+
+  override def cancelRun(
+    threadId: String,
+    runId: String
+  ): Future[Option[Run]] =
+    wrap(
+      _.cancelRun(threadId, runId)
+    )
 
   protected def wrap[T](
     fun: OpenAIService => Future[T]

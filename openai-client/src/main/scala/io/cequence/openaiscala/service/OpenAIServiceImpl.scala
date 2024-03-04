@@ -4,20 +4,24 @@ import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.JsonUtil.JsonOps
-import io.cequence.openaiscala.OpenAIScalaClientException
+import io.cequence.openaiscala.{OpenAIScalaClientException, RunApiJsonFormats}
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.{
+  AssistantId,
   AssistantTool,
   BaseMessage,
   ChatRole,
   FunctionSpec,
   Pagination,
+  RunTool,
   SortOrder,
   Thread,
   ThreadFullMessage,
   ThreadMessage,
   ThreadMessageFile,
+  ThreadToCreate,
+  ToolOutput,
   ToolSpec
 }
 import play.api.libs.json.{JsObject, JsValue, Json}
@@ -31,7 +35,10 @@ import scala.concurrent.Future
  * @since Jan
  *   2023
  */
-private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService {
+private trait OpenAIServiceImpl
+    extends OpenAICoreServiceImpl
+    with OpenAIService
+    with RunApiJsonFormats {
 
   override def retrieveModel(
     modelId: String
@@ -700,6 +707,141 @@ private trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService
         DeleteResponse.NotFound
       )
   }
+
+  override def createRun(
+    threadId: String,
+    assistantId: String,
+    model: Option[String] = None,
+    instructions: Option[String] = None,
+    additionalInstructions: Option[String] = None,
+    tools: Seq[RunTool] = Seq.empty,
+    metadata: Map[String, Any] = Map.empty
+  ): Future[Run] = {
+    execPOST(
+      EndPoint.threads,
+      endPointParam = Some(s"$threadId/runs"),
+      bodyParams = jsonBodyParams(
+        Param.assistant_id -> Some(assistantId),
+        Param.model -> Some(model),
+        Param.instructions -> instructions,
+        Param.additional_instructions -> additionalInstructions,
+        Param.tools -> Some(Json.toJson(tools)),
+        Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
+      )
+    ).map(_.asSafe[Run])
+  }
+
+  override def createThreadAndRun(
+    assistantId: AssistantId,
+    thread: ThreadToCreate,
+    model: Option[String],
+    instructions: Option[String],
+    tools: Seq[RunTool],
+    metadata: Map[String, Any]
+  ): Future[Run] =
+    execPOST(
+      EndPoint.threads,
+      endPointParam = Some(s"runs"),
+      bodyParams = jsonBodyParams(
+        Param.assistant_id -> Some(assistantId.id),
+        Param.thread -> Some(Json.toJson(thread)),
+        Param.model -> model,
+        Param.instructions -> instructions,
+        Param.tools -> Some(Json.toJson(tools)),
+        Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
+      )
+    ).map(_.asSafe[Run])
+
+  override def listRuns(
+    threadId: String,
+    pagination: Pagination,
+    order: Option[SortOrder]
+  ): Future[Seq[Run]] =
+    execGET(
+      EndPoint.threads,
+      endPointParam = Some(s"$threadId/runs"),
+      params = paginationParams(pagination) :+ Param.order -> order
+    ).map { response =>
+      readAttribute(response, "data").asSafeArray[Run]
+    }
+
+  override def listRunSteps(
+    threadId: String,
+    runId: String,
+    pagination: Pagination,
+    order: Option[SortOrder]
+  ): Future[Seq[RunStep]] =
+    execGET(
+      EndPoint.threads,
+      endPointParam = Some(s"$threadId/runs/$runId/steps"),
+      params = paginationParams(pagination) :+ Param.order -> order
+    ).map { response =>
+      readAttribute(response, "data").asSafeArray[RunStep]
+    }
+
+  override def retrieveRun(
+    threadId: String,
+    runId: String
+  ): Future[Option[Run]] =
+    execGETWithStatus(
+      EndPoint.threads,
+      endPointParam = Some(s"$threadId/runs/$runId")
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafe[Run])
+    }
+
+  override def retrieveRunStep(
+    threadId: String,
+    runId: String,
+    stepId: String
+  ): Future[Option[RunStep]] =
+    execGETWithStatus(
+      EndPoint.threads,
+      endPointParam = Some(s"$threadId/runs/$runId/steps/$stepId")
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafe[RunStep])
+    }
+
+  override def modifyRun(
+    threadId: String,
+    runId: String,
+    metadata: Map[String, String]
+  ): Future[Option[Run]] =
+    execPOSTWithStatus(
+      EndPoint.threads,
+      endPointParam = Some(s"$threadId/runs/$runId"),
+      bodyParams = jsonBodyParams(
+        Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
+      )
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafe[Run])
+    }
+
+  override def submitToolOutputsToRun(
+    threadId: String,
+    runId: String,
+    toolOutputs: Seq[ToolOutput]
+  ): Future[Option[Run]] =
+    execPOSTWithStatus(
+      EndPoint.threads,
+      endPointParam = Some(s"$threadId/runs/$runId/submit_tool_outputs"),
+      bodyParams = jsonBodyParams(
+        Param.tool_outputs -> Some(Json.toJson(toolOutputs))
+      )
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafe[Run])
+    }
+
+  override def cancelRun(
+    threadId: String,
+    runId: String
+  ): Future[Option[Run]] =
+    execPOSTWithStatus(
+      EndPoint.threads,
+      endPointParam = Some(s"$threadId/runs/$runId/cancel")
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafe[Run])
+    }
 
   private def readAttribute(
     json: JsValue,

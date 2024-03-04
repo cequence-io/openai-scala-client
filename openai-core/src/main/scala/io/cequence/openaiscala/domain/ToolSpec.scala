@@ -3,10 +3,11 @@ package io.cequence.openaiscala.domain
 sealed trait ToolSpec
 
 sealed trait AssistantTool
+sealed trait RunTool
 
-case object CodeInterpreterSpec extends AssistantTool
+case object CodeInterpreterSpec extends AssistantTool with RunTool
 
-case object RetrievalSpec extends AssistantTool
+case object RetrievalSpec extends AssistantTool with RunTool
 
 case class FunctionSpec(
   // The name of the function to be called.
@@ -21,3 +22,4 @@ case class FunctionSpec(
   parameters: Map[String, Any]
 ) extends ToolSpec
     with AssistantTool
+    with RunTool
