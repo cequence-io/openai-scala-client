@@ -113,6 +113,6 @@ trait WSStreamRequestHelper {
           .recover(recoverBlock) // extra recover
       }
 
-    Source.futureSource(source).mapMaterializedValue(_ => NotUsed)
+    Source.fromFutureSource(source).mapMaterializedValue(_ => NotUsed)
   }
 }
