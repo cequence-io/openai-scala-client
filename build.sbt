@@ -66,8 +66,8 @@ lazy val count_tokens = (project in file("openai-count-tokens"))
 
 lazy val examples = (project in file("openai-examples"))
   .settings(commonSettings: _*)
-  .dependsOn(client)
-  .aggregate(client)
+  .dependsOn(client_stream)
+  .aggregate(client_stream)
 
 // POM settings for Sonatype
 ThisBuild / homepage := Some(
