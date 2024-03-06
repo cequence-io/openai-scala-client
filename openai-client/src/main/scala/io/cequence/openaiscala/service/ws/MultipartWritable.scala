@@ -45,8 +45,6 @@ object MultipartWritable {
    */
   def writeableOf_MultipartFormData(
     charset: String
-  )(
-    implicit materializer: Materializer
   ): BodyWritable[MultipartFormData] = {
 
     val boundary: String =
