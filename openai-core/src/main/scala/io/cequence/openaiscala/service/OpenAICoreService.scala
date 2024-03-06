@@ -22,7 +22,7 @@ import scala.concurrent.Future
  * @since July
  *   2023
  */
-trait OpenAICoreService extends OpenAIServiceConsts {
+trait OpenAICoreService extends OpenAIChatCompletionService with OpenAIServiceConsts {
 
   /**
    * Lists the currently available models, and provides basic information about each one such
@@ -57,7 +57,8 @@ trait OpenAICoreService extends OpenAIServiceConsts {
   ): Future[TextCompletionResponse]
 
   /**
-   * Creates a model response for the given chat conversation.
+   * Creates a model response for the given chat conversation. Note that this is defined
+   * already in [[OpenAIChatCompletionService]], but it is repeated here for clarity.
    *
    * @param messages
    *   A list of messages comprising the conversation so far.
@@ -91,9 +92,4 @@ trait OpenAICoreService extends OpenAIServiceConsts {
     input: Seq[String],
     settings: CreateEmbeddingsSettings = DefaultSettings.CreateEmbeddings
   ): Future[EmbeddingResponse]
-
-  /**
-   * Closes the underlying ws client, and releases all its resources.
-   */
-  def close(): Unit
 }
