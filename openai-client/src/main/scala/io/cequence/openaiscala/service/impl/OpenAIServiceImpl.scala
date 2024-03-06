@@ -679,9 +679,10 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
   private def handleDeleteEndpointResponse(response: RichJsResponse): DeleteResponse = {
     handleNotFoundAndError(response)
       .map(jsResponse =>
-        readAttribute(jsResponse, "deleted").asSafe[Boolean] match {
-          case true  => DeleteResponse.Deleted
-          case false => DeleteResponse.NotDeleted
+        if (readAttribute(jsResponse, "deleted").asSafe[Boolean]) {
+          DeleteResponse.Deleted
+        } else {
+          DeleteResponse.NotDeleted
         }
       )
       .getOrElse(
