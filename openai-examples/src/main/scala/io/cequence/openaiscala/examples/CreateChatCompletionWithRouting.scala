@@ -1,29 +1,33 @@
 package io.cequence.openaiscala.examples
 
-import io.cequence.openaiscala.domain.{SystemMessage, UserMessage}
+import io.cequence.openaiscala.domain.{ModelId, SystemMessage, UserMessage}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIChatCompletionServiceFactory, OpenAIChatCompletionServiceRouter, OpenAIServiceFactory}
+import io.cequence.openaiscala.service._
 
 import scala.concurrent.Future
 
 object CreateChatCompletionWithRouting extends ExampleBase[OpenAIChatCompletionService] {
 
+  // OctoML
   private val octoMLService = OpenAIChatCompletionServiceFactory(
     coreUrl = "https://text.octoai.run/v1/",
     authHeaders = Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
   )
 
+  // Ollama
   private val ollamaService = OpenAIChatCompletionServiceFactory(
     coreUrl = "http://localhost:11434/v1/"
   )
 
+  // OpenAI
   private val openAIService = OpenAIServiceFactory()
 
   override val service = OpenAIChatCompletionServiceRouter(
     serviceModels = Map(
       octoMLService -> Seq("mixtral-8x7b-instruct"),
       ollamaService -> Seq("llama2"),
-      openAIService -> Seq("gpt-3.5-turbo") // it's default so no need to specify all the models
+      // it's default so no need to specify all the models
+      openAIService -> Seq(ModelId.gpt_3_5_turbo)
     ),
     defaultService = openAIService
   )
@@ -37,7 +41,7 @@ object CreateChatCompletionWithRouting extends ExampleBase[OpenAIChatCompletionS
     for {
       _ <- runAux("mixtral-8x7b-instruct")
       _ <- runAux("llama2")
-      _ <- runAux("gpt-3.5-turbo")
+      _ <- runAux(ModelId.gpt_3_5_turbo)
     } yield ()
 
   private def runAux(model: String) = {

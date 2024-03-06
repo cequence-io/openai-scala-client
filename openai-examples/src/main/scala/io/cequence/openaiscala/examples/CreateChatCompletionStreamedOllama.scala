@@ -8,7 +8,8 @@ import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletion
 
 import scala.concurrent.Future
 
-object CreateChatCompletionStreamedOllama extends ExampleBase[OpenAIChatCompletionStreamedService] {
+object CreateChatCompletionStreamedOllama
+    extends ExampleBase[OpenAIChatCompletionStreamedService] {
 
   override val service = OpenAIChatCompletionServiceStreamedFactory.customInstance(
     coreUrl = "http://localhost:11434/v1/"
