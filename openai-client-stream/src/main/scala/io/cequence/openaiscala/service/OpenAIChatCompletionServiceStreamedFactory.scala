@@ -2,12 +2,12 @@ package io.cequence.openaiscala.service
 
 import akka.stream.Materializer
 import io.cequence.openaiscala.service.ws.Timeouts
-import StreamedServiceTypes.OpenAIStreamedService
+import StreamedServiceTypes.OpenAIChatCompletionStreamedService
 
 import scala.concurrent.ExecutionContext
 
-object OpenAIServiceStreamedFactory
-    extends OpenAIServiceFactoryHelper[OpenAIStreamedService] {
+object OpenAIChatCompletionServiceStreamedFactory
+    extends OpenAIServiceFactoryHelper[OpenAIChatCompletionStreamedService] {
 
   override def customInstance(
     coreUrl: String,
@@ -17,7 +17,7 @@ object OpenAIServiceStreamedFactory
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer
-  ): OpenAIStreamedService =
-    new OpenAIServiceClassImpl(coreUrl, authHeaders, extraParams, timeouts)
-      with OpenAIServiceStreamedExtraImpl
+  ): OpenAIChatCompletionStreamedService =
+    new OpenAIChatCompletionServiceClassImpl(coreUrl, authHeaders, extraParams, timeouts)
+      with OpenAIChatCompletionServiceStreamedExtraImpl
 }

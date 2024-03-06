@@ -6,9 +6,8 @@ import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
-import io.cequence.openaiscala.service.ws.WSStreamRequestHelper
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.openaiscala.domain.BaseMessage
+import io.cequence.openaiscala.service.impl.OpenAICoreServiceImpl
 import play.api.libs.json.JsValue
 
 /**
@@ -20,7 +19,7 @@ import play.api.libs.json.JsValue
  */
 private trait OpenAIServiceStreamedExtraImpl
     extends OpenAIServiceStreamedExtra
-    with WSStreamRequestHelper {
+    with OpenAIChatCompletionServiceStreamedExtraImpl {
   this: OpenAICoreServiceImpl =>
 
   override def createCompletionStreamed(
@@ -36,22 +35,6 @@ private trait OpenAIServiceStreamedExtraImpl
         throw new OpenAIScalaClientException(error.toString())
       }.getOrElse(
         json.asSafe[TextCompletionResponse]
-      )
-    }
-
-  override def createChatCompletionStreamed(
-    messages: Seq[BaseMessage],
-    settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
-  ): Source[ChatCompletionChunkResponse, NotUsed] =
-    execJsonStreamAux(
-      EndPoint.chat_completions,
-      "POST",
-      bodyParams = createBodyParamsForChatCompletion(messages, settings, stream = true)
-    ).map { (json: JsValue) =>
-      (json \ "error").toOption.map { error =>
-        throw new OpenAIScalaClientException(error.toString())
-      }.getOrElse(
-        json.asSafe[ChatCompletionChunkResponse]
       )
     }
 

@@ -2,13 +2,12 @@ package io.cequence.openaiscala.service
 
 import akka.stream.Materializer
 import io.cequence.openaiscala.service.ws.Timeouts
+import StreamedServiceTypes.OpenAICoreStreamedService
 
 import scala.concurrent.ExecutionContext
 
 object OpenAICoreServiceStreamedFactory
-    extends OpenAIServiceFactoryHelper[
-      OpenAICoreService with OpenAIServiceStreamedExtra
-    ] {
+    extends OpenAIServiceFactoryHelper[OpenAICoreStreamedService] {
 
   override def customInstance(
     coreUrl: String,
@@ -18,7 +17,7 @@ object OpenAICoreServiceStreamedFactory
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer
-  ): OpenAICoreService with OpenAIServiceStreamedExtra =
+  ): OpenAICoreStreamedService =
     new OpenAICoreServiceClassImpl(coreUrl, authHeaders, extraParams, timeouts)
       with OpenAIServiceStreamedExtraImpl
 }
