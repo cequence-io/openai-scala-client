@@ -6,8 +6,7 @@ import StreamedServiceTypes.OpenAIStreamedService
 
 import scala.concurrent.ExecutionContext
 
-object OpenAIServiceStreamedFactory
-    extends OpenAIServiceFactoryHelper[OpenAIStreamedService] {
+object OpenAIServiceStreamedFactory extends OpenAIServiceFactoryHelper[OpenAIStreamedService] {
 
   override def customInstance(
     coreUrl: String,

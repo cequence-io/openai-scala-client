@@ -3,7 +3,11 @@ package io.cequence.openaiscala.examples
 import akka.actor.ActorSystem
 import akka.stream.Materializer
 import io.cequence.openaiscala.domain.response.ChatCompletionResponse
-import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIService, OpenAIServiceFactory}
+import io.cequence.openaiscala.service.{
+  OpenAIChatCompletionService,
+  OpenAIService,
+  OpenAIServiceFactory
+}
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future

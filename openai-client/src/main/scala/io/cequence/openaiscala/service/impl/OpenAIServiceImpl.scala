@@ -7,7 +7,19 @@ import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.domain.{AssistantTool, BaseMessage, ChatRole, FunctionSpec, Pagination, SortOrder, Thread, ThreadFullMessage, ThreadMessage, ThreadMessageFile, ToolSpec}
+import io.cequence.openaiscala.domain.{
+  AssistantTool,
+  BaseMessage,
+  ChatRole,
+  FunctionSpec,
+  Pagination,
+  SortOrder,
+  Thread,
+  ThreadFullMessage,
+  ThreadMessage,
+  ThreadMessageFile,
+  ToolSpec
+}
 import io.cequence.openaiscala.service.{EndPoint, OpenAIService, Param}
 import play.api.libs.json.{JsObject, JsValue, Json}
 
@@ -707,5 +719,4 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
       Param.after -> pagination.after,
       Param.before -> pagination.before
     )
-
 }
