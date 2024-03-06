@@ -1,10 +1,11 @@
-package io.cequence.openaiscala.service
+package io.cequence.openaiscala.service.impl
 
 import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
+import io.cequence.openaiscala.service.{EndPoint, OpenAIChatCompletionService, Param}
 import play.api.libs.json.{JsValue, Json}
 
 import scala.concurrent.Future
@@ -15,7 +16,7 @@ import scala.concurrent.Future
  * @since Match
  *   2024
  */
-private trait OpenAIChatCompletionServiceImpl
+private[service] trait OpenAIChatCompletionServiceImpl
     extends OpenAIChatCompletionService
     with OpenAIServiceWSHelper {
 

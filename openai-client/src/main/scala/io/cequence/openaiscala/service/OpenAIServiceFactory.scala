@@ -1,6 +1,7 @@
 package io.cequence.openaiscala.service
 
 import akka.stream.Materializer
+import io.cequence.openaiscala.service.impl.OpenAIServiceImpl
 import io.cequence.openaiscala.service.ws.Timeouts
 
 import scala.concurrent.ExecutionContext

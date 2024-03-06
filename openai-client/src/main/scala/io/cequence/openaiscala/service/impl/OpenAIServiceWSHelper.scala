@@ -1,7 +1,8 @@
-package io.cequence.openaiscala.service
+package io.cequence.openaiscala.service.impl
 
 import akka.stream.Materializer
 import io.cequence.openaiscala.service.ws.{Timeouts, WSRequestHelper}
+import io.cequence.openaiscala.service.{EndPoint, OpenAIServiceConsts, Param}
 import play.api.libs.ws.StandaloneWSRequest
 
 import scala.concurrent.ExecutionContext
@@ -12,7 +13,7 @@ import scala.concurrent.ExecutionContext
  * @since March
  *   2024
  */
-private trait OpenAIServiceWSHelper extends WSRequestHelper with OpenAIServiceConsts {
+private[service] trait OpenAIServiceWSHelper extends WSRequestHelper with OpenAIServiceConsts {
 
   override protected type PEP = EndPoint
   override protected type PT = Param

@@ -1,11 +1,12 @@
-package io.cequence.openaiscala.service
+package io.cequence.openaiscala.service.impl
 
-import play.api.libs.json.{JsObject, JsValue}
-import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.JsonFormats._
+import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.response._
+import io.cequence.openaiscala.domain.settings._
+import io.cequence.openaiscala.service.{EndPoint, OpenAICoreService, Param}
+import play.api.libs.json.{JsObject, JsValue}
 
 import scala.concurrent.Future
 
@@ -15,7 +16,7 @@ import scala.concurrent.Future
  * @since July
  *   2023
  */
-private trait OpenAICoreServiceImpl
+private[service] trait OpenAICoreServiceImpl
     extends OpenAICoreService
     with OpenAIChatCompletionServiceImpl {
 
