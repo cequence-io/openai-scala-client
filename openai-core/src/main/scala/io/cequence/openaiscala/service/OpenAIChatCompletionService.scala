@@ -13,7 +13,7 @@ import scala.concurrent.Future
  * @since March
  *   2024
  */
-trait OpenAIChatCompletionService extends OpenAIServiceConsts {
+trait OpenAIChatCompletionService extends OpenAIServiceConsts with CloseableService {
 
   /**
    * Creates a model response for the given chat conversation.
@@ -30,9 +30,4 @@ trait OpenAIChatCompletionService extends OpenAIServiceConsts {
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
   ): Future[ChatCompletionResponse]
-
-  /**
-   * Closes the underlying ws client, and releases all its resources.
-   */
-  def close(): Unit
 }
