@@ -8,8 +8,7 @@ import io.cequence.openaiscala.service.adapter.OpenAIServiceAdapters
 
 import scala.concurrent.Future
 
-object CreateChatCompletionWithChatCompletionAdapter
-    extends ExampleBase[OpenAIService] {
+object CreateChatCompletionWithChatCompletionAdapter extends ExampleBase[OpenAIService] {
 
   // OctoML
   private val octoMLService = OpenAIChatCompletionServiceFactory(
@@ -25,7 +24,7 @@ object CreateChatCompletionWithChatCompletionAdapter
   // OpenAI
   private val openAIService = OpenAIServiceFactory()
 
-  override val service = OpenAIServiceAdapters.forFullService.chatCompletion(
+  override val service: OpenAIService = OpenAIServiceAdapters.forFullService.chatCompletion(
     // OpenAI service is default so no need to specify its models here
     serviceModels = Map(
       octoMLService -> Seq("mixtral-8x7b-instruct"),

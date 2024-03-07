@@ -8,8 +8,7 @@ import io.cequence.openaiscala.service.adapter.OpenAIServiceAdapters
 
 import scala.concurrent.Future
 
-object CreateChatCompletionWithRoundRobinAdapter
-    extends ExampleBase[OpenAIChatCompletionService] {
+object CreateChatCompletionWithRoundRobinAdapter extends ExampleBase[OpenAIService] {
 
   private val adapters = OpenAIServiceAdapters.forFullService
 
@@ -26,7 +25,7 @@ object CreateChatCompletionWithRoundRobinAdapter
     println(_) // simple logging
   )
 
-  override val service = adapters.roundRobin(openAIService1, openAIService2)
+  override val service: OpenAIService = adapters.roundRobin(openAIService1, openAIService2)
 
   val messages = Seq(
     SystemMessage("You are a helpful assistant."),
