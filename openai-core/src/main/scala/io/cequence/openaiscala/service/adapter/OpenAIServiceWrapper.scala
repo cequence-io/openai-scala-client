@@ -1,51 +1,36 @@
-package io.cequence.openaiscala.service
+package io.cequence.openaiscala.service.adapter
 
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import io.cequence.openaiscala.domain.{
-  AssistantTool,
-  BaseMessage,
-  ChatRole,
-  FileId,
-  FunctionSpec,
-  Pagination,
-  SortOrder,
-  Thread,
-  ThreadFullMessage,
-  ThreadMessage,
-  ThreadMessageFile,
-  ToolSpec
-}
+import io.cequence.openaiscala.domain._
+import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
+import io.cequence.openaiscala.service.adapter.ServiceWrapperTypes._
+import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAICoreService, OpenAIService}
 
 import java.io.File
 import scala.concurrent.Future
-import io.cequence.openaiscala.domain.response._
 
-trait OpenAIServiceWrapper extends OpenAIService {
+private class OpenAIServiceWrapperImpl(
+  val delegate: CloseableServiceWrapper[OpenAIService]
+) extends OpenAIServiceWrapper
 
-  override def listModels: Future[Seq[ModelInfo]] = wrap(
-    _.listModels
-  )
+private class OpenAIServiceExtWrapperImpl(
+  val delegate: ChatCompletionCloseableServiceWrapper[OpenAIService]
+) extends OpenAIServiceWrapper
+    with DelegatedChatCompletionCloseableServiceWrapper[OpenAIService]
+
+trait OpenAIServiceWrapper
+    extends DelegatedCloseableServiceWrapper[OpenAIService, CloseableServiceWrapper[
+      OpenAIService
+    ]]
+    with OpenAICoreServiceWrapper
+    with OpenAIService {
 
   override def retrieveModel(
     modelId: String
   ): Future[Option[ModelInfo]] = wrap(
     _.retrieveModel(modelId)
-  )
-
-  override def createCompletion(
-    prompt: String,
-    settings: CreateCompletionSettings
-  ): Future[TextCompletionResponse] = wrap(
-    _.createCompletion(prompt, settings)
-  )
-
-  override def createChatCompletion(
-    messages: Seq[BaseMessage],
-    settings: CreateChatCompletionSettings
-  ): Future[ChatCompletionResponse] = wrap(
-    _.createChatCompletion(messages, settings)
   )
 
   override def createChatFunCompletion(
@@ -105,13 +90,6 @@ trait OpenAIServiceWrapper extends OpenAIService {
     settings: CreateImageEditSettings
   ): Future[ImageInfo] = wrap(
     _.createImageVariation(image, settings)
-  )
-
-  override def createEmbeddings(
-    input: Seq[String],
-    settings: CreateEmbeddingsSettings
-  ): Future[EmbeddingResponse] = wrap(
-    _.createEmbeddings(input, settings)
   )
 
   override def createAudioSpeech(
@@ -368,9 +346,63 @@ trait OpenAIServiceWrapper extends OpenAIService {
     fileId: String
   ): Future[DeleteResponse] =
     wrap(_.deleteAssistantFile(assistantId, fileId))
+}
 
-  protected def wrap[T](
-    fun: OpenAIService => Future[T]
-  ): Future[T]
+private class OpenAICoreServiceWrapperImpl(
+  val delegate: CloseableServiceWrapper[OpenAICoreService]
+) extends OpenAICoreServiceWrapper
 
+private class OpenAICoreServiceExtWrapperImpl(
+  val delegate: ChatCompletionCloseableServiceWrapper[OpenAICoreService]
+) extends OpenAICoreServiceWrapper
+    with DelegatedChatCompletionCloseableServiceWrapper[OpenAICoreService]
+
+trait OpenAICoreServiceWrapper
+    extends DelegatedCloseableServiceWrapper[OpenAICoreService, CloseableServiceWrapper[
+      OpenAICoreService
+    ]]
+    with OpenAIChatCompletionServiceWrapper
+    with OpenAICoreService {
+
+  override def listModels: Future[Seq[ModelInfo]] = wrap(
+    _.listModels
+  )
+
+  override def createCompletion(
+    prompt: String,
+    settings: CreateCompletionSettings
+  ): Future[TextCompletionResponse] = wrap(
+    _.createCompletion(prompt, settings)
+  )
+
+  override def createEmbeddings(
+    input: Seq[String],
+    settings: CreateEmbeddingsSettings
+  ): Future[EmbeddingResponse] = wrap(
+    _.createEmbeddings(input, settings)
+  )
+}
+
+private class OpenAIChatCompletionServiceWrapperImpl(
+  val delegate: CloseableServiceWrapper[OpenAIChatCompletionService]
+) extends OpenAIChatCompletionServiceWrapper
+
+private class OpenAIChatCompletionServiceExtWrapperImpl(
+  val delegate: ChatCompletionCloseableServiceWrapper[OpenAIChatCompletionService]
+) extends OpenAIChatCompletionServiceWrapper
+    with DelegatedChatCompletionCloseableServiceWrapper[OpenAIChatCompletionService]
+
+trait OpenAIChatCompletionServiceWrapper
+    extends DelegatedCloseableServiceWrapper[
+      OpenAIChatCompletionService,
+      CloseableServiceWrapper[OpenAIChatCompletionService]
+    ]
+    with OpenAIChatCompletionService {
+
+  override def createChatCompletion(
+    messages: Seq[BaseMessage],
+    settings: CreateChatCompletionSettings
+  ): Future[ChatCompletionResponse] = wrap(
+    _.createChatCompletion(messages, settings)
+  )
 }
