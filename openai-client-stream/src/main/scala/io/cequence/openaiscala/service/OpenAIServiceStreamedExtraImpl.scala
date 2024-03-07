@@ -37,26 +37,4 @@ private trait OpenAIServiceStreamedExtraImpl
         json.asSafe[TextCompletionResponse]
       )
     }
-
-  override def listFineTuneEventsStreamed(
-    fineTuneId: String,
-    after: Option[String],
-    limit: Option[Int]
-  ): Source[FineTuneEvent, NotUsed] =
-    execJsonStreamAux(
-      EndPoint.fine_tunes,
-      "GET",
-      endPointParam = Some(s"$fineTuneId/events"),
-      params = Seq(
-        Param.after -> after,
-        Param.limit -> limit,
-        Param.stream -> Some(true)
-      )
-    ).map { json =>
-      (json \ "error").toOption.map { error =>
-        throw new OpenAIScalaClientException(error.toString())
-      }.getOrElse(
-        json.asSafe[FineTuneEvent]
-      )
-    }
 }

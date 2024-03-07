@@ -32,6 +32,7 @@ trait OpenAIServiceStreamedExtra
    * @see
    *   <a href="https://beta.openai.com/docs/api-reference/completions/create">OpenAI Doc</a>
    */
+  @Deprecated
   def createCompletionStreamed(
     prompt: String,
     settings: CreateCompletionSettings = DefaultSettings.CreateCompletion
@@ -55,22 +56,4 @@ trait OpenAIServiceStreamedExtra
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
   ): Source[ChatCompletionChunkResponse, NotUsed]
-
-  /**
-   * Get fine-grained status updates for a fine-tune job with streamed results.
-   *
-   * @param fineTuneId
-   *   The ID of the fine-tune job to get events for.
-   * @return
-   *   fine tune events or None if not found as a stream (source)
-   *
-   * @see
-   *   <a href="https://beta.openai.com/docs/api-reference/fine-tunes/events">OpenAI Doc</a>
-   */
-  @Deprecated
-  def listFineTuneEventsStreamed(
-    fineTuneId: String,
-    after: Option[String] = None,
-    limit: Option[Int] = None
-  ): Source[FineTuneEvent, NotUsed]
 }
