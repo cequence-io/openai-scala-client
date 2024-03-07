@@ -9,7 +9,7 @@ import io.cequence.openaiscala.service.adapter.OpenAIServiceAdapters
 import scala.concurrent.Future
 
 object CreateChatCompletionWithChatCompletionAdapter
-    extends ExampleBase[OpenAIChatCompletionService] {
+    extends ExampleBase[OpenAIService] {
 
   // OctoML
   private val octoMLService = OpenAIChatCompletionServiceFactory(
