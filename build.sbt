@@ -47,6 +47,11 @@ lazy val client = (project in file("openai-client"))
   .dependsOn(core)
   .aggregate(core)
 
+lazy val anthropicClient = (project in file("anthropic-client"))
+  .settings(commonSettings: _*)
+  .dependsOn(core, client)
+  .aggregate(core, client)
+
 lazy val client_stream = (project in file("openai-client-stream"))
   .settings(commonSettings: _*)
   .dependsOn(client)
