@@ -3,10 +3,11 @@ package io.cequence.openaiscala.examples
 import io.cequence.openaiscala.domain.{ModelId, SystemMessage, UserMessage}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.service._
+import io.cequence.openaiscala.service.adapter.OpenAIChatCompletionServiceRouter
 
 import scala.concurrent.Future
 
-object CreateChatCompletionWithRouting extends ExampleBase[OpenAIChatCompletionService] {
+object CreateChatCompletionWithRouter extends ExampleBase[OpenAIChatCompletionService] {
 
   // OctoML
   private val octoMLService = OpenAIChatCompletionServiceFactory(
@@ -39,12 +40,12 @@ object CreateChatCompletionWithRouting extends ExampleBase[OpenAIChatCompletionS
 
   override protected def run: Future[_] =
     for {
-      _ <- runAux("mixtral-8x7b-instruct")
-      _ <- runAux("llama2")
-      _ <- runAux(ModelId.gpt_3_5_turbo)
+      _ <- runChatCompletionAux("mixtral-8x7b-instruct")
+      _ <- runChatCompletionAux("llama2")
+      _ <- runChatCompletionAux(ModelId.gpt_3_5_turbo)
     } yield ()
 
-  private def runAux(model: String) = {
+  private def runChatCompletionAux(model: String) = {
     println(s"Running chat completion with the model '$model'\n")
 
     service

@@ -8,6 +8,7 @@ import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletion
 
 import scala.concurrent.Future
 
+// requires `openai-scala-client-stream` as a dependency
 object CreateChatCompletionStreamedOctoML
     extends ExampleBase[OpenAIChatCompletionStreamedService] {
 
@@ -37,7 +38,7 @@ object CreateChatCompletionStreamedOctoML
       .runWith(
         Sink.foreach { completion =>
           val content = completion.choices.headOption.flatMap(_.delta.content)
-          println(content.getOrElse(""))
+          print(content.getOrElse(""))
         }
       )
 }
