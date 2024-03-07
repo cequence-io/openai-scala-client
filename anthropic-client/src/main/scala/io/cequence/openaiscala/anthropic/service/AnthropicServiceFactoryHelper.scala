@@ -21,7 +21,7 @@ trait AnthropicServiceFactoryHelper[F] extends AnthropicServiceConsts {
     val authHeaders = orgIdHeader ++: Seq(
       ("x-api-key", s"$apiKey"),
       ("anthropic-version", "2023-06-01")
-      //("OpenAI-Beta", "assistants=v1")
+      // ("OpenAI-Beta", "assistants=v1")
     )
 
     customInstance(defaultCoreUrl, authHeaders, Nil, timeouts)

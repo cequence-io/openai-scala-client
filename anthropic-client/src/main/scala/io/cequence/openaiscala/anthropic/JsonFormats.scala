@@ -28,11 +28,12 @@ trait JsonFormats {
     }
   }
 
-  implicit val contentWrites: Writes[Content] = {
-    case textContent: Content.TextContent => Json.obj("type" -> "text", "text" -> textContent.text)
+  implicit val contentWrites: Writes[Content] = { case textContent: Content.TextContent =>
+    Json.obj("type" -> "text", "text" -> textContent.text)
   }
 
-  implicit val chatRoleFormat: Format[ChatRole] = JsonUtil.enumFormat[ChatRole](ChatRole.allValues:_*)
+  implicit val chatRoleFormat: Format[ChatRole] =
+    JsonUtil.enumFormat[ChatRole](ChatRole.allValues: _*)
 
   implicit val usageInfoFormat: Format[UsageInfo] = Json.format[UsageInfo]
 

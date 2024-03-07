@@ -14,7 +14,9 @@ import scala.concurrent.ExecutionContext
  * @since March
  *   2024
  */
-private[service] trait AnthropicServiceWSHelper extends WSRequestHelper with AnthropicServiceConsts {
+private[service] trait AnthropicServiceWSHelper
+    extends WSRequestHelper
+    with AnthropicServiceConsts {
 
   override protected type PEP = EndPoint
   override protected type PT = Param

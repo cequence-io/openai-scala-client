@@ -4,12 +4,22 @@ import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.domain.{AssistantTool, FunctionSpec, ModelId, Pagination, SortOrder, Thread, ThreadFullMessage, ThreadMessage, ThreadMessageFile, ToolSpec}
+import io.cequence.openaiscala.domain.{
+  AssistantTool,
+  FunctionSpec,
+  ModelId,
+  Pagination,
+  SortOrder,
+  Thread,
+  ThreadFullMessage,
+  ThreadMessage,
+  ThreadMessageFile,
+  ToolSpec
+}
 import io.cequence.openaiscala.service.OpenAIService
 
 import java.io.File
 import scala.concurrent.Future
-
 
 /**
  * Constants of [[AnthropicService]], mostly defaults

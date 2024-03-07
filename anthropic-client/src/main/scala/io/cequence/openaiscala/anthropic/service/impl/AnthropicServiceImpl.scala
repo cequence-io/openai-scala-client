@@ -4,7 +4,10 @@ import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.anthropic.JsonFormats
 import io.cequence.openaiscala.anthropic.domain.{BaseMessage, ChatRole}
 import io.cequence.openaiscala.anthropic.service.response.CreateMessageResponse
-import io.cequence.openaiscala.anthropic.service.{AnthropicCreateChatCompletionSettings, AnthropicService}
+import io.cequence.openaiscala.anthropic.service.{
+  AnthropicCreateChatCompletionSettings,
+  AnthropicService
+}
 import play.api.libs.json.{JsValue, Json}
 import io.cequence.openaiscala.anthropic.service.Param
 import io.cequence.openaiscala.anthropic.service.EndPoint
@@ -13,7 +16,8 @@ import scala.concurrent.Future
 
 private[service] trait AnthropicServiceImpl
     extends AnthropicService
-    with AnthropicServiceWSHelper with JsonFormats {
+    with AnthropicServiceWSHelper
+    with JsonFormats {
 
   override def createMessage(
     messages: Seq[BaseMessage],
@@ -46,7 +50,7 @@ private[service] trait AnthropicServiceImpl
       Param.stream -> Some(stream),
       Param.temperature -> settings.temperature,
       Param.top_p -> settings.top_p,
-      Param.top_k -> settings.top_k,
+      Param.top_k -> settings.top_k
     )
   }
 

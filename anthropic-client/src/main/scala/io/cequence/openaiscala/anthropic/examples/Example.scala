@@ -5,7 +5,11 @@ import akka.stream.Materializer
 import io.cequence.openaiscala.anthropic.service.response.CreateMessageResponse
 import io.cequence.openaiscala.anthropic.service.{AnthropicService, AnthropicServiceFactory}
 import io.cequence.openaiscala.domain.response.ChatCompletionResponse
-import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIService, OpenAIServiceFactory}
+import io.cequence.openaiscala.service.{
+  OpenAIChatCompletionService,
+  OpenAIService,
+  OpenAIServiceFactory
+}
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
