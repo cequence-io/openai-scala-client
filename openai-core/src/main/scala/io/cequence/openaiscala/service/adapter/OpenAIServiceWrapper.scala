@@ -6,7 +6,11 @@ import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.adapter.ServiceWrapperTypes._
-import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAICoreService, OpenAIService}
+import io.cequence.openaiscala.service.{
+  OpenAIChatCompletionService,
+  OpenAICoreService,
+  OpenAIService
+}
 
 import java.io.File
 import scala.concurrent.Future

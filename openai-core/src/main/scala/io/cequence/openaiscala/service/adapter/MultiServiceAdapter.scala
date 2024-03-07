@@ -6,7 +6,9 @@ import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.Future
 import scala.util.Random
 
-private trait MultiServiceAdapter[+S <: CloseableService] extends ServiceWrapper[S] with CloseableService {
+private trait MultiServiceAdapter[+S <: CloseableService]
+    extends ServiceWrapper[S]
+    with CloseableService {
   protected val underlyings: Seq[S]
   protected lazy val count = underlyings.size
 

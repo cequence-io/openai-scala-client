@@ -16,16 +16,20 @@ private class RetryServiceAdapter[+S <: CloseableService](
   implicit ec: ExecutionContext,
   retrySettings: RetrySettings,
   scheduler: Scheduler
-) extends ServiceWrapper[S] with CloseableService
-  with RetryHelpers {
+) extends ServiceWrapper[S]
+    with CloseableService
+    with RetryHelpers {
 
   override protected[adapter] def wrap[T](
     fun: S => Future[T]
   ): Future[T] = {
     // need to use StackWalker to get the caller function name
-    val functionName = StackWalkerUtil.functionName(2, Optional.of[Predicate[String]]((t: String) =>
-      !t.contains("wrap") && !t.contains("anonfun")
-    ))
+    val functionName = StackWalkerUtil.functionName(
+      2,
+      Optional.of[Predicate[String]]((t: String) =>
+        !t.contains("wrap") && !t.contains("anonfun")
+      )
+    )
     fun(underlying).retryOnFailure(
       Some(s"${functionName.orElse("N.A").capitalize} call failed"),
       log

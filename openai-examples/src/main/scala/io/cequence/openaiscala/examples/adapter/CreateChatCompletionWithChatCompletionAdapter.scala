@@ -1,13 +1,15 @@
-package io.cequence.openaiscala.examples
+package io.cequence.openaiscala.examples.adapter
 
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{ModelId, SystemMessage, UserMessage}
+import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service._
 import io.cequence.openaiscala.service.adapter.OpenAIServiceAdapters
 
 import scala.concurrent.Future
 
-object CreateChatCompletionWithChatCompletionAdapter extends ExampleBase[OpenAIChatCompletionService] {
+object CreateChatCompletionWithChatCompletionAdapter
+    extends ExampleBase[OpenAIChatCompletionService] {
 
   // OctoML
   private val octoMLService = OpenAIChatCompletionServiceFactory(
