@@ -2,15 +2,15 @@ package io.cequence.openaiscala.anthropic.service.impl
 
 import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.anthropic.JsonFormats
-import io.cequence.openaiscala.anthropic.domain.{BaseMessage, ChatRole}
+import io.cequence.openaiscala.anthropic.domain.{Message, ChatRole}
 import io.cequence.openaiscala.anthropic.service.response.CreateMessageResponse
 import io.cequence.openaiscala.anthropic.service.{
-  AnthropicCreateChatCompletionSettings,
-  AnthropicService
+  AnthropicCreateMessageSettings,
+  AnthropicService,
+  EndPoint,
+  Param
 }
 import play.api.libs.json.{JsValue, Json}
-import io.cequence.openaiscala.anthropic.service.Param
-import io.cequence.openaiscala.anthropic.service.EndPoint
 
 import scala.concurrent.Future
 
@@ -20,8 +20,8 @@ private[service] trait AnthropicServiceImpl
     with JsonFormats {
 
   override def createMessage(
-    messages: Seq[BaseMessage],
-    settings: AnthropicCreateChatCompletionSettings
+    messages: Seq[Message],
+    settings: AnthropicCreateMessageSettings
   ): Future[CreateMessageResponse] =
     execPOST(
       EndPoint.messages,
@@ -31,8 +31,8 @@ private[service] trait AnthropicServiceImpl
     )
 
   protected def createBodyParamsForMessageCreation(
-    messages: Seq[BaseMessage],
-    settings: AnthropicCreateChatCompletionSettings,
+    messages: Seq[Message],
+    settings: AnthropicCreateMessageSettings,
     stream: Boolean
   ): Seq[(Param, Option[JsValue])] = {
     assert(messages.nonEmpty, "At least one message expected.")

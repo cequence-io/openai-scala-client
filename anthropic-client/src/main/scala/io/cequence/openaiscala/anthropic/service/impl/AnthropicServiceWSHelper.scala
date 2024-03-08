@@ -1,8 +1,7 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
 import akka.stream.Materializer
-import io.cequence.openaiscala.anthropic.service.AnthropicServiceConsts
-import io.cequence.openaiscala.anthropic.service.{EndPoint, Param}
+import io.cequence.openaiscala.anthropic.service.{AnthropicServiceConsts, EndPoint, Param}
 import io.cequence.openaiscala.service.ws.{Timeouts, WSRequestHelper}
 import play.api.libs.ws.StandaloneWSRequest
 

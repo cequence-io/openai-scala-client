@@ -1,12 +1,12 @@
 package io.cequence.openaiscala.anthropic.service.response
 
-import io.cequence.openaiscala.anthropic.domain.Content
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlocks
 import io.cequence.openaiscala.anthropic.service.response.CreateMessageResponse.UsageInfo
 import io.cequence.openaiscala.domain.NamedEnumValue
 
 final case class CreateMessageResponse(
   id: String,
-  content: Seq[Content],
+  content: ContentBlocks,
   model: String,
   stop_reason: Option[String],
   stop_sequence: Option[String],

@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.anthropic.service
 
-final case class AnthropicCreateChatCompletionSettings(
+final case class AnthropicCreateMessageSettings(
   // The model that will complete your prompt.
   // See [[models|https://docs.anthropic.com/claude/docs/models-overview]] for additional details and options.
   model: String,

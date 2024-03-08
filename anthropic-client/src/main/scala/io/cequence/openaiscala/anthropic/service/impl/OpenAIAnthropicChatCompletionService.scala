@@ -1,13 +1,18 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
+import io.cequence.openaiscala.anthropic.service.AnthropicService
 import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response.ChatCompletionResponse
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
-class OpenAIAnthropicChatCompletionService extends OpenAIChatCompletionService {
+class OpenAIAnthropicChatCompletionService(
+  anthropicClient: AnthropicService
+)(
+  implicit executionContext: ExecutionContext
+) extends OpenAIChatCompletionService {
 
   /**
    * Creates a model response for the given chat conversation.
@@ -23,10 +28,15 @@ class OpenAIAnthropicChatCompletionService extends OpenAIChatCompletionService {
   override def createChatCompletion(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
-  ): Future[ChatCompletionResponse] = ???
+  ): Future[ChatCompletionResponse] = {
+    anthropicClient
+      .createMessage(messages.map(toAnthropic), toAnthropic(settings))
+      .map(toOpenAI)
+  }
 
   /**
    * Closes the underlying ws client, and releases all its resources.
    */
-  override def close(): Unit = ???
+  override def close(): Unit = anthropicClient.close()
+
 }

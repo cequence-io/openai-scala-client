@@ -4,15 +4,8 @@ import akka.actor.ActorSystem
 import akka.stream.Materializer
 import io.cequence.openaiscala.anthropic.service.response.CreateMessageResponse
 import io.cequence.openaiscala.anthropic.service.{AnthropicService, AnthropicServiceFactory}
-import io.cequence.openaiscala.domain.response.ChatCompletionResponse
-import io.cequence.openaiscala.service.{
-  OpenAIChatCompletionService,
-  OpenAIService,
-  OpenAIServiceFactory
-}
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 trait Example extends ExampleBase[AnthropicService] {
   override protected val service = AnthropicServiceFactory()
@@ -45,5 +38,5 @@ trait ExampleBase[T <: AnthropicService] {
   protected def run: Future[_]
 
   protected def printMessageContent(response: CreateMessageResponse) =
-    response.content.foreach(println)
+    response.content.blocks.foreach(println)
 }

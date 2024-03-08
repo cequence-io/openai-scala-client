@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.anthropic.service
 
-import io.cequence.openaiscala.anthropic.domain.BaseMessage
+import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.service.response.CreateMessageResponse
 
 import scala.concurrent.Future
@@ -24,8 +24,8 @@ trait AnthropicService {
    *   create message response
    */
   def createMessage(
-    messages: Seq[BaseMessage],
-    settings: AnthropicCreateChatCompletionSettings
+    messages: Seq[Message],
+    settings: AnthropicCreateMessageSettings
   ): Future[CreateMessageResponse]
 
   /**
