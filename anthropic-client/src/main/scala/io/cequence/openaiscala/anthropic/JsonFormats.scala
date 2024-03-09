@@ -60,7 +60,7 @@ trait JsonFormats {
   implicit val contentReads: Reads[Content] = new Reads[Content] {
     def reads(json: JsValue): JsResult[Content] = json match {
       case JsString(str) => JsSuccess(SingleString(str))
-      case JsArray(arr)  => Json.fromJson[Seq[ContentBlock]](json).map(ContentBlocks(_))
+      case JsArray(_)    => Json.fromJson[Seq[ContentBlock]](json).map(ContentBlocks(_))
       case _             => JsError("Invalid content format")
     }
   }

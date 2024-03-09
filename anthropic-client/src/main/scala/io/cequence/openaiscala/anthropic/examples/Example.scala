@@ -37,6 +37,6 @@ trait ExampleBase[T <: AnthropicService] {
 
   protected def run: Future[_]
 
-  protected def printMessageContent(response: CreateMessageResponse) =
+  protected def printMessageContent(response: CreateMessageResponse): Unit =
     response.content.blocks.foreach(println)
 }

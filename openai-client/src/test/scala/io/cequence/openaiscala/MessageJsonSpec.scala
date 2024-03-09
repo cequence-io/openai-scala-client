@@ -4,7 +4,7 @@ import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.JsonFormats.messageWrites
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
-import play.api.libs.json.{JsArray, JsNull, JsObject, JsString, Json}
+import play.api.libs.json.{JsArray, JsObject, JsString, Json}
 
 class MessageJsonSpec extends Matchers with AnyWordSpecLike {
 
