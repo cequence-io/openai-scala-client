@@ -94,17 +94,6 @@ trait JsonFormats {
     case _ => Reads(_ => JsError("Unsupported role or content type"))
   }
 
-  implicit val createMessageResponseWrites: Writes[CreateMessageResponse] = (
-    (__ \ "id").write[String] and
-      (__ \ "content")
-        .write[Seq[ContentBlock]](Writes.seq(contentBlockWrites))
-        .contramap[ContentBlocks](_.blocks) and
-      (__ \ "model").write[String] and
-      (__ \ "stop_reason").writeNullable[String] and
-      (__ \ "stop_sequence").writeNullable[String] and
-      (__ \ "usage").write[UsageInfo]
-  )(unlift(CreateMessageResponse.unapply))
-
   implicit val createMessageResponseReads: Reads[CreateMessageResponse] = (
     (__ \ "id").read[String] and
       (__ \ "content").read[Seq[ContentBlock]].map(ContentBlocks(_)) and

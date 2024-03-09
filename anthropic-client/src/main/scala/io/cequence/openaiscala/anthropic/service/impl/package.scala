@@ -19,8 +19,6 @@ import io.cequence.openaiscala.domain.{
   UserMessage => OpenAIUserMessage,
   UserSeqMessage => OpenAIUserSeqMessage
 }
-import org.joda.time.DateTime
-
 import java.{util => ju}
 
 package object impl {
@@ -61,7 +59,7 @@ package object impl {
   def toOpenAI(response: CreateMessageResponse): ChatCompletionResponse =
     ChatCompletionResponse(
       id = response.id,
-      created = new ju.Date(DateTime.now.getMillis),
+      created = new ju.Date(),
       model = response.model,
       system_fingerprint = response.stop_reason,
       // TODO: check, is this the right way to convert the content?
