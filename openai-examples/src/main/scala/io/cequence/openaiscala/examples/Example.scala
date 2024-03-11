@@ -3,11 +3,7 @@ package io.cequence.openaiscala.examples
 import akka.actor.ActorSystem
 import akka.stream.Materializer
 import io.cequence.openaiscala.domain.response.ChatCompletionResponse
-import io.cequence.openaiscala.service.{
-  OpenAIChatCompletionService,
-  OpenAIService,
-  OpenAIServiceFactory
-}
+import io.cequence.openaiscala.service.{CloseableService, OpenAIService, OpenAIServiceFactory}
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.Future
@@ -16,7 +12,7 @@ trait Example extends ExampleBase[OpenAIService] {
   override protected val service = OpenAIServiceFactory()
 }
 
-trait ExampleBase[T <: OpenAIChatCompletionService] {
+trait ExampleBase[T <: CloseableService] {
 
   implicit val system: ActorSystem = ActorSystem()
   implicit val materializer: Materializer = Materializer(system)
