@@ -1,11 +1,6 @@
-package io.cequence.openaiscala.service.impl
+package io.cequence.openaiscala.service.ws
 
-import akka.stream.Materializer
-import io.cequence.openaiscala.service.ws.{Timeouts, WSRequestHelper}
-import io.cequence.openaiscala.service.{EndPoint, OpenAIServiceConsts, Param}
 import play.api.libs.ws.StandaloneWSRequest
-
-import scala.concurrent.ExecutionContext
 
 /**
  * Core WS stuff for OpenAI services.
@@ -13,13 +8,10 @@ import scala.concurrent.ExecutionContext
  * @since March
  *   2024
  */
-private[service] trait OpenAIServiceWSHelper extends WSRequestHelper with OpenAIServiceConsts {
+private[service] trait WSRequestExtHelper extends WSRequestHelper {
 
-  override protected type PEP = EndPoint
-  override protected type PT = Param
-
-  protected implicit val ec: ExecutionContext
-  protected implicit val materializer: Materializer
+  protected val defaultRequestTimeout = 120 * 1000 // two minutes
+  protected val defaultReadoutTimeout = 120 * 1000 // two minutes
 
   protected val explTimeouts: Option[Timeouts]
   protected val authHeaders: Seq[(String, String)]

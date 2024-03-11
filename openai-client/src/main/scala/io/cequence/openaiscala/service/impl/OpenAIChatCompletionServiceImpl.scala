@@ -5,7 +5,13 @@ import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.service.{EndPoint, OpenAIChatCompletionService, Param}
+import io.cequence.openaiscala.service.ws.WSRequestExtHelper
+import io.cequence.openaiscala.service.{
+  EndPoint,
+  OpenAIChatCompletionService,
+  OpenAIServiceConsts,
+  Param
+}
 import play.api.libs.json.{JsValue, Json}
 
 import scala.concurrent.Future
@@ -18,7 +24,11 @@ import scala.concurrent.Future
  */
 private[service] trait OpenAIChatCompletionServiceImpl
     extends OpenAIChatCompletionService
-    with OpenAIServiceWSHelper {
+    with WSRequestExtHelper
+    with OpenAIServiceConsts {
+
+  override protected type PEP = EndPoint
+  override protected type PT = Param
 
   override def createChatCompletion(
     messages: Seq[BaseMessage],

@@ -10,10 +10,6 @@ trait OpenAIServiceConsts {
 
   protected val defaultCoreUrl = "https://api.openai.com/v1/"
 
-  protected val defaultRequestTimeout = 120 * 1000 // two minutes
-
-  protected val defaultReadoutTimeout = 120 * 1000 // two minutes
-
   protected val configPrefix = "openai-scala-client"
 
   protected val configFileName = "openai-scala-client.conf"
