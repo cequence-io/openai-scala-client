@@ -424,9 +424,9 @@ trait WSRequestHelper extends WSHelper {
 
   // aux
 
-  protected def jsonBodyParams(
-    params: (PT, Option[Any])*
-  ): Seq[(PT, Option[JsValue])] =
+  protected def jsonBodyParams[T](
+    params: (T, Option[Any])*
+  ): Seq[(T, Option[JsValue])] =
     params.map { case (paramName, value) => (paramName, value.map(toJson)) }
 
   protected def handleNotFoundAndError[T](response: RichResponse[T]): Option[T] =

@@ -5,7 +5,7 @@ import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.service.ws.WSRequestExtHelper
+import io.cequence.openaiscala.service.ws.{WSRequestExtHelper, WSRequestHelper}
 import io.cequence.openaiscala.service.{
   EndPoint,
   OpenAIChatCompletionService,
@@ -25,6 +25,7 @@ import scala.concurrent.Future
 private[service] trait OpenAIChatCompletionServiceImpl
     extends OpenAIChatCompletionService
     with WSRequestExtHelper
+    with ChatCompletionBodyMaker
     with OpenAIServiceConsts {
 
   override protected type PEP = EndPoint
@@ -40,6 +41,11 @@ private[service] trait OpenAIChatCompletionServiceImpl
     ).map(
       _.asSafe[ChatCompletionResponse]
     )
+}
+
+trait ChatCompletionBodyMaker {
+
+  this: WSRequestHelper =>
 
   protected def createBodyParamsForChatCompletion(
     messages: Seq[BaseMessage],

@@ -5,6 +5,7 @@ import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
+import io.cequence.openaiscala.service.ws.WSRequestHelper
 import io.cequence.openaiscala.service.{EndPoint, OpenAICoreService, Param}
 import play.api.libs.json.{JsObject, JsValue}
 
@@ -18,7 +19,8 @@ import scala.concurrent.Future
  */
 private[service] trait OpenAICoreServiceImpl
     extends OpenAICoreService
-    with OpenAIChatCompletionServiceImpl {
+    with OpenAIChatCompletionServiceImpl
+    with CompletionBodyMaker {
 
   override def listModels: Future[Seq[ModelInfo]] =
     execGET(EndPoint.models).map { response =>
@@ -41,6 +43,32 @@ private[service] trait OpenAICoreServiceImpl
     ).map(
       _.asSafe[TextCompletionResponse]
     )
+
+  override def createEmbeddings(
+    input: Seq[String],
+    settings: CreateEmbeddingsSettings
+  ): Future[EmbeddingResponse] =
+    execPOST(
+      EndPoint.embeddings,
+      bodyParams = jsonBodyParams(
+        Param.input -> {
+          input.size match {
+            case 0 => None
+            case 1 => Some(input.head)
+            case _ => Some(input)
+          }
+        },
+        Param.model -> Some(settings.model),
+        Param.encoding_format -> settings.encoding_format.map(_.toString),
+        Param.user -> settings.user
+      )
+    ).map(
+      _.asSafe[EmbeddingResponse]
+    )
+}
+
+trait CompletionBodyMaker {
+  this: WSRequestHelper =>
 
   protected def createBodyParamsForCompletion(
     prompt: String,
@@ -73,27 +101,5 @@ private[service] trait OpenAICoreServiceImpl
       },
       Param.user -> settings.user,
       Param.seed -> settings.seed
-    )
-
-  override def createEmbeddings(
-    input: Seq[String],
-    settings: CreateEmbeddingsSettings
-  ): Future[EmbeddingResponse] =
-    execPOST(
-      EndPoint.embeddings,
-      bodyParams = jsonBodyParams(
-        Param.input -> {
-          input.size match {
-            case 0 => None
-            case 1 => Some(input.head)
-            case _ => Some(input)
-          }
-        },
-        Param.model -> Some(settings.model),
-        Param.encoding_format -> settings.encoding_format.map(_.toString),
-        Param.user -> settings.user
-      )
-    ).map(
-      _.asSafe[EmbeddingResponse]
     )
 }
