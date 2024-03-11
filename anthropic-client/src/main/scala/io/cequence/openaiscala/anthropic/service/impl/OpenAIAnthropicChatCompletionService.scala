@@ -8,7 +8,7 @@ import io.cequence.openaiscala.service.OpenAIChatCompletionService
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class OpenAIAnthropicChatCompletionService(
+private[service] class OpenAIAnthropicChatCompletionService(
   anthropicClient: AnthropicService
 )(
   implicit executionContext: ExecutionContext

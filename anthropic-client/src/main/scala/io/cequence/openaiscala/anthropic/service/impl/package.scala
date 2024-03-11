@@ -23,9 +23,6 @@ import java.{util => ju}
 
 package object impl {
 
-  // TODO: move to consts? determine the default value
-  val defaultMaxTokens = 2048
-
   def toAnthropic(baseMessage: OpenAIBaseMessage): Message = {
     baseMessage match {
       case OpenAIUserMessage(content, _) => Message.UserMessage(content)
@@ -37,6 +34,7 @@ package object impl {
   def toAnthropic(content: OpenAIContent): Content.ContentBlock = {
     content match {
       case OpenAITextContent(text) => TextBlock(text)
+      // add images
       // TODO: handle other content types
     }
   }
@@ -44,14 +42,14 @@ package object impl {
   def toAnthropic(settings: CreateChatCompletionSettings): AnthropicCreateMessageSettings = {
     AnthropicCreateMessageSettings(
       model = settings.model,
-      // TODO: shall I filter system messages from OpenAI base messages to find out the system prompt? concatenate them if there are more of them?
+      // TODO: shall I filter system messages from OpenAI base messages to find out the system prompt?
+      // TODO: concatenate them if there are more of them? - yes
       system = ???,
       max_tokens = settings.max_tokens.getOrElse(defaultMaxTokens),
       metadata = Map.empty,
       stop_sequences = settings.stop,
       temperature = settings.temperature,
       top_p = settings.top_p,
-      // TODO: is there an equivalent for top_k in OpenAI?
       top_k = None
     )
   }
@@ -62,14 +60,15 @@ package object impl {
       created = new ju.Date(),
       model = response.model,
       system_fingerprint = response.stop_reason,
+      // if there are more textual responses, concatenate them & log warning
+      // throw an exception for non-textual responses
       // TODO: check, is this the right way to convert the content?
       choices = Seq(
         ChatCompletionChoiceInfo(
           message = toOpenAIAssistantMessage(response.content),
-          // TODO: what is the index?
+          // TODO: what is the index? 0 / 1
           index = ???,
           finish_reason = response.stop_reason,
-          // TODO: are there any logprobs in Anthropic response?
           logprobs = None
         )
       ),
@@ -87,9 +86,9 @@ package object impl {
   def toOpenAI(usageInfo: UsageInfo): OpenAIUsageInfo = {
     OpenAIUsageInfo(
       prompt_tokens = usageInfo.input_tokens,
-      total_tokens = usageInfo.output_tokens,
-      // TODO: how to determine completion tokens?
-      completion_tokens = None
+      // TODO: verify token counts
+      total_tokens = usageInfo.input_tokens + usageInfo.output_tokens,
+      completion_tokens = Some(usageInfo.output_tokens)
     )
   }
 

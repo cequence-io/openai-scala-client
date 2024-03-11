@@ -16,8 +16,12 @@ import scala.concurrent.Future
 
 private[service] trait AnthropicServiceImpl
     extends AnthropicService
-    with AnthropicServiceWSHelper
+    with WSExtHelper
     with JsonFormats {
+
+  override protected type PEP = EndPoint
+  override protected type PT = Param
+
 
   override def createMessage(
     messages: Seq[Message],
