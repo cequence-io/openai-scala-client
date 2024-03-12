@@ -17,10 +17,12 @@ object CreateChatCompletion extends Example {
       .createChatCompletion(
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = ModelId.gpt_4_turbo_preview,
+          model = ModelId.gpt_3_5_turbo,
           temperature = Some(0),
           max_tokens = Some(100)
         )
       )
-      .map(printMessageContent)
+      .map { content =>
+        printMessageContent(content)
+      }
 }

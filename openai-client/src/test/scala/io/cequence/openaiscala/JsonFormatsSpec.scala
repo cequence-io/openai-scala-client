@@ -1,5 +1,8 @@
 package io.cequence.openaiscala
 
+import io.cequence.openaiscala.JsonFormats._
+import io.cequence.openaiscala.JsonFormatsSpec.JsonPrintMode
+import io.cequence.openaiscala.JsonFormatsSpec.JsonPrintMode.{Compact, Pretty}
 import io.cequence.openaiscala.domain.{
   AssistantTool,
   CodeInterpreterSpec,
@@ -9,13 +12,13 @@ import io.cequence.openaiscala.domain.{
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import play.api.libs.json.{Format, Json}
-import io.cequence.openaiscala.JsonFormats._
-import io.cequence.openaiscala.JsonFormatsSpec.{Compact, JsonPrintMode, Pretty}
 
 object JsonFormatsSpec {
   sealed trait JsonPrintMode
-  case object Compact extends JsonPrintMode
-  case object Pretty extends JsonPrintMode
+  object JsonPrintMode {
+    case object Compact extends JsonPrintMode
+    case object Pretty extends JsonPrintMode
+  }
 }
 
 class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
