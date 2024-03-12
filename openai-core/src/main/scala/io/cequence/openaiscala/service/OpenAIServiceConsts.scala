@@ -17,7 +17,7 @@ trait OpenAIServiceConsts {
   object DefaultSettings {
 
     val CreateCompletion = CreateCompletionSettings(
-      model = ModelId.text_davinci_003,
+      model = ModelId.gpt_3_5_turbo_instruct,
       temperature = Some(0.7),
       max_tokens = Some(1000)
     )
