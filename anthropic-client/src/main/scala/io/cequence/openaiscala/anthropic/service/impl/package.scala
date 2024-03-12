@@ -46,7 +46,9 @@ package object impl extends AnthropicServiceConsts {
           val data = encodingAndData.drop(encoding.length + 1)
           Content.ContentBlock.ImageBlock(encoding, mediaType, data)
         } else {
-          throw new IllegalArgumentException(s"Image content only supported by providing image data directly.")
+          throw new IllegalArgumentException(
+            s"Image content only supported by providing image data directly."
+          )
         }
     }
   }
