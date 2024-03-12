@@ -38,8 +38,16 @@ package object impl extends AnthropicServiceConsts {
     content match {
       case OpenAITextContent(text) => TextBlock(text)
       case OpenAIImageContent(url) =>
-        // TODO: convert OpenAI image content to Anthropic image content
-        throw new IllegalArgumentException(s"Image content not supported: $url")
+        if (url.startsWith("data:")) {
+          val mediaTypeEncodingAndData = url.drop(5)
+          val mediaType = mediaTypeEncodingAndData.takeWhile(_ != ';')
+          val encodingAndData = mediaTypeEncodingAndData.drop(mediaType.length + 1)
+          val encoding = mediaType.takeWhile(_ != ',')
+          val data = encodingAndData.drop(encoding.length + 1)
+          Content.ContentBlock.ImageBlock(encoding, mediaType, data)
+        } else {
+          throw new IllegalArgumentException(s"Image content only supported by providing image data directly.")
+        }
     }
   }
 

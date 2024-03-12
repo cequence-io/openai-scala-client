@@ -52,18 +52,14 @@ object AnthropicServiceFactory extends AnthropicServiceConsts {
 
   def apply(
     apiKey: String
-    // orgId: Option[String] = None
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer
   ): AnthropicService = {
-    // val orgIdHeader = orgId.map(("OpenAI-Organization", _))
-
-    val authHeaders = /*orgIdHeader ++:*/ Seq(
+    val authHeaders = Seq(
       ("x-api-key", s"$apiKey"),
       ("anthropic-version", "2023-06-01")
     )
-
     new AnthropicServiceClassImpl(defaultCoreUrl, authHeaders)
   }
 
