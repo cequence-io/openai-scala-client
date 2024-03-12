@@ -10,6 +10,11 @@ object Content {
 
   object ContentBlock {
     case class TextBlock(text: String) extends ContentBlock
+    case class ImageBlock(
+      `type`: String,
+      mediaType: String,
+      data: String
+    ) extends ContentBlock
   }
 
 }

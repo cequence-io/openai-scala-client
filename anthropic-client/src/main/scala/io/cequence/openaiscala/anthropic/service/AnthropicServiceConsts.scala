@@ -15,8 +15,6 @@ trait AnthropicServiceConsts {
 
   protected val configFileName = "anthropic-scala-client.conf"
 
-  // TODO: move to consts? determine the default value
-  val defaultMaxTokens = 2048
-
+  protected val defaultMaxTokens = 2048
 
 }

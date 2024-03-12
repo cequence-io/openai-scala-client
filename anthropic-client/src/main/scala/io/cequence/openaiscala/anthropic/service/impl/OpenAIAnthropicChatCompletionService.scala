@@ -30,7 +30,7 @@ private[service] class OpenAIAnthropicChatCompletionService(
     settings: CreateChatCompletionSettings
   ): Future[ChatCompletionResponse] = {
     anthropicClient
-      .createMessage(messages.map(toAnthropic), toAnthropic(settings))
+      .createMessage(messages.map(toAnthropic), toAnthropic(settings, messages))
       .map(toOpenAI)
   }
 

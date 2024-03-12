@@ -8,7 +8,7 @@ import play.api.libs.ws.StandaloneWSRequest
  * @since March
  *   2024
  */
-private[service] trait WSRequestExtHelper extends WSRequestHelper {
+trait WSRequestExtHelper extends WSRequestHelper {
 
   protected val defaultRequestTimeout = 120 * 1000 // two minutes
   protected val defaultReadoutTimeout = 120 * 1000 // two minutes
@@ -17,13 +17,14 @@ private[service] trait WSRequestExtHelper extends WSRequestHelper {
   protected val authHeaders: Seq[(String, String)]
   protected val extraParams: Seq[(String, String)]
 
-  override protected def timeouts: Timeouts =
+  override protected def timeouts: Timeouts = {
     explTimeouts.getOrElse(
       Timeouts(
         requestTimeout = Some(defaultRequestTimeout),
         readTimeout = Some(defaultReadoutTimeout)
       )
     )
+  }
 
   // auth
 

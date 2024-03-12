@@ -7,13 +7,13 @@ import io.cequence.openaiscala.anthropic.domain.Message.{
   UserMessage,
   UserMessageContent
 }
-import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{ImageBlock, TextBlock}
 import io.cequence.openaiscala.anthropic.domain.Content.{
   ContentBlock,
   ContentBlocks,
   SingleString
 }
-import io.cequence.openaiscala.anthropic.domain.{Message, ChatRole, Content}
+import io.cequence.openaiscala.anthropic.domain.{ChatRole, Content, Message}
 import io.cequence.openaiscala.anthropic.service.response.CreateMessageResponse
 import io.cequence.openaiscala.anthropic.service.response.CreateMessageResponse.UsageInfo
 import play.api.libs.functional.syntax._
@@ -39,22 +39,43 @@ trait JsonFormats {
 
   implicit lazy val contentBlocksFormat: Format[ContentBlocks] = Json.format[ContentBlocks]
 
-  implicit val textBlockWrites: Writes[TextBlock] = Json.writes[TextBlock]
+  // implicit val textBlockWrites: Writes[TextBlock] = Json.writes[TextBlock]
   implicit val textBlockReads: Reads[TextBlock] = Json.reads[TextBlock]
+
+  implicit val textBlockWrites: Writes[TextBlock] = Json.writes[TextBlock]
+  implicit val imageBlockWrites: Writes[ImageBlock] = new Writes[ImageBlock] {
+    def writes(block: ImageBlock): JsValue = Json.obj(
+      "type" -> "image",
+      "source" -> Json.obj(
+        "type" -> block.`type`,
+        "media_type" -> block.mediaType,
+        "data" -> block.data
+      )
+    )
+  }
 
   implicit val contentBlockWrites: Writes[ContentBlock] = new Writes[ContentBlock] {
     def writes(block: ContentBlock): JsValue = block match {
       case tb: TextBlock =>
         Json.obj("type" -> "text") ++ Json.toJson(tb)(textBlockWrites).as[JsObject]
+      case ib: ImageBlock => Json.toJson(ib)(imageBlockWrites)
     }
   }
 
-  implicit val contentBlockReads: Reads[ContentBlock] = (
-    (__ \ "type").read[String] and
-      (__ \ "text").readNullable[String]
-  ).tupled.flatMap {
-    case ("text", Some(text)) => Reads.pure(TextBlock(text))
-    case _                    => Reads(_ => JsError("Unsupported or invalid content block"))
+  implicit val contentBlockReads: Reads[ContentBlock] = new Reads[ContentBlock] {
+    def reads(json: JsValue): JsResult[ContentBlock] = {
+      (json \ "type").validate[String].flatMap {
+        case "text" => (json \ "text").validate[String].map(TextBlock.apply)
+        case "image" =>
+          for {
+            source <- (json \ "source").validate[JsObject]
+            `type` <- (source \ "type").validate[String]
+            mediaType <- (source \ "media_type").validate[String]
+            data <- (source \ "data").validate[String]
+          } yield ImageBlock(`type`, mediaType, data)
+        case _ => JsError("Unsupported or invalid content block")
+      }
+    }
   }
 
   implicit val contentReads: Reads[Content] = new Reads[Content] {

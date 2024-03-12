@@ -2,7 +2,7 @@ package io.cequence.openaiscala.anthropic.service
 
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlocks
-import io.cequence.openaiscala.anthropic.domain.{Message, Content}
+import io.cequence.openaiscala.anthropic.domain.{Content, Message}
 import io.cequence.openaiscala.anthropic.service.response.CreateMessageResponse
 import io.cequence.openaiscala.anthropic.service.response.CreateMessageResponse.UsageInfo
 import io.cequence.openaiscala.domain.response.{
@@ -13,15 +13,18 @@ import io.cequence.openaiscala.domain.response.{
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{
   AssistantMessage,
+  SystemMessage,
   BaseMessage => OpenAIBaseMessage,
   Content => OpenAIContent,
+  ImageURLContent => OpenAIImageContent,
   TextContent => OpenAITextContent,
   UserMessage => OpenAIUserMessage,
   UserSeqMessage => OpenAIUserSeqMessage
 }
+
 import java.{util => ju}
 
-package object impl {
+package object impl extends AnthropicServiceConsts {
 
   def toAnthropic(baseMessage: OpenAIBaseMessage): Message = {
     baseMessage match {
@@ -34,17 +37,23 @@ package object impl {
   def toAnthropic(content: OpenAIContent): Content.ContentBlock = {
     content match {
       case OpenAITextContent(text) => TextBlock(text)
-      // add images
-      // TODO: handle other content types
+      case OpenAIImageContent(url) =>
+        // TODO: convert OpenAI image content to Anthropic image content
+        throw new IllegalArgumentException(s"Image content not supported: $url")
     }
   }
 
-  def toAnthropic(settings: CreateChatCompletionSettings): AnthropicCreateMessageSettings = {
+  def toAnthropic(
+    settings: CreateChatCompletionSettings,
+    messages: Seq[OpenAIBaseMessage]
+  ): AnthropicCreateMessageSettings = {
+    def systemMessagesContent = messages.collect { case SystemMessage(content, _) =>
+      content
+    }.mkString("\n")
+
     AnthropicCreateMessageSettings(
       model = settings.model,
-      // TODO: shall I filter system messages from OpenAI base messages to find out the system prompt?
-      // TODO: concatenate them if there are more of them? - yes
-      system = ???,
+      system = if (systemMessagesContent.isEmpty) None else Some(systemMessagesContent),
       max_tokens = settings.max_tokens.getOrElse(defaultMaxTokens),
       metadata = Map.empty,
       stop_sequences = settings.stop,
@@ -60,14 +69,10 @@ package object impl {
       created = new ju.Date(),
       model = response.model,
       system_fingerprint = response.stop_reason,
-      // if there are more textual responses, concatenate them & log warning
-      // throw an exception for non-textual responses
-      // TODO: check, is this the right way to convert the content?
       choices = Seq(
         ChatCompletionChoiceInfo(
           message = toOpenAIAssistantMessage(response.content),
-          // TODO: what is the index? 0 / 1
-          index = ???,
+          index = 0,
           finish_reason = response.stop_reason,
           logprobs = None
         )
@@ -76,17 +81,21 @@ package object impl {
     )
 
   def toOpenAIAssistantMessage(content: ContentBlocks): AssistantMessage = {
-    // TODO: is each content a separate choice or can I concatenate them?
-    val text = content.blocks.map { case TextBlock(text) =>
-      text
-    }.mkString("\n")
-    AssistantMessage(text, name = None)
+    val textContents = content.blocks.collect { case TextBlock(text) => text }
+    // TODO: log if there is more than one text content
+    if (textContents.size == 0) {
+      throw new IllegalArgumentException("No text content found in the response")
+    }
+    val singleTextContent = concatenateMessages(textContents)
+    AssistantMessage(singleTextContent, name = None)
   }
+
+  private def concatenateMessages(messageContent: Seq[String]): String =
+    messageContent.mkString("\n")
 
   def toOpenAI(usageInfo: UsageInfo): OpenAIUsageInfo = {
     OpenAIUsageInfo(
       prompt_tokens = usageInfo.input_tokens,
-      // TODO: verify token counts
       total_tokens = usageInfo.input_tokens + usageInfo.output_tokens,
       completion_tokens = Some(usageInfo.output_tokens)
     )

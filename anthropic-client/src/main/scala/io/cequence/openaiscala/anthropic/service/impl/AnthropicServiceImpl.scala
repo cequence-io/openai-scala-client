@@ -2,7 +2,7 @@ package io.cequence.openaiscala.anthropic.service.impl
 
 import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.anthropic.JsonFormats
-import io.cequence.openaiscala.anthropic.domain.{Message, ChatRole}
+import io.cequence.openaiscala.anthropic.domain.{ChatRole, Message}
 import io.cequence.openaiscala.anthropic.service.response.CreateMessageResponse
 import io.cequence.openaiscala.anthropic.service.{
   AnthropicCreateMessageSettings,
@@ -10,18 +10,18 @@ import io.cequence.openaiscala.anthropic.service.{
   EndPoint,
   Param
 }
+import io.cequence.openaiscala.service.ws.WSRequestExtHelper
 import play.api.libs.json.{JsValue, Json}
 
 import scala.concurrent.Future
 
 private[service] trait AnthropicServiceImpl
     extends AnthropicService
-    with WSExtHelper
+    with WSRequestExtHelper
     with JsonFormats {
 
   override protected type PEP = EndPoint
   override protected type PT = Param
-
 
   override def createMessage(
     messages: Seq[Message],

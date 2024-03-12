@@ -1,6 +1,8 @@
 package io.cequence.openaiscala.anthropic
 
-import io.cequence.openaiscala.anthropic.JsonFormatsSpec.{Compact, JsonPrintMode, Pretty}
+import io.cequence.openaiscala.anthropic.JsonFormatsSpec.JsonPrintMode
+import io.cequence.openaiscala.anthropic.JsonFormatsSpec.JsonPrintMode.{Compact, Pretty}
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{ImageBlock, TextBlock}
 import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.Message.{
   AssistantMessage,
@@ -8,15 +10,16 @@ import io.cequence.openaiscala.anthropic.domain.Message.{
   UserMessage,
   UserMessageContent
 }
-import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import play.api.libs.json.{Format, Json}
 
 object JsonFormatsSpec {
   sealed trait JsonPrintMode
-  case object Compact extends JsonPrintMode
-  case object Pretty extends JsonPrintMode
+  object JsonPrintMode {
+    case object Compact extends JsonPrintMode
+    case object Pretty extends JsonPrintMode
+  }
 }
 
 class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
@@ -48,6 +51,25 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
       val json =
         """{"role":"assistant","content":[{"type":"text","text":"Hello, world!"},{"type":"text","text":"How are you?"}]}"""
       testCodec[Message](assistantMessage, json)
+    }
+
+    val expectedImageContentJson =
+      """{
+        |  "role" : "user",
+        |  "content" : [ {
+        |    "type" : "image",
+        |    "source" : {
+        |      "type" : "base64",
+        |      "media_type" : "image/jpeg",
+        |      "data" : "/9j/4AAQSkZJRg..."
+        |    }
+        |  } ]
+        |}""".stripMargin
+
+    "serialize and deserialize a message with an image content" in {
+      val userMessage =
+        UserMessageContent(Seq(ImageBlock("base64", "image/jpeg", "/9j/4AAQSkZJRg...")))
+      testCodec[Message](userMessage, expectedImageContentJson, Pretty)
     }
 
   }

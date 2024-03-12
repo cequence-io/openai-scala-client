@@ -53,6 +53,9 @@ object ModelId {
   val text_similarity_babbage_001 = "text-similarity-babbage-001"
   val babbage_002 = "babbage-002"
 
+  // Anthropic
+  val claude_3_opus_20240229 = "claude-3-opus-20240229"
+
   // Curie
   val curie = "curie"
   @Deprecated // will be turned off on Jan 4th

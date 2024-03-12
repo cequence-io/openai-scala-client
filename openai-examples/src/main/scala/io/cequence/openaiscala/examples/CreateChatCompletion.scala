@@ -22,5 +22,7 @@ object CreateChatCompletion extends Example {
           max_tokens = Some(100)
         )
       )
-      .map(printMessageContent)
+      .map { content =>
+        printMessageContent(content)
+      }
 }
