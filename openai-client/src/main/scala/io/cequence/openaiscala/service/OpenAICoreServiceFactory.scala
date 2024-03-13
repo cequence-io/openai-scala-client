@@ -6,7 +6,7 @@ import io.cequence.openaiscala.service.ws.Timeouts
 
 import scala.concurrent.ExecutionContext
 
-object OpenAICoreServiceFactory extends RawWsServiceFactory[OpenAICoreService]{
+object OpenAICoreServiceFactory extends RawWsServiceFactory[OpenAICoreService] {
 
   override def apply(
     coreUrl: String,

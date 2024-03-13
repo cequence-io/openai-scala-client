@@ -6,7 +6,8 @@ import io.cequence.openaiscala.service.ws.Timeouts
 
 import scala.concurrent.ExecutionContext
 
-object OpenAIChatCompletionServiceFactory extends RawWsServiceFactory[OpenAIChatCompletionService] {
+object OpenAIChatCompletionServiceFactory
+    extends RawWsServiceFactory[OpenAIChatCompletionService] {
 
   override def apply(
     coreUrl: String,
