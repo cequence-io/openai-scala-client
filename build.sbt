@@ -47,7 +47,7 @@ lazy val client = (project in file("openai-client"))
   .dependsOn(core)
   .aggregate(core)
 
-lazy val anthropicClient = (project in file("anthropic-client"))
+lazy val anthropic_client = (project in file("anthropic-client"))
   .settings(commonSettings: _*)
   .dependsOn(core, client)
   .aggregate(core, client)
@@ -70,9 +70,9 @@ lazy val count_tokens = (project in file("openai-count-tokens"))
   .aggregate(client)
 
 lazy val examples = (project in file("openai-examples"))
-  .settings(commonSettings: _*)
-  .dependsOn(client_stream)
-  .aggregate(client_stream)
+  .settings(commonSettings *)
+  .dependsOn(client_stream, anthropic_client)
+  .aggregate(client_stream, anthropic_client)
 
 // POM settings for Sonatype
 ThisBuild / homepage := Some(

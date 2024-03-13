@@ -1,17 +1,18 @@
-package io.cequence.openaiscala.anthropic.examples
+package io.cequence.openaiscala.examples.nonopenai
 
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{NonOpenAIModelId, SystemMessage, UserMessage}
+import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
 
 import scala.concurrent.Future
 
 object CreateMessageWithOpenAIAdapter extends ExampleBase[OpenAIChatCompletionService] {
 
-  val service: OpenAIChatCompletionService = AnthropicServiceFactory.asOpenAI()
+  override val service: OpenAIChatCompletionService = AnthropicServiceFactory.asOpenAI()
 
-  val messages = Seq(
+  private val messages = Seq(
     SystemMessage("You are a helpful assistant."),
     UserMessage("What is the weather like in Norway?")
   )

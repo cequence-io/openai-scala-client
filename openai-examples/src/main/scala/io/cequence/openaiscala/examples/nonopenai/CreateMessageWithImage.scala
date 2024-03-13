@@ -1,10 +1,13 @@
-package io.cequence.openaiscala.anthropic.examples
+package io.cequence.openaiscala.examples.nonopenai
 
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{ImageBlock, TextBlock}
 import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.Message.UserMessageContent
+import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
+import io.cequence.openaiscala.anthropic.service.{AnthropicService, AnthropicServiceFactory}
 import io.cequence.openaiscala.domain.NonOpenAIModelId
+import io.cequence.openaiscala.examples.ExampleBase
 
 import java.awt.image.RenderedImage
 import java.io.ByteArrayOutputStream
@@ -12,14 +15,16 @@ import java.util.Base64
 import javax.imageio.ImageIO
 import scala.concurrent.Future
 
-object CreateMessageWithImage extends Example {
+object CreateMessageWithImage extends ExampleBase[AnthropicService] {
 
   private val localImagePath = sys.env("EXAMPLE_IMAGE_PATH")
   private val bufferedImage = ImageIO.read(new java.io.File(localImagePath))
   private val imageBase64Source =
     Base64.getEncoder.encodeToString(imageToBytes(bufferedImage, "jpeg"))
 
-  val messages: Seq[Message] = Seq(
+  override protected val service: AnthropicService = AnthropicServiceFactory()
+
+  private val messages: Seq[Message] = Seq(
     UserMessageContent(
       Seq(
         TextBlock("Describe me what is in the picture!"),
@@ -53,5 +58,10 @@ object CreateMessageWithImage extends Example {
     val imageInByte = baos.toByteArray
     baos.close()
     imageInByte
+  }
+
+  private def printMessageContent(response: CreateMessageResponse) = {
+    val text = response.content.blocks.collect { case TextBlock(text) => text }.mkString(" ")
+    println(text)
   }
 }
