@@ -7,10 +7,8 @@ import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.ws.{WSRequestExtHelper, WSRequestHelper}
 import io.cequence.openaiscala.service.{
-  EndPoint,
   OpenAIChatCompletionService,
-  OpenAIServiceConsts,
-  Param
+  OpenAIServiceConsts
 }
 import play.api.libs.json.{JsValue, Json}
 

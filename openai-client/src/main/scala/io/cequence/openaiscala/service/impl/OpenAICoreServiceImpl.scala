@@ -6,7 +6,7 @@ import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.ws.WSRequestHelper
-import io.cequence.openaiscala.service.{EndPoint, OpenAICoreService, Param}
+import io.cequence.openaiscala.service.OpenAICoreService
 import play.api.libs.json.{JsObject, JsValue}
 
 import scala.concurrent.Future

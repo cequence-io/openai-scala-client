@@ -20,7 +20,7 @@ import io.cequence.openaiscala.domain.{
   ThreadMessageFile,
   ToolSpec
 }
-import io.cequence.openaiscala.service.{EndPoint, OpenAIService, Param}
+import io.cequence.openaiscala.service.OpenAIService
 import play.api.libs.json.{JsObject, JsValue, Json}
 
 import java.io.File

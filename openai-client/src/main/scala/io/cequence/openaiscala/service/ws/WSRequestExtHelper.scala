@@ -17,14 +17,13 @@ trait WSRequestExtHelper extends WSRequestHelper {
   protected val authHeaders: Seq[(String, String)]
   protected val extraParams: Seq[(String, String)]
 
-  override protected def timeouts: Timeouts = {
+  override protected def timeouts: Timeouts =
     explTimeouts.getOrElse(
       Timeouts(
         requestTimeout = Some(defaultRequestTimeout),
         readTimeout = Some(defaultReadoutTimeout)
       )
     )
-  }
 
   // auth
 

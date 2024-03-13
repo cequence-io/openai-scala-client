@@ -1,4 +1,4 @@
-package io.cequence.openaiscala.service
+package io.cequence.openaiscala.service.impl
 
 import io.cequence.openaiscala.domain.{EnumValue, NamedEnumValue}
 
