@@ -3,7 +3,10 @@ package io.cequence.openaiscala.examples
 import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.service.{OpenAIChatCompletionStreamedServiceExtra, OpenAIChatCompletionStreamedServiceFactory}
+import io.cequence.openaiscala.service.{
+  OpenAIChatCompletionStreamedServiceExtra,
+  OpenAIChatCompletionStreamedServiceFactory
+}
 
 import scala.concurrent.Future
 

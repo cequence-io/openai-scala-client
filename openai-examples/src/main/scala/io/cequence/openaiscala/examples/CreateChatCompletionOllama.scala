@@ -2,7 +2,10 @@ package io.cequence.openaiscala.examples
 
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIChatCompletionServiceFactory}
+import io.cequence.openaiscala.service.{
+  OpenAIChatCompletionService,
+  OpenAIChatCompletionServiceFactory
+}
 
 import scala.concurrent.Future
 

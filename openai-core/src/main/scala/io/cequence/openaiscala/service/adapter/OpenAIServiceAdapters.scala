@@ -50,7 +50,8 @@ trait OpenAIServiceAdapters[S <: CloseableService] {
 
   def preAction(
     underlying: S,
-    action: () => Future[Unit])(
+    action: () => Future[Unit]
+  )(
     implicit ec: ExecutionContext
   ): S =
     wrapAndDelegate(new PreServiceAdapter(underlying, action))

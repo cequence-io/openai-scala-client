@@ -6,7 +6,8 @@ import scala.concurrent.{ExecutionContext, Future}
 
 private class PreServiceAdapter[+S <: CloseableService](
   underlying: S,
-  action: () => Future[Unit])(
+  action: () => Future[Unit]
+)(
   implicit ec: ExecutionContext
 ) extends ServiceWrapper[S]
     with FunctionNameHelper

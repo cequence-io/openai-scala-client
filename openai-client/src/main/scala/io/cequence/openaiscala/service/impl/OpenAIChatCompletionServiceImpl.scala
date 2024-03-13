@@ -6,10 +6,7 @@ import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.ws.{WSRequestExtHelper, WSRequestHelper}
-import io.cequence.openaiscala.service.{
-  OpenAIChatCompletionService,
-  OpenAIServiceConsts
-}
+import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIServiceConsts}
 import play.api.libs.json.{JsValue, Json}
 
 import scala.concurrent.Future
