@@ -13,9 +13,9 @@ import io.cequence.openaiscala.anthropic.domain.Content.{
   ContentBlocks,
   SingleString
 }
+import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse
+import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse.UsageInfo
 import io.cequence.openaiscala.anthropic.domain.{ChatRole, Content, Message}
-import io.cequence.openaiscala.anthropic.service.response.CreateMessageResponse
-import io.cequence.openaiscala.anthropic.service.response.CreateMessageResponse.UsageInfo
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
 
@@ -123,5 +123,4 @@ trait JsonFormats {
       (__ \ "stop_sequence").readNullable[String] and
       (__ \ "usage").read[UsageInfo]
   )(CreateMessageResponse.apply _)
-
 }

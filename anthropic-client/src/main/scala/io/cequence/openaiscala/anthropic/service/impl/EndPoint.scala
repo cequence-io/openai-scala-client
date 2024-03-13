@@ -1,4 +1,4 @@
-package io.cequence.openaiscala.anthropic.service
+package io.cequence.openaiscala.anthropic.service.impl
 
 import io.cequence.openaiscala.domain.{EnumValue, NamedEnumValue}
 

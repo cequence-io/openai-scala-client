@@ -2,9 +2,10 @@ package io.cequence.openaiscala.anthropic.service
 
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlocks
+import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse
 import io.cequence.openaiscala.anthropic.domain.{Content, Message}
-import io.cequence.openaiscala.anthropic.service.response.CreateMessageResponse
-import io.cequence.openaiscala.anthropic.service.response.CreateMessageResponse.UsageInfo
+import CreateMessageResponse.UsageInfo
+import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.domain.response.{
   ChatCompletionChoiceInfo,
   ChatCompletionResponse,
@@ -26,13 +27,12 @@ import java.{util => ju}
 
 package object impl extends AnthropicServiceConsts {
 
-  def toAnthropic(baseMessage: OpenAIBaseMessage): Message = {
-    baseMessage match {
+  def toAnthropic(messages: Seq[OpenAIBaseMessage]): Seq[Message] =
+    messages.collect {
       case OpenAIUserMessage(content, _) => Message.UserMessage(content)
       case OpenAIUserSeqMessage(contents, _) =>
         Message.UserMessageContent(contents.map(toAnthropic))
     }
-  }
 
   def toAnthropic(content: OpenAIContent): Content.ContentBlock = {
     content match {
@@ -64,7 +64,7 @@ package object impl extends AnthropicServiceConsts {
     AnthropicCreateMessageSettings(
       model = settings.model,
       system = if (systemMessagesContent.isEmpty) None else Some(systemMessagesContent),
-      max_tokens = settings.max_tokens.getOrElse(defaultMaxTokens),
+      max_tokens = settings.max_tokens.getOrElse(DefaultSettings.createMessage.max_tokens),
       metadata = Map.empty,
       stop_sequences = settings.stop,
       temperature = settings.temperature,
@@ -93,7 +93,7 @@ package object impl extends AnthropicServiceConsts {
   def toOpenAIAssistantMessage(content: ContentBlocks): AssistantMessage = {
     val textContents = content.blocks.collect { case TextBlock(text) => text }
     // TODO: log if there is more than one text content
-    if (textContents.size == 0) {
+    if (textContents.isEmpty) {
       throw new IllegalArgumentException("No text content found in the response")
     }
     val singleTextContent = concatenateMessages(textContents)
@@ -110,5 +110,4 @@ package object impl extends AnthropicServiceConsts {
       completion_tokens = Some(usageInfo.output_tokens)
     )
   }
-
 }

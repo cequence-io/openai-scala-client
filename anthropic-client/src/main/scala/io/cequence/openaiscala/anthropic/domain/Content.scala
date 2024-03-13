@@ -4,6 +4,7 @@ sealed trait Content
 
 object Content {
   case class SingleString(text: String) extends Content
+
   case class ContentBlocks(blocks: Seq[ContentBlock]) extends Content
 
   sealed trait ContentBlock
@@ -16,5 +17,4 @@ object Content {
       data: String
     ) extends ContentBlock
   }
-
 }

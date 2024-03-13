@@ -1,7 +1,7 @@
-package io.cequence.openaiscala.anthropic.service.response
+package io.cequence.openaiscala.anthropic.domain.response
 
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlocks
-import io.cequence.openaiscala.anthropic.service.response.CreateMessageResponse.UsageInfo
+import CreateMessageResponse.UsageInfo
 import io.cequence.openaiscala.domain.NamedEnumValue
 
 final case class CreateMessageResponse(
@@ -30,5 +30,4 @@ object CreateMessageResponse {
     input_tokens: Int,
     output_tokens: Int
   )
-
 }

@@ -1,11 +1,13 @@
 package io.cequence.openaiscala.anthropic.service
 
 import io.cequence.openaiscala.anthropic.domain.Message
-import io.cequence.openaiscala.anthropic.service.response.CreateMessageResponse
+import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse
+import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
+import io.cequence.openaiscala.service.CloseableService
 
 import scala.concurrent.Future
 
-trait AnthropicService {
+trait AnthropicService extends CloseableService with AnthropicServiceConsts {
 
   /**
    * Creates a Message.
@@ -19,17 +21,13 @@ trait AnthropicService {
    * @param messages
    *   A list of messages comprising the conversation so far.
    * @param settings
-   * @param settings
    * @return
    *   create message response
+   * @see
+   *   <a href="https://docs.anthropic.com/claude/reference/messages_post">Anthropic Doc</a>
    */
   def createMessage(
     messages: Seq[Message],
-    settings: AnthropicCreateMessageSettings
+    settings: AnthropicCreateMessageSettings = DefaultSettings.createMessage
   ): Future[CreateMessageResponse]
-
-  /**
-   * Closes the underlying ws client, and releases all its resources.
-   */
-  def close(): Unit
 }

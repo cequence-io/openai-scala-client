@@ -2,8 +2,10 @@ package io.cequence.openaiscala.anthropic.examples
 
 import akka.actor.ActorSystem
 import akka.stream.Materializer
-import io.cequence.openaiscala.anthropic.service.response.CreateMessageResponse
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
+import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse
 import io.cequence.openaiscala.anthropic.service.{AnthropicService, AnthropicServiceFactory}
+import io.cequence.openaiscala.service.CloseableService
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -11,7 +13,7 @@ trait Example extends ExampleBase[AnthropicService] {
   override protected val service = AnthropicServiceFactory()
 }
 
-trait ExampleBase[T <: AnthropicService] {
+trait ExampleBase[T <: CloseableService] {
 
   implicit val system: ActorSystem = ActorSystem()
   implicit val materializer: Materializer = Materializer(system)
@@ -38,5 +40,5 @@ trait ExampleBase[T <: AnthropicService] {
   protected def run: Future[_]
 
   protected def printMessageContent(response: CreateMessageResponse): Unit =
-    response.content.blocks.foreach(println)
+    response.content.blocks.collect { case TextBlock(text) => text }.foreach(println)
 }

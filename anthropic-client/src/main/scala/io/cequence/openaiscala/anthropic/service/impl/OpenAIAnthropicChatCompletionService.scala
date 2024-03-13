@@ -9,7 +9,7 @@ import io.cequence.openaiscala.service.OpenAIChatCompletionService
 import scala.concurrent.{ExecutionContext, Future}
 
 private[service] class OpenAIAnthropicChatCompletionService(
-  anthropicClient: AnthropicService
+  underlying: AnthropicService
 )(
   implicit executionContext: ExecutionContext
 ) extends OpenAIChatCompletionService {
@@ -29,14 +29,17 @@ private[service] class OpenAIAnthropicChatCompletionService(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
   ): Future[ChatCompletionResponse] = {
-    anthropicClient
-      .createMessage(messages.map(toAnthropic), toAnthropic(settings, messages))
+    underlying
+      .createMessage(
+        toAnthropic(messages),
+        toAnthropic(settings, messages)
+      )
       .map(toOpenAI)
   }
 
   /**
    * Closes the underlying ws client, and releases all its resources.
    */
-  override def close(): Unit = anthropicClient.close()
+  override def close(): Unit = underlying.close()
 
 }

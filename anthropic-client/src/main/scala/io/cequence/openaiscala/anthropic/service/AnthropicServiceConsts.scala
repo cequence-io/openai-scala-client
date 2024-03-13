@@ -1,5 +1,8 @@
 package io.cequence.openaiscala.anthropic.service
 
+import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
+import io.cequence.openaiscala.domain.NonOpenAIModelId
+
 /**
  * Constants of [[AnthropicService]], mostly defaults
  */
@@ -7,14 +10,11 @@ trait AnthropicServiceConsts {
 
   protected val defaultCoreUrl = "https://api.anthropic.com/v1/"
 
-  protected val defaultRequestTimeout = 120 * 1000 // two minutes
+  object DefaultSettings {
 
-  protected val defaultReadoutTimeout = 120 * 1000 // two minutes
-
-  protected val configPrefix = "anthropic-scala-client"
-
-  protected val configFileName = "anthropic-scala-client.conf"
-
-  protected val defaultMaxTokens = 2048
-
+    val createMessage = AnthropicCreateMessageSettings(
+      model = NonOpenAIModelId.claude_2_1,
+      max_tokens = 2048
+    )
+  }
 }

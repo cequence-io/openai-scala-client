@@ -2,14 +2,10 @@ package io.cequence.openaiscala.anthropic.service.impl
 
 import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.anthropic.JsonFormats
+import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse
+import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.domain.{ChatRole, Message}
-import io.cequence.openaiscala.anthropic.service.response.CreateMessageResponse
-import io.cequence.openaiscala.anthropic.service.{
-  AnthropicCreateMessageSettings,
-  AnthropicService,
-  EndPoint,
-  Param
-}
+import io.cequence.openaiscala.anthropic.service.AnthropicService
 import io.cequence.openaiscala.service.ws.WSRequestExtHelper
 import play.api.libs.json.{JsValue, Json}
 
@@ -50,14 +46,13 @@ private[service] trait AnthropicServiceImpl
       Param.system -> settings.system,
       Param.max_tokens -> Some(settings.max_tokens),
       Param.metadata -> { if (settings.metadata.isEmpty) None else Some(settings.metadata) },
-      Param.stop_sequences -> Some(settings.stop_sequences),
+      Param.stop_sequences -> {
+        if (settings.stop_sequences.nonEmpty) Some(settings.stop_sequences) else None
+      },
       Param.stream -> Some(stream),
       Param.temperature -> settings.temperature,
       Param.top_p -> settings.top_p,
       Param.top_k -> settings.top_k
     )
   }
-
-  override def close(): Unit = client.close()
-
 }

@@ -3,8 +3,8 @@ package io.cequence.openaiscala.anthropic.examples
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{ImageBlock, TextBlock}
 import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.Message.UserMessageContent
-import io.cequence.openaiscala.anthropic.service.AnthropicCreateMessageSettings
-import io.cequence.openaiscala.domain.ModelId
+import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
+import io.cequence.openaiscala.domain.NonOpenAIModelId
 
 import java.awt.image.RenderedImage
 import java.io.ByteArrayOutputStream
@@ -37,7 +37,7 @@ object CreateMessageWithImage extends Example {
       .createMessage(
         messages,
         settings = AnthropicCreateMessageSettings(
-          model = ModelId.claude_3_opus_20240229,
+          model = NonOpenAIModelId.claude_3_opus_20240229,
           max_tokens = 4096
         )
       )
@@ -54,5 +54,4 @@ object CreateMessageWithImage extends Example {
     baos.close()
     imageInByte
   }
-
 }

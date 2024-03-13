@@ -21,5 +21,4 @@ object Message {
       extends Message(ChatRole.Assistant, SingleString(contentString))
   case class AssistantMessageContent(contentBlocks: Seq[ContentBlock])
       extends Message(ChatRole.Assistant, ContentBlocks(contentBlocks))
-
 }
