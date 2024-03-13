@@ -4,7 +4,6 @@ import akka.stream.Materializer
 import io.cequence.openaiscala.service.impl.OpenAIChatCompletionServiceStreamedExtraImpl
 import io.cequence.openaiscala.service.ws.Timeouts
 
-import scala.collection.Seq
 import scala.concurrent.ExecutionContext
 
 object OpenAIChatCompletionStreamedServiceFactory
