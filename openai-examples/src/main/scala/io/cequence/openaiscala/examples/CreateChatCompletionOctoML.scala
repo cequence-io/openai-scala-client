@@ -2,21 +2,19 @@ package io.cequence.openaiscala.examples
 
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.service.{
-  OpenAIChatCompletionService,
-  OpenAIChatCompletionServiceFactory
-}
+import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIChatCompletionServiceFactory}
 
 import scala.concurrent.Future
 
+// requires `OCTOAI_TOKEN` environment variable to be set
 object CreateChatCompletionOctoML extends ExampleBase[OpenAIChatCompletionService] {
 
-  override val service = OpenAIChatCompletionServiceFactory(
+  override val service: OpenAIChatCompletionService = OpenAIChatCompletionServiceFactory(
     coreUrl = "https://text.octoai.run/v1/",
     authHeaders = Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
   )
 
-  val messages = Seq(
+  private val messages = Seq(
     SystemMessage("You are a helpful assistant."),
     UserMessage("What is the weather like in Norway?")
   )
@@ -26,7 +24,7 @@ object CreateChatCompletionOctoML extends ExampleBase[OpenAIChatCompletionServic
       .createChatCompletion(
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = "mixtral-8x7b-instruct",
+          model = NonOpenAIModelId.mixtral_8x7b_instruct,
           temperature = Some(0.1),
           max_tokens = Some(512),
           top_p = Some(0.9),

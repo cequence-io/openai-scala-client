@@ -3,22 +3,21 @@ package io.cequence.openaiscala.examples
 import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.service.OpenAIChatCompletionServiceStreamedFactory
-import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
+import io.cequence.openaiscala.service.{OpenAIChatCompletionStreamedServiceExtra, OpenAIChatCompletionStreamedServiceFactory}
 
 import scala.concurrent.Future
 
-// requires `openai-scala-client-stream` as a dependency
+// requires `openai-scala-client-stream` as a dependency and `OCTOAI_TOKEN` environment variable to be set
 object CreateChatCompletionStreamedOctoML
-    extends ExampleBase[OpenAIChatCompletionStreamedService] {
+    extends ExampleBase[OpenAIChatCompletionStreamedServiceExtra] {
 
-  override val service = OpenAIChatCompletionServiceStreamedFactory.customInstance(
-    coreUrl = "https://text.octoai.run/v1/",
-    authHeaders =
-      scala.collection.immutable.Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
-  )
+  override val service: OpenAIChatCompletionStreamedServiceExtra =
+    OpenAIChatCompletionStreamedServiceFactory(
+      coreUrl = "https://text.octoai.run/v1/",
+      authHeaders = Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
+    )
 
-  val messages = scala.collection.immutable.Seq(
+  private val messages = Seq(
     SystemMessage("You are a helpful assistant."),
     UserMessage("What is the weather like in Norway?")
   )
@@ -28,7 +27,7 @@ object CreateChatCompletionStreamedOctoML
       .createChatCompletionStreamed(
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = "mixtral-8x7b-instruct",
+          model = NonOpenAIModelId.mixtral_8x7b_instruct,
           temperature = Some(0.1),
           max_tokens = Some(512),
           top_p = Some(0.9),

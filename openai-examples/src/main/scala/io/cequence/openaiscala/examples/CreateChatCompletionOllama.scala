@@ -2,20 +2,18 @@ package io.cequence.openaiscala.examples
 
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.service.{
-  OpenAIChatCompletionService,
-  OpenAIChatCompletionServiceFactory
-}
+import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIChatCompletionServiceFactory}
 
 import scala.concurrent.Future
 
+// requires Ollama service to be running locally
 object CreateChatCompletionOllama extends ExampleBase[OpenAIChatCompletionService] {
 
-  override val service = OpenAIChatCompletionServiceFactory(
+  override val service: OpenAIChatCompletionService = OpenAIChatCompletionServiceFactory(
     coreUrl = "http://localhost:11434/v1/"
   )
 
-  val messages = scala.collection.immutable.Seq(
+  private val messages = Seq(
     SystemMessage("You are a helpful assistant."),
     UserMessage("What is the weather like in Norway?")
   )
@@ -25,7 +23,7 @@ object CreateChatCompletionOllama extends ExampleBase[OpenAIChatCompletionServic
       .createChatCompletion(
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = "llama2",
+          model = NonOpenAIModelId.llama2,
           temperature = Some(0.1),
           max_tokens = Some(512),
           top_p = Some(0.9),
