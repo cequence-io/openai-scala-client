@@ -157,3 +157,16 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts {
     materializer: Materializer
   ): F
 }
+
+trait RawWsServiceFactory[F] {
+
+  def apply(
+    coreUrl: String,
+    authHeaders: Seq[(String, String)] = Nil,
+    extraParams: Seq[(String, String)] = Nil,
+    timeouts: Option[Timeouts] = None
+  )(
+    implicit ec: ExecutionContext,
+    materializer: Materializer
+  ): F
+}

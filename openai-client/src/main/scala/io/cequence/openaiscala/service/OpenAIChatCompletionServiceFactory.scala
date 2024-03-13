@@ -6,9 +6,9 @@ import io.cequence.openaiscala.service.ws.Timeouts
 
 import scala.concurrent.ExecutionContext
 
-object OpenAIChatCompletionServiceFactory {
+object OpenAIChatCompletionServiceFactory extends RawWsServiceFactory[OpenAIChatCompletionService] {
 
-  def apply(
+  override def apply(
     coreUrl: String,
     authHeaders: Seq[(String, String)] = Nil,
     extraParams: Seq[(String, String)] = Nil,
@@ -18,14 +18,14 @@ object OpenAIChatCompletionServiceFactory {
     materializer: Materializer
   ): OpenAIChatCompletionService =
     new OpenAIChatCompletionServiceClassImpl(coreUrl, authHeaders, extraParams, timeouts)
-}
 
-private class OpenAIChatCompletionServiceClassImpl(
-  val coreUrl: String,
-  val authHeaders: Seq[(String, String)],
-  val extraParams: Seq[(String, String)],
-  val explTimeouts: Option[Timeouts]
-)(
-  implicit val ec: ExecutionContext,
-  val materializer: Materializer
-) extends OpenAIChatCompletionServiceImpl
+  private final class OpenAIChatCompletionServiceClassImpl(
+    val coreUrl: String,
+    val authHeaders: Seq[(String, String)],
+    val extraParams: Seq[(String, String)],
+    val explTimeouts: Option[Timeouts]
+  )(
+    implicit val ec: ExecutionContext,
+    val materializer: Materializer
+  ) extends OpenAIChatCompletionServiceImpl
+}
