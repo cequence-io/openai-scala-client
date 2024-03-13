@@ -8,7 +8,9 @@ import io.cequence.openaiscala.service.OpenAIChatCompletionService
 
 import scala.concurrent.Future
 
-object CreateMessageWithOpenAIAdapter extends ExampleBase[OpenAIChatCompletionService] {
+// requires `openai-anthropic-client` as a dependency
+object AnthropicCreateChatCompletionWithOpenAIAdapter
+    extends ExampleBase[OpenAIChatCompletionService] {
 
   override val service: OpenAIChatCompletionService = AnthropicServiceFactory.asOpenAI()
 

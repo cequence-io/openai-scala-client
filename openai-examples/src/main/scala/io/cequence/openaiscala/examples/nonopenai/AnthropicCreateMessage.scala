@@ -11,7 +11,8 @@ import io.cequence.openaiscala.examples.ExampleBase
 
 import scala.concurrent.Future
 
-object CreateMessage extends ExampleBase[AnthropicService] {
+// requires `openai-anthropic-client` as a dependency
+object AnthropicCreateMessage extends ExampleBase[AnthropicService] {
 
   override protected val service: AnthropicService = AnthropicServiceFactory()
 
