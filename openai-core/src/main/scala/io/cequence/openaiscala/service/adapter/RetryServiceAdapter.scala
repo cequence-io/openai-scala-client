@@ -18,23 +18,16 @@ private class RetryServiceAdapter[+S <: CloseableService](
   scheduler: Scheduler
 ) extends ServiceWrapper[S]
     with CloseableService
+    with FunctionNameHelper
     with RetryHelpers {
 
   override protected[adapter] def wrap[T](
     fun: S => Future[T]
-  ): Future[T] = {
-    // need to use StackWalker to get the caller function name
-    val functionName = StackWalkerUtil.functionName(
-      2,
-      Optional.of[Predicate[String]]((t: String) =>
-        !t.contains("wrap") && !t.contains("anonfun")
-      )
-    )
+  ): Future[T] =
     fun(underlying).retryOnFailure(
-      Some(s"${functionName.orElse("N.A").capitalize} call failed"),
+      Some(s"${getFunctionName().capitalize} call failed"),
       log
     )
-  }
 
   override def close(): Unit =
     underlying.close()

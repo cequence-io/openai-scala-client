@@ -5,7 +5,7 @@ import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import io.cequence.openaiscala.service._
 import io.cequence.openaiscala.service.adapter.ServiceWrapperTypes._
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 object OpenAIServiceAdapters {
 
@@ -47,6 +47,13 @@ trait OpenAIServiceAdapters[S <: CloseableService] {
     log: String => Unit
   ): S =
     wrapAndDelegate(new LogServiceAdapter(underlying, serviceName, log))
+
+  def preAction(
+    underlying: S,
+    action: () => Future[Unit])(
+    implicit ec: ExecutionContext
+  ): S =
+    wrapAndDelegate(new PreServiceAdapter(underlying, action))
 
   def chatCompletion(
     chatCompletionService: OpenAIChatCompletionService,

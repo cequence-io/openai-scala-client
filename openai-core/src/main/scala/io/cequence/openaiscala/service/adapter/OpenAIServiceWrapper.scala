@@ -98,7 +98,7 @@ trait OpenAIServiceWrapper
 
   override def createAudioSpeech(
     input: String,
-    settings: CreateSpeechSettings = DefaultSettings.CreateSpeech
+    settings: CreateSpeechSettings
   ): Future[Source[ByteString, _]] = wrap(
     _.createAudioSpeech(input, settings)
   )
@@ -250,7 +250,7 @@ trait OpenAIServiceWrapper
 
   override def listThreadMessages(
     threadId: String,
-    pagination: Pagination = Pagination.default,
+    pagination: Pagination,
     order: Option[SortOrder]
   ): Future[Seq[ThreadFullMessage]] = wrap(
     _.listThreadMessages(threadId, pagination, order)
@@ -267,7 +267,7 @@ trait OpenAIServiceWrapper
   override def listThreadMessageFiles(
     threadId: String,
     messageId: String,
-    pagination: Pagination = Pagination.default,
+    pagination: Pagination,
     order: Option[SortOrder]
   ): Future[Seq[ThreadMessageFile]] = wrap(
     _.listThreadMessageFiles(threadId, messageId, pagination, order)
@@ -294,7 +294,7 @@ trait OpenAIServiceWrapper
     )
 
   override def listAssistants(
-    pagination: Pagination = Pagination.default,
+    pagination: Pagination,
     order: Option[SortOrder]
   ): Future[Seq[Assistant]] =
     wrap(
@@ -303,7 +303,7 @@ trait OpenAIServiceWrapper
 
   override def listAssistantFiles(
     assistantId: String,
-    pagination: Pagination = Pagination.default,
+    pagination: Pagination,
     order: Option[SortOrder]
   ): Future[Seq[AssistantFile]] =
     wrap(
