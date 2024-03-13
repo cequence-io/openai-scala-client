@@ -40,7 +40,7 @@ object OpenAIStreamedServiceImplicits {
       new OpenAIChatCompletionStreamedServiceWrapper(
         service,
         streamedExtra
-      )
+      ) with HasOpenAIChatCompletionStreamedExtra
   }
 
   implicit class ChatCompletionStreamFactoryExt(
@@ -82,7 +82,19 @@ object OpenAIStreamedServiceImplicits {
       new OpenAICoreStreamedServiceWrapper(
         service,
         streamedExtra
-      )
+      ) with HasOpenAICoreStreamedExtra
+  }
+
+  implicit class ChatCompletionStreamCoreExt(
+    service: OpenAICoreService
+  ) {
+    def withStreaming(
+      streamedExtra: OpenAIChatCompletionStreamedServiceExtra
+    ): OpenAICoreService with OpenAIChatCompletionStreamedServiceExtra =
+      new OpenAICoreStreamedServiceWrapper(
+        service,
+        streamedExtra
+      ) with HasOpenAIChatCompletionStreamedExtra
   }
 
   implicit class CoreStreamFactoryExt(
@@ -111,7 +123,7 @@ object OpenAIStreamedServiceImplicits {
         timeouts
       )
 
-      service.withStreaming(streamedExtra)
+      CoreStreamExt(service).withStreaming(streamedExtra)
     }
   }
 
@@ -124,7 +136,19 @@ object OpenAIStreamedServiceImplicits {
       new OpenAIStreamedServiceWrapper(
         service,
         streamedExtra
-      )
+      ) with HasOpenAICoreStreamedExtra
+  }
+
+  implicit class ChatCompletionStreamFullExt(
+    service: OpenAIService
+  ) {
+    def withStreaming(
+      streamedExtra: OpenAIChatCompletionStreamedServiceExtra
+    ): OpenAIService with OpenAIChatCompletionStreamedServiceExtra =
+      new OpenAIStreamedServiceWrapper(
+        service,
+        streamedExtra
+      ) with HasOpenAIChatCompletionStreamedExtra
   }
 
   implicit class StreamFactoryExt(
@@ -160,16 +184,15 @@ object OpenAIStreamedServiceImplicits {
           timeouts
         )
 
-        service.withStreaming(streamedExtra)
+        StreamExt(service).withStreaming(streamedExtra)
       }
     }
   }
 
-  private final class OpenAIChatCompletionStreamedServiceWrapper(
+  private class OpenAIChatCompletionStreamedServiceWrapper(
     service: OpenAIChatCompletionService,
     val streamedServiceExtra: OpenAIChatCompletionStreamedServiceExtra
-  ) extends OpenAIChatCompletionServiceWrapper
-      with HasOpenAIChatCompletionStreamedExtra[OpenAIChatCompletionStreamedServiceExtra] {
+  ) extends OpenAIChatCompletionServiceWrapper {
 
     override protected def delegate: CloseableServiceWrapper[OpenAIChatCompletionService] =
       SimpleServiceWrapper(service)
@@ -181,11 +204,10 @@ object OpenAIStreamedServiceImplicits {
     }
   }
 
-  private final class OpenAICoreStreamedServiceWrapper(
+  private class OpenAICoreStreamedServiceWrapper[S <: CloseableService](
     service: OpenAICoreService,
-    val streamedServiceExtra: OpenAIStreamedServiceExtra
-  ) extends OpenAICoreServiceWrapper
-      with HasOpenAICoreStreamedExtra {
+    val streamedServiceExtra: S
+  ) extends OpenAICoreServiceWrapper {
 
     override protected def delegate: CloseableServiceWrapper[OpenAICoreService] =
       SimpleServiceWrapper(service)
@@ -197,11 +219,10 @@ object OpenAIStreamedServiceImplicits {
     }
   }
 
-  private final class OpenAIStreamedServiceWrapper(
+  private class OpenAIStreamedServiceWrapper[S <: CloseableService](
     service: OpenAIService,
-    val streamedServiceExtra: OpenAIStreamedServiceExtra
-  ) extends OpenAIServiceWrapper
-      with HasOpenAICoreStreamedExtra {
+    val streamedServiceExtra: S
+  ) extends OpenAIServiceWrapper {
 
     override protected def delegate: CloseableServiceWrapper[OpenAIService] =
       SimpleServiceWrapper(service)
@@ -214,7 +235,7 @@ object OpenAIStreamedServiceImplicits {
   }
 
   private trait HasOpenAICoreStreamedExtra
-      extends HasOpenAIChatCompletionStreamedExtra[OpenAIStreamedServiceExtra]
+      extends HasOpenAIChatCompletionStreamedExtraBase[OpenAIStreamedServiceExtra]
       with OpenAIStreamedServiceExtra {
 
     override def createCompletionStreamed(
@@ -224,7 +245,10 @@ object OpenAIStreamedServiceImplicits {
       streamedServiceExtra.createCompletionStreamed(prompt, settings)
   }
 
-  private trait HasOpenAIChatCompletionStreamedExtra[
+  private type HasOpenAIChatCompletionStreamedExtra =
+    HasOpenAIChatCompletionStreamedExtraBase[OpenAIChatCompletionStreamedServiceExtra]
+
+  private trait HasOpenAIChatCompletionStreamedExtraBase[
     E <: OpenAIChatCompletionStreamedServiceExtra
   ] extends OpenAIChatCompletionStreamedServiceExtra {
 
