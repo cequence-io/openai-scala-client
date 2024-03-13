@@ -13,6 +13,7 @@ import io.cequence.openaiscala.domain.settings.{
   CreateCompletionSettings
 }
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIStreamedService
+import io.cequence.openaiscala.service.adapter.ServiceWrapperTypes.CloseableServiceWrapper
 import io.cequence.openaiscala.service.adapter.{
   OpenAIChatCompletionServiceWrapper,
   OpenAICoreServiceWrapper,
@@ -170,7 +171,8 @@ object OpenAIStreamedServiceImplicits {
   ) extends OpenAIChatCompletionServiceWrapper
       with HasOpenAIChatCompletionStreamedExtra[OpenAIChatCompletionStreamedServiceExtra] {
 
-    override protected def delegate = SimpleServiceWrapper(service)
+    override protected def delegate: CloseableServiceWrapper[OpenAIChatCompletionService] =
+      SimpleServiceWrapper(service)
 
     // note that because we override the close method it's not delegated through the service wrapper
     override def close(): Unit = {
@@ -185,7 +187,8 @@ object OpenAIStreamedServiceImplicits {
   ) extends OpenAICoreServiceWrapper
       with HasOpenAICoreStreamedExtra {
 
-    override protected def delegate = SimpleServiceWrapper(service)
+    override protected def delegate: CloseableServiceWrapper[OpenAICoreService] =
+      SimpleServiceWrapper(service)
 
     // note that because we override the close method it's not delegated through the service wrapper
     override def close(): Unit = {
@@ -200,7 +203,8 @@ object OpenAIStreamedServiceImplicits {
   ) extends OpenAIServiceWrapper
       with HasOpenAICoreStreamedExtra {
 
-    override protected def delegate = SimpleServiceWrapper(service)
+    override protected def delegate: CloseableServiceWrapper[OpenAIService] =
+      SimpleServiceWrapper(service)
 
     // note that because we override the close method it's not delegated through the service wrapper
     override def close(): Unit = {
@@ -215,7 +219,7 @@ object OpenAIStreamedServiceImplicits {
 
     override def createCompletionStreamed(
       prompt: String,
-      settings: CreateCompletionSettings = DefaultSettings.CreateCompletion
+      settings: CreateCompletionSettings
     ): Source[TextCompletionResponse, NotUsed] =
       streamedServiceExtra.createCompletionStreamed(prompt, settings)
   }
