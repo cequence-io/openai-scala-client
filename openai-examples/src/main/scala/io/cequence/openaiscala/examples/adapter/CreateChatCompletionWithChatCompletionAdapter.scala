@@ -1,13 +1,14 @@
 package io.cequence.openaiscala.examples.adapter
 
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.domain.{ModelId, SystemMessage, UserMessage}
+import io.cequence.openaiscala.domain.{ModelId, NonOpenAIModelId, SystemMessage, UserMessage}
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service._
 import io.cequence.openaiscala.service.adapter.OpenAIServiceAdapters
 
 import scala.concurrent.Future
 
+// requires `OCTOAI_TOKEN` environment variable to be set and Ollama service to be running locally
 object CreateChatCompletionWithChatCompletionAdapter extends ExampleBase[OpenAIService] {
 
   // OctoML
@@ -27,13 +28,13 @@ object CreateChatCompletionWithChatCompletionAdapter extends ExampleBase[OpenAIS
   override val service: OpenAIService = OpenAIServiceAdapters.forFullService.chatCompletion(
     // OpenAI service is default so no need to specify its models here
     serviceModels = Map(
-      octoMLService -> Seq("mixtral-8x7b-instruct"),
-      ollamaService -> Seq("llama2")
+      octoMLService -> Seq(NonOpenAIModelId.mixtral_8x7b_instruct),
+      ollamaService -> Seq(NonOpenAIModelId.llama2)
     ),
     openAIService
   )
 
-  val messages = Seq(
+  private val messages = Seq(
     SystemMessage("You are a helpful assistant."),
     UserMessage("What is the weather like in Norway?")
   )
@@ -41,10 +42,10 @@ object CreateChatCompletionWithChatCompletionAdapter extends ExampleBase[OpenAIS
   override protected def run: Future[_] =
     for {
       // runs on OctoML
-      _ <- runChatCompletionAux("mixtral-8x7b-instruct")
+      _ <- runChatCompletionAux(NonOpenAIModelId.mixtral_8x7b_instruct)
 
       // runs on Ollama
-      _ <- runChatCompletionAux("llama2")
+      _ <- runChatCompletionAux(NonOpenAIModelId.llama2)
 
       // runs on OpenAI
       _ <- runChatCompletionAux(ModelId.gpt_3_5_turbo)
@@ -67,6 +68,9 @@ object CreateChatCompletionWithChatCompletionAdapter extends ExampleBase[OpenAIS
           presence_penalty = Some(0)
         )
       )
-      .map(printMessageContent)
+      .map { response =>
+        printMessageContent(response)
+        println("--------")
+      }
   }
 }
