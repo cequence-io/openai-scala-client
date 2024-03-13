@@ -5,7 +5,6 @@ import io.cequence.openaiscala.StackWalkerUtil
 
 import java.util.Optional
 import java.util.function.Predicate
-import scala.compat.java8.StreamConverters._
 import scala.concurrent.Future
 
 private class LogServiceAdapter[+S <: CloseableService](

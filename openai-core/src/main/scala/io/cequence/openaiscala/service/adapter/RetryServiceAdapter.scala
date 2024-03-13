@@ -1,12 +1,10 @@
 package io.cequence.openaiscala.service.adapter
 
 import akka.actor.Scheduler
-import io.cequence.openaiscala.{RetryHelpers, StackWalkerUtil}
+import io.cequence.openaiscala.RetryHelpers
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import io.cequence.openaiscala.service.CloseableService
 
-import java.util.Optional
-import java.util.function.Predicate
 import scala.concurrent.{ExecutionContext, Future}
 
 private class RetryServiceAdapter[+S <: CloseableService](

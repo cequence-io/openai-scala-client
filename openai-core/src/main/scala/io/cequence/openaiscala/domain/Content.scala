@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.domain
 
-sealed class Content
+sealed trait Content
 
 case class TextContent(
   text: String
