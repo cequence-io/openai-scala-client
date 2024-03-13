@@ -338,6 +338,9 @@ object JsonFormats {
       FileAnnotationType.file_path
     )
 
+  implicit val fileAnnotationFormat: Format[FileAnnotation] =
+    Json.format[FileAnnotation]
+
   implicit val fileCitationFormat: Format[FileCitation] =
     Json.format[FileCitation]
 
@@ -346,9 +349,6 @@ object JsonFormats {
 
   implicit val threadMessageContentFormat: Format[ThreadMessageContent] =
     Json.format[ThreadMessageContent]
-
-  implicit val fileAnnotationFormat: Format[FileAnnotation] =
-    Json.format[FileAnnotation]
 
   implicit val threadFullMessageFormat: Format[ThreadFullMessage] =
     Json.format[ThreadFullMessage]
