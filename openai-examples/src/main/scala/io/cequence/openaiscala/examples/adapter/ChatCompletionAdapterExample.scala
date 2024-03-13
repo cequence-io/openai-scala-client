@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.examples.adapter
 
+import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{ModelId, NonOpenAIModelId, SystemMessage, UserMessage}
 import io.cequence.openaiscala.examples.ExampleBase
@@ -8,8 +9,13 @@ import io.cequence.openaiscala.service.adapter.OpenAIServiceAdapters
 
 import scala.concurrent.Future
 
-// requires `OCTOAI_TOKEN` environment variable to be set and Ollama service to be running locally
-object CreateChatCompletionWithChatCompletionAdapter extends ExampleBase[OpenAIService] {
+/**
+ * Requirements:
+ *   - `OCTOAI_TOKEN` environment variable to be set
+ *   - Ollama service running locally
+ *   - `ANTHROPIC_API_KEY` environment variable to be set
+ */
+object ChatCompletionAdapterExample extends ExampleBase[OpenAIService] {
 
   // OctoML
   private val octoMLService = OpenAIChatCompletionServiceFactory(
@@ -22,6 +28,9 @@ object CreateChatCompletionWithChatCompletionAdapter extends ExampleBase[OpenAIS
     coreUrl = "http://localhost:11434/v1/"
   )
 
+  // Anthropic
+  private val anthropicService = AnthropicServiceFactory.asOpenAI()
+
   // OpenAI
   private val openAIService = OpenAIServiceFactory()
 
@@ -29,7 +38,11 @@ object CreateChatCompletionWithChatCompletionAdapter extends ExampleBase[OpenAIS
     // OpenAI service is default so no need to specify its models here
     serviceModels = Map(
       octoMLService -> Seq(NonOpenAIModelId.mixtral_8x7b_instruct),
-      ollamaService -> Seq(NonOpenAIModelId.llama2)
+      ollamaService -> Seq(NonOpenAIModelId.llama2),
+      anthropicService -> Seq(
+        NonOpenAIModelId.claude_2_1,
+        NonOpenAIModelId.claude_3_opus_20240229
+      )
     ),
     openAIService
   )
@@ -46,6 +59,9 @@ object CreateChatCompletionWithChatCompletionAdapter extends ExampleBase[OpenAIS
 
       // runs on Ollama
       _ <- runChatCompletionAux(NonOpenAIModelId.llama2)
+
+      // runs on Anthropic
+      _ <- runChatCompletionAux(NonOpenAIModelId.claude_2_1)
 
       // runs on OpenAI
       _ <- runChatCompletionAux(ModelId.gpt_3_5_turbo)

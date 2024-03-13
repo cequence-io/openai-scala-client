@@ -2,13 +2,7 @@ package io.cequence.openaiscala.examples.adapter
 
 import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.domain.{
-  BaseMessage,
-  ModelId,
-  NonOpenAIModelId,
-  SystemMessage,
-  UserMessage
-}
+import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service._
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
@@ -21,7 +15,7 @@ import scala.concurrent.Future
  *   - `OCTOAI_TOKEN` environment variable to be set
  *   - Ollama service running locally
  */
-object CreateChatCompletionStreamedWithRouter
+object ChatCompletionStreamedRouterExample
     extends ExampleBase[OpenAIChatCompletionStreamedServiceExtra] {
 
   // Note that creation of services here is a bit wasteful, since we are using only the streaming part

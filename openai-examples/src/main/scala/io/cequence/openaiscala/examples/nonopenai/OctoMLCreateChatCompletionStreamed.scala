@@ -1,22 +1,21 @@
-package io.cequence.openaiscala.examples
+package io.cequence.openaiscala.examples.nonopenai
 
 import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.service.{
-  OpenAIChatCompletionStreamedServiceExtra,
-  OpenAIChatCompletionStreamedServiceFactory
-}
+import io.cequence.openaiscala.examples.ExampleBase
+import io.cequence.openaiscala.service.{OpenAIChatCompletionStreamedServiceExtra, OpenAIChatCompletionStreamedServiceFactory}
 
 import scala.concurrent.Future
 
-// requires `openai-scala-client-stream` as a dependency and Ollama service to be running locally
-object CreateChatCompletionStreamedOllama
+// requires `openai-scala-client-stream` as a dependency and `OCTOAI_TOKEN` environment variable to be set
+object OctoMLCreateChatCompletionStreamed
     extends ExampleBase[OpenAIChatCompletionStreamedServiceExtra] {
 
   override val service: OpenAIChatCompletionStreamedServiceExtra =
     OpenAIChatCompletionStreamedServiceFactory(
-      coreUrl = "http://localhost:11434/v1/"
+      coreUrl = "https://text.octoai.run/v1/",
+      authHeaders = Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
     )
 
   private val messages = Seq(
@@ -29,7 +28,7 @@ object CreateChatCompletionStreamedOllama
       .createChatCompletionStreamed(
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = NonOpenAIModelId.llama2,
+          model = NonOpenAIModelId.mixtral_8x7b_instruct,
           temperature = Some(0.1),
           max_tokens = Some(512),
           top_p = Some(0.9),

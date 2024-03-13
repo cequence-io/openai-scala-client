@@ -4,14 +4,14 @@ import akka.actor.Scheduler
 import io.cequence.openaiscala.{OpenAIScalaClientException, OpenAIScalaClientTimeoutException}
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.domain.{BaseMessage, ModelId, SystemMessage, UserMessage}
+import io.cequence.openaiscala.domain.{ModelId, SystemMessage, UserMessage}
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service._
 import io.cequence.openaiscala.service.adapter.OpenAIServiceAdapters
 
 import scala.concurrent.Future
 
-object CreateChatCompletionWithRetryAdapter extends ExampleBase[OpenAIService] {
+object RetryAdapterExample extends ExampleBase[OpenAIService] {
 
   // adapters to use (round-robin, retry, etc.)
   private val adapters = OpenAIServiceAdapters.forFullService
