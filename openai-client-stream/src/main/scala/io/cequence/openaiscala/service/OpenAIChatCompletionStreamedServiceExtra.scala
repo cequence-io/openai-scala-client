@@ -7,12 +7,14 @@ import io.cequence.openaiscala.domain.response.ChatCompletionChunkResponse
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 
 /**
- * Service that offers <b>ONLY</b> a streamed vesion of OpenAI chat completion endpoint.
+ * Service that offers <b>ONLY</b> a streamed version of OpenAI chat completion endpoint.
  *
  * @since March
  *   2024
  */
-trait OpenAIChatCompletionServiceStreamedExtra extends OpenAIServiceConsts {
+trait OpenAIChatCompletionStreamedServiceExtra
+    extends OpenAIServiceConsts
+    with CloseableService {
 
   /**
    * Creates a completion for the chat message(s) with streamed results.

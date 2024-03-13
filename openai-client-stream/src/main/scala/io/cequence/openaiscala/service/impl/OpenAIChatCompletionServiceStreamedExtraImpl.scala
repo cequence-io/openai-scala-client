@@ -1,4 +1,4 @@
-package io.cequence.openaiscala.service
+package io.cequence.openaiscala.service.impl
 
 import akka.NotUsed
 import akka.stream.scaladsl.Source
@@ -8,25 +8,27 @@ import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.service.impl.OpenAIChatCompletionServiceImpl
-import io.cequence.openaiscala.service.ws.WSStreamRequestHelper
+import io.cequence.openaiscala.service.OpenAIChatCompletionStreamedServiceExtra
 import play.api.libs.json.JsValue
 
 /**
- * Private impl. class of [[OpenAIChatCompletionServiceStreamedExtra]] which offers chat
+ * Private impl. class of [[OpenAIChatCompletionStreamedServiceExtra]] which offers chat
  * completion with streaming support.
  *
  * @since March
  *   2024
  */
-private trait OpenAIChatCompletionServiceStreamedExtraImpl
-    extends OpenAIChatCompletionServiceStreamedExtra
+private[service] trait OpenAIChatCompletionServiceStreamedExtraImpl
+    extends OpenAIChatCompletionStreamedServiceExtra
+    with ChatCompletionBodyMaker
     with WSStreamRequestHelper {
-  this: OpenAIChatCompletionServiceImpl =>
+
+  override protected type PEP = EndPoint
+  override protected type PT = Param
 
   override def createChatCompletionStreamed(
     messages: Seq[BaseMessage],
-    settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
+    settings: CreateChatCompletionSettings
   ): Source[ChatCompletionChunkResponse, NotUsed] =
     execJsonStreamAux(
       EndPoint.chat_completions,

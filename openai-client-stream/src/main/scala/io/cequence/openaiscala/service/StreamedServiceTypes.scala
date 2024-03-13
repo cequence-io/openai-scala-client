@@ -2,9 +2,9 @@ package io.cequence.openaiscala.service
 
 object StreamedServiceTypes {
   type OpenAIChatCompletionStreamedService = OpenAIChatCompletionService
-    with OpenAIChatCompletionServiceStreamedExtra
+    with OpenAIChatCompletionStreamedServiceExtra
 
-  type OpenAICoreStreamedService = OpenAICoreService with OpenAIServiceStreamedExtra
+  type OpenAICoreStreamedService = OpenAICoreService with OpenAIStreamedServiceExtra
 
-  type OpenAIStreamedService = OpenAIService with OpenAIServiceStreamedExtra
+  type OpenAIStreamedService = OpenAIService with OpenAIStreamedServiceExtra
 }

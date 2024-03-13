@@ -1,4 +1,4 @@
-package io.cequence.openaiscala.service.ws
+package io.cequence.openaiscala.service.impl
 
 import akka.NotUsed
 import akka.http.scaladsl.common.{EntityStreamingSupport, JsonEntityStreamingSupport}
@@ -8,6 +8,7 @@ import akka.stream.scaladsl.Framing.FramingException
 import akka.stream.scaladsl.{Flow, Framing, Source}
 import akka.util.ByteString
 import com.fasterxml.jackson.core.JsonParseException
+import io.cequence.openaiscala.service.ws.WSRequestExtHelper
 import io.cequence.openaiscala.{
   OpenAIScalaClientException,
   OpenAIScalaClientTimeoutException,
@@ -25,8 +26,7 @@ import java.util.concurrent.TimeoutException
  * @since Feb
  *   2023
  */
-trait WSStreamRequestHelper {
-  this: WSRequestHelper =>
+private[service] trait WSStreamRequestHelper extends WSRequestExtHelper {
 
   private val itemPrefix = "data: "
   private val endOfStreamToken = "[DONE]"
