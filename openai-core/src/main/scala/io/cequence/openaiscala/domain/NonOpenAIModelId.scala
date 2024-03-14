@@ -6,6 +6,7 @@ object NonOpenAIModelId {
   // Anthropic
   val claude_3_opus_20240229 = "claude-3-opus-20240229"
   val claude_3_sonnet_20240229 = "claude-3-sonnet-20240229"
+  val claude_3_haiku_20240307 = "claude-3-haiku-20240307"
   val claude_2_1 = "claude-2.1"
   val claude_2_0 = "claude-2.0"
   val claude_instant_1_2 = "claude-instant-1.2"
