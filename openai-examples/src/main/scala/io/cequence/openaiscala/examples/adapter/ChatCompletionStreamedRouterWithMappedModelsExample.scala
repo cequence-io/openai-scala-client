@@ -2,11 +2,12 @@ package io.cequence.openaiscala.examples.adapter
 
 import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
-import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain._
+import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.examples.ExampleBase
-import io.cequence.openaiscala.service._
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
+import io.cequence.openaiscala.service._
+import io.cequence.openaiscala.service.adapter.MappedModel
 
 import scala.concurrent.Future
 
@@ -14,10 +15,11 @@ import scala.concurrent.Future
  * Requirements:
  *   - `openai-scala-client-stream` as a dependency
  *   - `OCTOAI_TOKEN` environment variable to be set
- *   - `ANTHROPIC_API_KEY` environment variable to be set
  *   - Ollama service running locally
+ *
+ * Here we demonstrate how to map models e.g. by prefixing them with the service name.
  */
-object ChatCompletionStreamedRouterExample
+object ChatCompletionStreamedRouterWithMappedModelsExample
     extends ExampleBase[OpenAIChatCompletionStreamedServiceExtra] {
 
   // Note that creation of services here is a bit wasteful, since we are using only the streaming part
@@ -33,21 +35,24 @@ object ChatCompletionStreamedRouterExample
     coreUrl = "http://localhost:11434/v1/"
   )
 
-  // Anthropic
-  private val anthropicService = AnthropicServiceFactory.asOpenAI()
-
   // OpenAI
   private val openAIService = OpenAIServiceFactory.withStreaming()
 
   override val service: OpenAIChatCompletionStreamedServiceExtra =
-    OpenAIChatCompletionStreamedServiceRouter(
+    OpenAIChatCompletionStreamedServiceRouter.applyMapped(
       // OpenAI service is default so no need to specify its models
       serviceModels = Map(
-        octoMLService -> Seq(NonOpenAIModelId.mixtral_8x7b_instruct),
-        ollamaService -> Seq(NonOpenAIModelId.llama2),
-        anthropicService -> Seq(
-          NonOpenAIModelId.claude_2_1,
-          NonOpenAIModelId.claude_3_haiku_20240307
+        octoMLService -> Seq(
+          MappedModel(
+            "octoML-" + NonOpenAIModelId.llama_2_13b_chat,
+            NonOpenAIModelId.llama_2_13b_chat
+          )
+        ),
+        ollamaService -> Seq(
+          MappedModel(
+            "ollama-" + NonOpenAIModelId.llama2,
+            NonOpenAIModelId.llama2
+          )
         )
       ),
       defaultService = openAIService
@@ -61,13 +66,10 @@ object ChatCompletionStreamedRouterExample
   override protected def run: Future[_] =
     for {
       // runs on OctoML
-      _ <- runChatCompletionAux(NonOpenAIModelId.mixtral_8x7b_instruct)
+      _ <- runChatCompletionAux("octoML-" + NonOpenAIModelId.llama_2_13b_chat)
 
       // runs on Ollama
-      _ <- runChatCompletionAux(NonOpenAIModelId.llama2)
-
-      // runs on Anthropic
-      _ <- runChatCompletionAux(NonOpenAIModelId.claude_3_haiku_20240307)
+      _ <- runChatCompletionAux("ollama-" + NonOpenAIModelId.llama2)
 
       // runs on OpenAI
       _ <- runChatCompletionAux(ModelId.gpt_3_5_turbo)

@@ -2,11 +2,11 @@ package io.cequence.openaiscala.examples.adapter
 
 import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
-import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain._
+import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.examples.ExampleBase
-import io.cequence.openaiscala.service._
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
+import io.cequence.openaiscala.service._
 
 import scala.concurrent.Future
 
@@ -14,22 +14,23 @@ import scala.concurrent.Future
  * Requirements:
  *   - `openai-scala-client-stream` as a dependency
  *   - `OCTOAI_TOKEN` environment variable to be set
- *   - `ANTHROPIC_API_KEY` environment variable to be set
  *   - Ollama service running locally
+ *   - `ANTHROPIC_API_KEY` environment variable to be set
+ *
+ * Note that this is essentially the same example as [[ChatCompletionStreamedRouterExample]],
+ * but here we demonstrate how "routed" streaming can be added to the full OpenAI service.
  */
-object ChatCompletionStreamedRouterExample
-    extends ExampleBase[OpenAIChatCompletionStreamedServiceExtra] {
-
-  // Note that creation of services here is a bit wasteful, since we are using only the streaming part
+object ChatCompletionStreamedRouterWithFullServiceExample
+    extends ExampleBase[OpenAIService with OpenAIChatCompletionStreamedServiceExtra] {
 
   // OctoML
-  private val octoMLService = OpenAIChatCompletionServiceFactory.withStreaming(
+  private val octoMLService = OpenAIChatCompletionStreamedServiceFactory(
     coreUrl = "https://text.octoai.run/v1/",
     authHeaders = Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
   )
 
   // Ollama
-  private val ollamaService = OpenAIChatCompletionServiceFactory.withStreaming(
+  private val ollamaService = OpenAIChatCompletionStreamedServiceFactory(
     coreUrl = "http://localhost:11434/v1/"
   )
 
@@ -37,9 +38,9 @@ object ChatCompletionStreamedRouterExample
   private val anthropicService = AnthropicServiceFactory.asOpenAI()
 
   // OpenAI
-  private val openAIService = OpenAIServiceFactory.withStreaming()
+  private val openAIService = OpenAIStreamedServiceFactory()
 
-  override val service: OpenAIChatCompletionStreamedServiceExtra =
+  private val routedStreamedService: OpenAIChatCompletionStreamedServiceExtra =
     OpenAIChatCompletionStreamedServiceRouter(
       // OpenAI service is default so no need to specify its models
       serviceModels = Map(
@@ -52,6 +53,10 @@ object ChatCompletionStreamedRouterExample
       ),
       defaultService = openAIService
     )
+
+  // now we create a new "full" OpenAI service and add the routed streaming to it
+  override val service: OpenAIService with OpenAIChatCompletionStreamedServiceExtra =
+    OpenAIServiceFactory().withStreaming(routedStreamedService)
 
   val messages: Seq[BaseMessage] = Seq(
     SystemMessage("You are a helpful assistant."),
@@ -71,6 +76,9 @@ object ChatCompletionStreamedRouterExample
 
       // runs on OpenAI
       _ <- runChatCompletionAux(ModelId.gpt_3_5_turbo)
+
+      // runs on OpenAI (non-chat-completion function)
+      _ <- service.listModels.map(_.foreach(println))
     } yield ()
 
   private def runChatCompletionAux(model: String) = {

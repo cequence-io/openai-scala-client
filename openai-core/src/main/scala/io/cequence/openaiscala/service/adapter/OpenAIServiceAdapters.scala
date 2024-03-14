@@ -64,12 +64,23 @@ trait OpenAIServiceAdapters[S <: CloseableService] {
       new ChatCompletionServiceAdapter(chatCompletionService, service)
     )
 
-  def chatCompletion(
+  def chatCompletionRouter(
     serviceModels: Map[OpenAIChatCompletionService, Seq[String]],
     service: S with OpenAIChatCompletionService
   ): S = {
     val chatCompletionService =
       OpenAIChatCompletionServiceRouter(serviceModels, service)
+    wrapAndDelegateChatCompletion(
+      new ChatCompletionServiceAdapter(chatCompletionService, service)
+    )
+  }
+
+  def chatCompletionRouterMapped(
+    serviceModels: Map[OpenAIChatCompletionService, Seq[MappedModel]],
+    service: S with OpenAIChatCompletionService
+  ): S = {
+    val chatCompletionService =
+      OpenAIChatCompletionServiceRouter.applyMapped(serviceModels, service)
     wrapAndDelegateChatCompletion(
       new ChatCompletionServiceAdapter(chatCompletionService, service)
     )

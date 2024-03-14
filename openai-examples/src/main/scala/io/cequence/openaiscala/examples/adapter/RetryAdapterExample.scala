@@ -31,7 +31,7 @@ object RetryAdapterExample extends ExampleBase[OpenAIService] {
 
   // we then map the failing service to a specific model - gpt-3.5-turbo-1106
   // for all other models we use the regular service
-  private val mergedService = adapters.chatCompletion(
+  private val mergedService = adapters.chatCompletionRouter(
     serviceModels = Map(failingService -> Seq(ModelId.gpt_3_5_turbo_1106)),
     regularService
   )

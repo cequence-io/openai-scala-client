@@ -1,11 +1,10 @@
 package io.cequence.openaiscala.examples.adapter
 
-import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{ModelId, NonOpenAIModelId, SystemMessage, UserMessage}
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service._
-import io.cequence.openaiscala.service.adapter.OpenAIServiceAdapters
+import io.cequence.openaiscala.service.adapter.{MappedModel, OpenAIServiceAdapters}
 
 import scala.concurrent.Future
 
@@ -13,9 +12,10 @@ import scala.concurrent.Future
  * Requirements:
  *   - `OCTOAI_TOKEN` environment variable to be set
  *   - Ollama service running locally
- *   - `ANTHROPIC_API_KEY` environment variable to be set
+ *
+ * Here we demonstrate how to map models e.g. by prefixing them with the service name.
  */
-object ChatCompletionAdapterExample extends ExampleBase[OpenAIService] {
+object ChatCompletionRouterAdapterWithMappedModelsExample extends ExampleBase[OpenAIService] {
 
   // OctoML
   private val octoMLService = OpenAIChatCompletionServiceFactory(
@@ -28,24 +28,28 @@ object ChatCompletionAdapterExample extends ExampleBase[OpenAIService] {
     coreUrl = "http://localhost:11434/v1/"
   )
 
-  // Anthropic
-  private val anthropicService = AnthropicServiceFactory.asOpenAI()
-
   // OpenAI
   private val openAIService = OpenAIServiceFactory()
 
-  override val service: OpenAIService = OpenAIServiceAdapters.forFullService.chatCompletion(
-    // OpenAI service is default so no need to specify its models here
-    serviceModels = Map(
-      octoMLService -> Seq(NonOpenAIModelId.mixtral_8x7b_instruct),
-      ollamaService -> Seq(NonOpenAIModelId.llama2),
-      anthropicService -> Seq(
-        NonOpenAIModelId.claude_2_1,
-        NonOpenAIModelId.claude_3_opus_20240229
-      )
-    ),
-    openAIService
-  )
+  override val service: OpenAIService =
+    OpenAIServiceAdapters.forFullService.chatCompletionRouterMapped(
+      // OpenAI service is default so no need to specify its models here
+      serviceModels = Map(
+        octoMLService -> Seq(
+          MappedModel(
+            "octoML-" + NonOpenAIModelId.llama_2_13b_chat,
+            NonOpenAIModelId.llama_2_13b_chat
+          )
+        ),
+        ollamaService -> Seq(
+          MappedModel(
+            "ollama-" + NonOpenAIModelId.llama2,
+            NonOpenAIModelId.llama2
+          )
+        )
+      ),
+      openAIService
+    )
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),
@@ -55,13 +59,10 @@ object ChatCompletionAdapterExample extends ExampleBase[OpenAIService] {
   override protected def run: Future[_] =
     for {
       // runs on OctoML
-      _ <- runChatCompletionAux(NonOpenAIModelId.mixtral_8x7b_instruct)
+      _ <- runChatCompletionAux("octoML-" + NonOpenAIModelId.llama_2_13b_chat)
 
       // runs on Ollama
-      _ <- runChatCompletionAux(NonOpenAIModelId.llama2)
-
-      // runs on Anthropic
-      _ <- runChatCompletionAux(NonOpenAIModelId.claude_2_1)
+      _ <- runChatCompletionAux("ollama-" + NonOpenAIModelId.llama2)
 
       // runs on OpenAI
       _ <- runChatCompletionAux(ModelId.gpt_3_5_turbo)
@@ -76,13 +77,7 @@ object ChatCompletionAdapterExample extends ExampleBase[OpenAIService] {
     service
       .createChatCompletion(
         messages = messages,
-        settings = CreateChatCompletionSettings(
-          model = model,
-          temperature = Some(0.1),
-          max_tokens = Some(1024),
-          top_p = Some(0.9),
-          presence_penalty = Some(0)
-        )
+        settings = CreateChatCompletionSettings(model)
       )
       .map { response =>
         printMessageContent(response)
