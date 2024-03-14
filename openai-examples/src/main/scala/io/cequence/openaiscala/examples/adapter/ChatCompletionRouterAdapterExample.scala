@@ -34,19 +34,20 @@ object ChatCompletionRouterAdapterExample extends ExampleBase[OpenAIService] {
   // OpenAI
   private val openAIService = OpenAIServiceFactory()
 
-  override val service: OpenAIService = OpenAIServiceAdapters.forFullService.chatCompletionRouter(
-    // OpenAI service is default so no need to specify its models here
-    serviceModels = Map(
-      octoMLService -> Seq(NonOpenAIModelId.mixtral_8x7b_instruct),
-      ollamaService -> Seq(NonOpenAIModelId.llama2),
-      anthropicService -> Seq(
-        NonOpenAIModelId.claude_2_1,
-        NonOpenAIModelId.claude_3_opus_20240229,
-        NonOpenAIModelId.claude_3_haiku_20240307
-      )
-    ),
-    openAIService
-  )
+  override val service: OpenAIService =
+    OpenAIServiceAdapters.forFullService.chatCompletionRouter(
+      // OpenAI service is default so no need to specify its models here
+      serviceModels = Map(
+        octoMLService -> Seq(NonOpenAIModelId.mixtral_8x7b_instruct),
+        ollamaService -> Seq(NonOpenAIModelId.llama2),
+        anthropicService -> Seq(
+          NonOpenAIModelId.claude_2_1,
+          NonOpenAIModelId.claude_3_opus_20240229,
+          NonOpenAIModelId.claude_3_haiku_20240307
+        )
+      ),
+      openAIService
+    )
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),
