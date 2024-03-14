@@ -1,9 +1,8 @@
 package io.cequence.openaiscala.examples.nonopenai
 
-import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
+import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.Message.UserMessage
-import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.service.{AnthropicService, AnthropicServiceFactory}
 import io.cequence.openaiscala.domain.NonOpenAIModelId
@@ -12,7 +11,7 @@ import io.cequence.openaiscala.examples.ExampleBase
 import scala.concurrent.Future
 
 // requires `openai-anthropic-client` as a dependency and `ANTHROPIC_API_KEY` environment variable to be set
-object AnthropicCreateMessage extends ExampleBase[AnthropicService] {
+object AnthropicCreateMessageStreamed extends ExampleBase[AnthropicService] {
 
   override protected val service: AnthropicService = AnthropicServiceFactory()
 
@@ -20,17 +19,16 @@ object AnthropicCreateMessage extends ExampleBase[AnthropicService] {
 
   override protected def run: Future[_] =
     service
-      .createMessage(
+      .createMessageStreamed(
         messages,
         settings = AnthropicCreateMessageSettings(
           model = NonOpenAIModelId.claude_3_haiku_20240307,
           max_tokens = 4096
         )
       )
-      .map(printMessageContent)
-
-  private def printMessageContent(response: CreateMessageResponse) = {
-    val text = response.content.blocks.collect { case TextBlock(text) => text }.mkString(" ")
-    println(text)
-  }
+      .runWith(
+        Sink.foreach { response =>
+          print(response.delta.text)
+        }
+      )
 }

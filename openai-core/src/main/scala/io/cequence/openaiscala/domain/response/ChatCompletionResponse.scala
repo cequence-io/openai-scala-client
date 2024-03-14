@@ -110,6 +110,7 @@ case class ChatCompletionChunkResponse(
   model: String,
   system_fingerprint: Option[String], // new
   choices: Seq[ChatCompletionChoiceChunkInfo],
+  @Deprecated
   usage: Option[UsageInfo]
 )
 

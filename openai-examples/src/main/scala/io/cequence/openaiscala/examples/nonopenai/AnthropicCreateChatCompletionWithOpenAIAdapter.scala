@@ -8,7 +8,7 @@ import io.cequence.openaiscala.service.OpenAIChatCompletionService
 
 import scala.concurrent.Future
 
-// requires `openai-anthropic-client` as a dependency
+// requires `openai-anthropic-client` as a dependency and `ANTHROPIC_API_KEY` environment variable to be set
 object AnthropicCreateChatCompletionWithOpenAIAdapter
     extends ExampleBase[OpenAIChatCompletionService] {
 
@@ -23,7 +23,7 @@ object AnthropicCreateChatCompletionWithOpenAIAdapter
     service
       .createChatCompletion(
         messages = messages,
-        settings = CreateChatCompletionSettings(NonOpenAIModelId.claude_2_1)
+        settings = CreateChatCompletionSettings(NonOpenAIModelId.claude_3_haiku_20240307)
       )
       .map { content =>
         println(content.choices.headOption.map(_.message.content).getOrElse("N/A"))
