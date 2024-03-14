@@ -47,15 +47,16 @@ lazy val client = (project in file("openai-client"))
   .dependsOn(core)
   .aggregate(core)
 
-lazy val anthropic_client = (project in file("anthropic-client"))
-  .settings(commonSettings: _*)
-  .dependsOn(core, client)
-  .aggregate(core, client)
-
 lazy val client_stream = (project in file("openai-client-stream"))
   .settings(commonSettings: _*)
   .dependsOn(client)
   .aggregate(client)
+
+// note that for anthropic_client we provide a streaming extension within the module as well
+lazy val anthropic_client = (project in file("anthropic-client"))
+  .settings(commonSettings: _*)
+  .dependsOn(core, client, client_stream)
+  .aggregate(core, client, client_stream)
 
 lazy val guice = (project in file("openai-guice"))
   .settings(commonSettings: _*)
