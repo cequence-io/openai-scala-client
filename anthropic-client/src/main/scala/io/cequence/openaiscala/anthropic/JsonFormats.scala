@@ -133,6 +133,6 @@ trait JsonFormats {
   implicit val createMessageChunkResponseReads: Reads[CreateMessageChunkResponse] =
     Json.reads[CreateMessageChunkResponse]
 
-  implicit val deltaTextReads = Json.reads[DeltaText]
-  implicit val contentBlockDeltaReads = Json.reads[ContentBlockDelta]
+  implicit val deltaTextReads: Reads[DeltaText] = Json.reads[DeltaText]
+  implicit val contentBlockDeltaReads: Reads[ContentBlockDelta] = Json.reads[ContentBlockDelta]
 }
