@@ -26,17 +26,21 @@ import java.util.concurrent.TimeoutException
  * @since Feb
  *   2023
  */
-private[service] trait WSStreamRequestHelper extends WSRequestExtHelper {
+trait WSStreamRequestHelper extends WSRequestExtHelper {
 
   private val itemPrefix = "data: "
   private val endOfStreamToken = "[DONE]"
 
-  private implicit val jsonStreamingSupport: JsonEntityStreamingSupport =
-    EntityStreamingSupport.json()
-
   private implicit val jsonMarshaller: Unmarshaller[ByteString, JsValue] =
     Unmarshaller.strict[ByteString, JsValue] { byteString =>
-      val data = byteString.utf8String.stripPrefix(itemPrefix)
+      val string = byteString.utf8String
+
+      val itemStartIndex = string.indexOf(itemPrefix)
+      val data =
+        if (itemStartIndex > -1)
+          string.substring(itemStartIndex + itemPrefix.length)
+        else
+          string
       if (data.equals(endOfStreamToken)) JsString(endOfStreamToken)
       else Json.parse(data)
     }
