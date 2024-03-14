@@ -1,20 +1,11 @@
 package io.cequence.openaiscala.anthropic
 
 import io.cequence.openaiscala.JsonUtil
-import io.cequence.openaiscala.anthropic.domain.Message.{
-  AssistantMessage,
-  AssistantMessageContent,
-  UserMessage,
-  UserMessageContent
-}
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{ImageBlock, TextBlock}
-import io.cequence.openaiscala.anthropic.domain.Content.{
-  ContentBlock,
-  ContentBlocks,
-  SingleString
-}
-import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse
+import io.cequence.openaiscala.anthropic.domain.Content.{ContentBlock, ContentBlocks, SingleString}
+import io.cequence.openaiscala.anthropic.domain.Message.{AssistantMessage, AssistantMessageContent, UserMessage, UserMessageContent}
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse.UsageInfo
+import io.cequence.openaiscala.anthropic.domain.response.{ContentBlockDelta, CreateMessageChunkResponse, CreateMessageResponse, DeltaText}
 import io.cequence.openaiscala.anthropic.domain.{ChatRole, Content, Message}
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
@@ -117,10 +108,17 @@ trait JsonFormats {
 
   implicit val createMessageResponseReads: Reads[CreateMessageResponse] = (
     (__ \ "id").read[String] and
+      (__ \ "role").read[ChatRole] and
       (__ \ "content").read[Seq[ContentBlock]].map(ContentBlocks(_)) and
       (__ \ "model").read[String] and
       (__ \ "stop_reason").readNullable[String] and
       (__ \ "stop_sequence").readNullable[String] and
       (__ \ "usage").read[UsageInfo]
   )(CreateMessageResponse.apply _)
+
+  implicit val createMessageChunkResponseReads: Reads[CreateMessageChunkResponse] =
+    Json.reads[CreateMessageChunkResponse]
+
+  implicit val deltaTextReads = Json.reads[DeltaText]
+  implicit val contentBlockDeltaReads = Json.reads[ContentBlockDelta]
 }

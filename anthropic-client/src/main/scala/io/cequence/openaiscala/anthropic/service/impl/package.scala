@@ -2,18 +2,25 @@ package io.cequence.openaiscala.anthropic.service
 
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlocks
-import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse
-import io.cequence.openaiscala.anthropic.domain.{Content, Message}
-import CreateMessageResponse.UsageInfo
+import io.cequence.openaiscala.anthropic.domain.response.{
+  ContentBlockDelta,
+  CreateMessageResponse
+}
+import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse.UsageInfo
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
+import io.cequence.openaiscala.anthropic.domain.{Content, Message}
 import io.cequence.openaiscala.domain.response.{
+  ChatCompletionChoiceChunkInfo,
   ChatCompletionChoiceInfo,
+  ChatCompletionChunkResponse,
   ChatCompletionResponse,
+  ChunkMessageSpec,
   UsageInfo => OpenAIUsageInfo
 }
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{
   AssistantMessage,
+  ChatRole,
   SystemMessage,
   BaseMessage => OpenAIBaseMessage,
   Content => OpenAIContent,
@@ -64,7 +71,7 @@ package object impl extends AnthropicServiceConsts {
     AnthropicCreateMessageSettings(
       model = settings.model,
       system = if (systemMessagesContent.isEmpty) None else Some(systemMessagesContent),
-      max_tokens = settings.max_tokens.getOrElse(DefaultSettings.createMessage.max_tokens),
+      max_tokens = settings.max_tokens.getOrElse(DefaultSettings.CreateMessage.max_tokens),
       metadata = Map.empty,
       stop_sequences = settings.stop,
       temperature = settings.temperature,
@@ -88,6 +95,25 @@ package object impl extends AnthropicServiceConsts {
         )
       ),
       usage = Some(toOpenAI(response.usage))
+    )
+
+  def toOpenAI(blockDelta: ContentBlockDelta): ChatCompletionChunkResponse =
+    ChatCompletionChunkResponse(
+      id = "",
+      created = new ju.Date,
+      model = "",
+      system_fingerprint = None,
+      choices = Seq(
+        ChatCompletionChoiceChunkInfo(
+          delta = ChunkMessageSpec(
+            role = None,
+            content = Some(blockDelta.delta.text)
+          ),
+          index = blockDelta.index,
+          finish_reason = None
+        )
+      ),
+      usage = None
     )
 
   def toOpenAIAssistantMessage(content: ContentBlocks): AssistantMessage = {

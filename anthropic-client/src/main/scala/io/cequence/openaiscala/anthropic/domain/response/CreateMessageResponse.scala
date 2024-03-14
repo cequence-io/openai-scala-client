@@ -1,11 +1,13 @@
 package io.cequence.openaiscala.anthropic.domain.response
 
+import io.cequence.openaiscala.anthropic.domain.ChatRole
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlocks
-import CreateMessageResponse.UsageInfo
+import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse.UsageInfo
 import io.cequence.openaiscala.domain.NamedEnumValue
 
 final case class CreateMessageResponse(
   id: String,
+  role: ChatRole,
   content: ContentBlocks,
   model: String,
   stop_reason: Option[String],

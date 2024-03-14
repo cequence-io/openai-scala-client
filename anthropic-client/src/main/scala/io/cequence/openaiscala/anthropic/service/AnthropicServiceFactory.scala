@@ -1,10 +1,8 @@
 package io.cequence.openaiscala.anthropic.service
 import akka.stream.Materializer
-import io.cequence.openaiscala.anthropic.service.impl.{
-  AnthropicServiceImpl,
-  OpenAIAnthropicChatCompletionService
-}
+import io.cequence.openaiscala.anthropic.service.impl.{AnthropicServiceImpl, OpenAIAnthropicChatCompletionService}
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
+import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
 import io.cequence.openaiscala.service.ws.Timeouts
 
 import scala.concurrent.ExecutionContext
@@ -36,7 +34,7 @@ object AnthropicServiceFactory extends AnthropicServiceConsts {
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer
-  ): OpenAIChatCompletionService =
+  ): OpenAIChatCompletionStreamedService =
     new OpenAIAnthropicChatCompletionService(
       AnthropicServiceFactory(apiKey, timeouts)
     )
