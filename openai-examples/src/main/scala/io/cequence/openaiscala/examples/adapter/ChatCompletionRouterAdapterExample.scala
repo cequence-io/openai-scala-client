@@ -14,6 +14,7 @@ import scala.concurrent.Future
  *   - `OCTOAI_TOKEN` environment variable to be set
  *   - Ollama service running locally
  *   - `ANTHROPIC_API_KEY` environment variable to be set
+ *   - `FIREWORKS_API_KEY` environment variable to be set
  */
 object ChatCompletionRouterAdapterExample extends ExampleBase[OpenAIService] {
 
@@ -28,6 +29,13 @@ object ChatCompletionRouterAdapterExample extends ExampleBase[OpenAIService] {
     coreUrl = "http://localhost:11434/v1/"
   )
 
+  // Fireworks AI
+  private val fireworksModelPrefix = "accounts/fireworks/models/"
+  private val fireworksService = OpenAIChatCompletionServiceFactory(
+    coreUrl = "https://api.fireworks.ai/inference/v1/",
+    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
+  )
+
   // Anthropic
   private val anthropicService = AnthropicServiceFactory.asOpenAI()
 
@@ -40,6 +48,7 @@ object ChatCompletionRouterAdapterExample extends ExampleBase[OpenAIService] {
       serviceModels = Map(
         octoMLService -> Seq(NonOpenAIModelId.mixtral_8x7b_instruct),
         ollamaService -> Seq(NonOpenAIModelId.llama2),
+        fireworksService -> Seq(fireworksModelPrefix + NonOpenAIModelId.new_mixtral_chat),
         anthropicService -> Seq(
           NonOpenAIModelId.claude_2_1,
           NonOpenAIModelId.claude_3_opus_20240229,
@@ -61,6 +70,9 @@ object ChatCompletionRouterAdapterExample extends ExampleBase[OpenAIService] {
 
       // runs on Ollama
       _ <- runChatCompletionAux(NonOpenAIModelId.llama2)
+
+      // runs on Fireworks AI
+      _ <- runChatCompletionAux(fireworksModelPrefix + NonOpenAIModelId.new_mixtral_chat)
 
       // runs on Anthropic
       _ <- runChatCompletionAux(NonOpenAIModelId.claude_3_haiku_20240307)
