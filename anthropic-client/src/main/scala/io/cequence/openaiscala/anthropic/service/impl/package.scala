@@ -21,6 +21,7 @@ import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{
   AssistantMessage,
   ChatRole,
+  MessageSpec,
   SystemMessage,
   BaseMessage => OpenAIBaseMessage,
   Content => OpenAIContent,
@@ -39,6 +40,9 @@ package object impl extends AnthropicServiceConsts {
       case OpenAIUserMessage(content, _) => Message.UserMessage(content)
       case OpenAIUserSeqMessage(contents, _) =>
         Message.UserMessageContent(contents.map(toAnthropic))
+      // legacy message type
+      case MessageSpec(role, content, _) if role == ChatRole.User =>
+        Message.UserMessage(content)
     }
 
   def toAnthropic(content: OpenAIContent): Content.ContentBlock = {
