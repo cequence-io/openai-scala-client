@@ -3,19 +3,16 @@ package io.cequence.openaiscala.examples.nonopenai
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.examples.ExampleBase
-import io.cequence.openaiscala.service.{
-  OpenAIChatCompletionService,
-  OpenAIChatCompletionServiceFactory
-}
+import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIChatCompletionServiceFactory}
 
 import scala.concurrent.Future
 
-// requires `OCTOAI_TOKEN` environment variable to be set
-object OctoMLCreateChatCompletion extends ExampleBase[OpenAIChatCompletionService] {
+// requires `FIREWORKS_API_KEY` environment variable to be set
+object FireworksAICreateChatCompletion extends ExampleBase[OpenAIChatCompletionService] {
 
   override val service: OpenAIChatCompletionService = OpenAIChatCompletionServiceFactory(
-    coreUrl = "https://text.octoai.run/v1/",
-    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
+    coreUrl = "https://api.fireworks.ai/inference/v1/",
+    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
   )
 
   private val messages = Seq(
@@ -23,12 +20,14 @@ object OctoMLCreateChatCompletion extends ExampleBase[OpenAIChatCompletionServic
     UserMessage("What is the weather like in Norway?")
   )
 
+  private val modelId = NonOpenAIModelId.llama_v2_13b_chat
+
   override protected def run: Future[_] =
     service
       .createChatCompletion(
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = NonOpenAIModelId.llama_2_70b_chat,
+          model = "accounts/fireworks/models/" + modelId,
           temperature = Some(0.1),
           max_tokens = Some(512),
           top_p = Some(0.9),
