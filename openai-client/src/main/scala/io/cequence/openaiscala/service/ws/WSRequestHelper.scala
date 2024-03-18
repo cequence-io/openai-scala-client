@@ -483,8 +483,13 @@ trait WSRequestHelper extends WSHelper {
   protected def createUrl(
     endpoint: Option[PEP],
     value: Option[String] = None
-  ): String =
-    coreUrl + endpoint.map(_.toString).getOrElse("") + value.map("/" + _).getOrElse("")
+  ): String = {
+    val slash = if (coreUrl.endsWith("/")) "" else "/"
+    val endpointString = endpoint.map(_.toString).getOrElse("")
+    val valueString = value.map("/" + _).getOrElse("")
+
+    coreUrl + slash + endpointString + valueString
+  }
 
   protected def toOptionalParams(
     params: Seq[(PT, Any)]
