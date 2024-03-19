@@ -2,6 +2,8 @@ package io.cequence.openaiscala.service.adapter
 
 import akka.actor.Scheduler
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
+import io.cequence.openaiscala.domain.BaseMessage
+import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.service._
 import io.cequence.openaiscala.service.adapter.ServiceWrapperTypes._
 
@@ -62,6 +64,16 @@ trait OpenAIServiceAdapters[S <: CloseableService] {
   ): S =
     wrapAndDelegateChatCompletion(
       new ChatCompletionServiceAdapter(chatCompletionService, service)
+    )
+
+  def chatCompletionInput(
+    adaptMessages: Seq[BaseMessage] => Seq[BaseMessage],
+    adaptSettings: CreateChatCompletionSettings => CreateChatCompletionSettings
+  )(
+    service: S with OpenAIChatCompletionService
+  ): S =
+    wrapAndDelegateChatCompletion(
+      new ChatCompletionInputAdapter(adaptMessages, adaptSettings)(service)
     )
 
   def chatCompletionRouter(

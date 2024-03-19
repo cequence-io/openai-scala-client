@@ -1,13 +1,16 @@
 package io.cequence.openaiscala.service.adapter
 
 import io.cequence.openaiscala.domain.BaseMessage
+import io.cequence.openaiscala.domain.response.ChatCompletionResponse
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.service.{CloseableService, OpenAIChatCompletionService}
 
 import scala.concurrent.Future
 
-private class ChatCompletionServiceAdapter[S <: CloseableService](
-  chatCompletionService: OpenAIChatCompletionService,
+private class ChatCompletionInputAdapter[S <: OpenAIChatCompletionService](
+  adaptMessages: Seq[BaseMessage] => Seq[BaseMessage],
+  adaptSettings: CreateChatCompletionSettings => CreateChatCompletionSettings
+)(
   underlying: S
 ) extends ServiceWrapper[S]
     with CloseableService
@@ -18,15 +21,16 @@ private class ChatCompletionServiceAdapter[S <: CloseableService](
     fun: S => Future[T]
   ): Future[T] = fun(underlying)
 
-  // but for the chat completion we use the chatCompletionService
+  // but for the chat completion we adapt the messages and settings
   override def createChatCompletion(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
-  ) =
-    chatCompletionService.createChatCompletion(messages, settings)
+  ): Future[ChatCompletionResponse] =
+    underlying.createChatCompletion(
+      adaptMessages(messages),
+      adaptSettings(settings)
+    )
 
-  override def close(): Unit = {
-    chatCompletionService.close()
+  override def close(): Unit =
     underlying.close()
-  }
 }
