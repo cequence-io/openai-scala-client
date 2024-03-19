@@ -7,12 +7,18 @@ import io.cequence.openaiscala.service.{
   OpenAIChatCompletionService,
   OpenAIChatCompletionServiceFactory
 }
-
+import io.cequence.openaiscala.examples.adapter.ChatCompletionInputAdapterForFireworksAI
 import scala.concurrent.Future
 
-// requires `FIREWORKS_API_KEY` environment variable to be set
+/**
+ * Requires `FIREWORKS_API_KEY` environment variable to be set.
+ *
+ * Check out [[ChatCompletionInputAdapterForFireworksAI]] for a more complex example with an
+ * input adapter
+ */
 object FireworksAICreateChatCompletion extends ExampleBase[OpenAIChatCompletionService] {
 
+  private val fireworksModelPrefix = "accounts/fireworks/models/"
   override val service: OpenAIChatCompletionService = OpenAIChatCompletionServiceFactory(
     coreUrl = "https://api.fireworks.ai/inference/v1/",
     authHeaders = Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
@@ -30,7 +36,7 @@ object FireworksAICreateChatCompletion extends ExampleBase[OpenAIChatCompletionS
       .createChatCompletion(
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = "accounts/fireworks/models/" + modelId,
+          model = fireworksModelPrefix + modelId,
           temperature = Some(0.1),
           max_tokens = Some(512),
           top_p = Some(0.9),

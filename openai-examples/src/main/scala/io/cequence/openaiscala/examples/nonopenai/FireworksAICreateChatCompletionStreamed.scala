@@ -15,6 +15,7 @@ import scala.concurrent.Future
 object FireworksAICreateChatCompletionStreamed
     extends ExampleBase[OpenAIChatCompletionStreamedServiceExtra] {
 
+  private val fireworksModelPrefix = "accounts/fireworks/models/"
   override val service: OpenAIChatCompletionStreamedServiceExtra =
     OpenAIChatCompletionStreamedServiceFactory(
       coreUrl = "https://api.fireworks.ai/inference/v1/",
@@ -33,8 +34,8 @@ object FireworksAICreateChatCompletionStreamed
       .createChatCompletionStreamed(
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = "accounts/fireworks/models/" + modelId,
-          temperature = Some(0.1),
+          model = fireworksModelPrefix + modelId,
+          temperature = Some(0.001),
           max_tokens = Some(512),
           top_p = Some(0.9),
           presence_penalty = Some(0)
