@@ -92,4 +92,5 @@ object Param {
   case object top_logprobs extends Param
   case object name extends Param
   case object description extends Param
+  case object dimensions extends Param
 }

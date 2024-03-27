@@ -60,7 +60,8 @@ private[service] trait OpenAICoreServiceImpl
         },
         Param.model -> Some(settings.model),
         Param.encoding_format -> settings.encoding_format.map(_.toString),
-        Param.user -> settings.user
+        Param.user -> settings.user,
+        Param.dimensions -> settings.dimensions
       )
     ).map(
       _.asSafe[EmbeddingResponse]
