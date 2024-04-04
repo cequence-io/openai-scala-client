@@ -33,6 +33,7 @@ object NonOpenAIModelId {
   val hermes_2_pro_mistral_7b = "hermes-2-pro-mistral-7b" // Fireworks
 
   // Other
+  val drbx_instruct = "dbrx-instruct" // Fireworks AI
   val firellava_13b = "firellava-13b" // Fireworks AI
   val firefunction_v1 = "firefunction-v1" // Fireworks AI
   val bleat_adapter = "bleat-adapter" // Fireworks AI (completion)

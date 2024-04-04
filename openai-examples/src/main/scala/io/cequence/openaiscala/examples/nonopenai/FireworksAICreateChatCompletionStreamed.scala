@@ -27,7 +27,7 @@ object FireworksAICreateChatCompletionStreamed
     UserMessage("What is the weather like in Norway?")
   )
 
-  private val modelId = NonOpenAIModelId.mixtral_8x7b_instruct
+  private val modelId = NonOpenAIModelId.drbx_instruct // mixtral_8x7b_instruct
 
   override protected def run: Future[_] =
     service
@@ -35,7 +35,7 @@ object FireworksAICreateChatCompletionStreamed
         messages = messages,
         settings = CreateChatCompletionSettings(
           model = fireworksModelPrefix + modelId,
-          temperature = Some(0.001),
+          temperature = Some(0.01),
           max_tokens = Some(512),
           top_p = Some(0.9),
           presence_penalty = Some(0)

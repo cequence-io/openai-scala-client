@@ -48,7 +48,10 @@ object ChatCompletionRouterAdapterExample extends ExampleBase[OpenAIService] {
       serviceModels = Map(
         octoMLService -> Seq(NonOpenAIModelId.mixtral_8x7b_instruct),
         ollamaService -> Seq(NonOpenAIModelId.llama2),
-        fireworksService -> Seq(fireworksModelPrefix + NonOpenAIModelId.new_mixtral_chat),
+        fireworksService -> Seq(
+          fireworksModelPrefix + NonOpenAIModelId.mixtral_8x7b_instruct,
+          fireworksModelPrefix + NonOpenAIModelId.drbx_instruct,
+        ),
         anthropicService -> Seq(
           NonOpenAIModelId.claude_2_1,
           NonOpenAIModelId.claude_3_opus_20240229,
@@ -72,7 +75,10 @@ object ChatCompletionRouterAdapterExample extends ExampleBase[OpenAIService] {
       _ <- runChatCompletionAux(NonOpenAIModelId.llama2)
 
       // runs on Fireworks AI
-      _ <- runChatCompletionAux(fireworksModelPrefix + NonOpenAIModelId.new_mixtral_chat)
+      _ <- runChatCompletionAux(fireworksModelPrefix + NonOpenAIModelId.mixtral_8x7b_instruct)
+
+      // runs on Fireworks AI
+      _ <- runChatCompletionAux(fireworksModelPrefix + NonOpenAIModelId.drbx_instruct)
 
       // runs on Anthropic
       _ <- runChatCompletionAux(NonOpenAIModelId.claude_3_haiku_20240307)
