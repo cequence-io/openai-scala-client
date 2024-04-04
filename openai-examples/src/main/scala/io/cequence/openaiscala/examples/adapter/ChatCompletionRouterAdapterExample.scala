@@ -50,7 +50,7 @@ object ChatCompletionRouterAdapterExample extends ExampleBase[OpenAIService] {
         ollamaService -> Seq(NonOpenAIModelId.llama2),
         fireworksService -> Seq(
           fireworksModelPrefix + NonOpenAIModelId.mixtral_8x7b_instruct,
-          fireworksModelPrefix + NonOpenAIModelId.drbx_instruct,
+          fireworksModelPrefix + NonOpenAIModelId.drbx_instruct
         ),
         anthropicService -> Seq(
           NonOpenAIModelId.claude_2_1,
