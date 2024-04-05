@@ -182,6 +182,7 @@ object ModelId {
   // 128K context (with training data upto April 2023)
   // includes supports for vision in addition to gpt-4-turbo capabilities
   val gpt_4_vision_preview = "gpt-4-vision-preview"
+  val gpt_4_1106_vision_preview = "gpt-4-1106-vision-preview"
 
   // Other
   @Deprecated
