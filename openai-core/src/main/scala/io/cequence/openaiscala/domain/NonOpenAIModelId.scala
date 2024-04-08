@@ -31,6 +31,7 @@ object NonOpenAIModelId {
   val nous_hermes_2_mixtral_8x7b_dpo = "nous-hermes-2-mixtral-8x7b-dpo" // OctoML
   val nous_hermes_2_mistral_7b_dpo = "nous-hermes-2-mistral-7b-dpo" // OctoML
   val hermes_2_pro_mistral_7b = "hermes-2-pro-mistral-7b" // Fireworks
+  val mistral_large = "Mistral-large"
 
   // Other
   val drbx_instruct = "dbrx-instruct" // Fireworks AI
@@ -40,4 +41,5 @@ object NonOpenAIModelId {
   val gemma = "gemma" // Ollama
   val gemma_7b_it = "gemma-7b-it" // Fireworks AI and OctoML
   val smaug_72b_chat = "smaug-72b-chat" // OctoML
+  val cohere_command_r_plus = "Cohere-command-r-plus"
 }
