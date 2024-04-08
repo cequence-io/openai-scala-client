@@ -12,11 +12,13 @@ import scala.concurrent.Future
 
 /**
  * Requirements:
- *   - `openai-scala-client-stream` as a dependency
- *   - `OCTOAI_TOKEN` environment variable to be set
- *   - `ANTHROPIC_API_KEY` environment variable to be set
- *   - Ollama service running locally
- *   - `FIREWORKS_API_KEY` environment variable to be set
+ *   - Include `openai-scala-client-stream` as a dependency.
+ *   - Set the `OCTOAI_TOKEN` environment variable.
+ *   - Set the `ANTHROPIC_API_KEY` environment variable.
+ *   - Ensure the Ollama service is running locally.
+ *   - Set the `FIREWORKS_API_KEY` environment variable.
+ *   - Set the `AZURE_AI_COHERE_R_PLUS_ENDPOINT`, `AZURE_AI_COHERE_R_PLUS_REGION`, and
+ *     `AZURE_AI_COHERE_R_PLUS_ACCESS_KEY` environment variables.
  */
 object ChatCompletionStreamedRouterExample
     extends ExampleBase[OpenAIChatCompletionStreamedServiceExtra] {
@@ -44,6 +46,14 @@ object ChatCompletionStreamedRouterExample
   // Anthropic
   private val anthropicService = AnthropicServiceFactory.asOpenAI()
 
+  // Azure AI - Cohere R+
+  private val azureAICohereRPlusService =
+    OpenAIChatCompletionServiceFactory.withStreaming.forAzureAI(
+      endpoint = sys.env("AZURE_AI_COHERE_R_PLUS_ENDPOINT"),
+      region = sys.env("AZURE_AI_COHERE_R_PLUS_REGION"),
+      accessToken = sys.env("AZURE_AI_COHERE_R_PLUS_ACCESS_KEY")
+    )
+
   // OpenAI
   private val openAIService = OpenAIServiceFactory.withStreaming()
 
@@ -57,7 +67,8 @@ object ChatCompletionStreamedRouterExample
         anthropicService -> Seq(
           NonOpenAIModelId.claude_2_1,
           NonOpenAIModelId.claude_3_haiku_20240307
-        )
+        ),
+        azureAICohereRPlusService -> Seq(NonOpenAIModelId.cohere_command_r_plus)
       ),
       defaultService = openAIService
     )
@@ -80,6 +91,9 @@ object ChatCompletionStreamedRouterExample
 
       // runs on Anthropic
       _ <- runChatCompletionAux(NonOpenAIModelId.claude_3_haiku_20240307)
+
+      // runs on Azure AI
+      _ <- runChatCompletionAux(NonOpenAIModelId.cohere_command_r_plus)
 
       // runs on OpenAI
       _ <- runChatCompletionAux(ModelId.gpt_3_5_turbo)
