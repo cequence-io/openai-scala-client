@@ -7,7 +7,7 @@ import io.cequence.openaiscala.service.ws.Timeouts
 import scala.concurrent.ExecutionContext
 
 object OpenAIChatCompletionServiceFactory
-    extends RawWsServiceFactory[OpenAIChatCompletionService] {
+    extends IOpenAIChatCompletionServiceFactory[OpenAIChatCompletionService] {
 
   override def apply(
     coreUrl: String,
@@ -29,4 +29,20 @@ object OpenAIChatCompletionServiceFactory
     implicit val ec: ExecutionContext,
     val materializer: Materializer
   ) extends OpenAIChatCompletionServiceImpl
+}
+
+// propose a new name for the trait
+trait IOpenAIChatCompletionServiceFactory[F] extends RawWsServiceFactory[F] {
+  def forAzureAI(
+    endpoint: String,
+    region: String,
+    accessToken: String
+  )(
+    implicit ec: ExecutionContext,
+    materializer: Materializer
+  ): F =
+    apply(
+      coreUrl = s"https://${endpoint}.${region}.inference.ai.azure.com/v1/",
+      authHeaders = Seq(("Authorization", s"Bearer $accessToken"))
+    )
 }

@@ -44,32 +44,44 @@ object OpenAIStreamedServiceImplicits {
   }
 
   implicit class ChatCompletionStreamFactoryExt(
-    factory: RawWsServiceFactory[OpenAIChatCompletionService]
+    factory: IOpenAIChatCompletionServiceFactory[OpenAIChatCompletionService]
   ) {
-    def withStreaming(
-      coreUrl: String,
-      authHeaders: Seq[(String, String)] = Nil,
-      extraParams: Seq[(String, String)] = Nil,
-      timeouts: Option[Timeouts] = None
-    )(
-      implicit ec: ExecutionContext,
-      materializer: Materializer
-    ): StreamedServiceTypes.OpenAIChatCompletionStreamedService = {
-      val service = factory(
-        coreUrl,
-        authHeaders,
-        extraParams,
-        timeouts
-      )
+    def withStreaming: IOpenAIChatCompletionServiceFactory[
+      StreamedServiceTypes.OpenAIChatCompletionStreamedService
+    ] =
+      new StreamedFactoryAux(factory)
 
-      val streamedExtra = OpenAIChatCompletionStreamedServiceFactory(
-        coreUrl,
-        authHeaders,
-        extraParams,
-        timeouts
-      )
+    private final class StreamedFactoryAux(
+      factory: IOpenAIChatCompletionServiceFactory[OpenAIChatCompletionService]
+    ) extends IOpenAIChatCompletionServiceFactory[
+          StreamedServiceTypes.OpenAIChatCompletionStreamedService
+        ] {
 
-      service.withStreaming(streamedExtra)
+      override def apply(
+        coreUrl: String,
+        authHeaders: Seq[(String, String)],
+        extraParams: Seq[(String, String)],
+        timeouts: Option[Timeouts]
+      )(
+        implicit ec: ExecutionContext,
+        materializer: Materializer
+      ): StreamedServiceTypes.OpenAIChatCompletionStreamedService = {
+        val service = factory(
+          coreUrl,
+          authHeaders,
+          extraParams,
+          timeouts
+        )
+
+        val streamedExtra = OpenAIChatCompletionStreamedServiceFactory(
+          coreUrl,
+          authHeaders,
+          extraParams,
+          timeouts
+        )
+
+        ChatCompletionStreamExt(service).withStreaming(streamedExtra)
+      }
     }
   }
 
