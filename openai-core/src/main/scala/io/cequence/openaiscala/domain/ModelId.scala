@@ -173,6 +173,13 @@ object ModelId {
   val gpt_4_32k_0314 = "gpt-4-32k-0314"
   // 32k context (June 13th snapshot), fine-tuned for function calling
   val gpt_4_32k_0613 = "gpt-4-32k-0613"
+
+  // GPT-4 Turbo
+
+  // The latest GPT-4 Turbo model with vision capabilities. Points to gpt-4-turbo-2024-04-09.
+  val gpt_4_turbo = "gpt-4-turbo"
+  // GPT-4 Turbo + Vision model (with training data up to Dec 2023)
+  val gpt_4_turbo_2024_04_09 = "gpt-4-turbo-2024-04-09"
   // name alias, which will always point to the latest GPT-4 Turbo preview model
   val gpt_4_turbo_preview = "gpt-4-turbo-preview"
   // 128K context (with training data upto April 2023) - Nov 6th 2023 snapshot
