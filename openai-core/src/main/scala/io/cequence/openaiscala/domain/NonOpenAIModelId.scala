@@ -24,6 +24,7 @@ object NonOpenAIModelId {
   val medllama2 = "medllama2" // Ollama
 
   // Mistral
+  val mixtral_8x22b = "mixtral-8x22b" // Fireworks AI (completion API)
   val mistral_7b_instruct = "mistral-7b-instruct" // OctoML
   val mixtral_8x7b_instruct = "mixtral-8x7b-instruct" // Fireworks AI and OctoML
   val mistral_7b_instruct_4k = "mistral-7b-instruct-4k" // Fireworks AI
