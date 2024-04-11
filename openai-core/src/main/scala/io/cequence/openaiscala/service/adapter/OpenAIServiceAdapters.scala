@@ -98,6 +98,12 @@ trait OpenAIServiceAdapters[S <: CloseableService] {
     )
   }
 
+  def chatToCompletion(
+    service: S with OpenAICompletionService with OpenAIChatCompletionService)(
+    implicit ec: ExecutionContext
+  ): S =
+    wrapAndDelegateChatCompletion(new ChatToCompletionAdapter(service))
+
   protected def wrapAndDelegate(
     delegate: CloseableServiceWrapper[S]
   ): S
