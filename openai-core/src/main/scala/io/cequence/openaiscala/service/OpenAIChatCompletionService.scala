@@ -7,8 +7,8 @@ import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import scala.concurrent.Future
 
 /**
- * Service that offers <b>ONLY</b> OpenAI chat completion endpoint. Note that this means also
- * OpenAI-API-compatible services such as FastChat, Ollama, or OctoML.
+ * Service that offers <b>ONLY</b> OpenAI chat completion endpoint. Note that this trais is
+ * usable also for OpenAI-API-compatible services such as FastChat, Ollama, or OctoML.
  *
  * @since March
  *   2024

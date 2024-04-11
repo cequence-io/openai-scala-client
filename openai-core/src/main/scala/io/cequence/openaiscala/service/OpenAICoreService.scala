@@ -22,7 +22,7 @@ import scala.concurrent.Future
  * @since July
  *   2023
  */
-trait OpenAICoreService extends OpenAIChatCompletionService with OpenAIServiceConsts {
+trait OpenAICoreService extends OpenAIChatCompletionService with OpenAICompletionService {
 
   /**
    * Lists the currently available models, and provides basic information about each one such
@@ -36,7 +36,8 @@ trait OpenAICoreService extends OpenAIChatCompletionService with OpenAIServiceCo
   def listModels: Future[Seq[ModelInfo]]
 
   /**
-   * Creates a completion for the provided prompt and parameters.
+   * Creates a completion for the provided prompt and parameters. Note that this is defined *
+   * already in [[OpenAICompletionService]], but it is repeated here for clarity.
    *
    * @param prompt
    *   The prompt(s) to generate completions for, encoded as a string, array of strings, array
@@ -46,7 +47,6 @@ trait OpenAICoreService extends OpenAIChatCompletionService with OpenAIServiceCo
    * @param settings
    * @return
    *   text completion response
-   *
    * @see
    *   <a href="https://platform.openai.com/docs/api-reference/completions/create">OpenAI
    *   Doc</a>
