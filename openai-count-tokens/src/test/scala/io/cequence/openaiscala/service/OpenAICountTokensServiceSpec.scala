@@ -191,7 +191,22 @@ class OpenAICountTokensServiceSpec
 
   }
 
+  val weatherFunction = FunctionSpec(
+    name = "getWeather",
+    parameters = Map(
+      "type" -> "object",
+      "properties" -> ListMap(
+        "location" -> ListMap("type" -> "string", "description" -> "The city to get the weather for"),
+        "unit" -> ListMap("type" -> "string", "enum" -> List("celsius", "fahrenheit"))
+      )
+    )
+  )
+
   "countFunMessageTokens" should {
+    "count tokens for function with an enum" in new TestCase {
+      checkTokensForFunctionCall(Seq(weatherFunction), chat(UserMessage("What will be the weather like in Rome tomorrow?")), 59)
+    }
+
     "counting tokens with function - nested description" in new TestCase {
       private val function1 = FunctionSpec(
         name = "function",
