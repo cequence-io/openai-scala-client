@@ -142,6 +142,7 @@ class OpenAICountTokensServiceSpec
       "You are a helpful consultant assisting with the translation of corporate jargon into plain English."
     )
 
+    // TODO: add gpt_4_turbo_2024_04_09, gpt_4_0125_preview, gpt-4-1106-preview
     "count tokens for a system message" in new TestCase {
       checkTokensForMessageCall(
         chat(systemMessage),

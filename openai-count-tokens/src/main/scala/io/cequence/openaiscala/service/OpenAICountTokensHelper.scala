@@ -151,7 +151,7 @@ trait OpenAICountTokensHelper {
     encoding: Encoding,
     functions: Seq[FunctionSpec]
   ): Int = {
-    val promptDefinitions = OpenAIFunctionsImpl.formatFunctionDefinitions(functions)
+    val promptDefinitions = FunctionCallOpenAISerializer.formatFunctionDefinitions(functions)
     encoding.countTokens(promptDefinitions) + 9
   }
 }
