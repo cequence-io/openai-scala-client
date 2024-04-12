@@ -53,11 +53,12 @@ trait OpenAICountTokensHelper {
         // every message follows <|start|>{role/name}\n{content}<|end|>\n
         // if there's a name, the role is omitted
         (4, -1)
-      case "gpt-3.5-turbo-0613" | "gpt-3.5-turbo-16k-0613" | "gpt-4-0314" | "gpt-4-32k-0314" | "gpt-4-0613" | "gpt-4-32k-0613" =>
+      case "gpt-3.5-turbo-0613" | "gpt-3.5-turbo-16k-0613" | "gpt-4-0314" | "gpt-4-32k-0314" |
+          "gpt-4-0613" | "gpt-4-32k-0613" =>
         (3, 1)
       case "gpt-3.5-turbo" => tokensPerMessageAndName("gpt-3.5-turbo-0613")
-      case "gpt-4" => tokensPerMessageAndName("gpt-4-0613")
-      case _ =>
+      case "gpt-4"         => tokensPerMessageAndName("gpt-4-0613")
+      case _               =>
         // failover to (3, 1)
         (3, 1)
     }
@@ -71,7 +72,7 @@ trait OpenAICountTokensHelper {
 
     message match {
       case m: SystemMessage => count(m.content)
-      case m: UserMessage => count(m.content)
+      case m: UserMessage   => count(m.content)
       case m: UserSeqMessage =>
         val contents = m.content.map(Json.toJson(_)(JsonFormats.contentWrites).toString())
         count(contents: _*)
@@ -101,7 +102,7 @@ trait OpenAICountTokensHelper {
         funCallTokens + countOpt(m.content)
 
       case m: ToolMessage => count(m.tool_call_id) + countOpt(m.content)
-      case m: FunMessage => count(m.content)
+      case m: FunMessage  => count(m.content)
       case m: MessageSpec => count(m.content)
     }
   }
