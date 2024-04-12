@@ -19,6 +19,7 @@ object NonOpenAIModelId {
   val llama_v2_13b_chat = "llama-v2-13b-chat" // Fireworks AI
   val llama_2_70b_chat = "llama-2-70b-chat" // OctoML
   val llama_v2_70b_chat = "llama-v2-70b-chat" // Fireworks AI
+  val llama2_70b_4096 = "llama2-70b-4096" // Groq
   val llama2_7b_summarize = "llama2-7b-summarize" // Fireworks AI (completion)
   val llamaguard_7b = "llamaguard-7b" // OctoML
   val medllama2 = "medllama2" // Ollama
@@ -27,6 +28,7 @@ object NonOpenAIModelId {
   val mixtral_8x22b = "mixtral-8x22b" // Fireworks AI (completion API)
   val mistral_7b_instruct = "mistral-7b-instruct" // OctoML
   val mixtral_8x7b_instruct = "mixtral-8x7b-instruct" // Fireworks AI and OctoML
+  val mixtral_8x7b_32768 = "mixtral-8x7b-32768" // Groq
   val mistral_7b_instruct_4k = "mistral-7b-instruct-4k" // Fireworks AI
   val new_mixtral_chat = "new-mixtral-chat" // Fireworks AI
   val nous_hermes_2_mixtral_8x7b_dpo = "nous-hermes-2-mixtral-8x7b-dpo" // OctoML
@@ -40,7 +42,7 @@ object NonOpenAIModelId {
   val firefunction_v1 = "firefunction-v1" // Fireworks AI
   val bleat_adapter = "bleat-adapter" // Fireworks AI (completion)
   val gemma = "gemma" // Ollama
-  val gemma_7b_it = "gemma-7b-it" // Fireworks AI and OctoML
+  val gemma_7b_it = "gemma-7b-it" // Fireworks AI, OctoML, and Groq
   val smaug_72b_chat = "smaug-72b-chat" // OctoML
   val cohere_command_r_plus = "cohere-command-r-plus"
 }
