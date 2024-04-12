@@ -4,12 +4,7 @@ import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service.adapter.OpenAIServiceAdapters
-import io.cequence.openaiscala.service.{
-  OpenAIChatCompletionService,
-  OpenAIChatCompletionServiceFactory,
-  OpenAICoreService,
-  OpenAICoreServiceFactory
-}
+import io.cequence.openaiscala.service.{OpenAICoreService, OpenAICoreServiceFactory}
 
 import scala.concurrent.Future
 
