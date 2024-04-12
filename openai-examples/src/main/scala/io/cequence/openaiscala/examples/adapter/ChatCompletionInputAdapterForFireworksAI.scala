@@ -66,6 +66,7 @@ object ChatCompletionInputAdapterForFireworksAI
       ("logit_bias", _.logit_bias.nonEmpty, _.copy(logit_bias = Map[String, Int]()))
     )
 
+    // TODO: temperature cannot be lower than 0.01 or so
     notPermittedFields.foldLeft(settings) { case (acc, (fieldName, isDefined, nullifyField)) =>
       if (isDefined(acc)) {
         logger.warn(s"Field '$fieldName' is not supported by Fireworks AI. Dropping it.")

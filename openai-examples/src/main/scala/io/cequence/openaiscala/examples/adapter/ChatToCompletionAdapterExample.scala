@@ -41,9 +41,7 @@ object ChatToCompletionAdapterExample extends ExampleBase[OpenAICoreService] {
         settings = CreateChatCompletionSettings(
           model = fireworksModelPrefix + modelId,
           temperature = Some(0.1),
-          max_tokens = Some(512),
-          top_p = Some(0.9),
-          presence_penalty = Some(0)
+          max_tokens = Some(512)
         )
       )
       .map(printMessageContent)

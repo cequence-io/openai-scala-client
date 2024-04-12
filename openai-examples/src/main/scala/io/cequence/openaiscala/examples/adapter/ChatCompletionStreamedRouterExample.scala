@@ -19,6 +19,7 @@ import scala.concurrent.Future
  *   - Set the `FIREWORKS_API_KEY` environment variable.
  *   - Set the `AZURE_AI_COHERE_R_PLUS_ENDPOINT`, `AZURE_AI_COHERE_R_PLUS_REGION`, and
  *     `AZURE_AI_COHERE_R_PLUS_ACCESS_KEY` environment variables.
+ *   - Set the `GROQ_API_KEY` environment variable.
  */
 object ChatCompletionStreamedRouterExample
     extends ExampleBase[OpenAIChatCompletionStreamedServiceExtra] {
@@ -54,6 +55,12 @@ object ChatCompletionStreamedRouterExample
       accessToken = sys.env("AZURE_AI_COHERE_R_PLUS_ACCESS_KEY")
     )
 
+  // Groq
+  private val groqService = OpenAIChatCompletionServiceFactory.withStreaming(
+    coreUrl = "https://api.groq.com/openai/v1/",
+    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("GROQ_API_KEY")}"))
+  )
+
   // OpenAI
   private val openAIService = OpenAIServiceFactory.withStreaming()
 
@@ -68,7 +75,8 @@ object ChatCompletionStreamedRouterExample
           NonOpenAIModelId.claude_2_1,
           NonOpenAIModelId.claude_3_haiku_20240307
         ),
-        azureAICohereRPlusService -> Seq(NonOpenAIModelId.cohere_command_r_plus)
+        azureAICohereRPlusService -> Seq(NonOpenAIModelId.cohere_command_r_plus),
+        groqService -> Seq(NonOpenAIModelId.mixtral_8x7b_32768)
       ),
       defaultService = openAIService
     )
@@ -94,6 +102,9 @@ object ChatCompletionStreamedRouterExample
 
       // runs on Azure AI
       _ <- runChatCompletionAux(NonOpenAIModelId.cohere_command_r_plus)
+
+      // runs on Groq
+      _ <- runChatCompletionAux(NonOpenAIModelId.mixtral_8x7b_32768)
 
       // runs on OpenAI
       _ <- runChatCompletionAux(ModelId.gpt_3_5_turbo)
