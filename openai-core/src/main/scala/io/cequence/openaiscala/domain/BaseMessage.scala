@@ -15,6 +15,8 @@ final case class SystemMessage(
 ) extends BaseMessage {
   override val role = ChatRole.System
   override val nameOpt = name
+
+  def withName(name: String): SystemMessage = this.copy(name = Some(name))
 }
 
 final case class UserMessage(
@@ -27,6 +29,8 @@ final case class UserMessage(
 ) extends BaseMessage {
   override val role = ChatRole.User
   override val nameOpt = name
+
+  def withName(name: String): UserMessage = this.copy(name = Some(name))
 }
 
 final case class UserSeqMessage(
@@ -51,6 +55,8 @@ final case class AssistantMessage(
 ) extends BaseMessage {
   override val role = ChatRole.Assistant
   override val nameOpt = name
+
+  def withName(name: String): AssistantMessage = this.copy(name = Some(name))
 }
 
 final case class AssistantToolMessage(

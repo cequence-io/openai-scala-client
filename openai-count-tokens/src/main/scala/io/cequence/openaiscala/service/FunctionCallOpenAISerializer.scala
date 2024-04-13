@@ -5,9 +5,9 @@ import io.cequence.openaiscala.domain.FunctionSpec
 import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
 
-//rewritten from https://github.com/hmarr/openai-chat-tokens
+// rewritten from https://github.com/hmarr/openai-chat-tokens
 // TODO: consider using a json schema; also avoid using mutable data structures
-object OpenAIFunctionsImpl {
+object FunctionCallOpenAISerializer {
   def formatFunctionDefinitions(functions: Seq[FunctionSpec]): String = {
     val lines = ListBuffer("namespace functions {", "")
     for (f: FunctionSpec <- functions) {
@@ -31,7 +31,7 @@ object OpenAIFunctionsImpl {
     lines.mkString("\n")
   }
 
-  def formatObjectProperties(
+  private def formatObjectProperties(
     obj: Map[String, Any],
     indent: Int
   ): String = {
@@ -63,7 +63,7 @@ object OpenAIFunctionsImpl {
     lines.map(line => " " * indent + line).mkString("\n")
   }
 
-  def formatType(
+  private def formatType(
     param: Map[String, Any],
     indent: Int
   ): String = {
