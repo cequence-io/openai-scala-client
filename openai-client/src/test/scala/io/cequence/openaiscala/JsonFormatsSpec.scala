@@ -3,6 +3,7 @@ package io.cequence.openaiscala
 import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.JsonFormatsSpec.JsonPrintMode
 import io.cequence.openaiscala.JsonFormatsSpec.JsonPrintMode.{Compact, Pretty}
+import io.cequence.openaiscala.domain.response.TopLogprobInfo
 import io.cequence.openaiscala.domain.{
   AssistantTool,
   CodeInterpreterSpec,
@@ -33,6 +34,13 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
        |  }
        |}""".stripMargin
 
+  private val topLogprobInfoJson =
+    """{
+      |  "token" : "<|end|>",
+      |  "logprob" : -17.942543,
+      |  "bytes" : null
+      |}""".stripMargin
+
   "JSON Formats" should {
 
     "serialize and deserialize a code interpreter tool" in {
@@ -51,6 +59,12 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       )
     }
 
+    "deserialize a top log prob info with null bytes" in {
+      testDeserialization[TopLogprobInfo](
+        TopLogprobInfo("<|end|>", -17.942543, Nil),
+        topLogprobInfoJson
+      )
+    }
   }
 
   private def testCodec[A](
@@ -70,4 +84,12 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
     Json.parse(json).as[A] shouldBe value
   }
 
+  private def testDeserialization[A](
+    value: A,
+    json: String
+  )(
+    implicit format: Format[A]
+  ): Unit = {
+    Json.parse(json).as[A] shouldBe value
+  }
 }

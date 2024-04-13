@@ -208,8 +208,17 @@ object JsonFormats {
     }
   }
 
-  implicit val topLogprobInfoormat: Format[TopLogprobInfo] =
-    Json.format[TopLogprobInfo]
+  implicit val topLogprobInfoormat: Format[TopLogprobInfo] = {
+    val reads: Reads[TopLogprobInfo] = (
+      (__ \ "token").read[String] and
+        (__ \ "logprob").read[Double] and
+        (__ \ "bytes").read[Seq[Short]].orElse(Reads.pure(Nil))
+    )(TopLogprobInfo.apply _)
+
+    val writes: Writes[TopLogprobInfo] = Json.writes[TopLogprobInfo]
+    Format(reads, writes)
+  }
+
   implicit val logprobInfoFormat: Format[LogprobInfo] =
     Json.format[LogprobInfo]
   implicit val logprobsFormat: Format[Logprobs] =
