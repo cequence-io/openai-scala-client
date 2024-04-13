@@ -142,11 +142,14 @@ class OpenAICountTokensServiceSpec
       "You are a helpful consultant assisting with the translation of corporate jargon into plain English."
     )
 
-    // TODO: add gpt_4_turbo_2024_04_09, gpt_4_0125_preview, gpt-4-1106-preview
+    // TODO: add gpt-4-turno-2024-04-09, gpt-4-0125-preview, gpt-4-1106-preview
     "count tokens for a system message" in new TestCase {
       checkTokensForMessageCall(
         chat(systemMessage),
+        "gpt-4-turno-2024-04-09" -> 24,
+        "gpt-4-1106-preview" -> 24,
         "gpt-4-0613" -> 24,
+        "gpt-4-0125-preview" -> 24,
         "gpt-4" -> 24,
         "gpt-3.5-turbo" -> 24,
         "gpt-3.5-turbo-0301" -> 25,
@@ -157,7 +160,10 @@ class OpenAICountTokensServiceSpec
     "count tokens for a named system message" in new TestCase {
       checkTokensForMessageCall(
         chat(systemMessage.withName("James")),
+        "gpt-4-turno-2024-04-09" -> 26,
+        "gpt-4-1106-preview" -> 26,
         "gpt-4-0613" -> 26,
+        "gpt-4-0125-preview" -> 26,
         "gpt-4" -> 26,
         "gpt-3.5-turbo" -> 26,
         "gpt-3.5-turbo-0301" -> 25,
@@ -172,7 +178,10 @@ class OpenAICountTokensServiceSpec
     "count tokens for a user message" in new TestCase {
       checkTokensForMessageCall(
         chat(userMessage),
+        "gpt-4-turno-2024-04-09" -> 33,
+        "gpt-4-1106-preview" -> 33,
         "gpt-4-0613" -> 33,
+        "gpt-4-0125-preview" -> 33,
         "gpt-4" -> 33,
         "gpt-3.5-turbo" -> 33,
         "gpt-3.5-turbo-0301" -> 34,
@@ -183,7 +192,10 @@ class OpenAICountTokensServiceSpec
     "count tokens for a user message with name" in new TestCase {
       checkTokensForMessageCall(
         chat(userMessage.withName("Alice")),
+        "gpt-4-turno-2024-04-09" -> 35,
+        "gpt-4-1106-preview" -> 35,
         "gpt-4-0613" -> 35,
+        "gpt-4-0125-preview" -> 35,
         "gpt-4" -> 35,
         "gpt-3.5-turbo" -> 35,
         "gpt-3.5-turbo-0301" -> 34,
@@ -198,7 +210,10 @@ class OpenAICountTokensServiceSpec
     "count tokens for an assistant message" in new TestCase {
       checkTokensForMessageCall(
         chat(assistantMessage),
+        "gpt-4-turno-2024-04-09" -> 44,
+        "gpt-4-1106-preview" -> 44,
         "gpt-4-0613" -> 44,
+        "gpt-4-0125-preview" -> 44,
         "gpt-4" -> 44,
         "gpt-3.5-turbo" -> 44,
         "gpt-3.5-turbo-0301" -> 45,
@@ -209,7 +224,10 @@ class OpenAICountTokensServiceSpec
     "count tokens for an assistant message with name" in new TestCase {
       checkTokensForMessageCall(
         chat(assistantMessage.withName("Bob")),
+        "gpt-4-turno-2024-04-09" -> 46,
+        "gpt-4-1106-preview" -> 46,
         "gpt-4-0613" -> 46,
+        "gpt-4-0125-preview" -> 46,
         "gpt-4" -> 46,
         "gpt-3.5-turbo" -> 46,
         "gpt-3.5-turbo-0301" -> 45,
@@ -220,7 +238,10 @@ class OpenAICountTokensServiceSpec
     "count tokens of a chat with two messages" in new TestCase {
       checkTokensForMessageCall(
         chat(systemMessage, userMessage),
+        "gpt-4-turno-2024-04-09" -> 54,
+        "gpt-4-1106-preview" -> 54,
         "gpt-4-0613" -> 54,
+        "gpt-4-0125-preview" -> 54,
         "gpt-4" -> 54,
         "gpt-3.5-turbo" -> 54,
         "gpt-3.5-turbo-0301" -> 56,
@@ -231,7 +252,10 @@ class OpenAICountTokensServiceSpec
     "count tokens of a chat with two messages with names" in new TestCase {
       checkTokensForMessageCall(
         chat(systemMessage.withName("James"), userMessage.withName("Alice")),
+        "gpt-4-turno-2024-04-09" -> 58,
+        "gpt-4-1106-preview" -> 58,
         "gpt-4-0613" -> 58,
+        "gpt-4-0125-preview" -> 58,
         "gpt-4" -> 58,
         "gpt-3.5-turbo" -> 58,
         "gpt-3.5-turbo-0301" -> 56,
@@ -261,7 +285,10 @@ class OpenAICountTokensServiceSpec
     "count tokens of a chat with multiple messages" in new TestCase {
       checkTokensForMessageCall(
         openAICookbookTestCaseMessages,
+        "gpt-4-turno-2024-04-09" -> 129,
+        "gpt-4-1106-preview" -> 129,
         "gpt-4-0613" -> 129,
+        "gpt-4-0125-preview" -> 129,
         "gpt-4" -> 129,
         "gpt-3.5-turbo" -> 129,
         "gpt-3.5-turbo-0301" -> 127,
