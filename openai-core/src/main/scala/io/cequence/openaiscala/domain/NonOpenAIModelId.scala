@@ -11,7 +11,9 @@ object NonOpenAIModelId {
   val claude_2_0 = "claude-2.0"
   val claude_instant_1_2 = "claude-instant-1.2"
 
-  // Llama2
+  // Llama2/3
+  val llama_v3_70b_instruct = "llama-v3-70b-instruct" // Fireworks AI
+  val llama_v3_8b_instruct = "llama-v3-8b-instruct" // Fireworks AI
   val llama2 = "llama2" // Ollama
   val llama_2_7b_chat = "llama-2-7b-chat"
   val llama_v2_7b_chat = "llama-v2-7b-chat" // Fireworks AI
@@ -26,7 +28,11 @@ object NonOpenAIModelId {
 
   // Mistral
   val mixtral_8x22b = "mixtral-8x22b" // Fireworks AI and OctML (completion API)
+  @Deprecated
   val mixtral_8x22b_instruct_preview = "mixtral-8x22b-instruct-preview" // Fireworks AI
+  val mixtral_8x22b_instruct = "mixtral-8x22b-instruct" // Fireworks AI and OctoML
+  val mixtral_8x22b_hf = "mixtral-8x22b-hf" // Fireworks AI
+  val mixtral_8x22b_instruct_hf = "mixtral-8x22b-instruct-hf" // Fireworks AI
   val mixtral_8x22b_finetuned = "mixtral-8x22b-finetuned" // OctoML
   val mistral_7b_instruct = "mistral-7b-instruct" // OctoML
   val mixtral_8x7b_instruct = "mixtral-8x7b-instruct" // Fireworks AI and OctoML
