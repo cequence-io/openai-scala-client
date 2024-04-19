@@ -46,10 +46,10 @@ object ChatCompletionRouterAdapterExample extends ExampleBase[OpenAIService] {
     OpenAIServiceAdapters.forFullService.chatCompletionRouter(
       // OpenAI service is default so no need to specify its models here
       serviceModels = Map(
-        octoMLService -> Seq(NonOpenAIModelId.mixtral_8x7b_instruct),
+        octoMLService -> Seq(NonOpenAIModelId.mixtral_8x22b_instruct),
         ollamaService -> Seq(NonOpenAIModelId.llama2),
         fireworksService -> Seq(
-          fireworksModelPrefix + NonOpenAIModelId.mixtral_8x7b_instruct,
+          fireworksModelPrefix + NonOpenAIModelId.llama_v3_8b_instruct,
           fireworksModelPrefix + NonOpenAIModelId.drbx_instruct
         ),
         anthropicService -> Seq(
@@ -69,13 +69,13 @@ object ChatCompletionRouterAdapterExample extends ExampleBase[OpenAIService] {
   override protected def run: Future[_] =
     for {
       // runs on OctoML
-      _ <- runChatCompletionAux(NonOpenAIModelId.mixtral_8x7b_instruct)
+      _ <- runChatCompletionAux(NonOpenAIModelId.mixtral_8x22b_instruct)
 
       // runs on Ollama
       _ <- runChatCompletionAux(NonOpenAIModelId.llama2)
 
       // runs on Fireworks AI
-      _ <- runChatCompletionAux(fireworksModelPrefix + NonOpenAIModelId.mixtral_8x7b_instruct)
+      _ <- runChatCompletionAux(fireworksModelPrefix + NonOpenAIModelId.llama_v3_8b_instruct)
 
       // runs on Fireworks AI
       _ <- runChatCompletionAux(fireworksModelPrefix + NonOpenAIModelId.drbx_instruct)

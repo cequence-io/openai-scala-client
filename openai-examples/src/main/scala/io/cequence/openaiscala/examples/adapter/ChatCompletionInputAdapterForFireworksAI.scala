@@ -26,7 +26,7 @@ object ChatCompletionInputAdapterForFireworksAI
     authHeaders = Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
   )
 
-  private val modelId = NonOpenAIModelId.gemma_7b_it
+  private val modelId = NonOpenAIModelId.mixtral_8x22b_instruct // or gemma_7b_it which also doesn't support system messages
 
   // gemma-7b-it model doesn't support system messages so we need to convert them to user ones
   private val handleSystemMessages = (messages: Seq[BaseMessage]) => {

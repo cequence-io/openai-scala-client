@@ -29,7 +29,8 @@ object FireworksAICreateChatCompletion extends ExampleBase[OpenAIChatCompletionS
     UserMessage("What is the weather like in Norway?")
   )
 
-  private val modelId = NonOpenAIModelId.llama_v2_13b_chat
+  // note that for e.g. mixtral_8x22b_instruct we need an adapter to convert system messages
+  private val modelId = NonOpenAIModelId.llama_v3_8b_instruct
 
   override protected def run: Future[_] =
     service
