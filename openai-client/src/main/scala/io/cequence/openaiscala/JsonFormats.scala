@@ -270,7 +270,8 @@ object JsonFormats {
   }
 
   implicit val fineTuneMetricsFormat: Format[Metrics] = Json.format[Metrics]
-  implicit val fineTuneCheckpointFormat: Format[FineTuneCheckpoint] = Json.format[FineTuneCheckpoint]
+  implicit val fineTuneCheckpointFormat: Format[FineTuneCheckpoint] =
+    Json.format[FineTuneCheckpoint]
 
   implicit val eitherIntStringFormat: Format[Either[Int, String]] =
     JsonUtil.eitherFormat[Int, String]
@@ -278,17 +279,15 @@ object JsonFormats {
     Json.format[FineTuneHyperparams]
   implicit val fineTuneErrorFormat: Format[FineTuneError] = Json.format[FineTuneError]
 
-
-
   implicit val fineTuneIntegrationFormat: Format[FineTune.Integration] = {
     val typeDiscriminatorKey = "type"
-    implicit val weightsAndBiasesIntegrationFormat: Format[WeightsAndBiases] = Json.format[WeightsAndBiases]
+    implicit val weightsAndBiasesIntegrationFormat: Format[WeightsAndBiases] =
+      Json.format[WeightsAndBiases]
 
     Format[FineTune.Integration](
       (json: JsValue) => {
-        (json \ typeDiscriminatorKey).validate[String].flatMap {
-          case "wandb" =>
-            (json \ "wandb").validate[WeightsAndBiases](weightsAndBiasesIntegrationFormat)
+        (json \ typeDiscriminatorKey).validate[String].flatMap { case "wandb" =>
+          (json \ "wandb").validate[WeightsAndBiases](weightsAndBiasesIntegrationFormat)
         }
       },
       { (integration: FineTune.Integration) =>
@@ -300,7 +299,9 @@ object JsonFormats {
         }
         integration match {
           case integration: WeightsAndBiases =>
-            commonJson ++ JsObject(Seq("wandb" -> weightsAndBiasesIntegrationFormat.writes(integration)))
+            commonJson ++ JsObject(
+              Seq("wandb" -> weightsAndBiasesIntegrationFormat.writes(integration))
+            )
         }
       }
     )

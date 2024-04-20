@@ -450,22 +450,23 @@ trait OpenAIService extends OpenAICoreService {
     limit: Option[Int] = None
   ): Future[Option[Seq[FineTuneEvent]]]
 
-    /**
-     * List checkpoints for a fine-tuning job.
-     *
-     * @param fineTuneId
-     *   The ID of the fine-tune job to get checkpoints for.
-   *   @param after
-     *   Identifier for the last checkpoint ID from the previous pagination request.
-     * @param limit
-     *   Number of checkpoints to retrieve.
-     * @return
-     *   A list of fine-tuning checkpoint objects for a fine-tuning job.
-     *
-     * @see
-     *   <a href="https://platform.openai.com/docs/api-reference/fine-tuning/list-checkpoints">OpenAI
-     *   Doc</a>
-     */
+  /**
+   * List checkpoints for a fine-tuning job.
+   *
+   * @param fineTuneId
+   *   The ID of the fine-tune job to get checkpoints for.
+   * @param after
+   *   Identifier for the last checkpoint ID from the previous pagination request.
+   * @param limit
+   *   Number of checkpoints to retrieve.
+   * @return
+   *   A list of fine-tuning checkpoint objects for a fine-tuning job.
+   *
+   * @see
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/fine-tuning/list-checkpoints">OpenAI
+   *   Doc</a>
+   */
   def listFineTuneCheckpoints(
     // FIXME: using fineTuneId to be consistent, however, it shall be fineTuningJobId
     fineTuneId: String,
