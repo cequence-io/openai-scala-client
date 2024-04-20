@@ -184,6 +184,14 @@ trait OpenAIServiceWrapper
     _.listFineTuneEvents(fineTuneId, after, limit)
   )
 
+  override def listFineTuneCheckpoints(
+    fineTuneId: String,
+    after: Option[String],
+    limit: Option[Int]
+  ): Future[Option[Seq[FineTuneCheckpoint]]] = wrap(
+    _.listFineTuneCheckpoints(fineTuneId, after, limit)
+  )
+
   override def deleteFineTuneModel(
     modelId: String
   ): Future[DeleteResponse] = wrap(

@@ -335,7 +335,10 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
             )
           } else
             None
-        }
+        },
+        Param.integrations -> (if (settings.integrations.nonEmpty) Some(settings.integrations)
+                               else None),
+        Param.seed -> settings.seed
       )
     ).map(
       _.asSafe[FineTuneJob]
@@ -381,12 +384,29 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
       endPointParam = Some(s"$fineTuneId/events"),
       params = Seq(
         Param.after -> after,
-        Param.limit -> limit,
-        Param.stream -> Some(false) // TODO: is streaming still supported?
+        Param.limit -> limit
       )
     ).map { response =>
       handleNotFoundAndError(response).map(jsResponse =>
         readAttribute(jsResponse, "data").asSafeArray[FineTuneEvent]
+      )
+    }
+
+  override def listFineTuneCheckpoints(
+    fineTuneId: String,
+    after: Option[String],
+    limit: Option[Int]
+  ): Future[Option[Seq[FineTuneCheckpoint]]] =
+    execGETWithStatus(
+      EndPoint.fine_tunes,
+      endPointParam = Some(s"$fineTuneId/checkpoints"),
+      params = Seq(
+        Param.after -> after,
+        Param.limit -> limit
+      )
+    ).map { response =>
+      handleNotFoundAndError(response).map(jsResponse =>
+        readAttribute(jsResponse, "data").asSafeArray[FineTuneCheckpoint]
       )
     }
 
