@@ -288,7 +288,8 @@ object JsonFormats {
     Format[FineTune.Integration](
       (json: JsValue) => {
         (json \ typeDiscriminatorKey).validate[String].flatMap { case `weightsAndBiasesType` =>
-          (json \ weightsAndBiasesType).validate[WeightsAndBiases](weightsAndBiasesIntegrationFormat)
+          (json \ weightsAndBiasesType)
+            .validate[WeightsAndBiases](weightsAndBiasesIntegrationFormat)
         }
       },
       { (integration: FineTune.Integration) =>
@@ -301,7 +302,9 @@ object JsonFormats {
         integration match {
           case integration: WeightsAndBiases =>
             commonJson ++ JsObject(
-              Seq(weightsAndBiasesType -> weightsAndBiasesIntegrationFormat.writes(integration))
+              Seq(
+                weightsAndBiasesType -> weightsAndBiasesIntegrationFormat.writes(integration)
+              )
             )
         }
       }
