@@ -281,26 +281,27 @@ object JsonFormats {
 
   implicit val fineTuneIntegrationFormat: Format[FineTune.Integration] = {
     val typeDiscriminatorKey = "type"
+    val weightsAndBiasesType = "wandb"
     implicit val weightsAndBiasesIntegrationFormat: Format[WeightsAndBiases] =
       Json.format[WeightsAndBiases]
 
     Format[FineTune.Integration](
       (json: JsValue) => {
-        (json \ typeDiscriminatorKey).validate[String].flatMap { case "wandb" =>
-          (json \ "wandb").validate[WeightsAndBiases](weightsAndBiasesIntegrationFormat)
+        (json \ typeDiscriminatorKey).validate[String].flatMap { case `weightsAndBiasesType` =>
+          (json \ weightsAndBiasesType).validate[WeightsAndBiases](weightsAndBiasesIntegrationFormat)
         }
       },
       { (integration: FineTune.Integration) =>
         val commonJson = Json.obj {
           val discriminatorValue = integration match {
-            case _: WeightsAndBiases => "wandb"
+            case _: WeightsAndBiases => weightsAndBiasesType
           }
           typeDiscriminatorKey -> discriminatorValue
         }
         integration match {
           case integration: WeightsAndBiases =>
             commonJson ++ JsObject(
-              Seq("wandb" -> weightsAndBiasesIntegrationFormat.writes(integration))
+              Seq(weightsAndBiasesType -> weightsAndBiasesIntegrationFormat.writes(integration))
             )
         }
       }
