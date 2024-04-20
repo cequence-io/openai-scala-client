@@ -8,6 +8,7 @@ import io.cequence.openaiscala.domain.response._
 import play.api.libs.functional.syntax._
 import play.api.libs.json.{Format, Json, _}
 import Json.toJson
+import io.cequence.openaiscala.domain.FineTune.WeightsAndBiases
 
 object JsonFormats {
   private implicit val dateFormat: Format[ju.Date] = JsonUtil.SecDateFormat
@@ -268,11 +269,43 @@ object JsonFormats {
     Json.format[FineTuneEvent]
   }
 
+  implicit val fineTuneMetricsFormat: Format[Metrics] = Json.format[Metrics]
+  implicit val fineTuneCheckpointFormat: Format[FineTuneCheckpoint] = Json.format[FineTuneCheckpoint]
+
   implicit val eitherIntStringFormat: Format[Either[Int, String]] =
     JsonUtil.eitherFormat[Int, String]
   implicit val fineTuneHyperparamsFormat: Format[FineTuneHyperparams] =
     Json.format[FineTuneHyperparams]
   implicit val fineTuneErrorFormat: Format[FineTuneError] = Json.format[FineTuneError]
+
+
+
+  implicit val fineTuneIntegrationFormat: Format[FineTune.Integration] = {
+    val typeDiscriminatorKey = "type"
+    implicit val weightsAndBiasesIntegrationFormat: Format[WeightsAndBiases] = Json.format[WeightsAndBiases]
+
+    Format[FineTune.Integration](
+      (json: JsValue) => {
+        (json \ typeDiscriminatorKey).validate[String].flatMap {
+          case "wandb" =>
+            (json \ "wandb").validate[WeightsAndBiases](weightsAndBiasesIntegrationFormat)
+        }
+      },
+      { (integration: FineTune.Integration) =>
+        val commonJson = Json.obj {
+          val discriminatorValue = integration match {
+            case _: WeightsAndBiases => "wandb"
+          }
+          typeDiscriminatorKey -> discriminatorValue
+        }
+        integration match {
+          case integration: WeightsAndBiases =>
+            commonJson ++ JsObject(Seq("wandb" -> weightsAndBiasesIntegrationFormat.writes(integration)))
+        }
+      }
+    )
+  }
+
   implicit val fineTuneFormat: Format[FineTuneJob] = Json.format[FineTuneJob]
 
   // somehow ModerationCategories.unapply is not working in Scala3
