@@ -11,9 +11,9 @@ import io.cequence.openaiscala.domain.{
   FunctionSpec,
   RetrievalSpec
 }
-import org.scalatest.Ignore
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
+import org.scalatest.Ignore
 import play.api.libs.json.{Format, Json}
 
 object JsonFormatsSpec {
