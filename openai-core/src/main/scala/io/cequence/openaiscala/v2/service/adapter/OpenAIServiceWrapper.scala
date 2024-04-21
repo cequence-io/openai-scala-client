@@ -195,9 +195,10 @@ trait OpenAIServiceWrapper
 
   override def createThread(
     messages: Seq[ThreadMessage],
+    toolResources: Seq[AssistantToolResource] = Nil,
     metadata: Map[String, String]
   ): Future[Thread] = wrap(
-    _.createThread(messages, metadata)
+    _.createThread(messages, toolResources, metadata)
   )
 
   override def retrieveThread(

@@ -1,5 +1,7 @@
 package io.cequence.openaiscala.v2.domain
 
+import io.cequence.openaiscala.domain.EnumValue
+
 import java.{util => ju}
 
 case class ThreadFullMessage(

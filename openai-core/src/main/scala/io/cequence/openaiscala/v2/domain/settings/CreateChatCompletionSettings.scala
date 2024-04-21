@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.v2.domain.settings
 
-import io.cequence.openaiscala.v2.domain.EnumValue
+import io.cequence.openaiscala.domain.EnumValue
 
 case class CreateChatCompletionSettings(
   // ID of the model to use. Currently, only gpt-3.5-turbo and gpt-3.5-turbo-0301 are supported.

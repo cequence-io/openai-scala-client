@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.v2.domain.settings
 
-import io.cequence.openaiscala.v2.domain.EnumValue
+import io.cequence.openaiscala.domain.EnumValue
 
 case class CreateTranscriptionSettings(
   // ID of the model to use. Only whisper-1 is currently available.
