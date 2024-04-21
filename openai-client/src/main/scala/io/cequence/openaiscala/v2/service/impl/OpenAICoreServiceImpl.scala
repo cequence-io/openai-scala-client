@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.v2.service.impl
 
-import io.cequence.openaiscala.JsonFormats._
+import io.cequence.openaiscala.v2.JsonFormats._
 import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.v2.domain.response._

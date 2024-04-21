@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.v2.service.impl
 
-import io.cequence.openaiscala.v2.domain.{EnumValue, NamedEnumValue}
+import io.cequence.openaiscala.domain.{EnumValue, NamedEnumValue}
 
 sealed abstract class EndPoint(value: String = "") extends NamedEnumValue(value)
 
