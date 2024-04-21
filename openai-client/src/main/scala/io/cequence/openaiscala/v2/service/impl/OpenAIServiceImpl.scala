@@ -402,6 +402,7 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
 
   override def createThread(
     messages: Seq[ThreadMessage],
+    toolResources: Seq[AssistantToolResource] = Nil,
     metadata: Map[String, String]
   ): Future[Thread] =
     execPOST(
@@ -412,11 +413,8 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
             Some(messages.map(Json.toJson(_)(threadMessageFormat)))
           else None
         ),
-        Param.metadata -> (
-          if (metadata.nonEmpty)
-            Some(metadata)
-          else None
-        )
+        Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None),
+        Param.tool_resources -> (if (toolResources.nonEmpty) Some(toolResources) else None)
       )
     ).map(
       _.asSafe[Thread]
