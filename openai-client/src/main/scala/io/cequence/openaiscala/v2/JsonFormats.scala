@@ -368,6 +368,11 @@ object JsonFormats {
 
   implicit val assistantIdFormat: Format[AssistantId] = Json.valueFormat[AssistantId]
 
+  implicit val assistantToolResource: Format[AssistantToolResource] = {
+
+    Json.format[AssistantToolResource]
+  }
+
   implicit val assistantFormat: Format[Assistant] = Json.format[Assistant]
 
 }

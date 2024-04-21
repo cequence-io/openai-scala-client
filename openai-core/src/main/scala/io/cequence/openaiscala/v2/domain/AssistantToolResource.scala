@@ -1,6 +1,4 @@
-package io.cequence.openaiscala.v2.domain.response
-
-import io.cequence.openaiscala.v2.domain.FileId
+package io.cequence.openaiscala.v2.domain
 
 sealed trait AssistantToolResource
 

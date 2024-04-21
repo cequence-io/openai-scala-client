@@ -7,19 +7,7 @@ import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.v2.domain.response._
 import io.cequence.openaiscala.v2.domain.settings._
-import io.cequence.openaiscala.v2.domain.{
-  AssistantTool,
-  BaseMessage,
-  ChatRole,
-  FunctionSpec,
-  Pagination,
-  SortOrder,
-  Thread,
-  ThreadFullMessage,
-  ThreadMessage,
-  ThreadMessageFile,
-  ToolSpec
-}
+import io.cequence.openaiscala.v2.domain.{AssistantTool, AssistantToolResource, BaseMessage, ChatRole, FunctionSpec, Pagination, SortOrder, Thread, ThreadFullMessage, ThreadMessage, ThreadMessageFile, ToolSpec}
 import io.cequence.openaiscala.v2.service.OpenAIService
 import play.api.libs.json.{JsObject, JsValue, Json}
 
@@ -573,7 +561,7 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
     description: Option[String],
     instructions: Option[String],
     tools: Seq[AssistantTool],
-    fileIds: Seq[String],
+    toolResources: Seq[AssistantToolResource] = Seq.empty[AssistantToolResource],
     metadata: Map[String, String]
   ): Future[Assistant] = {
     execPOST(
@@ -584,7 +572,7 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
         Param.description -> Some(description),
         Param.instructions -> Some(instructions),
         Param.tools -> Some(Json.toJson(tools)),
-        Param.file_ids -> (if (fileIds.nonEmpty) Some(fileIds) else None),
+        Param.tool_resources -> (if (toolResources.nonEmpty) Some(toolResources) else None),
         Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
       )
     ).map(_.asSafe[Assistant])
