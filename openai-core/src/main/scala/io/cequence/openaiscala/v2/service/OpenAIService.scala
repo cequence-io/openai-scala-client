@@ -6,7 +6,6 @@ import io.cequence.openaiscala.v2.domain.response._
 import io.cequence.openaiscala.v2.domain.settings._
 import io.cequence.openaiscala.v2.domain.{
   AssistantTool,
-  AssistantToolResource,
   BaseMessage,
   ChatRole,
   FunctionSpec,
@@ -746,8 +745,7 @@ trait OpenAIService extends OpenAICoreService {
     description: Option[String] = None,
     instructions: Option[String] = None,
     tools: Seq[AssistantTool] = Seq.empty[AssistantTool],
-    tool_resources: Seq[AssistantToolResource] = Seq.empty[AssistantToolResource],
-    fileIds: Seq[String] = Seq.empty,
+    toolResources: Seq[AssistantToolResource] = Seq.empty[AssistantToolResource],
     metadata: Map[String, String] = Map.empty
   ): Future[Assistant]
 

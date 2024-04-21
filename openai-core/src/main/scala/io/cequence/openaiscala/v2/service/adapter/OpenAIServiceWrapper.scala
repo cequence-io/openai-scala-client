@@ -270,15 +270,15 @@ trait OpenAIServiceWrapper
   )
 
   override def createAssistant(
-    model: String,
-    name: Option[String],
-    description: Option[String],
-    instructions: Option[String],
-    tools: Seq[AssistantTool],
-    fileIds: Seq[String],
-    metadata: Map[String, String]
+                                model: String,
+                                name: Option[String] = None,
+                                description: Option[String] = None,
+                                instructions: Option[String] = None,
+                                tools: Seq[AssistantTool] = Seq.empty[AssistantTool],
+                                toolResources: Seq[AssistantToolResource] = Seq.empty[AssistantToolResource],
+                                metadata: Map[String, String] = Map.empty
   ): Future[Assistant] = wrap(
-    _.createAssistant(model, name, description, instructions, tools, fileIds, metadata)
+    _.createAssistant(model, name, description, instructions, tools, toolResources, metadata)
   )
 
   override def createAssistantFile(
