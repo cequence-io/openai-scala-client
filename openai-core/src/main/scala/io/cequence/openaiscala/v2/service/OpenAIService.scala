@@ -750,24 +750,6 @@ trait OpenAIService extends OpenAICoreService {
   ): Future[Assistant]
 
   /**
-   * Create an assistant file by attaching a File to an assistant.
-   *
-   * @param assistantId
-   *   The ID of the assistant for which to create a File.
-   * @param fileId
-   *   A File ID (with purpose="assistants") that the assistant should use. Useful for tools
-   *   like `retrieval` and `code_interpreter` that can access files.
-   * @see
-   *   <a
-   *   href="https://platform.openai.com/docs/api-reference/assistants/createAssistantFile">OpenAI
-   *   Doc</a>
-   */
-  def createAssistantFile(
-    assistantId: String,
-    fileId: String
-  ): Future[AssistantFile]
-
-  /**
    * Returns a list of assistants.
    *
    * @param limit
@@ -797,37 +779,6 @@ trait OpenAIService extends OpenAICoreService {
   ): Future[Seq[Assistant]]
 
   /**
-   * Returns a list of assistant files.
-   *
-   * @param assistantId
-   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
-   *   the default is 20.
-   * @param limit
-   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
-   *   for descending order.
-   * @param order
-   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
-   *   for descending order.
-   * @param after
-   *   A cursor for use in pagination. after is an object ID that defines your place in the
-   *   list. For instance, if you make a list request and receive 100 objects, ending with
-   *   `obj_foo`, your subsequent call can include `after=obj_foo` in order to fetch the next
-   *   page of the list.
-   * @param before
-   *   A cursor for use in pagination. before is an object ID that defines your place in the
-   *   list. For instance, if you make a list request and receive 100 objects, ending with
-   *   `obj_foo`, your subsequent call can include `before=obj_foo` in order to fetch the
-   *   previous page of the list. <a
-   *   href="https://platform.openai.com/docs/api-reference/assistants/listAssistantFiles">OpenAI
-   *   Doc</a>
-   */
-  def listAssistantFiles(
-    assistantId: String,
-    pagination: Pagination = Pagination.default,
-    order: Option[SortOrder] = None
-  ): Future[Seq[AssistantFile]]
-
-  /**
    * Retrieves an assistant.
    *
    * @param assistantId
@@ -836,21 +787,6 @@ trait OpenAIService extends OpenAICoreService {
    *   Doc</a>
    */
   def retrieveAssistant(assistantId: String): Future[Option[Assistant]]
-
-  /**
-   * Retrieves an AssistantFile.
-   *
-   * @param assistantId
-   *   The ID of the assistant who the file belongs to.
-   * @param fileId
-   *   The ID of the file we're getting. <a
-   *   href="https://platform.openai.com/docs/api-reference/assistants/retrieveAssistantFile">OpenAI
-   *   Doc</a>
-   */
-  def retrieveAssistantFile(
-    assistantId: String,
-    fileId: String
-  ): Future[Option[AssistantFile]]
 
   /**
    * Modifies an assistant.

@@ -281,14 +281,6 @@ trait OpenAIServiceWrapper
     _.createAssistant(model, name, description, instructions, tools, toolResources, metadata)
   )
 
-  override def createAssistantFile(
-    assistantId: String,
-    fileId: String
-  ): Future[AssistantFile] =
-    wrap(
-      _.createAssistantFile(assistantId, fileId)
-    )
-
   override def listAssistants(
     pagination: Pagination,
     order: Option[SortOrder]
@@ -297,23 +289,8 @@ trait OpenAIServiceWrapper
       _.listAssistants(pagination, order)
     )
 
-  override def listAssistantFiles(
-    assistantId: String,
-    pagination: Pagination,
-    order: Option[SortOrder]
-  ): Future[Seq[AssistantFile]] =
-    wrap(
-      _.listAssistantFiles(assistantId, pagination, order)
-    )
-
   override def retrieveAssistant(assistantId: String): Future[Option[Assistant]] =
     wrap(_.retrieveAssistant(assistantId))
-
-  override def retrieveAssistantFile(
-    assistantId: String,
-    fileId: String
-  ): Future[Option[AssistantFile]] =
-    wrap(_.retrieveAssistantFile(assistantId, fileId))
 
   override def modifyAssistant(
     assistantId: String,
