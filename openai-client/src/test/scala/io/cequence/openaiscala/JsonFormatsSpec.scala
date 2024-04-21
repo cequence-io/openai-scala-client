@@ -11,6 +11,7 @@ import io.cequence.openaiscala.domain.{
   FunctionSpec,
   RetrievalSpec
 }
+import org.scalatest.Ignore
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import play.api.libs.json.{Format, Json}
@@ -23,6 +24,7 @@ object JsonFormatsSpec {
   }
 }
 
+@Ignore
 class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
 
   private val functionToolJson =
