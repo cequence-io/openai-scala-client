@@ -76,7 +76,7 @@ object ChatCompletionStreamedRouterExample
           NonOpenAIModelId.claude_3_haiku_20240307
         ),
         azureAICohereRPlusService -> Seq(NonOpenAIModelId.cohere_command_r_plus),
-        groqService -> Seq(NonOpenAIModelId.mixtral_8x7b_32768)
+        groqService -> Seq(NonOpenAIModelId.llama3_70b_8192)
       ),
       defaultService = openAIService
     )
@@ -104,7 +104,7 @@ object ChatCompletionStreamedRouterExample
       _ <- runChatCompletionAux(NonOpenAIModelId.cohere_command_r_plus)
 
       // runs on Groq
-      _ <- runChatCompletionAux(NonOpenAIModelId.mixtral_8x7b_32768)
+      _ <- runChatCompletionAux(NonOpenAIModelId.llama3_70b_8192)
 
       // runs on OpenAI
       _ <- runChatCompletionAux(ModelId.gpt_3_5_turbo)

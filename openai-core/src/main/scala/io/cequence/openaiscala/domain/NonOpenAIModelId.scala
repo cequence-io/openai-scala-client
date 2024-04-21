@@ -12,8 +12,10 @@ object NonOpenAIModelId {
   val claude_instant_1_2 = "claude-instant-1.2"
 
   // Llama2/3
-  val llama_v3_70b_instruct = "llama-v3-70b-instruct" // Fireworks AI
   val llama_v3_8b_instruct = "llama-v3-8b-instruct" // Fireworks AI
+  val llama3_8b_8192 = "llama3-8b-8192" // Groq
+  val llama_v3_70b_instruct = "llama-v3-70b-instruct" // Fireworks AI
+  val llama3_70b_8192 = "llama3-70b-8192" // Groq
   val llama2 = "llama2" // Ollama
   val llama_2_7b_chat = "llama-2-7b-chat"
   val llama_v2_7b_chat = "llama-v2-7b-chat" // Fireworks AI
