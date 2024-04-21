@@ -1,5 +1,7 @@
 package io.cequence.openaiscala.domain.response
 
+import io.cequence.openaiscala.domain.FineTune
+
 import java.{util => ju}
 
 case class FineTuneJob(
@@ -15,6 +17,7 @@ case class FineTuneJob(
   fine_tuned_model: Option[String],
   // the organization that owns the fine-tuning job.
   organization_id: String,
+  // TODO: create an enum type for status
   // the current status of the fine-tuning job, which can be either validating_files, queued, running, succeeded, failed, or cancelled.
   status: String,
   // the file ID used for training. You can retrieve the training data with the Files API.
@@ -28,7 +31,11 @@ case class FineTuneJob(
   // For fine-tuning jobs that have failed, this will contain more information on the cause of the failure.
   error: Option[FineTuneError],
   // the hyperparameters used for the fine-tuning job. See the fine-tuning guide for more details.
-  hyperparameters: FineTuneHyperparams
+  hyperparameters: FineTuneHyperparams,
+  // A list of integrations to enable for this fine-tuning job.
+  integrations: Option[Seq[FineTune.Integration]],
+  // The seed used for the fine-tuning job.
+  seed: Int
 ) {
   @Deprecated
   def updated_at = finished_at
@@ -42,6 +49,32 @@ case class FineTuneEvent(
   level: String,
   message: String,
   data: Option[Map[String, Any]]
+)
+
+// The fine_tuning.job.checkpoint object represents a model checkpoint for a fine-tuning job that is ready to use.
+case class FineTuneCheckpoint(
+  // The checkpoint identifier, which can be referenced in the API endpoints.
+  id: String,
+  // The Unix timestamp (in seconds) for when the checkpoint was created.
+  created_at: ju.Date,
+  // The name of the fine-tuned checkpoint model that is created.
+  fine_tuned_model_checkpoint: String,
+  // The step number that the checkpoint was created at.
+  step_number: Long,
+  // Metrics at the step number during the fine-tuning job.
+  metrics: Metrics,
+  // The name of the fine-tuning job that this checkpoint was created from.
+  fine_tuning_job_id: String
+)
+
+final case class Metrics(
+  step: Long,
+  train_loss: Double,
+  train_mean_token_accuracy: Double,
+  valid_loss: Double,
+  valid_mean_token_accuracy: Double,
+  full_valid_loss: Double,
+  full_valid_mean_token_accuracy: Double
 )
 
 case class FineTuneHyperparams(

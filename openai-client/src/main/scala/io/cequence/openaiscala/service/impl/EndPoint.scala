@@ -59,6 +59,7 @@ object Param {
   case object n_epochs extends Param
   case object batch_size extends Param
   case object learning_rate_multiplier extends Param
+  case object integrations extends Param
   @Deprecated
   case object prompt_loss_weight extends Param
   @Deprecated
