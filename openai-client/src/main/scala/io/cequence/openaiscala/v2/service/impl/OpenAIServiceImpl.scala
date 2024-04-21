@@ -2,7 +2,7 @@ package io.cequence.openaiscala.v2.service.impl
 
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import io.cequence.openaiscala.JsonFormats._
+import io.cequence.openaiscala.v2.JsonFormats._
 import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.v2.domain.response._
@@ -590,19 +590,6 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
     ).map(_.asSafe[Assistant])
   }
 
-  override def createAssistantFile(
-    assistantId: String,
-    fileId: String
-  ): Future[AssistantFile] = {
-    execPOST(
-      EndPoint.assistants,
-      endPointParam = Some(s"$assistantId/files"),
-      bodyParams = jsonBodyParams(
-        Param.file_id -> Some(fileId)
-      )
-    ).map(_.asSafe[AssistantFile])
-  }
-
   override def listAssistants(
     pagination: Pagination = Pagination.default,
     order: Option[SortOrder]
@@ -615,36 +602,12 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
     }
   }
 
-  override def listAssistantFiles(
-    assistantId: String,
-    pagination: Pagination = Pagination.default,
-    order: Option[SortOrder]
-  ): Future[Seq[AssistantFile]] =
-    execGET(
-      EndPoint.assistants,
-      endPointParam = Some(s"$assistantId/files"),
-      params = paginationParams(pagination) :+ Param.order -> order
-    ).map { response =>
-      readAttribute(response, "data").asSafeArray[AssistantFile]
-    }
-
   override def retrieveAssistant(assistantId: String): Future[Option[Assistant]] =
     execGETWithStatus(
       EndPoint.assistants,
       Some(assistantId)
     ).map { response =>
       handleNotFoundAndError(response).map(_.asSafe[Assistant])
-    }
-
-  override def retrieveAssistantFile(
-    assistantId: String,
-    fileId: String
-  ): Future[Option[AssistantFile]] =
-    execGETWithStatus(
-      EndPoint.assistants,
-      Some(s"$assistantId/files/$fileId")
-    ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafe[AssistantFile])
     }
 
   override def modifyAssistant(
