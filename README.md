@@ -22,12 +22,12 @@ Note that in order to be consistent with the OpenAI API naming, the service func
 Also, we aimed the lib to be self-contained with the fewest dependencies possible therefore we ended up using only two libs `play-ahc-ws-standalone` and `play-ws-standalone-json` (at the top level). Additionally, if dependency injection is required we use `scala-guice` lib as well.  
 
 (🔥 **New**) In addition to the OpenAI API, this library also supports "API-compatible" providers such as:
-- [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) - API-based, utilizes OpenAI models but with lower latency
-- [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) - API-based, offers a vast selection of open-source models
-- [Anthropic](https://www.anthropic.com/api) - API-based, a major competitor to OpenAI, features proprietary/closed-source models such as Claude3 - Haiku, Sonnet, and Opus
-- [Groq](https://wow.groq.com/) - API-based, known for its super-fast inference with LPUs
-- [Fireworks](https://fireworks.ai/) - API-based
-- [OctoAI](https://octo.ai/) - API-based
+- [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) - cloud-based, utilizes OpenAI models but with lower latency
+- [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) - cloud-based, offers a vast selection of open-source models
+- [Anthropic](https://www.anthropic.com/api) - cloud-based, a major competitor to OpenAI, features proprietary/closed-source models such as Claude3 - Haiku, Sonnet, and Opus
+- [Groq](https://wow.groq.com/) - cloud-based, known for its super-fast inference with LPUs
+- [Fireworks](https://fireworks.ai/) - cloud-based
+- [OctoAI](https://octo.ai/) - cloud-based
 - [Ollama](https://ollama.com/) - runs locally, serves as an umbrella for open-source LLMs including LLaMA3, dbrx, and Command-R
 - [FastChat](https://github.com/lm-sys/FastChat) - runs locally, serves as an umbrella for open-source LLMs such as Vicuna, Alpaca, LLaMA2, and FastChat-T5
 
