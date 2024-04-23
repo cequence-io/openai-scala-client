@@ -110,6 +110,7 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts {
    *   The API version to use for this operation. This follows the YYYY-MM-DD format. Supported
    *   versions: 2023-03-15-preview, 2022-12-01, 2023-05-15, and 2023-06-01-preview
    */
+  @Deprecated
   def forAzureWithAccessToken(
     resourceName: String,
     deploymentId: String,

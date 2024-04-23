@@ -21,17 +21,21 @@ This is a no-nonsense async Scala client for OpenAI API supporting all the avail
 Note that in order to be consistent with the OpenAI API naming, the service function names match exactly the API endpoint titles/descriptions with camelcase.
 Also, we aimed the lib to be self-contained with the fewest dependencies possible therefore we ended up using only two libs `play-ahc-ws-standalone` and `play-ws-standalone-json` (at the top level). Additionally, if dependency injection is required we use `scala-guice` lib as well.  
 
+---
+
 (🔥 **New**) In addition to the OpenAI API, this library also supports "API-compatible" providers such as:
 - [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) - cloud-based, utilizes OpenAI models but with lower latency
 - [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) - cloud-based, offers a vast selection of open-source models
 - [Anthropic](https://www.anthropic.com/api) - cloud-based, a major competitor to OpenAI, features proprietary/closed-source models such as Claude3 - Haiku, Sonnet, and Opus
 - [Groq](https://wow.groq.com/) - cloud-based, known for its super-fast inference with LPUs
-- [Fireworks](https://fireworks.ai/) - cloud-based
+- [Fireworks AI](https://fireworks.ai/) - cloud-based
 - [OctoAI](https://octo.ai/) - cloud-based
 - [Ollama](https://ollama.com/) - runs locally, serves as an umbrella for open-source LLMs including LLaMA3, dbrx, and Command-R
 - [FastChat](https://github.com/lm-sys/FastChat) - runs locally, serves as an umbrella for open-source LLMs such as Vicuna, Alpaca, LLaMA2, and FastChat-T5
 
 See [examples](https://github.com/cequence-io/openai-scala-client/tree/master/openai-examples/src/main/scala/io/cequence/openaiscala/examples/nonopenai) for more details.
+
+---
 
 👉 For background information read an article about the lib/client on [Medium](https://medium.com/@0xbnd/openai-scala-client-is-out-d7577de934ad).
 
@@ -99,13 +103,7 @@ Then you can obtain a service in one of the following ways.
   )
 ```
 
-- Minimal `OpenAICoreService` supporting `listModels`, `createCompletion`, `createChatCompletion`, and `createEmbeddings` calls - e.g. [FastChat](https://github.com/lm-sys/FastChat) service running on the port 8000
-
-```scala
-  val service = OpenAICoreServiceFactory("http://localhost:8000/v1/")
-```
-
-- For Azure with API Key
+- For **Azure** with API Key
 
 ```scala
   val service = OpenAIServiceFactory.forAzureWithApiKey(
@@ -116,22 +114,87 @@ Then you can obtain a service in one of the following ways.
   )
 ```
 
-- For Azure with Access Token
+- Minimal `OpenAICoreService` supporting `listModels`, `createCompletion`, `createChatCompletion`, and `createEmbeddings` calls - provided e.g. by [FastChat](https://github.com/lm-sys/FastChat) service running on the port 8000
 
 ```scala
-  val service = OpenAIServiceFactory.forAzureWithAccessToken(
-    resourceName = "your-resource-name",
-    deploymentId = "your-deployment-id", // usually model name such as "gpt-35-turbo"
-    apiVersion = "2023-05-15",           // newest version
-    accessToken = "your_access_token"
+  val service = OpenAICoreServiceFactory("http://localhost:8000/v1/")
+```
+
+-  `OpenAIChatCompletionService` providing solely `createChatCompletion`
+
+1. [Groq](https://wow.groq.com/)
+```scala
+  val service = OpenAIChatCompletionServiceFactory(
+    coreUrl = "https://api.groq.com/openai/v1/",
+    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("GROQ_API_KEY")}"))
   )
 ```
 
-**✔️ Important**: If you want streaming support use `OpenAIServiceStreamedFactory` or `OpenAICoreServiceStreamedFactory` from `openai-scala-client-stream` lib instead of `OpenAIServiceFactory` (in the three examples above). Three additional functions - `createCompletionStreamed`, `createChatCompletionStreamed`, and `listFineTuneEventsStreamed` (deprecated) provided by [OpenAIServiceStreamedExtra](./openai-client-stream/src/main/scala/io/cequence/openaiscala/service/OpenAIServiceStreamedExtra.scala) will be then available.
-🔥 **New**: Note that it is now possible to use a streamed service also with a non-OpenAI provider e.g. as:
+2. [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) - e.g. Cohere R+ model
+```scala
+  val service = OpenAIChatCompletionServiceFactory.forAzureAI(
+    endpoint = sys.env("AZURE_AI_COHERE_R_PLUS_ENDPOINT"),
+    region = sys.env("AZURE_AI_COHERE_R_PLUS_REGION"),
+    accessToken = sys.env("AZURE_AI_COHERE_R_PLUS_ACCESS_KEY")
+  )
+```
+
+3. [Anthropic](https://www.anthropic.com/api) (requires our `openai-anthropic-client` lib)
+```scala
+  val service = AnthropicServiceFactory.asOpenAI()
+```
+
+4. [Fireworks AI](https://fireworks.ai/)
+```scala
+  val service = OpenAIChatCompletionServiceFactory(
+    coreUrl = "https://api.fireworks.ai/inference/v1/",
+    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
+  )
+```
+
+5. [Octo AI](https://octo.ai/)
+```scala
+  val service = OpenAIChatCompletionServiceFactory(
+    coreUrl = "https://text.octoai.run/v1/",
+    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
+  )
+```
+
+6. [Ollama](https://ollama.com/)
+```scala
+  val service = OpenAIChatCompletionServiceFactory(
+    coreUrl = "http://localhost:11434/v1/"
+  )
+```
+
+- Services with additional streaming support - `createCompletionStreamed` and `createChatCompletionStreamed` provided by [OpenAIStreamedServiceExtra](./openai-client-stream/src/main/scala/io/cequence/openaiscala/service/OpenAIStreamedServiceExtra.scala) (requires `openai-scala-client-stream` lib)
 
 ```scala
-  val service = OpenAICoreServiceStreamedFactory.customInstance("http://localhost:8000/v1/")
+  import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIStreamedService
+  import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
+
+  val service: OpenAIStreamedService = OpenAIServiceFactory.withStreaming()
+```
+
+for similarly for a chat-completion service
+
+```scala
+  import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
+
+  val service = OpenAIChatCompletionServiceFactory.withStreaming(
+    coreUrl = "https://api.fireworks.ai/inference/v1/",
+    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
+  )
+```
+
+or if only streaming is required
+
+```scala
+  val service: OpenAIChatCompletionStreamedServiceExtra =
+    OpenAIChatCompletionStreamedServiceFactory(
+      coreUrl = "https://api.fireworks.ai/inference/v1/",
+      authHeaders = Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
+   )
 ```
 
 - Via dependency injection (requires `openai-scala-guice` lib)
@@ -139,6 +202,8 @@ Then you can obtain a service in one of the following ways.
 ```scala
   class MyClass @Inject() (openAIService: OpenAIService) {...}
 ```
+
+---
 
 **II. Calling functions**
 
@@ -191,7 +256,7 @@ Examples:
   service.createCompletion(
     text,
     settings = CreateCompletionSettings(
-      model = ModelId.text_davinci_001,
+      model = ModelId.gpt_3_5_turbo_16k,
       max_tokens = Some(1500),
       temperature = Some(0.9),
       presence_penalty = Some(0.2),
@@ -200,23 +265,6 @@ Examples:
   ).map(completion =>
     println(completion.choices.head.text)
   )
-```
-
-- 🔥 **New**: Count used tokens before calling `createChatCompletions` or `createChatFunCompletions`, this help you select proper model ex. `gpt-3.5-turbo` or `gpt-3.5-turbo-16k` and reduce costs. This is an experimental feature and it may not work for all models.
-
-```scala
-import io.cequence.openaiscala.service.OpenAICountTokensHelper
-import io.cequence.openaiscala.domain.{ChatRole, FunMessageSpec, FunctionSpec}
-
-class MyCompletionService extends OpenAICountTokensHelper {
-  def exec = {
-    val messages: Seq[FunMessageSpec] = ??? // messages to be sent to OpenAI
-    val function: FunctionSpec = ??? // function to be called
-
-    val tokens = countFunMessageTokens(messages, List(function), Some(function.name))
-  }
-}
-
 ```
 
 - Create completion with streaming and a custom setting
@@ -265,11 +313,12 @@ For this to work you need to use `OpenAIServiceStreamedFactory` from `openai-sca
 
 ```scala
   val messages = Seq(
-    FunMessageSpec(role = ChatRole.User, content = Some("What's the weather like in Boston?")),
+    SystemMessage("You are a helpful assistant."),
+    UserMessage("What's the weather like in San Francisco, Tokyo, and Paris?")
   )
 
   // as a param type we can use "number", "string", "boolean", "object", "array", and "null"
-  val functions = Seq(
+  val tools = Seq(
     FunctionSpec(
       name = "get_current_weather",
       description = Some("Get the current weather in a given location"),
@@ -278,38 +327,62 @@ For this to work you need to use `OpenAIServiceStreamedFactory` from `openai-sca
         "properties" -> Map(
           "location" -> Map(
             "type" -> "string",
-            "description" -> "The city and state, e.g. San Francisco, CA",
+            "description" -> "The city and state, e.g. San Francisco, CA"
           ),
           "unit" -> Map(
             "type" -> "string",
             "enum" -> Seq("celsius", "fahrenheit")
           )
         ),
-        "required" -> Seq("location"),
+        "required" -> Seq("location")
       )
     )
   )
 
   // if we want to force the model to use the above function as a response
-  // we can do so by passing: responseFunctionName = Some("get_current_weather")`
-  service.createChatFunCompletion(
+  // we can do so by passing: responseToolChoice = Some("get_current_weather")`
+  service.createChatToolCompletion(
     messages = messages,
-    functions = functions,
-    responseFunctionName = None
+    tools = tools,
+    responseToolChoice = None, // means "auto"
+    settings = CreateChatCompletionSettings(ModelId.gpt_3_5_turbo_1106)
   ).map { response =>
     val chatFunCompletionMessage = response.choices.head.message
-    val functionCall = chatFunCompletionMessage.function_call
+    val toolCalls = chatFunCompletionMessage.tool_calls.collect {
+      case (id, x: FunctionCallSpec) => (id, x)
+    }
 
-    println("function call name      : " + functionCall.map(_.name).getOrElse("N/A"))
-    println("function call arguments : " + functionCall.map(_.arguments).getOrElse("N/A"))
+    println(
+      "tool call ids                : " + toolCalls.map(_._1).mkString(", ")
+    )
+    println(
+      "function/tool call names     : " + toolCalls.map(_._2.name).mkString(", ")
+    )
+    println(
+      "function/tool call arguments : " + toolCalls.map(_._2.arguments).mkString(", ")
+    )
   }
 ```
-Note that instead of `MessageSpec`, the `function_call` version of the chat completion uses the `FunMessageSpec` class to define messages - both as part of the request and the response.
-This extension of the standard chat completion is currently supported by the following `0613` models, all conveniently available in `ModelId` object:
-- `gpt-3.5-turbo-0613` (default), `gpt-3.5-turbo-16k-0613`, `gpt-4-0613`, and `gpt-4-32k-0613`.
 
+- 🔥 **New**: Count expected used tokens before calling `createChatCompletions` or `createChatFunCompletions`, this help you select proper model ex. `gpt-3.5-turbo` or `gpt-3.5-turbo-16k` and reduce costs. This is an experimental feature and it may not work for all models. Requires `openai-scala-count-tokens` lib.
 
-**✔️ Important Note**: After you are done using the service, you should close it by calling `service.close`. Otherwise, the underlying resources/threads won't be released.
+```scala
+import io.cequence.openaiscala.service.OpenAICountTokensHelper
+import io.cequence.openaiscala.domain.{ChatRole, FunMessageSpec, FunctionSpec}
+
+class MyCompletionService extends OpenAICountTokensHelper {
+  def exec = {
+    val messages: Seq[FunMessageSpec] = ??? // messages to be sent to OpenAI
+    val function: FunctionSpec = ??? // function to be called
+
+    val tokens = countFunMessageTokens(model, messages, Seq(function), Some(function.name))
+  }
+}
+```
+
+**✔️ Important**: After you are done using the service, you should close it by calling `service.close`. Otherwise, the underlying resources/threads won't be released.
+
+---
 
 **III. Using multiple services**
 
