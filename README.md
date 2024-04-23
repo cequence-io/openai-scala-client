@@ -33,7 +33,7 @@ Also, we aimed the lib to be self-contained with the fewest dependencies possibl
 - [Ollama](https://ollama.com/) - runs locally, serves as an umbrella for open-source LLMs including LLaMA3, dbrx, and Command-R
 - [FastChat](https://github.com/lm-sys/FastChat) - runs locally, serves as an umbrella for open-source LLMs such as Vicuna, Alpaca, LLaMA2, and FastChat-T5
 
-See [examples](https://github.com/cequence-io/openai-scala-client/tree/master/openai-examples/src/main/scala/io/cequence/openaiscala/examples/nonopenai) for more details.
+See [examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/nonopenai) for more details.
 
 ---
 
@@ -176,7 +176,7 @@ Then you can obtain a service in one of the following ways.
   val service: OpenAIStreamedService = OpenAIServiceFactory.withStreaming()
 ```
 
-for similarly for a chat-completion service
+similarly for a chat-completion service
 
 ```scala
   import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
@@ -187,7 +187,7 @@ for similarly for a chat-completion service
   )
 ```
 
-or if only streaming is required
+or only if streaming is required
 
 ```scala
   val service: OpenAIChatCompletionStreamedServiceExtra =
@@ -208,9 +208,8 @@ or if only streaming is required
 **II. Calling functions**
 
 Full documentation of each call with its respective inputs and settings is provided in [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala). Since all the calls are async they return responses wrapped in `Future`.
-🔥 **New**: There is a new project [openai-scala-client-examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples) where you can find a lot of ready-to-use examples!
 
-Examples:
+🔥 **New**: There is a new project [openai-scala-client-examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples) where you can find a lot of ready-to-use examples!
 
 - List models
 
@@ -384,50 +383,63 @@ class MyCompletionService extends OpenAICountTokensHelper {
 
 ---
 
-**III. Using multiple services**
+**III. Using adapters**
 
-- Load distribution with `OpenAIMultiServiceAdapter` - _round robin_ (_rotation_) type
+Adapters for OpenAI services (chat completion, core, or full) are provided by [OpenAIServiceAdapters](./openai-core/src/main/scala/io/cequence/openaiscala/service/adapter/OpenAIServiceAdapters). The adapters are used to distribute the load between multiple services, retry on transient errors, route, or provide additional functionality. See [examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/adapter) for more details.
+Note that adapters can be arbitrarily combined/stacked.
+
+- **Round robin** load distribution 
 
 ```scala
+  val adapters = OpenAIServiceAdapters.forFullService
+
   val service1 = OpenAIServiceFactory("your-api-key1")
   val service2 = OpenAIServiceFactory("your-api-key2")
-  val service3 = OpenAIServiceFactory("your-api-key3")
 
-  val service = OpenAIMultiServiceAdapter.ofRoundRobinType(service1, service2, service3)
-
-  service.listModels.map { models =>
-    models.foreach(println)
-    service.close()
-  }
+  val service = adapters.roundRobin(service1, service2)
 ```
 
-- Load distribution with `OpenAIMultiServiceAdapter` - _random order_ type
+- **Random order** load distribution
 
 ```scala
+  val adapters = OpenAIServiceAdapters.forFullService
+
   val service1 = OpenAIServiceFactory("your-api-key1")
   val service2 = OpenAIServiceFactory("your-api-key2")
-  val service3 = OpenAIServiceFactory("your-api-key3")
 
-  val service = OpenAIMultiServiceAdapter.ofRandomOrderType(service1, service2, service3)
-
-  service.listModels.map { models =>
-    models.foreach(println)
-    service.close()
-  }
+  val service = adapters.randomOrder(service1, service2)
 ```
 
-- Create completion and retry on transient errors (e.g. rate limit error)
+- **Logging** function calls
+
 ```scala
-import akka.actor.{ActorSystem, Scheduler}
-import io.cequence.openaiscala.RetryHelpers
-import io.cequence.openaiscala.RetryHelpers.RetrySettings
-import io.cequence.openaiscala.domain.{ChatRole, MessageSpec}
-import io.cequence.openaiscala.service.{OpenAIService, OpenAIServiceFactory}
+  val adapters = OpenAIServiceAdapters.forFullService
 
-import javax.inject.Inject
-import scala.concurrent.duration.DurationInt
-import scala.concurrent.{ExecutionContext, Future}
+  val rawService = OpenAIServiceFactory()
+  
+  val service = adapters.log(
+    rawService,
+    "openAIService",
+    logger.log
+  )
+```
 
+- **Retry** on transient errors (e.g. rate limit error)
+
+```scala
+  val adapters = OpenAIServiceAdapters.forFullService
+
+  implicit val retrySettings: RetrySettings = RetrySettings(maxRetries = 10).constantInterval(10.seconds)
+
+  val service = adapters.retry(
+    OpenAIServiceFactory(),
+    Some(println(_)) // simple logging
+  )
+```
+
+- **Retry** on a specific function using [RetryHelpers](./openai-core/src/main/scala/io/cequence/openaiscala/RetryHelpers.scala) directly
+ 
+```scala
 class MyCompletionService @Inject() (
   val actorSystem: ActorSystem,
   implicit val ec: ExecutionContext,
@@ -449,20 +461,50 @@ class MyCompletionService @Inject() (
 }
 ```
 
-- Retries with `OpenAIRetryServiceAdapter`
+- **Route** chat completion calls based on models
 
 ```scala
-  val serviceAux = ... // your service
+  val adapters = OpenAIServiceAdapters.forFullService
 
-  implicit val retrySettings: RetrySettings = 
-    RetrySettings(maxRetries = 10).constantInterval(10.seconds)
-  // wrap it with the retry adapter
-  val service = OpenAIRetryServiceAdapter(serviceAux)
+  // OctoAI
+  val octoMLService = OpenAIChatCompletionServiceFactory(
+    coreUrl = "https://text.octoai.run/v1/",
+    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
+  )
 
-  service.listModels.map { models =>
-    models.foreach(println)
-    service.close
-  }
+
+  // Anthropic
+  val anthropicService = AnthropicServiceFactory.asOpenAI()
+
+  // OpenAI
+  val openAIService = OpenAIServiceFactory()
+
+  val service: OpenAIService =
+    adapters.chatCompletionRouter(
+      // OpenAI service is default so no need to specify its models here
+      serviceModels = Map(
+        octoMLService -> Seq(NonOpenAIModelId.mixtral_8x22b_instruct),
+        anthropicService -> Seq(
+          NonOpenAIModelId.claude_2_1,
+          NonOpenAIModelId.claude_3_opus_20240229,
+          NonOpenAIModelId.claude_3_haiku_20240307
+        )
+      ),
+      openAIService
+    )
+```
+
+- **Chat-to-completion** adapter
+
+```scala
+    val adapters = OpenAIServiceAdapters.forCoreService
+
+    val service = adapters.chatToCompletion(
+      OpenAICoreServiceFactory(
+        coreUrl = "https://api.fireworks.ai/inference/v1/",
+        authHeaders = Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
+      )
+    )
 ```
 
 ## FAQ 🤔
