@@ -1,7 +1,7 @@
 # OpenAI Scala Client 🤖
 [![version](https://img.shields.io/badge/version-1.0.0.RC.1-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT) ![GitHub Stars](https://img.shields.io/github/stars/cequence-io/openai-scala-client?style=social) [![Twitter Follow](https://img.shields.io/twitter/follow/0xbnd?style=social)](https://twitter.com/0xbnd) ![GitHub CI](https://github.com/cequence-io/openai-scala-client/actions/workflows/continuous-integration.yml/badge.svg)
 
-This is a no-nonsense async Scala client for OpenAI API supporting all the available endpoints and params **including streaming**, the newest **ChatGPT completion**, **vision**, and **voice routines** (as defined [here](https://beta.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala). The supported calls are: 
+This is a no-nonsense async Scala client for OpenAI API supporting all the available endpoints and params **including streaming**, the newest **chat completion**, **vision**, and **voice routines** (as defined [here](https://beta.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala). The supported calls are: 
 
 * **Models**: [listModels](https://platform.openai.com/docs/api-reference/models/list), and [retrieveModel](https://platform.openai.com/docs/api-reference/models/retrieve)
 * **Completions**: [createCompletion](https://platform.openai.com/docs/api-reference/completions/create)
@@ -23,7 +23,7 @@ Also, we aimed the lib to be self-contained with the fewest dependencies possibl
 
 ---
 
-(🔥 **New**) In addition to the OpenAI API, this library also supports "API-compatible" providers such as:
+(🔥 **New**) In addition to the OpenAI API, this library also supports API-compatible providers such as:
 - [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) - cloud-based, utilizes OpenAI models but with lower latency
 - [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) - cloud-based, offers a vast selection of open-source models
 - [Anthropic](https://www.anthropic.com/api) - cloud-based, a major competitor to OpenAI, features proprietary/closed-source models such as Claude3 - Haiku, Sonnet, and Opus
@@ -31,7 +31,7 @@ Also, we aimed the lib to be self-contained with the fewest dependencies possibl
 - [Fireworks AI](https://fireworks.ai/) - cloud-based
 - [OctoAI](https://octo.ai/) - cloud-based
 - [Ollama](https://ollama.com/) - runs locally, serves as an umbrella for open-source LLMs including LLaMA3, dbrx, and Command-R
-- [FastChat](https://github.com/lm-sys/FastChat) - runs locally, serves as an umbrella for open-source LLMs such as Vicuna, Alpaca, LLaMA2, and FastChat-T5
+- [FastChat](https://github.com/lm-sys/FastChat) - runs locally, serves as an umbrella for open-source LLMs such as Vicuna, Alpaca, and FastChat-T5
 
 See [examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/nonopenai) for more details.
 
@@ -39,7 +39,7 @@ See [examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples
 
 👉 For background information read an article about the lib/client on [Medium](https://medium.com/@0xbnd/openai-scala-client-is-out-d7577de934ad).
 
-Try out also our [Scala client for Pinecone vector database](https://github.com/cequence-io/pinecone-scala), or use both clients together! [This demo project](https://github.com/cequence-io/pinecone-openai-scala-demo) shows how to generate and store OpenAI embeddings (with `text-embedding-ada-002` model) into Pinecone and query them afterward. The OpenAI + Pinecone combo is commonly used for autonomous AI agents, such as [babyAGI](https://github.com/yoheinakajima/babyagi) and [AutoGPT](https://github.com/Significant-Gravitas/Auto-GPT).
+Also try out our [Scala client for Pinecone vector database](https://github.com/cequence-io/pinecone-scala), or use both clients together! [This demo project](https://github.com/cequence-io/pinecone-openai-scala-demo) shows how to generate and store OpenAI embeddings (with `text-embedding-ada-002` model) into Pinecone and query them afterward. The OpenAI + Pinecone combo is commonly used for autonomous AI agents, such as [babyAGI](https://github.com/yoheinakajima/babyagi) and [AutoGPT](https://github.com/Significant-Gravitas/Auto-GPT).
 
 **✔️ Important**: this is a "community-maintained" library and, as such, has no relation to OpenAI company.
 
@@ -47,7 +47,7 @@ Try out also our [Scala client for Pinecone vector database](https://github.com/
 
 The currently supported Scala versions are **2.12, 2.13**, and **3**.  
 
-To pull the library you have to add the following dependency to your *build.sbt*
+To install the library, add the following dependency to your *build.sbt*
 
 ```
 "io.cequence" %% "openai-scala-client" % "1.0.0.RC.1"
@@ -63,7 +63,7 @@ or to *pom.xml* (if you use maven)
 </dependency>
 ```
 
-If you want a streaming support use `"io.cequence" %% "openai-scala-client-stream" % "1.0.0.RC.1"` instead.
+If you want streaming support, use `"io.cequence" %% "openai-scala-client-stream" % "1.0.0.RC.1"` instead.
 
 ## Config ⚙️
 
@@ -385,8 +385,9 @@ class MyCompletionService extends OpenAICountTokensHelper {
 
 **III. Using adapters**
 
-Adapters for OpenAI services (chat completion, core, or full) are provided by [OpenAIServiceAdapters](./openai-core/src/main/scala/io/cequence/openaiscala/service/adapter/OpenAIServiceAdapters). The adapters are used to distribute the load between multiple services, retry on transient errors, route, or provide additional functionality. See [examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/adapter) for more details.
-Note that adapters can be arbitrarily combined/stacked.
+Adapters for OpenAI services (chat completion, core, or full) are provided by [OpenAIServiceAdapters](./openai-core/src/main/scala/io/cequence/openaiscala/service/adapter/OpenAIServiceAdapters.scala). The adapters are used to distribute the load between multiple services, retry on transient errors, route, or provide additional functionality. See [examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/adapter) for more details.
+
+Note that the adapters can be arbitrarily combined/stacked.
 
 - **Round robin** load distribution 
 
