@@ -38,12 +38,15 @@ import scala.concurrent.Future
  *   - '''Audio''': createAudioTranscription, createAudioTranslation, and createAudioSpeech
  *   - '''Files''': listFiles, uploadFile, deleteFile, retrieveFile, and retrieveFileContent
  *   - '''Fine-tunes''': createFineTune, listFineTunes, retrieveFineTune, cancelFineTune,
- *     listFineTuneEvents, and deleteFineTuneModel
+ *     listFineTuneEvents, listFineTuneCheckpoints, and deleteFineTuneModel
  *   - '''Moderations''': createModeration
  *   - '''Threads''': createThread, retrieveThread, modifyThread, and deleteThread
  *   - '''Thread Messages''': createThreadMessage, retrieveThreadMessage, modifyThreadMessage,
  *     listThreadMessages, retrieveThreadMessageFile, and listThreadMessageFiles
- *
+ *   - '''Assistants''': createAssistant, listAssistants, retrieveAssistant, modifyAssistant,
+ *     and deleteAssistant
+ *   - '''Assistant Files''': createAssistantFile, listAssistantFiles, retrieveAssistantFile,
+ *     and deleteAssistantFile
  * @since Jan
  *   2023
  */
