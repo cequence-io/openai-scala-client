@@ -27,16 +27,25 @@ or to *pom.xml* (if you use maven)
 
 ## Usage
 
+An example how to count message tokens:
 ```scala
-import io.cequence.openaiscala.service.OpenAICountTokensHelper
-import io.cequence.openaiscala.domain.{ChatRole, FunMessageSpec, FunctionSpec}
+import io.cequence.openaiscala.domain.{AssistantMessage, BaseMessage, FunctionSpec, ModelId, SystemMessage, UserMessage}
 
-val messages: Seq[FunMessageSpec] = ??? // messages to be sent to OpenAI
-val function: FunctionSpec = ??? // function to be called
+class MyCompletionService extends OpenAICountTokensHelper {
+  def exec = {
+    val model = ModelId.gpt_4_turbo_2024_04_09
 
-val service = new OpenAICountTokensService()
+    // messages to be sent to OpenAI
+    val messages: Seq[BaseMessage] = Seq(
+      SystemMessage("You are a helpful assistant."),
+      UserMessage("Who won the world series in 2020?"),
+      AssistantMessage("The Los Angeles Dodgers won the World Series in 2020."),
+      UserMessage("Where was it played?"),
+    )
 
-val tokens = service.countFunMessageTokens(messages, List(function), Some(function.name))
+    val tokens = countMessageTokens(model, messages)
+  }
+}
 ```
 
 
