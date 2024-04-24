@@ -365,24 +365,57 @@ For this to work you need to use `OpenAIServiceStreamedFactory` from `openai-sca
 
 - 🔥 **New**: Count expected used tokens before calling `createChatCompletions` or `createChatFunCompletions`, this helps you select proper model ex. `gpt-3.5-turbo` or `gpt-3.5-turbo-16k` and reduce costs. This is an experimental feature and it may not work for all models. Requires `openai-scala-count-tokens` lib.
 
+An example how to count message tokens:
+```scala
+import io.cequence.openaiscala.domain.{AssistantMessage, BaseMessage, FunctionSpec, ModelId, SystemMessage, UserMessage}
+
+class MyCompletionService extends OpenAICountTokensHelper {
+  def exec = {
+    val model = ModelId.gpt_4_turbo_2024_04_09
+
+    // messages to be sent to OpenAI
+    val messages: Seq[BaseMessage] = Seq(
+      SystemMessage("You are a helpful assistant."),
+      UserMessage("Who won the world series in 2020?"),
+      AssistantMessage("The Los Angeles Dodgers won the World Series in 2020."),
+      UserMessage("Where was it played?"),
+    )
+
+    val tokens = countMessageTokens(model, messages)
+  }
+}
+```
+
+An example how to count message tokens when a function is involved:
 ```scala
 import io.cequence.openaiscala.service.OpenAICountTokensHelper
 import io.cequence.openaiscala.domain.{ChatRole, FunMessageSpec, FunctionSpec}
 
+// TODO: simpler example
+import io.cequence.openaiscala.domain.{BaseMessage, FunctionSpec, ModelId, SystemMessage, UserMessage}
+
 class MyCompletionService extends OpenAICountTokensHelper {
   def exec = {
-    val messages: Seq[FunMessageSpec] = ??? // messages to be sent to OpenAI
+    val model = ModelId.gpt_4_turbo_2024_04_09
+    
+    // messages to be sent to OpenAI
+    val messages: Seq[BaseMessage] = 
+     Seq(
+       SystemMessage("You are a helpful assistant."),
+       UserMessage("What's the weather like in San Francisco, Tokyo, and Paris?")
+     )
+     
     // function to be called
     val function: FunctionSpec = FunctionSpec(
       name = "getWeather",
       parameters = Map(
         "type" -> "object",
-        "properties" -> ListMap(
-          "location" -> ListMap(
+        "properties" -> Map(
+          "location" -> Map(
             "type" -> "string",
             "description" -> "The city to get the weather for"
           ),
-          "unit" -> ListMap("type" -> "string", "enum" -> List("celsius", "fahrenheit"))
+          "unit" -> Map("type" -> "string", "enum" -> List("celsius", "fahrenheit"))
         )
       )
     )
