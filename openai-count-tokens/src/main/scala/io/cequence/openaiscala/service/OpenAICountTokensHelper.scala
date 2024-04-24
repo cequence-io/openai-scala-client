@@ -53,12 +53,12 @@ trait OpenAICountTokensHelper {
         // every message follows <|start|>{role/name}\n{content}<|end|>\n
         // if there's a name, the role is omitted
         (4, -1)
-      case ModelId.gpt_3_5_turbo_0613 | ModelId.gpt_3_5_turbo_16k_0613 | ModelId.gpt_4_0314 | ModelId.gpt_4_32k_0314 |
-          ModelId.gpt_4_0613 | ModelId.gpt_4_32k_0613 =>
+      case ModelId.gpt_3_5_turbo_0613 | ModelId.gpt_3_5_turbo_16k_0613 | ModelId.gpt_4_0314 |
+          ModelId.gpt_4_32k_0314 | ModelId.gpt_4_0613 | ModelId.gpt_4_32k_0613 =>
         (3, 1)
       case ModelId.gpt_3_5_turbo => tokensPerMessageAndName(ModelId.gpt_3_5_turbo_0613)
       case ModelId.gpt_4         => tokensPerMessageAndName(ModelId.gpt_4_0613)
-      case _               =>
+      case _                     =>
         // failover to (3, 1)
         (3, 1)
     }
