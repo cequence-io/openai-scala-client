@@ -4,7 +4,7 @@ import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.cequence.openaiscala.v2.domain.response._
 import io.cequence.openaiscala.v2.domain.settings._
-import io.cequence.openaiscala.v2.domain.{AssistantTool, AssistantToolResource, BaseMessage, ChatRole, FunctionSpec, Pagination, SortOrder, Thread, ThreadFullMessage, ThreadMessage, ThreadMessageFile, ToolSpec}
+import io.cequence.openaiscala.v2.domain.{AssistantTool, AssistantToolResource, Attachment, BaseMessage, ChatRole, FunctionSpec, Pagination, SortOrder, Thread, ThreadFullMessage, ThreadMessage, ThreadMessageFile, ToolSpec}
 
 import java.io.File
 import scala.concurrent.Future
@@ -546,14 +546,12 @@ trait OpenAIService extends OpenAICoreService {
    *
    * @param threadId
    *   The ID of the thread to create a message for.
-   * @param role
-   *   The role of the entity that is creating the message. Currently only user is supported.
    * @param content
    *   The content of the message.
-   * @param fileIds
-   *   A list of File IDs that the message should use. There can be a maximum of 10 files
-   *   attached to a message. Useful for tools like retrieval and code_interpreter that can
-   *   access and use files.
+   * @param role
+   *   The role of the entity that is creating the message. Currently only user is supported.
+   * @param attachments
+   *   A list of files attached to the message, and the tools they should be added to.
    * @param metadata
    *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
    *   storing additional information about the object in a structured format. Keys can be a
@@ -568,7 +566,7 @@ trait OpenAIService extends OpenAICoreService {
     threadId: String,
     content: String,
     role: ChatRole = ChatRole.User,
-    fileIds: Seq[String] = Nil,
+    attachments: Seq[Attachment],
     metadata: Map[String, String] = Map()
   ): Future[ThreadFullMessage]
 

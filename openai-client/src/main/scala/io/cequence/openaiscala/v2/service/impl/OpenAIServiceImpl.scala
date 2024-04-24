@@ -7,7 +7,7 @@ import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.v2.domain.response._
 import io.cequence.openaiscala.v2.domain.settings._
-import io.cequence.openaiscala.v2.domain.{AssistantTool, AssistantToolResource, BaseMessage, ChatRole, FunctionSpec, Pagination, SortOrder, Thread, ThreadFullMessage, ThreadMessage, ThreadMessageFile, ToolSpec}
+import io.cequence.openaiscala.v2.domain.{AssistantTool, AssistantToolResource, Attachment, BaseMessage, ChatRole, FunctionSpec, Pagination, SortOrder, Thread, ThreadFullMessage, ThreadMessage, ThreadMessageFile, ToolSpec}
 import io.cequence.openaiscala.v2.service.OpenAIService
 import play.api.libs.json.{JsObject, JsValue, Json}
 
@@ -460,7 +460,7 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
     threadId: String,
     content: String,
     role: ChatRole,
-    fileIds: Seq[String] = Nil,
+    attachments: Seq[Attachment],
     metadata: Map[String, String] = Map()
   ): Future[ThreadFullMessage] =
     execPOST(
@@ -469,9 +469,9 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
       bodyParams = jsonBodyParams(
         Param.role -> Some(role.toString),
         Param.content -> Some(content),
-        Param.file_ids -> (
-          if (fileIds.nonEmpty)
-            Some(fileIds)
+        Param.attachments -> (
+          if (attachments.nonEmpty)
+            Some(attachments)
           else None
         ),
         Param.metadata -> (

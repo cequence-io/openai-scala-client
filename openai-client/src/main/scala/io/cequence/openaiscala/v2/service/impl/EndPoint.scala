@@ -88,6 +88,7 @@ object Param {
   case object file_id extends Param
   case object file_ids extends Param
   case object tool_resources extends Param
+  case object attachments extends Param
   case object order extends Param
   case object before extends Param
   case object top_logprobs extends Param

@@ -224,10 +224,10 @@ trait OpenAIServiceWrapper
     threadId: String,
     content: String,
     role: ChatRole,
-    fileIds: Seq[String],
+    attachments: Seq[Attachment],
     metadata: Map[String, String]
   ): Future[ThreadFullMessage] = wrap(
-    _.createThreadMessage(threadId, content, role, fileIds, metadata)
+    _.createThreadMessage(threadId, content, role, attachments, metadata)
   )
 
   override def retrieveThreadMessage(
