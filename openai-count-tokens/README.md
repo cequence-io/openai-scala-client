@@ -43,12 +43,10 @@ class MyCompletionService extends OpenAICountTokensHelper {
       UserMessage("Where was it played?"),
     )
 
-    val tokens = countMessageTokens(model, messages)
+    val tokenCount = countMessageTokens(model, messages)
   }
 }
 ```
-
-
 
 ## Development and testing
 

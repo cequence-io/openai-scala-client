@@ -367,6 +367,7 @@ For this to work you need to use `OpenAIServiceStreamedFactory` from `openai-sca
 
 An example how to count message tokens:
 ```scala
+import io.cequence.openaiscala.service.OpenAICountTokensHelper
 import io.cequence.openaiscala.domain.{AssistantMessage, BaseMessage, FunctionSpec, ModelId, SystemMessage, UserMessage}
 
 class MyCompletionService extends OpenAICountTokensHelper {
@@ -381,7 +382,7 @@ class MyCompletionService extends OpenAICountTokensHelper {
       UserMessage("Where was it played?"),
     )
 
-    val tokens = countMessageTokens(model, messages)
+    val tokenCount = countMessageTokens(model, messages)
   }
 }
 ```
@@ -389,9 +390,6 @@ class MyCompletionService extends OpenAICountTokensHelper {
 An example how to count message tokens when a function is involved:
 ```scala
 import io.cequence.openaiscala.service.OpenAICountTokensHelper
-import io.cequence.openaiscala.domain.{ChatRole, FunMessageSpec, FunctionSpec}
-
-// TODO: simpler example
 import io.cequence.openaiscala.domain.{BaseMessage, FunctionSpec, ModelId, SystemMessage, UserMessage}
 
 class MyCompletionService extends OpenAICountTokensHelper {
@@ -420,7 +418,7 @@ class MyCompletionService extends OpenAICountTokensHelper {
       )
     )
 
-    val tokens = countFunMessageTokens(model, messages, Seq(function), Some(function.name))
+    val tokenCount = countFunMessageTokens(model, messages, Seq(function), Some(function.name))
   }
 }
 ```
