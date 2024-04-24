@@ -363,7 +363,7 @@ For this to work you need to use `OpenAIServiceStreamedFactory` from `openai-sca
   }
 ```
 
-- 🔥 **New**: Count expected used tokens before calling `createChatCompletions` or `createChatFunCompletions`, this help you select proper model ex. `gpt-3.5-turbo` or `gpt-3.5-turbo-16k` and reduce costs. This is an experimental feature and it may not work for all models. Requires `openai-scala-count-tokens` lib.
+- 🔥 **New**: Count expected used tokens before calling `createChatCompletions` or `createChatFunCompletions`, this helps you select proper model ex. `gpt-3.5-turbo` or `gpt-3.5-turbo-16k` and reduce costs. This is an experimental feature and it may not work for all models. Requires `openai-scala-count-tokens` lib.
 
 ```scala
 import io.cequence.openaiscala.service.OpenAICountTokensHelper
@@ -372,7 +372,20 @@ import io.cequence.openaiscala.domain.{ChatRole, FunMessageSpec, FunctionSpec}
 class MyCompletionService extends OpenAICountTokensHelper {
   def exec = {
     val messages: Seq[FunMessageSpec] = ??? // messages to be sent to OpenAI
-    val function: FunctionSpec = ??? // function to be called
+    // function to be called
+    val function: FunctionSpec = FunctionSpec(
+      name = "getWeather",
+      parameters = Map(
+        "type" -> "object",
+        "properties" -> ListMap(
+          "location" -> ListMap(
+            "type" -> "string",
+            "description" -> "The city to get the weather for"
+          ),
+          "unit" -> ListMap("type" -> "string", "enum" -> List("celsius", "fahrenheit"))
+        )
+      )
+    )
 
     val tokens = countFunMessageTokens(model, messages, Seq(function), Some(function.name))
   }
