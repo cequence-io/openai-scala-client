@@ -42,10 +42,8 @@ def extraTestDependencies(scalaVersion: String) =
 
 lazy val core = (project in file("openai-core")).settings(commonSettings *)
 
-lazy val client = (project in file("openai-client"))
-  .settings(commonSettings *)
-  .dependsOn(core)
-  .aggregate(core)
+lazy val client =
+  (project in file("openai-client")).settings(commonSettings *).dependsOn(core).aggregate(core)
 
 lazy val client_stream = (project in file("openai-client-stream"))
   .settings(commonSettings *)
