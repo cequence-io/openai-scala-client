@@ -1,3 +1,3 @@
-name := "openai-anthropic-client"
+name := "openai-scala-anthropic-client"
 
 description := "Scala client for Anthropic API implemented using Play WS lib."

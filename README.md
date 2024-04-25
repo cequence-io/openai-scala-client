@@ -139,7 +139,7 @@ Then you can obtain a service in one of the following ways.
   )
 ```
 
-3. [Anthropic](https://www.anthropic.com/api) (requires our `openai-anthropic-client` lib)
+3. [Anthropic](https://www.anthropic.com/api) (requires our `openai-scala-anthropic-client` lib)
 ```scala
   val service = AnthropicServiceFactory.asOpenAI()
 ```
