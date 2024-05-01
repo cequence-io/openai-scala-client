@@ -6,18 +6,11 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import play.api.libs.json.{Format, Json}
 import io.cequence.openaiscala.v2.JsonFormats._
-import io.cequence.openaiscala.v2.domain.AssistantToolResource.{
-  CodeInterpreterResources,
-  FileSearchResources,
-  VectorStore
-}
+import io.cequence.openaiscala.v2.domain.AssistantToolResource.{CodeInterpreterResources, FileSearchResources, VectorStore}
+import io.cequence.openaiscala.v2.domain.response.AssistantToolResourceResponse.{CodeInterpreterResourcesResponse, FileSearchResourcesResponse}
 import io.cequence.openaiscala.v2.domain.{AssistantToolResource, FileId}
-import io.cequence.openaiscala.v2.domain.response.ResponseFormat
-import io.cequence.openaiscala.v2.domain.response.ResponseFormat.{
-  JsonObjectResponse,
-  StringResponse,
-  TextResponse
-}
+import io.cequence.openaiscala.v2.domain.response.{AssistantToolResourceResponse, ResponseFormat}
+import io.cequence.openaiscala.v2.domain.response.ResponseFormat.{JsonObjectResponse, StringResponse, TextResponse}
 
 object JsonFormatsSpec {
   sealed trait JsonPrintMode
@@ -67,6 +60,24 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       |  }
       |}""".stripMargin
 
+  private val codeInterpreterResourcesResponseJson =
+    """{
+      |  "code_interpreter" : {
+      |    "file_ids" : [ {
+      |      "file_id" : "file-id-1"
+      |    } ]
+      |  }
+      |}""".stripMargin
+
+  private val fileSearchResourcesResponseJson =
+    """{
+      |  "file_search" : {
+      |    "vector_store_ids" : [ {
+      |      "file_id" : "file-id-1"
+      |    } ]
+      |  }
+      |}""".stripMargin
+
   "JSON Formats" should {
 
     "serialize and deserialize a String response format" in {
@@ -81,7 +92,7 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       testCodec[ResponseFormat](JsonObjectResponse, jsonObjectResponseJson, Pretty)
     }
 
-    "serialize and deserialize code interpreter resources" in {
+    "serialize and deserialize code interpreter's resources" in {
       testCodec[AssistantToolResource](
         CodeInterpreterResources(Seq(FileId("file-id-1"), FileId("file-id-2"))),
         codeInterpreterResourcesJson,
@@ -89,13 +100,29 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       )
     }
 
-    "serialize and deserialize file search resources" in {
+    "serialize and deserialize file search's resources" in {
       testCodec[AssistantToolResource](
         FileSearchResources(
           Seq(FileId("file-id-1")),
           Seq(VectorStore(Seq(FileId("file-id-1")), Map("key" -> "value")))
         ),
         fileSearchResourcesJson,
+        Pretty
+      )
+    }
+
+    "serialize and deserialize code interpreter's resources response" in {
+      testCodec[AssistantToolResourceResponse](
+        CodeInterpreterResourcesResponse(Seq(FileId("file-id-1"))),
+        codeInterpreterResourcesResponseJson,
+        Pretty
+      )
+    }
+
+    "serialize and deserialize file search's resources response" in {
+      testCodec[AssistantToolResourceResponse](
+        FileSearchResourcesResponse(Seq(FileId("file-id-1"))),
+        fileSearchResourcesResponseJson,
         Pretty
       )
     }

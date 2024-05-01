@@ -434,10 +434,10 @@ object JsonFormats {
     : Writes[AssistantToolResourceResponse] = {
     case c: CodeInterpreterResourcesResponse =>
       Json.obj(
-        "code_interpreter_response" -> Json.toJson(c)(codeInterpreterResourcesResponseFormat)
+        "code_interpreter" -> Json.toJson(c)(codeInterpreterResourcesResponseFormat)
       )
     case f: FileSearchResourcesResponse =>
-      Json.obj("file_search_response" -> Json.toJson(f)(fileSearchResourcesResponseFormat))
+      Json.obj("file_search" -> Json.toJson(f)(fileSearchResourcesResponseFormat))
   }
 
   implicit lazy val assistantToolResourceResponseFormat
@@ -448,12 +448,13 @@ object JsonFormats {
     codeInterpreterResponseReads orElse fileSearchResponseReads
 
   implicit lazy val codeInterpreterResponseReads: Reads[AssistantToolResourceResponse] =
-    (JsPath \ "code_interpreter_response")
+    (JsPath \ "code_interpreter" \ "file_ids")
       .read[Seq[FileId]]
       .map(CodeInterpreterResourcesResponse.apply)
 
   implicit lazy val fileSearchResponseReads: Reads[AssistantToolResourceResponse] =
-    (JsPath \ "file_search_response").read[Seq[FileId]].map(FileSearchResourcesResponse.apply)
+    (JsPath \ "file_search" \ "vector_store_ids")
+      .read[Seq[FileId]].map(FileSearchResourcesResponse.apply)
 
   implicit lazy val responseFormatFormat: Format[ResponseFormat] = {
     def error(json: JsValue) = JsError(
