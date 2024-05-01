@@ -2,6 +2,11 @@ package io.cequence.openaiscala.v2
 
 import io.cequence.openaiscala.JsonUtil
 import io.cequence.openaiscala.JsonUtil.enumFormat
+import io.cequence.openaiscala.v2.domain.AssistantToolResource.{
+  CodeInterpreterResources,
+  FileSearchResources,
+  VectorStore
+}
 import io.cequence.openaiscala.v2.domain.response.ResponseFormat.{
   JsonObjectResponse,
   StringResponse,
@@ -378,22 +383,59 @@ object JsonFormats {
 
   implicit lazy val assistantIdFormat: Format[AssistantId] = Json.valueFormat[AssistantId]
 
+  implicit lazy val vectorStoreFormat: Format[VectorStore] = {
+    implicit val stringStringMapFormat: Format[Map[String, String]] =
+      JsonUtil.StringStringMapFormat
+    (
+      (__ \ "file_ids").format[Seq[FileId]] and
+        (__ \ "metadata").format[Map[String, String]]
+    )(VectorStore.apply, unlift(VectorStore.unapply))
+  }
+
+  implicit lazy val assistantToolResourceWrites: Writes[AssistantToolResource] = {
+    case c: CodeInterpreterResources =>
+      Json.obj("code_interpreter" -> Json.obj("file_ids" -> c.fileIds))
+    case f: FileSearchResources =>
+      Json.obj(
+        "file_search" -> Json.obj(
+          "vector_store_ids" -> f.vectorStoreIds,
+          "vector_stores" -> f.vectorStores
+        )
+      )
+  }
+
+  implicit lazy val assistantToolResourceReads: Reads[AssistantToolResource] =
+    codeInterpreterReads orElse fileSearchReads
+
+  implicit lazy val codeInterpreterReads: Reads[AssistantToolResource] =
+    (JsPath \ "code_interpreter" \ "file_ids")
+      .read[Seq[FileId]]
+      .map(CodeInterpreterResources(_))
+  implicit lazy val fileSearchReads: Reads[AssistantToolResource] = (
+    (JsPath \ "file_search" \ "vector_store_ids").read[Seq[FileId]] and
+      (JsPath \ "file_search" \ "vector_stores").read[Seq[VectorStore]]
+  )(FileSearchResources.apply _)
+
   implicit lazy val assistantToolResourceResponseFormat
     : Format[AssistantToolResourceResponse] = ???
-  implicit lazy val assistantToolResourceFormat: Format[AssistantToolResource] = ???
 
   implicit lazy val responseFormatFormat: Format[ResponseFormat] = {
-    def error(json: JsValue) = JsError(s"Expected String response, JSON Object response, or Text response format, but got $json")
+    def error(json: JsValue) = JsError(
+      s"Expected String response, JSON Object response, or Text response format, but got $json"
+    )
 
     Format(
       Reads {
-        case JsString("auto")                                 => JsSuccess(StringResponse)
+        case JsString("auto") => JsSuccess(StringResponse)
         case JsObject(fields) =>
-          fields.get("type").map {
-            case JsString("json_object") => JsSuccess(JsonObjectResponse)
-            case JsString("text")        => JsSuccess(TextResponse)
-            case json => error(json)
-          }.getOrElse(error(JsObject(fields)))
+          fields
+            .get("type")
+            .map {
+              case JsString("json_object") => JsSuccess(JsonObjectResponse)
+              case JsString("text")        => JsSuccess(TextResponse)
+              case json                    => error(json)
+            }
+            .getOrElse(error(JsObject(fields)))
         case json => error(json)
       },
       Writes {
