@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.v2.domain.response
 
-import io.cequence.openaiscala.v2.domain.{AssistantId, AssistantTool, AssistantToolResource, FileId}
+import io.cequence.openaiscala.v2.domain.{AssistantId, AssistantTool}
 
 import java.{util => ju}
 

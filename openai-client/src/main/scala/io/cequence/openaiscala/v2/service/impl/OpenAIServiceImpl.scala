@@ -7,7 +7,21 @@ import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.v2.domain.response._
 import io.cequence.openaiscala.v2.domain.settings._
-import io.cequence.openaiscala.v2.domain.{AssistantTool, AssistantToolResource, Attachment, BaseMessage, ChatRole, FunctionSpec, Pagination, SortOrder, Thread, ThreadFullMessage, ThreadMessage, ThreadMessageFile, ToolSpec}
+import io.cequence.openaiscala.v2.domain.{
+  AssistantTool,
+  AssistantToolResource,
+  Attachment,
+  BaseMessage,
+  ChatRole,
+  FunctionSpec,
+  Pagination,
+  SortOrder,
+  Thread,
+  ThreadFullMessage,
+  ThreadMessage,
+  ThreadMessageFile,
+  ToolSpec
+}
 import io.cequence.openaiscala.v2.service.OpenAIService
 import play.api.libs.json.{JsObject, JsValue, Json}
 

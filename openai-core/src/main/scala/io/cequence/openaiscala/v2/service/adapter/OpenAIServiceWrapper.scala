@@ -6,7 +6,11 @@ import io.cequence.openaiscala.v2.domain._
 import io.cequence.openaiscala.v2.domain.response._
 import io.cequence.openaiscala.v2.domain.settings._
 import io.cequence.openaiscala.v2.service.adapter.ServiceWrapperTypes._
-import io.cequence.openaiscala.v2.service.{OpenAIChatCompletionService, OpenAICoreService, OpenAIService}
+import io.cequence.openaiscala.v2.service.{
+  OpenAIChatCompletionService,
+  OpenAICoreService,
+  OpenAIService
+}
 
 import java.io.File
 import scala.concurrent.Future
@@ -271,13 +275,13 @@ trait OpenAIServiceWrapper
   )
 
   override def createAssistant(
-                                model: String,
-                                name: Option[String] = None,
-                                description: Option[String] = None,
-                                instructions: Option[String] = None,
-                                tools: Seq[AssistantTool] = Seq.empty[AssistantTool],
-                                toolResources: Seq[AssistantToolResource] = Seq.empty[AssistantToolResource],
-                                metadata: Map[String, String] = Map.empty
+    model: String,
+    name: Option[String] = None,
+    description: Option[String] = None,
+    instructions: Option[String] = None,
+    tools: Seq[AssistantTool] = Seq.empty[AssistantTool],
+    toolResources: Seq[AssistantToolResource] = Seq.empty[AssistantToolResource],
+    metadata: Map[String, String] = Map.empty
   ): Future[Assistant] = wrap(
     _.createAssistant(model, name, description, instructions, tools, toolResources, metadata)
   )

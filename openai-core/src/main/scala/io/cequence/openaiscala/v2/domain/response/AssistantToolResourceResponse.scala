@@ -8,14 +8,17 @@ object AssistantToolResourceResponse {
 
   /**
    * @param fileIds
-   *   A list of file IDs made available to the code_interpreter tool. There can be a maximum of 20 files associated with the tool.
+   *   A list of file IDs made available to the code_interpreter tool. There can be a maximum
+   *   of 20 files associated with the tool.
    */
-  final case class CodeInterpreterResourcesResponse(fileIds: Seq[FileId]) extends AssistantToolResourceResponse
+  final case class CodeInterpreterResourcesResponse(fileIds: Seq[FileId])
+      extends AssistantToolResourceResponse
 
   /**
-   *
    * @param vectorStoreIds
-   *   The vector store attached to this assistant. There can be a maximum of 1 vector store attached to the assistant.
+   *   The vector store attached to this assistant. There can be a maximum of 1 vector store
+   *   attached to the assistant.
    */
-  final case class FileSearchResourcesResponse(vectorStoreIds: Seq[FileId]) extends AssistantToolResourceResponse
+  final case class FileSearchResourcesResponse(vectorStoreIds: Seq[FileId])
+      extends AssistantToolResourceResponse
 }

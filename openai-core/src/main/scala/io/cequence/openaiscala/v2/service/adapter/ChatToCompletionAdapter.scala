@@ -1,9 +1,21 @@
 package io.cequence.openaiscala.v2.service.adapter
 
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.openaiscala.v2.domain.response.{ChatCompletionChoiceInfo, ChatCompletionResponse, TextCompletionResponse}
-import io.cequence.openaiscala.v2.domain.settings.{CreateChatCompletionSettings, CreateCompletionSettings}
-import io.cequence.openaiscala.v2.domain.{AssistantMessage, BaseMessage, SystemMessage, UserMessage}
+import io.cequence.openaiscala.v2.domain.response.{
+  ChatCompletionChoiceInfo,
+  ChatCompletionResponse,
+  TextCompletionResponse
+}
+import io.cequence.openaiscala.v2.domain.settings.{
+  CreateChatCompletionSettings,
+  CreateCompletionSettings
+}
+import io.cequence.openaiscala.v2.domain.{
+  AssistantMessage,
+  BaseMessage,
+  SystemMessage,
+  UserMessage
+}
 import io.cequence.openaiscala.v2.service
 
 import scala.concurrent.{ExecutionContext, Future}

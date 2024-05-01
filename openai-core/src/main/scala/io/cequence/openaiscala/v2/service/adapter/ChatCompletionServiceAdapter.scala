@@ -7,8 +7,8 @@ import io.cequence.openaiscala.v2.service
 import scala.concurrent.Future
 
 private class ChatCompletionServiceAdapter[S <: service.CloseableService](
-                                                                           chatCompletionService: service.OpenAIChatCompletionService,
-                                                                           underlying: S
+  chatCompletionService: service.OpenAIChatCompletionService,
+  underlying: S
 ) extends ServiceWrapper[S]
     with service.CloseableService
     with service.OpenAIChatCompletionService {
