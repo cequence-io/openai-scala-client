@@ -6,11 +6,31 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import play.api.libs.json.{Format, Json}
 import io.cequence.openaiscala.v2.JsonFormats._
-import io.cequence.openaiscala.v2.domain.AssistantToolResource.{CodeInterpreterResources, FileSearchResources, VectorStore}
-import io.cequence.openaiscala.v2.domain.response.AssistantToolResourceResponse.{CodeInterpreterResourcesResponse, FileSearchResourcesResponse}
-import io.cequence.openaiscala.v2.domain.{AssistantToolResource, FileId}
-import io.cequence.openaiscala.v2.domain.response.{AssistantToolResourceResponse, ResponseFormat}
-import io.cequence.openaiscala.v2.domain.response.ResponseFormat.{JsonObjectResponse, StringResponse, TextResponse}
+import io.cequence.openaiscala.v2.domain.AssistantToolResource.{
+  CodeInterpreterResources,
+  FileSearchResources,
+  VectorStore
+}
+import io.cequence.openaiscala.v2.domain.response.AssistantToolResourceResponse.{
+  CodeInterpreterResourcesResponse,
+  FileSearchResourcesResponse
+}
+import io.cequence.openaiscala.v2.domain.{
+  AssistantToolResource,
+  Attachment,
+  CodeInterpreterSpec,
+  FileId,
+  FileSearchSpec
+}
+import io.cequence.openaiscala.v2.domain.response.{
+  AssistantToolResourceResponse,
+  ResponseFormat
+}
+import io.cequence.openaiscala.v2.domain.response.ResponseFormat.{
+  JsonObjectResponse,
+  StringResponse,
+  TextResponse
+}
 
 object JsonFormatsSpec {
   sealed trait JsonPrintMode
@@ -78,6 +98,18 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       |  }
       |}""".stripMargin
 
+  private val attachmentJson =
+    """{
+      |  "file_id" : {
+      |    "file_id" : "file-id-1"
+      |  },
+      |  "tools" : [ {
+      |    "type" : "code_interpreter"
+      |  }, {
+      |    "type" : "file_search"
+      |  } ]
+      |}""".stripMargin
+
   "JSON Formats" should {
 
     "serialize and deserialize a String response format" in {
@@ -123,6 +155,17 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       testCodec[AssistantToolResourceResponse](
         FileSearchResourcesResponse(Seq(FileId("file-id-1"))),
         fileSearchResourcesResponseJson,
+        Pretty
+      )
+    }
+
+    "serialize and deserialize attachment" in {
+      testCodec[Attachment](
+        Attachment(
+          fileId = Some(FileId("file-id-1")),
+          tools = Seq(CodeInterpreterSpec, FileSearchSpec)
+        ),
+        attachmentJson,
         Pretty
       )
     }

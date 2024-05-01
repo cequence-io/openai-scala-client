@@ -70,6 +70,7 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
     )
   }
 
+  // TODO: check, where is this defined in API?
   override def createChatToolCompletion(
     messages: Seq[BaseMessage],
     tools: Seq[ToolSpec],

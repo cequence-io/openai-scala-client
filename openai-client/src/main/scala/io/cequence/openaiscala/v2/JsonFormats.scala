@@ -131,6 +131,26 @@ object JsonFormats {
     Format(assistantsFunctionSpecReads, assistantsFunctionSpecWrites)
   }
 
+  implicit lazy val messageToolFormat: Format[MessageTool] = {
+    val typeDiscriminatorKey = "type"
+
+    Format[MessageTool](
+      (json: JsValue) => {
+        (json \ typeDiscriminatorKey).validate[String].flatMap {
+          case "code_interpreter" => JsSuccess(CodeInterpreterSpec)
+          case "file_search"      => JsSuccess(FileSearchSpec)
+          case _                  => JsError("Unknown type")
+        }
+      },
+      { (tool: MessageTool) =>
+        tool match {
+          case CodeInterpreterSpec => Json.obj(typeDiscriminatorKey -> "code_interpreter")
+          case FileSearchSpec      => Json.obj(typeDiscriminatorKey -> "file_search")
+        }
+      }
+    )
+  }
+
   implicit lazy val assistantToolFormat: Format[AssistantTool] = {
     val typeDiscriminatorKey = "type"
 
@@ -396,7 +416,7 @@ object JsonFormats {
     )(VectorStore.apply, unlift(VectorStore.unapply))
   }
 
-  implicit lazy val assistantToolResourceWrites: Writes[AssistantToolResource] = {
+  implicit lazy val assistantToolResourcesWrites: Writes[AssistantToolResource] = {
     case c: CodeInterpreterResources =>
       Json.obj("code_interpreter" -> Json.obj("file_ids" -> c.fileIds))
     case f: FileSearchResources =>
@@ -408,14 +428,14 @@ object JsonFormats {
       )
   }
 
-  implicit lazy val assistantToolResourceReads: Reads[AssistantToolResource] =
-    codeInterpreterReads orElse fileSearchReads
+  implicit lazy val assistantToolResourcesReads: Reads[AssistantToolResource] =
+    codeInterpreterResourcesReads orElse fileSearchResourcesReads
 
-  implicit lazy val codeInterpreterReads: Reads[AssistantToolResource] =
+  implicit lazy val codeInterpreterResourcesReads: Reads[AssistantToolResource] =
     (JsPath \ "code_interpreter" \ "file_ids")
       .read[Seq[FileId]]
       .map(CodeInterpreterResources(_))
-  implicit lazy val fileSearchReads: Reads[AssistantToolResource] = (
+  implicit lazy val fileSearchResourcesReads: Reads[AssistantToolResource] = (
     (JsPath \ "file_search" \ "vector_store_ids").read[Seq[FileId]] and
       (JsPath \ "file_search" \ "vector_stores").read[Seq[VectorStore]]
   )(FileSearchResources.apply _)
@@ -428,7 +448,7 @@ object JsonFormats {
     Json.format[FileSearchResourcesResponse]
 
   implicit lazy val assistantToolResourceFormat: Format[AssistantToolResource] =
-    Format(assistantToolResourceReads, assistantToolResourceWrites)
+    Format(assistantToolResourcesReads, assistantToolResourcesWrites)
 
   implicit lazy val assistantToolResourceResponseWrites
     : Writes[AssistantToolResourceResponse] = {
@@ -454,7 +474,8 @@ object JsonFormats {
 
   implicit lazy val fileSearchResponseReads: Reads[AssistantToolResourceResponse] =
     (JsPath \ "file_search" \ "vector_store_ids")
-      .read[Seq[FileId]].map(FileSearchResourcesResponse.apply)
+      .read[Seq[FileId]]
+      .map(FileSearchResourcesResponse.apply)
 
   implicit lazy val responseFormatFormat: Format[ResponseFormat] = {
     def error(json: JsValue) = JsError(
@@ -483,7 +504,10 @@ object JsonFormats {
     )
   }
 
-  implicit lazy val attachmentFormat: Format[Attachment] = ???
+  implicit val attachmentFormat: Format[Attachment] = (
+    (__ \ "file_id").formatNullable[FileId] and
+      (__ \ "tools").format[Seq[MessageTool]]
+  )(Attachment.apply, unlift(Attachment.unapply))
 
   implicit lazy val assistantFormat: Format[Assistant] = Json.format[Assistant]
 
