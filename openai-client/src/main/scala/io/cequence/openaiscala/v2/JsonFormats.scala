@@ -7,6 +7,10 @@ import io.cequence.openaiscala.v2.domain.AssistantToolResource.{
   FileSearchResources,
   VectorStore
 }
+import io.cequence.openaiscala.v2.domain.response.AssistantToolResourceResponse.{
+  CodeInterpreterResourcesResponse,
+  FileSearchResourcesResponse
+}
 import io.cequence.openaiscala.v2.domain.response.ResponseFormat.{
   JsonObjectResponse,
   StringResponse,
@@ -416,8 +420,40 @@ object JsonFormats {
       (JsPath \ "file_search" \ "vector_stores").read[Seq[VectorStore]]
   )(FileSearchResources.apply _)
 
+  implicit lazy val codeInterpreterResourcesResponseFormat
+    : Format[CodeInterpreterResourcesResponse] =
+    Json.format[CodeInterpreterResourcesResponse]
+
+  implicit lazy val fileSearchResourcesResponseFormat: Format[FileSearchResourcesResponse] =
+    Json.format[FileSearchResourcesResponse]
+
+  implicit lazy val assistantToolResourceFormat: Format[AssistantToolResource] =
+    Format(assistantToolResourceReads, assistantToolResourceWrites)
+
+  implicit lazy val assistantToolResourceResponseWrites
+    : Writes[AssistantToolResourceResponse] = {
+    case c: CodeInterpreterResourcesResponse =>
+      Json.obj(
+        "code_interpreter_response" -> Json.toJson(c)(codeInterpreterResourcesResponseFormat)
+      )
+    case f: FileSearchResourcesResponse =>
+      Json.obj("file_search_response" -> Json.toJson(f)(fileSearchResourcesResponseFormat))
+  }
+
   implicit lazy val assistantToolResourceResponseFormat
-    : Format[AssistantToolResourceResponse] = ???
+    : Format[AssistantToolResourceResponse] =
+    Format(assistantToolResourceResponseReads, assistantToolResourceResponseWrites)
+
+  implicit lazy val assistantToolResourceResponseReads: Reads[AssistantToolResourceResponse] =
+    codeInterpreterResponseReads orElse fileSearchResponseReads
+
+  implicit lazy val codeInterpreterResponseReads: Reads[AssistantToolResourceResponse] =
+    (JsPath \ "code_interpreter_response")
+      .read[Seq[FileId]]
+      .map(CodeInterpreterResourcesResponse.apply)
+
+  implicit lazy val fileSearchResponseReads: Reads[AssistantToolResourceResponse] =
+    (JsPath \ "file_search_response").read[Seq[FileId]].map(FileSearchResourcesResponse.apply)
 
   implicit lazy val responseFormatFormat: Format[ResponseFormat] = {
     def error(json: JsValue) = JsError(
