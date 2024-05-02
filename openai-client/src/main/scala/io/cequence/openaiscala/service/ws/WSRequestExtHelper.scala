@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.service.ws
 
+import io.cequence.openaiscala._
 import play.api.libs.ws.StandaloneWSRequest
 
 /**

@@ -1,10 +1,11 @@
 package io.cequence.openaiscala.service.ws
 
 import akka.stream.Materializer
+import io.cequence.openaiscala.service.CloseableService
 import play.api.libs.ws.StandaloneWSClient
 import play.api.libs.ws.ahc.StandaloneAhcWSClient
 
-trait WSHelper {
+trait HasWSClient extends CloseableService {
 
   protected implicit val materializer: Materializer
 
@@ -45,6 +46,6 @@ trait WSHelper {
     client
   }
 
-  def close(): Unit =
+  override def close(): Unit =
     client.close()
 }

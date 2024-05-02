@@ -21,7 +21,7 @@ import play.api.libs.json.JsValue
 private[service] trait OpenAIChatCompletionServiceStreamedExtraImpl
     extends OpenAIChatCompletionStreamedServiceExtra
     with ChatCompletionBodyMaker
-    with WSStreamRequestHelper {
+    with OpenAIWSStreamRequestHelper {
 
   override protected type PEP = EndPoint
   override protected type PT = Param
