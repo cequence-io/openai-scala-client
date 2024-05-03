@@ -2,6 +2,7 @@ package io.cequence.openaiscala.service.adapter
 
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
+import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
@@ -358,6 +359,16 @@ trait OpenAIServiceWrapper
     fileId: String
   ): Future[DeleteResponse] =
     wrap(_.deleteAssistantFile(assistantId, fileId))
+
+  override def createBatch(
+    inputFileId: String,
+    endpoint: BatchEndpoint,
+    completionWindow: CompletionWindow,
+    metadata: Map[String, String]
+  ): Future[Batch] =
+    wrap(
+      _.createBatch(inputFileId, endpoint, completionWindow, metadata)
+    )
 }
 
 private class OpenAICoreServiceWrapperImpl(

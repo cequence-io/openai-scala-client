@@ -2,11 +2,13 @@ package io.cequence.openaiscala.service
 
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
+import io.cequence.openaiscala.domain.Batch._
+import io.cequence.openaiscala.domain.response._
+import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.{
   AssistantTool,
   BaseMessage,
   ChatRole,
-  FileId,
   FunctionSpec,
   Pagination,
   SortOrder,
@@ -16,8 +18,6 @@ import io.cequence.openaiscala.domain.{
   ThreadMessageFile,
   ToolSpec
 }
-import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.domain.response._
 
 import java.io.File
 import scala.concurrent.Future
@@ -942,5 +942,30 @@ trait OpenAIService extends OpenAICoreService {
     assistantId: String,
     fileId: String
   ): Future[DeleteResponse]
+
+  /**
+   * Creates and executes a batch from an uploaded file of requests.
+   *
+   * @param input_file_id
+   *   The ID of an uploaded file that contains requests for the new batch. The input file must
+   *   be formatted as a JSONL file, and must be uploaded with the purpose "batch".
+   * @param endpoint
+   *   The endpoint to be used for all requests in the batch. Supported values are
+   *   ChatCompletions and Embeddings.
+   * @param completion_window
+   *   The time frame within which the batch should be processed. Currently only
+   *   TwentyFourHours is supported.
+   * @param metadata
+   *   Optional custom metadata for the batch.
+   * @return
+   *   Future[Batch] A future that resolves to a Batch object containing details about the
+   *   created batch.
+   */
+  def createBatch(
+    inputFileId: String,
+    endpoint: BatchEndpoint,
+    completionWindow: CompletionWindow,
+    metadata: Map[String, String]
+  ): Future[Batch]
 
 }

@@ -5,21 +5,10 @@ import akka.util.ByteString
 import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.OpenAIScalaClientException
+import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.domain.{
-  AssistantTool,
-  BaseMessage,
-  ChatRole,
-  FunctionSpec,
-  Pagination,
-  SortOrder,
-  Thread,
-  ThreadFullMessage,
-  ThreadMessage,
-  ThreadMessageFile,
-  ToolSpec
-}
+import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.service.OpenAIService
 import play.api.libs.json.{JsObject, JsValue, Json}
 
@@ -739,4 +728,22 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
       Param.after -> pagination.after,
       Param.before -> pagination.before
     )
+
+  override def createBatch(
+    inputFileId: String,
+    endpoint: BatchEndpoint,
+    completionWindow: CompletionWindow,
+    metadata: Map[String, String]
+  ): Future[Batch] =
+    execPOST(
+      EndPoint.batches,
+      endPointParam = None,
+      bodyParams = jsonBodyParams(
+        Param.input_file_id -> Some(inputFileId),
+        Param.endpoint -> Some(Json.toJson(endpoint)),
+        Param.completion_window -> Some(Json.toJson(completionWindow)),
+        Param.metadata -> Some(metadata)
+      )
+    ).map(_.asSafe[Batch])
+
 }

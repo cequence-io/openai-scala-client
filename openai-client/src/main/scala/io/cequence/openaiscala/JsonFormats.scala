@@ -8,6 +8,7 @@ import io.cequence.openaiscala.domain.response._
 import play.api.libs.functional.syntax._
 import play.api.libs.json.{Format, Json, _}
 import Json.toJson
+import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain.FineTune.WeightsAndBiases
 
 object JsonFormats {
@@ -408,5 +409,17 @@ object JsonFormats {
   implicit val assistantFormat: Format[Assistant] = Json.format[Assistant]
 
   lazy implicit val assistantFileFormat: Format[AssistantFile] = Json.format[AssistantFile]
+
+  lazy implicit val batchEndPointFormat: Format[BatchEndpoint] = enumFormat[BatchEndpoint](
+    BatchEndpoint.`/v1/chat/completions`,
+    BatchEndpoint.`/v1/embeddings`
+  )
+
+  lazy implicit val completionWindowFormat: Format[CompletionWindow] =
+    enumFormat[CompletionWindow](
+      CompletionWindow.`24h`
+    )
+
+  lazy implicit val batchFormat: Format[Batch] = Json.format[Batch]
 
 }
