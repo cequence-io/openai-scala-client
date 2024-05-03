@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonParseException
 import com.fasterxml.jackson.databind.JsonMappingException
 import io.cequence.openaiscala.JsonUtil.toJson
 import io.cequence.openaiscala._
-import play.api.libs.json.{JsObject, JsValue}
+import play.api.libs.json.{JsObject, JsValue, Reads}
 import play.api.libs.ws.{BodyWritable, StandaloneWSRequest}
 import play.api.libs.ws.JsonBodyWritables._
 import play.api.libs.ws.JsonBodyReadables._
@@ -203,6 +203,12 @@ trait WSRequestHelper extends HasWSClient {
       acceptableStatusCodes
     )
   }
+
+//  protected def asSafeJsonIfFound[T: Reads](response: Future[RichJsResponse])
+//  : Future[Option[T]] =
+//    response.map { response =>
+//      handleNotFoundAndError(response).map(_.asSafe[T])
+//    }
 
   protected def execPOSTSource(
     endPoint: PEP,

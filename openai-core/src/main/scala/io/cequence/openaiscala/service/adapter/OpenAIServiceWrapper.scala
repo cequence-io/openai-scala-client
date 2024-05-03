@@ -369,6 +369,22 @@ trait OpenAIServiceWrapper
     wrap(
       _.createBatch(inputFileId, endpoint, completionWindow, metadata)
     )
+
+  override def retrieveBatch(batchId: String): Future[Option[Batch]] =
+    wrap(_.retrieveBatch(batchId))
+
+  override def cancelBatch(batchId: String): Future[Option[Batch]] =
+    wrap(_.cancelBatch(batchId))
+
+  override def listBatches(
+    pagination: Pagination,
+    order: Option[SortOrder]
+  ): Future[Seq[Batch]] =
+    wrap(_.listBatches(pagination, order))
+
+
+
+
 }
 
 private class OpenAICoreServiceWrapperImpl(

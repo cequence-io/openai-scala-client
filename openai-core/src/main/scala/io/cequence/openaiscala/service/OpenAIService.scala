@@ -960,6 +960,8 @@ trait OpenAIService extends OpenAICoreService {
    * @return
    *   Future[Batch] A future that resolves to a Batch object containing details about the
    *   created batch.
+   *
+   * <a href="https://platform.openai.com/docs/api-reference/batch/create">OpenAI Doc</a>
    */
   def createBatch(
     inputFileId: String,
@@ -967,5 +969,59 @@ trait OpenAIService extends OpenAICoreService {
     completionWindow: CompletionWindow,
     metadata: Map[String, String]
   ): Future[Batch]
+
+  /**
+   * Retrieves a batch using its ID.
+   *
+   * @param batchId
+   *   The ID of the batch to retrieve. This is a unique identifier for the batch.
+   * @return
+   *   Future[Option[Batch]] A future that resolves to an Option containing the Batch object.
+   *   Returns None if the batch with the specified ID does not exist.
+   *
+   * <a href="https://platform.openai.com/docs/api-reference/batch/retrieve">OpenAI Doc</a>
+   */
+  def retrieveBatch(batchId: String): Future[Option[Batch]]
+
+  /**
+   * Cancels an in-progress batch.
+   *
+   * @param batchId
+   *   The ID of the batch to cancel. This should be the unique identifier for the in-progress
+   *   batch.
+   * @return
+   *   Future[Option[Batch]] A future that resolves to an Option containing the Batch object
+   *   after cancellation. Returns None if the batch with the specified ID does not exist or if
+   *   it is not in-progress.
+   *
+   * <a href="https://platform.openai.com/docs/api-reference/batch/cancel">OpenAI Doc</a>
+   */
+  def cancelBatch(batchId: String): Future[Option[Batch]]
+
+  /**
+   * Lists all batches that belong to the user's organization.
+   *
+   * @param pagination
+   *   <ul> <li>limit - A limit on the number of objects to be returned. Limit can range
+   *   between 1 and 100, and the default is 20.</li> <li>after - A cursor for use in
+   *   pagination. after is an object ID that defines your place in the list. For instance, if
+   *   you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent
+   *   call can include `after=obj_foo` in order to fetch the next page of the list. </li>
+   *   <li>before - A cursor for use in pagination. before is an object ID that defines your
+   *   place in the list. For instance, if you make a list request and receive 100 objects,
+   *   ending with `obj_foo`, your subsequent call can include `before=obj_foo` in order to
+   *   fetch the previous page of the list.</li> </ul>
+   * @param order
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
+   *   for descending order.
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/batch/list">OpenAI Doc</a>
+   * @return
+   */
+  def listBatches(
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None
+  ): Future[Seq[Batch]]
 
 }

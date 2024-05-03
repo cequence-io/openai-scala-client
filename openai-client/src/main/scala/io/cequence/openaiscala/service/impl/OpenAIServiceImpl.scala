@@ -10,7 +10,7 @@ import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.service.OpenAIService
-import play.api.libs.json.{JsObject, JsValue, Json}
+import play.api.libs.json.{JsObject, JsValue, Json, Reads}
 
 import java.io.File
 import scala.concurrent.Future
@@ -745,5 +745,39 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
         Param.metadata -> Some(metadata)
       )
     ).map(_.asSafe[Batch])
+
+  override def retrieveBatch(batchId: String): Future[Option[Batch]] =
+    asSafeJsonIfFound[Batch](
+      execGETWithStatus(
+        EndPoint.batches,
+        Some(batchId)
+      )
+    )
+
+  override def cancelBatch(batchId: String): Future[Option[Batch]] =
+    asSafeJsonIfFound[Batch](
+      execPOSTWithStatus(
+        EndPoint.batches,
+        endPointParam = Some(s"$batchId/cancel")
+      )
+    )
+
+  override def listBatches(
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder]
+  ): Future[Seq[Batch]] = {
+    execGET(
+      EndPoint.batches,
+      params = paginationParams(pagination) :+ Param.order -> order
+    ).map { response =>
+      readAttribute(response, "data").asSafeArray[Batch]
+    }
+  }
+
+  private def asSafeJsonIfFound[T: Reads](response: Future[RichJsResponse])
+    : Future[Option[T]] =
+    response.map { response =>
+      handleNotFoundAndError(response).map(_.asSafe[T])
+    }
 
 }
