@@ -3,16 +3,11 @@ package io.cequence.openaiscala.anthropic
 import io.cequence.openaiscala.anthropic.JsonFormatsSpec.JsonPrintMode
 import io.cequence.openaiscala.anthropic.JsonFormatsSpec.JsonPrintMode.{Compact, Pretty}
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{ImageBlock, TextBlock}
-import io.cequence.openaiscala.anthropic.domain.Message
-import io.cequence.openaiscala.anthropic.domain.Message.{
-  AssistantMessage,
-  AssistantMessageContent,
-  UserMessage,
-  UserMessageContent
-}
+import io.cequence.openaiscala.anthropic.domain.{Message, ToolSpec}
+import io.cequence.openaiscala.anthropic.domain.Message.{AssistantMessage, AssistantMessageContent, UserMessage, UserMessageContent}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
-import play.api.libs.json.{Format, Json}
+import play.api.libs.json.{Format, Json, Writes}
 
 object JsonFormatsSpec {
   sealed trait JsonPrintMode
@@ -53,6 +48,47 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
       testCodec[Message](assistantMessage, json)
     }
 
+    // TODO: add deserialization tests for:
+    // 1. ToolUseBlock - success - flat content
+    // 2. ToolUseBlock - success - TextBlock content
+    // 3. ToolUseBlock - failure - flat content
+    // 4. ToolUseBlock - failure - TextBlock content
+
+    val expectedToolSpecJson =
+      """{
+        |  "name" : "get_stock_price",
+        |  "description" : "Get the current stock price for a given ticker symbol.",
+        |  "input_schema" : {
+        |    "type" : "object",
+        |    "properties" : {
+        |      "ticker" : {
+        |        "type" : "string",
+        |        "description" : "The stock ticker symbol, e.g. AAPL for Apple Inc."
+        |      }
+        |    },
+        |    "required" : [ "ticker" ]
+        |  }
+        |}""".stripMargin
+
+    "serialize tools" in {
+      val toolSpec = ToolSpec(
+        name = "get_stock_price",
+        description = Some("Get the current stock price for a given ticker symbol."),
+        inputSchema = Map(
+            "type" -> "object",
+            "properties" -> Map(
+              "ticker" -> Map(
+                "type" -> "string",
+                "description" -> "The stock ticker symbol, e.g. AAPL for Apple Inc."
+              )
+            ),
+            "required" -> Seq("ticker")
+        )
+      )
+
+      testSerialization(toolSpec, expectedToolSpecJson, Pretty)
+    }
+
     val expectedImageContentJson =
       """{
         |  "role" : "user",
@@ -89,6 +125,21 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
     serialized shouldBe json
 
     Json.parse(json).as[A] shouldBe value
+  }
+
+  private def testSerialization[A](
+    value: A,
+    json: String,
+    printMode: JsonPrintMode = Compact
+  )(
+    implicit writes: Writes[A]
+  ): Unit = {
+    val jsValue = Json.toJson(value)
+    val serialized = printMode match {
+      case Compact => jsValue.toString()
+      case Pretty  => Json.prettyPrint(jsValue)
+    }
+    serialized shouldBe json
   }
 
 }

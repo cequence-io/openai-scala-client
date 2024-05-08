@@ -5,6 +5,7 @@ final case class AnthropicCreateMessageSettings(
   // See [[models|https://docs.anthropic.com/claude/docs/models-overview]] for additional details and options.
   model: String,
 
+  // TODO: check is this the right place to provide a system prompt? shouldn't we be obtaining it from SystemMessage-s?
   // System prompt.
   // A system prompt is a way of providing context and instructions to Claude, such as specifying a particular goal or role. See our [[guide to system prompts|https://docs.anthropic.com/claude/docs/system-prompts]].
   system: Option[String] = None,

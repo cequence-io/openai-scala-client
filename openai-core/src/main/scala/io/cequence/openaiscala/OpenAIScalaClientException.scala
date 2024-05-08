@@ -6,6 +6,7 @@ object Retryable {
     t: OpenAIScalaClientException
   ): Option[OpenAIScalaClientException] = Some(t).filter(apply)
 
+  // TODO: consider retrying for Anthropic
   def apply(t: OpenAIScalaClientException): Boolean = t match {
     // we retry on these
     case _: OpenAIScalaClientTimeoutException    => true

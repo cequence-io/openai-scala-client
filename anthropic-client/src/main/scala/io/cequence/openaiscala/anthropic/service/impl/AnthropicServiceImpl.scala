@@ -10,7 +10,7 @@ import io.cequence.openaiscala.anthropic.domain.response.{
   CreateMessageResponse
 }
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
-import io.cequence.openaiscala.anthropic.domain.{ChatRole, Message}
+import io.cequence.openaiscala.anthropic.domain.{ChatRole, Message, ToolSpec}
 import io.cequence.openaiscala.anthropic.service.AnthropicService
 import io.cequence.openaiscala.service.OpenAIWSRequestHelper
 import io.cequence.openaiscala.service.impl.OpenAIWSStreamRequestHelper
@@ -39,6 +39,27 @@ private[service] trait AnthropicServiceImpl
     ).map(
       _.asSafe[CreateMessageResponse]
     )
+
+  override def createToolMessage(
+    messages: Seq[Message],
+    tools: Seq[ToolSpec],
+    settings: AnthropicCreateMessageSettings
+  ): Future[CreateMessageResponse] = {
+    val coreParams = createBodyParamsForMessageCreation(messages, settings, stream = false)
+    val extraParams = jsonBodyParams(
+      Param.tools -> Some(tools.map(Json.toJson(_)))
+    )
+
+    execPOST(
+      EndPoint.messages,
+      bodyParams = coreParams ++ extraParams
+    ).map(
+      _.asSafe[CreateMessageResponse]
+    )
+  }
+
+  // TODO: somewhere override handleErrorCodes
+  // define Anthropic exceptions based on status codes
 
   override def createMessageStreamed(
     messages: Seq[Message],

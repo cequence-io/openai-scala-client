@@ -1,35 +1,16 @@
 package io.cequence.openaiscala.anthropic.service
 
+//import io.cequence.openaiscala.anthropic.{domain => Anthropic}
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlocks
-import io.cequence.openaiscala.anthropic.domain.response.{
-  ContentBlockDelta,
-  CreateMessageResponse
-}
+import io.cequence.openaiscala.anthropic.domain.Message.UserMessage
+import io.cequence.openaiscala.anthropic.domain.response.{ContentBlockDelta, CreateMessageResponse}
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse.UsageInfo
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
-import io.cequence.openaiscala.anthropic.domain.{Content, Message}
-import io.cequence.openaiscala.domain.response.{
-  ChatCompletionChoiceChunkInfo,
-  ChatCompletionChoiceInfo,
-  ChatCompletionChunkResponse,
-  ChatCompletionResponse,
-  ChunkMessageSpec,
-  UsageInfo => OpenAIUsageInfo
-}
+import io.cequence.openaiscala.anthropic.domain.{Content, Message, ToolSpec}
+import io.cequence.openaiscala.domain.response.{ChatCompletionChoiceChunkInfo, ChatCompletionChoiceInfo, ChatCompletionChunkResponse, ChatCompletionResponse, ChatToolCompletionChoiceInfo, ChatToolCompletionResponse, ChunkMessageSpec, UsageInfo => OpenAIUsageInfo}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.domain.{
-  AssistantMessage,
-  ChatRole,
-  MessageSpec,
-  SystemMessage,
-  BaseMessage => OpenAIBaseMessage,
-  Content => OpenAIContent,
-  ImageURLContent => OpenAIImageContent,
-  TextContent => OpenAITextContent,
-  UserMessage => OpenAIUserMessage,
-  UserSeqMessage => OpenAIUserSeqMessage
-}
+import io.cequence.openaiscala.domain.{AssistantMessage, AssistantToolMessage, ChatRole, FunctionSpec, MessageSpec, SystemMessage, BaseMessage => OpenAIBaseMessage, Content => OpenAIContent, ImageURLContent => OpenAIImageContent, TextContent => OpenAITextContent, ToolSpec => OpenAIToolSpec, UserMessage => OpenAIUserMessage, UserSeqMessage => OpenAIUserSeqMessage}
 
 import java.{util => ju}
 
@@ -44,6 +25,15 @@ package object impl extends AnthropicServiceConsts {
       case MessageSpec(role, content, _) if role == ChatRole.User =>
         Message.UserMessage(content)
     }
+
+  def toAnthropicToolUseEncouragement(toolChoice: String): UserMessage =
+    UserMessage(s"Use the $toolChoice tool in your response.")
+
+  def toAnthropicToolSpecs(toolSpecs: Seq[OpenAIToolSpec]): Seq[ToolSpec] = {
+    toolSpecs.collect {
+      case FunctionSpec(name, description, parameters) => ToolSpec(name, description, parameters)
+    }
+  }
 
   def toAnthropic(content: OpenAIContent): Content.ContentBlock = {
     content match {
@@ -101,6 +91,24 @@ package object impl extends AnthropicServiceConsts {
       usage = Some(toOpenAI(response.usage))
     )
 
+
+  def toOpenAIChatToolCompletionResponse(createMessageResponse: CreateMessageResponse) = {
+    ChatToolCompletionResponse(
+      id = createMessageResponse.id,
+      created = new ju.Date(),
+      model = createMessageResponse.model,
+      system_fingerprint = createMessageResponse.stop_reason,
+      choices = Seq(
+        ChatToolCompletionChoiceInfo(
+          message = toOpenAIAssistantToolMessage(createMessageResponse.content),
+          index = 0,
+          finish_reason = createMessageResponse.stop_reason
+        )
+      ),
+      usage = Some(toOpenAI(createMessageResponse.usage))
+    )
+  }
+
   def toOpenAI(blockDelta: ContentBlockDelta): ChatCompletionChunkResponse =
     ChatCompletionChunkResponse(
       id = "",
@@ -130,6 +138,10 @@ package object impl extends AnthropicServiceConsts {
     AssistantMessage(singleTextContent, name = None)
   }
 
+  def toOpenAIAssistantToolMessage(content: ContentBlocks): AssistantToolMessage = {
+    ???
+  }
+
   private def concatenateMessages(messageContent: Seq[String]): String =
     messageContent.mkString("\n")
 
@@ -140,4 +152,5 @@ package object impl extends AnthropicServiceConsts {
       completion_tokens = Some(usageInfo.output_tokens)
     )
   }
+
 }
