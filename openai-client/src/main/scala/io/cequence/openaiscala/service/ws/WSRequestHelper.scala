@@ -340,6 +340,38 @@ trait WSRequestHelper extends HasWSClient {
     client.url(url)
   }
 
+  protected def execPOSTWithStatusAndHeaders(
+                                        endPoint: PEP,
+                                        endPointParam: Option[String] = None,
+                                        params: Seq[(PT, Option[Any])] = Nil,
+                                        bodyParams: Seq[(PT, Option[JsValue])] = Nil,
+                                        acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes,
+                                        headers: Seq[(String, String)] = Nil
+  ): Future[RichJsResponse] = {
+    val request = getWSRequestOptionalWithHeaders(Some(endPoint), endPointParam, toStringParams(params), headers)
+    val bodyParamsX = bodyParams.collect { case (fieldName, Some(jsValue)) =>
+      (fieldName.toString, jsValue)
+    }
+
+    execPOSTJsonAux(
+      request,
+      JsObject(bodyParamsX),
+      Some(endPoint),
+      acceptableStatusCodes
+    )
+  }
+
+  protected def getWSRequestOptionalWithHeaders(
+    endPoint: Option[PEP],
+    endPointParam: Option[String],
+    params: Seq[(String, Option[Any])],
+    headers: Seq[(String, String)]
+  ) = {
+    val paramsString = paramsOptionalAsString(params)
+    val url = createUrl(endPoint, endPointParam) + paramsString
+    client.url(url).addHttpHeaders(headers: _*)
+  }
+
   private def execRequestAux[T](
     responseConverter: ResponseConverters.ResponseConverter[T]
   )(

@@ -11,7 +11,7 @@ import io.cequence.openaiscala.anthropic.domain.response.{
 }
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.domain.{ChatRole, Message, ToolSpec}
-import io.cequence.openaiscala.anthropic.service.AnthropicService
+import io.cequence.openaiscala.anthropic.service.{AnthropicService, AnthropicWSRequestHelper}
 import io.cequence.openaiscala.service.OpenAIWSRequestHelper
 import io.cequence.openaiscala.service.impl.OpenAIWSStreamRequestHelper
 import play.api.libs.json.{JsValue, Json}
@@ -22,7 +22,7 @@ import scala.concurrent.Future
 // Shouldn't use OpenAIWSRequestHelper and OpenAIWSStreamRequestHelper
 private[service] trait AnthropicServiceImpl
     extends AnthropicService
-    with OpenAIWSRequestHelper
+    with AnthropicWSRequestHelper
     with OpenAIWSStreamRequestHelper
     with JsonFormats {
 
@@ -50,12 +50,22 @@ private[service] trait AnthropicServiceImpl
       Param.tools -> Some(tools.map(Json.toJson(_)))
     )
 
-    execPOST(
-      EndPoint.messages,
-      bodyParams = coreParams ++ extraParams
-    ).map(
-      _.asSafe[CreateMessageResponse]
-    )
+    def isToolCall = tools.nonEmpty
+
+    if (isToolCall)
+      execBetaPOSTWithStatus(
+        EndPoint.messages,
+        bodyParams = coreParams ++ extraParams
+      ).map(
+        _.asSafe[CreateMessageResponse]
+      )
+    else
+      execPOST(
+        EndPoint.messages,
+        bodyParams = coreParams ++ extraParams
+      ).map(
+        _.asSafe[CreateMessageResponse]
+      )
   }
 
   // TODO: somewhere override handleErrorCodes
