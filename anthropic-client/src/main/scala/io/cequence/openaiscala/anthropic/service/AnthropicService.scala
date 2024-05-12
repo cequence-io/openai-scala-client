@@ -22,6 +22,11 @@ trait AnthropicService extends CloseableService with AnthropicServiceConsts {
    *
    * @param messages
    *   A list of messages comprising the conversation so far.
+   * @param systemPrompt
+   * System prompt.
+   *
+   * A system prompt is a way of providing context and instructions to Claude,
+   * such as specifying a particular goal or role. See our guide to system prompts.
    * @param settings
    * @return
    *   create message response
@@ -30,9 +35,9 @@ trait AnthropicService extends CloseableService with AnthropicServiceConsts {
    */
   def createMessage(
     messages: Seq[Message],
+    systemPrompt: Option[String],
     settings: AnthropicCreateMessageSettings = DefaultSettings.CreateMessage
   ): Future[CreateMessageResponse]
-
 
   // TODO:
   /**
@@ -46,6 +51,11 @@ trait AnthropicService extends CloseableService with AnthropicServiceConsts {
    *
    * @param messages
    *   A list of messages comprising the conversation so far.
+   * @param systemPrompt
+   * System prompt.
+   *
+   * A system prompt is a way of providing context and instructions to Claude,
+   * such as specifying a particular goal or role. See our guide to system prompts.
    * @param tools
    * [beta] Definitions of tools that the model may use.
    *
@@ -61,6 +71,7 @@ trait AnthropicService extends CloseableService with AnthropicServiceConsts {
    */
   def createToolMessage(
     messages: Seq[Message],
+    systemPrompt: Option[String],
     tools: Seq[ToolSpec],
     settings: AnthropicCreateMessageSettings = DefaultSettings.CreateMessage
   ): Future[CreateMessageResponse]
@@ -76,6 +87,11 @@ trait AnthropicService extends CloseableService with AnthropicServiceConsts {
    *
    * @param messages
    *   A list of messages comprising the conversation so far.
+   * @param systemPrompt
+   * System prompt.
+   *
+   * A system prompt is a way of providing context and instructions to Claude,
+   * such as specifying a particular goal or role. See our guide to system prompts.
    * @param settings
    * @return
    *   create message response
@@ -84,6 +100,7 @@ trait AnthropicService extends CloseableService with AnthropicServiceConsts {
    */
   def createMessageStreamed(
     messages: Seq[Message],
+    systemPrompt: Option[String],
     settings: AnthropicCreateMessageSettings = DefaultSettings.CreateMessage
   ): Source[ContentBlockDelta, NotUsed]
 }

@@ -31,21 +31,23 @@ private[service] trait AnthropicServiceImpl
 
   override def createMessage(
     messages: Seq[Message],
+    systemPrompt: Option[String],
     settings: AnthropicCreateMessageSettings
   ): Future[CreateMessageResponse] =
     execPOST(
       EndPoint.messages,
-      bodyParams = createBodyParamsForMessageCreation(messages, settings, stream = false)
+      bodyParams = createBodyParamsForMessageCreation(messages, systemPrompt, settings, stream = false)
     ).map(
       _.asSafe[CreateMessageResponse]
     )
 
   override def createToolMessage(
     messages: Seq[Message],
+    systemPrompt: Option[String],
     tools: Seq[ToolSpec],
     settings: AnthropicCreateMessageSettings
   ): Future[CreateMessageResponse] = {
-    val coreParams = createBodyParamsForMessageCreation(messages, settings, stream = false)
+    val coreParams = createBodyParamsForMessageCreation(messages, systemPrompt, settings, stream = false)
     val extraParams = jsonBodyParams(
       Param.tools -> Some(tools.map(Json.toJson(_)))
     )
@@ -73,12 +75,13 @@ private[service] trait AnthropicServiceImpl
 
   override def createMessageStreamed(
     messages: Seq[Message],
+    systemPrompt: Option[String],
     settings: AnthropicCreateMessageSettings
   ): Source[ContentBlockDelta, NotUsed] =
     execJsonStreamAux(
       EndPoint.messages,
       "POST",
-      bodyParams = createBodyParamsForMessageCreation(messages, settings, stream = true)
+      bodyParams = createBodyParamsForMessageCreation(messages, systemPrompt, settings, stream = true)
     ).map { (json: JsValue) =>
       (json \ "error").toOption.map { error =>
         throw new OpenAIScalaClientException(error.toString())
@@ -101,6 +104,7 @@ private[service] trait AnthropicServiceImpl
 
   protected def createBodyParamsForMessageCreation(
     messages: Seq[Message],
+    systemPrompt: Option[String],
     settings: AnthropicCreateMessageSettings,
     stream: Boolean
   ): Seq[(Param, Option[JsValue])] = {
@@ -112,7 +116,7 @@ private[service] trait AnthropicServiceImpl
     jsonBodyParams(
       Param.messages -> Some(messageJsons),
       Param.model -> Some(settings.model),
-      Param.system -> settings.system,
+      Param.system -> systemPrompt,
       Param.max_tokens -> Some(settings.max_tokens),
       Param.metadata -> { if (settings.metadata.isEmpty) None else Some(settings.metadata) },
       Param.stop_sequences -> {

@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.anthropic
 
 import io.cequence.openaiscala.JsonUtil
-import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{ImageBlock, TextBlock}
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{ImageBlock, TextBlock, ToolUseBlock}
 import io.cequence.openaiscala.anthropic.domain.Content.{ContentBlock, ContentBlocks, SingleString}
 import io.cequence.openaiscala.anthropic.domain.Message.{AssistantMessage, AssistantMessageContent, UserMessage, UserMessageContent}
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse.UsageInfo
@@ -54,6 +54,7 @@ trait JsonFormats {
   }
 
   implicit val contentBlockReads: Reads[ContentBlock] = new Reads[ContentBlock] {
+    implicit val stringAnyMapFormat: Format[Map[String, Any]] = JsonUtil.StringAnyMapFormat
     def reads(json: JsValue): JsResult[ContentBlock] = {
       (json \ "type").validate[String].flatMap {
         case "text" => (json \ "text").validate[String].map(TextBlock.apply)
@@ -64,6 +65,12 @@ trait JsonFormats {
             mediaType <- (source \ "media_type").validate[String]
             data <- (source \ "data").validate[String]
           } yield ImageBlock(`type`, mediaType, data)
+        case "tool_use" =>
+          for {
+            id <- (json \ "id").validate[String]
+            name <- (json \ "name").validate[String]
+            input <- (json \ "input").validate[Map[String, Any]]
+          } yield ToolUseBlock(id, name, input)
         case _ => JsError("Unsupported or invalid content block")
       }
     }
@@ -113,7 +120,7 @@ trait JsonFormats {
       (__ \ "model").read[String] and
       (__ \ "stop_reason").readNullable[String] and
       (__ \ "stop_sequence").readNullable[String] and
-      (__ \ "usage").read[UsageInfo]
+      (__ \ "usage").readNullable[UsageInfo]
   )(CreateMessageResponse.apply _)
 
   implicit val createMessageChunkResponseReads: Reads[CreateMessageChunkResponse] =

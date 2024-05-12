@@ -12,7 +12,8 @@ final case class CreateMessageResponse(
   model: String,
   stop_reason: Option[String],
   stop_sequence: Option[String],
-  usage: UsageInfo
+  // TODO: it is required according to the API documentation, but it is not present in the response for tool calls
+  usage: Option[UsageInfo]
 )
 
 object CreateMessageResponse {

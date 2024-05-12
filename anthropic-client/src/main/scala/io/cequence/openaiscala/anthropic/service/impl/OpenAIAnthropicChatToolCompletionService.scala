@@ -47,6 +47,7 @@ private[service] class OpenAIAnthropicChatToolCompletionService(
     val anthropicResponseF: Future[CreateMessageResponse] = underlying
       .createToolMessage(
         toAnthropic(messages) ++ responseToolChoice.map(toAnthropicToolUseEncouragement),
+        toAnthropicSystemPrompt(messages),
         toAnthropicToolSpecs(tools),
         toAnthropic(settings, messages)
       )

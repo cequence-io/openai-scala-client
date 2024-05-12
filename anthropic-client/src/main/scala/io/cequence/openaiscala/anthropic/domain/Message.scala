@@ -13,8 +13,7 @@ sealed abstract class Message private (
 
 object Message {
 
-  case class UserMessage(contentString: String)
-      extends Message(ChatRole.User, SingleString(contentString))
+  case class UserMessage(contentString: String) extends Message(ChatRole.User, SingleString(contentString))
   case class UserMessageContent(contentBlocks: Seq[ContentBlock])
       extends Message(ChatRole.User, ContentBlocks(contentBlocks))
   case class AssistantMessage(contentString: String)

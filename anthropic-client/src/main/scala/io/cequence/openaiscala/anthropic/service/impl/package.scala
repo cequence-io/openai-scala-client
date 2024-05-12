@@ -1,30 +1,40 @@
 package io.cequence.openaiscala.anthropic.service
 
-//import io.cequence.openaiscala.anthropic.{domain => Anthropic}
-import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
+import io.cequence.openaiscala.JsonUtil
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{TextBlock, ToolUseBlock}
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlocks
 import io.cequence.openaiscala.anthropic.domain.Message.UserMessage
-import io.cequence.openaiscala.anthropic.domain.response.{ContentBlockDelta, CreateMessageResponse}
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse.UsageInfo
+import io.cequence.openaiscala.anthropic.domain.response.{ContentBlockDelta, CreateMessageResponse}
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.domain.{Content, Message, ToolSpec}
 import io.cequence.openaiscala.domain.response.{ChatCompletionChoiceChunkInfo, ChatCompletionChoiceInfo, ChatCompletionChunkResponse, ChatCompletionResponse, ChatToolCompletionChoiceInfo, ChatToolCompletionResponse, ChunkMessageSpec, UsageInfo => OpenAIUsageInfo}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.domain.{AssistantMessage, AssistantToolMessage, ChatRole, FunctionSpec, MessageSpec, SystemMessage, BaseMessage => OpenAIBaseMessage, Content => OpenAIContent, ImageURLContent => OpenAIImageContent, TextContent => OpenAITextContent, ToolSpec => OpenAIToolSpec, UserMessage => OpenAIUserMessage, UserSeqMessage => OpenAIUserSeqMessage}
+import io.cequence.openaiscala.domain.{AssistantMessage, AssistantToolMessage, ChatRole, FunctionCallSpec, FunctionSpec, MessageSpec, SystemMessage, ToolCallSpec, BaseMessage => OpenAIBaseMessage, Content => OpenAIContent, ImageURLContent => OpenAIImageContent, TextContent => OpenAITextContent, ToolSpec => OpenAIToolSpec, UserMessage => OpenAIUserMessage, UserSeqMessage => OpenAIUserSeqMessage}
 
 import java.{util => ju}
 
 package object impl extends AnthropicServiceConsts {
 
-  def toAnthropic(messages: Seq[OpenAIBaseMessage]): Seq[Message] =
+  def toAnthropic(messages: Seq[OpenAIBaseMessage]): Seq[Message] = {
     messages.collect {
-      case OpenAIUserMessage(content, _) => Message.UserMessage(content)
+      case OpenAIUserMessage(content, _) =>
+        Message.UserMessage(content)
       case OpenAIUserSeqMessage(contents, _) =>
         Message.UserMessageContent(contents.map(toAnthropic))
       // legacy message type
       case MessageSpec(role, content, _) if role == ChatRole.User =>
         Message.UserMessage(content)
     }
+  }
+
+  def toAnthropicSystemPrompt(messages: Seq[OpenAIBaseMessage]): Option[String] = {
+    val systemMessagesContent = messages.collect { case SystemMessage(content, _) =>
+      content
+    }.mkString("\n")
+
+    if (systemMessagesContent.isEmpty) None else Some(systemMessagesContent)
+  }
 
   def toAnthropicToolUseEncouragement(toolChoice: String): UserMessage =
     UserMessage(s"Use the $toolChoice tool in your response.")
@@ -64,7 +74,7 @@ package object impl extends AnthropicServiceConsts {
 
     AnthropicCreateMessageSettings(
       model = settings.model,
-      system = if (systemMessagesContent.isEmpty) None else Some(systemMessagesContent),
+      //system = if (systemMessagesContent.isEmpty) None else Some(systemMessagesContent),
       max_tokens = settings.max_tokens.getOrElse(DefaultSettings.CreateMessage.max_tokens),
       metadata = Map.empty,
       stop_sequences = settings.stop,
@@ -88,7 +98,7 @@ package object impl extends AnthropicServiceConsts {
           logprobs = None
         )
       ),
-      usage = Some(toOpenAI(response.usage))
+      usage = response.usage.map(toOpenAI)
     )
 
 
@@ -105,7 +115,7 @@ package object impl extends AnthropicServiceConsts {
           finish_reason = createMessageResponse.stop_reason
         )
       ),
-      usage = Some(toOpenAI(createMessageResponse.usage))
+      usage = createMessageResponse.usage.map(toOpenAI)
     )
   }
 
@@ -139,8 +149,34 @@ package object impl extends AnthropicServiceConsts {
   }
 
   def toOpenAIAssistantToolMessage(content: ContentBlocks): AssistantToolMessage = {
-    ???
+    println(content.toString)
+    val textMessage = singleTextMessage(content)
+    AssistantToolMessage(
+      content = Some(textMessage),
+      name = None,
+      tool_calls = content.blocks.collect {
+        case toolContent: ToolUseBlock => toOpenAI(toolContent)
+      }
+    )
   }
+
+  def toOpenAI(toolUseBlock: ToolUseBlock): (String, ToolCallSpec) = {
+    val inputJson = JsonUtil.StringAnyMapFormat.writes(toolUseBlock.input).toString()
+    toolUseBlock.id -> FunctionCallSpec(toolUseBlock.id, inputJson)
+  }
+
+//  def toOpenAI(toolContent: ToolUseBlock): (String, ToolCallSpec) = {
+//    toolContent match {
+//      case ToolUseBlockSuccess(toolUseId, content) =>
+//        toolUseId -> FunctionCallSpec(toolUseId, content)
+//      case ToolUseBlockFailure(toolUseId, content) =>
+//        // TODO: how to map fail case?
+//        ???
+//    }
+//  }
+
+  private def singleTextMessage(content: ContentBlocks): String =
+    concatenateMessages(content.blocks.collect { case TextBlock(text) => text })
 
   private def concatenateMessages(messageContent: Seq[String]): String =
     messageContent.mkString("\n")

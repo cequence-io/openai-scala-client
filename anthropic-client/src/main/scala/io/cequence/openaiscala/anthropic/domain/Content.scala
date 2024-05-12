@@ -17,16 +17,22 @@ object Content {
       data: String
     ) extends ContentBlock
 
-    sealed trait ToolUseBlock extends ContentBlock
-    // TODO: allow only for responses to createChatToolCompletion
-    case class ToolUseBlockSuccess(
-      toolUseId: String,
-      content: String // TODO: allow here only Text content blocks
-    ) extends ToolUseBlock
+    case class ToolUseBlock(
+      id: String,
+      name: String,
+      input: Map[String, Any] // TODO: allow here only Text content blocks
+    ) extends ContentBlock
 
-    case class ToolUseBlockFailure(
-      toolUseId: String,
-      content: String // TODO: allow here only Text content blocks
-    ) extends ToolUseBlock
+//    sealed trait ToolUseBlock extends ContentBlock
+//    // TODO: allow only for responses to createChatToolCompletion
+//    case class ToolUseBlockSuccess(
+//      toolUseId: String,
+//      content: String // TODO: allow here only Text content blocks
+//    ) extends ToolUseBlock
+//
+//    case class ToolUseBlockFailure(
+//      toolUseId: String,
+//      content: String // TODO: allow here only Text content blocks
+//    ) extends ToolUseBlock
   }
 }

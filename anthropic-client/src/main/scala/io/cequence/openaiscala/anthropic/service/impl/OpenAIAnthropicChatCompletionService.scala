@@ -35,6 +35,7 @@ private[service] class OpenAIAnthropicChatCompletionService(
     underlying
       .createMessage(
         toAnthropic(messages),
+        toAnthropicSystemPrompt(messages),
         toAnthropic(settings, messages)
       )
       .map(toOpenAI)
@@ -50,6 +51,7 @@ private[service] class OpenAIAnthropicChatCompletionService(
     underlying
       .createToolMessage(
         toAnthropic(messages),
+        toAnthropicSystemPrompt(messages),
         toAnthropicToolSpecs(tools),
         toAnthropic(settings, messages)
       )
@@ -74,6 +76,7 @@ private[service] class OpenAIAnthropicChatCompletionService(
     underlying
       .createMessageStreamed(
         toAnthropic(messages),
+        toAnthropicSystemPrompt(messages),
         toAnthropic(settings, messages)
       )
       .map(toOpenAI)
