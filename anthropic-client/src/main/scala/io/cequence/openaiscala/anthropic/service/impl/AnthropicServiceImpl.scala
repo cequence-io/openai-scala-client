@@ -36,7 +36,8 @@ private[service] trait AnthropicServiceImpl
   ): Future[CreateMessageResponse] =
     execPOST(
       EndPoint.messages,
-      bodyParams = createBodyParamsForMessageCreation(messages, systemPrompt, settings, stream = false)
+      bodyParams =
+        createBodyParamsForMessageCreation(messages, systemPrompt, settings, stream = false)
     ).map(
       _.asSafe[CreateMessageResponse]
     )
@@ -47,7 +48,8 @@ private[service] trait AnthropicServiceImpl
     tools: Seq[ToolSpec],
     settings: AnthropicCreateMessageSettings
   ): Future[CreateMessageResponse] = {
-    val coreParams = createBodyParamsForMessageCreation(messages, systemPrompt, settings, stream = false)
+    val coreParams =
+      createBodyParamsForMessageCreation(messages, systemPrompt, settings, stream = false)
     val extraParams = jsonBodyParams(
       Param.tools -> Some(tools.map(Json.toJson(_)))
     )
@@ -81,7 +83,8 @@ private[service] trait AnthropicServiceImpl
     execJsonStreamAux(
       EndPoint.messages,
       "POST",
-      bodyParams = createBodyParamsForMessageCreation(messages, systemPrompt, settings, stream = true)
+      bodyParams =
+        createBodyParamsForMessageCreation(messages, systemPrompt, settings, stream = true)
     ).map { (json: JsValue) =>
       (json \ "error").toOption.map { error =>
         throw new OpenAIScalaClientException(error.toString())

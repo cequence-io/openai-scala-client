@@ -6,10 +6,18 @@ import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.Message.UserMessage
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse
 import io.cequence.openaiscala.anthropic.service.AnthropicService
-import io.cequence.openaiscala.domain.response.{ChatCompletionChunkResponse, ChatCompletionResponse, ChatToolCompletionResponse}
+import io.cequence.openaiscala.domain.response.{
+  ChatCompletionChunkResponse,
+  ChatCompletionResponse,
+  ChatToolCompletionResponse
+}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{BaseMessage, SystemMessage, ToolSpec}
-import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIChatCompletionStreamedServiceExtra, OpenAIChatToolCompletionService}
+import io.cequence.openaiscala.service.{
+  OpenAIChatCompletionService,
+  OpenAIChatCompletionStreamedServiceExtra,
+  OpenAIChatToolCompletionService
+}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -44,13 +52,12 @@ private[service] class OpenAIAnthropicChatToolCompletionService(
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
   ): Future[ChatToolCompletionResponse] = {
-    val anthropicResponseF: Future[CreateMessageResponse] = underlying
-      .createToolMessage(
-        toAnthropic(messages) ++ responseToolChoice.map(toAnthropicToolUseEncouragement),
-        toAnthropicSystemPrompt(messages),
-        toAnthropicToolSpecs(tools),
-        toAnthropic(settings, messages)
-      )
+    val anthropicResponseF: Future[CreateMessageResponse] = underlying.createToolMessage(
+      toAnthropic(messages) ++ responseToolChoice.map(toAnthropicToolUseEncouragement),
+      toAnthropicSystemPrompt(messages),
+      toAnthropicToolSpecs(tools),
+      toAnthropic(settings, messages)
+    )
     anthropicResponseF.map(toOpenAIChatToolCompletionResponse)
   }
 

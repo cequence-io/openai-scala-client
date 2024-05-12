@@ -341,14 +341,19 @@ trait WSRequestHelper extends HasWSClient {
   }
 
   protected def execPOSTWithStatusAndHeaders(
-                                        endPoint: PEP,
-                                        endPointParam: Option[String] = None,
-                                        params: Seq[(PT, Option[Any])] = Nil,
-                                        bodyParams: Seq[(PT, Option[JsValue])] = Nil,
-                                        acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes,
-                                        headers: Seq[(String, String)] = Nil
+    endPoint: PEP,
+    endPointParam: Option[String] = None,
+    params: Seq[(PT, Option[Any])] = Nil,
+    bodyParams: Seq[(PT, Option[JsValue])] = Nil,
+    acceptableStatusCodes: Seq[Int] = defaultAcceptableStatusCodes,
+    headers: Seq[(String, String)] = Nil
   ): Future[RichJsResponse] = {
-    val request = getWSRequestOptionalWithHeaders(Some(endPoint), endPointParam, toStringParams(params), headers)
+    val request = getWSRequestOptionalWithHeaders(
+      Some(endPoint),
+      endPointParam,
+      toStringParams(params),
+      headers
+    )
     val bodyParamsX = bodyParams.collect { case (fieldName, Some(jsValue)) =>
       (fieldName.toString, jsValue)
     }

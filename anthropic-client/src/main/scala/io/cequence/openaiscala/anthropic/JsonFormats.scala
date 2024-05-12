@@ -1,11 +1,29 @@
 package io.cequence.openaiscala.anthropic
 
 import io.cequence.openaiscala.JsonUtil
-import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{ImageBlock, TextBlock, ToolUseBlock}
-import io.cequence.openaiscala.anthropic.domain.Content.{ContentBlock, ContentBlocks, SingleString}
-import io.cequence.openaiscala.anthropic.domain.Message.{AssistantMessage, AssistantMessageContent, UserMessage, UserMessageContent}
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{
+  ImageBlock,
+  TextBlock,
+  ToolUseBlock
+}
+import io.cequence.openaiscala.anthropic.domain.Content.{
+  ContentBlock,
+  ContentBlocks,
+  SingleString
+}
+import io.cequence.openaiscala.anthropic.domain.Message.{
+  AssistantMessage,
+  AssistantMessageContent,
+  UserMessage,
+  UserMessageContent
+}
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse.UsageInfo
-import io.cequence.openaiscala.anthropic.domain.response.{ContentBlockDelta, CreateMessageChunkResponse, CreateMessageResponse, DeltaText}
+import io.cequence.openaiscala.anthropic.domain.response.{
+  ContentBlockDelta,
+  CreateMessageChunkResponse,
+  CreateMessageResponse,
+  DeltaText
+}
 import io.cequence.openaiscala.anthropic.domain.{ChatRole, Content, Message, ToolSpec}
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
