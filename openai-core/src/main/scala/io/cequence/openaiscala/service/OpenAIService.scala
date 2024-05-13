@@ -1038,8 +1038,8 @@ trait OpenAIService extends OpenAICoreService {
   def createBatch(
     inputFileId: String,
     endpoint: BatchEndpoint,
-    completionWindow: CompletionWindow,
-    metadata: Map[String, String]
+    completionWindow: CompletionWindow = CompletionWindow.`24h`,
+    metadata: Map[String, String] = Map()
   ): Future[Batch]
 
   /**

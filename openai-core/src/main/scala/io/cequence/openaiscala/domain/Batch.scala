@@ -1,7 +1,5 @@
 package io.cequence.openaiscala.domain
 
-import scala.concurrent.Future
-
 object Batch {
 
   sealed abstract class BatchEndpoint extends EnumValue
