@@ -184,7 +184,15 @@ object JsonFormats {
           case None                       => json.as[ToolMessage]
         }
 
-      case ChatRole.Assistant => json.as[AssistantMessage]
+      case ChatRole.Assistant =>
+        json.asOpt[AssistantToolMessage] match {
+          case Some(assistantToolMessage) => assistantToolMessage
+          case None =>
+            json.asOpt[AssistantMessage] match {
+              case Some(assistantMessage) => assistantMessage
+              case None                   => json.as[AssistantFunMessage]
+            }
+        }
 
       case ChatRole.Function => json.as[FunMessage]
     }

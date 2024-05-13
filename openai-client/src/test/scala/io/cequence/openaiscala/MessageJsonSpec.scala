@@ -4,12 +4,15 @@ import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.JsonFormats._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
-import play.api.libs.json.{JsArray, JsObject, JsString, Json}
+import play.api.libs.json.{Format, JsArray, JsObject, JsString, Json, Reads, Writes}
 
 class MessageJsonSpec extends Matchers with AnyWordSpecLike {
 
   private def deserialized(message: BaseMessage) =
     Json.fromJson[BaseMessage](toJsonObject(message)).get
+
+  private def deserializeAs[T: Format](message: T) =
+    Json.fromJson[T](toJsonObjectAs(message)).get
 
   "SystemMessage" should {
     "serialize correctly with content only" in {
@@ -234,8 +237,6 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
 
       json("role") shouldBe JsString("assistant")
       json("content") shouldBe JsString(content)
-
-      deserialized(message) shouldBe message
     }
 
     "serialize correctly with content and name" in {
@@ -255,11 +256,9 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
       json("role") shouldBe JsString("assistant")
       json("name") shouldBe JsString(name)
       json("content") shouldBe JsString(content)
-
-      deserialized(message) shouldBe message
     }
 
-    "serialize correctly with tool_calls" in {
+    "serialize and deserialize correctly with tool_calls" in {
       val toolId = "get_current_weather_1"
       val toolCallSpec = FunctionCallSpec(
         "get_current_weather",
@@ -312,8 +311,6 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
 
       json("role") shouldBe JsString("assistant")
       json("content") shouldBe JsString(content)
-
-      deserialized(message) shouldBe message
     }
 
     "serialize correctly with content and name" in {
@@ -333,8 +330,6 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
       json("role") shouldBe JsString("assistant")
       json("name") shouldBe JsString(name)
       json("content") shouldBe JsString(content)
-
-      deserialized(message) shouldBe message
     }
 
     "serialize correctly with tool_calls" in {
@@ -365,7 +360,7 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
   }
 
   "ToolMessage" should {
-    "serialize correctly with tool_call_id and (tool/function) name" in {
+    "serialize and deserialize correctly with tool_call_id and (tool/function) name" in {
       val callId = "get_current_weather_1"
       val functionName = "get_current_weather"
 
@@ -386,7 +381,7 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
       deserialized(message) shouldBe message
     }
 
-    "serialize correctly with tool_call_id, (tool/function) name, and content (tool/function response)" in {
+    "serialize and deserialize correctly with tool_call_id, (tool/function) name, and content (tool/function response)" in {
       val callId = "get_current_weather_1"
       val functionName = "get_current_weather"
       val content = "It's raining in Seattle. It's 50 degrees Fahrenheit."
@@ -432,6 +427,7 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
     }
   }
 
+  private def toJsonObjectAs[T: Writes](message: T) = Json.toJson(message).as[JsObject]
   private def toJsonObject(message: BaseMessage) = Json.toJson(message).as[JsObject]
   private def toJson(message: BaseMessage) = toJsonObject(message).value
 }
