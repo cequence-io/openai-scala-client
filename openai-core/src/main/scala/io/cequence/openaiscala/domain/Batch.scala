@@ -151,5 +151,4 @@ object Batch {
     def toBatchInput(model: String): BatchRow =
       BatchRow(custom_id, "POST", url, Map(model -> messages))
   }
-
 }

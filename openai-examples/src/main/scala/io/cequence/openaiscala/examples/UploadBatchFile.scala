@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import io.cequence.openaiscala.domain.Pagination
-import io.cequence.openaiscala.domain.response.FileInfo
-
 import java.io.{File, PrintWriter}
 import scala.concurrent.Future
 
@@ -26,5 +23,4 @@ object UploadBatchFile extends Example {
       fileInfo
     }
   }
-
 }
