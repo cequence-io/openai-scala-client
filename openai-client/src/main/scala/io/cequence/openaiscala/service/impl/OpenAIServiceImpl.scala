@@ -5,15 +5,20 @@ import akka.util.ByteString
 import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.OpenAIScalaClientException
+import io.cequence.openaiscala.domain.Batch.BatchRow.buildBatchRows
 import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.service.OpenAIService
+import play.api.libs.json.Json.prettyPrint
 import play.api.libs.json.{JsObject, JsValue, Json, Reads}
 
 import java.io.File
+import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Paths}
 import scala.concurrent.Future
+import scala.util.{Failure, Success, Try}
 
 /**
  * Private impl. of [[OpenAIService]].
@@ -264,6 +269,54 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
     ).map(
       _.asSafe[FileInfo]
     )
+
+  private def readFile(file: File): Seq[String] = {
+    val source = scala.io.Source.fromFile(file)
+    val content = Try(source.mkString.split("\n"))
+    content match {
+      case Success(value) =>
+        source.close()
+        value
+      case Failure(exception) =>
+        source.close()
+        throw new OpenAIScalaClientException(
+          s"Error reading file ${file.getName}: ${exception.getMessage}"
+        )
+    }
+  }
+
+  override def uploadBatchFile(
+    file: File,
+    displayFileName: Option[String]
+  ): Future[FileInfo] = {
+    val fileRows = readFile(file)
+    // parse the fileContent as Seq[BatchRow] solely for the purpose of validating its structure, OpenAIScalaClientException is thrown if the parsing fails
+
+//    fileRows.map { row =>
+//      Json.parse(row).asSafeArray[BatchRow]
+//    }
+
+    uploadFile(file, displayFileName, DefaultSettings.UploadBatchFile)
+  }
+
+  override def buildAndUploadBatchFile(
+    model: String,
+    requests: Seq[BatchRowBase],
+    displayFileName: Option[String]
+  ): Future[FileInfo] = {
+    val fileContent = buildBatchRows(model, requests)
+    val json = Json.toJson(fileContent).toString()
+    val tempPath = Files.createTempFile("openai-batch-", ".jsonl")
+    Files.write(tempPath, json.getBytes(StandardCharsets.UTF_8))
+    val file = tempPath.toFile
+    uploadBatchFile(file, displayFileName)
+  }
+
+  override def buildBatchFileContent(
+    model: String,
+    requests: Seq[BatchRowBase]
+  ): Future[Seq[BatchRow]] =
+    Future.successful(buildBatchRows(model, requests))
 
   // TODO: Azure returns http code 204
   override def deleteFile(
@@ -740,7 +793,7 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
       endPointParam = None,
       bodyParams = jsonBodyParams(
         Param.input_file_id -> Some(inputFileId),
-        Param.endpoint -> Some(Json.toJson(endpoint)),
+        Param.endpoint -> Some(Json.toJson(endpoint.toString)),
         Param.completion_window -> Some(Json.toJson(completionWindow)),
         Param.metadata -> Some(metadata)
       )
@@ -753,6 +806,36 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
         Some(batchId)
       )
     )
+
+  override def retrieveBatchFile(batchId: String): Future[Option[FileInfo]] =
+    for {
+      maybeBatch <- retrieveBatch(batchId)
+      output_file_id <-
+        (for {
+          batch <- maybeBatch
+          output_file_id <- batch.output_file_id
+        } yield retrieveFile(output_file_id)).getOrElse(Future.successful(None))
+    } yield output_file_id
+
+  def retrieveBatchFileContent(batchId: String): Future[Option[String]] = // TODO: Content?
+    for {
+      maybeFileInfo <- retrieveBatchFile(batchId)
+      maybeFile <- maybeFileInfo.map { fileInfo =>
+        retrieveFileContent(fileInfo.id)
+      }.getOrElse(Future.successful(None))
+    } yield maybeFile
+
+  override def retrieveBatchResponses(batchId: String): Future[Option[CreateBatchResponses]] =
+    for {
+      maybeFileInfo <- retrieveBatchFile(batchId)
+      maybeFile <- maybeFileInfo.map { fileInfo =>
+        retrieveFileContent(fileInfo.id)
+      }.getOrElse(Future.successful(None))
+    } yield maybeFile.map { file =>
+      CreateBatchResponses(
+        file.split("\n").map(Json.parse(_).as[CreateBatchResponse]).toSeq
+      )
+    }
 
   override def cancelBatch(batchId: String): Future[Option[Batch]] =
     asSafeJsonIfFound[Batch](
@@ -770,6 +853,7 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
       EndPoint.batches,
       params = paginationParams(pagination) :+ Param.order -> order
     ).map { response =>
+      println(prettyPrint(response))
       readAttribute(response, "data").asSafeArray[Batch]
     }
   }

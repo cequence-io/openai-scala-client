@@ -10,7 +10,8 @@ object ListBatches extends Example {
     for {
       assistants <- service.listBatches(Pagination.limit(5))
     } yield {
-      assistants.foreach(println)
+      if (assistants.isEmpty) println("No batches found")
+      else assistants.foreach(println)
     }
 
 }

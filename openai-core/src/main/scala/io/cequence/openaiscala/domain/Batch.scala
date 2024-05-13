@@ -1,11 +1,17 @@
 package io.cequence.openaiscala.domain
 
+import scala.concurrent.Future
+
 object Batch {
 
   sealed abstract class BatchEndpoint extends EnumValue
   object BatchEndpoint {
-    case object `/v1/chat/completions` extends BatchEndpoint
-    case object `/v1/embeddings` extends BatchEndpoint
+    case object `/v1/chat/completions` extends BatchEndpoint {
+      override def toString: String = "/v1/chat/completions"
+    }
+    case object `/v1/embeddings` extends BatchEndpoint {
+      override def toString: String = "/v1/embeddings"
+    }
   }
 
   sealed trait CompletionWindow extends EnumValue
@@ -63,7 +69,7 @@ object Batch {
     id: String,
     `object`: String,
     endpoint: BatchEndpoint,
-    errors: Option[Map[String, String]],
+    errors: Option[BatchProcessingErrors],
     input_file_id: String,
     completion_window: CompletionWindow,
     status: String,
@@ -81,4 +87,69 @@ object Batch {
     request_counts: Map[String, Int],
     metadata: Option[Map[String, String]]
   )
+
+  case class BatchProcessingErrors(
+    `object`: String,
+//    data: Map[String, String]
+    data: Seq[BatchProcessingError]
+  )
+
+  case class BatchProcessingError(
+    code: String,
+    message: String,
+    param: Option[String],
+    line: Option[Int]
+  )
+
+  /**
+   * Represents a request in a batch. The per-line object of the batch input file
+   *
+   * @param custom_id
+   *   A developer-provided per-request id that will be used to match outputs to inputs. Must
+   *   be unique for each request in a batch.
+   * @param method
+   *   The HTTP method to be used for the request. Currently only POST is supported.
+   * @param url
+   *   The OpenAI API relative URL to be used for the request. Currently /v1/chat/completions
+   *   and /v1/embeddings are supported.
+   * @param body
+   *   The per-line object of the batch input file.
+   */
+  case class BatchRow(
+    custom_id: String,
+    method: String,
+    url: String,
+    body: Map[String, Seq[BaseMessage]]
+  )
+
+  object BatchRow {
+    def buildBatchRows(
+      model: String,
+      requests: Seq[BatchRowBase]
+    ): Seq[BatchRow] =
+      requests.map(_.toBatchInput(model))
+  }
+
+  /**
+   * Simplification of the [[BatchRow]] as method is always POST and the model should be the
+   * same for all the requests in one batch.
+   *
+   * @param custom_id
+   *   A developer-provided per-request id that will be used to match outputs to inputs. Must
+   *   be unique for each request in a batch.
+   * @param url
+   *   The OpenAI API relative URL to be used for the request. Currently /v1/chat/completions
+   *   and /v1/embeddings are supported.
+   * @param messages
+   *   Messages for either chat completions or embeddings.
+   */
+  case class BatchRowBase(
+    custom_id: String,
+    url: String,
+    messages: Seq[BaseMessage]
+  ) {
+    def toBatchInput(model: String): BatchRow =
+      BatchRow(custom_id, "POST", url, Map(model -> messages))
+  }
+
 }

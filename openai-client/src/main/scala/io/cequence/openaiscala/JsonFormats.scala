@@ -6,7 +6,7 @@ import io.cequence.openaiscala.domain.{ThreadMessageFile, _}
 import java.{util => ju}
 import io.cequence.openaiscala.domain.response._
 import play.api.libs.functional.syntax._
-import play.api.libs.json.{Format, Json, _}
+import play.api.libs.json.{Format, JsValue, Json, _}
 import Json.toJson
 import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain.FineTune.WeightsAndBiases
@@ -51,11 +51,30 @@ object JsonFormats {
     ChatRole.Tool
   )
 
+  implicit val contentWrites: Writes[Content] = Writes[Content] {
+    _ match {
+      case c: TextContent =>
+        Json.obj("type" -> "text", "text" -> c.text)
+
+      case c: ImageURLContent =>
+        Json.obj("type" -> "image_url", "image_url" -> Json.obj("url" -> c.url))
+    }
+  }
+
+  implicit val contentReads: Reads[Content] = Reads[Content] { (json: JsValue) =>
+    (json \ "type").validate[String].flatMap {
+      case "text"      => (json \ "text").validate[String].map(TextContent)
+      case "image_url" => (json \ "image_url" \ "url").validate[String].map(ImageURLContent)
+      case _           => JsError("Invalid type")
+    }
+  }
+
   implicit val functionCallSpecFormat: Format[FunctionCallSpec] =
     Json.format[FunctionCallSpec]
 
   implicit val systemMessageFormat: Format[SystemMessage] = Json.format[SystemMessage]
   implicit val userMessageFormat: Format[UserMessage] = Json.format[UserMessage]
+  implicit val userSeqMessageFormat: Format[UserSeqMessage] = Json.format[UserSeqMessage]
   implicit val toolMessageFormat: Format[ToolMessage] = Json.format[ToolMessage]
   implicit val assistantMessageFormat: Format[AssistantMessage] = Json.format[AssistantMessage]
   implicit val assistantToolMessageReads: Reads[AssistantToolMessage] = (
@@ -146,14 +165,31 @@ object JsonFormats {
     )
   }
 
-  implicit val contentWrites: Writes[Content] = Writes[Content] {
-    _ match {
-      case c: TextContent =>
-        Json.obj("type" -> "text", "text" -> c.text)
+  implicit val messageReads: Reads[BaseMessage] = Reads { (json: JsValue) =>
+    val role = (json \ "role").as[ChatRole]
+    val nameOpt = (json \ "name").asOpt[String]
 
-      case c: ImageURLContent =>
-        Json.obj("type" -> "image_url", "image_url" -> Json.obj("url" -> c.url))
+    val message: BaseMessage = role match {
+      case ChatRole.System => json.as[SystemMessage]
+
+      case ChatRole.User =>
+        json.asOpt[UserMessage] match {
+          case Some(userMessage) => userMessage
+          case None              => json.as[UserSeqMessage]
+        }
+
+      case ChatRole.Tool =>
+        json.asOpt[AssistantToolMessage] match {
+          case Some(assistantToolMessage) => assistantToolMessage
+          case None                       => json.as[ToolMessage]
+        }
+
+      case ChatRole.Assistant => json.as[AssistantMessage]
+
+      case ChatRole.Function => json.as[FunMessage]
     }
+
+    JsSuccess(message)
   }
 
   implicit val messageWrites: Writes[BaseMessage] = Writes { (message: BaseMessage) =>
@@ -420,6 +456,39 @@ object JsonFormats {
       CompletionWindow.`24h`
     )
 
+  lazy implicit val batchProcessingErrorFormat: Format[BatchProcessingError] =
+    Json.format[BatchProcessingError]
+  lazy implicit val batchProcessingErrorsFormat: Format[BatchProcessingErrors] =
+    Json.format[BatchProcessingErrors]
   lazy implicit val batchFormat: Format[Batch] = Json.format[Batch]
+  lazy implicit val batchInputFormat: Format[BatchRow] = Json.format[BatchRow]
+
+  lazy implicit val chatCompletionBatchResponseFormat: Format[ChatCompletionBatchResponse] =
+    Json.format[ChatCompletionBatchResponse]
+  lazy implicit val embeddingBatchResponseFormat: Format[EmbeddingBatchResponse] =
+    Json.format[EmbeddingBatchResponse]
+
+  lazy implicit val batchResponseFormat: Format[BatchResponse] = {
+    val reads: Reads[BatchResponse] = Reads { json =>
+      chatCompletionBatchResponseFormat
+        .reads(json)
+        .orElse(embeddingBatchResponseFormat.reads(json))
+    }
+
+    val writes: Writes[BatchResponse] = Writes {
+      case chatCompletionResponse: ChatCompletionResponse =>
+        chatCompletionResponseFormat.writes(chatCompletionResponse)
+      case embeddingResponse: EmbeddingResponse =>
+        embeddingFormat.writes(embeddingResponse)
+    }
+
+    Format(reads, writes)
+  }
+
+  lazy implicit val batchErrorFormat: Format[BatchError] = Json.format[BatchError]
+  lazy implicit val createBatchResponseFormat: Format[CreateBatchResponse] =
+    Json.format[CreateBatchResponse]
+  lazy implicit val createBatchResponsesFormat: Format[CreateBatchResponses] =
+    Json.format[CreateBatchResponses]
 
 }

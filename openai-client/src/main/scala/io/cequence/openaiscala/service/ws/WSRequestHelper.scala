@@ -195,7 +195,6 @@ trait WSRequestHelper extends HasWSClient {
     val bodyParamsX = bodyParams.collect { case (fieldName, Some(jsValue)) =>
       (fieldName.toString, jsValue)
     }
-
     execPOSTJsonAux(
       request,
       JsObject(bodyParamsX),
@@ -203,12 +202,6 @@ trait WSRequestHelper extends HasWSClient {
       acceptableStatusCodes
     )
   }
-
-//  protected def asSafeJsonIfFound[T: Reads](response: Future[RichJsResponse])
-//  : Future[Option[T]] =
-//    response.map { response =>
-//      handleNotFoundAndError(response).map(_.asSafe[T])
-//    }
 
   protected def execPOSTSource(
     endPoint: PEP,

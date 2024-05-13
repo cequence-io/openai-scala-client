@@ -1,18 +1,22 @@
 package io.cequence.openaiscala
 
 import io.cequence.openaiscala.domain._
-import io.cequence.openaiscala.JsonFormats.messageWrites
+import io.cequence.openaiscala.JsonFormats._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import play.api.libs.json.{JsArray, JsObject, JsString, Json}
 
 class MessageJsonSpec extends Matchers with AnyWordSpecLike {
 
+  private def deserialized(message: BaseMessage) =
+    Json.fromJson[BaseMessage](toJsonObject(message)).get
+
   "SystemMessage" should {
     "serialize correctly with content only" in {
       val content = "You are a helpful assistant."
 
       val message = SystemMessage(content)
+      val plainJson = toJsonObject(message)
       val json = toJson(message)
       val jsonKeys = json.keySet
 
@@ -23,14 +27,17 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
 
       json("role") shouldBe JsString("system")
       json("content") shouldBe JsString(content)
+
+      deserialized(message) shouldBe message
     }
 
-    "serialize correctly with content and name" in {
+    "serialize and deserialize correctly with content and name" in {
       val content =
         "You are a brilliant mathematician. Take a deep breath and thing step by step."
       val name = "euclid_123"
 
       val message = SystemMessage(content, name = Some(name))
+      val plainJson = toJsonObject(message)
       val json = toJson(message)
       val jsonKeys = json.keySet
 
@@ -42,6 +49,8 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
       json("role") shouldBe JsString("system")
       json("name") shouldBe JsString(name)
       json("content") shouldBe JsString(content)
+
+      deserialized(message) shouldBe message
     }
   }
 
@@ -60,6 +69,8 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
 
       json("role") shouldBe JsString("user")
       json("content") shouldBe JsString(content)
+
+      deserialized(message) shouldBe message
     }
 
     "serialize correctly with content and name" in {
@@ -78,6 +89,8 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
       json("role") shouldBe JsString("user")
       json("name") shouldBe JsString(name)
       json("content") shouldBe JsString(content)
+
+      deserialized(message) shouldBe message
     }
   }
 
@@ -114,6 +127,8 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
           )
         )
       )
+
+      deserialized(message) shouldBe message
     }
 
     "serialize correctly with content and name" in {
@@ -150,6 +165,8 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
           )
         )
       )
+
+      deserialized(message) shouldBe message
     }
   }
 
@@ -168,6 +185,8 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
 
       json("role") shouldBe JsString("assistant")
       json("content") shouldBe JsString(content)
+
+      deserialized(message) shouldBe message
     }
 
     "serialize correctly with content and name" in {
@@ -186,6 +205,8 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
       json("role") shouldBe JsString("assistant")
       json("name") shouldBe JsString(name)
       json("content") shouldBe JsString(content)
+
+      deserialized(message) shouldBe message
     }
   }
 
@@ -197,6 +218,14 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
       val json = toJson(message)
       val jsonKeys = json.keySet
 
+      println(toJsonObject(message))
+
+      val messages2 = AssistantMessage(content)
+      val json2 = toJson(messages2)
+      println(toJsonObject(messages2))
+
+//      json shouldNot be(json2)
+
       jsonKeys should contain("role")
       jsonKeys should contain("content")
       jsonKeys shouldNot contain("name")
@@ -205,6 +234,8 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
 
       json("role") shouldBe JsString("assistant")
       json("content") shouldBe JsString(content)
+
+      deserialized(message) shouldBe message
     }
 
     "serialize correctly with content and name" in {
@@ -224,6 +255,8 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
       json("role") shouldBe JsString("assistant")
       json("name") shouldBe JsString(name)
       json("content") shouldBe JsString(content)
+
+      deserialized(message) shouldBe message
     }
 
     "serialize correctly with tool_calls" in {
@@ -258,6 +291,8 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
           )
         )
       )
+
+      deserialized(message) shouldBe message
     }
   }
 
@@ -277,6 +312,8 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
 
       json("role") shouldBe JsString("assistant")
       json("content") shouldBe JsString(content)
+
+      deserialized(message) shouldBe message
     }
 
     "serialize correctly with content and name" in {
@@ -296,6 +333,8 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
       json("role") shouldBe JsString("assistant")
       json("name") shouldBe JsString(name)
       json("content") shouldBe JsString(content)
+
+      deserialized(message) shouldBe message
     }
 
     "serialize correctly with tool_calls" in {
@@ -320,6 +359,8 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
         "name" -> JsString(functionCallSpec.name),
         "arguments" -> JsString(functionCallSpec.arguments)
       )
+
+      deserialized(message) shouldBe message
     }
   }
 
@@ -341,6 +382,8 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
       json("role") shouldBe JsString("tool")
       json("tool_call_id") shouldBe JsString(callId)
       json("name") shouldBe JsString(functionName)
+
+      deserialized(message) shouldBe message
     }
 
     "serialize correctly with tool_call_id, (tool/function) name, and content (tool/function response)" in {
@@ -362,6 +405,8 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
       json("content") shouldBe JsString(content)
       json("tool_call_id") shouldBe JsString(callId)
       json("name") shouldBe JsString(functionName)
+
+      deserialized(message) shouldBe message
     }
   }
 
@@ -382,8 +427,11 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
       json("role") shouldBe JsString("function")
       json("content") shouldBe JsString(content)
       json("name") shouldBe JsString(functionName)
+
+      deserialized(message) shouldBe message
     }
   }
 
-  private def toJson(message: BaseMessage) = Json.toJson(message).as[JsObject].value
+  private def toJsonObject(message: BaseMessage) = Json.toJson(message).as[JsObject]
+  private def toJson(message: BaseMessage) = toJsonObject(message).value
 }

@@ -132,6 +132,31 @@ trait OpenAIServiceWrapper
     _.uploadFile(file, displayFileName, settings)
   )
 
+  override def uploadBatchFile(
+    file: File,
+    displayFileName: Option[String]
+  ): Future[FileInfo] =
+    wrap(
+      _.uploadBatchFile(file, displayFileName)
+    )
+
+  override def buildAndUploadBatchFile(
+    model: String,
+    requests: Seq[BatchRowBase],
+    displayFileName: Option[String]
+  ): Future[FileInfo] =
+    wrap(
+      _.buildAndUploadBatchFile(model, requests, displayFileName)
+    )
+
+  override def buildBatchFileContent(
+    model: String,
+    requests: Seq[BatchRowBase]
+  ): Future[Seq[BatchRow]] =
+    wrap(
+      _.buildBatchFileContent(model, requests)
+    )
+
   override def deleteFile(
     fileId: String
   ): Future[DeleteResponse] = wrap(
@@ -373,6 +398,15 @@ trait OpenAIServiceWrapper
   override def retrieveBatch(batchId: String): Future[Option[Batch]] =
     wrap(_.retrieveBatch(batchId))
 
+  override def retrieveBatchFile(batchId: String): Future[Option[FileInfo]] =
+    wrap(_.retrieveBatchFile(batchId))
+
+  override def retrieveBatchFileContent(batchId: String): Future[Option[String]] =
+    wrap(_.retrieveBatchFileContent(batchId))
+
+  override def retrieveBatchResponses(batchId: String): Future[Option[CreateBatchResponses]] =
+    wrap(_.retrieveBatchResponses(batchId))
+
   override def cancelBatch(batchId: String): Future[Option[Batch]] =
     wrap(_.cancelBatch(batchId))
 
@@ -381,9 +415,6 @@ trait OpenAIServiceWrapper
     order: Option[SortOrder]
   ): Future[Seq[Batch]] =
     wrap(_.listBatches(pagination, order))
-
-
-
 
 }
 
