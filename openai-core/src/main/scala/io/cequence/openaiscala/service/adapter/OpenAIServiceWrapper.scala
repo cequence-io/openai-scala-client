@@ -2,6 +2,7 @@ package io.cequence.openaiscala.service.adapter
 
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
+import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
@@ -130,6 +131,31 @@ trait OpenAIServiceWrapper
   ): Future[FileInfo] = wrap(
     _.uploadFile(file, displayFileName, settings)
   )
+
+  override def uploadBatchFile(
+    file: File,
+    displayFileName: Option[String]
+  ): Future[FileInfo] =
+    wrap(
+      _.uploadBatchFile(file, displayFileName)
+    )
+
+  override def buildAndUploadBatchFile(
+    model: String,
+    requests: Seq[BatchRowBase],
+    displayFileName: Option[String]
+  ): Future[FileInfo] =
+    wrap(
+      _.buildAndUploadBatchFile(model, requests, displayFileName)
+    )
+
+  override def buildBatchFileContent(
+    model: String,
+    requests: Seq[BatchRowBase]
+  ): Future[Seq[BatchRow]] =
+    wrap(
+      _.buildBatchFileContent(model, requests)
+    )
 
   override def deleteFile(
     fileId: String
@@ -358,6 +384,38 @@ trait OpenAIServiceWrapper
     fileId: String
   ): Future[DeleteResponse] =
     wrap(_.deleteAssistantFile(assistantId, fileId))
+
+  override def createBatch(
+    inputFileId: String,
+    endpoint: BatchEndpoint,
+    completionWindow: CompletionWindow,
+    metadata: Map[String, String]
+  ): Future[Batch] =
+    wrap(
+      _.createBatch(inputFileId, endpoint, completionWindow, metadata)
+    )
+
+  override def retrieveBatch(batchId: String): Future[Option[Batch]] =
+    wrap(_.retrieveBatch(batchId))
+
+  override def retrieveBatchFile(batchId: String): Future[Option[FileInfo]] =
+    wrap(_.retrieveBatchFile(batchId))
+
+  override def retrieveBatchFileContent(batchId: String): Future[Option[String]] =
+    wrap(_.retrieveBatchFileContent(batchId))
+
+  override def retrieveBatchResponses(batchId: String): Future[Option[CreateBatchResponses]] =
+    wrap(_.retrieveBatchResponses(batchId))
+
+  override def cancelBatch(batchId: String): Future[Option[Batch]] =
+    wrap(_.cancelBatch(batchId))
+
+  override def listBatches(
+    pagination: Pagination,
+    order: Option[SortOrder]
+  ): Future[Seq[Batch]] =
+    wrap(_.listBatches(pagination, order))
+
 }
 
 private class OpenAICoreServiceWrapperImpl(
