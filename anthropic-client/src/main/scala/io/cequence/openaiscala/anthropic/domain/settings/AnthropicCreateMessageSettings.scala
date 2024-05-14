@@ -5,10 +5,6 @@ final case class AnthropicCreateMessageSettings(
   // See [[models|https://docs.anthropic.com/claude/docs/models-overview]] for additional details and options.
   model: String,
 
-  // System prompt.
-  // A system prompt is a way of providing context and instructions to Claude, such as specifying a particular goal or role. See our [[guide to system prompts|https://docs.anthropic.com/claude/docs/system-prompts]].
-  system: Option[String] = None,
-
   // The maximum number of tokens to generate before stopping.
   // Note that our models may stop before reaching this maximum. This parameter only specifies the absolute maximum number of tokens to generate.
   // Different models have different maximum values for this parameter. See [[models|https://docs.anthropic.com/claude/docs/models-overview]] for details.

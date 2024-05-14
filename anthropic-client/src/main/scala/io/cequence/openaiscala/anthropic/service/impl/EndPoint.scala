@@ -20,6 +20,7 @@ object Param {
   case object stop_sequences extends Param
   case object stream extends Param
   case object temperature extends Param
+  case object tools extends Param
   case object top_p extends Param
   case object top_k extends Param
 

@@ -21,6 +21,7 @@ object AnthropicCreateMessageStreamed extends ExampleBase[AnthropicService] {
     service
       .createMessageStreamed(
         messages,
+        systemPrompt = None,
         settings = AnthropicCreateMessageSettings(
           model = NonOpenAIModelId.claude_3_haiku_20240307,
           max_tokens = 4096

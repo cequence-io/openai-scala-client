@@ -3,10 +3,16 @@ package io.cequence.openaiscala.anthropic.service
 import akka.stream.Materializer
 import io.cequence.openaiscala.anthropic.service.impl.{
   AnthropicServiceImpl,
-  OpenAIAnthropicChatCompletionService
+  OpenAIAnthropicChatCompletionService,
+  OpenAIAnthropicChatToolCompletionService
 }
-import io.cequence.openaiscala.service.OpenAIChatCompletionService
-import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
+import io.cequence.openaiscala.service.{
+  OpenAIChatCompletionService,
+  OpenAIChatToolCompletionService
+}
+import io.cequence.openaiscala.service.StreamedServiceTypes.{
+  OpenAIChatCompletionStreamedService
+}
 import io.cequence.openaiscala.service.ws.Timeouts
 
 import scala.concurrent.ExecutionContext
@@ -40,6 +46,17 @@ object AnthropicServiceFactory extends AnthropicServiceConsts {
     materializer: Materializer
   ): OpenAIChatCompletionStreamedService =
     new OpenAIAnthropicChatCompletionService(
+      AnthropicServiceFactory(apiKey, timeouts)
+    )
+
+  def asOpenAIChatToolCompletionService(
+    apiKey: String = getAPIKeyFromEnv(),
+    timeouts: Option[Timeouts] = None
+  )(
+    implicit ec: ExecutionContext,
+    materializer: Materializer
+  ): OpenAIChatToolCompletionService =
+    new OpenAIAnthropicChatToolCompletionService(
       AnthropicServiceFactory(apiKey, timeouts)
     )
 

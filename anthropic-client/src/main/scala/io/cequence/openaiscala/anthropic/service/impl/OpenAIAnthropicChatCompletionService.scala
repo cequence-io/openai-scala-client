@@ -3,7 +3,7 @@ package io.cequence.openaiscala.anthropic.service.impl
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.anthropic.service.AnthropicService
-import io.cequence.openaiscala.domain.BaseMessage
+import io.cequence.openaiscala.domain.{BaseMessage, ToolSpec}
 import io.cequence.openaiscala.domain.response.{
   ChatCompletionChunkResponse,
   ChatCompletionResponse
@@ -41,6 +41,23 @@ private[service] class OpenAIAnthropicChatCompletionService(
     underlying
       .createMessage(
         toAnthropic(messages),
+        toAnthropicSystemPrompt(messages),
+        toAnthropic(settings, messages)
+      )
+      .map(toOpenAI)
+  }
+
+  // TODO: extract another trait extending OpenAIChatCompletionService with createChatToolCompletion
+  def createChatToolCompletion(
+    messages: Seq[BaseMessage],
+    tools: Seq[ToolSpec],
+    settings: CreateChatCompletionSettings
+  ): Future[ChatCompletionResponse] = {
+    underlying
+      .createToolMessage(
+        toAnthropic(messages),
+        toAnthropicSystemPrompt(messages),
+        toAnthropicToolSpecs(tools),
         toAnthropic(settings, messages)
       )
       .map(toOpenAI)
@@ -64,6 +81,7 @@ private[service] class OpenAIAnthropicChatCompletionService(
     underlying
       .createMessageStreamed(
         toAnthropic(messages),
+        toAnthropicSystemPrompt(messages),
         toAnthropic(settings, messages)
       )
       .map(toOpenAI)
