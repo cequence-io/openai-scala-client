@@ -1,19 +1,33 @@
 package io.cequence.openaiscala
 
-import io.cequence.openaiscala.JsonUtil.{JsonOps, enumFormat}
+import io.cequence.openaiscala.JsonUtil.enumFormat
+import io.cequence.openaiscala.domain.AssistantToolResource.{
+  CodeInterpreterResources,
+  FileSearchResources,
+  VectorStore
+}
+import io.cequence.openaiscala.domain.response.AssistantToolResourceResponse.{
+  CodeInterpreterResourcesResponse,
+  FileSearchResourcesResponse
+}
+import io.cequence.openaiscala.domain.response.ResponseFormat.{
+  JsonObjectResponse,
+  StringResponse,
+  TextResponse
+}
+import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.{ThreadMessageFile, _}
+import play.api.libs.functional.syntax._
+import play.api.libs.json.Json.toJson
+import play.api.libs.json.{Format, Json, _}
 
 import java.{util => ju}
-import io.cequence.openaiscala.domain.response._
-import play.api.libs.functional.syntax._
-import play.api.libs.json.{Format, Json, _}
-import Json.toJson
 
 object JsonFormats {
-  private implicit val dateFormat: Format[ju.Date] = JsonUtil.SecDateFormat
+  private implicit lazy val dateFormat: Format[ju.Date] = JsonUtil.SecDateFormat
 
-  implicit val permissionFormat: Format[Permission] = Json.format[Permission]
-  implicit val modelSpecFormat: Format[ModelInfo] = {
+  implicit lazy val permissionFormat: Format[Permission] = Json.format[Permission]
+  implicit lazy val modelSpecFormat: Format[ModelInfo] = {
     val reads: Reads[ModelInfo] = (
       (__ \ "id").read[String] and
         (__ \ "created").read[ju.Date] and
@@ -27,21 +41,21 @@ object JsonFormats {
     Format(reads, writes)
   }
 
-  implicit val usageInfoFormat: Format[UsageInfo] = Json.format[UsageInfo]
+  implicit lazy val usageInfoFormat: Format[UsageInfo] = Json.format[UsageInfo]
 
-  private implicit val stringDoubleMapFormat: Format[Map[String, Double]] =
+  private implicit lazy val stringDoubleMapFormat: Format[Map[String, Double]] =
     JsonUtil.StringDoubleMapFormat
-  private implicit val stringStringMapFormat: Format[Map[String, String]] =
+  private implicit lazy val stringStringMapFormat: Format[Map[String, String]] =
     JsonUtil.StringStringMapFormat
 
-  implicit val logprobsInfoFormat: Format[LogprobsInfo] =
+  implicit lazy val logprobsInfoFormat: Format[LogprobsInfo] =
     Json.format[LogprobsInfo]
-  implicit val textCompletionChoiceInfoFormat: Format[TextCompletionChoiceInfo] =
+  implicit lazy val textCompletionChoiceInfoFormat: Format[TextCompletionChoiceInfo] =
     Json.format[TextCompletionChoiceInfo]
-  implicit val textCompletionFormat: Format[TextCompletionResponse] =
+  implicit lazy val textCompletionFormat: Format[TextCompletionResponse] =
     Json.format[TextCompletionResponse]
 
-  implicit val chatRoleFormat: Format[ChatRole] = enumFormat[ChatRole](
+  implicit lazy val chatRoleFormat: Format[ChatRole] = enumFormat[ChatRole](
     ChatRole.User,
     ChatRole.System,
     ChatRole.Assistant,
@@ -49,14 +63,15 @@ object JsonFormats {
     ChatRole.Tool
   )
 
-  implicit val functionCallSpecFormat: Format[FunctionCallSpec] =
+  implicit lazy val functionCallSpecFormat: Format[FunctionCallSpec] =
     Json.format[FunctionCallSpec]
 
-  implicit val systemMessageFormat: Format[SystemMessage] = Json.format[SystemMessage]
-  implicit val userMessageFormat: Format[UserMessage] = Json.format[UserMessage]
-  implicit val toolMessageFormat: Format[ToolMessage] = Json.format[ToolMessage]
-  implicit val assistantMessageFormat: Format[AssistantMessage] = Json.format[AssistantMessage]
-  implicit val assistantToolMessageReads: Reads[AssistantToolMessage] = (
+  implicit lazy val systemMessageFormat: Format[SystemMessage] = Json.format[SystemMessage]
+  implicit lazy val userMessageFormat: Format[UserMessage] = Json.format[UserMessage]
+  implicit lazy val toolMessageFormat: Format[ToolMessage] = Json.format[ToolMessage]
+  implicit lazy val assistantMessageFormat: Format[AssistantMessage] =
+    Json.format[AssistantMessage]
+  implicit lazy val assistantToolMessageReads: Reads[AssistantToolMessage] = (
     (__ \ "content").readNullable[String] and
       (__ \ "name").readNullable[String] and
       (__ \ "tool_calls").read[JsArray]
@@ -77,21 +92,23 @@ object JsonFormats {
       }
       AssistantToolMessage(content, name, idToolCalls)
   }
-  implicit val assistantFunMessageFormat: Format[AssistantFunMessage] =
+  implicit lazy val assistantFunMessageFormat: Format[AssistantFunMessage] =
     Json.format[AssistantFunMessage]
 
-  implicit val funMessageFormat: Format[FunMessage] = Json.format[FunMessage]
+  implicit lazy val funMessageFormat: Format[FunMessage] = Json.format[FunMessage]
 
-  implicit val messageSpecFormat: Format[MessageSpec] = Json.format[MessageSpec]
+  implicit lazy val messageSpecFormat: Format[MessageSpec] = Json.format[MessageSpec]
 
-  implicit val functionSpecFormat: Format[FunctionSpec] = {
+  implicit lazy val functionSpecFormat: Format[FunctionSpec] = {
     // use just here for FunctionSpec
-    implicit val stringAnyMapFormat: Format[Map[String, Any]] = JsonUtil.StringAnyMapFormat
+    implicit lazy val stringAnyMapFormat: Format[Map[String, Any]] =
+      JsonUtil.StringAnyMapFormat
     Json.format[FunctionSpec]
   }
 
   val assistantsFunctionSpecFormat: Format[FunctionSpec] = {
-    implicit val stringAnyMapFormat: Format[Map[String, Any]] = JsonUtil.StringAnyMapFormat
+    implicit lazy val stringAnyMapFormat: Format[Map[String, Any]] =
+      JsonUtil.StringAnyMapFormat
 
     val assistantsFunctionSpecWrites: Writes[FunctionSpec] = new Writes[FunctionSpec] {
       def writes(fs: FunctionSpec): JsValue = Json.obj(
@@ -113,14 +130,34 @@ object JsonFormats {
     Format(assistantsFunctionSpecReads, assistantsFunctionSpecWrites)
   }
 
-  implicit val assistantToolFormat: Format[AssistantTool] = {
+  implicit lazy val messageToolFormat: Format[MessageTool] = {
+    val typeDiscriminatorKey = "type"
+
+    Format[MessageTool](
+      (json: JsValue) => {
+        (json \ typeDiscriminatorKey).validate[String].flatMap {
+          case "code_interpreter" => JsSuccess(CodeInterpreterSpec)
+          case "file_search"      => JsSuccess(FileSearchSpec)
+          case _                  => JsError("Unknown type")
+        }
+      },
+      { (tool: MessageTool) =>
+        tool match {
+          case CodeInterpreterSpec => Json.obj(typeDiscriminatorKey -> "code_interpreter")
+          case FileSearchSpec      => Json.obj(typeDiscriminatorKey -> "file_search")
+        }
+      }
+    )
+  }
+
+  implicit lazy val assistantToolFormat: Format[AssistantTool] = {
     val typeDiscriminatorKey = "type"
 
     Format[AssistantTool](
       (json: JsValue) => {
         (json \ typeDiscriminatorKey).validate[String].flatMap {
           case "code_interpreter" => JsSuccess(CodeInterpreterSpec)
-          case "retrieval"        => JsSuccess(RetrievalSpec)
+          case "file_search"      => JsSuccess(FileSearchSpec)
           case "function"         => json.validate[FunctionSpec](assistantsFunctionSpecFormat)
           case _                  => JsError("Unknown type")
         }
@@ -129,14 +166,14 @@ object JsonFormats {
         val commonJson = Json.obj {
           val discriminatorValue = tool match {
             case CodeInterpreterSpec   => "code_interpreter"
-            case RetrievalSpec         => "retrieval"
+            case FileSearchSpec        => "file_search"
             case FunctionSpec(_, _, _) => "function"
           }
           typeDiscriminatorKey -> discriminatorValue
         }
         tool match {
           case CodeInterpreterSpec => commonJson
-          case RetrievalSpec       => commonJson
+          case FileSearchSpec      => commonJson
           case ft: FunctionSpec =>
             commonJson ++ Json.toJson(ft)(assistantsFunctionSpecFormat).as[JsObject]
         }
@@ -144,7 +181,7 @@ object JsonFormats {
     )
   }
 
-  implicit val contentWrites: Writes[Content] = Writes[Content] {
+  implicit lazy val contentWrites: Writes[Content] = Writes[Content] {
     _ match {
       case c: TextContent =>
         Json.obj("type" -> "text", "text" -> c.text)
@@ -154,7 +191,7 @@ object JsonFormats {
     }
   }
 
-  implicit val messageWrites: Writes[BaseMessage] = Writes { (message: BaseMessage) =>
+  implicit lazy val messageWrites: Writes[BaseMessage] = Writes { (message: BaseMessage) =>
     def optionalJsObject(
       fieldName: String,
       value: Option[JsValue]
@@ -201,14 +238,14 @@ object JsonFormats {
     json.as[JsObject] ++ role ++ name
   }
 
-  implicit val toolWrites: Writes[ToolSpec] = Writes[ToolSpec] {
+  implicit lazy val toolWrites: Writes[ToolSpec] = Writes[ToolSpec] {
     _ match {
       case x: FunctionSpec =>
         Json.obj("type" -> "function", "function" -> Json.toJson(x))
     }
   }
 
-  implicit val topLogprobInfoormat: Format[TopLogprobInfo] = {
+  implicit lazy val topLogprobInfoormat: Format[TopLogprobInfo] = {
     val reads: Reads[TopLogprobInfo] = (
       (__ \ "token").read[String] and
         (__ \ "logprob").read[Double] and
@@ -219,64 +256,66 @@ object JsonFormats {
     Format(reads, writes)
   }
 
-  implicit val logprobInfoFormat: Format[LogprobInfo] =
+  implicit lazy val logprobInfoFormat: Format[LogprobInfo] =
     Json.format[LogprobInfo]
-  implicit val logprobsFormat: Format[Logprobs] =
+  implicit lazy val logprobsFormat: Format[Logprobs] =
     Json.format[Logprobs]
 
-  implicit val chatCompletionChoiceInfoFormat: Format[ChatCompletionChoiceInfo] =
+  implicit lazy val chatCompletionChoiceInfoFormat: Format[ChatCompletionChoiceInfo] =
     Json.format[ChatCompletionChoiceInfo]
-  implicit val chatCompletionResponseFormat: Format[ChatCompletionResponse] =
+  implicit lazy val chatCompletionResponseFormat: Format[ChatCompletionResponse] =
     Json.format[ChatCompletionResponse]
 
-  implicit val chatToolCompletionChoiceInfoReads: Reads[ChatToolCompletionChoiceInfo] =
+  implicit lazy val chatToolCompletionChoiceInfoReads: Reads[ChatToolCompletionChoiceInfo] =
     Json.reads[ChatToolCompletionChoiceInfo]
-  implicit val chatToolCompletionResponseReads: Reads[ChatToolCompletionResponse] =
+  implicit lazy val chatToolCompletionResponseReads: Reads[ChatToolCompletionResponse] =
     Json.reads[ChatToolCompletionResponse]
 
-  implicit val chatFunCompletionChoiceInfoFormat: Format[ChatFunCompletionChoiceInfo] =
+  implicit lazy val chatFunCompletionChoiceInfoFormat: Format[ChatFunCompletionChoiceInfo] =
     Json.format[ChatFunCompletionChoiceInfo]
-  implicit val chatFunCompletionResponseFormat: Format[ChatFunCompletionResponse] =
+  implicit lazy val chatFunCompletionResponseFormat: Format[ChatFunCompletionResponse] =
     Json.format[ChatFunCompletionResponse]
 
-  implicit val chatChunkMessageFormat: Format[ChunkMessageSpec] =
+  implicit lazy val chatChunkMessageFormat: Format[ChunkMessageSpec] =
     Json.format[ChunkMessageSpec]
-  implicit val chatCompletionChoiceChunkInfoFormat: Format[ChatCompletionChoiceChunkInfo] =
+  implicit lazy val chatCompletionChoiceChunkInfoFormat
+    : Format[ChatCompletionChoiceChunkInfo] =
     Json.format[ChatCompletionChoiceChunkInfo]
-  implicit val chatCompletionChunkResponseFormat: Format[ChatCompletionChunkResponse] =
+  implicit lazy val chatCompletionChunkResponseFormat: Format[ChatCompletionChunkResponse] =
     Json.format[ChatCompletionChunkResponse]
 
-  implicit val textEditChoiceInfoFormat: Format[TextEditChoiceInfo] =
+  implicit lazy val textEditChoiceInfoFormat: Format[TextEditChoiceInfo] =
     Json.format[TextEditChoiceInfo]
-  implicit val textEditFormat: Format[TextEditResponse] =
+  implicit lazy val textEditFormat: Format[TextEditResponse] =
     Json.format[TextEditResponse]
 
-  implicit val imageFormat: Format[ImageInfo] = Json.format[ImageInfo]
+  implicit lazy val imageFormat: Format[ImageInfo] = Json.format[ImageInfo]
 
-  implicit val embeddingInfoFormat: Format[EmbeddingInfo] =
+  implicit lazy val embeddingInfoFormat: Format[EmbeddingInfo] =
     Json.format[EmbeddingInfo]
-  implicit val embeddingUsageInfoFormat: Format[EmbeddingUsageInfo] =
+  implicit lazy val embeddingUsageInfoFormat: Format[EmbeddingUsageInfo] =
     Json.format[EmbeddingUsageInfo]
-  implicit val embeddingFormat: Format[EmbeddingResponse] =
+  implicit lazy val embeddingFormat: Format[EmbeddingResponse] =
     Json.format[EmbeddingResponse]
 
-  implicit val fileStatisticsFormat: Format[FileStatistics] = Json.format[FileStatistics]
-  implicit val fileInfoFormat: Format[FileInfo] = Json.format[FileInfo]
+  implicit lazy val fileStatisticsFormat: Format[FileStatistics] = Json.format[FileStatistics]
+  implicit lazy val fileInfoFormat: Format[FileInfo] = Json.format[FileInfo]
 
-  implicit val fineTuneEventFormat: Format[FineTuneEvent] = {
-    implicit val stringAnyMapFormat: Format[Map[String, Any]] = JsonUtil.StringAnyMapFormat
+  implicit lazy val fineTuneEventFormat: Format[FineTuneEvent] = {
+    implicit lazy val stringAnyMapFormat: Format[Map[String, Any]] =
+      JsonUtil.StringAnyMapFormat
     Json.format[FineTuneEvent]
   }
 
-  implicit val eitherIntStringFormat: Format[Either[Int, String]] =
+  implicit lazy val eitherIntStringFormat: Format[Either[Int, String]] =
     JsonUtil.eitherFormat[Int, String]
-  implicit val fineTuneHyperparamsFormat: Format[FineTuneHyperparams] =
+  implicit lazy val fineTuneHyperparamsFormat: Format[FineTuneHyperparams] =
     Json.format[FineTuneHyperparams]
-  implicit val fineTuneErrorFormat: Format[FineTuneError] = Json.format[FineTuneError]
-  implicit val fineTuneFormat: Format[FineTuneJob] = Json.format[FineTuneJob]
+  implicit lazy val fineTuneErrorFormat: Format[FineTuneError] = Json.format[FineTuneError]
+  implicit lazy val fineTuneFormat: Format[FineTuneJob] = Json.format[FineTuneJob]
 
   // somehow ModerationCategories.unapply is not working in Scala3
-  implicit val moderationCategoriesFormat: Format[ModerationCategories] = (
+  implicit lazy val moderationCategoriesFormat: Format[ModerationCategories] = (
     (__ \ "hate").format[Boolean] and
       (__ \ "hate/threatening").format[Boolean] and
       (__ \ "self-harm").format[Boolean] and
@@ -300,7 +339,7 @@ object JsonFormats {
   )
 
   // somehow ModerationCategoryScores.unapply is not working in Scala3
-  implicit val moderationCategoryScoresFormat: Format[ModerationCategoryScores] = (
+  implicit lazy val moderationCategoryScoresFormat: Format[ModerationCategoryScores] = (
     (__ \ "hate").format[Double] and
       (__ \ "hate/threatening").format[Double] and
       (__ \ "self-harm").format[Double] and
@@ -323,52 +362,152 @@ object JsonFormats {
     }
   )
 
-  implicit val moderationResultFormat: Format[ModerationResult] =
+  implicit lazy val moderationResultFormat: Format[ModerationResult] =
     Json.format[ModerationResult]
-  implicit val moderationFormat: Format[ModerationResponse] =
+  implicit lazy val moderationFormat: Format[ModerationResponse] =
     Json.format[ModerationResponse]
-  implicit val threadMessageFormat: Format[ThreadMessage] =
+  implicit lazy val threadMessageFormat: Format[ThreadMessage] =
     Json.format[ThreadMessage]
-  implicit val threadFormat: Format[Thread] =
+  implicit lazy val threadFormat: Format[Thread] =
     Json.format[Thread]
 
-  implicit val fileIdFormat: Format[FileId] =
+  implicit lazy val fileIdFormat: Format[FileId] =
     Json.format[FileId]
 
-  implicit val threadMessageContentTypeFormat: Format[ThreadMessageContentType] =
+  implicit lazy val threadMessageContentTypeFormat: Format[ThreadMessageContentType] =
     enumFormat[ThreadMessageContentType](
       ThreadMessageContentType.image_file,
       ThreadMessageContentType.text
     )
 
-  implicit val fileAnnotationTypeFormat: Format[FileAnnotationType] =
+  implicit lazy val fileAnnotationTypeFormat: Format[FileAnnotationType] =
     enumFormat[FileAnnotationType](
       FileAnnotationType.file_citation,
       FileAnnotationType.file_path
     )
 
-  implicit val fileAnnotationFormat: Format[FileAnnotation] =
+  implicit lazy val fileAnnotationFormat: Format[FileAnnotation] =
     Json.format[FileAnnotation]
 
-  implicit val fileCitationFormat: Format[FileCitation] =
+  implicit lazy val fileCitationFormat: Format[FileCitation] =
     Json.format[FileCitation]
 
-  implicit val threadMessageTextFormat: Format[ThreadMessageText] =
+  implicit lazy val threadMessageTextFormat: Format[ThreadMessageText] =
     Json.format[ThreadMessageText]
 
-  implicit val threadMessageContentFormat: Format[ThreadMessageContent] =
+  implicit lazy val threadMessageContentFormat: Format[ThreadMessageContent] =
     Json.format[ThreadMessageContent]
 
-  implicit val threadFullMessageFormat: Format[ThreadFullMessage] =
+  implicit lazy val threadFullMessageFormat: Format[ThreadFullMessage] =
     Json.format[ThreadFullMessage]
 
-  implicit val threadMessageFileFormat: Format[ThreadMessageFile] =
+  implicit lazy val threadMessageFileFormat: Format[ThreadMessageFile] =
     Json.format[ThreadMessageFile]
 
-  implicit val assistantIdFormat: Format[AssistantId] = Json.valueFormat[AssistantId]
+  implicit lazy val assistantIdFormat: Format[AssistantId] = Json.valueFormat[AssistantId]
 
-  implicit val assistantFormat: Format[Assistant] = Json.format[Assistant]
+  implicit lazy val vectorStoreFormat: Format[VectorStore] = {
+    implicit val stringStringMapFormat: Format[Map[String, String]] =
+      JsonUtil.StringStringMapFormat
+    (
+      (__ \ "file_ids").format[Seq[FileId]] and
+        (__ \ "metadata").format[Map[String, String]]
+    )(VectorStore.apply, unlift(VectorStore.unapply))
+  }
 
-  lazy implicit val assistantFileFormat: Format[AssistantFile] = Json.format[AssistantFile]
+  implicit lazy val assistantToolResourcesWrites: Writes[AssistantToolResource] = {
+    case c: CodeInterpreterResources =>
+      Json.obj("code_interpreter" -> Json.obj("file_ids" -> c.fileIds))
+    case f: FileSearchResources =>
+      Json.obj(
+        "file_search" -> Json.obj(
+          "vector_store_ids" -> f.vectorStoreIds,
+          "vector_stores" -> f.vectorStores
+        )
+      )
+  }
+
+  implicit lazy val assistantToolResourcesReads: Reads[AssistantToolResource] =
+    codeInterpreterResourcesReads orElse fileSearchResourcesReads
+
+  implicit lazy val codeInterpreterResourcesReads: Reads[AssistantToolResource] =
+    (JsPath \ "code_interpreter" \ "file_ids")
+      .read[Seq[FileId]]
+      .map(CodeInterpreterResources(_))
+  implicit lazy val fileSearchResourcesReads: Reads[AssistantToolResource] = (
+    (JsPath \ "file_search" \ "vector_store_ids").read[Seq[FileId]] and
+      (JsPath \ "file_search" \ "vector_stores").read[Seq[VectorStore]]
+  )(FileSearchResources.apply _)
+
+  implicit lazy val codeInterpreterResourcesResponseFormat
+    : Format[CodeInterpreterResourcesResponse] =
+    Json.format[CodeInterpreterResourcesResponse]
+
+  implicit lazy val fileSearchResourcesResponseFormat: Format[FileSearchResourcesResponse] =
+    Json.format[FileSearchResourcesResponse]
+
+  implicit lazy val assistantToolResourceFormat: Format[AssistantToolResource] =
+    Format(assistantToolResourcesReads, assistantToolResourcesWrites)
+
+  implicit lazy val assistantToolResourceResponseWrites
+    : Writes[AssistantToolResourceResponse] = {
+    case c: CodeInterpreterResourcesResponse =>
+      Json.obj(
+        "code_interpreter" -> Json.toJson(c)(codeInterpreterResourcesResponseFormat)
+      )
+    case f: FileSearchResourcesResponse =>
+      Json.obj("file_search" -> Json.toJson(f)(fileSearchResourcesResponseFormat))
+  }
+
+  implicit lazy val assistantToolResourceResponseFormat
+    : Format[AssistantToolResourceResponse] =
+    Format(assistantToolResourceResponseReads, assistantToolResourceResponseWrites)
+
+  implicit lazy val assistantToolResourceResponseReads: Reads[AssistantToolResourceResponse] =
+    codeInterpreterResponseReads orElse fileSearchResponseReads
+
+  implicit lazy val codeInterpreterResponseReads: Reads[AssistantToolResourceResponse] =
+    (JsPath \ "code_interpreter" \ "file_ids")
+      .read[Seq[FileId]]
+      .map(CodeInterpreterResourcesResponse.apply)
+
+  implicit lazy val fileSearchResponseReads: Reads[AssistantToolResourceResponse] =
+    (JsPath \ "file_search" \ "vector_store_ids")
+      .read[Seq[FileId]]
+      .map(FileSearchResourcesResponse.apply)
+
+  implicit lazy val responseFormatFormat: Format[ResponseFormat] = {
+    def error(json: JsValue) = JsError(
+      s"Expected String response, JSON Object response, or Text response format, but got $json"
+    )
+
+    Format(
+      Reads {
+        case JsString("auto") => JsSuccess(StringResponse)
+        case JsObject(fields) =>
+          fields
+            .get("type")
+            .map {
+              case JsString("json_object") => JsSuccess(JsonObjectResponse)
+              case JsString("text")        => JsSuccess(TextResponse)
+              case json                    => error(json)
+            }
+            .getOrElse(error(JsObject(fields)))
+        case json => error(json)
+      },
+      Writes {
+        case StringResponse     => JsString("auto")
+        case JsonObjectResponse => Json.obj("type" -> "json_object")
+        case TextResponse       => Json.obj("type" -> "text")
+      }
+    )
+  }
+
+  implicit val attachmentFormat: Format[Attachment] = (
+    (__ \ "file_id").formatNullable[FileId] and
+      (__ \ "tools").format[Seq[MessageTool]]
+  )(Attachment.apply, unlift(Attachment.unapply))
+
+  implicit lazy val assistantFormat: Format[Assistant] = Json.format[Assistant]
 
 }

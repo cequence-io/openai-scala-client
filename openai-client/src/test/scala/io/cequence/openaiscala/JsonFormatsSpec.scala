@@ -1,18 +1,33 @@
 package io.cequence.openaiscala
 
-import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.JsonFormatsSpec.JsonPrintMode
 import io.cequence.openaiscala.JsonFormatsSpec.JsonPrintMode.{Compact, Pretty}
-import io.cequence.openaiscala.domain.response.TopLogprobInfo
-import io.cequence.openaiscala.domain.{
-  AssistantTool,
-  CodeInterpreterSpec,
-  FunctionSpec,
-  RetrievalSpec
-}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import play.api.libs.json.{Format, Json}
+import io.cequence.openaiscala.JsonFormats._
+import io.cequence.openaiscala.domain.AssistantToolResource.{
+  CodeInterpreterResources,
+  FileSearchResources,
+  VectorStore
+}
+import io.cequence.openaiscala.domain.response.AssistantToolResourceResponse.{
+  CodeInterpreterResourcesResponse,
+  FileSearchResourcesResponse
+}
+import io.cequence.openaiscala.domain.{
+  AssistantToolResource,
+  Attachment,
+  CodeInterpreterSpec,
+  FileId,
+  FileSearchSpec
+}
+import io.cequence.openaiscala.domain.response.{AssistantToolResourceResponse, ResponseFormat}
+import io.cequence.openaiscala.domain.response.ResponseFormat.{
+  JsonObjectResponse,
+  StringResponse,
+  TextResponse
+}
 
 object JsonFormatsSpec {
   sealed trait JsonPrintMode
@@ -24,47 +39,134 @@ object JsonFormatsSpec {
 
 class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
 
-  private val functionToolJson =
+  private val textResponseJson =
     """{
-       |  "type" : "function",
-       |  "function" : {
-       |    "name" : "name",
-       |    "description" : "description",
-       |    "parameters" : { }
-       |  }
-       |}""".stripMargin
+      |  "type" : "text"
+      |}""".stripMargin
 
-  private val topLogprobInfoJson =
+  private val jsonObjectResponseJson =
     """{
-      |  "token" : "<|end|>",
-      |  "logprob" : -17.942543,
-      |  "bytes" : null
+      |  "type" : "json_object"
+      |}""".stripMargin
+
+  private val codeInterpreterResourcesJson =
+    """{
+      |  "code_interpreter" : {
+      |    "file_ids" : [ {
+      |      "file_id" : "file-id-1"
+      |    }, {
+      |      "file_id" : "file-id-2"
+      |    } ]
+      |  }
+      |}""".stripMargin
+
+  private val fileSearchResourcesJson =
+    """{
+      |  "file_search" : {
+      |    "vector_store_ids" : [ {
+      |      "file_id" : "file-id-1"
+      |    } ],
+      |    "vector_stores" : [ {
+      |      "file_ids" : [ {
+      |        "file_id" : "file-id-1"
+      |      } ],
+      |      "metadata" : {
+      |        "key" : "value"
+      |      }
+      |    } ]
+      |  }
+      |}""".stripMargin
+
+  private val codeInterpreterResourcesResponseJson =
+    """{
+      |  "code_interpreter" : {
+      |    "file_ids" : [ {
+      |      "file_id" : "file-id-1"
+      |    } ]
+      |  }
+      |}""".stripMargin
+
+  private val fileSearchResourcesResponseJson =
+    """{
+      |  "file_search" : {
+      |    "vector_store_ids" : [ {
+      |      "file_id" : "file-id-1"
+      |    } ]
+      |  }
+      |}""".stripMargin
+
+  private val attachmentJson =
+    """{
+      |  "file_id" : {
+      |    "file_id" : "file-id-1"
+      |  },
+      |  "tools" : [ {
+      |    "type" : "code_interpreter"
+      |  }, {
+      |    "type" : "file_search"
+      |  } ]
       |}""".stripMargin
 
   "JSON Formats" should {
 
-    "serialize and deserialize a code interpreter tool" in {
-      testCodec[AssistantTool](CodeInterpreterSpec, """{"type":"code_interpreter"}""")
+    "serialize and deserialize a String response format" in {
+      testCodec[ResponseFormat](StringResponse: ResponseFormat, """"auto"""")
     }
 
-    "serialize and deserialize a retrieval tool" in {
-      testCodec[AssistantTool](RetrievalSpec, """{"type":"retrieval"}""")
+    "serialize and deserialize a Text response format" in {
+      testCodec[ResponseFormat](TextResponse, textResponseJson, Pretty)
     }
 
-    "serialize and deserialize a function tool" in {
-      testCodec[AssistantTool](
-        FunctionSpec("name", Some("description"), Map.empty),
-        functionToolJson,
+    "serialize and deserialize a JSON object response format" in {
+      testCodec[ResponseFormat](JsonObjectResponse, jsonObjectResponseJson, Pretty)
+    }
+
+    "serialize and deserialize code interpreter's resources" in {
+      testCodec[AssistantToolResource](
+        CodeInterpreterResources(Seq(FileId("file-id-1"), FileId("file-id-2"))),
+        codeInterpreterResourcesJson,
         Pretty
       )
     }
 
-    "deserialize a top log prob info with null bytes" in {
-      testDeserialization[TopLogprobInfo](
-        TopLogprobInfo("<|end|>", -17.942543, Nil),
-        topLogprobInfoJson
+    "serialize and deserialize file search's resources" in {
+      testCodec[AssistantToolResource](
+        FileSearchResources(
+          Seq(FileId("file-id-1")),
+          Seq(VectorStore(Seq(FileId("file-id-1")), Map("key" -> "value")))
+        ),
+        fileSearchResourcesJson,
+        Pretty
       )
     }
+
+    "serialize and deserialize code interpreter's resources response" in {
+      testCodec[AssistantToolResourceResponse](
+        CodeInterpreterResourcesResponse(Seq(FileId("file-id-1"))),
+        codeInterpreterResourcesResponseJson,
+        Pretty
+      )
+    }
+
+    "serialize and deserialize file search's resources response" in {
+      testCodec[AssistantToolResourceResponse](
+        FileSearchResourcesResponse(Seq(FileId("file-id-1"))),
+        fileSearchResourcesResponseJson,
+        Pretty
+      )
+    }
+
+    "serialize and deserialize attachment" in {
+      testCodec[Attachment](
+        Attachment(
+          fileId = Some(FileId("file-id-1")),
+          tools = Seq(CodeInterpreterSpec, FileSearchSpec)
+        ),
+        attachmentJson,
+        Pretty
+      )
+    }
+
   }
 
   private def testCodec[A](

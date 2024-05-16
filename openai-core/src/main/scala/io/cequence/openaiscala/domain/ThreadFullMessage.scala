@@ -24,15 +24,15 @@ case class ThreadFullMessage(
   // If applicable, the ID of the run associated with the authoring of this message. Null if not applicable.
   run_id: Option[String] = None,
 
-  // A list of file IDs that the assistant should use.
-  // Useful for tools like retrieval and code_interpreter that can access files.
-  // A maximum of 10 files can be attached to a message.
-  file_ids: Seq[String] = Nil,
+  // A list of files attached to the message, and the tools they were added to.
+  attachments: Seq[Attachment] = Nil,
 
   // Set of 16 key-value pairs that can be attached to an object.
   // This can be useful for storing additional information about the object in a structured format.
   // Keys can be a maximum of 64 characters long and values can be a maximum of 512 characters long.
   metadata: Map[String, String] = Map()
+
+  // TODO: status (in_progress, incomplete, completed), incomplete_details, completed_at, incomplete_at
 )
 
 case class ThreadMessageContent(

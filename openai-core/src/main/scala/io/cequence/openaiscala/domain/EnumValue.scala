@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.domain
 
-// TODO: common model for v1 and v2
 trait EnumValue {
 
   def value: String = ""

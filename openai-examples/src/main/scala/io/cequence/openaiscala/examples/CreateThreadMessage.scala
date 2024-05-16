@@ -1,5 +1,7 @@
 package io.cequence.openaiscala.examples
 
+import io.cequence.openaiscala.domain.{Attachment, FileId}
+
 import scala.util.Random
 
 object CreateThreadMessage extends Example {
@@ -9,7 +11,8 @@ object CreateThreadMessage extends Example {
       message <- service.createThreadMessage(
         threadId = "thread_c6fFMmUw30l30SzG2KdUViMn",
         content = "Hello, what is AI really?",
-        fileIds = Seq("file-1", "file-2"),
+        attachments =
+          Seq(Attachment(Some(FileId("file-1"))), Attachment(Some(FileId("file-2")))),
         metadata = Map("user_id" -> Random.nextInt().toString)
       )
     } yield {
