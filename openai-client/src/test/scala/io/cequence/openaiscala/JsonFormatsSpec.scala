@@ -1,20 +1,8 @@
 package io.cequence.openaiscala
 
+import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.JsonFormatsSpec.JsonPrintMode
 import io.cequence.openaiscala.JsonFormatsSpec.JsonPrintMode.{Compact, Pretty}
-import io.cequence.openaiscala.domain.response.TopLogprobInfo
-import io.cequence.openaiscala.domain.{
-  AssistantTool,
-  CodeInterpreterSpec,
-  FineTune,
-  FunctionSpec,
-  RetrievalSpec
-}
-import org.scalatest.matchers.should.Matchers
-import org.scalatest.wordspec.AnyWordSpecLike
-import org.scalatest.Ignore
-import play.api.libs.json.{Format, Json}
-import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.domain.AssistantToolResource.{
   CodeInterpreterResources,
   FileSearchResources,
@@ -24,19 +12,17 @@ import io.cequence.openaiscala.domain.response.AssistantToolResourceResponse.{
   CodeInterpreterResourcesResponse,
   FileSearchResourcesResponse
 }
-import io.cequence.openaiscala.domain.{
-  AssistantToolResource,
-  Attachment,
-  CodeInterpreterSpec,
-  FileId,
-  FileSearchSpec
-}
-import io.cequence.openaiscala.domain.response.{AssistantToolResourceResponse, ResponseFormat}
 import io.cequence.openaiscala.domain.response.ResponseFormat.{
   JsonObjectResponse,
   StringResponse,
   TextResponse
 }
+import io.cequence.openaiscala.domain.response.{AssistantToolResourceResponse, ResponseFormat}
+import io.cequence.openaiscala.domain._
+import org.scalatest.Ignore
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpecLike
+import play.api.libs.json.{Format, Json}
 
 object JsonFormatsSpec {
   sealed trait JsonPrintMode

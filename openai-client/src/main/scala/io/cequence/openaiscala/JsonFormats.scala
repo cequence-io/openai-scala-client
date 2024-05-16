@@ -69,7 +69,7 @@ object JsonFormats {
     ChatRole.Tool
   )
 
-  implicit val contentWrites: Writes[Content] = Writes[Content] {
+  implicit lazy val contentWrites: Writes[Content] = Writes[Content] {
     _ match {
       case c: TextContent =>
         Json.obj("type" -> "text", "text" -> c.text)
@@ -79,7 +79,7 @@ object JsonFormats {
     }
   }
 
-  implicit val contentReads: Reads[Content] = Reads[Content] { (json: JsValue) =>
+  implicit lazy val contentReads: Reads[Content] = Reads[Content] { (json: JsValue) =>
     (json \ "type").validate[String].flatMap {
       case "text"      => (json \ "text").validate[String].map(TextContent)
       case "image_url" => (json \ "image_url" \ "url").validate[String].map(ImageURLContent)
@@ -203,16 +203,6 @@ object JsonFormats {
         }
       }
     )
-  }
-
-  implicit lazy val contentWrites: Writes[Content] = Writes[Content] {
-    _ match {
-      case c: TextContent =>
-        Json.obj("type" -> "text", "text" -> c.text)
-
-      case c: ImageURLContent =>
-        Json.obj("type" -> "image_url", "image_url" -> Json.obj("url" -> c.url))
-    }
   }
 
   implicit val messageReads: Reads[BaseMessage] = Reads { (json: JsValue) =>
@@ -371,9 +361,6 @@ object JsonFormats {
   implicit lazy val fineTuneMetricsFormat: Format[Metrics] = Json.format[Metrics]
   implicit lazy val fineTuneCheckpointFormat: Format[FineTuneCheckpoint] =
     Json.format[FineTuneCheckpoint]
-
-  implicit lazy val eitherIntStringFormat: Format[Either[Int, String]] =
-    JsonUtil.eitherFormat[Int, String]
   implicit lazy val fineTuneHyperparamsFormat: Format[FineTuneHyperparams] =
     Json.format[FineTuneHyperparams]
   implicit lazy val fineTuneErrorFormat: Format[FineTuneError] = Json.format[FineTuneError]
