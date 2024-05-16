@@ -20,6 +20,8 @@ import io.cequence.openaiscala.domain.{ThreadMessageFile, _}
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Json.toJson
 import play.api.libs.json.{Format, Json, _}
+import ai.x.play.json.{BaseNameEncoder, Jsonx, NameEncoder}
+import ai.x.play.json.Encoders.encoder
 
 import java.{util => ju}
 
@@ -369,7 +371,7 @@ object JsonFormats {
   implicit lazy val threadMessageFormat: Format[ThreadMessage] =
     Json.format[ThreadMessage]
   implicit lazy val threadFormat: Format[Thread] =
-    Json.format[Thread]
+    Jsonx.formatCaseClassUseDefaults[Thread]
 
   implicit lazy val fileIdFormat: Format[FileId] =
     Json.format[FileId]
@@ -399,7 +401,7 @@ object JsonFormats {
     Json.format[ThreadMessageContent]
 
   implicit lazy val threadFullMessageFormat: Format[ThreadFullMessage] =
-    Json.format[ThreadFullMessage]
+    Jsonx.formatCaseClassUseDefaults[ThreadFullMessage]
 
   implicit lazy val threadMessageFileFormat: Format[ThreadMessageFile] =
     Json.format[ThreadMessageFile]
@@ -508,6 +510,7 @@ object JsonFormats {
       (__ \ "tools").format[Seq[MessageTool]]
   )(Attachment.apply, unlift(Attachment.unapply))
 
-  implicit lazy val assistantFormat: Format[Assistant] = Json.format[Assistant]
+  implicit lazy val assistantFormat: Format[Assistant] =
+    Jsonx.formatCaseClassUseDefaults[Assistant]
 
 }

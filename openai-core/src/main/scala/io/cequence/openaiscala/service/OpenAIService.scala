@@ -581,7 +581,7 @@ trait OpenAIService extends OpenAICoreService {
     threadId: String,
     content: String,
     role: ChatRole = ChatRole.User,
-    attachments: Seq[Attachment],
+    attachments: Seq[Attachment] = Nil,
     metadata: Map[String, String] = Map()
   ): Future[ThreadFullMessage]
 

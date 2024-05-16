@@ -474,7 +474,7 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
     threadId: String,
     content: String,
     role: ChatRole,
-    attachments: Seq[Attachment],
+    attachments: Seq[Attachment] = Nil,
     metadata: Map[String, String] = Map()
   ): Future[ThreadFullMessage] =
     execPOST(
@@ -483,11 +483,11 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
       bodyParams = jsonBodyParams(
         Param.role -> Some(role.toString),
         Param.content -> Some(content),
-        Param.attachments -> (
-          if (attachments.nonEmpty)
-            Some(attachments)
-          else None
-        ),
+//        Param.attachments -> (
+//          if (attachments.nonEmpty)
+//            Some(Json.toJson(attachments))
+//          else None
+//        ),
         Param.metadata -> (
           if (metadata.nonEmpty)
             Some(metadata)
@@ -584,10 +584,14 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
         Param.description -> Some(description),
         Param.instructions -> Some(instructions),
         Param.tools -> Some(Json.toJson(tools)),
-        Param.tool_resources -> (if (toolResources.nonEmpty) Some(toolResources) else None),
+        Param.tool_resources -> (if (toolResources.nonEmpty) Some(Json.toJson(toolResources))
+                                 else None),
         Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
       )
-    ).map(_.asSafe[Assistant])
+    ).map { response =>
+      println(response)
+      response.asSafe[Assistant]
+    }
   }
 
   override def listAssistants(
