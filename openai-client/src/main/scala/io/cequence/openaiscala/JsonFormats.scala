@@ -24,6 +24,10 @@ import ai.x.play.json.{BaseNameEncoder, Jsonx, NameEncoder}
 import ai.x.play.json.Encoders.encoder
 
 import java.{util => ju}
+import play.api.libs.json.{Format, JsValue, Json, _}
+import Json.toJson
+import io.cequence.openaiscala.domain.Batch._
+import io.cequence.openaiscala.domain.FineTune.WeightsAndBiases
 
 object JsonFormats {
   private implicit lazy val dateFormat: Format[ju.Date] = JsonUtil.SecDateFormat
@@ -65,15 +69,33 @@ object JsonFormats {
     ChatRole.Tool
   )
 
-  implicit lazy val functionCallSpecFormat: Format[FunctionCallSpec] =
+  implicit val contentWrites: Writes[Content] = Writes[Content] {
+    _ match {
+      case c: TextContent =>
+        Json.obj("type" -> "text", "text" -> c.text)
+
+      case c: ImageURLContent =>
+        Json.obj("type" -> "image_url", "image_url" -> Json.obj("url" -> c.url))
+    }
+  }
+
+  implicit val contentReads: Reads[Content] = Reads[Content] { (json: JsValue) =>
+    (json \ "type").validate[String].flatMap {
+      case "text"      => (json \ "text").validate[String].map(TextContent)
+      case "image_url" => (json \ "image_url" \ "url").validate[String].map(ImageURLContent)
+      case _           => JsError("Invalid type")
+    }
+  }
+
+  implicit val functionCallSpecFormat: Format[FunctionCallSpec] =
     Json.format[FunctionCallSpec]
 
-  implicit lazy val systemMessageFormat: Format[SystemMessage] = Json.format[SystemMessage]
-  implicit lazy val userMessageFormat: Format[UserMessage] = Json.format[UserMessage]
-  implicit lazy val toolMessageFormat: Format[ToolMessage] = Json.format[ToolMessage]
-  implicit lazy val assistantMessageFormat: Format[AssistantMessage] =
-    Json.format[AssistantMessage]
-  implicit lazy val assistantToolMessageReads: Reads[AssistantToolMessage] = (
+  implicit val systemMessageFormat: Format[SystemMessage] = Json.format[SystemMessage]
+  implicit val userMessageFormat: Format[UserMessage] = Json.format[UserMessage]
+  implicit val userSeqMessageFormat: Format[UserSeqMessage] = Json.format[UserSeqMessage]
+  implicit val toolMessageFormat: Format[ToolMessage] = Json.format[ToolMessage]
+  implicit val assistantMessageFormat: Format[AssistantMessage] = Json.format[AssistantMessage]
+  implicit val assistantToolMessageReads: Reads[AssistantToolMessage] = (
     (__ \ "content").readNullable[String] and
       (__ \ "name").readNullable[String] and
       (__ \ "tool_calls").read[JsArray]
@@ -191,6 +213,41 @@ object JsonFormats {
       case c: ImageURLContent =>
         Json.obj("type" -> "image_url", "image_url" -> Json.obj("url" -> c.url))
     }
+  }
+
+  implicit val messageReads: Reads[BaseMessage] = Reads { (json: JsValue) =>
+    val role = (json \ "role").as[ChatRole]
+    val nameOpt = (json \ "name").asOpt[String]
+
+    val message: BaseMessage = role match {
+      case ChatRole.System => json.as[SystemMessage]
+
+      case ChatRole.User =>
+        json.asOpt[UserMessage] match {
+          case Some(userMessage) => userMessage
+          case None              => json.as[UserSeqMessage]
+        }
+
+      case ChatRole.Tool =>
+        json.asOpt[AssistantToolMessage] match {
+          case Some(assistantToolMessage) => assistantToolMessage
+          case None                       => json.as[ToolMessage]
+        }
+
+      case ChatRole.Assistant =>
+        json.asOpt[AssistantToolMessage] match {
+          case Some(assistantToolMessage) => assistantToolMessage
+          case None =>
+            json.asOpt[AssistantMessage] match {
+              case Some(assistantMessage) => assistantMessage
+              case None                   => json.as[AssistantFunMessage]
+            }
+        }
+
+      case ChatRole.Function => json.as[FunMessage]
+    }
+
+    JsSuccess(message)
   }
 
   implicit lazy val messageWrites: Writes[BaseMessage] = Writes { (message: BaseMessage) =>
@@ -311,9 +368,48 @@ object JsonFormats {
 
   implicit lazy val eitherIntStringFormat: Format[Either[Int, String]] =
     JsonUtil.eitherFormat[Int, String]
+  implicit lazy val fineTuneMetricsFormat: Format[Metrics] = Json.format[Metrics]
+  implicit lazy val fineTuneCheckpointFormat: Format[FineTuneCheckpoint] =
+    Json.format[FineTuneCheckpoint]
+
+  implicit lazy val eitherIntStringFormat: Format[Either[Int, String]] =
+    JsonUtil.eitherFormat[Int, String]
   implicit lazy val fineTuneHyperparamsFormat: Format[FineTuneHyperparams] =
     Json.format[FineTuneHyperparams]
   implicit lazy val fineTuneErrorFormat: Format[FineTuneError] = Json.format[FineTuneError]
+
+  implicit lazy val fineTuneIntegrationFormat: Format[FineTune.Integration] = {
+    val typeDiscriminatorKey = "type"
+    val weightsAndBiasesType = "wandb"
+    implicit val weightsAndBiasesIntegrationFormat: Format[WeightsAndBiases] =
+      Json.format[WeightsAndBiases]
+
+    Format[FineTune.Integration](
+      (json: JsValue) => {
+        (json \ typeDiscriminatorKey).validate[String].flatMap { case `weightsAndBiasesType` =>
+          (json \ weightsAndBiasesType)
+            .validate[WeightsAndBiases](weightsAndBiasesIntegrationFormat)
+        }
+      },
+      { (integration: FineTune.Integration) =>
+        val commonJson = Json.obj {
+          val discriminatorValue = integration match {
+            case _: WeightsAndBiases => weightsAndBiasesType
+          }
+          typeDiscriminatorKey -> discriminatorValue
+        }
+        integration match {
+          case integration: WeightsAndBiases =>
+            commonJson ++ JsObject(
+              Seq(
+                weightsAndBiasesType -> weightsAndBiasesIntegrationFormat.writes(integration)
+              )
+            )
+        }
+      }
+    )
+  }
+
   implicit lazy val fineTuneFormat: Format[FineTuneJob] = Json.format[FineTuneJob]
 
   // somehow ModerationCategories.unapply is not working in Scala3
@@ -505,12 +601,57 @@ object JsonFormats {
     )
   }
 
-  implicit val attachmentFormat: Format[Attachment] = (
+  implicit lazy val attachmentFormat: Format[Attachment] = (
     (__ \ "file_id").formatNullable[FileId] and
       (__ \ "tools").format[Seq[MessageTool]]
   )(Attachment.apply, unlift(Attachment.unapply))
 
   implicit lazy val assistantFormat: Format[Assistant] =
     Jsonx.formatCaseClassUseDefaults[Assistant]
+
+  lazy implicit val batchEndPointFormat: Format[BatchEndpoint] = enumFormat[BatchEndpoint](
+    BatchEndpoint.`/v1/chat/completions`,
+    BatchEndpoint.`/v1/embeddings`
+  )
+
+  lazy implicit val completionWindowFormat: Format[CompletionWindow] =
+    enumFormat[CompletionWindow](
+      CompletionWindow.`24h`
+    )
+
+  lazy implicit val batchProcessingErrorFormat: Format[BatchProcessingError] =
+    Json.format[BatchProcessingError]
+  lazy implicit val batchProcessingErrorsFormat: Format[BatchProcessingErrors] =
+    Json.format[BatchProcessingErrors]
+  lazy implicit val batchFormat: Format[Batch] = Json.format[Batch]
+  lazy implicit val batchInputFormat: Format[BatchRow] = Json.format[BatchRow]
+
+  lazy implicit val chatCompletionBatchResponseFormat: Format[ChatCompletionBatchResponse] =
+    Json.format[ChatCompletionBatchResponse]
+  lazy implicit val embeddingBatchResponseFormat: Format[EmbeddingBatchResponse] =
+    Json.format[EmbeddingBatchResponse]
+
+  lazy implicit val batchResponseFormat: Format[BatchResponse] = {
+    val reads: Reads[BatchResponse] = Reads { json =>
+      chatCompletionBatchResponseFormat
+        .reads(json)
+        .orElse(embeddingBatchResponseFormat.reads(json))
+    }
+
+    val writes: Writes[BatchResponse] = Writes {
+      case chatCompletionResponse: ChatCompletionResponse =>
+        chatCompletionResponseFormat.writes(chatCompletionResponse)
+      case embeddingResponse: EmbeddingResponse =>
+        embeddingFormat.writes(embeddingResponse)
+    }
+
+    Format(reads, writes)
+  }
+
+  lazy implicit val batchErrorFormat: Format[BatchError] = Json.format[BatchError]
+  lazy implicit val createBatchResponseFormat: Format[CreateBatchResponse] =
+    Json.format[CreateBatchResponse]
+  lazy implicit val createBatchResponsesFormat: Format[CreateBatchResponses] =
+    Json.format[CreateBatchResponses]
 
 }

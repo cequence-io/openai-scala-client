@@ -26,12 +26,14 @@ object OctoMLCreateChatCompletionStreamed
     UserMessage("What is the weather like in Norway?")
   )
 
+  private val modelId = NonOpenAIModelId.meta_llama_3_8b_instruct
+
   override protected def run: Future[_] =
     service
       .createChatCompletionStreamed(
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = NonOpenAIModelId.mixtral_8x7b_instruct,
+          model = modelId,
           temperature = Some(0.1),
           max_tokens = Some(512),
           top_p = Some(0.9),

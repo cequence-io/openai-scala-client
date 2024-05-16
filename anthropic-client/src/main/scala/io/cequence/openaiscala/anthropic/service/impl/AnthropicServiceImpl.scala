@@ -12,16 +12,18 @@ import io.cequence.openaiscala.anthropic.domain.response.{
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.domain.{ChatRole, Message}
 import io.cequence.openaiscala.anthropic.service.AnthropicService
-import io.cequence.openaiscala.service.impl.WSStreamRequestHelper
-import io.cequence.openaiscala.service.ws.WSRequestExtHelper
+import io.cequence.openaiscala.service.OpenAIWSRequestHelper
+import io.cequence.openaiscala.service.impl.OpenAIWSStreamRequestHelper
 import play.api.libs.json.{JsValue, Json}
 
 import scala.concurrent.Future
 
+// TODO: Introduce Anthropic specific exception and handle error codes
+// Shouldn't use OpenAIWSRequestHelper and OpenAIWSStreamRequestHelper
 private[service] trait AnthropicServiceImpl
     extends AnthropicService
-    with WSRequestExtHelper
-    with WSStreamRequestHelper
+    with OpenAIWSRequestHelper
+    with OpenAIWSStreamRequestHelper
     with JsonFormats {
 
   override protected type PEP = EndPoint

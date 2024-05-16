@@ -15,7 +15,7 @@ import java.util.Base64
 import javax.imageio.ImageIO
 import scala.concurrent.Future
 
-// requires `openai-anthropic-client` as a dependency
+// requires `openai-scala-anthropic-client` as a dependency
 object AnthropicCreateMessageWithImage extends ExampleBase[AnthropicService] {
 
   private val localImagePath = sys.env("EXAMPLE_IMAGE_PATH")

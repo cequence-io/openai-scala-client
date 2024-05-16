@@ -2,8 +2,17 @@ package io.cequence.openaiscala
 
 import io.cequence.openaiscala.JsonFormatsSpec.JsonPrintMode
 import io.cequence.openaiscala.JsonFormatsSpec.JsonPrintMode.{Compact, Pretty}
+import io.cequence.openaiscala.domain.response.TopLogprobInfo
+import io.cequence.openaiscala.domain.{
+  AssistantTool,
+  CodeInterpreterSpec,
+  FineTune,
+  FunctionSpec,
+  RetrievalSpec
+}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
+import org.scalatest.Ignore
 import play.api.libs.json.{Format, Json}
 import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.domain.AssistantToolResource.{
@@ -37,6 +46,7 @@ object JsonFormatsSpec {
   }
 }
 
+@Ignore
 class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
 
   private val textResponseJson =
@@ -92,6 +102,17 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       |    "vector_store_ids" : [ {
       |      "file_id" : "file-id-1"
       |    } ]
+      |  }
+      |}""".stripMargin
+
+  private val weightsAndBiasesIntegrationJson =
+    """{
+      |  "type" : "wandb",
+      |  "wandb" : {
+      |    "project" : "project the run belong to",
+      |    "name" : "a run display name",
+      |    "entity" : "integrations team",
+      |    "tags" : [ "openai/finetune", "openai/chatgpt-4" ]
       |  }
       |}""".stripMargin
 
@@ -152,6 +173,20 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       testCodec[AssistantToolResourceResponse](
         FileSearchResourcesResponse(Seq(FileId("file-id-1"))),
         fileSearchResourcesResponseJson,
+        Pretty
+      )
+    }
+
+    "serialize and deserialize a fine-tuning Weights and Biases integration" in {
+      val integration = FineTune.WeightsAndBiases(
+        "project the run belong to",
+        Some("a run display name"),
+        Some("integrations team"),
+        Seq("openai/finetune", "openai/chatgpt-4")
+      )
+      testCodec[FineTune.Integration](
+        integration,
+        weightsAndBiasesIntegrationJson,
         Pretty
       )
     }

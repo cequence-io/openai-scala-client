@@ -1,29 +1,45 @@
 # OpenAI Scala Client 🤖
-[![version](https://img.shields.io/badge/version-1.0.0.RC.1-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT) ![GitHub Stars](https://img.shields.io/github/stars/cequence-io/openai-scala-client?style=social) [![Twitter Follow](https://img.shields.io/twitter/follow/0xbnd?style=social)](https://twitter.com/0xbnd) ![GitHub CI](https://github.com/cequence-io/openai-scala-client/actions/workflows/continuous-integration.yml/badge.svg)
+[![version](https://img.shields.io/badge/version-1.0.0-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT) ![GitHub Stars](https://img.shields.io/github/stars/cequence-io/openai-scala-client?style=social) [![Twitter Follow](https://img.shields.io/twitter/follow/0xbnd?style=social)](https://twitter.com/0xbnd) ![GitHub CI](https://github.com/cequence-io/openai-scala-client/actions/workflows/continuous-integration.yml/badge.svg)
 
-This is a no-nonsense async Scala client for OpenAI API supporting all the available endpoints and params **including streaming**, the newest **ChatGPT completion**, **vision**, and **voice routines** (as defined [here](https://beta.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala). The supported calls are: 
+This is a no-nonsense async Scala client for OpenAI API supporting all the available endpoints and params **including streaming**, the newest **chat completion**, **vision**, and **voice routines** (as defined [here](https://beta.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala). The supported calls are: 
 
 * **Models**: [listModels](https://platform.openai.com/docs/api-reference/models/list), and [retrieveModel](https://platform.openai.com/docs/api-reference/models/retrieve)
 * **Completions**: [createCompletion](https://platform.openai.com/docs/api-reference/completions/create)
-* **Chat Completions**: [createChatCompletion](https://platform.openai.com/docs/api-reference/chat/create) (🔥 **new**: also with GPT vision support!), [createChatFunCompletion](https://platform.openai.com/docs/api-reference/chat/create) (deprecated), and [createChatToolCompletion](https://platform.openai.com/docs/api-reference/chat/create) (🔥 **new**)
+* **Chat Completions**: [createChatCompletion](https://platform.openai.com/docs/api-reference/chat/create) (also with GPT vision support!), [createChatFunCompletion](https://platform.openai.com/docs/api-reference/chat/create) (deprecated), and [createChatToolCompletion](https://platform.openai.com/docs/api-reference/chat/create)
 * **Edits**: [createEdit](https://platform.openai.com/docs/api-reference/edits/create) (deprecated)
 * **Images**: [createImage](https://platform.openai.com/docs/api-reference/images/create), [createImageEdit](https://platform.openai.com/docs/api-reference/images/create-edit), and [createImageVariation](https://platform.openai.com/docs/api-reference/images/create-variation)
 * **Embeddings**: [createEmbeddings](https://platform.openai.com/docs/api-reference/embeddings/create)
-* **Audio**: [createAudioTranscription](https://platform.openai.com/docs/api-reference/audio/createTranscription), [createAudioTranslation](https://platform.openai.com/docs/api-reference/audio/createTranslation), and [createAudioSpeech](https://platform.openai.com/docs/api-reference/audio/createSpeech) (🔥 **new**)
+* **Audio**: [createAudioTranscription](https://platform.openai.com/docs/api-reference/audio/createTranscription), [createAudioTranslation](https://platform.openai.com/docs/api-reference/audio/createTranslation), and [createAudioSpeech](https://platform.openai.com/docs/api-reference/audio/createSpeech)
 * **Files**: [listFiles](https://platform.openai.com/docs/api-reference/files/list), [uploadFile](https://platform.openai.com/docs/api-reference/files/upload), [deleteFile](https://platform.openai.com/docs/api-reference/files/delete), [retrieveFile](https://platform.openai.com/docs/api-reference/files/retrieve), and [retrieveFileContent](https://platform.openai.com/docs/api-reference/files/retrieve-content)
-* **Fine-tunes**: [createFineTune](https://platform.openai.com/docs/api-reference/fine-tunes/create), [listFineTunes](https://platform.openai.com/docs/api-reference/fine-tunes/list), [retrieveFineTune](https://platform.openai.com/docs/api-reference/fine-tunes/retrieve), [cancelFineTune](https://platform.openai.com/docs/api-reference/fine-tunes/cancel), [listFineTuneEvents](https://platform.openai.com/docs/api-reference/fine-tunes/events), and [deleteFineTuneModel](https://platform.openai.com/docs/api-reference/fine-tunes/delete-model)
+* **Fine-tunes**: [createFineTune](https://platform.openai.com/docs/api-reference/fine-tunes/create), [listFineTunes](https://platform.openai.com/docs/api-reference/fine-tunes/list), [retrieveFineTune](https://platform.openai.com/docs/api-reference/fine-tunes/retrieve), [cancelFineTune](https://platform.openai.com/docs/api-reference/fine-tunes/cancel), [listFineTuneEvents](https://platform.openai.com/docs/api-reference/fine-tunes/events), [listFineTuneCheckpoints](https://platform.openai.com/docs/api-reference/fine-tuning/list-checkpoints), and [deleteFineTuneModel](https://platform.openai.com/docs/api-reference/fine-tunes/delete-model)
 * **Moderations**: [createModeration](https://platform.openai.com/docs/api-reference/moderations/create)
-* **Threads** (🔥 **new**): [createThread](https://platform.openai.com/docs/api-reference/threads/createThread), [retrieveThread](https://platform.openai.com/docs/api-reference/threads/getThread), [modifyThread](https://platform.openai.com/docs/api-reference/threads/modifyThread), and [deleteThread](https://platform.openai.com/docs/api-reference/threads/deleteThread)
-* **Thread Messages** (🔥 **new**): [createThreadMessage](https://platform.openai.com/docs/api-reference/messages/createMessage), [retrieveThreadMessage](https://platform.openai.com/docs/api-reference/messages/getMessage), [modifyThreadMessage](https://platform.openai.com/docs/api-reference/messages/modifyMessage), [listThreadMessages](https://platform.openai.com/docs/api-reference/messages/listMessages), [retrieveThreadMessageFile](https://platform.openai.com/docs/api-reference/messages/getMessageFile), and [listThreadMessageFiles](https://platform.openai.com/docs/api-reference/messages/listMessageFiles)
- 
+* **Threads**: [createThread](https://platform.openai.com/docs/api-reference/threads/createThread), [retrieveThread](https://platform.openai.com/docs/api-reference/threads/getThread), [modifyThread](https://platform.openai.com/docs/api-reference/threads/modifyThread), and [deleteThread](https://platform.openai.com/docs/api-reference/threads/deleteThread)
+* **Thread Messages**: [createThreadMessage](https://platform.openai.com/docs/api-reference/assistants/createAssistant), [retrieveThreadMessage](https://platform.openai.com/docs/api-reference/messages/getMessage), [modifyThreadMessage](https://platform.openai.com/docs/api-reference/messages/modifyMessage), [listThreadMessages](https://platform.openai.com/docs/api-reference/messages/listMessages), [retrieveThreadMessageFile](https://platform.openai.com/docs/api-reference/messages/getMessageFile), and [listThreadMessageFiles](https://platform.openai.com/docs/api-reference/messages/listMessageFiles)
+* **Assistants** (🔥 **new**): [createAssistant](https://platform.openai.com/docs/api-reference/messages/createMessage), [listAssistants](https://platform.openai.com/docs/api-reference/assistants/listAssistants), [retrieveAssistant](https://platform.openai.com/docs/api-reference/assistants/retrieveAssistant), [modifyAssistant](https://platform.openai.com/docs/api-reference/assistants/modifyAssistant), and [deleteAssistant](https://platform.openai.com/docs/api-reference/assistants/deleteAssistant)
+* **Assistant Files** (🔥 **new**): [createAssistantFile](https://platform.openai.com/docs/api-reference/assistants/createAssistantFile), [listAssistantFiles](https://platform.openai.com/docs/api-reference/assistants/listAssistantFiles), [retrieveAssistantFile](https://platform.openai.com/docs/api-reference/assistants/retrieveAssistantFile), and [deleteAssistantFile](https://platform.openai.com/docs/api-reference/assistants/deleteAssistantFile)
+
 Note that in order to be consistent with the OpenAI API naming, the service function names match exactly the API endpoint titles/descriptions with camelcase.
 Also, we aimed the lib to be self-contained with the fewest dependencies possible therefore we ended up using only two libs `play-ahc-ws-standalone` and `play-ws-standalone-json` (at the top level). Additionally, if dependency injection is required we use `scala-guice` lib as well.  
 
-This lib supports also "OpenAI-API-compatible" providers such as [FastChat](https://github.com/lm-sys/FastChat) (umbrella for open-source LLMs - Vicuna, Alpaca, LLaMA, fastchat-t5-3b-v1.0, mpt-7b-chat, etc.), [Azure](https://learn.microsoft.com/en-us/azure/cognitive-services/openai/reference), or any other similar service with a custom URL. Check the examples below for more details. 
+---
+
+(🔥 **New**) In addition to the OpenAI API, this library also supports API-compatible providers such as:
+- [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) - cloud-based, utilizes OpenAI models but with lower latency
+- [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) - cloud-based, offers a vast selection of open-source models
+- [Anthropic](https://www.anthropic.com/api) - cloud-based, a major competitor to OpenAI, features proprietary/closed-source models such as Claude3 - Haiku, Sonnet, and Opus
+- [Groq](https://wow.groq.com/) - cloud-based, known for its super-fast inference with LPUs
+- [Fireworks AI](https://fireworks.ai/) - cloud-based
+- [OctoAI](https://octo.ai/) - cloud-based
+- [Ollama](https://ollama.com/) - runs locally, serves as an umbrella for open-source LLMs including LLaMA3, dbrx, and Command-R
+- [FastChat](https://github.com/lm-sys/FastChat) - runs locally, serves as an umbrella for open-source LLMs such as Vicuna, Alpaca, and FastChat-T5
+
+See [examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/nonopenai) for more details.
+
+---
 
 👉 For background information read an article about the lib/client on [Medium](https://medium.com/@0xbnd/openai-scala-client-is-out-d7577de934ad).
 
-Try out also our [Scala client for Pinecone vector database](https://github.com/cequence-io/pinecone-scala), or use both clients together! [This demo project](https://github.com/cequence-io/pinecone-openai-scala-demo) shows how to generate and store OpenAI embeddings (with `text-embedding-ada-002` model) into Pinecone and query them afterward. The OpenAI + Pinecone combo is commonly used for autonomous AI agents, such as [babyAGI](https://github.com/yoheinakajima/babyagi) and [AutoGPT](https://github.com/Significant-Gravitas/Auto-GPT).
+Also try out our [Scala client for Pinecone vector database](https://github.com/cequence-io/pinecone-scala), or use both clients together! [This demo project](https://github.com/cequence-io/pinecone-openai-scala-demo) shows how to generate and store OpenAI embeddings (with `text-embedding-ada-002` model) into Pinecone and query them afterward. The OpenAI + Pinecone combo is commonly used for autonomous AI agents, such as [babyAGI](https://github.com/yoheinakajima/babyagi) and [AutoGPT](https://github.com/Significant-Gravitas/Auto-GPT).
 
 **✔️ Important**: this is a "community-maintained" library and, as such, has no relation to OpenAI company.
 
@@ -31,10 +47,10 @@ Try out also our [Scala client for Pinecone vector database](https://github.com/
 
 The currently supported Scala versions are **2.12, 2.13**, and **3**.  
 
-To pull the library you have to add the following dependency to your *build.sbt*
+To install the library, add the following dependency to your *build.sbt*
 
 ```
-"io.cequence" %% "openai-scala-client" % "1.0.0.RC.1"
+"io.cequence" %% "openai-scala-client" % "1.0.0"
 ```
 
 or to *pom.xml* (if you use maven)
@@ -43,11 +59,11 @@ or to *pom.xml* (if you use maven)
 <dependency>
     <groupId>io.cequence</groupId>
     <artifactId>openai-scala-client_2.12</artifactId>
-    <version>1.0.0.RC.1</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
-If you want a streaming support use `"io.cequence" %% "openai-scala-client-stream" % "1.0.0.RC.1"` instead.
+If you want streaming support, use `"io.cequence" %% "openai-scala-client-stream" % "1.0.0"` instead.
 
 ## Config ⚙️
 
@@ -87,13 +103,7 @@ Then you can obtain a service in one of the following ways.
   )
 ```
 
-- Minimal `OpenAICoreService` supporting `listModels`, `createCompletion`, `createChatCompletion`, and `createEmbeddings` calls - e.g. [FastChat](https://github.com/lm-sys/FastChat) service running on the port 8000
-
-```scala
-  val service = OpenAICoreServiceFactory("http://localhost:8000/v1/")
-```
-
-- For Azure with API Key
+- For **Azure** with API Key
 
 ```scala
   val service = OpenAIServiceFactory.forAzureWithApiKey(
@@ -104,22 +114,87 @@ Then you can obtain a service in one of the following ways.
   )
 ```
 
-- For Azure with Access Token
+- Minimal `OpenAICoreService` supporting `listModels`, `createCompletion`, `createChatCompletion`, and `createEmbeddings` calls - provided e.g. by [FastChat](https://github.com/lm-sys/FastChat) service running on the port 8000
 
 ```scala
-  val service = OpenAIServiceFactory.forAzureWithAccessToken(
-    resourceName = "your-resource-name",
-    deploymentId = "your-deployment-id", // usually model name such as "gpt-35-turbo"
-    apiVersion = "2023-05-15",           // newest version
-    accessToken = "your_access_token"
+  val service = OpenAICoreServiceFactory("http://localhost:8000/v1/")
+```
+
+-  `OpenAIChatCompletionService` providing solely `createChatCompletion`
+
+1. [Groq](https://wow.groq.com/)
+```scala
+  val service = OpenAIChatCompletionServiceFactory(
+    coreUrl = "https://api.groq.com/openai/v1/",
+    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("GROQ_API_KEY")}"))
   )
 ```
 
-**✔️ Important**: If you want streaming support use `OpenAIServiceStreamedFactory` or `OpenAICoreServiceStreamedFactory` from `openai-scala-client-stream` lib instead of `OpenAIServiceFactory` (in the three examples above). Three additional functions - `createCompletionStreamed`, `createChatCompletionStreamed`, and `listFineTuneEventsStreamed` (deprecated) provided by [OpenAIServiceStreamedExtra](./openai-client-stream/src/main/scala/io/cequence/openaiscala/service/OpenAIServiceStreamedExtra.scala) will be then available.
-🔥 **New**: Note that it is now possible to use a streamed service also with a non-OpenAI provider e.g. as:
+2. [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) - e.g. Cohere R+ model
+```scala
+  val service = OpenAIChatCompletionServiceFactory.forAzureAI(
+    endpoint = sys.env("AZURE_AI_COHERE_R_PLUS_ENDPOINT"),
+    region = sys.env("AZURE_AI_COHERE_R_PLUS_REGION"),
+    accessToken = sys.env("AZURE_AI_COHERE_R_PLUS_ACCESS_KEY")
+  )
+```
+
+3. [Anthropic](https://www.anthropic.com/api) (requires our `openai-scala-anthropic-client` lib)
+```scala
+  val service = AnthropicServiceFactory.asOpenAI()
+```
+
+4. [Fireworks AI](https://fireworks.ai/)
+```scala
+  val service = OpenAIChatCompletionServiceFactory(
+    coreUrl = "https://api.fireworks.ai/inference/v1/",
+    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
+  )
+```
+
+5. [Octo AI](https://octo.ai/)
+```scala
+  val service = OpenAIChatCompletionServiceFactory(
+    coreUrl = "https://text.octoai.run/v1/",
+    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
+  )
+```
+
+6. [Ollama](https://ollama.com/)
+```scala
+  val service = OpenAIChatCompletionServiceFactory(
+    coreUrl = "http://localhost:11434/v1/"
+  )
+```
+
+- Services with additional streaming support - `createCompletionStreamed` and `createChatCompletionStreamed` provided by [OpenAIStreamedServiceExtra](./openai-client-stream/src/main/scala/io/cequence/openaiscala/service/OpenAIStreamedServiceExtra.scala) (requires `openai-scala-client-stream` lib)
 
 ```scala
-  val service = OpenAICoreServiceStreamedFactory.customInstance("http://localhost:8000/v1/")
+  import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIStreamedService
+  import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
+
+  val service: OpenAIStreamedService = OpenAIServiceFactory.withStreaming()
+```
+
+similarly for a chat-completion service
+
+```scala
+  import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
+
+  val service = OpenAIChatCompletionServiceFactory.withStreaming(
+    coreUrl = "https://api.fireworks.ai/inference/v1/",
+    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
+  )
+```
+
+or only if streaming is required
+
+```scala
+  val service: OpenAIChatCompletionStreamedServiceExtra =
+    OpenAIChatCompletionStreamedServiceFactory(
+      coreUrl = "https://api.fireworks.ai/inference/v1/",
+      authHeaders = Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
+   )
 ```
 
 - Via dependency injection (requires `openai-scala-guice` lib)
@@ -128,12 +203,13 @@ Then you can obtain a service in one of the following ways.
   class MyClass @Inject() (openAIService: OpenAIService) {...}
 ```
 
+---
+
 **II. Calling functions**
 
 Full documentation of each call with its respective inputs and settings is provided in [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala). Since all the calls are async they return responses wrapped in `Future`.
-🔥 **New**: There is a new project [openai-scala-client-examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples) where you can find a lot of ready-to-use examples!
 
-Examples:
+🔥 **New**: There is a new project [openai-scala-client-examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples) where you can find a lot of ready-to-use examples!
 
 - List models
 
@@ -179,7 +255,7 @@ Examples:
   service.createCompletion(
     text,
     settings = CreateCompletionSettings(
-      model = ModelId.text_davinci_001,
+      model = ModelId.gpt_3_5_turbo_16k,
       max_tokens = Some(1500),
       temperature = Some(0.9),
       presence_penalty = Some(0.2),
@@ -188,23 +264,6 @@ Examples:
   ).map(completion =>
     println(completion.choices.head.text)
   )
-```
-
-- 🔥 **New**: Count used tokens before calling `createChatCompletions` or `createChatFunCompletions`, this help you select proper model ex. `gpt-3.5-turbo` or `gpt-3.5-turbo-16k` and reduce costs. This is an experimental feature and it may not work for all models.
-
-```scala
-import io.cequence.openaiscala.service.OpenAICountTokensHelper
-import io.cequence.openaiscala.domain.{ChatRole, FunMessageSpec, FunctionSpec}
-
-class MyCompletionService extends OpenAICountTokensHelper {
-  def exec = {
-    val messages: Seq[FunMessageSpec] = ??? // messages to be sent to OpenAI
-    val function: FunctionSpec = ??? // function to be called
-
-    val tokens = countFunMessageTokens(messages, List(function), Some(function.name))
-  }
-}
-
 ```
 
 - Create completion with streaming and a custom setting
@@ -253,11 +312,12 @@ For this to work you need to use `OpenAIServiceStreamedFactory` from `openai-sca
 
 ```scala
   val messages = Seq(
-    FunMessageSpec(role = ChatRole.User, content = Some("What's the weather like in Boston?")),
+    SystemMessage("You are a helpful assistant."),
+    UserMessage("What's the weather like in San Francisco, Tokyo, and Paris?")
   )
 
   // as a param type we can use "number", "string", "boolean", "object", "array", and "null"
-  val functions = Seq(
+  val tools = Seq(
     FunctionSpec(
       name = "get_current_weather",
       description = Some("Get the current weather in a given location"),
@@ -266,83 +326,165 @@ For this to work you need to use `OpenAIServiceStreamedFactory` from `openai-sca
         "properties" -> Map(
           "location" -> Map(
             "type" -> "string",
-            "description" -> "The city and state, e.g. San Francisco, CA",
+            "description" -> "The city and state, e.g. San Francisco, CA"
           ),
           "unit" -> Map(
             "type" -> "string",
             "enum" -> Seq("celsius", "fahrenheit")
           )
         ),
-        "required" -> Seq("location"),
+        "required" -> Seq("location")
       )
     )
   )
 
   // if we want to force the model to use the above function as a response
-  // we can do so by passing: responseFunctionName = Some("get_current_weather")`
-  service.createChatFunCompletion(
+  // we can do so by passing: responseToolChoice = Some("get_current_weather")`
+  service.createChatToolCompletion(
     messages = messages,
-    functions = functions,
-    responseFunctionName = None
+    tools = tools,
+    responseToolChoice = None, // means "auto"
+    settings = CreateChatCompletionSettings(ModelId.gpt_3_5_turbo_1106)
   ).map { response =>
     val chatFunCompletionMessage = response.choices.head.message
-    val functionCall = chatFunCompletionMessage.function_call
+    val toolCalls = chatFunCompletionMessage.tool_calls.collect {
+      case (id, x: FunctionCallSpec) => (id, x)
+    }
 
-    println("function call name      : " + functionCall.map(_.name).getOrElse("N/A"))
-    println("function call arguments : " + functionCall.map(_.arguments).getOrElse("N/A"))
+    println(
+      "tool call ids                : " + toolCalls.map(_._1).mkString(", ")
+    )
+    println(
+      "function/tool call names     : " + toolCalls.map(_._2.name).mkString(", ")
+    )
+    println(
+      "function/tool call arguments : " + toolCalls.map(_._2.arguments).mkString(", ")
+    )
   }
 ```
-Note that instead of `MessageSpec`, the `function_call` version of the chat completion uses the `FunMessageSpec` class to define messages - both as part of the request and the response.
-This extension of the standard chat completion is currently supported by the following `0613` models, all conveniently available in `ModelId` object:
-- `gpt-3.5-turbo-0613` (default), `gpt-3.5-turbo-16k-0613`, `gpt-4-0613`, and `gpt-4-32k-0613`.
 
+- 🔥 **New**: Count expected used tokens before calling `createChatCompletions` or `createChatFunCompletions`, this helps you select proper model ex. `gpt-3.5-turbo` or `gpt-3.5-turbo-16k` and reduce costs. This is an experimental feature and it may not work for all models. Requires `openai-scala-count-tokens` lib.
 
-**✔️ Important Note**: After you are done using the service, you should close it by calling `service.close`. Otherwise, the underlying resources/threads won't be released.
+An example how to count message tokens:
+```scala
+import io.cequence.openaiscala.service.OpenAICountTokensHelper
+import io.cequence.openaiscala.domain.{AssistantMessage, BaseMessage, FunctionSpec, ModelId, SystemMessage, UserMessage}
 
-**III. Using multiple services**
+class MyCompletionService extends OpenAICountTokensHelper {
+  def exec = {
+    val model = ModelId.gpt_4_turbo_2024_04_09
 
-- Load distribution with `OpenAIMultiServiceAdapter` - _round robin_ (_rotation_) type
+    // messages to be sent to OpenAI
+    val messages: Seq[BaseMessage] = Seq(
+      SystemMessage("You are a helpful assistant."),
+      UserMessage("Who won the world series in 2020?"),
+      AssistantMessage("The Los Angeles Dodgers won the World Series in 2020."),
+      UserMessage("Where was it played?"),
+    )
+
+    val tokenCount = countMessageTokens(model, messages)
+  }
+}
+```
+
+An example how to count message tokens when a function is involved:
+```scala
+import io.cequence.openaiscala.service.OpenAICountTokensHelper
+import io.cequence.openaiscala.domain.{BaseMessage, FunctionSpec, ModelId, SystemMessage, UserMessage}
+
+class MyCompletionService extends OpenAICountTokensHelper {
+  def exec = {
+    val model = ModelId.gpt_4_turbo_2024_04_09
+    
+    // messages to be sent to OpenAI
+    val messages: Seq[BaseMessage] = 
+     Seq(
+       SystemMessage("You are a helpful assistant."),
+       UserMessage("What's the weather like in San Francisco, Tokyo, and Paris?")
+     )
+     
+    // function to be called
+    val function: FunctionSpec = FunctionSpec(
+      name = "getWeather",
+      parameters = Map(
+        "type" -> "object",
+        "properties" -> Map(
+          "location" -> Map(
+            "type" -> "string",
+            "description" -> "The city to get the weather for"
+          ),
+          "unit" -> Map("type" -> "string", "enum" -> List("celsius", "fahrenheit"))
+        )
+      )
+    )
+
+    val tokenCount = countFunMessageTokens(model, messages, Seq(function), Some(function.name))
+  }
+}
+```
+
+**✔️ Important**: After you are done using the service, you should close it by calling `service.close`. Otherwise, the underlying resources/threads won't be released.
+
+---
+
+**III. Using adapters**
+
+Adapters for OpenAI services (chat completion, core, or full) are provided by [OpenAIServiceAdapters](./openai-core/src/main/scala/io/cequence/openaiscala/service/adapter/OpenAIServiceAdapters.scala). The adapters are used to distribute the load between multiple services, retry on transient errors, route, or provide additional functionality. See [examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/adapter) for more details.
+
+Note that the adapters can be arbitrarily combined/stacked.
+
+- **Round robin** load distribution 
 
 ```scala
+  val adapters = OpenAIServiceAdapters.forFullService
+
   val service1 = OpenAIServiceFactory("your-api-key1")
   val service2 = OpenAIServiceFactory("your-api-key2")
-  val service3 = OpenAIServiceFactory("your-api-key3")
 
-  val service = OpenAIMultiServiceAdapter.ofRoundRobinType(service1, service2, service3)
-
-  service.listModels.map { models =>
-    models.foreach(println)
-    service.close()
-  }
+  val service = adapters.roundRobin(service1, service2)
 ```
 
-- Load distribution with `OpenAIMultiServiceAdapter` - _random order_ type
+- **Random order** load distribution
 
 ```scala
+  val adapters = OpenAIServiceAdapters.forFullService
+
   val service1 = OpenAIServiceFactory("your-api-key1")
   val service2 = OpenAIServiceFactory("your-api-key2")
-  val service3 = OpenAIServiceFactory("your-api-key3")
 
-  val service = OpenAIMultiServiceAdapter.ofRandomOrderType(service1, service2, service3)
-
-  service.listModels.map { models =>
-    models.foreach(println)
-    service.close()
-  }
+  val service = adapters.randomOrder(service1, service2)
 ```
 
-- Create completion and retry on transient errors (e.g. rate limit error)
+- **Logging** function calls
+
 ```scala
-import akka.actor.{ActorSystem, Scheduler}
-import io.cequence.openaiscala.RetryHelpers
-import io.cequence.openaiscala.RetryHelpers.RetrySettings
-import io.cequence.openaiscala.domain.{ChatRole, MessageSpec}
-import io.cequence.openaiscala.service.{OpenAIService, OpenAIServiceFactory}
+  val adapters = OpenAIServiceAdapters.forFullService
 
-import javax.inject.Inject
-import scala.concurrent.duration.DurationInt
-import scala.concurrent.{ExecutionContext, Future}
+  val rawService = OpenAIServiceFactory()
+  
+  val service = adapters.log(
+    rawService,
+    "openAIService",
+    logger.log
+  )
+```
 
+- **Retry** on transient errors (e.g. rate limit error)
+
+```scala
+  val adapters = OpenAIServiceAdapters.forFullService
+
+  implicit val retrySettings: RetrySettings = RetrySettings(maxRetries = 10).constantInterval(10.seconds)
+
+  val service = adapters.retry(
+    OpenAIServiceFactory(),
+    Some(println(_)) // simple logging
+  )
+```
+
+- **Retry** on a specific function using [RetryHelpers](./openai-core/src/main/scala/io/cequence/openaiscala/RetryHelpers.scala) directly
+ 
+```scala
 class MyCompletionService @Inject() (
   val actorSystem: ActorSystem,
   implicit val ec: ExecutionContext,
@@ -364,20 +506,50 @@ class MyCompletionService @Inject() (
 }
 ```
 
-- Retries with `OpenAIRetryServiceAdapter`
+- **Route** chat completion calls based on models
 
 ```scala
-  val serviceAux = ... // your service
+  val adapters = OpenAIServiceAdapters.forFullService
 
-  implicit val retrySettings: RetrySettings = 
-    RetrySettings(maxRetries = 10).constantInterval(10.seconds)
-  // wrap it with the retry adapter
-  val service = OpenAIRetryServiceAdapter(serviceAux)
+  // OctoAI
+  val octoMLService = OpenAIChatCompletionServiceFactory(
+    coreUrl = "https://text.octoai.run/v1/",
+    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
+  )
 
-  service.listModels.map { models =>
-    models.foreach(println)
-    service.close
-  }
+
+  // Anthropic
+  val anthropicService = AnthropicServiceFactory.asOpenAI()
+
+  // OpenAI
+  val openAIService = OpenAIServiceFactory()
+
+  val service: OpenAIService =
+    adapters.chatCompletionRouter(
+      // OpenAI service is default so no need to specify its models here
+      serviceModels = Map(
+        octoMLService -> Seq(NonOpenAIModelId.mixtral_8x22b_instruct),
+        anthropicService -> Seq(
+          NonOpenAIModelId.claude_2_1,
+          NonOpenAIModelId.claude_3_opus_20240229,
+          NonOpenAIModelId.claude_3_haiku_20240307
+        )
+      ),
+      openAIService
+    )
+```
+
+- **Chat-to-completion** adapter
+
+```scala
+    val adapters = OpenAIServiceAdapters.forCoreService
+
+    val service = adapters.chatToCompletion(
+      OpenAICoreServiceFactory(
+        coreUrl = "https://api.fireworks.ai/inference/v1/",
+        authHeaders = Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
+      )
+    )
 ```
 
 ## FAQ 🤔

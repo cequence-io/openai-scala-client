@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonParseException
 import com.fasterxml.jackson.databind.JsonMappingException
 import io.cequence.openaiscala.JsonUtil.toJson
 import io.cequence.openaiscala._
-import play.api.libs.json.{JsObject, JsValue}
+import play.api.libs.json.{JsObject, JsValue, Reads}
 import play.api.libs.ws.{BodyWritable, StandaloneWSRequest}
 import play.api.libs.ws.JsonBodyWritables._
 import play.api.libs.ws.JsonBodyReadables._
@@ -25,7 +25,7 @@ import scala.util.Either
  * @since Jan
  *   2023
  */
-trait WSRequestHelper extends WSHelper {
+trait WSRequestHelper extends HasWSClient {
 
   protected val coreUrl: String
 
@@ -195,7 +195,6 @@ trait WSRequestHelper extends WSHelper {
     val bodyParamsX = bodyParams.collect { case (fieldName, Some(jsValue)) =>
       (fieldName.toString, jsValue)
     }
-
     execPOSTJsonAux(
       request,
       JsObject(bodyParamsX),
@@ -447,24 +446,14 @@ trait WSRequestHelper extends WSHelper {
       case Left(data) => data
 
       case Right((errorCode, message)) =>
-        val errorMessage = s"Code ${errorCode} : ${message}"
-        errorCode match {
-          case 401 => throw new OpenAIScalaUnauthorizedException(errorMessage)
-          case 429 => throw new OpenAIScalaRateLimitException(errorMessage)
-          case 500 => throw new OpenAIScalaServerErrorException(errorMessage)
-          case 503 => throw new OpenAIScalaEngineOverloadedException(errorMessage)
-          case 400 =>
-            if (
-              message.contains("Please reduce your prompt; or completion length") ||
-              message.contains("Please reduce the length of the messages")
-            )
-              throw new OpenAIScalaTokenCountExceededException(errorMessage)
-            else
-              throw new OpenAIScalaClientException(errorMessage)
-
-          case _ => throw new OpenAIScalaClientException(errorMessage)
-        }
+        handleErrorCodes(errorCode, message)
     }
+
+  protected def handleErrorCodes(
+    httpCode: Int,
+    message: String
+  ): Nothing =
+    throw new CequenceWSException(s"Code ${httpCode} : ${message}")
 
   protected def paramsAsString(params: Seq[(String, Any)]): String = {
     val string =

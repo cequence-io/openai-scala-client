@@ -69,9 +69,8 @@ trait OpenAIServiceConsts {
       model = ModelId.whisper_1
     )
 
-    val UploadFile = UploadFileSettings(
-      purpose = "fine-tune"
-    )
+    val UploadFineTuneFile = UploadFileSettings(purpose = FileUploadPurpose.`fine-tune`)
+    val UploadBatchFile = UploadFileSettings(purpose = FileUploadPurpose.batch)
 
     val CreateFineTune = CreateFineTuneSettings(
       model = ModelId.gpt_3_5_turbo_0613

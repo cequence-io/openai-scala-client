@@ -49,16 +49,16 @@ trait OpenAICountTokensHelper {
 
   private def tokensPerMessageAndName(model: String): (Int, Int) =
     model match {
-      case "gpt-3.5-turbo-0301" =>
+      case ModelId.gpt_3_5_turbo_0301 =>
         // every message follows <|start|>{role/name}\n{content}<|end|>\n
         // if there's a name, the role is omitted
         (4, -1)
-      case "gpt-3.5-turbo-0613" | "gpt-3.5-turbo-16k-0613" | "gpt-4-0314" | "gpt-4-32k-0314" |
-          "gpt-4-0613" | "gpt-4-32k-0613" =>
+      case ModelId.gpt_3_5_turbo_0613 | ModelId.gpt_3_5_turbo_16k_0613 | ModelId.gpt_4_0613 |
+          ModelId.gpt_4_32k_0613 | ModelId.gpt_4_turbo_2024_04_09 =>
         (3, 1)
-      case "gpt-3.5-turbo" => tokensPerMessageAndName("gpt-3.5-turbo-0613")
-      case "gpt-4"         => tokensPerMessageAndName("gpt-4-0613")
-      case _               =>
+      case ModelId.gpt_3_5_turbo => tokensPerMessageAndName(ModelId.gpt_3_5_turbo_0613)
+      case ModelId.gpt_4         => tokensPerMessageAndName(ModelId.gpt_4_0613)
+      case _                     =>
         // failover to (3, 1)
         (3, 1)
     }

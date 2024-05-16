@@ -1,4 +1,4 @@
-# OpenAI Scala Client - Count tokens [![version](https://img.shields.io/badge/version-1.0.0.RC.1-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT)
+# OpenAI Scala Client - Count tokens [![version](https://img.shields.io/badge/version-1.0.0-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT)
 
 This module provides ability for estimating the number of tokens an OpenAI chat completion request will use. 
 Note that the full project documentation can be found [here](../README.md).
@@ -12,7 +12,7 @@ The currently supported Scala versions are **2.12, 2.13**, and **3**.
 To pull the library you have to add the following dependency to your *build.sbt*
 
 ```
-"io.cequence" %% "openai-scala-count-tokens" % "1.0.0.RC.1"
+"io.cequence" %% "openai-scala-count-tokens" % "1.0.0"
 ```
 
 or to *pom.xml* (if you use maven)
@@ -21,25 +21,32 @@ or to *pom.xml* (if you use maven)
 <dependency>
     <groupId>io.cequence</groupId>
     <artifactId>openai-scala-count-tokens_2.12</artifactId>
-    <version>1.0.0.RC.1</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
 ## Usage
 
+An example how to count message tokens:
 ```scala
-import io.cequence.openaiscala.service.OpenAICountTokensHelper
-import io.cequence.openaiscala.domain.{ChatRole, FunMessageSpec, FunctionSpec}
+import io.cequence.openaiscala.domain.{AssistantMessage, BaseMessage, FunctionSpec, ModelId, SystemMessage, UserMessage}
 
-val messages: Seq[FunMessageSpec] = ??? // messages to be sent to OpenAI
-val function: FunctionSpec = ??? // function to be called
+class MyCompletionService extends OpenAICountTokensHelper {
+  def exec = {
+    val model = ModelId.gpt_4_turbo_2024_04_09
 
-val service = new OpenAICountTokensService()
+    // messages to be sent to OpenAI
+    val messages: Seq[BaseMessage] = Seq(
+      SystemMessage("You are a helpful assistant."),
+      UserMessage("Who won the world series in 2020?"),
+      AssistantMessage("The Los Angeles Dodgers won the World Series in 2020."),
+      UserMessage("Where was it played?"),
+    )
 
-val tokens = service.countFunMessageTokens(messages, List(function), Some(function.name))
+    val tokenCount = countMessageTokens(model, messages)
+  }
+}
 ```
-
-
 
 ## Development and testing
 

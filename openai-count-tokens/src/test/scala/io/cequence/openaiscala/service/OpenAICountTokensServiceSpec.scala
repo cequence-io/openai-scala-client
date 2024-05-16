@@ -4,9 +4,8 @@ import akka.testkit.TestKit
 import io.cequence.openaiscala.domain.{
   AssistantMessage,
   BaseMessage,
-  ChatRole,
   FunctionSpec,
-  MessageSpec,
+  ModelId,
   SystemMessage,
   UserMessage
 }
@@ -17,7 +16,7 @@ import org.scalatestplus.mockito.MockitoSugar
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
-import org.scalatest.{BeforeAndAfterAll, Ignore}
+import org.scalatest.BeforeAndAfterAll
 
 import scala.collection.immutable.ListMap
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -102,7 +101,7 @@ class OpenAICountTokensServiceSpec
       messages: Seq[BaseMessage],
       expectedTokens: Int,
       responseFunctionName: Option[String] = None,
-      model: String = "gpt-3.5-turbo"
+      model: String = ModelId.gpt_3_5_turbo
     ): Unit = {
       val countedTokens = countFunMessageTokens(
         model,
@@ -142,32 +141,32 @@ class OpenAICountTokensServiceSpec
       "You are a helpful consultant assisting with the translation of corporate jargon into plain English."
     )
 
-    // TODO: add gpt-4-turno-2024-04-09, gpt-4-0125-preview, gpt-4-1106-preview
+    // TODO: add gpt-4-turbo-2024-04-09, gpt-4-0125-preview, gpt-4-1106-preview
     "count tokens for a system message" in new TestCase {
       checkTokensForMessageCall(
         chat(systemMessage),
-        "gpt-4-turno-2024-04-09" -> 24,
-        "gpt-4-1106-preview" -> 24,
-        "gpt-4-0613" -> 24,
-        "gpt-4-0125-preview" -> 24,
-        "gpt-4" -> 24,
-        "gpt-3.5-turbo" -> 24,
-        "gpt-3.5-turbo-0301" -> 25,
-        "gpt-3.5-turbo-0613" -> 24
+        ModelId.gpt_4_turbo_2024_04_09 -> 24,
+        ModelId.gpt_4_1106_preview -> 24,
+        ModelId.gpt_4_0613 -> 24,
+        ModelId.gpt_4_0125_preview -> 24,
+        ModelId.gpt_4 -> 24,
+        ModelId.gpt_3_5_turbo -> 24,
+        ModelId.gpt_3_5_turbo_0301 -> 25,
+        ModelId.gpt_3_5_turbo_0613 -> 24
       )
     }
 
     "count tokens for a named system message" in new TestCase {
       checkTokensForMessageCall(
         chat(systemMessage.withName("James")),
-        "gpt-4-turno-2024-04-09" -> 26,
-        "gpt-4-1106-preview" -> 26,
-        "gpt-4-0613" -> 26,
-        "gpt-4-0125-preview" -> 26,
-        "gpt-4" -> 26,
-        "gpt-3.5-turbo" -> 26,
-        "gpt-3.5-turbo-0301" -> 25,
-        "gpt-3.5-turbo-0613" -> 26
+        ModelId.gpt_4_turbo_2024_04_09 -> 26,
+        ModelId.gpt_4_1106_preview -> 26,
+        ModelId.gpt_4_0613 -> 26,
+        ModelId.gpt_4_0125_preview -> 26,
+        ModelId.gpt_4 -> 26,
+        ModelId.gpt_3_5_turbo -> 26,
+        ModelId.gpt_3_5_turbo_0301 -> 25,
+        ModelId.gpt_3_5_turbo_0613 -> 26
       )
     }
 
@@ -178,28 +177,28 @@ class OpenAICountTokensServiceSpec
     "count tokens for a user message" in new TestCase {
       checkTokensForMessageCall(
         chat(userMessage),
-        "gpt-4-turno-2024-04-09" -> 33,
-        "gpt-4-1106-preview" -> 33,
-        "gpt-4-0613" -> 33,
-        "gpt-4-0125-preview" -> 33,
-        "gpt-4" -> 33,
-        "gpt-3.5-turbo" -> 33,
-        "gpt-3.5-turbo-0301" -> 34,
-        "gpt-3.5-turbo-0613" -> 33
+        ModelId.gpt_4_turbo_2024_04_09 -> 33,
+        ModelId.gpt_4_1106_preview -> 33,
+        ModelId.gpt_4_0613 -> 33,
+        ModelId.gpt_4_0125_preview -> 33,
+        ModelId.gpt_4 -> 33,
+        ModelId.gpt_3_5_turbo -> 33,
+        ModelId.gpt_3_5_turbo_0301 -> 34,
+        ModelId.gpt_3_5_turbo_0613 -> 33
       )
     }
 
     "count tokens for a user message with name" in new TestCase {
       checkTokensForMessageCall(
         chat(userMessage.withName("Alice")),
-        "gpt-4-turno-2024-04-09" -> 35,
-        "gpt-4-1106-preview" -> 35,
-        "gpt-4-0613" -> 35,
-        "gpt-4-0125-preview" -> 35,
-        "gpt-4" -> 35,
-        "gpt-3.5-turbo" -> 35,
-        "gpt-3.5-turbo-0301" -> 34,
-        "gpt-3.5-turbo-0613" -> 35
+        ModelId.gpt_4_turbo_2024_04_09 -> 35,
+        ModelId.gpt_4_1106_preview -> 35,
+        ModelId.gpt_4_0613 -> 35,
+        ModelId.gpt_4_0125_preview -> 35,
+        ModelId.gpt_4 -> 35,
+        ModelId.gpt_3_5_turbo -> 35,
+        ModelId.gpt_3_5_turbo_0301 -> 34,
+        ModelId.gpt_3_5_turbo_0613 -> 35
       )
     }
 
@@ -210,56 +209,56 @@ class OpenAICountTokensServiceSpec
     "count tokens for an assistant message" in new TestCase {
       checkTokensForMessageCall(
         chat(assistantMessage),
-        "gpt-4-turno-2024-04-09" -> 44,
-        "gpt-4-1106-preview" -> 44,
-        "gpt-4-0613" -> 44,
-        "gpt-4-0125-preview" -> 44,
-        "gpt-4" -> 44,
-        "gpt-3.5-turbo" -> 44,
-        "gpt-3.5-turbo-0301" -> 45,
-        "gpt-3.5-turbo-0613" -> 44
+        ModelId.gpt_4_turbo_2024_04_09 -> 44,
+        ModelId.gpt_4_1106_preview -> 44,
+        ModelId.gpt_4_0613 -> 44,
+        ModelId.gpt_4_0125_preview -> 44,
+        ModelId.gpt_4 -> 44,
+        ModelId.gpt_3_5_turbo -> 44,
+        ModelId.gpt_3_5_turbo_0301 -> 45,
+        ModelId.gpt_3_5_turbo_0613 -> 44
       )
     }
 
     "count tokens for an assistant message with name" in new TestCase {
       checkTokensForMessageCall(
         chat(assistantMessage.withName("Bob")),
-        "gpt-4-turno-2024-04-09" -> 46,
-        "gpt-4-1106-preview" -> 46,
-        "gpt-4-0613" -> 46,
-        "gpt-4-0125-preview" -> 46,
-        "gpt-4" -> 46,
-        "gpt-3.5-turbo" -> 46,
-        "gpt-3.5-turbo-0301" -> 45,
-        "gpt-3.5-turbo-0613" -> 46
+        ModelId.gpt_4_turbo_2024_04_09 -> 46,
+        ModelId.gpt_4_1106_preview -> 46,
+        ModelId.gpt_4_0613 -> 46,
+        ModelId.gpt_4_0125_preview -> 46,
+        ModelId.gpt_4 -> 46,
+        ModelId.gpt_3_5_turbo -> 46,
+        ModelId.gpt_3_5_turbo_0301 -> 45,
+        ModelId.gpt_3_5_turbo_0613 -> 46
       )
     }
 
     "count tokens of a chat with two messages" in new TestCase {
       checkTokensForMessageCall(
         chat(systemMessage, userMessage),
-        "gpt-4-turno-2024-04-09" -> 54,
-        "gpt-4-1106-preview" -> 54,
-        "gpt-4-0613" -> 54,
-        "gpt-4-0125-preview" -> 54,
-        "gpt-4" -> 54,
-        "gpt-3.5-turbo" -> 54,
-        "gpt-3.5-turbo-0301" -> 56,
-        "gpt-3.5-turbo-0613" -> 54
+        ModelId.gpt_4_turbo_2024_04_09 -> 54,
+        ModelId.gpt_4_1106_preview -> 54,
+        ModelId.gpt_4_0613 -> 54,
+        ModelId.gpt_4_0125_preview -> 54,
+        ModelId.gpt_4 -> 54,
+        ModelId.gpt_3_5_turbo -> 54,
+        ModelId.gpt_3_5_turbo_0301 -> 56,
+        ModelId.gpt_3_5_turbo_0613 -> 54
       )
     }
 
     "count tokens of a chat with two messages with names" in new TestCase {
       checkTokensForMessageCall(
         chat(systemMessage.withName("James"), userMessage.withName("Alice")),
-        "gpt-4-turno-2024-04-09" -> 58,
-        "gpt-4-1106-preview" -> 58,
-        "gpt-4-0613" -> 58,
-        "gpt-4-0125-preview" -> 58,
-        "gpt-4" -> 58,
-        "gpt-3.5-turbo" -> 58,
-        "gpt-3.5-turbo-0301" -> 56,
-        "gpt-3.5-turbo-0613" -> 58
+        ModelId.gpt_4_turbo_2024_04_09 -> 58,
+        ModelId.gpt_4_1106_preview -> 58,
+        ModelId.gpt_4_0613 -> 58,
+        ModelId.gpt_4_0125_preview -> 58,
+        ModelId.gpt_4 -> 58,
+        ModelId.gpt_3_5_turbo -> 58,
+        ModelId.gpt_3_5_turbo_0301 -> 56,
+        ModelId.gpt_3_5_turbo_0613 -> 58
       )
     }
 
@@ -285,14 +284,14 @@ class OpenAICountTokensServiceSpec
     "count tokens of a chat with multiple messages" in new TestCase {
       checkTokensForMessageCall(
         openAICookbookTestCaseMessages,
-        "gpt-4-turno-2024-04-09" -> 129,
-        "gpt-4-1106-preview" -> 129,
-        "gpt-4-0613" -> 129,
-        "gpt-4-0125-preview" -> 129,
-        "gpt-4" -> 129,
-        "gpt-3.5-turbo" -> 129,
-        "gpt-3.5-turbo-0301" -> 127,
-        "gpt-3.5-turbo-0613" -> 129
+        ModelId.gpt_4_turbo_2024_04_09 -> 129,
+        ModelId.gpt_4_1106_preview -> 129,
+        ModelId.gpt_4_0613 -> 129,
+        ModelId.gpt_4_0125_preview -> 129,
+        ModelId.gpt_4 -> 129,
+        ModelId.gpt_3_5_turbo -> 129,
+        ModelId.gpt_3_5_turbo_0301 -> 127,
+        ModelId.gpt_3_5_turbo_0613 -> 129
       )
     }
 
@@ -495,7 +494,7 @@ class OpenAICountTokensServiceSpec
         Seq(function1),
         messages,
         expectedTokens = 46,
-        model = "gpt-4"
+        model = ModelId.gpt_4
       )
     }
 
@@ -522,7 +521,7 @@ class OpenAICountTokensServiceSpec
 
       val messages: Seq[BaseMessage] = Seq(UserMessage("hello"))
 
-      private val model = "gpt-3.5-turbo"
+      private val model = ModelId.gpt_3_5_turbo
       private val responseFunctionName = Some("function")
       checkTokensForFunctionCall(
         Seq(function1),
@@ -566,7 +565,7 @@ class OpenAICountTokensServiceSpec
 
       val messages: Seq[BaseMessage] = Seq(UserMessage("hello"))
 
-      private val model = "gpt-3.5-turbo"
+      private val model = ModelId.gpt_3_5_turbo
       private val responseFunctionName = Some("function")
       checkTokensForFunctionCall(
         Seq(function1),

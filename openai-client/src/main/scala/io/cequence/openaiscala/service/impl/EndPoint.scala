@@ -20,6 +20,7 @@ object EndPoint {
   case object fine_tunes extends EndPoint("fine_tuning/jobs")
   case object moderations extends EndPoint
   case object threads extends EndPoint
+  case object batches extends EndPoint
 
   case object assistants extends EndPoint
 }
@@ -59,6 +60,7 @@ object Param {
   case object n_epochs extends Param
   case object batch_size extends Param
   case object learning_rate_multiplier extends Param
+  case object integrations extends Param
   @Deprecated
   case object prompt_loss_weight extends Param
   @Deprecated
@@ -95,4 +97,7 @@ object Param {
   case object name extends Param
   case object description extends Param
   case object dimensions extends Param
+  case object input_file_id extends Param
+  case object endpoint extends Param
+  case object completion_window extends Param
 }

@@ -7,7 +7,7 @@ val scala3 = "3.2.2"
 
 ThisBuild / organization := "io.cequence"
 ThisBuild / scalaVersion := scala212
-ThisBuild / version := "1.0.0.RC.1"
+ThisBuild / version := "1.0.0"
 ThisBuild / isSnapshot := false
 
 lazy val commonSettings = Seq(
@@ -41,35 +41,33 @@ def extraTestDependencies(scalaVersion: String) =
       Nil
   }
 
-lazy val core = (project in file("openai-core")).settings(commonSettings: _*)
+lazy val core = (project in file("openai-core")).settings(commonSettings *)
 
-lazy val client = (project in file("openai-client"))
-  .settings(commonSettings: _*)
-  .dependsOn(core)
-  .aggregate(core)
+lazy val client =
+  (project in file("openai-client")).settings(commonSettings *).dependsOn(core).aggregate(core)
 
 lazy val client_stream = (project in file("openai-client-stream"))
-  .settings(commonSettings: _*)
+  .settings(commonSettings *)
   .dependsOn(client)
   .aggregate(client)
 
 // note that for anthropic_client we provide a streaming extension within the module as well
 lazy val anthropic_client = (project in file("anthropic-client"))
-  .settings(commonSettings: _*)
+  .settings(commonSettings *)
   .dependsOn(core, client, client_stream)
   .aggregate(core, client, client_stream)
 
-lazy val guice = (project in file("openai-guice"))
-  .settings(commonSettings: _*)
-  .dependsOn(client)
-  .aggregate(client_stream)
-
 lazy val count_tokens = (project in file("openai-count-tokens"))
   .settings(
-    commonSettings ++ Seq(definedTestNames in Test := Nil): _*
+    (commonSettings ++ Seq(definedTestNames in Test := Nil)) *
   )
   .dependsOn(client)
-  .aggregate(client)
+  .aggregate(anthropic_client)
+
+lazy val guice = (project in file("openai-guice"))
+  .settings(commonSettings *)
+  .dependsOn(client)
+  .aggregate(count_tokens)
 
 lazy val examples = (project in file("openai-examples"))
   .settings(commonSettings *)
