@@ -7,9 +7,10 @@ import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.{
   AssistantTool,
+  AssistantToolResource,
+  Attachment,
   BaseMessage,
   ChatRole,
-  Content,
   FunctionSpec,
   Pagination,
   SortOrder,
@@ -587,6 +588,11 @@ trait OpenAIService extends OpenAICoreService {
    *
    * @param messages
    *   A list of messages to start the thread with.
+   * @param toolResources
+   *   A set of resources that are made available to the assistant's tools in this thread. The
+   *   resources are specific to the type of tool. For example, the code_interpreter tool
+   *   requires a list of file IDs, while the file_search tool requires a list of vector store
+   *   IDs.
    * @param metadata
    *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
    *   storing additional information about the object in a structured format. Keys can be a
@@ -599,6 +605,7 @@ trait OpenAIService extends OpenAICoreService {
    */
   def createThread(
     messages: Seq[ThreadMessage] = Nil,
+    toolResources: Seq[AssistantToolResource] = Nil,
     metadata: Map[String, String] = Map()
   ): Future[Thread]
 
@@ -653,14 +660,12 @@ trait OpenAIService extends OpenAICoreService {
    *
    * @param threadId
    *   The ID of the thread to create a message for.
-   * @param role
-   *   The role of the entity that is creating the message. Currently only user is supported.
    * @param content
    *   The content of the message.
-   * @param fileIds
-   *   A list of File IDs that the message should use. There can be a maximum of 10 files
-   *   attached to a message. Useful for tools like retrieval and code_interpreter that can
-   *   access and use files.
+   * @param role
+   *   The role of the entity that is creating the message. Currently only user is supported.
+   * @param attachments
+   *   A list of files attached to the message, and the tools they should be added to.
    * @param metadata
    *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
    *   storing additional information about the object in a structured format. Keys can be a
@@ -675,7 +680,7 @@ trait OpenAIService extends OpenAICoreService {
     threadId: String,
     content: String,
     role: ChatRole = ChatRole.User,
-    fileIds: Seq[String] = Nil,
+    attachments: Seq[Attachment] = Nil,
     metadata: Map[String, String] = Map()
   ): Future[ThreadFullMessage]
 
@@ -826,9 +831,10 @@ trait OpenAIService extends OpenAICoreService {
    * @param tools
    *   A list of tool enabled on the assistant. There can be a maximum of 128 tools per
    *   assistant. Tools can be of types code_interpreter, retrieval, or function.
-   * @param fileIds
-   *   A list of file IDs attached to this assistant. There can be a maximum of 20 files
-   *   attached to the assistant. Files are ordered by their creation date in ascending order.
+   * @param toolResources
+   *   A set of resources that are used by the assistant's tools. The resources are specific to
+   *   the type of tool. For example, the code_interpreter tool requires a list of file IDs,
+   *   while the file_search tool requires a list of vector store IDs.
    * @param metadata
    *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
    *   storing additional information about the object in a structured format. Keys can be a
@@ -844,27 +850,9 @@ trait OpenAIService extends OpenAICoreService {
     description: Option[String] = None,
     instructions: Option[String] = None,
     tools: Seq[AssistantTool] = Seq.empty[AssistantTool],
-    fileIds: Seq[String] = Seq.empty,
+    toolResources: Seq[AssistantToolResource] = Seq.empty[AssistantToolResource],
     metadata: Map[String, String] = Map.empty
   ): Future[Assistant]
-
-  /**
-   * Create an assistant file by attaching a File to an assistant.
-   *
-   * @param assistantId
-   *   The ID of the assistant for which to create a File.
-   * @param fileId
-   *   A File ID (with purpose="assistants") that the assistant should use. Useful for tools
-   *   like `retrieval` and `code_interpreter` that can access files.
-   * @see
-   *   <a
-   *   href="https://platform.openai.com/docs/api-reference/assistants/createAssistantFile">OpenAI
-   *   Doc</a>
-   */
-  def createAssistantFile(
-    assistantId: String,
-    fileId: String
-  ): Future[AssistantFile]
 
   /**
    * Returns a list of assistants.
@@ -896,37 +884,6 @@ trait OpenAIService extends OpenAICoreService {
   ): Future[Seq[Assistant]]
 
   /**
-   * Returns a list of assistant files.
-   *
-   * @param assistantId
-   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
-   *   the default is 20.
-   * @param limit
-   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
-   *   for descending order.
-   * @param order
-   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
-   *   for descending order.
-   * @param after
-   *   A cursor for use in pagination. after is an object ID that defines your place in the
-   *   list. For instance, if you make a list request and receive 100 objects, ending with
-   *   `obj_foo`, your subsequent call can include `after=obj_foo` in order to fetch the next
-   *   page of the list.
-   * @param before
-   *   A cursor for use in pagination. before is an object ID that defines your place in the
-   *   list. For instance, if you make a list request and receive 100 objects, ending with
-   *   `obj_foo`, your subsequent call can include `before=obj_foo` in order to fetch the
-   *   previous page of the list. <a
-   *   href="https://platform.openai.com/docs/api-reference/assistants/listAssistantFiles">OpenAI
-   *   Doc</a>
-   */
-  def listAssistantFiles(
-    assistantId: String,
-    pagination: Pagination = Pagination.default,
-    order: Option[SortOrder] = None
-  ): Future[Seq[AssistantFile]]
-
-  /**
    * Retrieves an assistant.
    *
    * @param assistantId
@@ -935,21 +892,6 @@ trait OpenAIService extends OpenAICoreService {
    *   Doc</a>
    */
   def retrieveAssistant(assistantId: String): Future[Option[Assistant]]
-
-  /**
-   * Retrieves an AssistantFile.
-   *
-   * @param assistantId
-   *   The ID of the assistant who the file belongs to.
-   * @param fileId
-   *   The ID of the file we're getting. <a
-   *   href="https://platform.openai.com/docs/api-reference/assistants/retrieveAssistantFile">OpenAI
-   *   Doc</a>
-   */
-  def retrieveAssistantFile(
-    assistantId: String,
-    fileId: String
-  ): Future[Option[AssistantFile]]
 
   /**
    * Modifies an assistant.

@@ -476,6 +476,7 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
 
   override def createThread(
     messages: Seq[ThreadMessage],
+    toolResources: Seq[AssistantToolResource] = Nil,
     metadata: Map[String, String]
   ): Future[Thread] =
     execPOST(
@@ -486,11 +487,8 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
             Some(messages.map(Json.toJson(_)(threadMessageFormat)))
           else None
         ),
-        Param.metadata -> (
-          if (metadata.nonEmpty)
-            Some(metadata)
-          else None
-        )
+        Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None),
+        Param.tool_resources -> (if (toolResources.nonEmpty) Some(toolResources) else None)
       )
     ).map(
       _.asSafe[Thread]
@@ -536,7 +534,7 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
     threadId: String,
     content: String,
     role: ChatRole,
-    fileIds: Seq[String] = Nil,
+    attachments: Seq[Attachment] = Nil,
     metadata: Map[String, String] = Map()
   ): Future[ThreadFullMessage] =
     execPOST(
@@ -545,11 +543,11 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
       bodyParams = jsonBodyParams(
         Param.role -> Some(role.toString),
         Param.content -> Some(content),
-        Param.file_ids -> (
-          if (fileIds.nonEmpty)
-            Some(fileIds)
-          else None
-        ),
+//        Param.attachments -> (
+//          if (attachments.nonEmpty)
+//            Some(Json.toJson(attachments))
+//          else None
+//        ),
         Param.metadata -> (
           if (metadata.nonEmpty)
             Some(metadata)
@@ -635,7 +633,7 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
     description: Option[String],
     instructions: Option[String],
     tools: Seq[AssistantTool],
-    fileIds: Seq[String],
+    toolResources: Seq[AssistantToolResource] = Seq.empty[AssistantToolResource],
     metadata: Map[String, String]
   ): Future[Assistant] = {
     execPOST(
@@ -646,23 +644,14 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
         Param.description -> Some(description),
         Param.instructions -> Some(instructions),
         Param.tools -> Some(Json.toJson(tools)),
-        Param.file_ids -> (if (fileIds.nonEmpty) Some(fileIds) else None),
+        Param.tool_resources -> (if (toolResources.nonEmpty) Some(Json.toJson(toolResources))
+                                 else None),
         Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
       )
-    ).map(_.asSafe[Assistant])
-  }
-
-  override def createAssistantFile(
-    assistantId: String,
-    fileId: String
-  ): Future[AssistantFile] = {
-    execPOST(
-      EndPoint.assistants,
-      endPointParam = Some(s"$assistantId/files"),
-      bodyParams = jsonBodyParams(
-        Param.file_id -> Some(fileId)
-      )
-    ).map(_.asSafe[AssistantFile])
+    ).map { response =>
+      println(response)
+      response.asSafe[Assistant]
+    }
   }
 
   override def listAssistants(
@@ -677,36 +666,12 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
     }
   }
 
-  override def listAssistantFiles(
-    assistantId: String,
-    pagination: Pagination = Pagination.default,
-    order: Option[SortOrder]
-  ): Future[Seq[AssistantFile]] =
-    execGET(
-      EndPoint.assistants,
-      endPointParam = Some(s"$assistantId/files"),
-      params = paginationParams(pagination) :+ Param.order -> order
-    ).map { response =>
-      readAttribute(response, "data").asSafeArray[AssistantFile]
-    }
-
   override def retrieveAssistant(assistantId: String): Future[Option[Assistant]] =
     execGETWithStatus(
       EndPoint.assistants,
       Some(assistantId)
     ).map { response =>
       handleNotFoundAndError(response).map(_.asSafe[Assistant])
-    }
-
-  override def retrieveAssistantFile(
-    assistantId: String,
-    fileId: String
-  ): Future[Option[AssistantFile]] =
-    execGETWithStatus(
-      EndPoint.assistants,
-      Some(s"$assistantId/files/$fileId")
-    ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafe[AssistantFile])
     }
 
   override def modifyAssistant(

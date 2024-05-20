@@ -233,9 +233,10 @@ trait OpenAIServiceWrapper
 
   override def createThread(
     messages: Seq[ThreadMessage],
+    toolResources: Seq[AssistantToolResource] = Nil,
     metadata: Map[String, String]
   ): Future[Thread] = wrap(
-    _.createThread(messages, metadata)
+    _.createThread(messages, toolResources, metadata)
   )
 
   override def retrieveThread(
@@ -261,10 +262,10 @@ trait OpenAIServiceWrapper
     threadId: String,
     content: String,
     role: ChatRole,
-    fileIds: Seq[String],
+    attachments: Seq[Attachment],
     metadata: Map[String, String]
   ): Future[ThreadFullMessage] = wrap(
-    _.createThreadMessage(threadId, content, role, fileIds, metadata)
+    _.createThreadMessage(threadId, content, role, attachments, metadata)
   )
 
   override def retrieveThreadMessage(
@@ -309,23 +310,15 @@ trait OpenAIServiceWrapper
 
   override def createAssistant(
     model: String,
-    name: Option[String],
-    description: Option[String],
-    instructions: Option[String],
-    tools: Seq[AssistantTool],
-    fileIds: Seq[String],
-    metadata: Map[String, String]
+    name: Option[String] = None,
+    description: Option[String] = None,
+    instructions: Option[String] = None,
+    tools: Seq[AssistantTool] = Seq.empty[AssistantTool],
+    toolResources: Seq[AssistantToolResource] = Seq.empty[AssistantToolResource],
+    metadata: Map[String, String] = Map.empty
   ): Future[Assistant] = wrap(
-    _.createAssistant(model, name, description, instructions, tools, fileIds, metadata)
+    _.createAssistant(model, name, description, instructions, tools, toolResources, metadata)
   )
-
-  override def createAssistantFile(
-    assistantId: String,
-    fileId: String
-  ): Future[AssistantFile] =
-    wrap(
-      _.createAssistantFile(assistantId, fileId)
-    )
 
   override def listAssistants(
     pagination: Pagination,
@@ -335,23 +328,8 @@ trait OpenAIServiceWrapper
       _.listAssistants(pagination, order)
     )
 
-  override def listAssistantFiles(
-    assistantId: String,
-    pagination: Pagination,
-    order: Option[SortOrder]
-  ): Future[Seq[AssistantFile]] =
-    wrap(
-      _.listAssistantFiles(assistantId, pagination, order)
-    )
-
   override def retrieveAssistant(assistantId: String): Future[Option[Assistant]] =
     wrap(_.retrieveAssistant(assistantId))
-
-  override def retrieveAssistantFile(
-    assistantId: String,
-    fileId: String
-  ): Future[Option[AssistantFile]] =
-    wrap(_.retrieveAssistantFile(assistantId, fileId))
 
   override def modifyAssistant(
     assistantId: String,
