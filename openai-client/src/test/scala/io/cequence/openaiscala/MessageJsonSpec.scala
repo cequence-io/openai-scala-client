@@ -1,10 +1,10 @@
 package io.cequence.openaiscala
 
-import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.JsonFormats._
+import io.cequence.openaiscala.domain._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
-import play.api.libs.json.{Format, JsArray, JsObject, JsString, Json, Reads, Writes}
+import play.api.libs.json._
 
 class MessageJsonSpec extends Matchers with AnyWordSpecLike {
 

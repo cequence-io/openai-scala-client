@@ -3,20 +3,20 @@ package io.cequence.openaiscala.service.impl
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.cequence.openaiscala.JsonFormats._
-import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.Batch.BatchRow.buildBatchRows
 import io.cequence.openaiscala.domain.Batch._
+import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.service.OpenAIService
+import io.cequence.wsclient.JsonUtil.JsonOps
 import play.api.libs.json.Json.prettyPrint
 import play.api.libs.json.{JsObject, JsValue, Json, Reads}
 
 import java.io.File
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Paths}
+import java.nio.file.Files
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 

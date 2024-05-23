@@ -1,6 +1,5 @@
 package io.cequence.openaiscala
 
-import io.cequence.wsclient.JsonUtil.{JsonOps, enumFormat}
 import io.cequence.openaiscala.domain.AssistantToolResource.{
   CodeInterpreterResources,
   FileSearchResources,
@@ -19,6 +18,8 @@ import io.cequence.openaiscala.domain.response.ResponseFormat.{
 }
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.{ThreadMessageFile, _}
+import io.cequence.wsclient.JsonUtil
+import io.cequence.wsclient.JsonUtil.enumFormat
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Json.toJson
 import play.api.libs.json.{Format, JsValue, Json, _}
