@@ -37,4 +37,9 @@ object AssistantToolResource {
     fileIds: Seq[FileId],
     metadata: Map[String, String]
   )
+
+  object VectorStore {
+    def unapply(vectorStore: VectorStore): Option[(Seq[FileId], Map[String, String])] =
+      Some((vectorStore.fileIds, vectorStore.metadata))
+  }
 }

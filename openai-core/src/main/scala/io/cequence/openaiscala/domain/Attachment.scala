@@ -6,3 +6,8 @@ final case class Attachment(
   // The tools to add this file to.
   tools: Seq[MessageTool] = Nil
 )
+
+object Attachment {
+  def unapply(attachment: Attachment): Option[(Option[FileId], Seq[MessageTool])] =
+    Some((attachment.fileId, attachment.tools))
+}
