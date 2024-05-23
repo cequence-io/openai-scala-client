@@ -1,7 +1,5 @@
 package io.cequence.openaiscala.domain
 
-import scala.collection.immutable.Seq
-
 final case class Attachment(
   // The ID of the file to attach to the message.
   fileId: Option[FileId],
