@@ -3,10 +3,10 @@ package io.cequence.openaiscala.examples
 import akka.actor.ActorSystem
 import akka.stream.Materializer
 import io.cequence.openaiscala.domain.response.ChatCompletionResponse
-import io.cequence.openaiscala.service.{CloseableService, OpenAIService, OpenAIServiceFactory}
+import io.cequence.openaiscala.service.{OpenAIService, OpenAIServiceFactory}
+import io.cequence.wsclient.service.CloseableService
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 trait Example extends ExampleBase[OpenAIService] {
   override protected val service = OpenAIServiceFactory()

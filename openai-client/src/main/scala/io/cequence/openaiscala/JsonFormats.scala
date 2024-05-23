@@ -1,6 +1,6 @@
 package io.cequence.openaiscala
 
-import io.cequence.openaiscala.JsonUtil.{JsonOps, enumFormat}
+import io.cequence.wsclient.JsonUtil.{JsonOps, SecDateFormat, enumFormat}
 import io.cequence.openaiscala.domain.{ThreadMessageFile, _}
 
 import java.{util => ju}
@@ -9,6 +9,7 @@ import play.api.libs.functional.syntax._
 import play.api.libs.json.{Format, Json, _}
 import Json.toJson
 import io.cequence.openaiscala.domain.FineTune.WeightsAndBiases
+import io.cequence.wsclient.JsonUtil
 
 object JsonFormats {
   private implicit val dateFormat: Format[ju.Date] = JsonUtil.SecDateFormat

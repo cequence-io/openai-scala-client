@@ -16,11 +16,8 @@ import io.cequence.openaiscala.domain.settings.{
   CreateChatCompletionSettings,
   CreateCompletionSettings
 }
-import io.cequence.openaiscala.service.{
-  CloseableService,
-  OpenAIChatCompletionService,
-  OpenAICompletionService
-}
+import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAICompletionService}
+import io.cequence.wsclient.service.CloseableService
 
 import scala.concurrent.{ExecutionContext, Future}
 

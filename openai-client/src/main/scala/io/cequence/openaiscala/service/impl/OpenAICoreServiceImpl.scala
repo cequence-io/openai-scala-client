@@ -1,12 +1,12 @@
 package io.cequence.openaiscala.service.impl
 
 import io.cequence.openaiscala.JsonFormats._
-import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.service.ws.WSRequestHelper
 import io.cequence.openaiscala.service.OpenAICoreService
+import io.cequence.wsclient.JsonUtil.JsonOps
+import io.cequence.wsclient.service.ws.WSRequestHelper
 import play.api.libs.json.{JsObject, JsValue}
 
 import scala.concurrent.Future

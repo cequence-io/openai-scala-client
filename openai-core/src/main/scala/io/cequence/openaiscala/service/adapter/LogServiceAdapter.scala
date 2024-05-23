@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.service.adapter
 
-import io.cequence.openaiscala.service.CloseableService
 import io.cequence.openaiscala.StackWalkerUtil
+import io.cequence.wsclient.service.CloseableService
 
 import java.util.Optional
 import java.util.function.Predicate

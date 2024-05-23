@@ -3,7 +3,8 @@ package io.cequence.openaiscala.service.adapter
 import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response.ChatCompletionResponse
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.service.{CloseableService, OpenAIChatCompletionService}
+import io.cequence.openaiscala.service.OpenAIChatCompletionService
+import io.cequence.wsclient.service.CloseableService
 
 import scala.concurrent.Future
 

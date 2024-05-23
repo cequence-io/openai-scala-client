@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.anthropic
 
-import io.cequence.openaiscala.JsonUtil
+import io.cequence.wsclient.JsonUtil
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{ImageBlock, TextBlock}
 import io.cequence.openaiscala.anthropic.domain.Content.{
   ContentBlock,

@@ -8,7 +8,7 @@ import io.cequence.openaiscala.anthropic.domain.response.{
   CreateMessageResponse
 }
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
-import io.cequence.openaiscala.service.CloseableService
+import io.cequence.wsclient.service.CloseableService
 
 import scala.concurrent.Future
 

@@ -7,7 +7,7 @@ import io.cequence.openaiscala.anthropic.service.impl.{
 }
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
-import io.cequence.openaiscala.service.ws.Timeouts
+import io.cequence.wsclient.service.ws.Timeouts
 
 import scala.concurrent.ExecutionContext
 

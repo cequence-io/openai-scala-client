@@ -6,6 +6,7 @@ import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.service._
 import io.cequence.openaiscala.service.adapter.ServiceWrapperTypes._
+import io.cequence.wsclient.service.CloseableService
 
 import scala.concurrent.{ExecutionContext, Future}
 

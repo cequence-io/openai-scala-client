@@ -2,6 +2,7 @@ package io.cequence.openaiscala.service
 
 import io.cequence.openaiscala.domain.response.TextCompletionResponse
 import io.cequence.openaiscala.domain.settings.CreateCompletionSettings
+import io.cequence.wsclient.service.CloseableService
 
 import scala.concurrent.Future
 

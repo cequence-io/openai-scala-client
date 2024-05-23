@@ -3,7 +3,7 @@ package io.cequence.openaiscala.service
 import akka.stream.Materializer
 import com.typesafe.config.{Config, ConfigFactory}
 import io.cequence.openaiscala.ConfigImplicits._
-import io.cequence.openaiscala.service.ws.Timeouts
+import io.cequence.wsclient.service.ws.Timeouts
 
 import scala.concurrent.ExecutionContext
 

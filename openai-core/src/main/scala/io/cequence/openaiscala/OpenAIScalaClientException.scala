@@ -1,5 +1,7 @@
 package io.cequence.openaiscala
 
+import io.cequence.wsclient.CequenceWSException
+
 object Retryable {
 
   def unapply(

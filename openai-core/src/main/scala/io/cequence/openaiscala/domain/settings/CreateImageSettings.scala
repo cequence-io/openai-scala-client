@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.domain.settings
 
-import io.cequence.openaiscala.domain.{EnumValue, NamedEnumValue}
+import io.cequence.wsclient.domain.{EnumValue, NamedEnumValue}
 
 case class CreateImageSettings(
   // The model to use for image generation. Defaults to dall-e-2

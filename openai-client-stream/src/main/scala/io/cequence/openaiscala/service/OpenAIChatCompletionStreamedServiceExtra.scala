@@ -5,6 +5,7 @@ import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response.ChatCompletionChunkResponse
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
+import io.cequence.wsclient.service.CloseableService
 
 /**
  * Service that offers <b>ONLY</b> a streamed version of OpenAI chat completion endpoint.

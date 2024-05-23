@@ -2,7 +2,7 @@ package io.cequence.openaiscala.anthropic.service.impl
 
 import akka.NotUsed
 import akka.stream.scaladsl.Source
-import io.cequence.openaiscala.JsonUtil.JsonOps
+import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.anthropic.JsonFormats
 import io.cequence.openaiscala.anthropic.domain.response.{

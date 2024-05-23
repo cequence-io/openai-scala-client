@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.service
 
-import io.cequence.openaiscala.service.ws.WSRequestExtHelper
+import io.cequence.wsclient.service.ws.WSRequestExtHelper
 import io.cequence.openaiscala._
 
 /**

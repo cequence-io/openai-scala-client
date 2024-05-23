@@ -20,7 +20,8 @@ import io.cequence.openaiscala.service.adapter.{
   OpenAIServiceWrapper,
   SimpleServiceWrapper
 }
-import io.cequence.openaiscala.service.ws.Timeouts
+import io.cequence.wsclient.service.CloseableService
+import io.cequence.wsclient.service.ws.Timeouts
 
 import scala.concurrent.ExecutionContext
 
