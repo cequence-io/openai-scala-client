@@ -19,17 +19,10 @@ import io.cequence.openaiscala.domain.response.ResponseFormat.{
 }
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.{ThreadMessageFile, _}
-import play.api.libs.functional.{
-  ContravariantFunctor,
-  FunctionalBuilder,
-  Functor,
-  InvariantFunctor
-}
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Json.toJson
 import play.api.libs.json.{Format, JsValue, Json, _}
 
-import java.util.Date
 import java.{util => ju}
 
 object JsonFormats {
