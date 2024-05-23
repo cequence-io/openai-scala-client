@@ -14,7 +14,6 @@ lazy val commonSettings = Seq(
   libraryDependencies += "org.scalactic" %% "scalactic" % "3.2.16",
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.16" % Test,
   libraryDependencies += "org.scalatestplus" %% "mockito-4-11" % "3.2.16.0" % Test,
-  libraryDependencies += "ai.x" %% "play-json-extensions" % "0.42.0",
   libraryDependencies ++= extraTestDependencies(scalaVersion.value),
   crossScalaVersions := List(scala212, scala213, scala3)
 )
