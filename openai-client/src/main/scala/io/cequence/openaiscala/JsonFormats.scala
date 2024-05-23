@@ -6,6 +6,8 @@ import io.cequence.openaiscala.domain.AssistantToolResource.{
   FileSearchResources,
   VectorStore
 }
+import io.cequence.openaiscala.domain.Batch._
+import io.cequence.openaiscala.domain.FineTune.WeightsAndBiases
 import io.cequence.openaiscala.domain.response.AssistantToolResourceResponse.{
   CodeInterpreterResourcesResponse,
   FileSearchResourcesResponse
@@ -17,17 +19,18 @@ import io.cequence.openaiscala.domain.response.ResponseFormat.{
 }
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.{ThreadMessageFile, _}
+import play.api.libs.functional.{
+  ContravariantFunctor,
+  FunctionalBuilder,
+  Functor,
+  InvariantFunctor
+}
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Json.toJson
-import play.api.libs.json.{Format, Json, _}
-import ai.x.play.json.{BaseNameEncoder, Jsonx, NameEncoder}
-import ai.x.play.json.Encoders.encoder
-
-import java.{util => ju}
 import play.api.libs.json.{Format, JsValue, Json, _}
-import Json.toJson
-import io.cequence.openaiscala.domain.Batch._
-import io.cequence.openaiscala.domain.FineTune.WeightsAndBiases
+
+import java.util.Date
+import java.{util => ju}
 
 object JsonFormats {
   private implicit lazy val dateFormat: Format[ju.Date] = JsonUtil.SecDateFormat
@@ -453,8 +456,18 @@ object JsonFormats {
     Json.format[ModerationResponse]
   implicit lazy val threadMessageFormat: Format[ThreadMessage] =
     Json.format[ThreadMessage]
-  implicit lazy val threadFormat: Format[Thread] =
-    Jsonx.formatCaseClassUseDefaults[Thread]
+
+  implicit lazy val threadReads: Reads[Thread] =
+    (
+      (__ \ "id").read[String] and
+        (__ \ "created_at").read[ju.Date] and
+        (__ \ "tool_resources")
+          .read[Seq[AssistantToolResourceResponse]]
+          .orElse(Reads.pure(Nil)) and
+        (__ \ "metadata").read[Map[String, String]].orElse(Reads.pure(Map()))
+    )(Thread.apply _)
+
+  implicit lazy val threadWrites: Writes[Thread] = Json.writes[Thread]
 
   implicit lazy val fileIdFormat: Format[FileId] =
     Json.format[FileId]
@@ -483,8 +496,21 @@ object JsonFormats {
   implicit lazy val threadMessageContentFormat: Format[ThreadMessageContent] =
     Json.format[ThreadMessageContent]
 
-  implicit lazy val threadFullMessageFormat: Format[ThreadFullMessage] =
-    Jsonx.formatCaseClassUseDefaults[ThreadFullMessage]
+  implicit lazy val threadFullMessageReads: Reads[ThreadFullMessage] =
+    (
+      (__ \ "id").read[String] and
+        (__ \ "created_at").read[ju.Date] and
+        (__ \ "thread_id").read[String] and
+        (__ \ "role").read[ChatRole].orElse(Reads.pure(ChatRole.User)) and
+        (__ \ "content").read[Seq[ThreadMessageContent]].orElse(Reads.pure(Nil)) and
+        (__ \ "assistant_id").readNullable[String] and
+        (__ \ "run_id").readNullable[String] and
+        (__ \ "attachments").read[Seq[Attachment]].orElse(Reads.pure(Nil)) and
+        (__ \ "metadata").read[Map[String, String]].orElse(Reads.pure(Map()))
+    )(ThreadFullMessage.apply _)
+
+  implicit lazy val threadFullMessageWrites: Writes[ThreadFullMessage] =
+    Json.writes[ThreadFullMessage]
 
   implicit lazy val threadMessageFileFormat: Format[ThreadMessageFile] =
     Json.format[ThreadMessageFile]
@@ -593,32 +619,49 @@ object JsonFormats {
       (__ \ "tools").format[Seq[MessageTool]]
   )(Attachment.apply, unlift(Attachment.unapply))
 
-  implicit lazy val assistantFormat: Format[Assistant] =
-    Jsonx.formatCaseClassUseDefaults[Assistant]
+  implicit lazy val assistantReads: Reads[Assistant] = (
+    (__ \ "id").read[AssistantId] and
+      (__ \ "created_at").read[ju.Date] and
+      (__ \ "name").readNullable[String] and
+      (__ \ "description").readNullable[String] and
+      (__ \ "model").read[String] and
+      (__ \ "instructions").readNullable[String] and
+      (__ \ "tools").read[List[AssistantTool]] and
+      (__ \ "tool_resources")
+        .read[List[AssistantToolResourceResponse]]
+        .orElse(Reads.pure(Nil)) and
+      (__ \ "metadata").read[Map[String, String]].orElse(Reads.pure(Map())) and
+      (__ \ "temperature").readNullable[Double].orElse(Reads.pure(None)) and
+      (__ \ "top_p").readNullable[Double].orElse(Reads.pure(None)) and
+      (__ \ "response_format").read[ResponseFormat]
+  )((Assistant.apply _))
 
-  lazy implicit val batchEndPointFormat: Format[BatchEndpoint] = enumFormat[BatchEndpoint](
+  implicit lazy val assistantWrites: Writes[Assistant] =
+    Json.writes[Assistant]
+
+  implicit lazy val batchEndPointFormat: Format[BatchEndpoint] = enumFormat[BatchEndpoint](
     BatchEndpoint.`/v1/chat/completions`,
     BatchEndpoint.`/v1/embeddings`
   )
 
-  lazy implicit val completionWindowFormat: Format[CompletionWindow] =
+  implicit lazy val completionWindowFormat: Format[CompletionWindow] =
     enumFormat[CompletionWindow](
       CompletionWindow.`24h`
     )
 
-  lazy implicit val batchProcessingErrorFormat: Format[BatchProcessingError] =
+  implicit lazy val batchProcessingErrorFormat: Format[BatchProcessingError] =
     Json.format[BatchProcessingError]
-  lazy implicit val batchProcessingErrorsFormat: Format[BatchProcessingErrors] =
+  implicit lazy val batchProcessingErrorsFormat: Format[BatchProcessingErrors] =
     Json.format[BatchProcessingErrors]
-  lazy implicit val batchFormat: Format[Batch] = Json.format[Batch]
-  lazy implicit val batchInputFormat: Format[BatchRow] = Json.format[BatchRow]
+  implicit lazy val batchFormat: Format[Batch] = Json.format[Batch]
+  implicit lazy val batchInputFormat: Format[BatchRow] = Json.format[BatchRow]
 
-  lazy implicit val chatCompletionBatchResponseFormat: Format[ChatCompletionBatchResponse] =
+  implicit lazy val chatCompletionBatchResponseFormat: Format[ChatCompletionBatchResponse] =
     Json.format[ChatCompletionBatchResponse]
-  lazy implicit val embeddingBatchResponseFormat: Format[EmbeddingBatchResponse] =
+  implicit lazy val embeddingBatchResponseFormat: Format[EmbeddingBatchResponse] =
     Json.format[EmbeddingBatchResponse]
 
-  lazy implicit val batchResponseFormat: Format[BatchResponse] = {
+  implicit lazy val batchResponseFormat: Format[BatchResponse] = {
     val reads: Reads[BatchResponse] = Reads { json =>
       chatCompletionBatchResponseFormat
         .reads(json)
@@ -635,10 +678,10 @@ object JsonFormats {
     Format(reads, writes)
   }
 
-  lazy implicit val batchErrorFormat: Format[BatchError] = Json.format[BatchError]
-  lazy implicit val createBatchResponseFormat: Format[CreateBatchResponse] =
+  implicit lazy val batchErrorFormat: Format[BatchError] = Json.format[BatchError]
+  implicit lazy val createBatchResponseFormat: Format[CreateBatchResponse] =
     Json.format[CreateBatchResponse]
-  lazy implicit val createBatchResponsesFormat: Format[CreateBatchResponses] =
+  implicit lazy val createBatchResponsesFormat: Format[CreateBatchResponses] =
     Json.format[CreateBatchResponses]
 
 }
