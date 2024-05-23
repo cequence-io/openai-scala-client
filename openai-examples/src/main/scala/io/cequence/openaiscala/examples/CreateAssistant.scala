@@ -12,10 +12,10 @@ object CreateAssistant extends Example {
         instructions = Some(
           "You are a personal math tutor. When asked a question, write and run Python code to answer the question."
         ),
-        fileIds = Seq(),
         tools = Seq(
           FunctionSpec("name", description = None, Map())
-        )
+        ),
+        toolResources = Seq()
       )
     } yield println(assistant)
 }

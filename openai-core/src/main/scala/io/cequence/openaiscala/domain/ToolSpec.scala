@@ -2,11 +2,13 @@ package io.cequence.openaiscala.domain
 
 sealed trait ToolSpec
 
+sealed trait MessageTool
+
 sealed trait AssistantTool
 
-case object CodeInterpreterSpec extends AssistantTool
+case object CodeInterpreterSpec extends AssistantTool with MessageTool
 
-case object RetrievalSpec extends AssistantTool
+case object FileSearchSpec extends AssistantTool with MessageTool
 
 case class FunctionSpec(
   // The name of the function to be called.

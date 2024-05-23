@@ -20,6 +20,7 @@ object EndPoint {
   case object fine_tunes extends EndPoint("fine_tuning/jobs")
   case object moderations extends EndPoint
   case object threads extends EndPoint
+  case object batches extends EndPoint
 
   case object assistants extends EndPoint
 }
@@ -88,10 +89,15 @@ object Param {
   case object content extends Param
   case object file_id extends Param
   case object file_ids extends Param
+  case object tool_resources extends Param
+  case object attachments extends Param
   case object order extends Param
   case object before extends Param
   case object top_logprobs extends Param
   case object name extends Param
   case object description extends Param
   case object dimensions extends Param
+  case object input_file_id extends Param
+  case object endpoint extends Param
+  case object completion_window extends Param
 }

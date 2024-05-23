@@ -5,26 +5,20 @@ import akka.util.ByteString
 import io.cequence.openaiscala.JsonFormats._
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.openaiscala.OpenAIScalaClientException
+import io.cequence.openaiscala.domain.Batch.BatchRow.buildBatchRows
+import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.domain.{
-  AssistantTool,
-  BaseMessage,
-  ChatRole,
-  FunctionSpec,
-  Pagination,
-  SortOrder,
-  Thread,
-  ThreadFullMessage,
-  ThreadMessage,
-  ThreadMessageFile,
-  ToolSpec
-}
+import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.service.OpenAIService
-import play.api.libs.json.{JsObject, JsValue, Json}
+import play.api.libs.json.Json.prettyPrint
+import play.api.libs.json.{JsObject, JsValue, Json, Reads}
 
 import java.io.File
+import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Paths}
 import scala.concurrent.Future
+import scala.util.{Failure, Success, Try}
 
 /**
  * Private impl. of [[OpenAIService]].
@@ -276,6 +270,54 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
       _.asSafe[FileInfo]
     )
 
+  private def readFile(file: File): Seq[String] = {
+    val source = scala.io.Source.fromFile(file)
+    val content = Try(source.mkString.split("\n"))
+    content match {
+      case Success(value) =>
+        source.close()
+        value
+      case Failure(exception) =>
+        source.close()
+        throw new OpenAIScalaClientException(
+          s"Error reading file ${file.getName}: ${exception.getMessage}"
+        )
+    }
+  }
+
+  override def uploadBatchFile(
+    file: File,
+    displayFileName: Option[String]
+  ): Future[FileInfo] = {
+    val fileRows = readFile(file)
+    // parse the fileContent as Seq[BatchRow] solely for the purpose of validating its structure, OpenAIScalaClientException is thrown if the parsing fails
+
+//    fileRows.map { row =>
+//      Json.parse(row).asSafeArray[BatchRow]
+//    }
+
+    uploadFile(file, displayFileName, DefaultSettings.UploadBatchFile)
+  }
+
+  override def buildAndUploadBatchFile(
+    model: String,
+    requests: Seq[BatchRowBase],
+    displayFileName: Option[String]
+  ): Future[FileInfo] = {
+    val fileContent = buildBatchRows(model, requests)
+    val json = Json.toJson(fileContent).toString()
+    val tempPath = Files.createTempFile("openai-batch-", ".jsonl")
+    Files.write(tempPath, json.getBytes(StandardCharsets.UTF_8))
+    val file = tempPath.toFile
+    uploadBatchFile(file, displayFileName)
+  }
+
+  override def buildBatchFileContent(
+    model: String,
+    requests: Seq[BatchRowBase]
+  ): Future[Seq[BatchRow]] =
+    Future.successful(buildBatchRows(model, requests))
+
   // TODO: Azure returns http code 204
   override def deleteFile(
     fileId: String
@@ -434,6 +476,7 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
 
   override def createThread(
     messages: Seq[ThreadMessage],
+    toolResources: Seq[AssistantToolResource] = Nil,
     metadata: Map[String, String]
   ): Future[Thread] =
     execPOST(
@@ -444,11 +487,8 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
             Some(messages.map(Json.toJson(_)(threadMessageFormat)))
           else None
         ),
-        Param.metadata -> (
-          if (metadata.nonEmpty)
-            Some(metadata)
-          else None
-        )
+        Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None),
+        Param.tool_resources -> (if (toolResources.nonEmpty) Some(toolResources) else None)
       )
     ).map(
       _.asSafe[Thread]
@@ -494,7 +534,7 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
     threadId: String,
     content: String,
     role: ChatRole,
-    fileIds: Seq[String] = Nil,
+    attachments: Seq[Attachment] = Nil,
     metadata: Map[String, String] = Map()
   ): Future[ThreadFullMessage] =
     execPOST(
@@ -503,11 +543,11 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
       bodyParams = jsonBodyParams(
         Param.role -> Some(role.toString),
         Param.content -> Some(content),
-        Param.file_ids -> (
-          if (fileIds.nonEmpty)
-            Some(fileIds)
-          else None
-        ),
+//        Param.attachments -> (
+//          if (attachments.nonEmpty)
+//            Some(Json.toJson(attachments))
+//          else None
+//        ),
         Param.metadata -> (
           if (metadata.nonEmpty)
             Some(metadata)
@@ -593,7 +633,7 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
     description: Option[String],
     instructions: Option[String],
     tools: Seq[AssistantTool],
-    fileIds: Seq[String],
+    toolResources: Seq[AssistantToolResource] = Seq.empty[AssistantToolResource],
     metadata: Map[String, String]
   ): Future[Assistant] = {
     execPOST(
@@ -604,23 +644,14 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
         Param.description -> Some(description),
         Param.instructions -> Some(instructions),
         Param.tools -> Some(Json.toJson(tools)),
-        Param.file_ids -> (if (fileIds.nonEmpty) Some(fileIds) else None),
+        Param.tool_resources -> (if (toolResources.nonEmpty) Some(Json.toJson(toolResources))
+                                 else None),
         Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
       )
-    ).map(_.asSafe[Assistant])
-  }
-
-  override def createAssistantFile(
-    assistantId: String,
-    fileId: String
-  ): Future[AssistantFile] = {
-    execPOST(
-      EndPoint.assistants,
-      endPointParam = Some(s"$assistantId/files"),
-      bodyParams = jsonBodyParams(
-        Param.file_id -> Some(fileId)
-      )
-    ).map(_.asSafe[AssistantFile])
+    ).map { response =>
+      println(response)
+      response.asSafe[Assistant]
+    }
   }
 
   override def listAssistants(
@@ -635,36 +666,12 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
     }
   }
 
-  override def listAssistantFiles(
-    assistantId: String,
-    pagination: Pagination = Pagination.default,
-    order: Option[SortOrder]
-  ): Future[Seq[AssistantFile]] =
-    execGET(
-      EndPoint.assistants,
-      endPointParam = Some(s"$assistantId/files"),
-      params = paginationParams(pagination) :+ Param.order -> order
-    ).map { response =>
-      readAttribute(response, "data").asSafeArray[AssistantFile]
-    }
-
   override def retrieveAssistant(assistantId: String): Future[Option[Assistant]] =
     execGETWithStatus(
       EndPoint.assistants,
       Some(assistantId)
     ).map { response =>
       handleNotFoundAndError(response).map(_.asSafe[Assistant])
-    }
-
-  override def retrieveAssistantFile(
-    assistantId: String,
-    fileId: String
-  ): Future[Option[AssistantFile]] =
-    execGETWithStatus(
-      EndPoint.assistants,
-      Some(s"$assistantId/files/$fileId")
-    ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafe[AssistantFile])
     }
 
   override def modifyAssistant(
@@ -739,4 +746,87 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
       Param.after -> pagination.after,
       Param.before -> pagination.before
     )
+
+  override def createBatch(
+    inputFileId: String,
+    endpoint: BatchEndpoint,
+    completionWindow: CompletionWindow,
+    metadata: Map[String, String]
+  ): Future[Batch] =
+    execPOST(
+      EndPoint.batches,
+      endPointParam = None,
+      bodyParams = jsonBodyParams(
+        Param.input_file_id -> Some(inputFileId),
+        Param.endpoint -> Some(Json.toJson(endpoint.toString)),
+        Param.completion_window -> Some(Json.toJson(completionWindow)),
+        Param.metadata -> Some(metadata)
+      )
+    ).map(_.asSafe[Batch])
+
+  override def retrieveBatch(batchId: String): Future[Option[Batch]] =
+    asSafeJsonIfFound[Batch](
+      execGETWithStatus(
+        EndPoint.batches,
+        Some(batchId)
+      )
+    )
+
+  override def retrieveBatchFile(batchId: String): Future[Option[FileInfo]] =
+    for {
+      maybeBatch <- retrieveBatch(batchId)
+      output_file_id <-
+        (for {
+          batch <- maybeBatch
+          output_file_id <- batch.output_file_id
+        } yield retrieveFile(output_file_id)).getOrElse(Future.successful(None))
+    } yield output_file_id
+
+  def retrieveBatchFileContent(batchId: String): Future[Option[String]] = // TODO: Content?
+    for {
+      maybeFileInfo <- retrieveBatchFile(batchId)
+      maybeFile <- maybeFileInfo.map { fileInfo =>
+        retrieveFileContent(fileInfo.id)
+      }.getOrElse(Future.successful(None))
+    } yield maybeFile
+
+  override def retrieveBatchResponses(batchId: String): Future[Option[CreateBatchResponses]] =
+    for {
+      maybeFileInfo <- retrieveBatchFile(batchId)
+      maybeFile <- maybeFileInfo.map { fileInfo =>
+        retrieveFileContent(fileInfo.id)
+      }.getOrElse(Future.successful(None))
+    } yield maybeFile.map { file =>
+      CreateBatchResponses(
+        file.split("\n").map(Json.parse(_).as[CreateBatchResponse]).toSeq
+      )
+    }
+
+  override def cancelBatch(batchId: String): Future[Option[Batch]] =
+    asSafeJsonIfFound[Batch](
+      execPOSTWithStatus(
+        EndPoint.batches,
+        endPointParam = Some(s"$batchId/cancel")
+      )
+    )
+
+  override def listBatches(
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder]
+  ): Future[Seq[Batch]] = {
+    execGET(
+      EndPoint.batches,
+      params = paginationParams(pagination) :+ Param.order -> order
+    ).map { response =>
+      println(prettyPrint(response))
+      readAttribute(response, "data").asSafeArray[Batch]
+    }
+  }
+
+  private def asSafeJsonIfFound[T: Reads](response: Future[RichJsResponse])
+    : Future[Option[T]] =
+    response.map { response =>
+      handleNotFoundAndError(response).map(_.asSafe[T])
+    }
+
 }

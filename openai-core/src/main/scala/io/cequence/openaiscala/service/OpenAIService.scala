@@ -2,11 +2,15 @@ package io.cequence.openaiscala.service
 
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
+import io.cequence.openaiscala.domain.Batch._
+import io.cequence.openaiscala.domain.response._
+import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.{
   AssistantTool,
+  AssistantToolResource,
+  Attachment,
   BaseMessage,
   ChatRole,
-  FileId,
   FunctionSpec,
   Pagination,
   SortOrder,
@@ -16,8 +20,6 @@ import io.cequence.openaiscala.domain.{
   ThreadMessageFile,
   ToolSpec
 }
-import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.domain.response._
 
 import java.io.File
 import scala.concurrent.Future
@@ -301,8 +303,79 @@ trait OpenAIService extends OpenAICoreService {
   def uploadFile(
     file: File,
     displayFileName: Option[String] = None,
-    settings: UploadFileSettings = DefaultSettings.UploadFile
+    settings: UploadFileSettings = DefaultSettings.UploadFineTuneFile
   ): Future[FileInfo]
+
+  /**
+   * Upload a file that contains requests to be batch-processed. Currently, the size of all the
+   * files uploaded by one organization can be up to 1 GB. Please contact us if you need to
+   * increase the storage limit.
+   *
+   * @param file
+   *   JSON Lines file to be uploaded. Each line is a JSON record with: <ul> <li>"custom_id"
+   *   field - request identifier used to match batch requests with their responses</li>
+   *   <li>"method" field - HTTP method to be used for the request (currently only POST is
+   *   supported)</li> <li>"url" field - OpenAI API relative URL to be used for the request
+   *   (currently /v1/chat/completions and /v1/embeddings are supported)</li> <li>"body" field
+   *   \- JSON record with model and messages fields that will be passed to the specified
+   *   endpoint</li> </ul> <a
+   *   href="https://platform.openai.com/docs/guides/batch/1-preparing-your-batch-file">batch
+   *   examples</a>.
+   * @param displayFileName
+   *   (Explicit) display file name; if not specified a full path is used instead.
+   * @return
+   *   file info
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/files/upload">OpenAI Doc</a>
+   */
+  def uploadBatchFile(
+    file: File,
+    displayFileName: Option[String] = None
+  ): Future[FileInfo]
+
+  /**
+   * Builds a temporary file from requests and uploads it.
+   *
+   * @param model
+   *   model to be used for the requests of this batch
+   * @param requests
+   *   requests to be batch-processed
+   * @param displayFileName
+   *   (Explicit) display file name; if not specified a full path is used instead.
+   * @return
+   */
+  def buildAndUploadBatchFile(
+    model: String,
+    requests: Seq[BatchRowBase],
+    displayFileName: Option[String]
+  ): Future[FileInfo]
+
+
+  // format: off
+  /**
+   *
+   *
+   * Example output corresponds to a JSON like this:
+   * <pre>
+   * [
+   *   {
+   *     "custom_id": "request-1",
+   *     "method": "POST",
+   *     "url": "/v1/chat/completions",
+   *     "body": {
+   *       "model": "gpt-3.5-turbo",
+   *       "messages": [{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": "What is 2+2?"}]
+   *     }
+   *   }
+   * ]
+   * </pre>
+   */
+  // format: on
+  def buildBatchFileContent(
+    model: String,
+    requests: Seq[BatchRowBase]
+  ): Future[Seq[BatchRow]]
 
   /**
    * Delete a file.
@@ -515,6 +588,11 @@ trait OpenAIService extends OpenAICoreService {
    *
    * @param messages
    *   A list of messages to start the thread with.
+   * @param toolResources
+   *   A set of resources that are made available to the assistant's tools in this thread. The
+   *   resources are specific to the type of tool. For example, the code_interpreter tool
+   *   requires a list of file IDs, while the file_search tool requires a list of vector store
+   *   IDs.
    * @param metadata
    *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
    *   storing additional information about the object in a structured format. Keys can be a
@@ -527,6 +605,7 @@ trait OpenAIService extends OpenAICoreService {
    */
   def createThread(
     messages: Seq[ThreadMessage] = Nil,
+    toolResources: Seq[AssistantToolResource] = Nil,
     metadata: Map[String, String] = Map()
   ): Future[Thread]
 
@@ -581,14 +660,12 @@ trait OpenAIService extends OpenAICoreService {
    *
    * @param threadId
    *   The ID of the thread to create a message for.
-   * @param role
-   *   The role of the entity that is creating the message. Currently only user is supported.
    * @param content
    *   The content of the message.
-   * @param fileIds
-   *   A list of File IDs that the message should use. There can be a maximum of 10 files
-   *   attached to a message. Useful for tools like retrieval and code_interpreter that can
-   *   access and use files.
+   * @param role
+   *   The role of the entity that is creating the message. Currently only user is supported.
+   * @param attachments
+   *   A list of files attached to the message, and the tools they should be added to.
    * @param metadata
    *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
    *   storing additional information about the object in a structured format. Keys can be a
@@ -603,7 +680,7 @@ trait OpenAIService extends OpenAICoreService {
     threadId: String,
     content: String,
     role: ChatRole = ChatRole.User,
-    fileIds: Seq[String] = Nil,
+    attachments: Seq[Attachment] = Nil,
     metadata: Map[String, String] = Map()
   ): Future[ThreadFullMessage]
 
@@ -754,9 +831,10 @@ trait OpenAIService extends OpenAICoreService {
    * @param tools
    *   A list of tool enabled on the assistant. There can be a maximum of 128 tools per
    *   assistant. Tools can be of types code_interpreter, retrieval, or function.
-   * @param fileIds
-   *   A list of file IDs attached to this assistant. There can be a maximum of 20 files
-   *   attached to the assistant. Files are ordered by their creation date in ascending order.
+   * @param toolResources
+   *   A set of resources that are used by the assistant's tools. The resources are specific to
+   *   the type of tool. For example, the code_interpreter tool requires a list of file IDs,
+   *   while the file_search tool requires a list of vector store IDs.
    * @param metadata
    *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
    *   storing additional information about the object in a structured format. Keys can be a
@@ -772,27 +850,9 @@ trait OpenAIService extends OpenAICoreService {
     description: Option[String] = None,
     instructions: Option[String] = None,
     tools: Seq[AssistantTool] = Seq.empty[AssistantTool],
-    fileIds: Seq[String] = Seq.empty,
+    toolResources: Seq[AssistantToolResource] = Seq.empty[AssistantToolResource],
     metadata: Map[String, String] = Map.empty
   ): Future[Assistant]
-
-  /**
-   * Create an assistant file by attaching a File to an assistant.
-   *
-   * @param assistantId
-   *   The ID of the assistant for which to create a File.
-   * @param fileId
-   *   A File ID (with purpose="assistants") that the assistant should use. Useful for tools
-   *   like `retrieval` and `code_interpreter` that can access files.
-   * @see
-   *   <a
-   *   href="https://platform.openai.com/docs/api-reference/assistants/createAssistantFile">OpenAI
-   *   Doc</a>
-   */
-  def createAssistantFile(
-    assistantId: String,
-    fileId: String
-  ): Future[AssistantFile]
 
   /**
    * Returns a list of assistants.
@@ -824,37 +884,6 @@ trait OpenAIService extends OpenAICoreService {
   ): Future[Seq[Assistant]]
 
   /**
-   * Returns a list of assistant files.
-   *
-   * @param assistantId
-   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
-   *   the default is 20.
-   * @param limit
-   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
-   *   for descending order.
-   * @param order
-   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
-   *   for descending order.
-   * @param after
-   *   A cursor for use in pagination. after is an object ID that defines your place in the
-   *   list. For instance, if you make a list request and receive 100 objects, ending with
-   *   `obj_foo`, your subsequent call can include `after=obj_foo` in order to fetch the next
-   *   page of the list.
-   * @param before
-   *   A cursor for use in pagination. before is an object ID that defines your place in the
-   *   list. For instance, if you make a list request and receive 100 objects, ending with
-   *   `obj_foo`, your subsequent call can include `before=obj_foo` in order to fetch the
-   *   previous page of the list. <a
-   *   href="https://platform.openai.com/docs/api-reference/assistants/listAssistantFiles">OpenAI
-   *   Doc</a>
-   */
-  def listAssistantFiles(
-    assistantId: String,
-    pagination: Pagination = Pagination.default,
-    order: Option[SortOrder] = None
-  ): Future[Seq[AssistantFile]]
-
-  /**
    * Retrieves an assistant.
    *
    * @param assistantId
@@ -863,21 +892,6 @@ trait OpenAIService extends OpenAICoreService {
    *   Doc</a>
    */
   def retrieveAssistant(assistantId: String): Future[Option[Assistant]]
-
-  /**
-   * Retrieves an AssistantFile.
-   *
-   * @param assistantId
-   *   The ID of the assistant who the file belongs to.
-   * @param fileId
-   *   The ID of the file we're getting. <a
-   *   href="https://platform.openai.com/docs/api-reference/assistants/retrieveAssistantFile">OpenAI
-   *   Doc</a>
-   */
-  def retrieveAssistantFile(
-    assistantId: String,
-    fileId: String
-  ): Future[Option[AssistantFile]]
 
   /**
    * Modifies an assistant.
@@ -942,5 +956,127 @@ trait OpenAIService extends OpenAICoreService {
     assistantId: String,
     fileId: String
   ): Future[DeleteResponse]
+
+  /**
+   * Creates and executes a batch from an uploaded file of requests.
+   *
+   * @param inputFileId
+   *   The ID of an uploaded file that contains requests for the new batch. The input file must
+   *   be formatted as a JSONL file, and must be uploaded with the purpose "batch".
+   * @param endpoint
+   *   The endpoint to be used for all requests in the batch. Supported values are
+   *   ChatCompletions and Embeddings.
+   * @param completionWindow
+   *   The time frame within which the batch should be processed. Currently only
+   *   TwentyFourHours is supported.
+   * @param metadata
+   *   Optional custom metadata for the batch.
+   * @return
+   *   Future[Batch] A future that resolves to a Batch object containing details about the
+   *   created batch.
+   *
+   * <a href="https://platform.openai.com/docs/api-reference/batch/create">OpenAI Doc</a>
+   */
+  def createBatch(
+    inputFileId: String,
+    endpoint: BatchEndpoint,
+    completionWindow: CompletionWindow = CompletionWindow.`24h`,
+    metadata: Map[String, String] = Map()
+  ): Future[Batch]
+
+  /**
+   * Retrieves a batch using its ID.
+   *
+   * @param batchId
+   *   The ID of the batch to retrieve. This is a unique identifier for the batch.
+   * @return
+   *   `Future[Option[Batch]` A future that resolves to an Option containing the [[Batch]]
+   *   object. Returns None if the batch with the specified ID does not exist.
+   *
+   * <a href="https://platform.openai.com/docs/api-reference/batch/retrieve">OpenAI Doc</a>
+   */
+  def retrieveBatch(batchId: String): Future[Option[Batch]]
+
+  /**
+   * Retrieves an output batch file using the ID of the batch it belongs to.
+   *
+   * @param batchId
+   *   The ID of the output batch file to retrieve. This is a unique identifier for the batch.
+   * @return
+   *   `Future[Option[FileInfo]` A future that resolves to an Option containing the
+   *   [[FileInfo]] object. Returns None if the batch with the specified ID does not exist.
+   *
+   * <a href="https://platform.openai.com/docs/api-reference/batch/retrieve">OpenAI Doc</a>
+   */
+  def retrieveBatchFile(batchId: String): Future[Option[FileInfo]]
+
+  /**
+   * Retrieves content of output batch file using the ID of the batch it belongs to.
+   *
+   * @param batchId
+   *   The ID of the batch whose output file's content is to be retrieved.
+   * @return
+   *   `Future[Option[String]` A future that resolves to an Option containing the [[String]]
+   *   object. Returns None if the batch with the specified ID does not exist.
+   *
+   * <a href="https://platform.openai.com/docs/api-reference/batch/retrieve">OpenAI Doc</a>
+   */
+  def retrieveBatchFileContent(batchId: String): Future[Option[String]]
+
+  /**
+   * Retrieves OpenAI endpoint responses (for chat completion or embeddings, see:
+   * [[BatchEndpoint]]) using the ID of the batch they belong to.
+   *
+   * @param batchId
+   *   The ID of the batch whose endpoint responses are to be retrieved.
+   * @return
+   *   `Future[Option[CreateBatchResponses]` A future that resolves to an Option containing the
+   *   [[CreateBatchResponses]] object. Returns None if the batch with the specified ID does
+   *   not exist.
+   *
+   * <a href="https://platform.openai.com/docs/api-reference/batch/retrieve">OpenAI Doc</a>
+   */
+  def retrieveBatchResponses(batchId: String): Future[Option[CreateBatchResponses]]
+
+  /**
+   * Cancels an in-progress batch.
+   *
+   * @param batchId
+   *   The ID of the batch to cancel. This should be the unique identifier for the in-progress
+   *   batch.
+   * @return
+   *   Future[Option[Batch]] A future that resolves to an Option containing the Batch object
+   *   after cancellation. Returns None if the batch with the specified ID does not exist or if
+   *   it is not in-progress.
+   *
+   * <a href="https://platform.openai.com/docs/api-reference/batch/cancel">OpenAI Doc</a>
+   */
+  def cancelBatch(batchId: String): Future[Option[Batch]]
+
+  /**
+   * Lists all batches that belong to the user's organization.
+   *
+   * @param pagination
+   *   <ul> <li>limit - A limit on the number of objects to be returned. Limit can range
+   *   between 1 and 100, and the default is 20.</li> <li>after - A cursor for use in
+   *   pagination. after is an object ID that defines your place in the list. For instance, if
+   *   you make a list request and receive 100 objects, ending with `obj_foo`, your subsequent
+   *   call can include `after=obj_foo` in order to fetch the next page of the list. </li>
+   *   <li>before - A cursor for use in pagination. before is an object ID that defines your
+   *   place in the list. For instance, if you make a list request and receive 100 objects,
+   *   ending with `obj_foo`, your subsequent call can include `before=obj_foo` in order to
+   *   fetch the previous page of the list.</li> </ul>
+   * @param order
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
+   *   for descending order.
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/batch/list">OpenAI Doc</a>
+   * @return
+   */
+  def listBatches(
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None
+  ): Future[Seq[Batch]]
 
 }

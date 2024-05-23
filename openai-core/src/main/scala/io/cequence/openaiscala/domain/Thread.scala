@@ -1,5 +1,7 @@
 package io.cequence.openaiscala.domain
 
+import io.cequence.openaiscala.domain.response.AssistantToolResourceResponse
+
 import java.{util => ju}
 
 case class Thread(
@@ -8,6 +10,11 @@ case class Thread(
 
   // The Unix timestamp (in seconds) for when the thread was created.
   created_at: ju.Date,
+
+  // A set of resources that are made available to the assistant's tools in this thread.
+  // The resources are specific to the type of tool. For example, the code_interpreter tool requires a list of file IDs,
+  // while the file_search tool requires a list of vector store IDs.
+  tool_resources: Seq[AssistantToolResourceResponse] = Nil,
 
   // Set of 16 key-value pairs that can be attached to an object.
   // This can be useful for storing additional information about the object in a structured format.

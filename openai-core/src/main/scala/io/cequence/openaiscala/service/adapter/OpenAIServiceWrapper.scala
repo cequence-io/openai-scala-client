@@ -2,6 +2,7 @@ package io.cequence.openaiscala.service.adapter
 
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
+import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
@@ -131,6 +132,31 @@ trait OpenAIServiceWrapper
     _.uploadFile(file, displayFileName, settings)
   )
 
+  override def uploadBatchFile(
+    file: File,
+    displayFileName: Option[String]
+  ): Future[FileInfo] =
+    wrap(
+      _.uploadBatchFile(file, displayFileName)
+    )
+
+  override def buildAndUploadBatchFile(
+    model: String,
+    requests: Seq[BatchRowBase],
+    displayFileName: Option[String]
+  ): Future[FileInfo] =
+    wrap(
+      _.buildAndUploadBatchFile(model, requests, displayFileName)
+    )
+
+  override def buildBatchFileContent(
+    model: String,
+    requests: Seq[BatchRowBase]
+  ): Future[Seq[BatchRow]] =
+    wrap(
+      _.buildBatchFileContent(model, requests)
+    )
+
   override def deleteFile(
     fileId: String
   ): Future[DeleteResponse] = wrap(
@@ -207,9 +233,10 @@ trait OpenAIServiceWrapper
 
   override def createThread(
     messages: Seq[ThreadMessage],
+    toolResources: Seq[AssistantToolResource] = Nil,
     metadata: Map[String, String]
   ): Future[Thread] = wrap(
-    _.createThread(messages, metadata)
+    _.createThread(messages, toolResources, metadata)
   )
 
   override def retrieveThread(
@@ -235,10 +262,10 @@ trait OpenAIServiceWrapper
     threadId: String,
     content: String,
     role: ChatRole,
-    fileIds: Seq[String],
+    attachments: Seq[Attachment],
     metadata: Map[String, String]
   ): Future[ThreadFullMessage] = wrap(
-    _.createThreadMessage(threadId, content, role, fileIds, metadata)
+    _.createThreadMessage(threadId, content, role, attachments, metadata)
   )
 
   override def retrieveThreadMessage(
@@ -283,23 +310,15 @@ trait OpenAIServiceWrapper
 
   override def createAssistant(
     model: String,
-    name: Option[String],
-    description: Option[String],
-    instructions: Option[String],
-    tools: Seq[AssistantTool],
-    fileIds: Seq[String],
-    metadata: Map[String, String]
+    name: Option[String] = None,
+    description: Option[String] = None,
+    instructions: Option[String] = None,
+    tools: Seq[AssistantTool] = Seq.empty[AssistantTool],
+    toolResources: Seq[AssistantToolResource] = Seq.empty[AssistantToolResource],
+    metadata: Map[String, String] = Map.empty
   ): Future[Assistant] = wrap(
-    _.createAssistant(model, name, description, instructions, tools, fileIds, metadata)
+    _.createAssistant(model, name, description, instructions, tools, toolResources, metadata)
   )
-
-  override def createAssistantFile(
-    assistantId: String,
-    fileId: String
-  ): Future[AssistantFile] =
-    wrap(
-      _.createAssistantFile(assistantId, fileId)
-    )
 
   override def listAssistants(
     pagination: Pagination,
@@ -309,23 +328,8 @@ trait OpenAIServiceWrapper
       _.listAssistants(pagination, order)
     )
 
-  override def listAssistantFiles(
-    assistantId: String,
-    pagination: Pagination,
-    order: Option[SortOrder]
-  ): Future[Seq[AssistantFile]] =
-    wrap(
-      _.listAssistantFiles(assistantId, pagination, order)
-    )
-
   override def retrieveAssistant(assistantId: String): Future[Option[Assistant]] =
     wrap(_.retrieveAssistant(assistantId))
-
-  override def retrieveAssistantFile(
-    assistantId: String,
-    fileId: String
-  ): Future[Option[AssistantFile]] =
-    wrap(_.retrieveAssistantFile(assistantId, fileId))
 
   override def modifyAssistant(
     assistantId: String,
@@ -358,6 +362,38 @@ trait OpenAIServiceWrapper
     fileId: String
   ): Future[DeleteResponse] =
     wrap(_.deleteAssistantFile(assistantId, fileId))
+
+  override def createBatch(
+    inputFileId: String,
+    endpoint: BatchEndpoint,
+    completionWindow: CompletionWindow,
+    metadata: Map[String, String]
+  ): Future[Batch] =
+    wrap(
+      _.createBatch(inputFileId, endpoint, completionWindow, metadata)
+    )
+
+  override def retrieveBatch(batchId: String): Future[Option[Batch]] =
+    wrap(_.retrieveBatch(batchId))
+
+  override def retrieveBatchFile(batchId: String): Future[Option[FileInfo]] =
+    wrap(_.retrieveBatchFile(batchId))
+
+  override def retrieveBatchFileContent(batchId: String): Future[Option[String]] =
+    wrap(_.retrieveBatchFileContent(batchId))
+
+  override def retrieveBatchResponses(batchId: String): Future[Option[CreateBatchResponses]] =
+    wrap(_.retrieveBatchResponses(batchId))
+
+  override def cancelBatch(batchId: String): Future[Option[Batch]] =
+    wrap(_.cancelBatch(batchId))
+
+  override def listBatches(
+    pagination: Pagination,
+    order: Option[SortOrder]
+  ): Future[Seq[Batch]] =
+    wrap(_.listBatches(pagination, order))
+
 }
 
 private class OpenAICoreServiceWrapperImpl(
