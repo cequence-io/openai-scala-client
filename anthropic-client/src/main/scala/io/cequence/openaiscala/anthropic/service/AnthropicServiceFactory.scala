@@ -78,8 +78,8 @@ object AnthropicServiceFactory extends AnthropicServiceConsts {
 
   private class AnthropicServiceClassImpl(
     val coreUrl: String,
-    val authHeaders: Seq[(String, String)],
-    val explTimeouts: Option[Timeouts] = None
+    override val authHeaders: Seq[(String, String)],
+    override val explTimeouts: Option[Timeouts] = None
   )(
     implicit val ec: ExecutionContext,
     val materializer: Materializer

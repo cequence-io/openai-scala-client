@@ -1,6 +1,6 @@
 package io.cequence.openaiscala
 
-import io.cequence.wsclient.CequenceWSException
+import io.cequence.wsclient.domain.CequenceWSException
 
 object Retryable {
 

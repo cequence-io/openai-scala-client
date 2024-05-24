@@ -6,7 +6,7 @@ import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.OpenAICoreService
 import io.cequence.wsclient.JsonUtil.JsonOps
-import io.cequence.wsclient.service.ws.WSRequestHelper
+import io.cequence.wsclient.service.ws.{WSRequestExtHelper, WSRequestHelper}
 import play.api.libs.json.{JsObject, JsValue}
 
 import scala.concurrent.Future
@@ -21,6 +21,12 @@ private[service] trait OpenAICoreServiceImpl
     extends OpenAICoreService
     with OpenAIChatCompletionServiceImpl
     with CompletionBodyMaker {
+
+  override protected def handleErrorCodes(
+    httpCode: Int,
+    message: String
+  ): Nothing =
+    throw new OpenAIScalaClientException(s"Code ${httpCode} : ${message}")
 
   override def listModels: Future[Seq[ModelInfo]] =
     execGET(EndPoint.models).map { response =>
@@ -69,7 +75,7 @@ private[service] trait OpenAICoreServiceImpl
 }
 
 trait CompletionBodyMaker {
-  this: WSRequestHelper =>
+  this: WSRequestExtHelper =>
 
   protected def createBodyParamsForCompletion(
     prompt: String,

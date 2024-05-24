@@ -21,9 +21,9 @@ object OpenAICoreServiceFactory extends RawWsServiceFactory[OpenAICoreService] {
 
   private final class OpenAICoreServiceClassImpl(
     val coreUrl: String,
-    val authHeaders: Seq[(String, String)],
-    val extraParams: Seq[(String, String)],
-    val explTimeouts: Option[Timeouts]
+    override val authHeaders: Seq[(String, String)],
+    override val extraParams: Seq[(String, String)],
+    override val explTimeouts: Option[Timeouts]
   )(
     implicit val ec: ExecutionContext,
     val materializer: Materializer
