@@ -12,8 +12,7 @@ import io.cequence.openaiscala.anthropic.domain.response.{
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.domain.{ChatRole, Message}
 import io.cequence.openaiscala.anthropic.service.AnthropicService
-import io.cequence.openaiscala.service.OpenAIWSRequestHelper
-import io.cequence.openaiscala.service.impl.OpenAIWSStreamRequestHelper
+import io.cequence.wsclient.service.ws.stream.WSStreamRequestHelper
 import play.api.libs.json.{JsValue, Json}
 
 import scala.concurrent.Future
@@ -22,8 +21,7 @@ import scala.concurrent.Future
 // Shouldn't use OpenAIWSRequestHelper and OpenAIWSStreamRequestHelper
 private[service] trait AnthropicServiceImpl
     extends AnthropicService
-    with OpenAIWSRequestHelper
-    with OpenAIWSStreamRequestHelper
+    with WSStreamRequestHelper
     with JsonFormats {
 
   override protected type PEP = EndPoint

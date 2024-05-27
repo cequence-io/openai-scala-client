@@ -9,7 +9,7 @@ import io.cequence.wsclient.service.ws.WSRequestHelper
  * @since March
  *   2024
  */
-trait OpenAIWSRequestHelper extends WSRequestHelper {
+trait HandleOpeAIErrorCodes extends WSRequestHelper {
 
   override protected def handleErrorCodes(
     httpCode: Int,

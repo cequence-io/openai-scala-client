@@ -18,7 +18,8 @@ libraryDependencies ++= Seq(
   "com.typesafe.play" %% "play-ahc-ws-standalone" % playWsVersion.value,
   "com.typesafe.play" %% "play-ws-standalone-json" % playWsVersion.value,
   "io.cequence" %% "ws-client-core" % "0.2.0",
-  "io.cequence" %% "ws-client-play" % "0.2.0"
+  "io.cequence" %% "ws-client-play" % "0.2.0",
+  "io.cequence" %% "ws-client-stream" % "0.2.0"
 )
 
 //libraryDependencies ++= Seq(
