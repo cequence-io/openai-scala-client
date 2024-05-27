@@ -17,7 +17,6 @@ import play.api.libs.json.{JsValue, Json}
 
 import scala.concurrent.Future
 
-// TODO: Introduce Anthropic specific exception and handle error codes
 // Shouldn't use OpenAIWSRequestHelper and OpenAIWSStreamRequestHelper
 private[service] trait AnthropicServiceImpl
     extends AnthropicService
