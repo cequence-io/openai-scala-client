@@ -2,7 +2,6 @@ package io.cequence.openaiscala.anthropic.service.impl
 
 import akka.NotUsed
 import akka.stream.scaladsl.Source
-import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.anthropic.JsonFormats
 import io.cequence.openaiscala.anthropic.domain.response.{
@@ -11,7 +10,8 @@ import io.cequence.openaiscala.anthropic.domain.response.{
 }
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.domain.{ChatRole, Message}
-import io.cequence.openaiscala.anthropic.service.AnthropicService
+import io.cequence.openaiscala.anthropic.service.{AnthropicService, HandleAnthropicErrorCodes}
+import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.service.ws.stream.WSStreamRequestHelper
 import play.api.libs.json.{JsValue, Json}
 
@@ -22,6 +22,7 @@ import scala.concurrent.Future
 private[service] trait AnthropicServiceImpl
     extends AnthropicService
     with WSStreamRequestHelper
+    with HandleAnthropicErrorCodes
     with JsonFormats {
 
   override protected type PEP = EndPoint
