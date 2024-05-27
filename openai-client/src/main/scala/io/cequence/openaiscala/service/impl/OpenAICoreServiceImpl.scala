@@ -6,7 +6,7 @@ import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.OpenAICoreService
 import io.cequence.wsclient.JsonUtil.JsonOps
-import io.cequence.wsclient.service.ws.{WSRequestExtHelper, WSRequestHelper}
+import io.cequence.wsclient.service.ws.WSRequestHelper
 import play.api.libs.json.{JsObject, JsValue}
 
 import scala.concurrent.Future
@@ -75,7 +75,7 @@ private[service] trait OpenAICoreServiceImpl
 }
 
 trait CompletionBodyMaker {
-  this: WSRequestExtHelper =>
+  this: WSRequestHelper =>
 
   protected def createBodyParamsForCompletion(
     prompt: String,
