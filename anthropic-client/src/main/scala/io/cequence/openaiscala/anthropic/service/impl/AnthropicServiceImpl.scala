@@ -1,6 +1,7 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
 import akka.NotUsed
+import akka.stream.Materializer
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.anthropic.JsonFormats
@@ -17,12 +18,14 @@ import play.api.libs.json.{JsValue, Json}
 
 import scala.concurrent.Future
 
-// Shouldn't use OpenAIWSRequestHelper and OpenAIWSStreamRequestHelper
-private[service] trait AnthropicServiceImpl
+trait Anthropic
     extends AnthropicService
     with WSStreamRequestHelper
     with HandleAnthropicErrorCodes
-    with JsonFormats {
+    with JsonFormats
+
+// Shouldn't use OpenAIWSRequestHelper and OpenAIWSStreamRequestHelper
+private[service] trait AnthropicServiceImpl extends Anthropic {
 
   override protected type PEP = EndPoint
   override protected type PT = Param
