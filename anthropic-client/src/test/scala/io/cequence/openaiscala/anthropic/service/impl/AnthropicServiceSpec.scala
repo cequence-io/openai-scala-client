@@ -26,66 +26,50 @@ class AnthropicServiceSpec extends AsyncWordSpec with GivenWhenThen with AsyncMo
   "Anthropic Service handleErrorCodes" when {
 
     "should throw AnthropicScalaUnauthorizedException when 401" in {
-      val service = TestFactory.mockedService401()
-
       recoverToSucceededIf[AnthropicScalaUnauthorizedException] {
-        service.createMessage(irrelevantMessages, settings)
+        TestFactory.mockedService401().createMessage(irrelevantMessages, settings)
       }
     }
 
     "should throw AnthropicScalaUnauthorizedException when 403" in {
-      val service = TestFactory.mockedService403()
-
       recoverToSucceededIf[AnthropicScalaUnauthorizedException] {
-        service.createMessage(irrelevantMessages, settings)
+        TestFactory.mockedService403().createMessage(irrelevantMessages, settings)
       }
     }
 
     "should throw AnthropicScalaNotFoundException when 404" in {
-      val service = TestFactory.mockedService404()
-
       recoverToSucceededIf[AnthropicScalaNotFoundException] {
-        service.createMessage(irrelevantMessages, settings)
+        TestFactory.mockedService404().createMessage(irrelevantMessages, settings)
       }
     }
 
     "should throw AnthropicScalaNotFoundException when 429" in {
-      val service = TestFactory.mockedService429()
-
       recoverToSucceededIf[AnthropicScalaRateLimitException] {
-        service.createMessage(irrelevantMessages, settings)
+        TestFactory.mockedService429().createMessage(irrelevantMessages, settings)
       }
     }
 
     "should throw AnthropicScalaServerErrorException when 500" in {
-      val service = TestFactory.mockedService500()
-
       recoverToSucceededIf[AnthropicScalaServerErrorException] {
-        service.createMessage(irrelevantMessages, settings)
+        TestFactory.mockedService500().createMessage(irrelevantMessages, settings)
       }
     }
 
     "should throw AnthropicScalaEngineOverloadedException when 529" in {
-      val service = TestFactory.mockedService529()
-
       recoverToSucceededIf[AnthropicScalaEngineOverloadedException] {
-        service.createMessage(irrelevantMessages, settings)
+        TestFactory.mockedService529().createMessage(irrelevantMessages, settings)
       }
     }
 
     "should throw AnthropicScalaClientException when 400" in {
-      val service = TestFactory.mockedService400()
-
       recoverToSucceededIf[AnthropicScalaClientException] {
-        service.createMessage(irrelevantMessages, settings)
+        TestFactory.mockedService400().createMessage(irrelevantMessages, settings)
       }
     }
 
     "should throw AnthropicScalaClientException when unknown error code" in {
-      val service = TestFactory.mockedServiceOther()
-
       recoverToSucceededIf[AnthropicScalaClientException] {
-        service.createMessage(irrelevantMessages, settings)
+        TestFactory.mockedServiceOther().createMessage(irrelevantMessages, settings)
       }
     }
 
