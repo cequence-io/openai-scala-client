@@ -12,11 +12,7 @@ import org.scalatest.wordspec.AsyncWordSpec
 
 import scala.concurrent.ExecutionContext
 
-class AnthropicServiceSpec
-    extends AsyncWordSpec
-    with GivenWhenThen
-    with AsyncMockFactory
-    {
+class AnthropicServiceSpec extends AsyncWordSpec with GivenWhenThen with AsyncMockFactory {
 
   implicit val ec: ExecutionContext = ExecutionContext.global
   implicit val materializer: Materializer = Materializer(ActorSystem())
@@ -27,7 +23,7 @@ class AnthropicServiceSpec
     max_tokens = 4096
   )
 
-  "Anthropic Service" when {
+  "Anthropic Service handleErrorCodes" when {
 
     "should throw AnthropicScalaUnauthorizedException when 401" in {
       val service = TestFactory.mockedService401()
