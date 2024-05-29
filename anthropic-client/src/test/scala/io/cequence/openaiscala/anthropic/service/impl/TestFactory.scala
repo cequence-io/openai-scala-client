@@ -5,28 +5,24 @@ import akka.stream.Materializer
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.wsclient.service.ws.Timeouts
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.PrivateMethodTester.PrivateMethod
-import org.scalatest.PrivateMethodTester._
-import org.scalatestplus.mockito.MockitoSugar.mock
-import play.api.libs.json.JsValue
+import org.scalatest.PrivateMethodTester.{PrivateMethod, _}
+import play.api.libs.ws.StandaloneWSRequest
 import play.api.libs.ws.ahc.StandaloneAhcWSResponse
 import play.api.libs.ws.ahc.cache.{CacheableHttpResponseStatus, CacheableResponse}
-import play.api.libs.ws.{BodyWritable, StandaloneWSRequest, ahc}
 import play.shaded.ahc.io.netty.handler.codec.http.DefaultHttpHeaders
-import play.shaded.ahc.org.asynchttpclient.{
-  AsyncHttpClientConfig,
-  DefaultAsyncHttpClientConfig
-}
-import play.shaded.ahc.org.asynchttpclient.netty.{NettyResponse, NettyResponseStatus}
 import play.shaded.ahc.org.asynchttpclient.uri.Uri
+import play.shaded.ahc.org.asynchttpclient.{
+  DefaultAsyncHttpClientConfig,
+  Response => AHCResponse
+}
 
-import java.util
 import scala.concurrent.{ExecutionContext, Future}
 
 class TestAnthropicServiceImpl(
   override val coreUrl: String,
   override val authHeaders: Seq[(String, String)],
-  override val explTimeouts: Option[Timeouts] = None
+  override val explTimeouts: Option[Timeouts] = None,
+  mockedResponse: AHCResponse
 )(
   implicit override val ec: ExecutionContext,
   override val materializer: Materializer
@@ -42,21 +38,8 @@ class TestAnthropicServiceImpl(
     endPointForLogging: Option[PEP] = None // only for logging
   ): Future[Either[StandaloneWSRequest#Response, (Int, String)]] = {
 
-    val cacheResponse = CacheableResponse(
-      new CacheableHttpResponseStatus(
-        Uri.create(defaultCoreUrl),
-        401,
-        "authentication_error: There’s an issue with your API key.",
-        ""
-      ),
-      headers = new DefaultHttpHeaders(),
-      bodyParts = java.util.Collections.emptyList(),
-      ahcConfig = new DefaultAsyncHttpClientConfig.Builder().build()
-    )
-
-    val myResponse = new StandaloneAhcWSResponse(cacheResponse)
-    val response: StandaloneWSRequest#Response =
-      myResponse.asInstanceOf[StandaloneWSRequest#Response]
+    val response =
+      new StandaloneAhcWSResponse(mockedResponse).asInstanceOf[StandaloneWSRequest#Response]
 
     Future.successful {
       if (!acceptableStatusCodes.contains(response.status))
@@ -92,14 +75,76 @@ object TestFactory {
   implicit val ec: ExecutionContext = ExecutionContext.global
   implicit val materializer: Materializer = Materializer(ActorSystem())
 
-  val authHeaders = Seq(
+  private val authHeaders = Seq(
     ("x-api-key", s"$apiKey"),
     ("anthropic-version", apiVersion)
   )
 
-  def testService() = new TestAnthropicServiceImpl(
-    defaultCoreUrl,
-    authHeaders
+  def mockedResponse(
+    statusCode: Int,
+    statusText: String
+  ) =
+    CacheableResponse(
+      new CacheableHttpResponseStatus(
+        Uri.create(defaultCoreUrl),
+        statusCode,
+        statusText,
+        ""
+      ),
+      headers = new DefaultHttpHeaders(),
+      bodyParts = java.util.Collections.emptyList(),
+      ahcConfig = new DefaultAsyncHttpClientConfig.Builder().build()
+    )
+
+  private val mockedResponse401 =
+    mockedResponse(401, "authentication_error: There’s an issue with your API key.")
+  private val mockedResponse403 = mockedResponse(
+    403,
+    "permission_error: Your API key does not have permission to use the specified resource."
   )
+  private val mockedResponse404 =
+    mockedResponse(404, "not_found_error: The requested resource was not found.")
+
+  private val mockedResponse429 =
+    mockedResponse(429, "rate_limit_error: Your account has hit a rate limit.")
+
+  private val mockedResponse500 =
+    mockedResponse(
+      500,
+      "api_error: An unexpected error has occurred internal to Anthropic’s systems."
+    )
+
+  private val mockedResponse529 =
+    mockedResponse(529, "overloaded_error: Anthropic’s API is temporarily overloaded.")
+
+  private val mockedResponse400 =
+    mockedResponse(
+      400,
+      "invalid_request_error: There was an issue with the format or content of your request. We may also use this error type for other 4XX status codes not listed below."
+    )
+
+  private val mockedResponseOther =
+    mockedResponse(
+      503,
+      "Service unavailable"
+    )
+
+  println(s"authHeaders = $authHeaders")
+
+  def withResponse(mockedResponse: AHCResponse) =
+    new TestAnthropicServiceImpl(
+      defaultCoreUrl,
+      authHeaders,
+      mockedResponse = mockedResponse
+    )
+
+  def mockedService401(): TestAnthropicServiceImpl = withResponse(mockedResponse401)
+  def mockedService403(): TestAnthropicServiceImpl = withResponse(mockedResponse403)
+  def mockedService404(): TestAnthropicServiceImpl = withResponse(mockedResponse404)
+  def mockedService429(): TestAnthropicServiceImpl = withResponse(mockedResponse429)
+  def mockedService500(): TestAnthropicServiceImpl = withResponse(mockedResponse500)
+  def mockedService529(): TestAnthropicServiceImpl = withResponse(mockedResponse529)
+  def mockedService400(): TestAnthropicServiceImpl = withResponse(mockedResponse400)
+  def mockedServiceOther(): TestAnthropicServiceImpl = withResponse(mockedResponseOther)
 
 }
