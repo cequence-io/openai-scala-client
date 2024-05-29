@@ -98,6 +98,7 @@ object TestFactory {
 
   private val mockedResponse401 =
     mockedResponse(401, "authentication_error: There’s an issue with your API key.")
+
   private val mockedResponse403 = mockedResponse(
     403,
     "permission_error: Your API key does not have permission to use the specified resource."
