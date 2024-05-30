@@ -178,7 +178,7 @@ package object impl {
       created = new ju.Date(),
       model = model,
       system_fingerprint = None,
-      choices = response.getCandidatesList.map { candidate =>
+      choices = response.getCandidatesList.toSeq.map { candidate =>
         ChatCompletionChoiceInfo(
           index = candidate.getIndex,
           message = toOpenAIAssistantMessage(candidate.getContent),

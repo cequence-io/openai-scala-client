@@ -89,6 +89,7 @@ private[service] class OpenAIVertexAIChatCompletionService(
 
     val modelAux = new GenerativeModel(settings.model, underlying).withGenerationConfig(config)
 
+    // TODO: system messages not support e.g. for gemini-1.0-pro-001
     toSystemVertexAI(messages)
       .map(
         modelAux.withSystemInstruction
