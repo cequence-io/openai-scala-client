@@ -126,6 +126,7 @@ private class OpenAIChatCompletionServiceAdaptersImpl
     delegate: ChatCompletionCloseableServiceWrapper[OpenAIChatCompletionService]
   ): OpenAIChatCompletionService =
     new OpenAIChatCompletionServiceExtWrapperImpl(delegate)
+
 }
 
 private class OpenAICoreServiceAdaptersImpl extends OpenAIServiceAdapters[OpenAICoreService] {

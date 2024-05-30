@@ -2,7 +2,7 @@ package io.cequence.openaiscala.service
 
 import akka.stream.Materializer
 import io.cequence.openaiscala.service.impl.OpenAICoreServiceImpl
-import io.cequence.wsclient.service.ws.Timeouts
+import io.cequence.wsclient.domain.WsRequestContext
 
 import scala.concurrent.ExecutionContext
 
@@ -10,20 +10,16 @@ object OpenAICoreServiceFactory extends RawWsServiceFactory[OpenAICoreService] {
 
   override def apply(
     coreUrl: String,
-    authHeaders: Seq[(String, String)] = Nil,
-    extraParams: Seq[(String, String)] = Nil,
-    timeouts: Option[Timeouts] = None
+    requestContext: WsRequestContext = WsRequestContext()
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer
   ): OpenAICoreService =
-    new OpenAICoreServiceClassImpl(coreUrl, authHeaders, extraParams, timeouts)
+    new OpenAICoreServiceClassImpl(coreUrl, requestContext)
 
   private final class OpenAICoreServiceClassImpl(
     val coreUrl: String,
-    override val authHeaders: Seq[(String, String)],
-    override val extraParams: Seq[(String, String)],
-    override val explTimeouts: Option[Timeouts]
+    override val requestContext: WsRequestContext
   )(
     implicit val ec: ExecutionContext,
     val materializer: Materializer

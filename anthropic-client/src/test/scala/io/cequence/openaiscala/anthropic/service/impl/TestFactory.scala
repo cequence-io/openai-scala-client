@@ -82,11 +82,12 @@ object TestFactory {
 
   def mockedResponse(
     statusCode: Int,
-    statusText: String
-  ) =
+    statusText: String,
+    uri: Uri = Uri.create(defaultCoreUrl)
+  ): CacheableResponse =
     CacheableResponse(
       new CacheableHttpResponseStatus(
-        Uri.create(defaultCoreUrl),
+        uri,
         statusCode,
         statusText,
         ""

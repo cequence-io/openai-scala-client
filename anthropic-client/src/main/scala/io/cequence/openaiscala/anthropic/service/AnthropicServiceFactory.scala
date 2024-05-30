@@ -7,6 +7,7 @@ import io.cequence.openaiscala.anthropic.service.impl.{
 }
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
+import io.cequence.wsclient.domain.WsRequestContext
 import io.cequence.wsclient.service.ws.Timeouts
 
 import scala.concurrent.ExecutionContext
@@ -78,12 +79,13 @@ object AnthropicServiceFactory extends AnthropicServiceConsts {
 
   private class AnthropicServiceClassImpl(
     val coreUrl: String,
-    override val authHeaders: Seq[(String, String)],
-    override val explTimeouts: Option[Timeouts] = None
+    val authHeaders: Seq[(String, String)],
+    val explTimeouts: Option[Timeouts] = None
   )(
     implicit val ec: ExecutionContext,
     val materializer: Materializer
   ) extends AnthropicServiceImpl {
-    override protected val extraParams: Seq[(String, String)] = Nil
+    override protected val requestContext: WsRequestContext =
+      WsRequestContext(authHeaders = authHeaders, explTimeouts = explTimeouts)
   }
 }

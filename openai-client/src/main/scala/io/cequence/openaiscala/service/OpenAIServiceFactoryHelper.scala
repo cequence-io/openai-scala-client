@@ -3,6 +3,7 @@ package io.cequence.openaiscala.service
 import akka.stream.Materializer
 import com.typesafe.config.{Config, ConfigFactory}
 import io.cequence.openaiscala.ConfigImplicits._
+import io.cequence.wsclient.domain.WsRequestContext
 import io.cequence.wsclient.service.ws.Timeouts
 
 import scala.concurrent.ExecutionContext
@@ -23,7 +24,7 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts {
       ("OpenAI-Beta", "assistants=v1")
     )
 
-    customInstance(defaultCoreUrl, authHeaders, Nil, timeouts)
+    customInstance(defaultCoreUrl, WsRequestContext(timeouts, authHeaders, Nil))
   }
 
   def apply(
@@ -52,16 +53,7 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts {
     apply(
       apiKey = config.getString(s"$configPrefix.apiKey"),
       orgId = config.optionalString(s"$configPrefix.orgId"),
-      timeouts =
-        if (
-          timeouts.requestTimeout.isDefined
-          || timeouts.readTimeout.isDefined
-          || timeouts.connectTimeout.isDefined
-          || timeouts.pooledConnectionIdleTimeout.isDefined
-        )
-          Some(timeouts)
-        else
-          None
+      timeouts = timeouts.toOption
     )
   }
 
@@ -142,17 +134,17 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts {
 
     customInstance(
       coreUrl,
-      authHeaders,
-      extraParams,
-      timeouts
+      WsRequestContext(
+        timeouts,
+        authHeaders,
+        extraParams
+      )
     )
   }
 
   def customInstance(
     coreUrl: String,
-    authHeaders: Seq[(String, String)] = Nil,
-    extraParams: Seq[(String, String)] = Nil,
-    timeouts: Option[Timeouts] = None
+    requestContext: WsRequestContext = WsRequestContext()
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer
@@ -163,9 +155,7 @@ trait RawWsServiceFactory[F] {
 
   def apply(
     coreUrl: String,
-    authHeaders: Seq[(String, String)] = Nil,
-    extraParams: Seq[(String, String)] = Nil,
-    timeouts: Option[Timeouts] = None
+    requestContext: WsRequestContext = WsRequestContext()
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer

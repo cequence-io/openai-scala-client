@@ -2,7 +2,7 @@ package io.cequence.openaiscala.service
 
 import akka.stream.Materializer
 import io.cequence.openaiscala.service.impl.OpenAIServiceImpl
-import io.cequence.wsclient.service.ws.Timeouts
+import io.cequence.wsclient.domain.WsRequestContext
 
 import scala.concurrent.ExecutionContext
 
@@ -12,21 +12,17 @@ object OpenAIServiceFactory
 
   override def customInstance(
     coreUrl: String,
-    authHeaders: Seq[(String, String)] = Nil,
-    extraParams: Seq[(String, String)] = Nil,
-    timeouts: Option[Timeouts] = None
+    requestContext: WsRequestContext = WsRequestContext()
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer
   ): OpenAIService =
-    new OpenAIServiceClassImpl(coreUrl, authHeaders, extraParams, timeouts)
+    new OpenAIServiceClassImpl(coreUrl, requestContext)
 }
 
 private class OpenAIServiceClassImpl(
   val coreUrl: String,
-  override val authHeaders: Seq[(String, String)],
-  override val extraParams: Seq[(String, String)],
-  override val explTimeouts: Option[Timeouts]
+  override val requestContext: WsRequestContext
 )(
   implicit val ec: ExecutionContext,
   val materializer: Materializer

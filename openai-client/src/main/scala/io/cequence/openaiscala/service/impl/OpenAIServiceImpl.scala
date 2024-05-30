@@ -9,7 +9,7 @@ import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.service.OpenAIService
+import io.cequence.openaiscala.service.{HandleOpenAIErrorCodes, OpenAIService}
 import io.cequence.wsclient.JsonUtil.JsonOps
 import play.api.libs.json.Json.prettyPrint
 import play.api.libs.json.{JsObject, JsValue, Json, Reads}
@@ -26,7 +26,10 @@ import scala.util.{Failure, Success, Try}
  * @since Jan
  *   2023
  */
-private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService {
+private[service] trait OpenAIServiceImpl
+    extends OpenAICoreServiceImpl
+    with OpenAIService
+    with HandleOpenAIErrorCodes { // TODO: should HandleOpenAIErrorCodes be here?
 
   override def retrieveModel(
     modelId: String

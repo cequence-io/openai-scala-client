@@ -1,4 +1,5 @@
 import sbt.Keys.test
+import Dependencies.Versions._
 
 name := "openai-scala-core"
 
@@ -20,17 +21,17 @@ def akkaStreamLibs(scalaVersion: String): Seq[ModuleID] = {
   CrossVersion.partialVersion(scalaVersion) match {
     case Some((2, 12)) =>
       Seq(
-        "com.typesafe.akka" %% "akka-stream" % "2.6.1",
+        "com.typesafe.akka" %% "akka-stream" % "2.6.1"
       )
     case Some((2, 13)) =>
       Seq(
-        "com.typesafe.akka" %% "akka-stream" % "2.6.20",
+        "com.typesafe.akka" %% "akka-stream" % "2.6.20"
       )
     case Some((3, _)) =>
       // because of the conflicting cross-version suffixes 2.13 vs 3
       Seq(
         "com.typesafe.akka" % "akka-stream_2.13" % "2.6.20" exclude ("com.typesafe", "ssl-config-core_2.13"),
-        "com.typesafe" %% "ssl-config-core" % "0.6.1",
+        "com.typesafe" %% "ssl-config-core" % "0.6.1"
       )
     case _ =>
       throw new Exception("Unsupported scala version")
@@ -41,6 +42,6 @@ libraryDependencies ++= akkaStreamLibs(scalaVersion.value)
 libraryDependencies ++= Seq(
   "com.typesafe.play" %% "play-ahc-ws-standalone" % playWsVersion.value,
   "com.typesafe.play" %% "play-ws-standalone-json" % playWsVersion.value,
-  "io.cequence" %% "ws-client-core" % "0.2.0",
-  "io.cequence" %% "ws-client-play" % "0.2.0"
+  "io.cequence" %% "ws-client-core" % wsClient,
+  "io.cequence" %% "ws-client-play" % wsClient
 )

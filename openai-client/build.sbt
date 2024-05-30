@@ -1,3 +1,5 @@
+import Dependencies.Versions._
+
 name := "openai-scala-client"
 
 description := "Scala client for OpenAI API implemented using Play WS lib."
@@ -17,10 +19,14 @@ playWsVersion := {
 libraryDependencies ++= Seq(
   "com.typesafe.play" %% "play-ahc-ws-standalone" % playWsVersion.value,
   "com.typesafe.play" %% "play-ws-standalone-json" % playWsVersion.value,
-  "io.cequence" %% "ws-client-core" % "0.2.0",
-  "io.cequence" %% "ws-client-play" % "0.2.0",
-  "io.cequence" %% "ws-client-stream" % "0.2.0"
+  "io.cequence" %% "ws-client-core" % wsClient,
+  "io.cequence" %% "ws-client-play" % wsClient,
+  "io.cequence" %% "ws-client-stream" % wsClient
 )
+
+libraryDependencies += "org.scalactic" %% "scalactic" % "3.2.18"
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.18" % Test
+libraryDependencies += "org.scalamock" %% "scalamock" % "5.1.0" % Test
 
 //libraryDependencies ++= Seq(
 //  "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
