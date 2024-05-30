@@ -25,6 +25,7 @@ import scala.collection.convert.ImplicitConversions.`seq AsJavaList`
 import scala.compat.java8.FutureConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
+// TODO: convert Google exceptions (e.g. com.google.api.gax.rpc.ResourceExhaustedException) to OpenAI exceptions
 private[service] class OpenAIVertexAIChatCompletionService(
   underlying: VertexAI
 )(
