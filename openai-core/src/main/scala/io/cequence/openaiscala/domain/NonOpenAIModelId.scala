@@ -61,5 +61,6 @@ object NonOpenAIModelId {
   // Google Vertex AI
   val gemini_1_5_flash_001 = "gemini-1.5-flash-001"
   val gemini_1_5_pro_001 = "gemini-1.5-pro-001"
+  val gemini_1_0_pro_001 = "gemini-1.0-pro-001"
   val gemini_1_0_pro_vision_001 = "gemini-1.0-pro-vision-001"
 }
