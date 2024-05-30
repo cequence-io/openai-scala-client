@@ -56,12 +56,17 @@ lazy val anthropic_client = (project in file("anthropic-client"))
   .dependsOn(core, client, client_stream)
   .aggregate(core, client, client_stream)
 
+lazy val google_vertexai_client = (project in file("google-vertexai-client"))
+  .settings(commonSettings *)
+  .dependsOn(core, client, client_stream)
+  .aggregate(core, client, client_stream)
+
 lazy val count_tokens = (project in file("openai-count-tokens"))
   .settings(
     (commonSettings ++ Seq(definedTestNames in Test := Nil)) *
   )
   .dependsOn(client)
-  .aggregate(anthropic_client)
+  .aggregate(anthropic_client, google_vertexai_client)
 
 lazy val guice = (project in file("openai-guice"))
   .settings(commonSettings *)

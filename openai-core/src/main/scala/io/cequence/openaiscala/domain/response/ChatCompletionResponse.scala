@@ -108,9 +108,9 @@ case class ChatCompletionChunkResponse(
   id: String,
   created: ju.Date,
   model: String,
-  system_fingerprint: Option[String], // new
+  system_fingerprint: Option[String],
   choices: Seq[ChatCompletionChoiceChunkInfo],
-  @Deprecated
+  // TODO: seems to be provided at the end when some flag is set
   usage: Option[UsageInfo]
 )
 

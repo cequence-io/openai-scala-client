@@ -36,6 +36,7 @@ import java.{util => ju}
 package object impl extends AnthropicServiceConsts {
 
   def toAnthropic(messages: Seq[OpenAIBaseMessage]): Seq[Message] =
+    // TODO: handle other message types (e.g. assistant)
     messages.collect {
       case OpenAIUserMessage(content, _) => Message.UserMessage(content)
       case OpenAIUserSeqMessage(contents, _) =>
