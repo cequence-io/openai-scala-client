@@ -9,6 +9,7 @@ import io.cequence.openaiscala.service.{
   OpenAIChatCompletionService,
   OpenAIChatCompletionServiceFactory
 }
+import io.cequence.wsclient.domain.WsRequestContext
 
 import scala.concurrent.Future
 
@@ -23,7 +24,9 @@ object ChatCompletionInputAdapterForFireworksAI
   private val fireworksModelPrefix = "accounts/fireworks/models/"
   private val fireworksService = OpenAIChatCompletionServiceFactory(
     coreUrl = "https://api.fireworks.ai/inference/v1/",
-    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
+    WsRequestContext(
+      authHeaders = Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
+    )
   )
 
   private val modelId =

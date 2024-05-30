@@ -5,6 +5,7 @@ import io.cequence.openaiscala.domain.{ModelId, NonOpenAIModelId, SystemMessage,
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service._
 import io.cequence.openaiscala.service.adapter.{MappedModel, OpenAIServiceAdapters}
+import io.cequence.wsclient.domain.WsRequestContext
 
 import scala.concurrent.Future
 
@@ -20,7 +21,9 @@ object ChatCompletionRouterAdapterWithMappedModelsExample extends ExampleBase[Op
   // OctoML
   private val octoMLService = OpenAIChatCompletionServiceFactory(
     coreUrl = "https://text.octoai.run/v1/",
-    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
+    WsRequestContext(
+      authHeaders = Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
+    )
   )
 
   // Ollama

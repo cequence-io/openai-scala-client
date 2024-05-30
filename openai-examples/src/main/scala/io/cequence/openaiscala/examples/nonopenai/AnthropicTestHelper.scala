@@ -3,10 +3,7 @@ package io.cequence.openaiscala.examples.nonopenai
 import akka.actor.Scheduler
 import io.cequence.openaiscala.OpenAIScalaClientTimeoutException
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
-import io.cequence.openaiscala.anthropic.service.{
-  AnthropicScalaClientTimeoutException,
-  AnthropicServiceFactory
-}
+import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.domain.NonOpenAIModelId
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
 import io.cequence.openaiscala.service.adapter.OpenAIServiceAdapters

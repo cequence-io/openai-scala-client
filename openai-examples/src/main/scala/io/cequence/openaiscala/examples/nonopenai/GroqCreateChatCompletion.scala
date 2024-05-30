@@ -7,6 +7,7 @@ import io.cequence.openaiscala.service.{
   OpenAIChatCompletionService,
   OpenAIChatCompletionServiceFactory
 }
+import io.cequence.wsclient.domain.WsRequestContext
 
 import scala.concurrent.Future
 
@@ -17,7 +18,9 @@ object GroqCreateChatCompletion extends ExampleBase[OpenAIChatCompletionService]
 
   override val service: OpenAIChatCompletionService = OpenAIChatCompletionServiceFactory(
     coreUrl = "https://api.groq.com/openai/v1/",
-    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("GROQ_API_KEY")}"))
+    WsRequestContext(authHeaders =
+      Seq(("Authorization", s"Bearer ${sys.env("GROQ_API_KEY")}"))
+    )
   )
 
   private val messages = Seq(

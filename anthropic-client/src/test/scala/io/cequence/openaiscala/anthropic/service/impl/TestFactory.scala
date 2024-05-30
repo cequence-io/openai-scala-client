@@ -3,6 +3,7 @@ package io.cequence.openaiscala.anthropic.service.impl
 import akka.actor.ActorSystem
 import akka.stream.Materializer
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
+import io.cequence.wsclient.domain.WsRequestContext
 import io.cequence.wsclient.service.ws.Timeouts
 import org.scalamock.scalatest.MockFactory
 import org.scalatest.PrivateMethodTester.{PrivateMethod, _}
@@ -20,13 +21,14 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class TestAnthropicServiceImpl(
   override val coreUrl: String,
-  override val authHeaders: Seq[(String, String)],
-  override val explTimeouts: Option[Timeouts] = None,
+//  override val authHeaders: Seq[(String, String)],
+//  override val explTimeouts: Option[Timeouts] = None,
+  override val requestContext: WsRequestContext,
   mockedResponse: AHCResponse
 )(
   implicit override val ec: ExecutionContext,
   override val materializer: Materializer
-) extends AnthropicServiceClassImpl(coreUrl, authHeaders, explTimeouts)
+) extends AnthropicServiceClassImpl(coreUrl, requestContext)
     with MockFactory {
 
   val defaultAcceptableStatusCodes = Seq(200, 201, 202, 204)
@@ -53,14 +55,11 @@ class TestAnthropicServiceImpl(
 
 class AnthropicServiceClassImpl(
   val coreUrl: String,
-  override val authHeaders: Seq[(String, String)],
-  override val explTimeouts: Option[Timeouts] = None
+  val requestContext: WsRequestContext
 )(
   implicit val ec: ExecutionContext,
   val materializer: Materializer
-) extends AnthropicServiceImpl {
-  override protected val extraParams: Seq[(String, String)] = Nil
-}
+) extends AnthropicServiceImpl {}
 
 object TestFactory {
   val getAPIKeyFromEnv = PrivateMethod[String]('getAPIKeyFromEnv)
@@ -136,7 +135,7 @@ object TestFactory {
   def withResponse(mockedResponse: AHCResponse) =
     new TestAnthropicServiceImpl(
       defaultCoreUrl,
-      authHeaders,
+      WsRequestContext(authHeaders = authHeaders),
       mockedResponse = mockedResponse
     )
 

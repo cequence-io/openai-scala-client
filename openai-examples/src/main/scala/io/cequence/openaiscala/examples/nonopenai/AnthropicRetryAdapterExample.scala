@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.examples.nonopenai
 
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.openaiscala.anthropic.service.AnthropicScalaClientTimeoutException
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{NonOpenAIModelId, SystemMessage, UserMessage}
 import io.cequence.openaiscala.examples.ExampleBase
