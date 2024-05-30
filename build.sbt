@@ -75,8 +75,8 @@ lazy val guice = (project in file("openai-guice"))
 
 lazy val examples = (project in file("openai-examples"))
   .settings(commonSettings *)
-  .dependsOn(client_stream, anthropic_client)
-  .aggregate(client_stream, anthropic_client)
+  .dependsOn(client_stream, anthropic_client, google_vertexai_client)
+  .aggregate(client_stream, anthropic_client, google_vertexai_client)
 
 // POM settings for Sonatype
 ThisBuild / homepage := Some(
