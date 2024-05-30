@@ -57,4 +57,9 @@ object NonOpenAIModelId {
   val gemma_7b_it = "gemma-7b-it" // Fireworks AI, OctoML, and Groq
   val smaug_72b_chat = "smaug-72b-chat" // OctoML
   val cohere_command_r_plus = "cohere-command-r-plus"
+
+  // Google Vertex AI
+  val gemini_1_5_flash_001 = "gemini-1.5-flash-001"
+  val gemini_1_5_pro_001 = "gemini-1.5-pro-001"
+  val gemini_1_0_pro_vision_001 = "gemini-1.0-pro-vision-001"
 }
