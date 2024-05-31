@@ -55,7 +55,7 @@ class TestAnthropicServiceImpl(
 
 class AnthropicServiceClassImpl(
   val coreUrl: String,
-  val requestContext: WsRequestContext
+  override val requestContext: WsRequestContext
 )(
   implicit val ec: ExecutionContext,
   val materializer: Materializer
