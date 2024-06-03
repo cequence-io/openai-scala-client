@@ -7,6 +7,7 @@ import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service._
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
+import io.cequence.wsclient.domain.WsRequestContext
 
 import scala.concurrent.Future
 
@@ -29,7 +30,9 @@ object ChatCompletionStreamedRouterExample
   // OctoML
   private val octoMLService = OpenAIChatCompletionServiceFactory.withStreaming(
     coreUrl = "https://text.octoai.run/v1/",
-    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
+    WsRequestContext(authHeaders =
+      Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
+    )
   )
 
   // Ollama
@@ -41,7 +44,9 @@ object ChatCompletionStreamedRouterExample
   private val fireworksModelPrefix = "accounts/fireworks/models/"
   private val fireworksService = OpenAIChatCompletionServiceFactory.withStreaming(
     coreUrl = "https://api.fireworks.ai/inference/v1/",
-    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
+    WsRequestContext(authHeaders =
+      Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
+    )
   )
 
   // Anthropic
@@ -58,7 +63,9 @@ object ChatCompletionStreamedRouterExample
   // Groq
   private val groqService = OpenAIChatCompletionServiceFactory.withStreaming(
     coreUrl = "https://api.groq.com/openai/v1/",
-    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("GROQ_API_KEY")}"))
+    WsRequestContext(authHeaders =
+      Seq(("Authorization", s"Bearer ${sys.env("GROQ_API_KEY")}"))
+    )
   )
 
   // OpenAI

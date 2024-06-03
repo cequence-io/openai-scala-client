@@ -6,6 +6,7 @@ import io.cequence.openaiscala.domain.{ModelId, NonOpenAIModelId, SystemMessage,
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service._
 import io.cequence.openaiscala.service.adapter.OpenAIServiceAdapters
+import io.cequence.wsclient.domain.WsRequestContext
 
 import scala.concurrent.Future
 
@@ -21,7 +22,9 @@ object ChatCompletionRouterAdapterExample extends ExampleBase[OpenAIService] {
   // OctoML
   private val octoMLService = OpenAIChatCompletionServiceFactory(
     coreUrl = "https://text.octoai.run/v1/",
-    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
+    WsRequestContext(
+      authHeaders = Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
+    )
   )
 
   // Ollama
@@ -33,7 +36,9 @@ object ChatCompletionRouterAdapterExample extends ExampleBase[OpenAIService] {
   private val fireworksModelPrefix = "accounts/fireworks/models/"
   private val fireworksService = OpenAIChatCompletionServiceFactory(
     coreUrl = "https://api.fireworks.ai/inference/v1/",
-    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
+    WsRequestContext(
+      authHeaders = Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
+    )
   )
 
   // Anthropic

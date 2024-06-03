@@ -3,12 +3,13 @@ package io.cequence.openaiscala.service.impl
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.JsonFormats._
-import io.cequence.openaiscala.JsonUtil.JsonOps
+import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.OpenAIChatCompletionStreamedServiceExtra
+import io.cequence.wsclient.service.ws.stream.WSStreamRequestHelper
 import play.api.libs.json.JsValue
 
 /**
@@ -21,7 +22,7 @@ import play.api.libs.json.JsValue
 private[service] trait OpenAIChatCompletionServiceStreamedExtraImpl
     extends OpenAIChatCompletionStreamedServiceExtra
     with ChatCompletionBodyMaker
-    with OpenAIWSStreamRequestHelper {
+    with WSStreamRequestHelper {
 
   override protected type PEP = EndPoint
   override protected type PT = Param

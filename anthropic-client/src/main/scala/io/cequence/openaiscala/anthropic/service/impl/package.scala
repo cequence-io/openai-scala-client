@@ -59,7 +59,7 @@ package object impl extends AnthropicServiceConsts {
           Content.ContentBlock.ImageBlock(encoding, mediaType, data)
         } else {
           throw new IllegalArgumentException(
-            s"Image content only supported by providing image data directly."
+            "Image content only supported by providing image data directly."
           )
         }
     }

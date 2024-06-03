@@ -2,7 +2,7 @@ package io.cequence.openaiscala.service
 
 import akka.stream.Materializer
 import io.cequence.openaiscala.service.impl.OpenAIChatCompletionServiceStreamedExtraImpl
-import io.cequence.openaiscala.service.ws.Timeouts
+import io.cequence.wsclient.domain.WsRequestContext
 
 import scala.concurrent.ExecutionContext
 
@@ -11,25 +11,16 @@ object OpenAIChatCompletionStreamedServiceFactory
 
   override def apply(
     coreUrl: String,
-    authHeaders: Seq[(String, String)] = Nil,
-    extraParams: Seq[(String, String)] = Nil,
-    timeouts: Option[Timeouts] = None
+    requestContext: WsRequestContext = WsRequestContext()
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer
   ): OpenAIChatCompletionStreamedServiceExtra =
-    new OpenAIChatCompletionStreamedServiceExtraClassImpl(
-      coreUrl,
-      authHeaders,
-      extraParams,
-      timeouts
-    )
+    new OpenAIChatCompletionStreamedServiceExtraClassImpl(coreUrl, requestContext)
 
   private final class OpenAIChatCompletionStreamedServiceExtraClassImpl(
     val coreUrl: String,
-    val authHeaders: Seq[(String, String)],
-    val extraParams: Seq[(String, String)],
-    val explTimeouts: Option[Timeouts]
+    override val requestContext: WsRequestContext
   )(
     implicit val ec: ExecutionContext,
     val materializer: Materializer

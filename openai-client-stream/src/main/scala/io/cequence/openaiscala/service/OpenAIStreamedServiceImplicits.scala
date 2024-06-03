@@ -20,7 +20,8 @@ import io.cequence.openaiscala.service.adapter.{
   OpenAIServiceWrapper,
   SimpleServiceWrapper
 }
-import io.cequence.openaiscala.service.ws.Timeouts
+import io.cequence.wsclient.domain.WsRequestContext
+import io.cequence.wsclient.service.CloseableService
 
 import scala.concurrent.ExecutionContext
 
@@ -59,26 +60,15 @@ object OpenAIStreamedServiceImplicits {
 
       override def apply(
         coreUrl: String,
-        authHeaders: Seq[(String, String)],
-        extraParams: Seq[(String, String)],
-        timeouts: Option[Timeouts]
+        requestContext: WsRequestContext
       )(
         implicit ec: ExecutionContext,
         materializer: Materializer
       ): StreamedServiceTypes.OpenAIChatCompletionStreamedService = {
-        val service = factory(
-          coreUrl,
-          authHeaders,
-          extraParams,
-          timeouts
-        )
+        val service = factory(coreUrl, requestContext)
 
-        val streamedExtra = OpenAIChatCompletionStreamedServiceFactory(
-          coreUrl,
-          authHeaders,
-          extraParams,
-          timeouts
-        )
+        val streamedExtra =
+          OpenAIChatCompletionStreamedServiceFactory(coreUrl, requestContext)
 
         ChatCompletionStreamExt(service).withStreaming(streamedExtra)
       }
@@ -114,26 +104,13 @@ object OpenAIStreamedServiceImplicits {
   ) {
     def withStreaming(
       coreUrl: String,
-      authHeaders: Seq[(String, String)] = Nil,
-      extraParams: Seq[(String, String)] = Nil,
-      timeouts: Option[Timeouts] = None
+      requestContext: WsRequestContext = WsRequestContext()
     )(
       implicit ec: ExecutionContext,
       materializer: Materializer
     ): StreamedServiceTypes.OpenAICoreStreamedService = {
-      val service = factory(
-        coreUrl,
-        authHeaders,
-        extraParams,
-        timeouts
-      )
-
-      val streamedExtra = OpenAIStreamedServiceFactory.customInstance(
-        coreUrl,
-        authHeaders,
-        extraParams,
-        timeouts
-      )
+      val service = factory(coreUrl, requestContext)
+      val streamedExtra = OpenAIStreamedServiceFactory.customInstance(coreUrl, requestContext)
 
       CoreStreamExt(service).withStreaming(streamedExtra)
     }
@@ -175,26 +152,15 @@ object OpenAIStreamedServiceImplicits {
 
       override def customInstance(
         coreUrl: String,
-        authHeaders: Seq[(String, String)],
-        extraParams: Seq[(String, String)],
-        timeouts: Option[Timeouts]
+        requestContext: WsRequestContext
       )(
         implicit ec: ExecutionContext,
         materializer: Materializer
       ): OpenAIStreamedService = {
-        val service = factory.customInstance(
-          coreUrl,
-          authHeaders,
-          extraParams,
-          timeouts
-        )
+        val service = factory.customInstance(coreUrl, requestContext)
 
-        val streamedExtra = OpenAIStreamedServiceFactory.customInstance(
-          coreUrl,
-          authHeaders,
-          extraParams,
-          timeouts
-        )
+        val streamedExtra =
+          OpenAIStreamedServiceFactory.customInstance(coreUrl, requestContext)
 
         StreamExt(service).withStreaming(streamedExtra)
       }

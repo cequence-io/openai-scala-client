@@ -1,8 +1,9 @@
 package io.cequence.openaiscala.examples
 
+import scala.concurrent.Future
 object RetrieveThreadMessage extends Example {
 
-  override protected def run =
+  override protected def run: Future[Unit] =
     for {
       thread <- service.retrieveThreadMessage(
         threadId = "thread_c6fFMmUw30l30SzG2KdUViMn",

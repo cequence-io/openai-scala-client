@@ -1,16 +1,13 @@
 package io.cequence.openaiscala.service.impl
 
 import io.cequence.openaiscala.JsonFormats._
-import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.service.ws.WSRequestHelper
-import io.cequence.openaiscala.service.{
-  OpenAIChatCompletionService,
-  OpenAIServiceConsts,
-  OpenAIWSRequestHelper
-}
+import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIServiceConsts}
+import io.cequence.wsclient.JsonUtil.JsonOps
+import io.cequence.wsclient.service.ws.WSRequestHelper
+import io.cequence.wsclient.service.ws.stream.WSStreamRequestHelper
 import play.api.libs.json.{JsValue, Json}
 
 import scala.concurrent.Future
@@ -23,7 +20,7 @@ import scala.concurrent.Future
  */
 private[service] trait OpenAIChatCompletionServiceImpl
     extends OpenAIChatCompletionService
-    with OpenAIWSRequestHelper
+    with WSStreamRequestHelper
     with ChatCompletionBodyMaker
     with OpenAIServiceConsts {
 

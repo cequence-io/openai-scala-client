@@ -57,7 +57,7 @@ trait OpenAIServiceWrapper
     tools: Seq[ToolSpec],
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
-  ) = wrap(
+  ): Future[ChatToolCompletionResponse] = wrap(
     _.createChatToolCompletion(
       messages,
       tools,

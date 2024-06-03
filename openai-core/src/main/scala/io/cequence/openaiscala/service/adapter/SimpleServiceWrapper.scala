@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.service.adapter
 
-import io.cequence.openaiscala.service.CloseableService
+import io.cequence.wsclient.service.CloseableService
 import ServiceWrapperTypes.CloseableServiceWrapper
 
 import scala.concurrent.Future

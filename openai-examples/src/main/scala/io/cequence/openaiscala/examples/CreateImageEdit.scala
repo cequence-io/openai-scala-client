@@ -2,11 +2,12 @@ package io.cequence.openaiscala.examples
 
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings._
+import scala.concurrent.Future
 
 object CreateImageEdit extends Example {
 
   private val localOtterImagePath = sys.env("EXAMPLE_OTTER_IMAGE_PATH")
-  override protected def run =
+  override protected def run: Future[Unit] =
     service
       .createImageEdit(
         "A cute baby sea otter wearing a beret",

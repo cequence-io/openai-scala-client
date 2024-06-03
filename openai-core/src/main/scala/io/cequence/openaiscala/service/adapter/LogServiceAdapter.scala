@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.service.adapter
 
-import io.cequence.openaiscala.service.CloseableService
 import io.cequence.openaiscala.StackWalkerUtil
+import io.cequence.wsclient.service.CloseableService
 
 import java.util.Optional
 import java.util.function.Predicate
@@ -30,7 +30,7 @@ trait FunctionNameHelper {
 
   private val ignoreFunNames = Seq("wrap", "anonfun", "getFunctionName")
 
-  protected def getFunctionName() = {
+  protected def getFunctionName(): String = {
     // need to use StackWalker to get the caller function name
     val predicate =
       Optional.of[Predicate[String]]((t: String) => ignoreFunNames.forall(!t.contains(_)))

@@ -1,6 +1,5 @@
 package io.cequence.openaiscala
 
-import io.cequence.openaiscala.JsonUtil.enumFormat
 import io.cequence.openaiscala.domain.AssistantToolResource.{
   CodeInterpreterResources,
   FileSearchResources
@@ -18,6 +17,8 @@ import io.cequence.openaiscala.domain.response.ResponseFormat.{
 }
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.{ThreadMessageFile, _}
+import io.cequence.wsclient.JsonUtil
+import io.cequence.wsclient.JsonUtil.enumFormat
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Json.toJson
 import play.api.libs.json.{Format, JsValue, Json, _}
@@ -202,7 +203,7 @@ object JsonFormats {
 
   implicit val messageReads: Reads[BaseMessage] = Reads { (json: JsValue) =>
     val role = (json \ "role").as[ChatRole]
-    val nameOpt = (json \ "name").asOpt[String]
+    (json \ "name").asOpt[String]
 
     val message: BaseMessage = role match {
       case ChatRole.System => json.as[SystemMessage]

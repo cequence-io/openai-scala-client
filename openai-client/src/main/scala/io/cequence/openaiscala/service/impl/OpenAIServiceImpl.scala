@@ -3,14 +3,14 @@ package io.cequence.openaiscala.service.impl
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.cequence.openaiscala.JsonFormats._
-import io.cequence.openaiscala.JsonUtil.JsonOps
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.Batch.BatchRow.buildBatchRows
 import io.cequence.openaiscala.domain.Batch._
+import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.domain._
-import io.cequence.openaiscala.service.OpenAIService
+import io.cequence.openaiscala.service.{HandleOpenAIErrorCodes, OpenAIService}
+import io.cequence.wsclient.JsonUtil.JsonOps
 import play.api.libs.json.Json.prettyPrint
 import play.api.libs.json.{JsObject, JsValue, Json, Reads}
 
@@ -26,7 +26,10 @@ import scala.util.{Failure, Success, Try}
  * @since Jan
  *   2023
  */
-private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with OpenAIService {
+private[service] trait OpenAIServiceImpl
+    extends OpenAICoreServiceImpl
+    with OpenAIService
+    with HandleOpenAIErrorCodes { // TODO: should HandleOpenAIErrorCodes be here?
 
   override def retrieveModel(
     modelId: String
@@ -289,7 +292,7 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
     file: File,
     displayFileName: Option[String]
   ): Future[FileInfo] = {
-    val fileRows = readFile(file)
+    readFile(file)
     // parse the fileContent as Seq[BatchRow] solely for the purpose of validating its structure, OpenAIScalaClientException is thrown if the parsing fails
 
 //    fileRows.map { row =>

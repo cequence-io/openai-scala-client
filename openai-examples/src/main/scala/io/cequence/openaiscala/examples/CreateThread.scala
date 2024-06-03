@@ -1,10 +1,11 @@
 package io.cequence.openaiscala.examples
 
 import io.cequence.openaiscala.domain.ThreadMessage
+import scala.concurrent.Future
 
 object CreateThread extends Example {
 
-  override protected def run =
+  override protected def run: Future[Unit] =
     for {
       thread <- service.createThread(
         messages = Seq(

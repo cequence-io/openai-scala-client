@@ -14,7 +14,7 @@ trait OpenAICountTokensHelper {
   def countMessageTokens(
     model: String,
     messages: Seq[BaseMessage]
-  ) = {
+  ): Int = {
     val encoding = registry.getEncodingForModel(model).orElseThrow
     val (tokensPerMessage, tokensPerName) = tokensPerMessageAndName(model)
 
@@ -27,7 +27,7 @@ trait OpenAICountTokensHelper {
   def countMessageTokens(
     model: String,
     message: BaseMessage
-  ) = {
+  ): Int = {
     val encoding = registry.getEncodingForModel(model).orElseThrow
     val (tokensPerMessage, tokensPerName) = tokensPerMessageAndName(model)
 

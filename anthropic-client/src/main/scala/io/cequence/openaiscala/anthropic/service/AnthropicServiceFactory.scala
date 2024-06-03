@@ -5,9 +5,9 @@ import io.cequence.openaiscala.anthropic.service.impl.{
   AnthropicServiceImpl,
   OpenAIAnthropicChatCompletionService
 }
-import io.cequence.openaiscala.service.OpenAIChatCompletionService
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
-import io.cequence.openaiscala.service.ws.Timeouts
+import io.cequence.wsclient.domain.WsRequestContext
+import io.cequence.wsclient.service.ws.Timeouts
 
 import scala.concurrent.ExecutionContext
 
@@ -17,8 +17,8 @@ import scala.concurrent.ExecutionContext
  */
 object AnthropicServiceFactory extends AnthropicServiceConsts {
 
-  private val apiVersion = "2023-06-01"
-  private val envAPIKey = "ANTHROPIC_API_KEY"
+  private def apiVersion = "2023-06-01"
+  private def envAPIKey = "ANTHROPIC_API_KEY"
 
   /**
    * Create a new instance of the [[OpenAIChatCompletionService]] wrapping the AnthropicService
@@ -84,6 +84,7 @@ object AnthropicServiceFactory extends AnthropicServiceConsts {
     implicit val ec: ExecutionContext,
     val materializer: Materializer
   ) extends AnthropicServiceImpl {
-    override protected val extraParams: Seq[(String, String)] = Nil
+    override protected val requestContext: WsRequestContext =
+      WsRequestContext(authHeaders = authHeaders, explTimeouts = explTimeouts)
   }
 }

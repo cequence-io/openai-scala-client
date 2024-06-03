@@ -3,7 +3,7 @@ package io.cequence.openaiscala.service.adapter
 import akka.actor.Scheduler
 import io.cequence.openaiscala.RetryHelpers
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
-import io.cequence.openaiscala.service.CloseableService
+import io.cequence.wsclient.service.CloseableService
 
 import scala.concurrent.{ExecutionContext, Future}
 

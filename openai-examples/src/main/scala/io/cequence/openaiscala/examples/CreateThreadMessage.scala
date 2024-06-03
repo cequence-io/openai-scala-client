@@ -3,10 +3,11 @@ package io.cequence.openaiscala.examples
 import io.cequence.openaiscala.domain.{Attachment, FileId}
 
 import scala.util.Random
+import scala.concurrent.Future
 
 object CreateThreadMessage extends Example {
 
-  override protected def run =
+  override protected def run: Future[Unit] =
     for {
       message <- service.createThreadMessage(
         threadId = "thread_c6fFMmUw30l30SzG2KdUViMn",

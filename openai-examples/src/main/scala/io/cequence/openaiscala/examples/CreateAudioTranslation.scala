@@ -5,13 +5,14 @@ import io.cequence.openaiscala.domain.settings.{
   CreateTranslationSettings,
   TranscriptResponseFormatType
 }
+import scala.concurrent.Future
 
 // translates to English
 object CreateAudioTranslation extends Example {
 
   private val inputFileName = "openai-examples/src/main/resources/wolfgang.mp3"
 
-  override protected def run =
+  override protected def run: Future[Unit] =
     service
       .createAudioTranslation(
         file = new java.io.File(inputFileName),

@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.domain.settings
 
-import io.cequence.openaiscala.domain.EnumValue
+import io.cequence.wsclient.domain.EnumValue
 
 case class CreateEmbeddingsSettings(
   // ID of the model to use.

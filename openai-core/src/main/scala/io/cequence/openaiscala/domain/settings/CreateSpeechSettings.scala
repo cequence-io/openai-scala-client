@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.domain.settings
 
-import io.cequence.openaiscala.domain.EnumValue
+import io.cequence.wsclient.domain.EnumValue
 
 case class CreateSpeechSettings(
   // One of the available TTS models: tts-1 or tts-1-hd

@@ -1,5 +1,7 @@
 package io.cequence.openaiscala
 
+import io.cequence.wsclient.domain.CequenceWSException
+
 object Retryable {
 
   def unapply(
@@ -16,13 +18,6 @@ object Retryable {
     // otherwise don't retry
     case _ => false
   }
-}
-
-class CequenceWSException(
-  message: String,
-  cause: Throwable
-) extends RuntimeException(message, cause) {
-  def this(message: String) = this(message, null)
 }
 
 class OpenAIScalaClientException(

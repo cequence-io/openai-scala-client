@@ -4,6 +4,7 @@ import io.cequence.openaiscala.domain.{ModelId, SystemMessage, UserMessage}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.service._
 import io.cequence.openaiscala.service.adapter.OpenAIChatCompletionServiceRouter
+import io.cequence.wsclient.domain.WsRequestContext
 
 import scala.concurrent.Future
 
@@ -12,7 +13,9 @@ object CreateChatCompletionWithRouter extends ExampleBase[OpenAIChatCompletionSe
   // OctoML
   private val octoMLService = OpenAIChatCompletionServiceFactory(
     coreUrl = "https://text.octoai.run/v1/",
-    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
+    requestContext = WsRequestContext(authHeaders =
+      Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
+    )
   )
 
   // Ollama

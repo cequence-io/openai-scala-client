@@ -2,7 +2,7 @@ package io.cequence.openaiscala.service
 
 import akka.stream.Materializer
 import io.cequence.openaiscala.service.impl.OpenAIChatCompletionServiceImpl
-import io.cequence.openaiscala.service.ws.Timeouts
+import io.cequence.wsclient.domain.WsRequestContext
 
 import scala.concurrent.ExecutionContext
 
@@ -11,20 +11,16 @@ object OpenAIChatCompletionServiceFactory
 
   override def apply(
     coreUrl: String,
-    authHeaders: Seq[(String, String)] = Nil,
-    extraParams: Seq[(String, String)] = Nil,
-    timeouts: Option[Timeouts] = None
+    requestContext: WsRequestContext = WsRequestContext()
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer
   ): OpenAIChatCompletionService =
-    new OpenAIChatCompletionServiceClassImpl(coreUrl, authHeaders, extraParams, timeouts)
+    new OpenAIChatCompletionServiceClassImpl(coreUrl, requestContext)
 
   private final class OpenAIChatCompletionServiceClassImpl(
     val coreUrl: String,
-    val authHeaders: Seq[(String, String)],
-    val extraParams: Seq[(String, String)],
-    val explTimeouts: Option[Timeouts]
+    override val requestContext: WsRequestContext
   )(
     implicit val ec: ExecutionContext,
     val materializer: Materializer
@@ -43,6 +39,8 @@ trait IOpenAIChatCompletionServiceFactory[F] extends RawWsServiceFactory[F] {
   ): F =
     apply(
       coreUrl = s"https://${endpoint}.${region}.inference.ai.azure.com/v1/",
-      authHeaders = Seq(("Authorization", s"Bearer $accessToken"))
+      requestContext = WsRequestContext(
+        authHeaders = Seq(("Authorization", s"Bearer $accessToken"))
+      )
     )
 }

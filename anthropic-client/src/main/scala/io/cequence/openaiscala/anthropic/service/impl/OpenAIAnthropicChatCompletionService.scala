@@ -44,6 +44,7 @@ private[service] class OpenAIAnthropicChatCompletionService(
         toAnthropic(settings, messages)
       )
       .map(toOpenAI)
+    // TODO: recover and wrap exceptions
   }
 
   /**

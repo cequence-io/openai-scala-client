@@ -8,6 +8,7 @@ import io.cequence.openaiscala.service.{
   OpenAIChatCompletionStreamedServiceExtra,
   OpenAIChatCompletionStreamedServiceFactory
 }
+import io.cequence.wsclient.domain.WsRequestContext
 
 import scala.concurrent.Future
 
@@ -18,7 +19,9 @@ object OctoMLCreateChatCompletionStreamed
   override val service: OpenAIChatCompletionStreamedServiceExtra =
     OpenAIChatCompletionStreamedServiceFactory(
       coreUrl = "https://text.octoai.run/v1/",
-      authHeaders = Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
+      WsRequestContext(authHeaders =
+        Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
+      )
     )
 
   private val messages = Seq(

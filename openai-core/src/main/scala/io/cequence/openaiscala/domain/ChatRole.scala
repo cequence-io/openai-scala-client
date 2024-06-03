@@ -1,5 +1,7 @@
 package io.cequence.openaiscala.domain
 
+import io.cequence.wsclient.domain.EnumValue
+
 sealed trait ChatRole extends EnumValue {
   override def toString: String = super.toString.toLowerCase
 }

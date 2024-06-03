@@ -5,6 +5,7 @@ import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service.adapter.OpenAIServiceAdapters
 import io.cequence.openaiscala.service.{OpenAICoreService, OpenAICoreServiceFactory}
+import io.cequence.wsclient.domain.WsRequestContext
 
 import scala.concurrent.Future
 
@@ -18,7 +19,9 @@ object ChatToCompletionAdapterExample extends ExampleBase[OpenAICoreService] {
     OpenAIServiceAdapters.forCoreService.chatToCompletion(
       OpenAICoreServiceFactory(
         coreUrl = "https://api.fireworks.ai/inference/v1/",
-        authHeaders = Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
+        WsRequestContext(authHeaders =
+          Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
+        )
       )
     )
 

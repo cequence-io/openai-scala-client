@@ -3,7 +3,7 @@ package io.cequence.openaiscala.service.impl
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.JsonFormats._
-import io.cequence.openaiscala.JsonUtil.JsonOps
+import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
