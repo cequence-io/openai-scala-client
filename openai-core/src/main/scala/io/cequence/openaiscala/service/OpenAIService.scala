@@ -5,21 +5,7 @@ import akka.util.ByteString
 import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.domain.{
-  AssistantTool,
-  AssistantToolResource,
-  Attachment,
-  BaseMessage,
-  ChatRole,
-  FunctionSpec,
-  Pagination,
-  SortOrder,
-  Thread,
-  ThreadFullMessage,
-  ThreadMessage,
-  ThreadMessageFile,
-  ToolSpec
-}
+import io.cequence.openaiscala.domain.{AssistantTool, AssistantToolResource, Attachment, BaseMessage, ChatRole, FunctionSpec, Pagination, SortOrder, Thread, ThreadFullMessage, ThreadMessage, ThreadMessageFile, ToolSpec, VectorStore}
 
 import java.io.File
 import scala.concurrent.Future
@@ -424,6 +410,62 @@ trait OpenAIService extends OpenAICoreService {
   ): Future[Option[String]]
 
   /**
+   * Create a vector store.
+   *
+   * @param file_ids
+   *   A list of File IDs that the vector store should use (optional). Useful for tools like
+   *   file_search that can access files.
+   * @param name
+   *   The name of the vector store.
+   * @param expires_after
+   *   The expiration policy for a vector store. TODO
+   * @param metadata
+   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
+   *   storing additional information about the object in a structured format. Keys can be a
+   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
+   * @return
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/vector-stores/create">OpenAI
+   *   Doc</a>
+   */
+  def createVectorStore(
+    fileIds: Seq[String] = Nil,
+    name: Option[String] = None,
+    metadata: Map[String, Any] = Map()
+  ): Future[VectorStore]
+
+  /**
+   * Returns a list of vector stores.
+   *
+   * @param limit
+   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
+   *   the default is 20. Defaults to 20
+   * @param order
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
+   *   for descending order. Defaults to desc
+   * @param after
+   *   A cursor for use in pagination. after is an object ID that defines your place in the
+   *   list. For instance, if you make a list request and receive 100 objects, ending with
+   *   obj_foo, your subsequent call can include after=obj_foo in order to fetch the next page
+   *   of the list.
+   * @param before
+   *   A cursor for use in pagination. before is an object ID that defines your place in the
+   *   list. For instance, if you make a list request and receive 100 objects, ending with
+   *   obj_foo, your subsequent call can include before=obj_foo in order to fetch the previous
+   *   page of the list.
+   * @return
+   *   thread messages
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/vector-stores/list">OpenAI
+   *   Doc</a>
+   */
+  def listVectorStores(
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None
+  ): Future[Seq[VectorStore]]
+
+  /**
    * Creates a job that fine-tunes a specified model from a given dataset. Response includes
    * details of the enqueued job including job status and the name of the fine-tuned models
    * once complete.
@@ -824,7 +866,7 @@ trait OpenAIService extends OpenAICoreService {
    *   models, or see our Model overview for descriptions of them.
    * @param name
    *   The name of the assistant. The maximum length is 256 characters.
-   * @param descriptionx
+   * @param description
    *   The description of the assistant. The maximum length is 512 characters.
    * @param instructions
    *   The system instructions that the assistant uses. The maximum length is 32768 characters.

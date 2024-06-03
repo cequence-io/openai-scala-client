@@ -3,8 +3,7 @@ package io.cequence.openaiscala
 import io.cequence.openaiscala.JsonUtil.enumFormat
 import io.cequence.openaiscala.domain.AssistantToolResource.{
   CodeInterpreterResources,
-  FileSearchResources,
-  VectorStore
+  FileSearchResources
 }
 import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain.FineTune.WeightsAndBiases
@@ -450,6 +449,54 @@ object JsonFormats {
   implicit lazy val threadMessageFormat: Format[ThreadMessage] =
     Json.format[ThreadMessage]
 
+  implicit lazy val assistantToolResourceResponsesFormat
+    : Reads[Seq[AssistantToolResourceResponse]] = Reads { json =>
+    val codeInterpreter = (json \ "code_interpreter" \ "file_ids")
+      .asOpt[Seq[FileId]]
+      .map(CodeInterpreterResourcesResponse.apply)
+
+    val fileSearch = (json \ "file_search" \ "vector_store_ids")
+      .asOpt[Seq[String]]
+      .map(FileSearchResourcesResponse.apply)
+
+    Seq(codeInterpreter, fileSearch).flatten match {
+      case Nil       => JsError("Expected code_interpreter or file_search response")
+      case responses => JsSuccess(responses)
+    }
+  }
+
+  implicit lazy val assistantToolResourceResponsesWrites
+    : Writes[Seq[AssistantToolResourceResponse]] = Writes { items =>
+    items.map {
+      case c: CodeInterpreterResourcesResponse =>
+        Json.obj("code_interpreter" -> Json.obj("file_ids" -> c.file_ids))
+
+      case f: FileSearchResourcesResponse =>
+        Json.obj("file_search" -> Json.obj("vector_store_ids" -> f.vector_store_ids))
+    }.foldLeft(Json.obj())(_ ++ _)
+  }
+
+  implicit lazy val assistantToolResourcesWrites: Writes[AssistantToolResource] = {
+    case c: CodeInterpreterResources =>
+      Json.obj("code_interpreter" -> Json.obj("file_ids" -> c.fileIds))
+
+    case f: FileSearchResources =>
+      assert(
+        f.vectorStoreIds.isEmpty || f.vectorStores.isEmpty,
+        "Only one of vector_store_ids or vector_stores should be provided."
+      )
+
+      val vectorStoreIdsJson =
+        if (f.vectorStoreIds.nonEmpty) Json.obj("vector_store_ids" -> f.vectorStoreIds)
+        else Json.obj()
+
+      val vectorStoresJson =
+        if (f.vectorStores.nonEmpty) Json.obj("vector_stores" -> f.vectorStores)
+        else Json.obj()
+
+      Json.obj("file_search" -> (vectorStoreIdsJson ++ vectorStoresJson))
+  }
+
   implicit lazy val threadReads: Reads[Thread] =
     (
       (__ \ "id").read[String] and
@@ -460,7 +507,7 @@ object JsonFormats {
         (__ \ "metadata").read[Map[String, String]].orElse(Reads.pure(Map()))
     )(Thread.apply _)
 
-  implicit lazy val threadWrites: Writes[Thread] = Json.writes[Thread]
+//  implicit lazy val threadWrites: Writes[Thread] = Json.writes[Thread]
 
   implicit lazy val fileIdFormat: Format[FileId] =
     Json.format[FileId]
@@ -510,38 +557,18 @@ object JsonFormats {
 
   implicit lazy val assistantIdFormat: Format[AssistantId] = Json.valueFormat[AssistantId]
 
-  implicit lazy val vectorStoreFormat: Format[VectorStore] = {
+  implicit lazy val assistantToolResourceVectorStoreFormat
+    : Format[AssistantToolResource.VectorStore] = {
     implicit val stringStringMapFormat: Format[Map[String, String]] =
       JsonUtil.StringStringMapFormat
     (
       (__ \ "file_ids").format[Seq[FileId]] and
         (__ \ "metadata").format[Map[String, String]]
-    )(VectorStore.apply, unlift(VectorStore.unapply))
+    )(
+      AssistantToolResource.VectorStore.apply,
+      unlift(AssistantToolResource.VectorStore.unapply)
+    )
   }
-
-  implicit lazy val assistantToolResourcesWrites: Writes[AssistantToolResource] = {
-    case c: CodeInterpreterResources =>
-      Json.obj("code_interpreter" -> Json.obj("file_ids" -> c.fileIds))
-    case f: FileSearchResources =>
-      Json.obj(
-        "file_search" -> Json.obj(
-          "vector_store_ids" -> f.vectorStoreIds,
-          "vector_stores" -> f.vectorStores
-        )
-      )
-  }
-
-  implicit lazy val assistantToolResourcesReads: Reads[AssistantToolResource] =
-    codeInterpreterResourcesReads orElse fileSearchResourcesReads
-
-  implicit lazy val codeInterpreterResourcesReads: Reads[AssistantToolResource] =
-    (JsPath \ "code_interpreter" \ "file_ids")
-      .read[Seq[FileId]]
-      .map(CodeInterpreterResources(_))
-  implicit lazy val fileSearchResourcesReads: Reads[AssistantToolResource] = (
-    (JsPath \ "file_search" \ "vector_store_ids").read[Seq[FileId]] and
-      (JsPath \ "file_search" \ "vector_stores").read[Seq[VectorStore]]
-  )(FileSearchResources.apply _)
 
   implicit lazy val codeInterpreterResourcesResponseFormat
     : Format[CodeInterpreterResourcesResponse] =
@@ -550,35 +577,22 @@ object JsonFormats {
   implicit lazy val fileSearchResourcesResponseFormat: Format[FileSearchResourcesResponse] =
     Json.format[FileSearchResourcesResponse]
 
-  implicit lazy val assistantToolResourceFormat: Format[AssistantToolResource] =
-    Format(assistantToolResourcesReads, assistantToolResourcesWrites)
+//  implicit lazy val assistantToolResourceFormat: Format[AssistantToolResource] =
+//    Format(assistantToolResourcesReads, assistantToolResourcesWrites)
 
-  implicit lazy val assistantToolResourceResponseWrites
-    : Writes[AssistantToolResourceResponse] = {
-    case c: CodeInterpreterResourcesResponse =>
-      Json.obj(
-        "code_interpreter" -> Json.toJson(c)(codeInterpreterResourcesResponseFormat)
-      )
-    case f: FileSearchResourcesResponse =>
-      Json.obj("file_search" -> Json.toJson(f)(fileSearchResourcesResponseFormat))
-  }
+//  implicit lazy val assistantToolResourceResponseWrites
+//    : Writes[AssistantToolResourceResponse] = {
+//    case c: CodeInterpreterResourcesResponse =>
+//      Json.obj(
+//        "code_interpreter" -> Json.toJson(c)(codeInterpreterResourcesResponseFormat)
+//      )
+//    case f: FileSearchResourcesResponse =>
+//      Json.obj("file_search" -> Json.toJson(f)(fileSearchResourcesResponseFormat))
+//  }
 
-  implicit lazy val assistantToolResourceResponseFormat
-    : Format[AssistantToolResourceResponse] =
-    Format(assistantToolResourceResponseReads, assistantToolResourceResponseWrites)
-
-  implicit lazy val assistantToolResourceResponseReads: Reads[AssistantToolResourceResponse] =
-    codeInterpreterResponseReads orElse fileSearchResponseReads
-
-  implicit lazy val codeInterpreterResponseReads: Reads[AssistantToolResourceResponse] =
-    (JsPath \ "code_interpreter" \ "file_ids")
-      .read[Seq[FileId]]
-      .map(CodeInterpreterResourcesResponse.apply)
-
-  implicit lazy val fileSearchResponseReads: Reads[AssistantToolResourceResponse] =
-    (JsPath \ "file_search" \ "vector_store_ids")
-      .read[Seq[FileId]]
-      .map(FileSearchResourcesResponse.apply)
+//  implicit lazy val assistantToolResourceResponseFormat
+//    : Format[AssistantToolResourceResponse] =
+//    Format(assistantToolResourceResponseReads, assistantToolResourceResponseWrites)
 
   implicit lazy val responseFormatFormat: Format[ResponseFormat] = {
     def error(json: JsValue) = JsError(
@@ -621,7 +635,7 @@ object JsonFormats {
       (__ \ "instructions").readNullable[String] and
       (__ \ "tools").read[List[AssistantTool]] and
       (__ \ "tool_resources")
-        .read[List[AssistantToolResourceResponse]]
+        .read[Seq[AssistantToolResourceResponse]]
         .orElse(Reads.pure(Nil)) and
       (__ \ "metadata").read[Map[String, String]].orElse(Reads.pure(Map())) and
       (__ \ "temperature").readNullable[Double].orElse(Reads.pure(None)) and
@@ -629,8 +643,8 @@ object JsonFormats {
       (__ \ "response_format").read[ResponseFormat]
   )((Assistant.apply _))
 
-  implicit lazy val assistantWrites: Writes[Assistant] =
-    Json.writes[Assistant]
+//  implicit lazy val assistantWrites: Writes[Assistant] =
+//    Json.writes[Assistant]
 
   implicit lazy val batchEndPointFormat: Format[BatchEndpoint] = enumFormat[BatchEndpoint](
     BatchEndpoint.`/v1/chat/completions`,
@@ -677,4 +691,9 @@ object JsonFormats {
   implicit lazy val createBatchResponsesFormat: Format[CreateBatchResponses] =
     Json.format[CreateBatchResponses]
 
+  implicit lazy val fileCountsFormat: Format[FileCounts] =
+    Json.format[FileCounts]
+
+  implicit lazy val vectorStoreFormat: Format[VectorStore] =
+    Json.format[VectorStore]
 }

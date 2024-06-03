@@ -21,8 +21,8 @@ object EndPoint {
   case object moderations extends EndPoint
   case object threads extends EndPoint
   case object batches extends EndPoint
-
   case object assistants extends EndPoint
+  case object vector_stores extends EndPoint
 }
 
 sealed trait Param extends EnumValue

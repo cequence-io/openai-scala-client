@@ -20,7 +20,7 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts {
     val orgIdHeader = orgId.map(("OpenAI-Organization", _))
     val authHeaders = orgIdHeader ++: Seq(
       ("Authorization", s"Bearer $apiKey"),
-      ("OpenAI-Beta", "assistants=v1")
+      ("OpenAI-Beta", "assistants=v2")
     )
 
     customInstance(defaultCoreUrl, authHeaders, Nil, timeouts)

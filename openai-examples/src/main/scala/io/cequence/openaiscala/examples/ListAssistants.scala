@@ -1,4 +1,5 @@
 package io.cequence.openaiscala.examples
+
 import io.cequence.openaiscala.domain.Pagination
 
 import scala.concurrent.Future

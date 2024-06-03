@@ -224,6 +224,21 @@ trait OpenAIServiceWrapper
     _.deleteFineTuneModel(modelId)
   )
 
+  override def createVectorStore(
+    fileIds: Seq[String],
+    name: Option[String],
+    metadata: Map[String, Any]
+  ): Future[VectorStore] = wrap(
+    _.createVectorStore(fileIds, name, metadata)
+  )
+
+  override def listVectorStores(
+    pagination: Pagination,
+    order: Option[SortOrder]
+  ): Future[Seq[VectorStore]] = wrap(
+    _.listVectorStores(pagination, order)
+  )
+
   override def createModeration(
     input: String,
     settings: CreateModerationSettings

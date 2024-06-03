@@ -16,7 +16,7 @@ import play.api.libs.json.{JsObject, JsValue, Json, Reads}
 
 import java.io.File
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Paths}
+import java.nio.file.Files
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 
@@ -349,6 +349,33 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
     execGETStringAux(request, Some(endPoint)).map(response => handleNotFoundAndError(response))
   }
 
+  override def createVectorStore(
+    fileIds: Seq[String],
+    name: Option[String],
+    metadata: Map[String, Any]
+  ): Future[VectorStore] =
+    execPOST(
+      EndPoint.vector_stores,
+      bodyParams = jsonBodyParams(
+        Param.file_ids -> (if (fileIds.nonEmpty) Some(fileIds) else None),
+        Param.name -> name,
+        Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
+      )
+    ).map(
+      _.asSafe[VectorStore]
+    )
+
+  override def listVectorStores(
+    pagination: Pagination,
+    order: Option[SortOrder]
+  ): Future[Seq[VectorStore]] =
+    execGET(
+      EndPoint.vector_stores,
+      params = paginationParams(pagination) :+ Param.order -> order
+    ).map { response =>
+      readAttribute(response, "data").asSafeArray[VectorStore]
+    }
+
   override def createFineTune(
     training_file: String,
     validation_file: Option[String] = None,
@@ -636,6 +663,11 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
     toolResources: Seq[AssistantToolResource] = Seq.empty[AssistantToolResource],
     metadata: Map[String, String]
   ): Future[Assistant] = {
+    val toolResourcesJson =
+      toolResources.map(Json.toJson(_).as[JsObject]).foldLeft(Json.obj()) { case (acc, json) =>
+        acc.deepMerge(json)
+      }
+
     execPOST(
       EndPoint.assistants,
       bodyParams = jsonBodyParams(
@@ -644,14 +676,13 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
         Param.description -> Some(description),
         Param.instructions -> Some(instructions),
         Param.tools -> Some(Json.toJson(tools)),
-        Param.tool_resources -> (if (toolResources.nonEmpty) Some(Json.toJson(toolResources))
+        Param.tool_resources -> (if (toolResources.nonEmpty) Some(toolResourcesJson)
                                  else None),
         Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
       )
-    ).map { response =>
-      println(response)
-      response.asSafe[Assistant]
-    }
+    ).map(
+      _.asSafe[Assistant]
+    )
   }
 
   override def listAssistants(
@@ -818,7 +849,6 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
       EndPoint.batches,
       params = paginationParams(pagination) :+ Param.order -> order
     ).map { response =>
-      println(prettyPrint(response))
       readAttribute(response, "data").asSafeArray[Batch]
     }
   }
@@ -828,5 +858,4 @@ private[service] trait OpenAIServiceImpl extends OpenAICoreServiceImpl with Open
     response.map { response =>
       handleNotFoundAndError(response).map(_.asSafe[T])
     }
-
 }

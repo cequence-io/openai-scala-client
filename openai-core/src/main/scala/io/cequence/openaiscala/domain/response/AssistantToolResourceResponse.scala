@@ -19,6 +19,6 @@ object AssistantToolResourceResponse {
    *   The vector store attached to this assistant. There can be a maximum of 1 vector store
    *   attached to the assistant.
    */
-  final case class FileSearchResourcesResponse(vector_store_ids: Seq[FileId])
+  final case class FileSearchResourcesResponse(vector_store_ids: Seq[String])
       extends AssistantToolResourceResponse
 }

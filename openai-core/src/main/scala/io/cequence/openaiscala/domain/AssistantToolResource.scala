@@ -20,8 +20,8 @@ object AssistantToolResource {
    *   can be a maximum of 1 vector store attached to the assistant.
    */
   final case class FileSearchResources(
-    vectorStoreIds: Seq[FileId],
-    vectorStores: Seq[VectorStore]
+    vectorStoreIds: Seq[String],
+    vectorStores: Seq[VectorStore] = Nil
   ) extends AssistantToolResource
 
   /**
