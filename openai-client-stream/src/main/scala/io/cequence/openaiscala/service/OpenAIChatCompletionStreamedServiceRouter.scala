@@ -7,6 +7,7 @@ import io.cequence.openaiscala.domain.response.ChatCompletionChunkResponse
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.service.adapter.MappedModel
 
+// TODO: use wrappers/adapters instead
 object OpenAIChatCompletionStreamedServiceRouter {
   def apply(
     serviceModels: Map[OpenAIChatCompletionStreamedServiceExtra, Seq[String]],
