@@ -1,16 +1,12 @@
 package io.cequence.openaiscala.service
 
-import io.cequence.openaiscala.domain.UserMessage
 import io.cequence.openaiscala._
+import io.cequence.openaiscala.domain.UserMessage
 import io.cequence.openaiscala.service.impl.TestFactory
-import org.scalamock.scalatest.AsyncMockFactory
 import org.scalatest.GivenWhenThen
 import org.scalatest.wordspec.AsyncWordSpec
 
-class HandleOpenAIErrorCodesSpec
-    extends AsyncWordSpec
-    with GivenWhenThen
-    with AsyncMockFactory {
+class HandleOpenAIErrorCodesSpec extends AsyncWordSpec with GivenWhenThen {
 
   private val irrelevantMessages = Seq(UserMessage("Hello"))
 

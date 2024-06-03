@@ -17,8 +17,8 @@ import scala.concurrent.ExecutionContext
  */
 object AnthropicServiceFactory extends AnthropicServiceConsts {
 
-  private val apiVersion = "2023-06-01"
-  private val envAPIKey = "ANTHROPIC_API_KEY"
+  private def apiVersion = "2023-06-01"
+  private def envAPIKey = "ANTHROPIC_API_KEY"
 
   /**
    * Create a new instance of the [[OpenAIChatCompletionService]] wrapping the AnthropicService

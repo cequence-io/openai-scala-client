@@ -4,8 +4,6 @@ import akka.actor.ActorSystem
 import akka.stream.Materializer
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.wsclient.domain.WsRequestContext
-import io.cequence.wsclient.service.ws.Timeouts
-import org.scalamock.scalatest.MockFactory
 import org.scalatest.PrivateMethodTester.{PrivateMethod, _}
 import play.api.libs.ws.StandaloneWSRequest
 import play.api.libs.ws.ahc.StandaloneAhcWSResponse
@@ -61,9 +59,9 @@ class AnthropicServiceClassImpl(
 ) extends AnthropicServiceImpl {}
 
 object TestFactory {
-  val getAPIKeyFromEnv = PrivateMethod[String]('getAPIKeyFromEnv)
-  val apiVersionMethod = PrivateMethod[String]('apiVersion)
-  val defaultCoreUrlMethod = PrivateMethod[String]('defaultCoreUrl)
+  val getAPIKeyFromEnv = PrivateMethod[String](Symbol("getAPIKeyFromEnv"))
+  val apiVersionMethod = PrivateMethod[String](Symbol("apiVersion"))
+  val defaultCoreUrlMethod = PrivateMethod[String](Symbol("defaultCoreUrl"))
 
   val factory = AnthropicServiceFactory
   val apiKey = factory invokePrivate getAPIKeyFromEnv()

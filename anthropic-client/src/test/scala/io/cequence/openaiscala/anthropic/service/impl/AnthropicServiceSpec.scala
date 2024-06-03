@@ -6,13 +6,12 @@ import io.cequence.openaiscala.anthropic.domain.Message.UserMessage
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.service._
 import io.cequence.openaiscala.domain.NonOpenAIModelId
-import org.scalamock.scalatest.AsyncMockFactory
 import org.scalatest.GivenWhenThen
 import org.scalatest.wordspec.AsyncWordSpec
 
 import scala.concurrent.ExecutionContext
 
-class AnthropicServiceSpec extends AsyncWordSpec with GivenWhenThen with AsyncMockFactory {
+class AnthropicServiceSpec extends AsyncWordSpec with GivenWhenThen {
 
   implicit val ec: ExecutionContext = ExecutionContext.global
   implicit val materializer: Materializer = Materializer(ActorSystem())
