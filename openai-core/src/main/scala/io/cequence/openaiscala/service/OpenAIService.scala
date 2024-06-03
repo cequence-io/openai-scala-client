@@ -5,7 +5,22 @@ import akka.util.ByteString
 import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.domain.{AssistantTool, AssistantToolResource, Attachment, BaseMessage, ChatRole, FunctionSpec, Pagination, SortOrder, Thread, ThreadFullMessage, ThreadMessage, ThreadMessageFile, ToolSpec, VectorStore}
+import io.cequence.openaiscala.domain.{
+  AssistantTool,
+  AssistantToolResource,
+  Attachment,
+  BaseMessage,
+  ChatRole,
+  FunctionSpec,
+  Pagination,
+  SortOrder,
+  Thread,
+  ThreadFullMessage,
+  ThreadMessage,
+  ThreadMessageFile,
+  ToolSpec,
+  VectorStore
+}
 
 import java.io.File
 import scala.concurrent.Future

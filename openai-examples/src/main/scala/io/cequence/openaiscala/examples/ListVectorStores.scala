@@ -9,4 +9,3 @@ object ListVectorStores extends Example {
       vectorStores.foreach(println)
     }
 }
-
