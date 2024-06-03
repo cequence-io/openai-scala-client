@@ -1,6 +1,0 @@
-params = List()
-bodyParams = ArrayBuffer((input_file_id,Some("file-mjdvW9DTeWDXO2g6sks1kvuQ")), (endpoint,Some("/v1/chat/completions")), (completion_window,Some("24h")), (metadata,Some({"customer_id":"user_123456789","batch_description":"Nightly eval job"})))
-bodyParamsX: ArrayBuffer((input_file_id,"file-mjdvW9DTeWDXO2g6sks1kvuQ"), (endpoint,"/v1/chat/completions"), (completion_window,"24h"), (metadata,{"customer_id":"user_123456789","batch_description":"Nightly eval job"}))
-Batch(batch_zb1dpz3HcFjOdo058gEg8iPn,batch,/v1/chat/completions,None,file-mjdvW9DTeWDXO2g6sks1kvuQ,24h,validating,None,None,1715088537,None,Some(1715174937),None,None,None,None,None,None,Map(total -> 0, completed -> 0, failed -> 0),Some(Map(customer_id -> user_123456789, batch_description -> Nightly eval job)))
-
-Process finished with exit code 0
