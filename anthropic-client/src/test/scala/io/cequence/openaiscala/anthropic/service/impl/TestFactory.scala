@@ -28,8 +28,7 @@ class TestAnthropicServiceImpl(
 )(
   implicit override val ec: ExecutionContext,
   override val materializer: Materializer
-) extends AnthropicServiceClassImpl(coreUrl, requestContext)
-    with MockFactory {
+) extends AnthropicServiceClassImpl(coreUrl, requestContext) {
 
   val defaultAcceptableStatusCodes = Seq(200, 201, 202, 204)
 
