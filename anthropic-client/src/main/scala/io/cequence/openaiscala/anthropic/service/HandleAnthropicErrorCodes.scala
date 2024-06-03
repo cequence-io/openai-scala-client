@@ -37,9 +37,9 @@ trait HandleAnthropicErrorCodes extends WSRequestHelper {
       case 529 => throw new AnthropicScalaEngineOverloadedException(errorMessage)
 
       // 400 - invalid_request_error: There was an issue with the format or content of your request. We may also use this error type for other 4XX status codes not listed below.
-      case 400 => throw new OpenAIScalaClientException(errorMessage)
+      case 400 => throw new AnthropicScalaClientException(errorMessage)
 
-      case _ => throw new OpenAIScalaClientException(errorMessage)
+      case _ => throw new AnthropicScalaClientException(errorMessage)
     }
   }
 }

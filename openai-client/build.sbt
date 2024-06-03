@@ -26,7 +26,7 @@ libraryDependencies ++= Seq(
 
 libraryDependencies += "org.scalactic" %% "scalactic" % "3.2.18"
 libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.18" % Test
-libraryDependencies += "org.scalamock" %% "scalamock" % "5.1.0" % Test
+libraryDependencies += "org.scalamock" %% "scalamock" % scakaMock % Test
 
 //libraryDependencies ++= Seq(
 //  "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
