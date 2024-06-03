@@ -476,7 +476,7 @@ object JsonFormats {
     }.foldLeft(Json.obj())(_ ++ _)
   }
 
-  implicit lazy val assistantToolResourcesWrites: Writes[AssistantToolResource] = {
+  implicit lazy val assistantToolResourceWrites: Writes[AssistantToolResource] = {
     case c: CodeInterpreterResources =>
       Json.obj("code_interpreter" -> Json.obj("file_ids" -> c.fileIds))
 
@@ -495,6 +495,28 @@ object JsonFormats {
         else Json.obj()
 
       Json.obj("file_search" -> (vectorStoreIdsJson ++ vectorStoresJson))
+  }
+
+  implicit lazy val assistantToolResourceReads: Reads[AssistantToolResource] = Reads { json =>
+    (json \ "code_interpreter").toOption.map { codeInterpreterJson =>
+      (codeInterpreterJson \ "file_ids").validate[Seq[FileId]].map(CodeInterpreterResources)
+    }.orElse(
+      (json \ "file_search").toOption.map { fileSearchJson =>
+        val fileSearchVectorStoreIds = (fileSearchJson \ "vector_store_ids").asOpt[Seq[String]]
+
+        val fileSearchVectorStores = (json \ "file_search" \ "vector_stores")
+          .asOpt[Seq[AssistantToolResource.VectorStore]]
+
+        JsSuccess(
+          FileSearchResources(
+            fileSearchVectorStoreIds.getOrElse(Nil),
+            fileSearchVectorStores.getOrElse(Nil)
+          )
+        )
+      }
+    ).getOrElse(
+      JsError("Expected code_interpreter or file_search")
+    )
   }
 
   implicit lazy val threadReads: Reads[Thread] =
