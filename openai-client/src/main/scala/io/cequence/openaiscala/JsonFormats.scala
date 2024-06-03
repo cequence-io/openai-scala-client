@@ -204,7 +204,7 @@ object JsonFormats {
 
   implicit val messageReads: Reads[BaseMessage] = Reads { (json: JsValue) =>
     val role = (json \ "role").as[ChatRole]
-    val nameOpt = (json \ "name").asOpt[String]
+    (json \ "name").asOpt[String]
 
     val message: BaseMessage = role match {
       case ChatRole.System => json.as[SystemMessage]

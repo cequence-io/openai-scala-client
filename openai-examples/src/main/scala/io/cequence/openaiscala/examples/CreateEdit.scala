@@ -2,10 +2,11 @@ package io.cequence.openaiscala.examples
 
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateEditSettings
+import scala.concurrent.Future
 
 object CreateEdit extends Example {
 
-  override protected def run =
+  override protected def run: Future[Unit] =
     service
       .createEdit(
         input = "What day of the wek is it?",

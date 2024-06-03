@@ -30,7 +30,7 @@ trait FunctionNameHelper {
 
   private val ignoreFunNames = Seq("wrap", "anonfun", "getFunctionName")
 
-  protected def getFunctionName() = {
+  protected def getFunctionName(): String = {
     // need to use StackWalker to get the caller function name
     val predicate =
       Optional.of[Predicate[String]]((t: String) => ignoreFunNames.forall(!t.contains(_)))

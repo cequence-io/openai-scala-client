@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.examples
 
+import scala.concurrent.Future
 object CreateCompletion extends Example {
 
   private val text =
@@ -11,7 +12,7 @@ object CreateCompletion extends Example {
       |Maya
     """.stripMargin
 
-  def run =
+  def run: Future[Unit] =
     service.createCompletion(text).map(completion => println(completion.choices.head.text))
 
 }

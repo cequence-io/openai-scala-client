@@ -292,7 +292,7 @@ private[service] trait OpenAIServiceImpl
     file: File,
     displayFileName: Option[String]
   ): Future[FileInfo] = {
-    val fileRows = readFile(file)
+    readFile(file)
     // parse the fileContent as Seq[BatchRow] solely for the purpose of validating its structure, OpenAIScalaClientException is thrown if the parsing fails
 
 //    fileRows.map { row =>

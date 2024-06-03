@@ -1,6 +1,7 @@
 package io.cequence.openaiscala.examples
 
 import io.cequence.openaiscala.domain.{BaseMessage, FunctionSpec, UserMessage}
+import scala.concurrent.Future
 
 object CreateChatFunCompletion extends Example {
 
@@ -30,7 +31,7 @@ object CreateChatFunCompletion extends Example {
     )
   )
 
-  def run =
+  def run: Future[Unit] =
     // if we want to force the model to use the above function as a response
     // we can do so by passing: responseFunctionName = Some("get_current_weather")`
     service

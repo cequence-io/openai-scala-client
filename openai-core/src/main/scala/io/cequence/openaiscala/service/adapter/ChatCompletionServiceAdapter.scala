@@ -6,6 +6,7 @@ import io.cequence.openaiscala.service.OpenAIChatCompletionService
 import io.cequence.wsclient.service.CloseableService
 
 import scala.concurrent.Future
+import io.cequence.openaiscala.domain.response.ChatCompletionResponse
 
 private class ChatCompletionServiceAdapter[S <: CloseableService](
   chatCompletionService: OpenAIChatCompletionService,
@@ -23,7 +24,7 @@ private class ChatCompletionServiceAdapter[S <: CloseableService](
   override def createChatCompletion(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
-  ) =
+  ): Future[ChatCompletionResponse] =
     chatCompletionService.createChatCompletion(messages, settings)
 
   override def close(): Unit = {

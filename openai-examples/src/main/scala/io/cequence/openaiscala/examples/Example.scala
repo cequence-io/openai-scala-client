@@ -38,6 +38,6 @@ trait ExampleBase[T <: CloseableService] {
 
   protected def run: Future[_]
 
-  protected def printMessageContent(response: ChatCompletionResponse) =
+  protected def printMessageContent(response: ChatCompletionResponse): Unit =
     println(response.choices.head.message.content)
 }

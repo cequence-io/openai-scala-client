@@ -8,10 +8,11 @@ import io.cequence.openaiscala.domain.settings.{
   ImageSizeType,
   ImageStyleType
 }
+import scala.concurrent.Future
 
 object CreateImage extends Example {
 
-  override protected def run =
+  override protected def run: Future[Unit] =
     service
       .createImage(
         "a cute baby sea otter",

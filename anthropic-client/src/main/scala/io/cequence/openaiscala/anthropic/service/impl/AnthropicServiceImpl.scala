@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
 import akka.NotUsed
-import akka.stream.Materializer
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.anthropic.JsonFormats
