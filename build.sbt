@@ -7,7 +7,7 @@ val scala3 = "3.2.2"
 
 ThisBuild / organization := "io.cequence"
 ThisBuild / scalaVersion := scala212
-ThisBuild / version := "1.0.1-RC.1"
+ThisBuild / version := "1.0.1-RC.20"
 ThisBuild / isSnapshot := false
 
 lazy val commonSettings = Seq(
@@ -52,11 +52,13 @@ lazy val client_stream = (project in file("openai-client-stream"))
   .aggregate(client)
 
 // note that for anthropic_client we provide a streaming extension within the module as well
+// TODO: use ws-client-play and ws-client-stream instead of client and client_stream
 lazy val anthropic_client = (project in file("anthropic-client"))
   .settings(commonSettings *)
   .dependsOn(core, client, client_stream)
   .aggregate(core, client, client_stream)
 
+// TODO: use ws-client-play and ws-client-stream instead of client and client_stream
 lazy val google_vertexai_client = (project in file("google-vertexai-client"))
   .settings(commonSettings *)
   .dependsOn(core, client, client_stream)

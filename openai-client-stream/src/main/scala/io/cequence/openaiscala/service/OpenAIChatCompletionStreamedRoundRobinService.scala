@@ -5,7 +5,6 @@ import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response.ChatCompletionChunkResponse
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.service.adapter.MappedModel
 
 import java.util.concurrent.atomic.AtomicInteger
 

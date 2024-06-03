@@ -70,6 +70,7 @@ trait OpenAIServiceConsts {
     )
 
     val UploadFineTuneFile = UploadFileSettings(purpose = FileUploadPurpose.`fine-tune`)
+
     val UploadBatchFile = UploadFileSettings(purpose = FileUploadPurpose.batch)
 
     val CreateFineTune = CreateFineTuneSettings(
