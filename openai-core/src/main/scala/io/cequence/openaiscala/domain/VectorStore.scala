@@ -17,7 +17,7 @@ case class VectorStore(
 )
 
 case class FileCounts(
-  in_progress: Int,
+  inProgress: Int,
   completed: Int,
   cancelled: Int,
   failed: Int,

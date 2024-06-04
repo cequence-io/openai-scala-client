@@ -379,6 +379,55 @@ private[service] trait OpenAIServiceImpl
       readAttribute(response, "data").asSafeArray[VectorStore]
     }
 
+  override def deleteVectorStore(
+    vectorStoreId: String
+  ): Future[DeleteResponse] =
+    execDELETEWithStatus(
+      EndPoint.vector_stores,
+      endPointParam = Some(vectorStoreId)
+    ).map(handleDeleteEndpointResponse)
+
+  override def createVectorStoreFile(
+    vectorStoreId: String,
+    fileId: String,
+    chunkingStrategy: ChunkingStrategy = ChunkingStrategy.AutoChunkingStrategy
+  ): Future[VectorStoreFile] =
+    execPOST(
+      EndPoint.vector_stores,
+      endPointParam = Some(s"$vectorStoreId/files"),
+      bodyParams = jsonBodyParams(
+        Param.file_id -> Some(fileId),
+        Param.chunking_strategy -> Some(Json.toJson(chunkingStrategy))
+      )
+    ).map(
+      _.asSafe[VectorStoreFile]
+    )
+
+  override def listVectorStoreFiles(
+    vectorStoreId: String,
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None,
+    filter: Option[VectorStoreFileStatus] = None
+  ): Future[Seq[VectorStoreFile]] =
+    execGET(
+      EndPoint.vector_stores,
+      endPointParam = Some(s"$vectorStoreId/files"),
+      params = paginationParams(pagination) :+
+        Param.order -> order :+
+        Param.filter -> filter
+    ).map { response =>
+      readAttribute(response, "data").asSafeArray[VectorStoreFile]
+    }
+
+  override def deleteVectorStoreFile(
+    vectorStoreId: String,
+    fileId: String
+  ): Future[DeleteResponse] =
+    execDELETEWithStatus(
+      EndPoint.vector_stores,
+      endPointParam = Some(s"$vectorStoreId/files/$fileId")
+    ).map(handleDeleteEndpointResponse)
+
   override def createFineTune(
     training_file: String,
     validation_file: Option[String] = None,

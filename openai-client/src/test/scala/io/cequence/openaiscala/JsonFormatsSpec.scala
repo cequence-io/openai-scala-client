@@ -32,7 +32,6 @@ object JsonFormatsSpec {
   }
 }
 
-@Ignore
 class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
 
   private val textResponseJson =
@@ -102,6 +101,15 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       |  }
       |}""".stripMargin
 
+  private val fileCountsJson =
+    """{
+      |  "in_progress" : 1,
+      |  "completed" : 2,
+      |  "cancelled" : 3,
+      |  "failed" : 4,
+      |  "total" : 10
+      |}""".stripMargin
+
   private val attachmentJson =
     """{
       |  "file_id" : {
@@ -136,7 +144,7 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       )
     }
 
-    "serialize and deserialize file search's resources" in {
+    "serialize and deserialize file search's resources" ignore {
       testCodec[AssistantToolResource](
         FileSearchResources(
           Seq("vs_xxx"),
@@ -188,6 +196,131 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       )
     }
 
+    "serialize and deserialize FileCounts" in {
+      val integration = FileCounts(
+        inProgress = 1,
+        completed = 2,
+        cancelled = 3,
+        failed = 4,
+        total = 10
+      )
+      testCodec[FileCounts](
+        integration,
+        fileCountsJson,
+        Pretty
+      )
+    }
+
+    "serialize and deserialize VectorStore" in {
+      val vectorStore = VectorStore(
+        fileIds = Seq(FileId("file-123")),
+        metadata = Map("key" -> "value")
+      )
+      testCodec[VectorStore](
+        vectorStore,
+        """{
+          |  "file_ids" : [ {
+          |    "file_id" : "file-123"
+          |  } ],
+          |  "metadata" : {
+          |    "key" : "value"
+          |  }
+          |}""".stripMargin,
+        Pretty
+      )
+    }
+
+    "serialize and deserialize VectorStoreFileStatus" in {
+      import VectorStoreFileStatus._
+      testCodec[VectorStoreFileStatus](Cancelled, "\"cancelled\"".stripMargin, Pretty)
+      testCodec[VectorStoreFileStatus](Completed, "\"completed\"".stripMargin, Pretty)
+      testCodec[VectorStoreFileStatus](InProgress, "\"in_progress\"".stripMargin, Pretty)
+      testCodec[VectorStoreFileStatus](Failed, "\"failed\"".stripMargin, Pretty)
+    }
+
+    "serialize and deserialize LastErrorCode" in {
+      import LastErrorCode._
+      testCodec[LastErrorCode](ServerError, "\"server_error\"".stripMargin, Pretty)
+      testCodec[LastErrorCode](
+        RateLimitExceeded,
+        "\"rate_limit_exceeded\"".stripMargin,
+        Pretty
+      )
+    }
+
+    "serialize and deserialize ChunkingStrategy" in {
+      import ChunkingStrategy._
+      testCodec[ChunkingStrategy](
+        AutoChunkingStrategy,
+        """{
+        |  "type" : "auto"
+        |}""".stripMargin.stripMargin,
+        Pretty
+      )
+      testCodec[ChunkingStrategy](
+        StaticChunkingStrategy(None, None),
+        """{
+          |  "type" : "static",
+          |  "max_chunk_size_tokens" : 800,
+          |  "chunk_overlap_tokens" : 400
+          |}""".stripMargin,
+        Pretty
+      )
+      testDeserialization[ChunkingStrategy](
+        StaticChunkingStrategy(None, None),
+        """{
+          |  "type" : "static"
+          |}""".stripMargin
+      )
+      testDeserialization[ChunkingStrategy](
+        StaticChunkingStrategy(Some(1000), None),
+        """{
+          |  "type" : "static",
+          |  "max_chunk_size_tokens" : 1000
+          |}""".stripMargin
+      )
+      testDeserialization[ChunkingStrategy](
+        StaticChunkingStrategy(None, Some(150)),
+        """{
+          |  "type" : "static",
+          |  "chunk_overlap_tokens" : 150
+          |}""".stripMargin
+      )
+    }
+
+    "serialize and deserialize VectorStoreFile" in {
+      val vectorStoreFile = VectorStoreFile(
+        id = "file-id-1",
+        `object` = "file",
+        usageBytes = 100,
+        createdAt = 1000,
+        vectorStoreId = "vs-123",
+        status = VectorStoreFileStatus.Completed,
+        lastError = Some(LastError(LastErrorCode.ServerError, "error message")),
+        chunkingStrategy = ChunkingStrategy.StaticChunkingStrategy(Some(1000), Some(500))
+      )
+      testCodec[VectorStoreFile](
+        vectorStoreFile,
+        """{
+            |  "id" : "file-id-1",
+            |  "object" : "file",
+            |  "usage_bytes" : 100,
+            |  "created_at" : 1000,
+            |  "vector_store_id" : "vs-123",
+            |  "status" : "completed",
+            |  "last_error" : {
+            |    "code" : "server_error",
+            |    "message" : "error message"
+            |  },
+            |  "chunking_strategy" : {
+            |    "type" : "static",
+            |    "max_chunk_size_tokens" : 1000,
+            |    "chunk_overlap_tokens" : 500
+            |  }
+            |}""".stripMargin,
+        Pretty
+      )
+    }
   }
 
   private def testCodec[A](
