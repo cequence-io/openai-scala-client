@@ -239,6 +239,39 @@ trait OpenAIServiceWrapper
     _.listVectorStores(pagination, order)
   )
 
+  override def deleteVectorStore(
+    vectorStoreId: String
+  ): Future[DeleteResponse] = wrap(
+    _.deleteVectorStore(vectorStoreId)
+  )
+
+  override def createVectorStoreFile(
+    vectorStoreId: String,
+    fileId: String,
+    chunkingStrategy: ChunkingStrategy = ChunkingStrategy.AutoChunkingStrategy
+  ): Future[VectorStoreFile] =
+    wrap(
+      _.createVectorStoreFile(vectorStoreId, fileId, chunkingStrategy)
+    )
+
+  def listVectorStoreFiles(
+    vectorStoreId: String,
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None,
+    filter: Option[VectorStoreFileStatus] = None
+  ): Future[Seq[VectorStoreFile]] =
+    wrap(
+      _.listVectorStoreFiles(vectorStoreId, pagination, order, filter)
+    )
+
+  def deleteVectorStoreFile(
+    vectorStoreId: String,
+    fileId: String
+  ): Future[DeleteResponse] =
+    wrap(
+      _.deleteVectorStoreFile(vectorStoreId, fileId)
+    )
+
   override def createModeration(
     input: String,
     settings: CreateModerationSettings
