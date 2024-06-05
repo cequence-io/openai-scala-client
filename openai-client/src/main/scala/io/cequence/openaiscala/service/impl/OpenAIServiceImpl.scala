@@ -65,6 +65,46 @@ private[service] trait OpenAIServiceImpl
     )
   }
 
+  def createRun(
+    run: Run,
+    tools: Seq[ToolSpec],
+    responseToolChoice: Option[String] = None,
+    settings: CreateRunSettings = DefaultSettings.CreateRun,
+    stream: Boolean
+  ): Future[RunResponse] = {
+    val coreParams = createBodyParamsForRun(settings, stream)
+
+    val toolParam = toolParams(tools)
+
+    execPOST(
+      EndPoint.runs,
+      bodyParams = coreParams ++ toolParam
+    ).map(
+      _.asSafe[RunResponse]
+    )
+  }
+
+  private def toolParams(
+    tools: Seq[ToolSpec],
+    responseToolChoice: Option[String] = None
+  ): Seq[(Param, Option[JsValue])] = {
+    val toolJsons = tools.map { case tool: FunctionSpec =>
+      Map("type" -> "function", "function" -> Json.toJson(tool))
+    }
+
+    val extraParams = jsonBodyParams(
+      Param.tools -> Some(toolJsons),
+      Param.tool_choice -> responseToolChoice.map(name =>
+        Map(
+          "type" -> "function",
+          "function" -> Map("name" -> name)
+        )
+      ) // otherwise "auto" is used by default (if tools are present)
+    )
+
+    extraParams
+  }
+
   override def createChatToolCompletion(
     messages: Seq[BaseMessage],
     tools: Seq[ToolSpec],
@@ -74,12 +114,9 @@ private[service] trait OpenAIServiceImpl
     val coreParams =
       createBodyParamsForChatCompletion(messages, settings, stream = false)
 
-    val toolJsons = tools.map(
-      _ match {
-        case tool: FunctionSpec =>
-          Map("type" -> "function", "function" -> Json.toJson(tool))
-      }
-    )
+    val toolJsons: Seq[Map[String, Object]] = tools.map { case tool: FunctionSpec =>
+      Map("type" -> "function", "function" -> Json.toJson(tool))
+    }
 
     val extraParams = jsonBodyParams(
       Param.tools -> Some(toolJsons),

@@ -23,7 +23,7 @@ object EndPoint {
   case object batches extends EndPoint
   case object assistants extends EndPoint
   case object vector_stores extends EndPoint
-  case object vector_store_files extends EndPoint("vector_stores/files")
+  case object runs extends EndPoint
 }
 
 sealed trait Param extends EnumValue
@@ -103,4 +103,5 @@ object Param {
   case object completion_window extends Param
   case object chunking_strategy extends Param
   case object filter extends Param
+  case object max_prompt_tokens extends Param
 }

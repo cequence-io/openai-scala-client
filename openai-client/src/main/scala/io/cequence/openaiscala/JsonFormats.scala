@@ -782,4 +782,46 @@ object JsonFormats {
 
     Format(reads, writes)
   }
+
+  implicit lazy val runReasonFormat: Format[Run.Reason] = {
+    implicit lazy val stringStringMapFormat: Format[Map[String, String]] =
+      JsonUtil.StringStringMapFormat
+    Json.format[Run.Reason]
+  }
+
+  implicit lazy val lastRunErrorCodeFormat: Format[Run.LastErrorCode] = {
+    import Run.LastErrorCode._
+    snakeEnumFormat(ServerError, RateLimitExceeded, InvalidPrompt)
+  }
+
+  implicit lazy val truncationStrategyTypeFormat: Format[Run.TruncationStrategyType] = {
+    import Run.TruncationStrategyType._
+    snakeEnumFormat(Auto, LastMessages)
+  }
+
+  implicit lazy val RunStatusFormat: Format[RunStatus] = {
+    import RunStatus._
+    snakeEnumFormat(
+      Queued,
+      InProgress,
+      RequiresAction,
+      Cancelling,
+      Cancelled,
+      Failed,
+      Completed,
+      Incomplete,
+      Expired
+    )
+  }
+  Run
+  implicit lazy val RunFormat: Format[Run] =
+    Json.format[Run]
+
+  implicit lazy val RequiredActionFormat: Format[RequiredAction] = Json.format[RequiredAction]
+  implicit lazy val ToolCallFormat: Format[ToolCall] = Json.format[ToolCall]
+  implicit lazy val SubmitToolOutputsFormat: Format[SubmitToolOutputs] =
+    Json.format[SubmitToolOutputs]
+
+  implicit lazy val runResponseFormat: Format[RunResponse] =
+    Json.format[RunResponse]
 }

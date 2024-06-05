@@ -21,7 +21,8 @@ private[service] trait OpenAICoreServiceImpl
     extends OpenAICoreService
     with OpenAIChatCompletionServiceImpl
     with HandleOpenAIErrorCodes
-    with CompletionBodyMaker {
+    with CompletionBodyMaker
+    with RunBodyMaker {
 
 //  override protected def handleErrorCodes(
 //    httpCode: Int,

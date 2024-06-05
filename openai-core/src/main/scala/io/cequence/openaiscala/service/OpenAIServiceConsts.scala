@@ -22,6 +22,11 @@ trait OpenAIServiceConsts {
       max_tokens = Some(1000)
     )
 
+    val CreateRun = CreateRunSettings(
+      model = ModelId.gpt_4_1106_preview,
+      maxPromptTokens = Some(1000)
+    )
+
     val CreateChatCompletion = CreateChatCompletionSettings(
       model = ModelId.gpt_3_5_turbo_1106,
       max_tokens = Some(1000)
