@@ -104,4 +104,7 @@ object Param {
   case object chunking_strategy extends Param
   case object filter extends Param
   case object max_prompt_tokens extends Param
+  case object `object` extends Param
+  case object assistant_id extends Param
+  case object thread_id extends Param
 }

@@ -6,7 +6,8 @@ object RetrieveThread extends Example {
   override protected def run: Future[Unit] =
     for {
       thread <- service.retrieveThread(
-        "thread_c6fFMmUw30l30SzG2KdUViMn"
+//        "thread_c6fFMmUw30l30SzG2KdUViMn"
+        "thread_YnAy1CQ51AkBmcI3XWO1zuUB"
       )
     } yield {
       println(thread)

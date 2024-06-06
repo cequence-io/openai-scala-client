@@ -18,6 +18,7 @@ import io.cequence.openaiscala.domain.response.ResponseFormat.{
 }
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.{ThreadMessageFile, _}
+import StepDetail.{MessageCreation, ToolCalls}
 import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.JsonUtil.{enumFormat, snakeEnumFormat}
 import io.cequence.wsclient.domain.EnumValue
@@ -822,6 +823,56 @@ object JsonFormats {
   implicit lazy val SubmitToolOutputsFormat: Format[SubmitToolOutputs] =
     Json.format[SubmitToolOutputs]
 
-  implicit lazy val runResponseFormat: Format[RunResponse] =
-    Json.format[RunResponse]
+  implicit lazy val runResponseFormat: Format[RunResponse] = Json.format[RunResponse]
+
+  implicit lazy val runStepLastErrorFormat: Format[RunStep.LastError] = {
+    import RunStep.LastError._
+    snakeEnumFormat[RunStep.LastError](ServerError, RateLimitExceeded)
+  }
+  implicit lazy val runStepFormat: Format[RunStep] = {
+    implicit val jsonConfig: JsonConfiguration = JsonConfiguration(SnakeCase)
+    Json.format[RunStep]
+  }
+
+  implicit lazy val genericLastError: Format[GenericLastError[RunStep.LastError]] = {
+    implicit lazy val genericLastErrorFormat: Format[GenericLastError[RunStep.LastError]] =
+      Json.format[GenericLastError[RunStep.LastError]]
+    genericLastErrorFormat
+  }
+
+  implicit val messageCreationReads: Reads[MessageCreation] =
+    (__ \ "message_creation" \ "message_id").read[String].map(MessageCreation)
+  implicit val messageCreationWrites: Writes[MessageCreation] = Writes { messageCreation =>
+    Json.obj("message_creation" -> Json.obj("message_id" -> messageCreation.messageId))
+  }
+  implicit val messageCreationFormat: Format[MessageCreation] =
+    Format(messageCreationReads, messageCreationWrites)
+
+  implicit val toolCallsFormat: Format[ToolCalls] = Json.format[ToolCalls]
+
+  implicit val stepDetailFormat: Format[StepDetail] = {
+    implicit val jsonConfig: JsonConfiguration = JsonConfiguration(SnakeCase)
+
+    implicit val stepDetailReads: Reads[StepDetail] = Reads[StepDetail] { json =>
+      (json \ "type").as[String] match {
+        case "message_creation" => messageCreationFormat.reads(json)
+        case "tool_calls"       => toolCallsFormat.reads(json)
+      }
+    }
+
+    implicit val stepDetailWrites: Writes[StepDetail] = Writes[StepDetail] {
+      case mc: MessageCreation =>
+        messageCreationFormat.writes(mc).as[JsObject] + ("type" -> JsString("MessageCreation"))
+      case tc: ToolCalls =>
+        toolCallsFormat.writes(tc).as[JsObject] + ("type" -> JsString("ToolCalls"))
+    }
+
+    Format(stepDetailReads, stepDetailWrites)
+  }
+
+//  implicit def genericLastErrorFormat[T <: EnumValue](
+//    implicit format: Format[T]
+//  ): Format[GenericLastError[T]] = {
+//    snakeEnumFormat[GenericLastError[T]]
+//  }
 }

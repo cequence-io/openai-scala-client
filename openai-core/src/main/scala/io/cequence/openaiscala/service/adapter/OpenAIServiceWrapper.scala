@@ -52,6 +52,42 @@ trait OpenAIServiceWrapper
     )
   )
 
+  def createRun(
+    threadId: String,
+    assistantId: AssistantId,
+    instructions: Option[String],
+    tools: Seq[ToolSpec],
+    responseToolChoice: Option[String] = None,
+    settings: CreateRunSettings = DefaultSettings.CreateRun,
+    stream: Boolean
+  ): Future[Run] = wrap(
+    _.createRun(
+      threadId,
+      assistantId,
+      instructions,
+      tools,
+      responseToolChoice,
+      settings,
+      stream
+    )
+  )
+
+  def retrieveRun(
+    threadId: String,
+    runId: String
+  ): Future[Option[Run]] = wrap(
+    _.retrieveRun(threadId, runId)
+  )
+
+  override def listRunSteps(
+    threadId: String,
+    runId: String,
+    pagination: Pagination,
+    order: Option[SortOrder]
+  ): Future[Seq[RunStep]] = wrap(
+    _.listRunSteps(threadId, runId, pagination, order)
+  )
+
   override def createChatToolCompletion(
     messages: Seq[BaseMessage],
     tools: Seq[ToolSpec],

@@ -41,8 +41,8 @@ case class Run(
   id: String,
   `object`: String,
   created_at: Date,
-  thread_id: String,
-  assistant_id: String,
+  thread_id: String, // path
+  assistant_id: String, // param
   status: RunStatus,
   required_action: Option[RequiredAction],
   last_error: Option[Run.LastErrorCode],
