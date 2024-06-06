@@ -7,6 +7,8 @@ import io.cequence.openaiscala.domain.AssistantToolResource.{
 import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain.ChunkingStrategy.StaticChunkingStrategy
 import io.cequence.openaiscala.domain.FineTune.WeightsAndBiases
+import io.cequence.openaiscala.domain.RequiredAction.EnforcedTool
+import io.cequence.openaiscala.domain.StepDetail.{MessageCreation, ToolCalls}
 import io.cequence.openaiscala.domain.response.AssistantToolResourceResponse.{
   CodeInterpreterResourcesResponse,
   FileSearchResourcesResponse
@@ -18,12 +20,10 @@ import io.cequence.openaiscala.domain.response.ResponseFormat.{
 }
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.{ThreadMessageFile, _}
-import StepDetail.{MessageCreation, ToolCalls}
 import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.JsonUtil.{enumFormat, snakeEnumFormat}
-import io.cequence.wsclient.domain.EnumValue
 import play.api.libs.functional.syntax._
-import play.api.libs.json.Json.toJson
+import play.api.libs.json.Json.{format, toJson}
 import play.api.libs.json.JsonNaming.SnakeCase
 import play.api.libs.json.{Format, JsValue, Json, _}
 
@@ -818,26 +818,60 @@ object JsonFormats {
   implicit lazy val RunFormat: Format[Run] =
     Json.format[Run]
 
-  implicit lazy val RequiredActionFormat: Format[RequiredAction] = Json.format[RequiredAction]
-  implicit lazy val ToolCallFormat: Format[ToolCall] = Json.format[ToolCall]
-  implicit lazy val SubmitToolOutputsFormat: Format[SubmitToolOutputs] =
-    Json.format[SubmitToolOutputs]
+  implicit val requiredActionFormat: Format[RequiredAction] = {
+    import RequiredAction._
+
+    val enforcedToolReads: Reads[EnforcedTool] = Reads { json =>
+      (json \ "type").validate[String].flatMap {
+        case "code_interpreter" => JsSuccess(EnforcedTool(CodeInterpreterSpec))
+        case "file_search"      => JsSuccess(EnforcedTool(FileSearchSpec))
+        case "function" => {
+          val functionSpec = (json \ "function").as[FunctionSpec]
+          JsSuccess(EnforcedTool(functionSpec))
+        }
+        case _ => JsError("Unknown type")
+      }
+    }
+
+    val reads: Reads[RequiredAction] = Reads { json =>
+      json.validate[String].flatMap {
+        case "none"     => JsSuccess(None)
+        case "auto"     => JsSuccess(Auto)
+        case "required" => JsSuccess(Required)
+        case _          => enforcedToolReads.reads(json)
+      }
+    }
+
+    val writes: Writes[RequiredAction] = Writes {
+      case None                              => JsString("none")
+      case Auto                              => JsString("auto")
+      case Required                          => JsString("required")
+      case EnforcedTool(CodeInterpreterSpec) => Json.obj("type" -> "code_interpreter")
+      case EnforcedTool(FileSearchSpec)      => Json.obj("type" -> "file_search")
+      case EnforcedTool(FunctionSpec(name, _, _)) =>
+        Json.obj("type" -> "function", "function" -> Json.obj("name" -> name))
+    }
+
+    Format(reads, writes)
+  }
 
   implicit lazy val runResponseFormat: Format[RunResponse] = Json.format[RunResponse]
 
-  implicit lazy val runStepLastErrorFormat: Format[RunStep.LastError] = {
-    import RunStep.LastError._
-    snakeEnumFormat[RunStep.LastError](ServerError, RateLimitExceeded)
-  }
+//  implicit lazy val runStepLastErrorFormat: Format[RunStep.LastError] =
+//    Json.format[RunStep.LastError]
+//
+//  implicit lazy val runStepLastErrorCodeFormat: Format[RunStep.LastErrorCode] = {
+//    import RunStep.LastErrorCode._
+//    snakeEnumFormat[RunStep.LastErrorCode](ServerError, RateLimitExceeded)
+//  }
+//
+//  implicit lazy val runStepLastErrorFormat: Format[RunStep.LastError] = {
+//    format[RunStep.LastError]
+//  }
+
   implicit lazy val runStepFormat: Format[RunStep] = {
     implicit val jsonConfig: JsonConfiguration = JsonConfiguration(SnakeCase)
     Json.format[RunStep]
-  }
-
-  implicit lazy val genericLastError: Format[GenericLastError[RunStep.LastError]] = {
-    implicit lazy val genericLastErrorFormat: Format[GenericLastError[RunStep.LastError]] =
-      Json.format[GenericLastError[RunStep.LastError]]
-    genericLastErrorFormat
   }
 
   implicit val messageCreationReads: Reads[MessageCreation] =
@@ -845,6 +879,7 @@ object JsonFormats {
   implicit val messageCreationWrites: Writes[MessageCreation] = Writes { messageCreation =>
     Json.obj("message_creation" -> Json.obj("message_id" -> messageCreation.messageId))
   }
+
   implicit val messageCreationFormat: Format[MessageCreation] =
     Format(messageCreationReads, messageCreationWrites)
 
@@ -870,9 +905,4 @@ object JsonFormats {
     Format(stepDetailReads, stepDetailWrites)
   }
 
-//  implicit def genericLastErrorFormat[T <: EnumValue](
-//    implicit format: Format[T]
-//  ): Format[GenericLastError[T]] = {
-//    snakeEnumFormat[GenericLastError[T]]
-//  }
 }

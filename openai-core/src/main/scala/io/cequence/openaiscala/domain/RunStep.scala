@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.domain
 
 import io.cequence.openaiscala.domain.response.UsageInfo
-import io.cequence.wsclient.domain.EnumValue
+import io.cequence.wsclient.domain.{EnumValue, SnakeCaseEnumValue}
 
 import java.util.Date
 
@@ -15,9 +15,8 @@ case class RunStep(
   `type`: String,
   status: String,
   stepDetails: Option[StepDetail],
-  lastError: Option[
-    GenericLastError[RunStep.LastError]
-  ],
+//  lastError: Map[String, String],
+  lastError: Option[LastError],
   expiredAt: Option[Date],
   cancelledAt: Option[Date],
   failedAt: Option[Date],
@@ -28,10 +27,15 @@ case class RunStep(
 
 object RunStep {
 
-  sealed trait LastError extends EnumValue
-  object LastError {
-    case object ServerError extends LastError
-    case object RateLimitExceeded extends LastError
-  }
+//  case class LastError(
+//    code: LastErrorCode,
+//    message: String
+//  )
+//
+//  sealed trait LastErrorCode extends SnakeCaseEnumValue
+//  object LastErrorCode {
+//    case object ServerError extends LastErrorCode
+//    case object RateLimitExceeded extends LastErrorCode
+//  }
 
 }

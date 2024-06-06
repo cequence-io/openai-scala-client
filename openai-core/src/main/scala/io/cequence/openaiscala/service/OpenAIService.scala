@@ -13,8 +13,10 @@ import io.cequence.openaiscala.domain.{
   BaseMessage,
   ChatRole,
   ChunkingStrategy,
+  ForcableTool,
   FunctionSpec,
   Pagination,
+  RequiredAction,
   Run,
   RunStep,
   SortOrder,
@@ -105,9 +107,11 @@ trait OpenAIService extends OpenAICoreService {
   def createRun(
     threadId: String,
     assistantId: AssistantId,
-    instructions: Option[String],
-    tools: Seq[ToolSpec],
-    responseToolChoice: Option[String] = None,
+    instructions: Option[String] = None,
+    additionalInstructions: Option[String] = None,
+    additionalMessages: Seq[BaseMessage] = Seq.empty,
+    tools: Seq[ForcableTool] = Seq.empty,
+    responseToolChoice: Option[RequiredAction] = None,
     settings: CreateRunSettings = DefaultSettings.CreateRun,
     stream: Boolean
   ): Future[Run]

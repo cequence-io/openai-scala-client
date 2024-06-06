@@ -107,4 +107,6 @@ object Param {
   case object `object` extends Param
   case object assistant_id extends Param
   case object thread_id extends Param
+  case object additional_instructions extends Param
+  case object additional_messages extends Param
 }

@@ -69,8 +69,10 @@ private[service] trait OpenAIServiceImpl
     threadId: String,
     assistantId: AssistantId,
     instructions: Option[String],
-    tools: Seq[ToolSpec],
-    responseToolChoice: Option[String] = None,
+    additionalInstructions: Option[String],
+    additionalMessages: Seq[BaseMessage],
+    tools: Seq[ForcableTool],
+    responseToolChoice: Option[RequiredAction] = None,
     settings: CreateRunSettings = DefaultSettings.CreateRun,
     stream: Boolean
   ): Future[Run] = {
@@ -78,11 +80,12 @@ private[service] trait OpenAIServiceImpl
 
     val toolParam = toolParams(tools, responseToolChoice)
 
+    val messageJsons = additionalMessages.map(Json.toJson(_)(messageWrites))
+
     val runParams = jsonBodyParams(
-//      Param.`object` -> Some("thread.run"),
-//      Param.thread_id -> Some(threadId),
       Param.assistant_id -> Some(assistantId.id),
-      Param.instructions -> Some(instructions)
+      Param.additional_instructions -> Some(instructions),
+      Param.additional_messages -> Some(messageJsons)
     )
 
     (coreParams ++ toolParam ++ runParams).foreach((x: (Param, Option[JsValue])) =>
@@ -124,21 +127,29 @@ private[service] trait OpenAIServiceImpl
     }
 
   private def toolParams(
-    tools: Seq[ToolSpec],
-    responseToolChoice: Option[String]
+    tools: Seq[ForcableTool],
+    maybeResponseToolChoice: Option[RequiredAction]
   ): Seq[(Param, Option[JsValue])] = {
-    val toolJsons = tools.map { case tool: FunctionSpec =>
-      Map("type" -> "function", "function" -> Json.toJson(tool))
+    val toolJsons = tools.map {
+      case CodeInterpreterSpec => Map("type" -> "code_interpreter")
+      case FileSearchSpec      => Map("type" -> "file_search")
+      case tool: FunctionSpec  => Map("type" -> "function", "function" -> Json.toJson(tool))
+    }
+
+    val maybeToolChoiceParam = maybeResponseToolChoice.map {
+      case RequiredAction.None                         => "none"
+      case RequiredAction.Auto                         => "auto"
+      case RequiredAction.Required                     => "required"
+      case RequiredAction.EnforcedTool(FileSearchSpec) => Map("type" -> "file_search")
+      case RequiredAction.EnforcedTool(CodeInterpreterSpec) =>
+        Map("type" -> "code_interpreter")
+      case RequiredAction.EnforcedTool(FunctionSpec(name, _, _)) =>
+        Map("type" -> "function", "function" -> Map("name" -> name))
     }
 
     val extraParams = jsonBodyParams(
       Param.tools -> Some(toolJsons),
-      Param.tool_choice -> responseToolChoice.map(name =>
-        Map(
-          "type" -> "function",
-          "function" -> Map("name" -> name)
-        )
-      ) // otherwise "auto" is used by default (if tools are present)
+      Param.tool_choice -> maybeToolChoiceParam
     )
 
     extraParams

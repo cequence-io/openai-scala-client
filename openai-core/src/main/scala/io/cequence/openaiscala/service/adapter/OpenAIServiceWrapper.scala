@@ -56,8 +56,10 @@ trait OpenAIServiceWrapper
     threadId: String,
     assistantId: AssistantId,
     instructions: Option[String],
-    tools: Seq[ToolSpec],
-    responseToolChoice: Option[String] = None,
+    additionalInstructions: Option[String],
+    additionalMessages: Seq[BaseMessage],
+    tools: Seq[ForcableTool],
+    responseToolChoice: Option[RequiredAction] = None,
     settings: CreateRunSettings = DefaultSettings.CreateRun,
     stream: Boolean
   ): Future[Run] = wrap(
@@ -65,6 +67,8 @@ trait OpenAIServiceWrapper
       threadId,
       assistantId,
       instructions,
+      additionalInstructions,
+      additionalMessages,
       tools,
       responseToolChoice,
       settings,

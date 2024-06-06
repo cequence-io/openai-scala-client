@@ -22,20 +22,28 @@ object RunStatus {
   case object Expired extends RunStatus
 }
 
-case class RequiredAction(
-  `type`: String,
-  submitToolOutputs: SubmitToolOutputs
-)
+sealed trait RequiredAction
+object RequiredAction {
+  case object None extends RequiredAction
+  case object Auto extends RequiredAction
+  case object Required extends RequiredAction
+  case class EnforcedTool(spec: ForcableTool) extends RequiredAction
+}
 
-case class SubmitToolOutputs(
-  toolCalls: Seq[ToolCall]
-)
-
-case class ToolCall(
-  id: String,
-  `type`: String,
-  function: FunctionCallSpec
-)
+//case class RequiredAction(
+//  `type`: String,
+//  submitToolOutputs: SubmitToolOutputs
+//)
+//
+//case class SubmitToolOutputs(
+//  toolCalls: Seq[ToolCall]
+//)
+//
+//case class ToolCall(
+//  id: String,
+//  `type`: String,
+//  function: FunctionCallSpec
+//)
 
 case class Run(
   id: String,
@@ -45,7 +53,7 @@ case class Run(
   assistant_id: String, // param
   status: RunStatus,
   required_action: Option[RequiredAction],
-  last_error: Option[Run.LastErrorCode],
+  last_error: Option[LastError],
   expires_at: Option[Date],
   started_at: Option[Date],
   cancelled_at: Option[Date],
