@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.domain.settings
 
-import io.cequence.wsclient.domain.{EnumValue, NamedEnumValue}
+import io.cequence.wsclient.domain.NamedEnumValue
 
 case class UploadFileSettings(
   // The intended purpose of the uploaded documents. Use "fine-tune" for Fine-tuning.

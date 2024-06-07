@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.anthropic.service
 
-import io.cequence.openaiscala._
 import io.cequence.wsclient.service.ws.WSRequestHelper
 
 /**

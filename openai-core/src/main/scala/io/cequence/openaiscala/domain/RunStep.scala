@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.domain
 
 import io.cequence.openaiscala.domain.response.UsageInfo
-import io.cequence.wsclient.domain.{EnumValue, SnakeCaseEnumValue}
 
 import java.util.Date
 

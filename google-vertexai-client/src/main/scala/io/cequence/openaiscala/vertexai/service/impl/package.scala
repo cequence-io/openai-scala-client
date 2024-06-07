@@ -20,11 +20,8 @@ import io.cequence.openaiscala.domain.{
   UserSeqMessage
 }
 import io.cequence.openaiscala.domain.response.{
-  ChatCompletionChoiceChunkInfo,
   ChatCompletionChoiceInfo,
-  ChatCompletionChunkResponse,
   ChatCompletionResponse,
-  ChunkMessageSpec,
   UsageInfo => OpenAIUsageInfo
 }
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
@@ -67,7 +64,7 @@ package object impl {
                   .build()
               } else {
                 throw new IllegalArgumentException(
-                  s"Image content only supported by providing image data directly. Must start with 'data:'."
+                  "Image content only supported by providing image data directly. Must start with 'data:'."
                 )
               }
           }

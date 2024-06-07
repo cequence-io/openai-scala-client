@@ -1,8 +1,9 @@
 package io.cequence.openaiscala.examples
 
+import scala.concurrent.Future
 object DeleteVectorStore extends Example {
 
-  override protected def run =
+  override protected def run: Future[Unit] =
     for {
       vectorStore <- service.deleteVectorStore(
 //        "vs_yEz2JibrItk5Ll1AeZnarv1Z"

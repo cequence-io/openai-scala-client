@@ -47,7 +47,7 @@ object CreateRunWithVectorStore extends Example {
       )
     } yield assistant
 
-  def createSpecMessagesThread(vectorStoreId: String) =
+  def createSpecMessagesThread(vectorStoreId: String): Future[Thread] =
     for {
       thread <- service.createThread(
         messages = Seq(

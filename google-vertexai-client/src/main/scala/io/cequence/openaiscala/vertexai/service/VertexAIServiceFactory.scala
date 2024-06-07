@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.vertexai.service
 
 import com.google.cloud.vertexai.VertexAI
-import io.cequence.openaiscala.service.OpenAIChatCompletionService
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
 import io.cequence.openaiscala.vertexai.service.impl.OpenAIVertexAIChatCompletionService
 
