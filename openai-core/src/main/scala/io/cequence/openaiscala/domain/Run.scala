@@ -60,7 +60,7 @@ case class Run(
   completed_at: Option[Date],
   incomplete_details: Option[Reason],
   model: String,
-  instructions: String,
+  instructions: Option[String],
   usage: Option[UsageInfo]
 //  tool_choice: Either[String, Any], // Replace Any with the actual type when available
 //  response_format: Either[String, Any] // Replace Any with the actual type when available
