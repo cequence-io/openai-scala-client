@@ -2,30 +2,13 @@ package io.cequence.openaiscala.examples
 
 import io.cequence.openaiscala.domain.AssistantToolResource.FileSearchResources
 import io.cequence.openaiscala.domain.response.FileInfo
-import io.cequence.openaiscala.domain.response.ResponseFormat.StringResponse
 import io.cequence.openaiscala.domain.settings.CreateRunSettings
-import io.cequence.openaiscala.domain.{
-  BaseMessage,
-  FileSearchSpec,
-  FunctionSpec,
-  ModelId,
-  RequiredAction,
-  ThreadFullMessage,
-  ThreadMessage,
-  ThreadMessageContent,
-  UserMessage,
-  VectorStore
-}
-import io.cequence.openaiscala.examples.CreateRunWithVectorStore.vectorStoreId
-import io.cequence.openaiscala.examples.CreateVectorStore.service
-import io.cequence.openaiscala.examples.UploadFile.service
-import io.cequence.openaiscala.examples.adapter.RoundRobinAdapterExample.adapters
+import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.service.adapter.OpenAIServiceAdapters
 import io.cequence.openaiscala.service.{OpenAIService, OpenAIServiceFactory}
 
 import java.io.File
 import java.nio.file.Paths
-import scala.collection.immutable.ListMap
 import scala.concurrent.Future
 
 object CreateRunWithVectorStore extends Example {
@@ -79,10 +62,11 @@ object CreateRunWithVectorStore extends Example {
     } yield thread
 
   val vectorStoreId = "vs_6nTuNJKVytSoFke9nvnpptUZ" // createVectorStore(fileInfo).map(_.id)
+  val assistantId = AssistantId("asst_gIharZ60V7hvf5pQvvjkw7Mf")
   override protected def run: Future[_] =
     for {
 //      fileInfo <- uploadFile
-      assistant <- createPlanner(vectorStoreId)
+//      assistant <- createPlanner(vectorStoreId)
       eventsThread <- createSpecMessagesThread(vectorStoreId)
 
       _ <- service.listThreadMessages(eventsThread.id).map { messages =>
@@ -94,9 +78,7 @@ object CreateRunWithVectorStore extends Example {
 
       run <- service.createRun(
         threadId = eventsThread.id,
-        assistantId = assistant.id,
-        instructions = None,
-        additionalMessages = Seq.empty,
+        assistantId = assistantId,
         tools = Seq(FileSearchSpec),
         responseToolChoice = Some(RequiredAction.EnforcedTool(FileSearchSpec)),
         settings = CreateRunSettings(),
