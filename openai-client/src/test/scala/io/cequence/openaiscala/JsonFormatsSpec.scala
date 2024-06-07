@@ -227,7 +227,8 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       testCodec[FineTune.Integration](
         integration,
         weightsAndBiasesIntegrationJson,
-        Pretty
+        Pretty,
+        justSemantics = true
       )
     }
 
@@ -253,7 +254,8 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       testCodec[FileCounts](
         integration,
         fileCountsJson,
-        Pretty
+        Pretty,
+        justSemantics = true
       )
     }
 
@@ -364,7 +366,8 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
             |    "chunk_overlap_tokens" : 500
             |  }
             |}""".stripMargin,
-        Pretty
+        Pretty,
+        justSemantics = true
       )
     }
 
