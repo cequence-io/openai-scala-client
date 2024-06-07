@@ -122,6 +122,52 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       |  } ]
       |}""".stripMargin
 
+  private val ThreadMessageContentJson =
+    """{
+      |  "type": "text",
+      |  "text": {
+      |    "value": "Based on the conference program you provided, here are some talks that align with your goal of digitising and optimizing procurement processes with the use of AI:\n\n1. **\"AI AS A TOOL OR A TOY?\"**  \n   - Description: This session covers the basics of AI in the context of corporate procurement, successful case studies, AI tools for procurement managers, integrating AI into existing systems, and measuring success.\n   - Speaker: Not specified\n   - Time: 9:50-10:30, Stage 6 Chat GPT and Other AI in Procurement\n   - Source: `file-gGBbjfqasohuF31BhkIpmTZk`【4:0†source】\n\n2. **\"HOW TO 'TALK' TO AI FOR BETTER PROCUREMENT DECISIONS\"**  \n   - Description: Focuses on formulating prompts for effective interaction with AI, adapting AI to enterprise processes, overcoming communication challenges, and includes interactive demonstrations.\n   - Speaker: Not specified\n   - Time: 10:30-11:10, Stage 6 Chat GPT and Other AI in Procurement\n   - Source: `file-gGBbjfqasohuF31BhkIpmTZk`【4:0†source】\n\n3. **\"WHAT AI DOESN'T SAY / HOW IT AFFECTS CORPORATE PROCUREMENT ERRORS & BIASES IN AI: RECOGNISING & MINIMISING RISKS\"**  \n   - Description: Covers understanding AI decision-making processes, legal and ethical aspects, risk mitigation strategies, and DeepFake attacks.\n   - Speaker: Not specified\n   - Time: 11:30-12:10, Stage 6 Chat GPT and Other AI in Procurement\n   - Source: `file-gGBbjfqasohuF31BhkIpmTZk`【4:0†source】\n\n4. **\"FUTURE OF PROCUREMENT ECHOES\"**  \n   - Description: Explores the application of AI in contract management and workflow to simplify procurement processes.\n   - Speakers: Rasťo Kovaľ – Cequence, Jana Dubcová – CNPK\n   - Time: 14:30-15:30, Stage 7 The Digital Revolution in Procurement Practice\n   - Source: `file-gGBbjfqasohuF31BhkIpmTZk`【4:0†source】\n\nAttending these talks can provide valuable insights into leveraging AI for digital transformation and optimization of procurement processes.",
+      |    "annotations": [
+      |      {
+      |        "type": "file_citation",
+      |        "text": "【4:0†source】",
+      |        "start_index": 555,
+      |        "end_index": 567,
+      |        "file_citation": {
+      |          "file_id": "file-gGBbjfqasohuF31BhkIpmTZk"
+      |        }
+      |      },
+      |      {
+      |        "type": "file_citation",
+      |        "text": "【4:0†source】",
+      |        "start_index": 973,
+      |        "end_index": 985,
+      |        "file_citation": {
+      |          "file_id": "file-gGBbjfqasohuF31BhkIpmTZk"
+      |        }
+      |      },
+      |      {
+      |        "type": "file_citation",
+      |        "text": "【4:0†source】",
+      |        "start_index": 1398,
+      |        "end_index": 1410,
+      |        "file_citation": {
+      |          "file_id": "file-gGBbjfqasohuF31BhkIpmTZk"
+      |        }
+      |      },
+      |      {
+      |        "type": "file_citation",
+      |        "text": "【4:0†source】",
+      |        "start_index": 1754,
+      |        "end_index": 1766,
+      |        "file_citation": {
+      |          "file_id": "file-gGBbjfqasohuF31BhkIpmTZk"
+      |        }
+      |      }
+      |    ]
+      |  }
+      |}""".stripMargin
+
   "JSON Formats" should {
 
     "serialize and deserialize a String response format" in {
@@ -321,12 +367,64 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
         Pretty
       )
     }
+
+    "serialize and deserialize ThreadMessageContent" in {
+      val threadMessageContent =
+        ThreadMessageContent(
+          `type` = ThreadMessageContentType.text,
+          text = Some(
+            ThreadMessageText(
+              value =
+                "Based on the conference program you provided, here are some talks that align with your goal of digitising and optimizing procurement processes with the use of AI:\n\n1. **\"AI AS A TOOL OR A TOY?\"**  \n   - Description: This session covers the basics of AI in the context of corporate procurement, successful case studies, AI tools for procurement managers, integrating AI into existing systems, and measuring success.\n   - Speaker: Not specified\n   - Time: 9:50-10:30, Stage 6 Chat GPT and Other AI in Procurement\n   - Source: `file-gGBbjfqasohuF31BhkIpmTZk`【4:0†source】\n\n2. **\"HOW TO 'TALK' TO AI FOR BETTER PROCUREMENT DECISIONS\"**  \n   - Description: Focuses on formulating prompts for effective interaction with AI, adapting AI to enterprise processes, overcoming communication challenges, and includes interactive demonstrations.\n   - Speaker: Not specified\n   - Time: 10:30-11:10, Stage 6 Chat GPT and Other AI in Procurement\n   - Source: `file-gGBbjfqasohuF31BhkIpmTZk`【4:0†source】\n\n3. **\"WHAT AI DOESN'T SAY / HOW IT AFFECTS CORPORATE PROCUREMENT ERRORS & BIASES IN AI: RECOGNISING & MINIMISING RISKS\"**  \n   - Description: Covers understanding AI decision-making processes, legal and ethical aspects, risk mitigation strategies, and DeepFake attacks.\n   - Speaker: Not specified\n   - Time: 11:30-12:10, Stage 6 Chat GPT and Other AI in Procurement\n   - Source: `file-gGBbjfqasohuF31BhkIpmTZk`【4:0†source】\n\n4. **\"FUTURE OF PROCUREMENT ECHOES\"**  \n   - Description: Explores the application of AI in contract management and workflow to simplify procurement processes.\n   - Speakers: Rasťo Kovaľ – Cequence, Jana Dubcová – CNPK\n   - Time: 14:30-15:30, Stage 7 The Digital Revolution in Procurement Practice\n   - Source: `file-gGBbjfqasohuF31BhkIpmTZk`【4:0†source】\n\nAttending these talks can provide valuable insights into leveraging AI for digital transformation and optimization of procurement processes.",
+              annotations = Seq(
+                FileAnnotation(
+                  FileAnnotationType.file_citation,
+                  text = "【4:0†source】",
+                  start_index = 555,
+                  end_index = 567,
+                  file_citation = Some(FileCitation("file-gGBbjfqasohuF31BhkIpmTZk"))
+                ),
+                FileAnnotation(
+                  FileAnnotationType.file_citation,
+                  text = "【4:0†source】",
+                  start_index = 973,
+                  end_index = 985,
+                  file_citation = Some(FileCitation("file-gGBbjfqasohuF31BhkIpmTZk"))
+                ),
+                FileAnnotation(
+                  FileAnnotationType.file_citation,
+                  text = "【4:0†source】",
+                  start_index = 1398,
+                  end_index = 1410,
+                  file_citation = Some(FileCitation("file-gGBbjfqasohuF31BhkIpmTZk"))
+                ),
+                FileAnnotation(
+                  FileAnnotationType.file_citation,
+                  text = "【4:0†source】",
+                  start_index = 1754,
+                  end_index = 1766,
+                  file_citation = Some(FileCitation("file-gGBbjfqasohuF31BhkIpmTZk"))
+                )
+              )
+            )
+          )
+        )
+
+      testCodec[ThreadMessageContent](
+        threadMessageContent,
+        ThreadMessageContentJson,
+        Pretty,
+        justSemantics = true
+      )(threadMessageContentFormat)
+    }
+
   }
 
   private def testCodec[A](
     value: A,
     json: String,
-    printMode: JsonPrintMode = Compact
+    printMode: JsonPrintMode = Compact,
+    justSemantics: Boolean = false
   )(
     implicit format: Format[A]
   ): Unit = {
@@ -335,7 +433,8 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       case Compact => jsValue.toString()
       case Pretty  => Json.prettyPrint(jsValue)
     }
-    serialized shouldBe json
+
+    if (!justSemantics) serialized shouldBe json
 
     Json.parse(json).as[A] shouldBe value
   }

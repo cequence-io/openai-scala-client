@@ -65,6 +65,97 @@ private[service] trait OpenAIServiceImpl
     )
   }
 
+  override def createRun(
+    threadId: String,
+    assistantId: AssistantId,
+    instructions: Option[String],
+    additionalInstructions: Option[String],
+    additionalMessages: Seq[BaseMessage],
+    tools: Seq[ForcableTool],
+    responseToolChoice: Option[RequiredAction] = None,
+    settings: CreateRunSettings = DefaultSettings.CreateRun,
+    stream: Boolean
+  ): Future[Run] = {
+    val coreParams = createBodyParamsForRun(settings, stream)
+
+    val toolParam = toolParams(tools, responseToolChoice)
+
+    val messageJsons = additionalMessages.map(Json.toJson(_)(messageWrites))
+
+    val runParams = jsonBodyParams(
+      Param.assistant_id -> Some(assistantId.id),
+      Param.additional_instructions -> instructions,
+      Param.additional_messages ->
+        (if (messageJsons.nonEmpty) Some(messageJsons) else None)
+    )
+
+    (coreParams ++ toolParam ++ runParams).foreach((x: (Param, Option[JsValue])) =>
+      println(x._1.toString + " -> " + x._2.toString)
+    )
+
+    execPOST(
+      EndPoint.threads,
+      Some(s"$threadId/runs"),
+      bodyParams = coreParams ++ toolParam ++ runParams
+    ).map(
+      _.asSafe[Run]
+    )
+  }
+
+  override def retrieveRun(
+    threadId: String,
+    runId: String
+  ): Future[Option[Run]] =
+    execGETWithStatus(
+      EndPoint.threads,
+      Some(s"$threadId/runs/$runId")
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafe[Run])
+    }
+
+  override def listRunSteps(
+    threadId: String,
+    runId: String,
+    pagination: Pagination,
+    order: Option[SortOrder]
+  ): Future[Seq[RunStep]] =
+    execGET(
+      EndPoint.threads,
+      Some(s"$threadId/runs/$runId/steps"),
+      params = paginationParams(pagination) :+ Param.order -> order
+    ).map { response =>
+      readAttribute(response, "data").asSafeArray[RunStep]
+    }
+
+  private def toolParams(
+    tools: Seq[ForcableTool],
+    maybeResponseToolChoice: Option[RequiredAction]
+  ): Seq[(Param, Option[JsValue])] = {
+    val toolJsons = tools.map {
+      case CodeInterpreterSpec => Map("type" -> "code_interpreter")
+      case FileSearchSpec      => Map("type" -> "file_search")
+      case tool: FunctionSpec  => Map("type" -> "function", "function" -> Json.toJson(tool))
+    }
+
+    val maybeToolChoiceParam = maybeResponseToolChoice.map {
+      case RequiredAction.None                         => "none"
+      case RequiredAction.Auto                         => "auto"
+      case RequiredAction.Required                     => "required"
+      case RequiredAction.EnforcedTool(FileSearchSpec) => Map("type" -> "file_search")
+      case RequiredAction.EnforcedTool(CodeInterpreterSpec) =>
+        Map("type" -> "code_interpreter")
+      case RequiredAction.EnforcedTool(FunctionSpec(name, _, _)) =>
+        Map("type" -> "function", "function" -> Map("name" -> name))
+    }
+
+    val extraParams = jsonBodyParams(
+      Param.tools -> Some(toolJsons),
+      Param.tool_choice -> maybeToolChoiceParam
+    )
+
+    extraParams
+  }
+
   override def createChatToolCompletion(
     messages: Seq[BaseMessage],
     tools: Seq[ToolSpec],
@@ -74,12 +165,9 @@ private[service] trait OpenAIServiceImpl
     val coreParams =
       createBodyParamsForChatCompletion(messages, settings, stream = false)
 
-    val toolJsons = tools.map(
-      _ match {
-        case tool: FunctionSpec =>
-          Map("type" -> "function", "function" -> Json.toJson(tool))
-      }
-    )
+    val toolJsons: Seq[Map[String, Object]] = tools.map { case tool: FunctionSpec =>
+      Map("type" -> "function", "function" -> Json.toJson(tool))
+    }
 
     val extraParams = jsonBodyParams(
       Param.tools -> Some(toolJsons),
@@ -557,21 +645,27 @@ private[service] trait OpenAIServiceImpl
     messages: Seq[ThreadMessage],
     toolResources: Seq[AssistantToolResource] = Nil,
     metadata: Map[String, String]
-  ): Future[Thread] =
-    execPOST(
+  ): Future[Thread] = {
+    val params = jsonBodyParams(
+      Param.messages -> (
+        if (messages.nonEmpty)
+          Some(messages.map(Json.toJson(_)(threadMessageFormat)))
+        else None
+      ),
+      Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None),
+      Param.tool_resources -> (if (toolResources.nonEmpty)
+                                 Some(Json.toJson(toolResources.head))
+                               else None)
+    )
+    params.foreach(println)
+    val t = execPOST(
       EndPoint.threads,
-      bodyParams = jsonBodyParams(
-        Param.messages -> (
-          if (messages.nonEmpty)
-            Some(messages.map(Json.toJson(_)(threadMessageFormat)))
-          else None
-        ),
-        Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None),
-        Param.tool_resources -> (if (toolResources.nonEmpty) Some(toolResources) else None)
-      )
+      bodyParams = params
     ).map(
       _.asSafe[Thread]
     )
+    t
+  }
 
   override def retrieveThread(
     threadId: String
@@ -580,6 +674,7 @@ private[service] trait OpenAIServiceImpl
       EndPoint.threads,
       Some(threadId)
     ).map { response =>
+      println(s"response: $response")
       handleNotFoundAndError(response).map(_.asSafe[Thread])
     }
 

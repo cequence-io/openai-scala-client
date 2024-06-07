@@ -39,7 +39,7 @@ case class ThreadFullMessage(
 
 case class ThreadMessageContent(
   `type`: ThreadMessageContentType,
-  image_file: Option[FileId],
+  image_file: Option[FileId] = None,
   text: Option[ThreadMessageText]
 )
 
@@ -58,7 +58,7 @@ case class ThreadMessageText(
 case class FileAnnotation(
   `type`: FileAnnotationType,
   file_citation: Option[FileCitation],
-  file_path: Option[FileId],
+  file_path: Option[FileId] = None,
   // The text in the message content that needs to be replaced.
   text: String,
   start_index: Int,
@@ -83,5 +83,5 @@ case class FileCitation(
   // The ID of the specific File the citation is from.
   file_id: String,
   // The specific quote in the file.
-  quote: String
+  quote: Option[String] = None
 )

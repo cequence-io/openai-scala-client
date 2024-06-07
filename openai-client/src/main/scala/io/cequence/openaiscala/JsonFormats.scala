@@ -7,6 +7,8 @@ import io.cequence.openaiscala.domain.AssistantToolResource.{
 import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain.ChunkingStrategy.StaticChunkingStrategy
 import io.cequence.openaiscala.domain.FineTune.WeightsAndBiases
+import io.cequence.openaiscala.domain.RequiredAction.EnforcedTool
+import io.cequence.openaiscala.domain.StepDetail.{MessageCreation, ToolCalls}
 import io.cequence.openaiscala.domain.response.AssistantToolResourceResponse.{
   CodeInterpreterResourcesResponse,
   FileSearchResourcesResponse
@@ -20,9 +22,8 @@ import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.{ThreadMessageFile, _}
 import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.JsonUtil.{enumFormat, snakeEnumFormat}
-import io.cequence.wsclient.domain.EnumValue
 import play.api.libs.functional.syntax._
-import play.api.libs.json.Json.toJson
+import play.api.libs.json.Json.{format, toJson}
 import play.api.libs.json.JsonNaming.SnakeCase
 import play.api.libs.json.{Format, JsValue, Json, _}
 
@@ -782,4 +783,126 @@ object JsonFormats {
 
     Format(reads, writes)
   }
+
+  implicit lazy val runReasonFormat: Format[Run.Reason] = {
+    implicit lazy val stringStringMapFormat: Format[Map[String, String]] =
+      JsonUtil.StringStringMapFormat
+    Json.format[Run.Reason]
+  }
+
+  implicit lazy val lastRunErrorCodeFormat: Format[Run.LastErrorCode] = {
+    import Run.LastErrorCode._
+    snakeEnumFormat(ServerError, RateLimitExceeded, InvalidPrompt)
+  }
+
+  implicit lazy val truncationStrategyTypeFormat: Format[Run.TruncationStrategyType] = {
+    import Run.TruncationStrategyType._
+    snakeEnumFormat(Auto, LastMessages)
+  }
+
+  implicit lazy val RunStatusFormat: Format[RunStatus] = {
+    import RunStatus._
+    snakeEnumFormat(
+      Queued,
+      InProgress,
+      RequiresAction,
+      Cancelling,
+      Cancelled,
+      Failed,
+      Completed,
+      Incomplete,
+      Expired
+    )
+  }
+  Run
+  implicit lazy val RunFormat: Format[Run] =
+    Json.format[Run]
+
+  implicit val requiredActionFormat: Format[RequiredAction] = {
+    import RequiredAction._
+
+    val enforcedToolReads: Reads[EnforcedTool] = Reads { json =>
+      (json \ "type").validate[String].flatMap {
+        case "code_interpreter" => JsSuccess(EnforcedTool(CodeInterpreterSpec))
+        case "file_search"      => JsSuccess(EnforcedTool(FileSearchSpec))
+        case "function" => {
+          val functionSpec = (json \ "function").as[FunctionSpec]
+          JsSuccess(EnforcedTool(functionSpec))
+        }
+        case _ => JsError("Unknown type")
+      }
+    }
+
+    val reads: Reads[RequiredAction] = Reads { json =>
+      json.validate[String].flatMap {
+        case "none"     => JsSuccess(None)
+        case "auto"     => JsSuccess(Auto)
+        case "required" => JsSuccess(Required)
+        case _          => enforcedToolReads.reads(json)
+      }
+    }
+
+    val writes: Writes[RequiredAction] = Writes {
+      case None                              => JsString("none")
+      case Auto                              => JsString("auto")
+      case Required                          => JsString("required")
+      case EnforcedTool(CodeInterpreterSpec) => Json.obj("type" -> "code_interpreter")
+      case EnforcedTool(FileSearchSpec)      => Json.obj("type" -> "file_search")
+      case EnforcedTool(FunctionSpec(name, _, _)) =>
+        Json.obj("type" -> "function", "function" -> Json.obj("name" -> name))
+    }
+
+    Format(reads, writes)
+  }
+
+  implicit lazy val runResponseFormat: Format[RunResponse] = Json.format[RunResponse]
+
+//  implicit lazy val runStepLastErrorFormat: Format[RunStep.LastError] =
+//    Json.format[RunStep.LastError]
+//
+//  implicit lazy val runStepLastErrorCodeFormat: Format[RunStep.LastErrorCode] = {
+//    import RunStep.LastErrorCode._
+//    snakeEnumFormat[RunStep.LastErrorCode](ServerError, RateLimitExceeded)
+//  }
+//
+//  implicit lazy val runStepLastErrorFormat: Format[RunStep.LastError] = {
+//    format[RunStep.LastError]
+//  }
+
+  implicit lazy val runStepFormat: Format[RunStep] = {
+    implicit val jsonConfig: JsonConfiguration = JsonConfiguration(SnakeCase)
+    Json.format[RunStep]
+  }
+
+  implicit val messageCreationReads: Reads[MessageCreation] =
+    (__ \ "message_creation" \ "message_id").read[String].map(MessageCreation)
+  implicit val messageCreationWrites: Writes[MessageCreation] = Writes { messageCreation =>
+    Json.obj("message_creation" -> Json.obj("message_id" -> messageCreation.messageId))
+  }
+
+  implicit val messageCreationFormat: Format[MessageCreation] =
+    Format(messageCreationReads, messageCreationWrites)
+
+  implicit val toolCallsFormat: Format[ToolCalls] = Json.format[ToolCalls]
+
+  implicit val stepDetailFormat: Format[StepDetail] = {
+    implicit val jsonConfig: JsonConfiguration = JsonConfiguration(SnakeCase)
+
+    implicit val stepDetailReads: Reads[StepDetail] = Reads[StepDetail] { json =>
+      (json \ "type").as[String] match {
+        case "message_creation" => messageCreationFormat.reads(json)
+        case "tool_calls"       => toolCallsFormat.reads(json)
+      }
+    }
+
+    implicit val stepDetailWrites: Writes[StepDetail] = Writes[StepDetail] {
+      case mc: MessageCreation =>
+        messageCreationFormat.writes(mc).as[JsObject] + ("type" -> JsString("MessageCreation"))
+      case tc: ToolCalls =>
+        toolCallsFormat.writes(tc).as[JsObject] + ("type" -> JsString("ToolCalls"))
+    }
+
+    Format(stepDetailReads, stepDetailWrites)
+  }
+
 }

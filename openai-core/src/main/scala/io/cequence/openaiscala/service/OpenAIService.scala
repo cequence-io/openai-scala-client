@@ -6,14 +6,19 @@ import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.{
+  AssistantId,
   AssistantTool,
   AssistantToolResource,
   Attachment,
   BaseMessage,
   ChatRole,
   ChunkingStrategy,
+  ForcableTool,
   FunctionSpec,
   Pagination,
+  RequiredAction,
+  Run,
+  RunStep,
   SortOrder,
   Thread,
   ThreadFullMessage,
@@ -98,6 +103,30 @@ trait OpenAIService extends OpenAICoreService {
     responseFunctionName: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatFunCompletion
   ): Future[ChatFunCompletionResponse]
+
+  def createRun(
+    threadId: String,
+    assistantId: AssistantId,
+    instructions: Option[String] = None,
+    additionalInstructions: Option[String] = None,
+    additionalMessages: Seq[BaseMessage] = Seq.empty,
+    tools: Seq[ForcableTool] = Seq.empty,
+    responseToolChoice: Option[RequiredAction] = None,
+    settings: CreateRunSettings = DefaultSettings.CreateRun,
+    stream: Boolean
+  ): Future[Run]
+
+  def retrieveRun(
+    threadId: String,
+    runId: String
+  ): Future[Option[Run]]
+
+  def listRunSteps(
+    threadId: String,
+    runId: String,
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None
+  ): Future[Seq[RunStep]]
 
   /**
    * Creates a model response for the given chat conversation expecting a tool call.
