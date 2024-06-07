@@ -83,7 +83,6 @@ object Run {
 
   sealed trait LastErrorCode extends SnakeCaseEnumValue
 
-  // server_error, rate_limit_exceeded, or invalid_prompt
   object LastErrorCode {
     case object ServerError extends LastErrorCode
     case object RateLimitExceeded extends LastErrorCode

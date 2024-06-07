@@ -81,9 +81,10 @@ object JsonFormats {
 
   implicit lazy val contentReads: Reads[Content] = Reads[Content] { (json: JsValue) =>
     (json \ "type").validate[String].flatMap {
-      case "text"      => (json \ "text").validate[String].map(TextContent)
-      case "image_url" => (json \ "image_url" \ "url").validate[String].map(ImageURLContent)
-      case _           => JsError("Invalid type")
+      case "text" => (json \ "text").validate[String].map(TextContent.apply)
+      case "image_url" =>
+        (json \ "image_url" \ "url").validate[String].map(ImageURLContent.apply)
+      case _ => JsError("Invalid type")
     }
   }
 
@@ -504,7 +505,9 @@ object JsonFormats {
 
   implicit lazy val assistantToolResourceReads: Reads[AssistantToolResource] = Reads { json =>
     (json \ "code_interpreter").toOption.map { codeInterpreterJson =>
-      (codeInterpreterJson \ "file_ids").validate[Seq[FileId]].map(CodeInterpreterResources)
+      (codeInterpreterJson \ "file_ids")
+        .validate[Seq[FileId]]
+        .map(CodeInterpreterResources.apply)
     }.orElse(
       (json \ "file_search").toOption.map { fileSearchJson =>
         val fileSearchVectorStoreIds = (fileSearchJson \ "vector_store_ids").asOpt[Seq[String]]
@@ -784,10 +787,9 @@ object JsonFormats {
     Format(reads, writes)
   }
 
-  implicit lazy val runReasonFormat: Format[Run.Reason] = {
-    implicit lazy val stringStringMapFormat: Format[Map[String, String]] =
-      JsonUtil.StringStringMapFormat
-    Json.format[Run.Reason]
+  implicit lazy val runReasonFormat: Format[Run.Reason] = new Format[Run.Reason] {
+    def reads(json: JsValue): JsResult[Run.Reason] = json.validate[String].map(Run.Reason)
+    def writes(o: Run.Reason): JsValue = JsString(o.value)
   }
 
   implicit lazy val lastRunErrorCodeFormat: Format[Run.LastErrorCode] = {
