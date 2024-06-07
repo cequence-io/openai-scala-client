@@ -1,9 +1,10 @@
 package io.cequence.openaiscala.examples
 
 import io.cequence.openaiscala.domain.{AssistantToolResource, FileSearchSpec, ModelId}
+import scala.concurrent.Future
 
 object CreateAssistantWithFileSearch extends Example {
-  override protected def run =
+  override protected def run: Future[Unit] =
     for {
       assistant <- service.createAssistant(
         model = ModelId.gpt_4o_2024_05_13,

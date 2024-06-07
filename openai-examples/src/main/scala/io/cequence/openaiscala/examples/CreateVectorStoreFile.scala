@@ -1,7 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import io.cequence.openaiscala.examples.UploadBatchFile.service
-
 import java.io.{File, PrintWriter}
 import scala.concurrent.Future
 

@@ -11,7 +11,6 @@ import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.{HandleOpenAIErrorCodes, OpenAIService}
 import io.cequence.wsclient.JsonUtil.JsonOps
-import play.api.libs.json.Json.prettyPrint
 import play.api.libs.json.{JsObject, JsValue, Json, Reads}
 
 import java.io.File

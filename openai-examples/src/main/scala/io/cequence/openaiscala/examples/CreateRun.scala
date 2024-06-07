@@ -1,15 +1,15 @@
 package io.cequence.openaiscala.examples
 import io.cequence.openaiscala.domain.settings.CreateRunSettings
-import io.cequence.openaiscala.domain.{AssistantId, FunctionSpec, ModelId, ThreadMessage}
-import io.cequence.openaiscala.examples.CreateAssistant.service
-import io.cequence.openaiscala.examples.CreateThread.service
+import io.cequence.openaiscala.domain.{FunctionSpec, ModelId, ThreadMessage}
 
 import scala.collection.immutable.ListMap
 import scala.concurrent.Future
+import io.cequence.openaiscala.domain
+import io.cequence.openaiscala.domain.response.Assistant
 
 object CreateRun extends Example {
 
-  def createPlanner = for {
+  def createPlanner: Future[Assistant] = for {
     assistant <- service.createAssistant(
       model = ModelId.gpt_4o,
       name = Some("Schedule planner"),
@@ -23,7 +23,7 @@ object CreateRun extends Example {
     )
   } yield assistant
 
-  def createEventMessages =
+  def createEventMessages: Future[domain.Thread] =
     for {
       thread <- service.createThread(
         messages = Seq(

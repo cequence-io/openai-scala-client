@@ -8,11 +8,9 @@ import com.google.cloud.vertexai.generativeai.GenerativeModel
 import io.cequence.openaiscala.domain.{BaseMessage, ChatRole}
 import io.cequence.openaiscala.domain.response.{
   ChatCompletionChoiceChunkInfo,
-  ChatCompletionChoiceInfo,
   ChatCompletionChunkResponse,
   ChatCompletionResponse,
-  ChunkMessageSpec,
-  UsageInfo
+  ChunkMessageSpec
 }
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.service.{

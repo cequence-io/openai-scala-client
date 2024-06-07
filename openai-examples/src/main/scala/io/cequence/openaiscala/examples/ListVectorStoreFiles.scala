@@ -4,7 +4,7 @@ import scala.concurrent.Future
 
 object ListVectorStoreFiles extends Example {
 
-  override protected def run =
+  override protected def run: Future[Any] =
     for {
       vectorStores <- service.listVectorStores()
 
