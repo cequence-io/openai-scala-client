@@ -5,6 +5,7 @@ import io.cequence.openaiscala.domain.AssistantToolResource.{
   FileSearchResources
 }
 import io.cequence.openaiscala.domain.Batch._
+import io.cequence.openaiscala.domain.ChunkingStrategy.StaticChunkingStrategy
 import io.cequence.openaiscala.domain.FineTune.WeightsAndBiases
 import io.cequence.openaiscala.domain.response.AssistantToolResourceResponse.{
   CodeInterpreterResourcesResponse,
@@ -18,9 +19,11 @@ import io.cequence.openaiscala.domain.response.ResponseFormat.{
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.{ThreadMessageFile, _}
 import io.cequence.wsclient.JsonUtil
-import io.cequence.wsclient.JsonUtil.enumFormat
+import io.cequence.wsclient.JsonUtil.{enumFormat, snakeEnumFormat}
+import io.cequence.wsclient.domain.EnumValue
 import play.api.libs.functional.syntax._
 import play.api.libs.json.Json.toJson
+import play.api.libs.json.JsonNaming.SnakeCase
 import play.api.libs.json.{Format, JsValue, Json, _}
 
 import java.{util => ju}
@@ -714,9 +717,69 @@ object JsonFormats {
   implicit lazy val createBatchResponsesFormat: Format[CreateBatchResponses] =
     Json.format[CreateBatchResponses]
 
-  implicit lazy val fileCountsFormat: Format[FileCounts] =
+  implicit lazy val fileCountsFormat: Format[FileCounts] = {
+    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
     Json.format[FileCounts]
+  }
 
   implicit lazy val vectorStoreFormat: Format[VectorStore] =
     Json.format[VectorStore]
+
+  implicit lazy val vectorStoreFileFormat: Format[VectorStoreFile] = {
+    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
+    Json.format[VectorStoreFile]
+  }
+
+  implicit lazy val vectorStoreFileStatusFormat: Format[VectorStoreFileStatus] = {
+    import VectorStoreFileStatus._
+    enumFormat(Cancelled, Completed, InProgress, Failed)
+  }
+
+  implicit lazy val lastErrorFormat: Format[LastError] = Json.format[LastError]
+  implicit lazy val lastErrorCodeFormat: Format[LastErrorCode] = {
+    import LastErrorCode._
+    snakeEnumFormat(ServerError, RateLimitExceeded)
+  }
+  implicit lazy val chunkingStrategyAutoFormat
+    : Format[ChunkingStrategy.AutoChunkingStrategy.type] =
+    Json.format[ChunkingStrategy.AutoChunkingStrategy.type]
+  implicit lazy val chunkingStrategyStaticFormat
+    : Format[ChunkingStrategy.StaticChunkingStrategy.type] =
+    Json.format[ChunkingStrategy.StaticChunkingStrategy.type]
+
+  val chunkingStrategyFormatReads: Reads[ChunkingStrategy] =
+    (
+      (__ \ "max_chunk_size_tokens").readNullable[Int] and
+        (__ \ "chunk_overlap_tokens").readNullable[Int]
+    )(
+      (
+        maxChunkSizeTokens: Option[Int],
+        chunkOverlapTokens: Option[Int]
+      ) => StaticChunkingStrategy(maxChunkSizeTokens, chunkOverlapTokens)
+    )
+
+  implicit lazy val chunkingStrategyFormat: Format[ChunkingStrategy] = {
+    val reads: Reads[ChunkingStrategy] = Reads { json =>
+      import ChunkingStrategy._
+      (json \ "type").validate[String].flatMap {
+        case "auto" => JsSuccess(AutoChunkingStrategy)
+        case "static" =>
+          (json.validate[ChunkingStrategy](chunkingStrategyFormatReads))
+        case "" => JsSuccess(AutoChunkingStrategy)
+        case _  => JsError("Unknown chunking strategy type")
+      }
+    }
+
+    val writes: Writes[ChunkingStrategy] = Writes {
+      case ChunkingStrategy.AutoChunkingStrategy => Json.obj("type" -> "auto")
+      case ChunkingStrategy.StaticChunkingStrategy(maxChunkSizeTokens, chunkOverlapTokens) =>
+        Json.obj(
+          "type" -> "static",
+          "max_chunk_size_tokens" -> maxChunkSizeTokens,
+          "chunk_overlap_tokens" -> chunkOverlapTokens
+        )
+    }
+
+    Format(reads, writes)
+  }
 }

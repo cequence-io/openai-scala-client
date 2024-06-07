@@ -11,6 +11,7 @@ import io.cequence.openaiscala.domain.{
   Attachment,
   BaseMessage,
   ChatRole,
+  ChunkingStrategy,
   FunctionSpec,
   Pagination,
   SortOrder,
@@ -19,7 +20,9 @@ import io.cequence.openaiscala.domain.{
   ThreadMessage,
   ThreadMessageFile,
   ToolSpec,
-  VectorStore
+  VectorStore,
+  VectorStoreFile,
+  VectorStoreFileStatus
 }
 
 import java.io.File
@@ -479,6 +482,93 @@ trait OpenAIService extends OpenAICoreService {
     pagination: Pagination = Pagination.default,
     order: Option[SortOrder] = None
   ): Future[Seq[VectorStore]]
+
+  /**
+   * Deletes a vector store.
+   *
+   * @param vectorStoreId
+   *   The ID of the vector store to use for this request
+   * @return
+   *   enum indicating whether the vector store was deleted
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/vector-stores/delete">OpenAI
+   *   Doc</a>
+   */
+  def deleteVectorStore(
+    vectorStoreId: String
+  ): Future[DeleteResponse]
+
+  /**
+   * Creates a vector store file.
+   *
+   * @param vectorStoreId
+   *   The ID of the vector store to use for this request
+   * @param fileId
+   *   The ID of the file to use for this request
+   * @param chunkingStrategy
+   *   The chunking strategy to use for this request
+   * @return
+   *   vector store file
+   *
+   * @see
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/vector-stores-files/createFile">OpenAI
+   *   Doc</a>
+   */
+  def createVectorStoreFile(
+    vectorStoreId: String,
+    fileId: String,
+    chunkingStrategy: ChunkingStrategy = ChunkingStrategy.AutoChunkingStrategy
+  ): Future[VectorStoreFile]
+
+  /**
+   * Returns a list of vector store files.
+   *
+   * @param vectorStoreId
+   *   The ID of the vector store to use for this request
+   * @param pagination
+   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
+   *   the default is 20. Defaults to 20
+   * @param order
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
+   *   for descending order. Defaults to desc
+   * @param filter
+   *   Filter by the status of the vector store file. Defaults to None
+   * @return
+   *   vector store files
+   *
+   * @see
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/vector-stores-files/listFiles">OpenAI
+   *   Doc</a>
+   */
+  def listVectorStoreFiles(
+    vectorStoreId: String,
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None,
+    filter: Option[VectorStoreFileStatus] = None
+  ): Future[Seq[VectorStoreFile]]
+
+  /**
+   * Deletes a vector store file.
+   *
+   * @param vectorStoreId
+   *   The ID of the vector store to use for this request
+   * @param fileId
+   *   The ID of the file to use for this request
+   * @return
+   *   enum indicating whether the vector store file was deleted
+   *
+   * @see
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/vector-stores-files/deleteFile">OpenAI
+   *   Doc</a>
+   */
+  def deleteVectorStoreFile(
+    vectorStoreId: String,
+    fileId: String
+  ): Future[DeleteResponse]
 
   /**
    * Creates a job that fine-tunes a specified model from a given dataset. Response includes

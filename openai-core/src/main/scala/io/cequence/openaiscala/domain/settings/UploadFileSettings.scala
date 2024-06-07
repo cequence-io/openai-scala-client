@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.domain.settings
 
-import io.cequence.wsclient.domain.EnumValue
+import io.cequence.wsclient.domain.{EnumValue, NamedEnumValue}
 
 case class UploadFileSettings(
   // The intended purpose of the uploaded documents. Use "fine-tune" for Fine-tuning.
@@ -9,10 +9,10 @@ case class UploadFileSettings(
   purpose: FileUploadPurpose
 )
 
-sealed trait FileUploadPurpose extends EnumValue
+sealed abstract class FileUploadPurpose(value: String) extends NamedEnumValue(value)
 
 object FileUploadPurpose {
-  case object `fine-tune` extends FileUploadPurpose
-  case object assistants extends FileUploadPurpose
-  case object batch extends FileUploadPurpose
+  case object `fine-tune` extends FileUploadPurpose("fine-tune")
+  case object assistants extends FileUploadPurpose("assistants")
+  case object batch extends FileUploadPurpose("batch")
 }
