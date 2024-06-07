@@ -63,4 +63,5 @@ object NonOpenAIModelId {
   val gemini_1_5_pro_001 = "gemini-1.5-pro-001"
   val gemini_1_0_pro_001 = "gemini-1.0-pro-001"
   val gemini_1_0_pro_vision_001 = "gemini-1.0-pro-vision-001"
+  val text_embedding_004 = "text-embedding-004"
 }
