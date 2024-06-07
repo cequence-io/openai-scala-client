@@ -19,7 +19,7 @@ trait RunBodyMaker {
   ): Seq[(Param, Option[JsValue])] = {
 
     jsonBodyParams(
-      Param.model -> Some(settings.model),
+      Param.model -> settings.model,
       Param.temperature -> settings.temperature,
       Param.top_p -> settings.topP,
       Param.stream -> Some(stream),

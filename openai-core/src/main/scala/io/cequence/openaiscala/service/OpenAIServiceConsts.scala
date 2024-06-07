@@ -23,7 +23,7 @@ trait OpenAIServiceConsts {
     )
 
     val CreateRun = CreateRunSettings(
-      model = ModelId.gpt_4_1106_preview,
+      model = Some(ModelId.gpt_3_5_turbo),
       maxPromptTokens = Some(1000)
     )
 

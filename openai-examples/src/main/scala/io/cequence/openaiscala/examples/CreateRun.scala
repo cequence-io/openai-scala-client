@@ -63,7 +63,7 @@ object CreateRun extends Example {
         ),
         responseToolChoice = None,
         settings = CreateRunSettings(
-          model = ModelId.gpt_4o,
+          model = Some(ModelId.gpt_4o),
           metadata = Map(
             "user_id" -> "986413"
           ),

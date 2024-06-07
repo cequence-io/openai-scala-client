@@ -84,8 +84,9 @@ private[service] trait OpenAIServiceImpl
 
     val runParams = jsonBodyParams(
       Param.assistant_id -> Some(assistantId.id),
-      Param.additional_instructions -> Some(instructions),
-      Param.additional_messages -> Some(messageJsons)
+      Param.additional_instructions -> instructions,
+      Param.additional_messages ->
+        (if (messageJsons.nonEmpty) Some(messageJsons) else None)
     )
 
     (coreParams ++ toolParam ++ runParams).foreach((x: (Param, Option[JsValue])) =>
@@ -652,15 +653,18 @@ private[service] trait OpenAIServiceImpl
         else None
       ),
       Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None),
-      Param.tool_resources -> (if (toolResources.nonEmpty) Some(toolResources) else None)
+      Param.tool_resources -> (if (toolResources.nonEmpty)
+                                 Some(Json.toJson(toolResources.head))
+                               else None)
     )
     params.foreach(println)
-    execPOST(
+    val t = execPOST(
       EndPoint.threads,
       bodyParams = params
     ).map(
       _.asSafe[Thread]
     )
+    t
   }
 
   override def retrieveThread(
@@ -670,6 +674,7 @@ private[service] trait OpenAIServiceImpl
       EndPoint.threads,
       Some(threadId)
     ).map { response =>
+      println(s"response: $response")
       handleNotFoundAndError(response).map(_.asSafe[Thread])
     }
 
