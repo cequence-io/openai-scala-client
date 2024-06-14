@@ -21,6 +21,11 @@ import io.cequence.openaiscala.anthropic.domain.response.{
   DeltaText
 }
 import io.cequence.openaiscala.anthropic.domain.{ChatRole, Content, Message}
+import io.cequence.openaiscala.anthropic.domain.response.{
+  EmbeddingInfo,
+  EmbeddingResponse,
+  EmbeddingUsageInfo
+}
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
 
@@ -129,6 +134,11 @@ trait JsonFormats {
       (__ \ "stop_sequence").readNullable[String] and
       (__ \ "usage").read[UsageInfo]
   )(CreateMessageResponse.apply _)
+
+  implicit val embeddingUsageInfoReads: Reads[EmbeddingUsageInfo] =
+    Json.reads[EmbeddingUsageInfo]
+  implicit val embeddingInfoReads: Reads[EmbeddingInfo] = Json.reads[EmbeddingInfo]
+  implicit val embeddingResponseReads: Reads[EmbeddingResponse] = Json.reads[EmbeddingResponse]
 
   implicit val createMessageChunkResponseReads: Reads[CreateMessageChunkResponse] =
     Json.reads[CreateMessageChunkResponse]

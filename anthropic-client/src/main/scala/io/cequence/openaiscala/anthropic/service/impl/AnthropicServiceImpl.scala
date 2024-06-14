@@ -6,14 +6,18 @@ import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.anthropic.JsonFormats
 import io.cequence.openaiscala.anthropic.domain.response.{
   ContentBlockDelta,
-  CreateMessageResponse
+  CreateMessageResponse,
+  EmbeddingResponse
 }
-import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
+import io.cequence.openaiscala.anthropic.domain.settings.{
+  AnthropicCreateEmbeddingsSettings,
+  AnthropicCreateMessageSettings
+}
 import io.cequence.openaiscala.anthropic.domain.{ChatRole, Message}
 import io.cequence.openaiscala.anthropic.service.{AnthropicService, HandleAnthropicErrorCodes}
-import io.cequence.wsclient.JsonUtil.JsonOps
+import io.cequence.wsclient.JsonUtil.{JsonOps, toJson}
 import io.cequence.wsclient.service.ws.stream.WSStreamRequestHelper
-import play.api.libs.json.{JsValue, Json}
+import play.api.libs.json.{JsObject, JsValue, Json}
 
 import scala.concurrent.Future
 
@@ -93,4 +97,40 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       Param.top_k -> settings.top_k
     )
   }
+
+  /**
+   * Uses the specified model to generate embeddings for the input sequence.
+   *
+   * @param inputs
+   *   Input sequence for which to generate embeddings.
+   * @param settings
+   * @return
+   *   list of embeddings inside an envelope
+   */
+  override def createEmbeddings(
+    inputs: Seq[String],
+    settings: AnthropicCreateEmbeddingsSettings
+  ): Future[EmbeddingResponse] = {
+    val basicParams: Seq[(Param, Option[JsValue])] = jsonBodyParams(
+      Param.inputs -> Some(inputs),
+      Param.model -> Some(settings.model)
+    )
+    val otherParams: (Param, Option[JsValue]) = {
+      Param.parameters -> Some(
+        JsObject(
+          Seq(
+            Param.input_type.toString() -> toJson(settings.input_type),
+            Param.truncate.toString() -> toJson(settings.truncate)
+          )
+        )
+      )
+    }
+    execPOST(
+      EndPoint.embed,
+      bodyParams = basicParams :+ otherParams
+    ).map(
+      _.asSafe[EmbeddingResponse]
+    )
+  }
+
 }

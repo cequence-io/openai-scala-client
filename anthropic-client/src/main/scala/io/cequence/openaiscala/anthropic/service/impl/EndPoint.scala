@@ -6,6 +6,7 @@ sealed abstract class EndPoint(value: String = "") extends NamedEnumValue(value)
 
 object EndPoint {
   case object messages extends EndPoint
+  case object embed extends EndPoint
 }
 
 sealed trait Param extends EnumValue
@@ -22,5 +23,9 @@ object Param {
   case object temperature extends Param
   case object top_p extends Param
   case object top_k extends Param
+  case object inputs extends Param
+  case object parameters extends Param
+  case object input_type extends Param
+  case object truncate extends Param
 
 }

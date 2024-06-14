@@ -1,6 +1,9 @@
 package io.cequence.openaiscala.anthropic.service
 
-import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
+import io.cequence.openaiscala.anthropic.domain.settings.{
+  AnthropicCreateEmbeddingsSettings,
+  AnthropicCreateMessageSettings
+}
 import io.cequence.openaiscala.domain.NonOpenAIModelId
 
 /**
@@ -15,6 +18,10 @@ trait AnthropicServiceConsts {
     val CreateMessage = AnthropicCreateMessageSettings(
       model = NonOpenAIModelId.claude_2_1,
       max_tokens = 2048
+    )
+
+    val CreateEmbeddings = AnthropicCreateEmbeddingsSettings(
+      model = NonOpenAIModelId.multilingual_e5_large
     )
   }
 }

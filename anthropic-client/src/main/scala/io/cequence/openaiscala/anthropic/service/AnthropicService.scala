@@ -7,7 +7,11 @@ import io.cequence.openaiscala.anthropic.domain.response.{
   ContentBlockDelta,
   CreateMessageResponse
 }
-import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
+import io.cequence.openaiscala.anthropic.domain.settings.{
+  AnthropicCreateEmbeddingsSettings,
+  AnthropicCreateMessageSettings
+}
+import io.cequence.openaiscala.anthropic.domain.response.EmbeddingResponse
 import io.cequence.wsclient.service.CloseableService
 
 import scala.concurrent.Future
@@ -57,4 +61,19 @@ trait AnthropicService extends CloseableService with AnthropicServiceConsts {
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings = DefaultSettings.CreateMessage
   ): Source[ContentBlockDelta, NotUsed]
+
+  /**
+   * Uses the specified model to generate embeddings for the input sequence.
+   *
+   * @param inputs
+   *   Input sequence for which to generate embeddings.
+   * @param settings
+   * @return
+   *   list of embeddings inside an envelope
+   */
+  def createEmbeddings(
+    inputs: Seq[String],
+    settings: AnthropicCreateEmbeddingsSettings = DefaultSettings.CreateEmbeddings
+  ): Future[EmbeddingResponse]
+
 }
