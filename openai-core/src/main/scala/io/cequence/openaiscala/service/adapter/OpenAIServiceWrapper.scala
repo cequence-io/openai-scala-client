@@ -215,6 +215,12 @@ trait OpenAIServiceWrapper
     _.retrieveFileContent(fileId)
   )
 
+  override def retrieveFileContentAsSource(
+    fileId: String
+  ): Future[Option[Source[ByteString, _]]] = wrap(
+    _.retrieveFileContentAsSource(fileId)
+  )
+
   override def createFineTune(
     training_file: String,
     validation_file: Option[String],

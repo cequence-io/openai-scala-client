@@ -430,14 +430,21 @@ private[service] trait OpenAIServiceImpl
   // because the output type here is string we need to do bit of a manual request building and calling
   override def retrieveFileContent(
     fileId: String
-  ): Future[Option[String]] = {
-    val endPoint = EndPoint.files
-    val endPointParam = Some(s"${fileId}/content")
+  ): Future[Option[String]] =
+    execGETWithStatusAux(
+      responseConverter = ResponseConverters.string,
+      endPoint = EndPoint.files,
+      endPointParam = Some(s"${fileId}/content")
+    ).map(response => handleNotFoundAndError(response))
 
-    val request = getWSRequestOptional(Some(endPoint), endPointParam)
-
-    execGETStringAux(request, Some(endPoint)).map(response => handleNotFoundAndError(response))
-  }
+  override def retrieveFileContentAsSource(
+    fileId: String
+  ): Future[Option[Source[ByteString, _]]] =
+    execGETWithStatusAux(
+      responseConverter = ResponseConverters.source,
+      endPoint = EndPoint.files,
+      endPointParam = Some(s"${fileId}/content")
+    ).map(response => handleNotFoundAndError(response))
 
   override def createVectorStore(
     fileIds: Seq[String],

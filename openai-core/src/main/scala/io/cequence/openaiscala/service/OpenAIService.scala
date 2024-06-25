@@ -147,6 +147,7 @@ trait OpenAIService extends OpenAICoreService {
    * @see
    *   <a href="https://platform.openai.com/docs/api-reference/chat/create">OpenAI Doc</a>
    */
+  // TODO: add support for 'parallel_tool_calls'
   def createChatToolCompletion(
     messages: Seq[BaseMessage],
     tools: Seq[ToolSpec],
@@ -455,6 +456,22 @@ trait OpenAIService extends OpenAICoreService {
   def retrieveFileContent(
     fileId: String
   ): Future[Option[String]]
+
+  /**
+   * Returns the contents of the specified file as an Akka source.
+   *
+   * @param fileId
+   *   The ID of the file to use for this request
+   * @return
+   *   file content or None if not found
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/files/retrieve-content">OpenAI
+   *   Doc</a>
+   */
+  def retrieveFileContentAsSource(
+    fileId: String
+  ): Future[Option[Source[ByteString, _]]]
 
   /**
    * Create a vector store.
