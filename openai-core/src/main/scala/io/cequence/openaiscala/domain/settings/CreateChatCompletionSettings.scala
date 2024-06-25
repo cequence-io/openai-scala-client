@@ -71,7 +71,9 @@ case class CreateChatCompletionSettings(
   // This feature is in Beta. If specified, our system will make a best effort to sample deterministically,
   // such that repeated requests with the same seed and parameters should return the same result.
   // Determinism is not guaranteed, and you should refer to the system_fingerprint response parameter to monitor changes in the backend.
-  seed: Option[Int] = None // new
+  seed: Option[Int] = None
+
+  // TODO: add service_tier
 )
 
 sealed trait ChatCompletionResponseFormatType extends EnumValue
