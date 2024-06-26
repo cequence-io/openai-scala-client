@@ -26,7 +26,7 @@ object OctoMLCreateChatCompletion extends ExampleBase[OpenAIChatCompletionServic
     UserMessage("What is the weather like in Norway?")
   )
 
-  private val modelId = NonOpenAIModelId.mixtral_8x22b_instruct
+  private val modelId = NonOpenAIModelId.hermes_2_pro_llama_3_8b
 
   override protected def run: Future[_] =
     service

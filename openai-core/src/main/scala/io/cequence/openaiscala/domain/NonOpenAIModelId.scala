@@ -19,6 +19,7 @@ object NonOpenAIModelId {
   val llama3_70b_8192 = "llama3-70b-8192" // Groq
   val meta_llama_3_8b_instruct = "meta-llama-3-8b-instruct" // OctoML
   val meta_llama_3_70b_instruct = "meta-llama-3-70b-instruct" // OctoML
+  val hermes_2_pro_llama_3_8b = "hermes-2-pro-llama-3-8b"  // OctoML
   val llama2 = "llama2" // Ollama
   val llama_2_7b_chat = "llama-2-7b-chat"
   val llama_v2_7b_chat = "llama-v2-7b-chat" // Fireworks AI
@@ -58,6 +59,8 @@ object NonOpenAIModelId {
   val gemma_7b_it = "gemma-7b-it" // Fireworks AI, OctoML, and Groq
   val smaug_72b_chat = "smaug-72b-chat" // OctoML
   val cohere_command_r_plus = "cohere-command-r-plus"
+  val yi_large = "yi-large" // Fireworks AI
+  val whisper_large_v3 = "whisper-large-v3" // Groq (audio)
 
   // Google Vertex AI
   val gemini_1_5_flash_001 = "gemini-1.5-flash-001"

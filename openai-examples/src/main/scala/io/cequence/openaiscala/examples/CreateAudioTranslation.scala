@@ -10,12 +10,12 @@ import scala.concurrent.Future
 // translates to English
 object CreateAudioTranslation extends Example {
 
-  private val inputFileName = "openai-examples/src/main/resources/wolfgang.mp3"
+  private val audioFile = getClass.getResource("/wolfgang.mp3").getFile
 
   override protected def run: Future[Unit] =
     service
       .createAudioTranslation(
-        file = new java.io.File(inputFileName),
+        file = new java.io.File(audioFile),
         prompt = Some("Translate to English"),
         settings = CreateTranslationSettings(
           model = ModelId.whisper_1,
