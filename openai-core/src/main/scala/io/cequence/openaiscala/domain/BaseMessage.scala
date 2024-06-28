@@ -75,10 +75,10 @@ final case class AssistantToolMessage(
 }
 
 final case class AssistantToolOutput(
-                                      tool_call_id: String,
-                                       // The contents of the message.
-                                       output: Option[String] = None,
-                                     )
+  tool_call_id: String,
+  // The contents of the message.
+  output: Option[String] = None
+)
 
 @Deprecated
 final case class AssistantFunMessage(
