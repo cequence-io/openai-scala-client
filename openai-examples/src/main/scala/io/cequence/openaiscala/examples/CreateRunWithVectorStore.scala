@@ -80,7 +80,7 @@ object CreateRunWithVectorStore extends Example {
         threadId = eventsThread.id,
         assistantId = assistantId,
         tools = Seq(FileSearchSpec),
-        responseToolChoice = Some(RequiredAction.EnforcedTool(FileSearchSpec)),
+        responseToolChoice = Some(ToolChoice.EnforcedTool(FileSearchSpec)),
         settings = CreateRunSettings(),
         stream = false
       )

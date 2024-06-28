@@ -74,6 +74,12 @@ final case class AssistantToolMessage(
   override val nameOpt = name
 }
 
+final case class AssistantToolOutput(
+                                      tool_call_id: String,
+                                       // The contents of the message.
+                                       output: Option[String] = None,
+                                     )
+
 @Deprecated
 final case class AssistantFunMessage(
   // The contents of the message.

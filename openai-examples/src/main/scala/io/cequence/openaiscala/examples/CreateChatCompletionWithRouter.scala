@@ -29,7 +29,7 @@ object CreateChatCompletionWithRouter extends ExampleBase[OpenAIChatCompletionSe
   override val service = OpenAIChatCompletionServiceRouter(
     serviceModels = Map(
       octoMLService -> Seq("mixtral-8x7b-instruct"),
-      ollamaService -> Seq("llama2"),
+      ollamaService -> Seq("llama3:70b"),
       // it's default so no need to specify all the models
       openAIService -> Seq(ModelId.gpt_3_5_turbo)
     ),
@@ -44,7 +44,7 @@ object CreateChatCompletionWithRouter extends ExampleBase[OpenAIChatCompletionSe
   override protected def run: Future[_] =
     for {
       _ <- runChatCompletionAux("mixtral-8x7b-instruct")
-      _ <- runChatCompletionAux("llama2")
+      _ <- runChatCompletionAux("llama3:70b")
       _ <- runChatCompletionAux(ModelId.gpt_3_5_turbo)
     } yield ()
 
