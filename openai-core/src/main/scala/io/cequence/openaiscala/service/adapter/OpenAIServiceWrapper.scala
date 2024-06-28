@@ -53,15 +53,15 @@ trait OpenAIServiceWrapper
   )
 
   def createRun(
-                 threadId: String,
-                 assistantId: AssistantId,
-                 instructions: Option[String],
-                 additionalInstructions: Option[String],
-                 additionalMessages: Seq[BaseMessage],
-                 tools: Seq[ForcableTool],
-                 responseToolChoice: Option[ToolChoice] = None,
-                 settings: CreateRunSettings = DefaultSettings.CreateRun,
-                 stream: Boolean
+    threadId: String,
+    assistantId: AssistantId,
+    instructions: Option[String],
+    additionalInstructions: Option[String],
+    additionalMessages: Seq[BaseMessage],
+    tools: Seq[ForcableTool],
+    responseToolChoice: Option[ToolChoice] = None,
+    settings: CreateRunSettings = DefaultSettings.CreateRun,
+    stream: Boolean
   ): Future[Run] = wrap(
     _.createRun(
       threadId,
@@ -77,10 +77,10 @@ trait OpenAIServiceWrapper
   )
 
   def submitToolOutputs(
-                         threadId: String,
-                         runId: String,
-                         toolOutputs: Option[Seq[AssistantToolOutput]]
-                       ): Future[Run] = wrap(
+    threadId: String,
+    runId: String,
+    toolOutputs: Option[Seq[AssistantToolOutput]]
+  ): Future[Run] = wrap(
     _.submitToolOutputs(threadId, runId, toolOutputs)
   )
 
