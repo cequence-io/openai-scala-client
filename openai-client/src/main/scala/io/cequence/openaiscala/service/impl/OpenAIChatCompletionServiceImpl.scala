@@ -5,6 +5,7 @@ import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIServiceConsts}
+import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.service.ws.WSRequestHelper
 import play.api.libs.json.{JsValue, Json}
@@ -50,6 +51,12 @@ trait ChatCompletionBodyMaker {
     assert(messages.nonEmpty, "At least one message expected.")
 
     val messageJsons = messages.map(Json.toJson(_)(messageWrites))
+
+    // TODO: add this
+    val extraParams: Seq[(String, Option[JsValue])] =
+      settings.extra_params.map { case (paramName, value) =>
+        (paramName, Some(JsonUtil.toJson(value)))
+      }.toSeq
 
     jsonBodyParams(
       Param.messages -> Some(messageJsons),
