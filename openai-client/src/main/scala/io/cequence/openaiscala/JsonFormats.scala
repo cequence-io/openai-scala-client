@@ -793,10 +793,7 @@ object JsonFormats {
     Format(reads, writes)
   }
 
-  implicit lazy val runReasonFormat: Format[Run.Reason] = new Format[Run.Reason] {
-    def reads(json: JsValue): JsResult[Run.Reason] = json.validate[String].map(Run.Reason)
-    def writes(o: Run.Reason): JsValue = JsString(o.value)
-  }
+  implicit lazy val runReasonFormat: Format[Run.Reason] = Json.format[Run.Reason]
 
   implicit lazy val lastRunErrorCodeFormat: Format[Run.LastErrorCode] = {
     import Run.LastErrorCode._
