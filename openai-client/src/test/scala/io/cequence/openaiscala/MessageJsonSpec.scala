@@ -271,7 +271,7 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
       val jsonKeys = json.keySet
 
       jsonKeys should contain("role")
-      jsonKeys shouldNot contain("content")
+      jsonKeys shouldNot contain("output")
       jsonKeys shouldNot contain("name")
       jsonKeys should contain("tool_calls")
       json.size shouldBe 2

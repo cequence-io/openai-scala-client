@@ -8,6 +8,7 @@ import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.{
   AssistantId,
   AssistantTool,
+  AssistantToolOutput,
   AssistantToolResource,
   Attachment,
   BaseMessage,
@@ -16,7 +17,6 @@ import io.cequence.openaiscala.domain.{
   ForcableTool,
   FunctionSpec,
   Pagination,
-  RequiredAction,
   Run,
   RunStep,
   SortOrder,
@@ -24,6 +24,7 @@ import io.cequence.openaiscala.domain.{
   ThreadFullMessage,
   ThreadMessage,
   ThreadMessageFile,
+  ToolChoice,
   ToolSpec,
   VectorStore,
   VectorStoreFile,
@@ -111,9 +112,15 @@ trait OpenAIService extends OpenAICoreService {
     additionalInstructions: Option[String] = None,
     additionalMessages: Seq[BaseMessage] = Seq.empty,
     tools: Seq[ForcableTool] = Seq.empty,
-    responseToolChoice: Option[RequiredAction] = None,
+    responseToolChoice: Option[ToolChoice] = None,
     settings: CreateRunSettings = DefaultSettings.CreateRun,
     stream: Boolean
+  ): Future[Run]
+
+  def submitToolOutputs(
+    threadId: String,
+    runId: String,
+    toolOutputs: Option[Seq[AssistantToolOutput]]
   ): Future[Run]
 
   def retrieveRun(
