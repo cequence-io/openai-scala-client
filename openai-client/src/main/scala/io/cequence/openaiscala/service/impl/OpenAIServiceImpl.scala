@@ -11,6 +11,8 @@ import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.{HandleOpenAIErrorCodes, OpenAIService}
 import io.cequence.wsclient.JsonUtil.JsonOps
+import io.cequence.wsclient.ResponseImplicits._
+import io.cequence.wsclient.domain.RichResponse
 import play.api.libs.json.{JsObject, JsValue, Json, Reads}
 
 import java.io.File
@@ -33,11 +35,11 @@ private[service] trait OpenAIServiceImpl
   override def retrieveModel(
     modelId: String
   ): Future[Option[ModelInfo]] =
-    execGETWithStatus(
+    execGETRich(
       EndPoint.models,
       Some(modelId)
     ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafe[ModelInfo])
+      handleNotFoundAndError(response).map(_.asSafeJson[ModelInfo])
     }
 
   override def createChatFunCompletion(
@@ -60,7 +62,7 @@ private[service] trait OpenAIServiceImpl
       EndPoint.chat_completions,
       bodyParams = coreParams ++ extraParams
     ).map(
-      _.asSafe[ChatFunCompletionResponse]
+      _.asSafeJson[ChatFunCompletionResponse]
     )
   }
 
@@ -88,16 +90,12 @@ private[service] trait OpenAIServiceImpl
         (if (messageJsons.nonEmpty) Some(messageJsons) else None)
     )
 
-    (coreParams ++ toolParam ++ runParams).foreach((x: (Param, Option[JsValue])) =>
-      println(x._1.toString + " -> " + x._2.toString)
-    )
-
     execPOST(
       EndPoint.threads,
       Some(s"$threadId/runs"),
       bodyParams = coreParams ++ toolParam ++ runParams
     ).map(
-      _.asSafe[Run]
+      _.asSafeJson[Run]
     )
   }
 
@@ -105,11 +103,11 @@ private[service] trait OpenAIServiceImpl
     threadId: String,
     runId: String
   ): Future[Option[Run]] =
-    execGETWithStatus(
+    execGETRich(
       EndPoint.threads,
       Some(s"$threadId/runs/$runId")
     ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafe[Run])
+      handleNotFoundAndError(response).map(_.asSafeJson[Run])
     }
 
   override def listRunSteps(
@@ -123,7 +121,7 @@ private[service] trait OpenAIServiceImpl
       Some(s"$threadId/runs/$runId/steps"),
       params = paginationParams(pagination) :+ Param.order -> order
     ).map { response =>
-      readAttribute(response, "data").asSafeArray[RunStep]
+      readAttribute(response.json, "data").asSafeArray[RunStep]
     }
 
   private def toolParams(
@@ -182,7 +180,7 @@ private[service] trait OpenAIServiceImpl
       EndPoint.chat_completions,
       bodyParams = coreParams ++ extraParams
     ).map(
-      _.asSafe[ChatToolCompletionResponse]
+      _.asSafeJson[ChatToolCompletionResponse]
     )
   }
 
@@ -202,7 +200,7 @@ private[service] trait OpenAIServiceImpl
         Param.top_p -> settings.top_p
       )
     ).map(
-      _.asSafe[TextEditResponse]
+      _.asSafeJson[TextEditResponse]
     )
 
   override def createImage(
@@ -222,7 +220,7 @@ private[service] trait OpenAIServiceImpl
         Param.user -> settings.user
       )
     ).map(
-      _.asSafe[ImageInfo]
+      _.asSafeJson[ImageInfo]
     )
 
   override def createImageEdit(
@@ -243,7 +241,7 @@ private[service] trait OpenAIServiceImpl
         Param.user -> settings.user
       )
     ).map(
-      _.asSafe[ImageInfo]
+      _.asSafeJson[ImageInfo]
     )
 
   override def createImageVariation(
@@ -261,14 +259,14 @@ private[service] trait OpenAIServiceImpl
         Param.user -> settings.user
       )
     ).map(
-      _.asSafe[ImageInfo]
+      _.asSafeJson[ImageInfo]
     )
 
   def createAudioSpeech(
     input: String,
     settings: CreateSpeechSettings = DefaultSettings.CreateSpeech
   ): Future[Source[ByteString, _]] =
-    execPOSTSource(
+    execPOST(
       EndPoint.audio_speech,
       bodyParams = jsonBodyParams(
         Param.input -> Some(input),
@@ -277,14 +275,14 @@ private[service] trait OpenAIServiceImpl
         Param.speed -> settings.speed,
         Param.response_format -> settings.response_format.map(_.toString)
       )
-    )
+    ).map(_.source)
 
   override def createAudioTranscription(
     file: File,
     prompt: Option[String],
     settings: CreateTranscriptionSettings
   ): Future[TranscriptResponse] =
-    execPOSTMultipartWithStatusString(
+    execPOSTMultipartRich(
       EndPoint.audio_transcriptions,
       fileParams = Seq((Param.file, file, None)),
       bodyParams = Seq(
@@ -294,14 +292,16 @@ private[service] trait OpenAIServiceImpl
         Param.temperature -> settings.temperature,
         Param.language -> settings.language
       )
-    ).map(processAudioTranscriptResponse(settings.response_format))
+    ).map(
+      processAudioTranscriptResponse(settings.response_format)
+    )
 
   override def createAudioTranslation(
     file: File,
     prompt: Option[String],
     settings: CreateTranslationSettings
   ): Future[TranscriptResponse] =
-    execPOSTMultipartWithStatusString(
+    execPOSTMultipartRich(
       EndPoint.audio_translations,
       fileParams = Seq((Param.file, file, None)),
       bodyParams = Seq(
@@ -315,9 +315,9 @@ private[service] trait OpenAIServiceImpl
   private def processAudioTranscriptResponse(
     responseFormat: Option[TranscriptResponseFormatType]
   )(
-    stringRichResponse: RichStringResponse
+    richResponse: RichResponse
   ) = {
-    val stringResponse = handleErrorResponse(stringRichResponse)
+    val stringResponse = getResponseOrError(richResponse).string
 
     def textFromJsonString(json: JsValue) = readAttribute(json, "text").asSafe[String]
 
@@ -342,7 +342,7 @@ private[service] trait OpenAIServiceImpl
 
   override def listFiles: Future[Seq[FileInfo]] =
     execGET(EndPoint.files).map { response =>
-      readAttribute(response, "data").asSafeArray[FileInfo]
+      readAttribute(response.json, "data").asSafeArray[FileInfo]
     }
 
   override def uploadFile(
@@ -357,7 +357,7 @@ private[service] trait OpenAIServiceImpl
         Param.purpose -> Some(settings.purpose)
       )
     ).map(
-      _.asSafe[FileInfo]
+      _.asSafeJson[FileInfo]
     )
 
   private def readFile(file: File): Seq[String] = {
@@ -412,7 +412,7 @@ private[service] trait OpenAIServiceImpl
   override def deleteFile(
     fileId: String
   ): Future[DeleteResponse] =
-    execDELETEWithStatus(
+    execDELETERich(
       EndPoint.files,
       endPointParam = Some(fileId)
     ).map(handleDeleteEndpointResponse)
@@ -420,31 +420,29 @@ private[service] trait OpenAIServiceImpl
   override def retrieveFile(
     fileId: String
   ): Future[Option[FileInfo]] =
-    execGETWithStatus(
+    execGETRich(
       EndPoint.files,
       endPointParam = Some(fileId)
     ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafe[FileInfo])
+      handleNotFoundAndError(response).map(_.asSafeJson[FileInfo])
     }
 
   // because the output type here is string we need to do bit of a manual request building and calling
   override def retrieveFileContent(
     fileId: String
   ): Future[Option[String]] =
-    execGETWithStatusAux(
-      responseConverter = ResponseConverters.string,
+    execGETRich(
       endPoint = EndPoint.files,
       endPointParam = Some(s"${fileId}/content")
-    ).map(response => handleNotFoundAndError(response))
+    ).map(response => handleNotFoundAndError(response).map(_.string))
 
   override def retrieveFileContentAsSource(
     fileId: String
   ): Future[Option[Source[ByteString, _]]] =
-    execGETWithStatusAux(
-      responseConverter = ResponseConverters.source,
+    execGETRich(
       endPoint = EndPoint.files,
       endPointParam = Some(s"${fileId}/content")
-    ).map(response => handleNotFoundAndError(response))
+    ).map(response => handleNotFoundAndError(response).map(_.source))
 
   override def createVectorStore(
     fileIds: Seq[String],
@@ -459,7 +457,7 @@ private[service] trait OpenAIServiceImpl
         Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
       )
     ).map(
-      _.asSafe[VectorStore]
+      _.asSafeJson[VectorStore]
     )
 
   override def listVectorStores(
@@ -470,13 +468,13 @@ private[service] trait OpenAIServiceImpl
       EndPoint.vector_stores,
       params = paginationParams(pagination) :+ Param.order -> order
     ).map { response =>
-      readAttribute(response, "data").asSafeArray[VectorStore]
+      readAttribute(response.json, "data").asSafeArray[VectorStore]
     }
 
   override def deleteVectorStore(
     vectorStoreId: String
   ): Future[DeleteResponse] =
-    execDELETEWithStatus(
+    execDELETERich(
       EndPoint.vector_stores,
       endPointParam = Some(vectorStoreId)
     ).map(handleDeleteEndpointResponse)
@@ -494,7 +492,7 @@ private[service] trait OpenAIServiceImpl
         Param.chunking_strategy -> Some(Json.toJson(chunkingStrategy))
       )
     ).map(
-      _.asSafe[VectorStoreFile]
+      _.asSafeJson[VectorStoreFile]
     )
 
   override def listVectorStoreFiles(
@@ -510,14 +508,14 @@ private[service] trait OpenAIServiceImpl
         Param.order -> order :+
         Param.filter -> filter
     ).map { response =>
-      readAttribute(response, "data").asSafeArray[VectorStoreFile]
+      readAttribute(response.json, "data").asSafeArray[VectorStoreFile]
     }
 
   override def deleteVectorStoreFile(
     vectorStoreId: String,
     fileId: String
   ): Future[DeleteResponse] =
-    execDELETEWithStatus(
+    execDELETERich(
       EndPoint.vector_stores,
       endPointParam = Some(s"$vectorStoreId/files/$fileId")
     ).map(handleDeleteEndpointResponse)
@@ -556,7 +554,7 @@ private[service] trait OpenAIServiceImpl
         Param.seed -> settings.seed
       )
     ).map(
-      _.asSafe[FineTuneJob]
+      _.asSafeJson[FineTuneJob]
     )
 
   override def listFineTunes(
@@ -570,40 +568,40 @@ private[service] trait OpenAIServiceImpl
         Param.limit -> limit
       )
     ).map { response =>
-      readAttribute(response, "data").asSafeArray[FineTuneJob]
+      readAttribute(response.json, "data").asSafeArray[FineTuneJob]
     }
 
   override def retrieveFineTune(
     fineTuneId: String
   ): Future[Option[FineTuneJob]] =
-    execGETWithStatus(
+    execGETRich(
       EndPoint.fine_tunes,
       endPointParam = Some(fineTuneId)
-    ).map(response => handleNotFoundAndError(response).map(_.asSafe[FineTuneJob]))
+    ).map(response => handleNotFoundAndError(response).map(_.asSafeJson[FineTuneJob]))
 
   override def cancelFineTune(
     fineTuneId: String
   ): Future[Option[FineTuneJob]] =
-    execPOSTWithStatus(
+    execPOSTRich(
       EndPoint.fine_tunes,
       endPointParam = Some(s"$fineTuneId/cancel")
-    ).map(response => handleNotFoundAndError(response).map(_.asSafe[FineTuneJob]))
+    ).map(response => handleNotFoundAndError(response).map(_.asSafeJson[FineTuneJob]))
 
   override def listFineTuneEvents(
     fineTuneId: String,
     after: Option[String] = None,
     limit: Option[Int] = None
   ): Future[Option[Seq[FineTuneEvent]]] =
-    execGETWithStatus(
+    execGETRich(
       EndPoint.fine_tunes,
       endPointParam = Some(s"$fineTuneId/events"),
       params = Seq(
         Param.after -> after,
         Param.limit -> limit
       )
-    ).map { response =>
-      handleNotFoundAndError(response).map(jsResponse =>
-        readAttribute(jsResponse, "data").asSafeArray[FineTuneEvent]
+    ).map { richResponse =>
+      handleNotFoundAndError(richResponse).map(response =>
+        readAttribute(response.json, "data").asSafeArray[FineTuneEvent]
       )
     }
 
@@ -612,23 +610,23 @@ private[service] trait OpenAIServiceImpl
     after: Option[String],
     limit: Option[Int]
   ): Future[Option[Seq[FineTuneCheckpoint]]] =
-    execGETWithStatus(
+    execGETRich(
       EndPoint.fine_tunes,
       endPointParam = Some(s"$fineTuneId/checkpoints"),
       params = Seq(
         Param.after -> after,
         Param.limit -> limit
       )
-    ).map { response =>
-      handleNotFoundAndError(response).map(jsResponse =>
-        readAttribute(jsResponse, "data").asSafeArray[FineTuneCheckpoint]
+    ).map { richResponse =>
+      handleNotFoundAndError(richResponse).map(response =>
+        readAttribute(response.json, "data").asSafeArray[FineTuneCheckpoint]
       )
     }
 
   override def deleteFineTuneModel(
     modelId: String
   ): Future[DeleteResponse] =
-    execDELETEWithStatus(
+    execDELETERich(
       EndPoint.models,
       endPointParam = Some(modelId)
     ).map(handleDeleteEndpointResponse)
@@ -644,51 +642,46 @@ private[service] trait OpenAIServiceImpl
         Param.model -> settings.model
       )
     ).map(
-      _.asSafe[ModerationResponse]
+      _.asSafeJson[ModerationResponse]
     )
 
   override def createThread(
     messages: Seq[ThreadMessage],
     toolResources: Seq[AssistantToolResource] = Nil,
     metadata: Map[String, String]
-  ): Future[Thread] = {
-    val params = jsonBodyParams(
-      Param.messages -> (
-        if (messages.nonEmpty)
-          Some(messages.map(Json.toJson(_)(threadMessageFormat)))
-        else None
-      ),
-      Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None),
-      Param.tool_resources -> (if (toolResources.nonEmpty)
-                                 Some(Json.toJson(toolResources.head))
-                               else None)
-    )
-    params.foreach(println)
-    val t = execPOST(
+  ): Future[Thread] =
+    execPOST(
       EndPoint.threads,
-      bodyParams = params
+      bodyParams = jsonBodyParams(
+        Param.messages -> (
+          if (messages.nonEmpty)
+            Some(messages.map(Json.toJson(_)(threadMessageFormat)))
+          else None
+        ),
+        Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None),
+        Param.tool_resources -> (if (toolResources.nonEmpty)
+                                   Some(Json.toJson(toolResources.head))
+                                 else None)
+      )
     ).map(
-      _.asSafe[Thread]
+      _.asSafeJson[Thread]
     )
-    t
-  }
 
   override def retrieveThread(
     threadId: String
   ): Future[Option[Thread]] =
-    execGETWithStatus(
+    execGETRich(
       EndPoint.threads,
       Some(threadId)
     ).map { response =>
-      println(s"response: $response")
-      handleNotFoundAndError(response).map(_.asSafe[Thread])
+      handleNotFoundAndError(response).map(_.asSafeJson[Thread])
     }
 
   override def modifyThread(
     threadId: String,
     metadata: Map[String, String]
   ): Future[Option[Thread]] =
-    execPOSTWithStatus(
+    execPOSTRich(
       EndPoint.threads,
       endPointParam = Some(threadId),
       bodyParams = jsonBodyParams(
@@ -699,13 +692,13 @@ private[service] trait OpenAIServiceImpl
         )
       )
     ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafe[Thread])
+      handleNotFoundAndError(response).map(_.asSafeJson[Thread])
     }
 
   override def deleteThread(
     threadId: String
   ): Future[DeleteResponse] =
-    execDELETEWithStatus(
+    execDELETERich(
       EndPoint.threads,
       endPointParam = Some(threadId)
     ).map(handleDeleteEndpointResponse)
@@ -735,18 +728,18 @@ private[service] trait OpenAIServiceImpl
         )
       )
     ).map(
-      _.asSafe[ThreadFullMessage]
+      _.asSafeJson[ThreadFullMessage]
     )
 
   override def retrieveThreadMessage(
     threadId: String,
     messageId: String
   ): Future[Option[ThreadFullMessage]] =
-    execGETWithStatus(
+    execGETRich(
       EndPoint.threads,
       endPointParam = Some(s"$threadId/messages/$messageId")
     ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafe[ThreadFullMessage])
+      handleNotFoundAndError(response).map(_.asSafeJson[ThreadFullMessage])
     }
 
   override def modifyThreadMessage(
@@ -754,7 +747,7 @@ private[service] trait OpenAIServiceImpl
     messageId: String,
     metadata: Map[String, String]
   ): Future[Option[ThreadFullMessage]] =
-    execPOSTWithStatus(
+    execPOSTRich(
       EndPoint.threads,
       endPointParam = Some(s"$threadId/messages/$messageId"),
       bodyParams = jsonBodyParams(
@@ -765,7 +758,7 @@ private[service] trait OpenAIServiceImpl
         )
       )
     ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafe[ThreadFullMessage])
+      handleNotFoundAndError(response).map(_.asSafeJson[ThreadFullMessage])
     }
 
   override def listThreadMessages(
@@ -778,7 +771,7 @@ private[service] trait OpenAIServiceImpl
       endPointParam = Some(s"$threadId/messages"),
       params = paginationParams(pagination) :+ Param.order -> order
     ).map { response =>
-      readAttribute(response, "data").asSafeArray[ThreadFullMessage]
+      readAttribute(response.json, "data").asSafeArray[ThreadFullMessage]
     }
 
   override def retrieveThreadMessageFile(
@@ -786,11 +779,11 @@ private[service] trait OpenAIServiceImpl
     messageId: String,
     fileId: String
   ): Future[Option[ThreadMessageFile]] =
-    execGETWithStatus(
+    execGETRich(
       EndPoint.threads,
       endPointParam = Some(s"$threadId/messages/$messageId/files/$fileId")
     ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafe[ThreadMessageFile])
+      handleNotFoundAndError(response).map(_.asSafeJson[ThreadMessageFile])
     }
 
   override def listThreadMessageFiles(
@@ -804,7 +797,7 @@ private[service] trait OpenAIServiceImpl
       endPointParam = Some(s"$threadId/messages/$messageId/files"),
       params = paginationParams(pagination) :+ Param.order -> order
     ).map { response =>
-      readAttribute(response, "data").asSafeArray[ThreadMessageFile]
+      readAttribute(response.json, "data").asSafeArray[ThreadMessageFile]
     }
 
   override def createAssistant(
@@ -834,7 +827,7 @@ private[service] trait OpenAIServiceImpl
         Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
       )
     ).map(
-      _.asSafe[Assistant]
+      _.asSafeJson[Assistant]
     )
   }
 
@@ -846,16 +839,16 @@ private[service] trait OpenAIServiceImpl
       EndPoint.assistants,
       params = paginationParams(pagination) :+ Param.order -> order
     ).map { response =>
-      readAttribute(response, "data").asSafeArray[Assistant]
+      readAttribute(response.json, "data").asSafeArray[Assistant]
     }
   }
 
   override def retrieveAssistant(assistantId: String): Future[Option[Assistant]] =
-    execGETWithStatus(
+    execGETRich(
       EndPoint.assistants,
       Some(assistantId)
     ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafe[Assistant])
+      handleNotFoundAndError(response).map(_.asSafeJson[Assistant])
     }
 
   override def modifyAssistant(
@@ -868,7 +861,7 @@ private[service] trait OpenAIServiceImpl
     fileIds: Seq[String],
     metadata: Map[String, String]
   ): Future[Option[Assistant]] =
-    execPOSTWithStatus(
+    execPOSTRich(
       EndPoint.assistants,
       endPointParam = Some(assistantId),
       bodyParams = jsonBodyParams(
@@ -881,11 +874,11 @@ private[service] trait OpenAIServiceImpl
         Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
       )
     ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafe[Assistant])
+      handleNotFoundAndError(response).map(_.asSafeJson[Assistant])
     }
 
   override def deleteAssistant(assistantId: String): Future[DeleteResponse] =
-    execDELETEWithStatus(
+    execDELETERich(
       EndPoint.assistants,
       endPointParam = Some(assistantId)
     ).map(handleDeleteEndpointResponse)
@@ -894,15 +887,15 @@ private[service] trait OpenAIServiceImpl
     assistantId: String,
     fileId: String
   ): Future[DeleteResponse] =
-    execDELETEWithStatus(
+    execDELETERich(
       EndPoint.assistants,
       endPointParam = Some(s"$assistantId/files/$fileId")
     ).map(handleDeleteEndpointResponse)
 
-  private def handleDeleteEndpointResponse(response: RichJsResponse): DeleteResponse = {
-    handleNotFoundAndError(response)
-      .map(jsResponse =>
-        if (readAttribute(jsResponse, "deleted").asSafe[Boolean]) {
+  private def handleDeleteEndpointResponse(richResponse: RichResponse): DeleteResponse = {
+    handleNotFoundAndError(richResponse)
+      .map(response =>
+        if (readAttribute(response.json, "deleted").asSafe[Boolean]) {
           DeleteResponse.Deleted
         } else {
           DeleteResponse.NotDeleted
@@ -946,11 +939,11 @@ private[service] trait OpenAIServiceImpl
         Param.completion_window -> Some(Json.toJson(completionWindow)),
         Param.metadata -> Some(metadata)
       )
-    ).map(_.asSafe[Batch])
+    ).map(_.asSafeJson[Batch])
 
   override def retrieveBatch(batchId: String): Future[Option[Batch]] =
     asSafeJsonIfFound[Batch](
-      execGETWithStatus(
+      execGETRich(
         EndPoint.batches,
         Some(batchId)
       )
@@ -988,7 +981,7 @@ private[service] trait OpenAIServiceImpl
 
   override def cancelBatch(batchId: String): Future[Option[Batch]] =
     asSafeJsonIfFound[Batch](
-      execPOSTWithStatus(
+      execPOSTRich(
         EndPoint.batches,
         endPointParam = Some(s"$batchId/cancel")
       )
@@ -1002,13 +995,12 @@ private[service] trait OpenAIServiceImpl
       EndPoint.batches,
       params = paginationParams(pagination) :+ Param.order -> order
     ).map { response =>
-      readAttribute(response, "data").asSafeArray[Batch]
+      readAttribute(response.json, "data").asSafeArray[Batch]
     }
   }
 
-  private def asSafeJsonIfFound[T: Reads](response: Future[RichJsResponse])
-    : Future[Option[T]] =
+  private def asSafeJsonIfFound[T: Reads](response: Future[RichResponse]): Future[Option[T]] =
     response.map { response =>
-      handleNotFoundAndError(response).map(_.asSafe[T])
+      handleNotFoundAndError(response).map(_.asSafeJson[T])
     }
 }

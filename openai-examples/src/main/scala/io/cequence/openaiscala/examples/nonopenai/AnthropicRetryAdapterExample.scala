@@ -11,8 +11,8 @@ import scala.concurrent.Future
 
 object AnthropicRetryAdapterExample extends ExampleBase[OpenAIChatCompletionService] {
 
-  val FailingModel = NonOpenAIModelId.claude_3_opus_20240229
-  val WorkingModel = NonOpenAIModelId.claude_3_haiku_20240307
+  private val failingModel = NonOpenAIModelId.claude_3_opus_20240229
+  private val workingModel = NonOpenAIModelId.claude_3_haiku_20240307
 
   override protected val service: OpenAIChatCompletionService = timoutingService
 
@@ -24,12 +24,12 @@ object AnthropicRetryAdapterExample extends ExampleBase[OpenAIChatCompletionServ
   override protected def run: Future[_] =
     for {
       // this invokes the failing service, which triggers the retry mechanism
-      _ <- runChatCompletionAux(FailingModel).recover { case e: OpenAIScalaClientException =>
+      _ <- runChatCompletionAux(failingModel).recover { case e: OpenAIScalaClientException =>
         println(s"Too many retries, giving up on '${e.getMessage}'")
       }
 
       // should complete without retry
-      _ <- runChatCompletionAux(WorkingModel)
+      _ <- runChatCompletionAux(workingModel)
     } yield ()
 
   private def runChatCompletionAux(model: String) = {

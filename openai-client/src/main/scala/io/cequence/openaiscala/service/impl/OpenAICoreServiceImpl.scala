@@ -5,6 +5,7 @@ import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.{HandleOpenAIErrorCodes, OpenAICoreService}
+import io.cequence.wsclient.ResponseImplicits._
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.service.ws.WSRequestHelper
 import play.api.libs.json.{JsObject, JsValue}
@@ -32,7 +33,7 @@ private[service] trait OpenAICoreServiceImpl
 
   override def listModels: Future[Seq[ModelInfo]] =
     execGET(EndPoint.models).map { response =>
-      (response.asSafe[JsObject] \ "data").toOption.map {
+      (response.asSafeJson[JsObject] \ "data").toOption.map {
         _.asSafeArray[ModelInfo]
       }.getOrElse(
         throw new OpenAIScalaClientException(
@@ -49,7 +50,7 @@ private[service] trait OpenAICoreServiceImpl
       EndPoint.completions,
       bodyParams = createBodyParamsForCompletion(prompt, settings, stream = false)
     ).map(
-      _.asSafe[TextCompletionResponse]
+      _.asSafeJson[TextCompletionResponse]
     )
 
   override def createEmbeddings(
@@ -72,7 +73,7 @@ private[service] trait OpenAICoreServiceImpl
         Param.dimensions -> settings.dimensions
       )
     ).map(
-      _.asSafe[EmbeddingResponse]
+      _.asSafeJson[EmbeddingResponse]
     )
 }
 

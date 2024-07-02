@@ -1,10 +1,7 @@
 package io.cequence.openaiscala.anthropic.service
 
 import akka.stream.Materializer
-import io.cequence.openaiscala.anthropic.service.impl.{
-  AnthropicServiceImpl,
-  OpenAIAnthropicChatCompletionService
-}
+import io.cequence.openaiscala.anthropic.service.impl.{AnthropicServiceImpl, OpenAIAnthropicChatCompletionService}
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
 import io.cequence.wsclient.domain.WsRequestContext
 import io.cequence.wsclient.service.ws.Timeouts

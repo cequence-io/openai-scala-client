@@ -4,13 +4,11 @@ import akka.NotUsed
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.anthropic.JsonFormats
-import io.cequence.openaiscala.anthropic.domain.response.{
-  ContentBlockDelta,
-  CreateMessageResponse
-}
+import io.cequence.openaiscala.anthropic.domain.response.{ContentBlockDelta, CreateMessageResponse}
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.domain.{ChatRole, Message}
 import io.cequence.openaiscala.anthropic.service.{AnthropicService, HandleAnthropicErrorCodes}
+import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.service.ws.stream.WSStreamRequestHelper
 import play.api.libs.json.{JsValue, Json}
@@ -23,7 +21,6 @@ trait Anthropic
     with HandleAnthropicErrorCodes
     with JsonFormats
 
-// Shouldn't use OpenAIWSRequestHelper and OpenAIWSStreamRequestHelper
 private[service] trait AnthropicServiceImpl extends Anthropic {
 
   override protected type PEP = EndPoint
@@ -37,7 +34,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       EndPoint.messages,
       bodyParams = createBodyParamsForMessageCreation(messages, settings, stream = false)
     ).map(
-      _.asSafe[CreateMessageResponse]
+      _.asSafeJson[CreateMessageResponse]
     )
 
   override def createMessageStreamed(
@@ -68,13 +65,13 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       }
     }.collect { case Some(delta) => delta }
 
-  protected def createBodyParamsForMessageCreation(
+  private def createBodyParamsForMessageCreation(
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings,
     stream: Boolean
   ): Seq[(Param, Option[JsValue])] = {
     assert(messages.nonEmpty, "At least one message expected.")
-    assert(messages(0).role == ChatRole.User, "First message must be from user.")
+    assert(messages.head.role == ChatRole.User, "First message must be from user.")
 
     val messageJsons = messages.map(Json.toJson(_))
 

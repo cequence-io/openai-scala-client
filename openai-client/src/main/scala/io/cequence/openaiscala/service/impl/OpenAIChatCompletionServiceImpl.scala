@@ -7,6 +7,7 @@ import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIServiceConsts}
 import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.JsonUtil.JsonOps
+import io.cequence.wsclient.ResponseImplicits._
 import io.cequence.wsclient.service.ws.WSRequestHelper
 import play.api.libs.json.{JsValue, Json}
 
@@ -35,7 +36,7 @@ private[service] trait OpenAIChatCompletionServiceImpl
       EndPoint.chat_completions,
       bodyParams = createBodyParamsForChatCompletion(messages, settings, stream = false)
     ).map(
-      _.asSafe[ChatCompletionResponse]
+      _.asSafeJson[ChatCompletionResponse]
     )
 }
 
