@@ -8,7 +8,7 @@ object ListAssistants extends Example {
 
   override protected def run: Future[_] =
     for {
-      assistants <- service.listAssistants(Pagination.limit(5))
+      assistants <- service.listAssistants(Pagination.limit(100))
     } yield {
       assistants.foreach(println)
     }

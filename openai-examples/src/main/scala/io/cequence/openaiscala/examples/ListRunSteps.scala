@@ -6,6 +6,6 @@ object ListRunSteps extends Example {
 
   override protected def run: Future[Unit] =
     service
-      .listRunSteps("thread_YnAy1CQ51AkBmcI3XWO1zuUB", "run_teGlp0JtYh1QaFk73FtuHMAz")
+      .listRunSteps("thread_xxx", "run_xxx")
       .map(x => println(x))
 }

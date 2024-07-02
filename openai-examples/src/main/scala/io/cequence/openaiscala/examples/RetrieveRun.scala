@@ -10,14 +10,11 @@ import scala.concurrent.Future
 object RetrieveRun extends Example {
 
   override protected def run: Future[Option[Unit]] =
-    service
-      .retrieveRun("thread_VStezPO5449TyPgpkgeEtI81", "run_g1d7aSLHwDX14m9CU0RZs3Tg")
-      .map { maybeRun =>
-        println(maybeRun)
+    service.retrieveRun("thread_xxx", "run_xxx").map { maybeRun =>
+      println(maybeRun)
 
-        maybeRun.map { run =>
-          println(prettyPrint(Json.toJson[Run](run)))
-        }
-
+      maybeRun.map { run =>
+        println(prettyPrint(Json.toJson[Run](run)))
       }
+    }
 }
