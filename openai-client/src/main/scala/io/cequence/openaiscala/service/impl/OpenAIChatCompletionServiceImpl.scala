@@ -53,11 +53,11 @@ trait ChatCompletionBodyMaker {
 
     val messageJsons = messages.map(Json.toJson(_)(messageWrites))
 
-    // TODO: add this
-    val extraParams: Seq[(String, Option[JsValue])] =
-      settings.extra_params.map { case (paramName, value) =>
-        (paramName, Some(JsonUtil.toJson(value)))
-      }.toSeq
+//    // TODO: add this
+//    val extraParams: Seq[(String, Option[JsValue])] =
+//      settings.extra_params.map { case (paramName, value) =>
+//        (paramName, Some(JsonUtil.toJson(value)))
+//      }.toSeq
 
     jsonBodyParams(
       Param.messages -> Some(messageJsons),

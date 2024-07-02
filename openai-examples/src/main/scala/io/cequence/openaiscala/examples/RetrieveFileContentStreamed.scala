@@ -1,4 +1,3 @@
-
 package io.cequence.openaiscala.examples
 
 import java.nio.file.Paths
@@ -21,6 +20,5 @@ object RetrieveFileContentStreamed extends Example {
       }.getOrElse(
         Future.failed(new Exception("File not found"))
       )
-    } yield
-      ()
+    } yield ()
 }
