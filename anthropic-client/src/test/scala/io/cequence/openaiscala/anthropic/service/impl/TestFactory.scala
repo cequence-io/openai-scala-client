@@ -30,24 +30,24 @@ class TestAnthropicServiceImpl(
 
   val defaultAcceptableStatusCodes = Seq(200, 201, 202, 204)
 
-  override def execRequestRaw(
-    request: StandaloneWSRequest,
-    exec: StandaloneWSRequest => Future[StandaloneWSRequest#Response],
-    acceptableStatusCodes: Seq[Int] = Nil,
-    endPointForLogging: Option[PEP] = None // only for logging
-  ): Future[Either[StandaloneWSRequest#Response, (Int, String)]] = {
-
-    val response =
-      new StandaloneAhcWSResponse(mockedResponse).asInstanceOf[StandaloneWSRequest#Response]
-
-    Future.successful {
-      if (!acceptableStatusCodes.contains(response.status))
-        Right((response.status, response.body))
-      else
-        Left(response)
-    }
-  }.recover(recoverErrors(endPointForLogging))
-
+  // TODO
+//  override def execRequestRaw(
+//    request: StandaloneWSRequest,
+//    exec: StandaloneWSRequest => Future[StandaloneWSRequest#Response],
+//    acceptableStatusCodes: Seq[Int] = Nil,
+//    endPointForLogging: Option[PEP] = None // only for logging
+//  ): Future[Either[StandaloneWSRequest#Response, (Int, String)]] = {
+//
+//    val response =
+//      new StandaloneAhcWSResponse(mockedResponse).asInstanceOf[StandaloneWSRequest#Response]
+//
+//    Future.successful {
+//      if (!acceptableStatusCodes.contains(response.status))
+//        Right((response.status, response.body))
+//      else
+//        Left(response)
+//    }
+//  }.recover(recoverErrors(endPointForLogging))
 }
 
 class AnthropicServiceClassImpl(
