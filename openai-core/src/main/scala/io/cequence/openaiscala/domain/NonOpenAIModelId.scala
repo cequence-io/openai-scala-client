@@ -106,7 +106,7 @@ object NonOpenAIModelId {
   val bleat_adapter = "bleat-adapter" // Fireworks AI (completion)
   val smaug_72b_chat = "smaug-72b-chat" // OctoML
   val cohere_command_r_plus = "cohere-command-r-plus"
-  val yi_large = "yi-large" // Fireworks AI
+  val yi_large = "yi-large" // Fireworks AI - accounts/yi-01-ai/models/yi-large
   val nous_hermes_2_yi_34b = "NousResearch/Nous-Hermes-2-Yi-34B" // Together AI
   val yi_34b_chat = "zero-one-ai/Yi-34B-Chat" // Together AI
   val whisper_large_v3 = "whisper-large-v3" // Groq (audio)

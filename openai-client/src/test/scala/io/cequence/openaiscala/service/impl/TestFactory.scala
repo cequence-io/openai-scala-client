@@ -50,7 +50,6 @@ class TestOpenAIServiceImpl(
 //        Left(response)
 //    }
 //  }.recover(recoverErrors(endPointForLogging))
-
 }
 
 case class TestOpenAIServiceFactory(mockedResponse: AHCResponse)
