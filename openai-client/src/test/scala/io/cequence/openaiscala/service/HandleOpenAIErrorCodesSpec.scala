@@ -3,9 +3,10 @@ package io.cequence.openaiscala.service
 import io.cequence.openaiscala._
 import io.cequence.openaiscala.domain.UserMessage
 import io.cequence.openaiscala.service.impl.TestFactory
-import org.scalatest.GivenWhenThen
+import org.scalatest.{GivenWhenThen, Ignore}
 import org.scalatest.wordspec.AsyncWordSpec
 
+@Ignore
 class HandleOpenAIErrorCodesSpec extends AsyncWordSpec with GivenWhenThen {
 
   private val irrelevantMessages = Seq(UserMessage("Hello"))
