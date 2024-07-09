@@ -110,7 +110,7 @@ private[service] trait OpenAIServiceImpl
       bodyParams = Seq(Param.tool_outputs -> toolOutputs.map(_.map(
           Json.toJson(_)(assistantToolOutputFormat))).map(Json.toJson(_)))
     ).map(
-      _.asSafe[Run]
+      _.asSafeJson[Run]
     )
   }
 
