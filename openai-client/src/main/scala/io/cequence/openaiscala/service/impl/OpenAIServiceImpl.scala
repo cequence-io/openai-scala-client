@@ -73,7 +73,7 @@ private[service] trait OpenAIServiceImpl
     additionalInstructions: Option[String],
     additionalMessages: Seq[BaseMessage],
     tools: Seq[ForcableTool],
-    responseToolChoice: Option[RequiredAction] = None,
+    responseToolChoice: Option[ToolChoice] = None,
     settings: CreateRunSettings = DefaultSettings.CreateRun,
     stream: Boolean
   ): Future[Run] = {
@@ -96,6 +96,21 @@ private[service] trait OpenAIServiceImpl
       bodyParams = coreParams ++ toolParam ++ runParams
     ).map(
       _.asSafeJson[Run]
+    )
+  }
+
+  def submitToolOutputs(
+     threadId: String,
+     runId: String,
+     toolOutputs: Option[Seq[AssistantToolOutput]]
+  ): Future[Run] = {
+    execPOST(
+      EndPoint.threads,
+      Some(s"$threadId/runs/$runId/submit_tool_outputs"),
+      bodyParams = Seq(Param.tool_outputs -> toolOutputs.map(_.map(
+          Json.toJson(_)(assistantToolOutputFormat))).map(Json.toJson(_)))
+    ).map(
+      _.asSafe[Run]
     )
   }
 
@@ -126,7 +141,7 @@ private[service] trait OpenAIServiceImpl
 
   private def toolParams(
     tools: Seq[ForcableTool],
-    maybeResponseToolChoice: Option[RequiredAction]
+    maybeResponseToolChoice: Option[ToolChoice]
   ): Seq[(Param, Option[JsValue])] = {
     val toolJsons = tools.map {
       case CodeInterpreterSpec => Map("type" -> "code_interpreter")
@@ -135,13 +150,13 @@ private[service] trait OpenAIServiceImpl
     }
 
     val maybeToolChoiceParam = maybeResponseToolChoice.map {
-      case RequiredAction.None                         => "none"
-      case RequiredAction.Auto                         => "auto"
-      case RequiredAction.Required                     => "required"
-      case RequiredAction.EnforcedTool(FileSearchSpec) => Map("type" -> "file_search")
-      case RequiredAction.EnforcedTool(CodeInterpreterSpec) =>
+      case ToolChoice.None                         => "none"
+      case ToolChoice.Auto                         => "auto"
+      case ToolChoice.Required                     => "required"
+      case ToolChoice.EnforcedTool(FileSearchSpec) => Map("type" -> "file_search")
+      case ToolChoice.EnforcedTool(CodeInterpreterSpec) =>
         Map("type" -> "code_interpreter")
-      case RequiredAction.EnforcedTool(FunctionSpec(name, _, _)) =>
+      case ToolChoice.EnforcedTool(FunctionSpec(name, _, _)) =>
         Map("type" -> "function", "function" -> Map("name" -> name))
     }
 

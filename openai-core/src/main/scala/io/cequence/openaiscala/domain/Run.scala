@@ -21,28 +21,28 @@ object RunStatus {
   case object Expired extends RunStatus
 }
 
-sealed trait RequiredAction
-object RequiredAction {
-  case object None extends RequiredAction
-  case object Auto extends RequiredAction
-  case object Required extends RequiredAction
-  case class EnforcedTool(spec: ForcableTool) extends RequiredAction
+sealed trait ToolChoice
+object ToolChoice {
+  case object None extends ToolChoice
+  case object Auto extends ToolChoice
+  case object Required extends ToolChoice
+  case class EnforcedTool(spec: ForcableTool) extends ToolChoice
 }
 
-//case class RequiredAction(
-//  `type`: String,
-//  submitToolOutputs: SubmitToolOutputs
-//)
-//
-//case class SubmitToolOutputs(
-//  toolCalls: Seq[ToolCall]
-//)
-//
-//case class ToolCall(
-//  id: String,
-//  `type`: String,
-//  function: FunctionCallSpec
-//)
+case class RequiredAction(
+  `type`: String,
+  submit_tool_outputs: SubmitToolOutputs
+)
+
+case class SubmitToolOutputs(
+  tool_calls: Seq[ToolCall]
+)
+
+case class ToolCall(
+  id: String,
+  `type`: String,
+  function: FunctionCallSpec
+)
 
 case class Run(
   id: String,
@@ -62,8 +62,8 @@ case class Run(
   model: String,
   instructions: Option[String],
   usage: Option[UsageInfo]
-//  tool_choice: Either[String, Any], // Replace Any with the actual type when available
-//  response_format: Either[String, Any] // Replace Any with the actual type when available
+  //  tool_choice: Either[String, Any], // Replace Any with the actual type when available
+  //  response_format: Either[String, Any] // Replace Any with the actual type when available
 )
 
 object Run {

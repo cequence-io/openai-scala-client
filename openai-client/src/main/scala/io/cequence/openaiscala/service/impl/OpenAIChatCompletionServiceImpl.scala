@@ -34,7 +34,7 @@ private[service] trait OpenAIChatCompletionServiceImpl
   ): Future[ChatCompletionResponse] =
     execPOST(
       EndPoint.chat_completions,
-      bodyParams = createBodyParamsForChatCompletion(messages, settings, stream = false)
+      bodyParams = createBodyParamsForChatCompletion(messages.toList, settings, stream = false).toList
     ).map(
       _.asSafeJson[ChatCompletionResponse]
     )
