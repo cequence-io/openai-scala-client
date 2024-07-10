@@ -98,7 +98,7 @@ object JsonFormats {
     (__ \ "content").formatNullable[String] and
       (__ \ "tool_call_id").format[String] and
       (__ \ "name").format[String]
-    )(ToolMessage.apply, unlift(ToolMessage.unapply))
+  )(ToolMessage.apply, unlift(ToolMessage.unapply))
   implicit val assistantMessageFormat: Format[AssistantMessage] = Json.format[AssistantMessage]
   implicit val assistantToolMessageReads: Reads[AssistantToolMessage] = (
     (__ \ "content").readNullable[String] and
@@ -292,7 +292,8 @@ object JsonFormats {
     json.as[JsObject] ++ role ++ name
   }
 
-  implicit lazy val assistantToolOutputFormat: Format[AssistantToolOutput] = Json.format[AssistantToolOutput]
+  implicit lazy val assistantToolOutputFormat: Format[AssistantToolOutput] =
+    Json.format[AssistantToolOutput]
 
   implicit lazy val toolWrites: Writes[ToolSpec] = Writes[ToolSpec] {
     _ match {
@@ -863,7 +864,8 @@ object JsonFormats {
   implicit lazy val runResponseFormat: Format[RunResponse] = Json.format[RunResponse]
 
   implicit lazy val toolCallFormat: Format[ToolCall] = Json.format[ToolCall]
-  implicit lazy val submitToolOutputsFormat: Format[SubmitToolOutputs] = Json.format[SubmitToolOutputs]
+  implicit lazy val submitToolOutputsFormat: Format[SubmitToolOutputs] =
+    Json.format[SubmitToolOutputs]
   implicit lazy val requiredActionFormat: Format[RequiredAction] = Json.format[RequiredAction]
 
 //  implicit lazy val runStepLastErrorFormat: Format[RunStep.LastError] =

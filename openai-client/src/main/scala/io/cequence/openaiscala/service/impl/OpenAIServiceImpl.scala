@@ -100,15 +100,18 @@ private[service] trait OpenAIServiceImpl
   }
 
   def submitToolOutputs(
-     threadId: String,
-     runId: String,
-     toolOutputs: Option[Seq[AssistantToolOutput]]
+    threadId: String,
+    runId: String,
+    toolOutputs: Option[Seq[AssistantToolOutput]]
   ): Future[Run] = {
     execPOST(
       EndPoint.threads,
       Some(s"$threadId/runs/$runId/submit_tool_outputs"),
-      bodyParams = Seq(Param.tool_outputs -> toolOutputs.map(_.map(
-          Json.toJson(_)(assistantToolOutputFormat))).map(Json.toJson(_)))
+      bodyParams = Seq(
+        Param.tool_outputs -> toolOutputs
+          .map(_.map(Json.toJson(_)(assistantToolOutputFormat)))
+          .map(Json.toJson(_))
+      )
     ).map(
       _.asSafeJson[Run]
     )

@@ -48,7 +48,6 @@ object CreateRunWithFunctionCall extends Example {
       _ = println(thread)
     } yield thread
 
-
   override protected def run: Future[_] =
     for {
       assistant <- createAssistant()
@@ -75,35 +74,39 @@ object CreateRunWithFunctionCall extends Example {
       updatedRunOpt <- service.retrieveRun(eventsThread.id, run.id)
       updatedRun = updatedRunOpt.get
       toolCalls = updatedRun.required_action.get.submit_tool_outputs.tool_calls
-        functionCalls = toolCalls.collect {
-          case toolCall if toolCall.function.isInstanceOf[FunctionCallSpec] => toolCall
-        }
-        available_functions = Map("get_current_weather" -> getCurrentWeather _)
+      functionCalls = toolCalls.collect {
+        case toolCall if toolCall.function.isInstanceOf[FunctionCallSpec] => toolCall
+      }
+      available_functions = Map("get_current_weather" -> getCurrentWeather _)
 
-        toolMessages = functionCalls.map { toolCall =>
-          val functionCallSpec = toolCall.function
-          val functionName = functionCallSpec.name
-          val functionArgsJson = Json.parse(functionCallSpec.arguments)
-          val functionResponse = available_functions.get(functionName) match {
-            case Some(functionToCall) =>
-              functionToCall(
-                (functionArgsJson \ "location").as[String],
-                (functionArgsJson \ "unit").asOpt[String]
-              )
-            case None =>
-              Json.obj("error" -> s"Function $functionName not found")
-          }
-          AssistantToolOutput(output = Option(functionResponse.toString), tool_call_id = toolCall.id)
+      toolMessages = functionCalls.map { toolCall =>
+        val functionCallSpec = toolCall.function
+        val functionName = functionCallSpec.name
+        val functionArgsJson = Json.parse(functionCallSpec.arguments)
+        val functionResponse = available_functions.get(functionName) match {
+          case Some(functionToCall) =>
+            functionToCall(
+              (functionArgsJson \ "location").as[String],
+              (functionArgsJson \ "unit").asOpt[String]
+            )
+          case None =>
+            Json.obj("error" -> s"Function $functionName not found")
         }
+        AssistantToolOutput(
+          output = Option(functionResponse.toString),
+          tool_call_id = toolCall.id
+        )
+      }
       _ <- service.submitToolOutputs(updatedRun.thread_id, updatedRun.id, Some(toolMessages))
       _ = java.lang.Thread.sleep(5000)
       finalMessages <- service.listThreadMessages(eventsThread.id)
     } yield {
       println(run)
       println(updatedRunOpt)
-      updatedRunOpt.get.required_action.get.submit_tool_outputs.tool_calls.foreach { toolCall =>
-        println(s"Tool call: ${toolCall.id}")
-        println(toolCall)
+      updatedRunOpt.get.required_action.get.submit_tool_outputs.tool_calls.foreach {
+        toolCall =>
+          println(s"Tool call: ${toolCall.id}")
+          println(toolCall)
       }
       println("Assistant answer:" + finalMessages.map(_.content).mkString("\n"))
     }
@@ -131,9 +134,9 @@ object CreateRunWithFunctionCall extends Example {
 
   // unit is ignored here
   private def getCurrentWeather(
-                                 location: String,
-                                 unit: Option[String]
-                               ) =
+    location: String,
+    unit: Option[String]
+  ) =
     location.toLowerCase() match {
       case loc if loc.contains("tokyo") =>
         Json.obj("location" -> "Tokyo", "temperature" -> "10", "unit" -> "celsius")
