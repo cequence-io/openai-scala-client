@@ -7,6 +7,7 @@ import io.cequence.openaiscala.domain.AssistantToolResource.{
 import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain.ChunkingStrategy.StaticChunkingStrategy
 import io.cequence.openaiscala.domain.FineTune.WeightsAndBiases
+import io.cequence.openaiscala.domain.ToolChoice.EnforcedTool
 import io.cequence.openaiscala.domain.StepDetail.{MessageCreation, ToolCalls}
 import io.cequence.openaiscala.domain.response.AssistantToolResourceResponse.{
   CodeInterpreterResourcesResponse,
@@ -93,7 +94,11 @@ object JsonFormats {
   implicit val systemMessageFormat: Format[SystemMessage] = Json.format[SystemMessage]
   implicit val userMessageFormat: Format[UserMessage] = Json.format[UserMessage]
   implicit val userSeqMessageFormat: Format[UserSeqMessage] = Json.format[UserSeqMessage]
-  implicit val toolMessageFormat: Format[ToolMessage] = Json.format[ToolMessage]
+  implicit val toolMessageFormat: Format[ToolMessage] = (
+    (__ \ "content").formatNullable[String] and
+      (__ \ "tool_call_id").format[String] and
+      (__ \ "name").format[String]
+  )(ToolMessage.apply, unlift(ToolMessage.unapply))
   implicit val assistantMessageFormat: Format[AssistantMessage] = Json.format[AssistantMessage]
   implicit val assistantToolMessageReads: Reads[AssistantToolMessage] = (
     (__ \ "content").readNullable[String] and
@@ -286,6 +291,9 @@ object JsonFormats {
 
     json.as[JsObject] ++ role ++ name
   }
+
+  implicit lazy val assistantToolOutputFormat: Format[AssistantToolOutput] =
+    Json.format[AssistantToolOutput]
 
   implicit lazy val toolWrites: Writes[ToolSpec] = Writes[ToolSpec] {
     _ match {
@@ -786,10 +794,7 @@ object JsonFormats {
     Format(reads, writes)
   }
 
-  implicit lazy val runReasonFormat: Format[Run.Reason] = new Format[Run.Reason] {
-    def reads(json: JsValue): JsResult[Run.Reason] = json.validate[String].map(Run.Reason)
-    def writes(o: Run.Reason): JsValue = JsString(o.value)
-  }
+  implicit lazy val runReasonFormat: Format[Run.Reason] = Json.format[Run.Reason]
 
   implicit lazy val lastRunErrorCodeFormat: Format[Run.LastErrorCode] = {
     import Run.LastErrorCode._
@@ -819,8 +824,8 @@ object JsonFormats {
   implicit lazy val RunFormat: Format[Run] =
     Json.format[Run]
 
-  implicit val requiredActionFormat: Format[RequiredAction] = {
-    import RequiredAction._
+  implicit val toolChoiceFormat: Format[ToolChoice] = {
+    import ToolChoice._
 
     val enforcedToolReads: Reads[EnforcedTool] = Reads { json =>
       (json \ "type").validate[String].flatMap {
@@ -834,7 +839,7 @@ object JsonFormats {
       }
     }
 
-    val reads: Reads[RequiredAction] = Reads { json =>
+    val reads: Reads[ToolChoice] = Reads { json =>
       json.validate[String].flatMap {
         case "none"     => JsSuccess(None)
         case "auto"     => JsSuccess(Auto)
@@ -843,7 +848,7 @@ object JsonFormats {
       }
     }
 
-    val writes: Writes[RequiredAction] = Writes {
+    val writes: Writes[ToolChoice] = Writes {
       case None                              => JsString("none")
       case Auto                              => JsString("auto")
       case Required                          => JsString("required")
@@ -857,6 +862,11 @@ object JsonFormats {
   }
 
   implicit lazy val runResponseFormat: Format[RunResponse] = Json.format[RunResponse]
+
+  implicit lazy val toolCallFormat: Format[ToolCall] = Json.format[ToolCall]
+  implicit lazy val submitToolOutputsFormat: Format[SubmitToolOutputs] =
+    Json.format[SubmitToolOutputs]
+  implicit lazy val requiredActionFormat: Format[RequiredAction] = Json.format[RequiredAction]
 
 //  implicit lazy val runStepLastErrorFormat: Format[RunStep.LastError] =
 //    Json.format[RunStep.LastError]
