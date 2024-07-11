@@ -5,10 +5,9 @@ import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIServiceConsts}
-import io.cequence.wsclient.JsonUtil
-import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits._
-import io.cequence.wsclient.service.ws.WSRequestHelper
+import io.cequence.wsclient.service.WSClient
+import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithEngine
 import play.api.libs.json.{JsValue, Json}
 
 import scala.concurrent.Future
@@ -21,7 +20,7 @@ import scala.concurrent.Future
  */
 private[service] trait OpenAIChatCompletionServiceImpl
     extends OpenAIChatCompletionService
-    with WSRequestHelper
+    with WSClientWithEngine
     with ChatCompletionBodyMaker
     with OpenAIServiceConsts {
 
@@ -43,7 +42,7 @@ private[service] trait OpenAIChatCompletionServiceImpl
 
 trait ChatCompletionBodyMaker {
 
-  this: WSRequestHelper =>
+  this: WSClient =>
 
   protected def createBodyParamsForChatCompletion(
     messages: Seq[BaseMessage],
@@ -53,12 +52,6 @@ trait ChatCompletionBodyMaker {
     assert(messages.nonEmpty, "At least one message expected.")
 
     val messageJsons = messages.map(Json.toJson(_)(messageWrites))
-
-//    // TODO: add this
-//    val extraParams: Seq[(String, Option[JsValue])] =
-//      settings.extra_params.map { case (paramName, value) =>
-//        (paramName, Some(JsonUtil.toJson(value)))
-//      }.toSeq
 
     jsonBodyParams(
       Param.messages -> Some(messageJsons),
@@ -86,6 +79,9 @@ trait ChatCompletionBodyMaker {
       Param.seed -> settings.seed,
       Param.response_format -> settings.response_format_type.map { formatType =>
         Map("type" -> formatType.toString)
+      },
+      Param.extra_params -> {
+        if (settings.extra_params.nonEmpty) Some(settings.extra_params) else None
       }
     )
   }

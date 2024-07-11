@@ -3,6 +3,7 @@ package io.cequence.openaiscala.service
 import akka.stream.Materializer
 import io.cequence.openaiscala.service.impl.OpenAIServiceImpl
 import io.cequence.wsclient.domain.WsRequestContext
+import io.cequence.wsclient.service.WSClientEngine
 
 import scala.concurrent.ExecutionContext
 
@@ -21,9 +22,12 @@ object OpenAIServiceFactory
 }
 
 private class OpenAIServiceClassImpl(
-  val coreUrl: String,
-  override val requestContext: WsRequestContext
+  coreUrl: String,
+  requestContext: WsRequestContext
 )(
   implicit val ec: ExecutionContext,
   val materializer: Materializer
-) extends OpenAIServiceImpl
+) extends OpenAIServiceImpl {
+  // we use play ws client engine
+  protected val engine: WSClientEngine = ProjectWSClientEngine(coreUrl, requestContext)
+}

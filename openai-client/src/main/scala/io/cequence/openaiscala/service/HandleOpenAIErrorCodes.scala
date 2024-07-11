@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.service
 
 import io.cequence.openaiscala._
-import io.cequence.wsclient.service.ws.WSRequestHelper
+import io.cequence.wsclient.service.WSClient
 
 /**
  * Core WS stuff for OpenAI services.
@@ -9,7 +9,7 @@ import io.cequence.wsclient.service.ws.WSRequestHelper
  * @since March
  *   2024
  */
-trait HandleOpenAIErrorCodes extends WSRequestHelper {
+trait HandleOpenAIErrorCodes extends WSClient {
 
   override protected def handleErrorCodes(
     httpCode: Int,

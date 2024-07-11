@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.anthropic.service
 
-import io.cequence.wsclient.service.ws.WSRequestHelper
+import io.cequence.wsclient.service.WSClient
 
 /**
  * Handle error codes for the Anthropic service.
@@ -8,7 +8,7 @@ import io.cequence.wsclient.service.ws.WSRequestHelper
  * @since March
  *   2024
  */
-trait HandleAnthropicErrorCodes extends WSRequestHelper {
+trait HandleAnthropicErrorCodes extends WSClient {
 
   override protected def handleErrorCodes(
     httpCode: Int,

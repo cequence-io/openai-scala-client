@@ -3,11 +3,11 @@ package io.cequence.openaiscala.service.impl
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.JsonFormats._
-import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.OpenAIStreamedServiceExtra
+import io.cequence.wsclient.JsonUtil.JsonOps
 import play.api.libs.json.JsValue
 
 /**
@@ -29,15 +29,19 @@ private[service] trait OpenAICoreServiceStreamedExtraImpl
     prompt: String,
     settings: CreateCompletionSettings
   ): Source[TextCompletionResponse, NotUsed] =
-    execJsonStreamAux(
-      EndPoint.completions,
-      "POST",
-      bodyParams = createBodyParamsForCompletion(prompt, settings, stream = true)
-    ).map { (json: JsValue) =>
-      (json \ "error").toOption.map { error =>
-        throw new OpenAIScalaClientException(error.toString())
-      }.getOrElse(
-        json.asSafe[TextCompletionResponse]
+    engine
+      .execJsonStream(
+        EndPoint.completions.toString(),
+        "POST",
+        bodyParams = paramTuplesToStrings(
+          createBodyParamsForCompletion(prompt, settings, stream = true)
+        )
       )
-    }
+      .map { (json: JsValue) =>
+        (json \ "error").toOption.map { error =>
+          throw new OpenAIScalaClientException(error.toString())
+        }.getOrElse(
+          json.asSafe[TextCompletionResponse]
+        )
+      }
 }

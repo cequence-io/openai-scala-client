@@ -5,9 +5,9 @@ import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.{HandleOpenAIErrorCodes, OpenAICoreService}
-import io.cequence.wsclient.ResponseImplicits._
 import io.cequence.wsclient.JsonUtil.JsonOps
-import io.cequence.wsclient.service.ws.WSRequestHelper
+import io.cequence.wsclient.ResponseImplicits._
+import io.cequence.wsclient.service.WSClient
 import play.api.libs.json.{JsObject, JsValue}
 
 import scala.concurrent.Future
@@ -24,12 +24,6 @@ private[service] trait OpenAICoreServiceImpl
     with HandleOpenAIErrorCodes
     with CompletionBodyMaker
     with RunBodyMaker {
-
-//  override protected def handleErrorCodes(
-//    httpCode: Int,
-//    message: String
-//  ): Nothing =
-//    throw new OpenAIScalaClientException(s"Code ${httpCode} : ${message}")
 
   override def listModels: Future[Seq[ModelInfo]] =
     execGET(EndPoint.models).map { response =>
@@ -78,7 +72,7 @@ private[service] trait OpenAICoreServiceImpl
 }
 
 trait CompletionBodyMaker {
-  this: WSRequestHelper =>
+  this: WSClient =>
 
   protected def createBodyParamsForCompletion(
     prompt: String,

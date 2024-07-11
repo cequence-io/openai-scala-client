@@ -26,7 +26,7 @@ object EndPoint {
   case object runs extends EndPoint
 }
 
-sealed trait Param extends EnumValue
+sealed abstract class Param(value: String = "") extends NamedEnumValue(value)
 
 object Param {
   case object model extends Param
@@ -110,4 +110,6 @@ object Param {
   case object thread_id extends Param
   case object additional_instructions extends Param
   case object additional_messages extends Param
+  // empty string param to sneak in extra parameters
+  case object extra_params extends Param(" ")
 }

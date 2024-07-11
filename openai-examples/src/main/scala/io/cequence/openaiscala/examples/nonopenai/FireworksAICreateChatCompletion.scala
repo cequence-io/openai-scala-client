@@ -44,7 +44,9 @@ object FireworksAICreateChatCompletion extends ExampleBase[OpenAIChatCompletionS
           temperature = Some(0.1),
           max_tokens = Some(512),
           top_p = Some(0.9),
-          presence_penalty = Some(0)
+          presence_penalty = Some(0),
+          // this is how we can add extra (vendor-specific) parameters
+          extra_params = Map("echo" -> true)
         )
       )
       .map(printMessageContent)

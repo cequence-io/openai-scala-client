@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.anthropic
 
-import io.cequence.wsclient.JsonUtil
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{ImageBlock, TextBlock}
 import io.cequence.openaiscala.anthropic.domain.Content.{
   ContentBlock,
@@ -21,6 +20,7 @@ import io.cequence.openaiscala.anthropic.domain.response.{
   DeltaText
 }
 import io.cequence.openaiscala.anthropic.domain.{ChatRole, Content, Message}
+import io.cequence.wsclient.JsonUtil
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
 

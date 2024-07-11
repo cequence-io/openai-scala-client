@@ -8,6 +8,8 @@ import io.cequence.openaiscala.anthropic.service.impl.{
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
 import io.cequence.wsclient.domain.WsRequestContext
 import io.cequence.wsclient.service.ws.Timeouts
+import io.cequence.wsclient.service.ws.stream.PlayWSStreamClientEngine
+import io.cequence.wsclient.service.{WSClientEngine, WSClientEngineStreamExtra}
 
 import scala.concurrent.ExecutionContext
 
@@ -84,7 +86,11 @@ object AnthropicServiceFactory extends AnthropicServiceConsts {
     implicit val ec: ExecutionContext,
     val materializer: Materializer
   ) extends AnthropicServiceImpl {
-    override protected val requestContext: WsRequestContext =
-      WsRequestContext(authHeaders = authHeaders, explTimeouts = explTimeouts)
+    // Play WS engine
+    override protected val engine: WSClientEngine with WSClientEngineStreamExtra =
+      PlayWSStreamClientEngine(
+        coreUrl,
+        WsRequestContext(authHeaders = authHeaders, explTimeouts = explTimeouts)
+      )
   }
 }
