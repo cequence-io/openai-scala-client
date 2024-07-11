@@ -44,7 +44,7 @@ trait IOpenAIChatCompletionServiceFactory[F] extends RawWsServiceFactory[F] {
     apply(
       coreUrl = s"https://${endpoint}.${region}.inference.ai.azure.com/v1/",
       requestContext = WsRequestContext(
-        authHeaders = scala.collection.immutable.Seq(("Authorization", s"Bearer $accessToken"))
+        authHeaders = Seq(("Authorization", s"Bearer $accessToken"))
       )
     )
 }

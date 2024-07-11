@@ -111,7 +111,7 @@ object CreateRunWithFunctionCall extends Example {
       println("Assistant answer:" + finalMessages.map(_.content).mkString("\n"))
     }
 
-  val tools: Seq[FunctionSpec] = scala.collection.immutable.Seq(
+  val tools: Seq[FunctionSpec] = Seq(
     FunctionSpec(
       name = "get_current_weather",
       description = Some("Get the current weather in a given location"),

@@ -7,7 +7,8 @@ import io.cequence.openaiscala.domain.{
   RequiredAction,
   Run,
   RunStatus,
-  ThreadMessage
+  ThreadMessage,
+  ToolChoice
 }
 import io.cequence.openaiscala.domain.settings.CreateRunSettings
 
@@ -46,7 +47,7 @@ object CreateRunWithCodeInterpretation extends Example with PollingHelper {
         threadId = thread.id,
         assistantId = AssistantId(assistantId),
         instructions = None,
-        responseToolChoice = Some(RequiredAction.EnforcedTool(CodeInterpreterSpec)),
+        responseToolChoice = Some(ToolChoice.EnforcedTool(CodeInterpreterSpec)),
         tools = Seq(CodeInterpreterSpec),
         settings = CreateRunSettings(
           model = Some(ModelId.gpt_4o),
