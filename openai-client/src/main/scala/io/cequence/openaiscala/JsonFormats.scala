@@ -94,11 +94,9 @@ object JsonFormats {
   implicit val systemMessageFormat: Format[SystemMessage] = Json.format[SystemMessage]
   implicit val userMessageFormat: Format[UserMessage] = Json.format[UserMessage]
   implicit val userSeqMessageFormat: Format[UserSeqMessage] = Json.format[UserSeqMessage]
-  implicit val toolMessageFormat: Format[ToolMessage] = (
-    (__ \ "content").formatNullable[String] and
-      (__ \ "tool_call_id").format[String] and
-      (__ \ "name").format[String]
-  )(ToolMessage.apply, unlift(ToolMessage.unapply))
+
+  implicit val toolMessageFormat: Format[ToolMessage] = Json.format[ToolMessage]
+
   implicit val assistantMessageFormat: Format[AssistantMessage] = Json.format[AssistantMessage]
   implicit val assistantToolMessageReads: Reads[AssistantToolMessage] = (
     (__ \ "content").readNullable[String] and
