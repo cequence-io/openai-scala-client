@@ -2,12 +2,12 @@ package io.cequence.openaiscala.service.impl
 
 import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.domain.settings.CreateRunSettings
-import io.cequence.wsclient.service.ws.WSRequestHelper
+import io.cequence.wsclient.service.WSClient
 import play.api.libs.json.{JsValue, Json}
 
 trait RunBodyMaker {
 
-  this: WSRequestHelper =>
+  this: WSClient =>
 
   protected def createBodyParamsForRun(
     settings: CreateRunSettings,

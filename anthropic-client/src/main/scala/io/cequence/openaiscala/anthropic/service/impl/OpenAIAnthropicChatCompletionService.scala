@@ -4,15 +4,9 @@ import akka.NotUsed
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.anthropic.service.AnthropicService
 import io.cequence.openaiscala.domain.BaseMessage
-import io.cequence.openaiscala.domain.response.{
-  ChatCompletionChunkResponse,
-  ChatCompletionResponse
-}
+import io.cequence.openaiscala.domain.response.{ChatCompletionChunkResponse, ChatCompletionResponse}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.service.{
-  OpenAIChatCompletionService,
-  OpenAIChatCompletionStreamedServiceExtra
-}
+import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIChatCompletionStreamedServiceExtra}
 
 import scala.concurrent.{ExecutionContext, Future}
 

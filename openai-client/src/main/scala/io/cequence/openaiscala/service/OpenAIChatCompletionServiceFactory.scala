@@ -3,6 +3,7 @@ package io.cequence.openaiscala.service
 import akka.stream.Materializer
 import io.cequence.openaiscala.service.impl.OpenAIChatCompletionServiceImpl
 import io.cequence.wsclient.domain.WsRequestContext
+import io.cequence.wsclient.service.WSClientEngine
 
 import scala.concurrent.ExecutionContext
 
@@ -19,12 +20,15 @@ object OpenAIChatCompletionServiceFactory
     new OpenAIChatCompletionServiceClassImpl(coreUrl, requestContext)
 
   private final class OpenAIChatCompletionServiceClassImpl(
-    val coreUrl: String,
-    override val requestContext: WsRequestContext
+    coreUrl: String,
+    requestContext: WsRequestContext
   )(
     implicit val ec: ExecutionContext,
     val materializer: Materializer
-  ) extends OpenAIChatCompletionServiceImpl
+  ) extends OpenAIChatCompletionServiceImpl {
+    // we use play ws client engine
+    protected val engine: WSClientEngine = ProjectWSClientEngine(coreUrl, requestContext)
+  }
 }
 
 // propose a new name for the trait

@@ -4,23 +4,20 @@ import akka.NotUsed
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.anthropic.JsonFormats
-import io.cequence.openaiscala.anthropic.domain.response.{
-  ContentBlockDelta,
-  CreateMessageResponse
-}
+import io.cequence.openaiscala.anthropic.domain.response.{ContentBlockDelta, CreateMessageResponse}
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.domain.{ChatRole, Message}
 import io.cequence.openaiscala.anthropic.service.{AnthropicService, HandleAnthropicErrorCodes}
-import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
 import io.cequence.wsclient.JsonUtil.JsonOps
-import io.cequence.wsclient.service.ws.stream.WSStreamRequestHelper
+import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
+import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithStreamEngine
 import play.api.libs.json.{JsValue, Json}
 
 import scala.concurrent.Future
 
 trait Anthropic
     extends AnthropicService
-    with WSStreamRequestHelper
+    with WSClientWithStreamEngine
     with HandleAnthropicErrorCodes
     with JsonFormats
 
@@ -44,29 +41,34 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings
   ): Source[ContentBlockDelta, NotUsed] =
-    execJsonStreamAux(
-      EndPoint.messages,
-      "POST",
-      bodyParams = createBodyParamsForMessageCreation(messages, settings, stream = true)
-    ).map { (json: JsValue) =>
-      (json \ "error").toOption.map { error =>
-        throw new OpenAIScalaClientException(error.toString())
-      }.getOrElse {
-        val jsonType = (json \ "type").as[String]
+    engine
+      .execJsonStream(
+        EndPoint.messages.toString(),
+        "POST",
+        bodyParams = paramTuplesToStrings(
+          createBodyParamsForMessageCreation(messages, settings, stream = true)
+        )
+      )
+      .map { (json: JsValue) =>
+        (json \ "error").toOption.map { error =>
+          throw new OpenAIScalaClientException(error.toString())
+        }.getOrElse {
+          val jsonType = (json \ "type").as[String]
 
-        // TODO: for now, we return only ContentBlockDelta
-        jsonType match {
-          case "message_start"       => None // json.asSafe[CreateMessageChunkResponse]
-          case "content_block_start" => None
-          case "ping"                => None
-          case "content_block_delta" => Some(json.asSafe[ContentBlockDelta])
-          case "content_block_stop"  => None
-          case "message_delta"       => None
-          case "message_stop"        => None
-          case _ => throw new OpenAIScalaClientException(s"Unknown message type: $jsonType")
+          // TODO: for now, we return only ContentBlockDelta
+          jsonType match {
+            case "message_start"       => None // json.asSafe[CreateMessageChunkResponse]
+            case "content_block_start" => None
+            case "ping"                => None
+            case "content_block_delta" => Some(json.asSafe[ContentBlockDelta])
+            case "content_block_stop"  => None
+            case "message_delta"       => None
+            case "message_stop"        => None
+            case _ => throw new OpenAIScalaClientException(s"Unknown message type: $jsonType")
+          }
         }
       }
-    }.collect { case Some(delta) => delta }
+      .collect { case Some(delta) => delta }
 
   private def createBodyParamsForMessageCreation(
     messages: Seq[Message],

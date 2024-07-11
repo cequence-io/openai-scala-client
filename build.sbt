@@ -57,11 +57,10 @@ lazy val anthropic_client = (project in file("anthropic-client"))
   .dependsOn(core)
   .aggregate(core)
 
-// TODO: use ws-client-play and ws-client-stream instead of client and client_stream
 lazy val google_vertexai_client = (project in file("google-vertexai-client"))
   .settings(commonSettings *)
-  .dependsOn(core, client, client_stream)
-  .aggregate(core, client, client_stream)
+  .dependsOn(core)
+  .aggregate(core)
 
 lazy val count_tokens = (project in file("openai-count-tokens"))
   .settings(

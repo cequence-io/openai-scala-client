@@ -1,23 +1,12 @@
 package io.cequence.openaiscala
 
-import io.cequence.openaiscala.domain.AssistantToolResource.{
-  CodeInterpreterResources,
-  FileSearchResources
-}
+import io.cequence.openaiscala.domain.AssistantToolResource.{CodeInterpreterResources, FileSearchResources}
 import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain.ChunkingStrategy.StaticChunkingStrategy
 import io.cequence.openaiscala.domain.FineTune.WeightsAndBiases
-import io.cequence.openaiscala.domain.RequiredAction.EnforcedTool
 import io.cequence.openaiscala.domain.StepDetail.{MessageCreation, ToolCalls}
-import io.cequence.openaiscala.domain.response.AssistantToolResourceResponse.{
-  CodeInterpreterResourcesResponse,
-  FileSearchResourcesResponse
-}
-import io.cequence.openaiscala.domain.response.ResponseFormat.{
-  JsonObjectResponse,
-  StringResponse,
-  TextResponse
-}
+import io.cequence.openaiscala.domain.response.AssistantToolResourceResponse.{CodeInterpreterResourcesResponse, FileSearchResourcesResponse}
+import io.cequence.openaiscala.domain.response.ResponseFormat.{JsonObjectResponse, StringResponse, TextResponse}
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.{ThreadMessageFile, _}
 import io.cequence.wsclient.JsonUtil
