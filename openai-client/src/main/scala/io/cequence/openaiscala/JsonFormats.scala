@@ -804,7 +804,7 @@ object JsonFormats {
     snakeEnumFormat(Auto, LastMessages)
   }
 
-  implicit lazy val RunStatusFormat: Format[RunStatus] = {
+  implicit lazy val runStatusFormat: Format[RunStatus] = {
     import RunStatus._
     snakeEnumFormat(
       Queued,
@@ -818,9 +818,8 @@ object JsonFormats {
       Expired
     )
   }
-  Run
-  implicit lazy val RunFormat: Format[Run] =
-    Json.format[Run]
+
+  implicit lazy val runFormat: Format[Run] = Json.format[Run]
 
   implicit val toolChoiceFormat: Format[ToolChoice] = {
     import ToolChoice._
@@ -884,7 +883,8 @@ object JsonFormats {
   }
 
   implicit val messageCreationReads: Reads[MessageCreation] =
-    (__ \ "message_creation" \ "message_id").read[String].map(MessageCreation)
+    (__ \ "message_creation" \ "message_id").read[String].map(MessageCreation.apply)
+
   implicit val messageCreationWrites: Writes[MessageCreation] = Writes { messageCreation =>
     Json.obj("message_creation" -> Json.obj("message_id" -> messageCreation.messageId))
   }

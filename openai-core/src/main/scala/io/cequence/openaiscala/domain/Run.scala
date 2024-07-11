@@ -79,7 +79,7 @@ object Run {
     case object LastMessages extends TruncationStrategyType
   }
 
-  case class Reason(reason: String) extends AnyVal
+  case class Reason(reason: String)
 
   sealed trait LastErrorCode extends SnakeCaseEnumValue
 
