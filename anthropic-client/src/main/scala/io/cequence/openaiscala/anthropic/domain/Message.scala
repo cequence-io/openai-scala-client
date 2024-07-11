@@ -1,6 +1,10 @@
 package io.cequence.openaiscala.anthropic.domain
 
-import io.cequence.openaiscala.anthropic.domain.Content.{ContentBlock, ContentBlocks, SingleString}
+import io.cequence.openaiscala.anthropic.domain.Content.{
+  ContentBlock,
+  ContentBlocks,
+  SingleString
+}
 
 sealed abstract class Message private (
   val role: ChatRole,

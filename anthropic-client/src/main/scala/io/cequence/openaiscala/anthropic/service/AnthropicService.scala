@@ -3,7 +3,10 @@ package io.cequence.openaiscala.anthropic.service
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.anthropic.domain.Message
-import io.cequence.openaiscala.anthropic.domain.response.{ContentBlockDelta, CreateMessageResponse}
+import io.cequence.openaiscala.anthropic.domain.response.{
+  ContentBlockDelta,
+  CreateMessageResponse
+}
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.wsclient.service.CloseableService
 

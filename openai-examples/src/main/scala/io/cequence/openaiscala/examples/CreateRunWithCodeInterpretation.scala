@@ -1,6 +1,14 @@
 package io.cequence.openaiscala.examples
 
-import io.cequence.openaiscala.domain.{AssistantId, CodeInterpreterSpec, ModelId, RequiredAction, Run, RunStatus, ThreadMessage}
+import io.cequence.openaiscala.domain.{
+  AssistantId,
+  CodeInterpreterSpec,
+  ModelId,
+  RequiredAction,
+  Run,
+  RunStatus,
+  ThreadMessage
+}
 import io.cequence.openaiscala.domain.settings.CreateRunSettings
 
 import scala.concurrent.Future
