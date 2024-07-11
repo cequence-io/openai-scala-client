@@ -8,8 +8,8 @@ import io.cequence.openaiscala.service.{
   OpenAIServiceFactoryHelper
 }
 import io.cequence.wsclient.domain.WsRequestContext
-import play.api.libs.ws.StandaloneWSRequest
-import play.api.libs.ws.ahc.StandaloneAhcWSResponse
+import io.cequence.wsclient.service.WSClientEngine
+import io.cequence.wsclient.service.ws.PlayWSClientEngine
 import play.api.libs.ws.ahc.cache.CacheableResponse
 import play.shaded.ahc.org.asynchttpclient.uri.Uri
 import play.shaded.ahc.org.asynchttpclient.{
@@ -17,20 +17,20 @@ import play.shaded.ahc.org.asynchttpclient.{
   Response => AHCResponse
 }
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 class TestOpenAIServiceImpl(
-  override val coreUrl: String,
-  override val requestContext: WsRequestContext,
+  coreUrl: String,
+  requestContext: WsRequestContext,
   mockedResponse: AHCResponse
 )(
   implicit override val ec: ExecutionContext,
   override val materializer: Materializer
 ) extends OpenAIServiceClassImpl(coreUrl, requestContext) {
 
-  val defaultAcceptableStatusCodes = Seq(200, 201, 202, 204)
+  protected override val defaultAcceptableStatusCodes: Seq[Int] = Seq(200, 201, 202, 204)
 
-  // TODO: this function is hidden in the parent class
+  // TODO: this function is hidden in the parent class - try to sneak it through WSClientEngine
 //  override def execRequestRaw(
 //    request: StandaloneWSRequest,
 //    exec: StandaloneWSRequest => Future[StandaloneWSRequest#Response],
@@ -67,12 +67,14 @@ case class TestOpenAIServiceFactory(mockedResponse: AHCResponse)
 }
 
 class OpenAIServiceClassImpl(
-  val coreUrl: String,
-  override val requestContext: WsRequestContext
+  coreUrl: String,
+  requestContext: WsRequestContext
 )(
   implicit val ec: ExecutionContext,
   val materializer: Materializer
-) extends OpenAIServiceImpl
+) extends OpenAIServiceImpl {
+  protected val engine: WSClientEngine = PlayWSClientEngine(coreUrl, requestContext)
+}
 
 object TestFactory extends OpenAIServiceConsts {
   implicit val ec: ExecutionContext = ExecutionContext.global

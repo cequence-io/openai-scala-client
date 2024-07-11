@@ -4,9 +4,9 @@ import akka.actor.ActorSystem
 import akka.stream.Materializer
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.wsclient.domain.WsRequestContext
+import io.cequence.wsclient.service.{WSClientEngine, WSClientEngineStreamExtra}
+import io.cequence.wsclient.service.ws.stream.PlayWSStreamClientEngine
 import org.scalatest.PrivateMethodTester.{PrivateMethod, _}
-import play.api.libs.ws.StandaloneWSRequest
-import play.api.libs.ws.ahc.StandaloneAhcWSResponse
 import play.api.libs.ws.ahc.cache.{CacheableHttpResponseStatus, CacheableResponse}
 import play.shaded.ahc.io.netty.handler.codec.http.DefaultHttpHeaders
 import play.shaded.ahc.org.asynchttpclient.uri.Uri
@@ -15,22 +15,20 @@ import play.shaded.ahc.org.asynchttpclient.{
   Response => AHCResponse
 }
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 class TestAnthropicServiceImpl(
-  override val coreUrl: String,
-//  override val authHeaders: Seq[(String, String)],
-//  override val explTimeouts: Option[Timeouts] = None,
-  override val requestContext: WsRequestContext,
+  coreUrl: String,
+  requestContext: WsRequestContext,
   mockedResponse: AHCResponse
 )(
   implicit override val ec: ExecutionContext,
   override val materializer: Materializer
 ) extends AnthropicServiceClassImpl(coreUrl, requestContext) {
 
-  val defaultAcceptableStatusCodes = Seq(200, 201, 202, 204)
+  protected override val defaultAcceptableStatusCodes: Seq[Int] = Seq(200, 201, 202, 204)
 
-  // TODO
+  // TODO: this function is hidden in the parent class - try to sneak it through WSClientEngine
 //  override def execRequestRaw(
 //    request: StandaloneWSRequest,
 //    exec: StandaloneWSRequest => Future[StandaloneWSRequest#Response],
@@ -51,12 +49,15 @@ class TestAnthropicServiceImpl(
 }
 
 class AnthropicServiceClassImpl(
-  val coreUrl: String,
-  override val requestContext: WsRequestContext
+  coreUrl: String,
+  requestContext: WsRequestContext
 )(
   implicit val ec: ExecutionContext,
   val materializer: Materializer
-) extends AnthropicServiceImpl {}
+) extends AnthropicServiceImpl {
+  override protected val engine: WSClientEngine with WSClientEngineStreamExtra =
+    PlayWSStreamClientEngine(coreUrl, requestContext)
+}
 
 object TestFactory {
   val getAPIKeyFromEnv = PrivateMethod[String](Symbol("getAPIKeyFromEnv"))
