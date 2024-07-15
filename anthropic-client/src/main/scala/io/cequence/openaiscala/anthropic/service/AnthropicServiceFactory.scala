@@ -1,16 +1,15 @@
 package io.cequence.openaiscala.anthropic.service
 
 import akka.stream.Materializer
-import io.cequence.openaiscala.anthropic.service.impl.{
-  AnthropicServiceImpl,
-  OpenAIAnthropicChatCompletionService
-}
+import io.cequence.openaiscala.anthropic.service.impl.{AnthropicServiceImpl, OpenAIAnthropicChatCompletionService}
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
-import io.cequence.wsclient.domain.WsRequestContext
+import io.cequence.wsclient.domain.{RichResponse, WsRequestContext}
 import io.cequence.wsclient.service.ws.Timeouts
 import io.cequence.wsclient.service.ws.stream.PlayWSStreamClientEngine
 import io.cequence.wsclient.service.{WSClientEngine, WSClientEngineStreamExtra}
 
+import java.net.UnknownHostException
+import java.util.concurrent.TimeoutException
 import scala.concurrent.ExecutionContext
 
 /**
@@ -92,5 +91,19 @@ object AnthropicServiceFactory extends AnthropicServiceConsts {
         coreUrl,
         WsRequestContext(authHeaders = authHeaders, explTimeouts = explTimeouts)
       )
+  }
+
+  private def recoverErrors: String => PartialFunction[Throwable, RichResponse] = {
+    serviceEndPointName: String =>
+      {
+        case e: TimeoutException =>
+          throw new AnthropicScalaClientTimeoutException(
+            s"${serviceEndPointName} timed out: ${e.getMessage}."
+          )
+        case e: UnknownHostException =>
+          throw new AnthropicScalaClientUnknownHostException(
+            s"${serviceEndPointName} cannot resolve a host name: ${e.getMessage}."
+          )
+      }
   }
 }
