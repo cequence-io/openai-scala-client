@@ -107,6 +107,21 @@ private[service] trait OpenAIServiceImpl
       _.asSafeJson[Run]
     )
 
+  override def modifyRun(threadId: String, runId: String, metadata: Map[String, String]): Future[Run] =
+    execPOST(
+      EndPoint.threads,
+      Some(s"$threadId/runs/$runId"),
+      bodyParams = jsonBodyParams(
+        Param.metadata -> (
+          if (metadata.nonEmpty)
+            Some(metadata)
+          else None
+        )
+      )
+    ).map(
+      _.asSafeJson[Run]
+    )
+
   def submitToolOutputs(
     threadId: String,
     runId: String,

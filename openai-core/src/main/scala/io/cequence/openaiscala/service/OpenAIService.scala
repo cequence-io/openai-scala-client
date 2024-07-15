@@ -120,13 +120,36 @@ trait OpenAIService extends OpenAICoreService {
   /**
    * Cancels a run that is in_progress
    *
-   * @param threadId The ID of the thread to which this run belongs.
-   * @param runId The ID of the run to cancel.
-   * @return The modified run object matching the specified ID.
+   * @param threadId
+   *   The ID of the thread to which this run belongs.
+   * @param runId
+   *   The ID of the run to cancel.
+   * @return
+   *   The modified run object matching the specified ID.
    */
   def cancelRun(
     threadId: String,
     runId: String
+  ): Future[Run]
+
+  /**
+   * Modifies a run.
+   *
+   * @param threadId
+   *   The ID of the thread that was run.
+   * @param runId
+   *   The ID of the run to modify.
+   * @param metadata
+   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
+   *   storing additional information about the object in a structured format. Keys can be a
+   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
+   * @return
+   *   The modified run object matching the specified ID.
+   */
+  def modifyRun(
+    threadId: String,
+    runId: String,
+    metadata: Map[String, String]
   ): Future[Run]
 
   def submitToolOutputs(
