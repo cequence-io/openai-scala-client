@@ -163,6 +163,18 @@ trait OpenAIService extends OpenAICoreService {
     runId: String
   ): Future[Option[Run]]
 
+  /**
+   * Returns a list of runs belonging to a thread.
+   *
+   * @param threadId The ID of the thread the run belongs to.
+   * @param pagination
+   * @return A list of run objects.
+   */
+  def listRuns(
+    threadId: String,
+    pagination: Pagination = Pagination.default,
+  ): Future[Seq[Run]]
+
   def listRunSteps(
     threadId: String,
     runId: String,

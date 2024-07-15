@@ -151,6 +151,15 @@ private[service] trait OpenAIServiceImpl
       handleNotFoundAndError(response).map(_.asSafeJson[Run])
     }
 
+  override def listRuns(threadId: String, pagination: Pagination): Future[Seq[Run]] =
+    execGET(
+      EndPoint.threads,
+      Some(s"$threadId/runs"),
+      params = paginationParams(pagination)
+    ).map { response =>
+      readAttribute(response.json, "data").asSafeArray[Run]
+    }
+
   override def listRunSteps(
     threadId: String,
     runId: String,
