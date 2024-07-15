@@ -99,6 +99,14 @@ private[service] trait OpenAIServiceImpl
     )
   }
 
+  override def cancelRun(threadId: String, runId: String): Future[Run] =
+    execPOST(
+      EndPoint.threads,
+      Some(s"$threadId/runs/$runId/cancel")
+    ).map(
+      _.asSafeJson[Run]
+    )
+
   def submitToolOutputs(
     threadId: String,
     runId: String,

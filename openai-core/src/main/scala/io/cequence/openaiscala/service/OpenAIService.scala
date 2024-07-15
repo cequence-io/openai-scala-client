@@ -117,6 +117,18 @@ trait OpenAIService extends OpenAICoreService {
     stream: Boolean
   ): Future[Run]
 
+  /**
+   * Cancels a run that is in_progress
+   *
+   * @param threadId The ID of the thread to which this run belongs.
+   * @param runId The ID of the run to cancel.
+   * @return The modified run object matching the specified ID.
+   */
+  def cancelRun(
+    threadId: String,
+    runId: String
+  ): Future[Run]
+
   def submitToolOutputs(
     threadId: String,
     runId: String,
