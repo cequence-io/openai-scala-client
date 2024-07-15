@@ -76,6 +76,21 @@ trait OpenAIServiceWrapper
     )
   )
 
+  override def cancelRun(
+    threadId: String,
+    runId: String
+  ): Future[Run] = wrap(
+    _.cancelRun(threadId, runId)
+  )
+
+  override def modifyRun(
+    threadId: String,
+    runId: String,
+    metadata: Map[String, String]
+  ): Future[Run] = wrap(
+    _.modifyRun(threadId, runId, metadata)
+  )
+
   def submitToolOutputs(
     threadId: String,
     runId: String,
@@ -98,6 +113,13 @@ trait OpenAIServiceWrapper
     order: Option[SortOrder]
   ): Future[Seq[RunStep]] = wrap(
     _.listRunSteps(threadId, runId, pagination, order)
+  )
+
+  override def listRuns(
+    threadId: String,
+    pagination: Pagination
+  ): Future[Seq[Run]] = wrap(
+    _.listRuns(threadId, pagination)
   )
 
   override def createChatToolCompletion(
