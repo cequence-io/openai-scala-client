@@ -314,9 +314,9 @@ object JsonFormats {
   implicit val byteArrayReads: Reads[Seq[Byte]] = new Reads[Seq[Byte]] {
 
     /**
-     * Parses a JSON representation of a `Seq[Byte]` into a `JsResult[Seq[Byte]]`. This
-     * method expects the JSON to be an array of numbers, where each number represents a valid
-     * byte value (between -128 and 127, inclusive). If the JSON structure is correct and all
+     * Parses a JSON representation of a `Seq[Byte]` into a `JsResult[Seq[Byte]]`. This method
+     * expects the JSON to be an array of numbers, where each number represents a valid byte
+     * value (between -128 and 127, inclusive). If the JSON structure is correct and all
      * numbers are valid byte values, it returns a `JsSuccess` containing the sequence of
      * bytes. Otherwise, it returns a `JsError` detailing the parsing issue encountered.
      *
