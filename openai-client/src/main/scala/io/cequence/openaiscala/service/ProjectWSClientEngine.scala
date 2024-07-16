@@ -26,7 +26,7 @@ object ProjectWSClientEngine {
     PlayWSClientEngine(coreUrl, requestContext, recoverErrors)
 
   private def recoverErrors: String => PartialFunction[Throwable, RichResponse] = {
-    serviceEndPointName: String =>
+    (serviceEndPointName: String) =>
       {
         case e: TimeoutException =>
           throw new OpenAIScalaClientTimeoutException(
