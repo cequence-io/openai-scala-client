@@ -311,8 +311,38 @@ object JsonFormats {
     Format(reads, writes)
   }
 
+  implicit val byteArrayReads: Reads[Seq[Byte]] = new Reads[Seq[Byte]] {
+
+    /**
+     * Parses a JSON representation of a `Seq[Byte]` into a `JsResult[Seq[Byte]]`. This method
+     * expects the JSON to be an array of numbers, where each number represents a valid byte
+     * value (between -128 and 127, inclusive). If the JSON structure is correct and all
+     * numbers are valid byte values, it returns a `JsSuccess` containing the sequence of
+     * bytes. Otherwise, it returns a `JsError` detailing the parsing issue encountered.
+     *
+     * @param json
+     *   The `JsValue` to be parsed, expected to be a `JsArray` of `JsNumber`.
+     * @return
+     *   A `JsResult[Seq[Byte]]` which is either a `JsSuccess` containing the parsed sequence
+     *   of bytes, or a `JsError` with parsing error details.
+     */
+    def reads(json: JsValue): JsResult[Seq[Byte]] = json match {
+      case JsArray(elements) =>
+        try {
+          JsSuccess(elements.map {
+            case JsNumber(n) if n.isValidInt => n.toIntExact.toByte
+            case _ => throw new RuntimeException("Invalid byte value")
+          }.toArray)
+        } catch {
+          case e: Exception => JsError("Error parsing byte array: " + e.getMessage)
+        }
+      case _ => JsError("Expected JSON array for byte array")
+    }
+  }
+
   implicit lazy val logprobInfoFormat: Format[LogprobInfo] =
     Json.format[LogprobInfo]
+
   implicit lazy val logprobsFormat: Format[Logprobs] =
     Json.format[Logprobs]
 
