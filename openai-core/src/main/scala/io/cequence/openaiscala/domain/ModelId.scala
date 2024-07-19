@@ -161,10 +161,14 @@ object ModelId {
 
   // GPT-4
 
-  // flagship multimodal model, currently points to gpt-4o-2024-05-13
+  // flagship multimodal model, 128K context, currently points to gpt-4o-2024-05-13
   val gpt_4o = "gpt-4o"
-  // flagship multimodal model, training data up to Oct 2023
+  // flagship multimodal model, 128K context, training data up to Oct 2023
   val gpt_4o_2024_05_13 = "gpt-4o-2024-05-13"
+  // cost-efficient small model, 128K context, currently points to gpt-4o-mini-2024-07-18
+  val gpt_4o_mini = "gpt-4o-mini"
+  // cost-efficient small model, 128K context, training data up to Oct 2023
+  val gpt_4o_mini_2024_07_18 = "gpt-4o-mini-2024-07-18"
   // 8k context, uses the version 0301 till June 27th, then 0613
   val gpt_4 = "gpt-4"
   @Deprecated // supported till 09/13/2023, 8k context (March 14th snapshot)
