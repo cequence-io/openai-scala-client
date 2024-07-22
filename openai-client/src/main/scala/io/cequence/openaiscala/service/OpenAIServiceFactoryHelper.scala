@@ -2,7 +2,7 @@ package io.cequence.openaiscala.service
 
 import akka.stream.Materializer
 import com.typesafe.config.{Config, ConfigFactory}
-import io.cequence.openaiscala.ConfigImplicits._
+import io.cequence.wsclient.ConfigImplicits._
 import io.cequence.wsclient.domain.WsRequestContext
 import io.cequence.wsclient.service.ws.Timeouts
 
