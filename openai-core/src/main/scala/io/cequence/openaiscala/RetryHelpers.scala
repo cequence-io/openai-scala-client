@@ -29,7 +29,10 @@ object RetryHelpers {
     maxAttempts: Int,
     failureMessage: Option[String] = None,
     log: Option[String => Unit] = Some(println),
-    isRetryable: Throwable => Boolean
+    isRetryable: Throwable => Boolean = {
+      case Retryable(_) => true
+      case _            => false
+    }
   )(
     implicit ec: ExecutionContext,
     scheduler: Scheduler,

@@ -153,11 +153,7 @@ class RetryHelpersSpec
 
     val result = retry(
       () => mockRetryable.attempt(),
-      attempts,
-      isRetryable = {
-        case Retryable(_) => true
-        case _            => false
-      }
+      attempts
     )
     test(mockRetryable, result)
   }
