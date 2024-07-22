@@ -86,7 +86,7 @@ trait RetryHelpers {
       log: Option[String => Unit] = Some(println),
       isRetryable: Throwable => Boolean = {
         case Retryable(_) => true
-        case _ => false
+        case _            => false
       }
     )(
       implicit retrySettings: RetrySettings,
