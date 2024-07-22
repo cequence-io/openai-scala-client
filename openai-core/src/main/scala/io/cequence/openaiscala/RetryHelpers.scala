@@ -28,7 +28,8 @@ object RetryHelpers {
     fun: () => Future[T],
     maxAttempts: Int,
     failureMessage: Option[String] = None,
-    log: Option[String => Unit] = Some(println)
+    log: Option[String => Unit] = Some(println),
+    isRetryable: Throwable => Boolean
   )(
     implicit ec: ExecutionContext,
     scheduler: Scheduler,
@@ -37,16 +38,17 @@ object RetryHelpers {
     def retryAux(attempt: Int): Future[T] =
       try {
         if (attempt < maxAttempts) {
-          fun().recoverWith { case Retryable(_) =>
-            log.foreach(
-              _(
-                s"${failureMessage.map(_ + ". ").getOrElse("")}Attempt ${attempt}. Retrying..."
+          fun().recoverWith {
+            case e: Throwable if isRetryable(e) =>
+              log.foreach(
+                _(
+                  s"${failureMessage.map(_ + ". ").getOrElse("")}Attempt ${attempt}. Retrying..."
+                )
               )
-            )
 
-            after(delay(attempt - 1), scheduler) {
-              retryAux(attempt + 1)
-            }
+              after(delay(attempt - 1), scheduler) {
+                retryAux(attempt + 1)
+              }
           }
         } else {
           fun()
@@ -81,7 +83,11 @@ trait RetryHelpers {
 
     def retryOnFailure(
       failureMessage: Option[String] = None,
-      log: Option[String => Unit] = Some(println)
+      log: Option[String => Unit] = Some(println),
+      isRetryable: Throwable => Boolean = {
+        case Retryable(_) => true
+        case _ => false
+      }
     )(
       implicit retrySettings: RetrySettings,
       ec: ExecutionContext,
@@ -91,7 +97,8 @@ trait RetryHelpers {
         () => f,
         maxAttempts = retrySettings.maxRetries + 1,
         failureMessage,
-        log
+        log,
+        isRetryable
       )
     }
   }
