@@ -22,6 +22,7 @@ object CreateRunWithVectorStore extends Example {
     )
 
   val userId = "123"
+
   val model = ModelId.gpt_3_5_turbo
 
   private def scheduleFile(): File =
@@ -34,18 +35,17 @@ object CreateRunWithVectorStore extends Example {
     service.createVectorStore(fileIds = Seq(file.id), name = Some("Conference Schedule"))
   }
 
-  private def createPlanner(vectorStoreId: String) =
-    for {
-      assistant <- service.createAssistant(
-        model = model,
-        name = Some("Schedule planner"),
-        instructions = Some(
-          "You pick the talks meeting my criteria I should attend at a conference."
-        ),
-        tools = Seq(FileSearchSpec),
-        toolResources = Seq(FileSearchResources(Seq(vectorStoreId)))
-      )
-    } yield assistant
+  private def createPlanner(vectorStoreId: String) = for {
+    assistant <- service.createAssistant(
+      model = model,
+      name = Some("Schedule planner"),
+      instructions = Some(
+        "You pick the talks meeting my criteria I should attend at a conference."
+      ),
+      tools = Seq(FileSearchSpec),
+      toolResources = Seq(FileSearchResources(Seq(vectorStoreId)))
+    )
+  } yield assistant
 
   def createSpecMessagesThread(vectorStoreId: String): Future[Thread] =
     for {
@@ -62,7 +62,7 @@ object CreateRunWithVectorStore extends Example {
     } yield thread
 
   val vectorStoreId = "vs_6nTuNJKVytSoFke9nvnpptUZ" // createVectorStore(fileInfo).map(_.id)
-  val assistantId = AssistantId("asst_gIharZ60V7hvf5pQvvjkw7Mf")
+  val assistantId = "asst_gIharZ60V7hvf5pQvvjkw7Mf"
   override protected def run: Future[_] =
     for {
 //      fileInfo <- uploadFile
@@ -85,10 +85,10 @@ object CreateRunWithVectorStore extends Example {
         stream = false
       )
 
-      _ = java.lang.Thread.sleep(2000)
+//      _ = Thread.sleep(2000)
       updatedRun <- service.retrieveRun(eventsThread.id, run.id)
 
-      _ = java.lang.Thread.sleep(2000)
+//      _ = Thread.sleep(2000)
       _ = println("============= Thread messages =============")
       messages <- service.listThreadMessages(eventsThread.id)
       _ = messages.map { message =>

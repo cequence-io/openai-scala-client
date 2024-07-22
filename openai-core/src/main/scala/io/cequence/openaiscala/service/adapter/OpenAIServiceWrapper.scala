@@ -54,7 +54,7 @@ trait OpenAIServiceWrapper
 
   def createRun(
     threadId: String,
-    assistantId: AssistantId,
+    assistantId: String,
     instructions: Option[String],
     additionalInstructions: Option[String],
     additionalMessages: Seq[BaseMessage],
@@ -79,7 +79,7 @@ trait OpenAIServiceWrapper
   def submitToolOutputs(
     threadId: String,
     runId: String,
-    toolOutputs: Option[Seq[AssistantToolOutput]]
+    toolOutputs: Seq[AssistantToolOutput]
   ): Future[Run] = wrap(
     _.submitToolOutputs(threadId, runId, toolOutputs)
   )

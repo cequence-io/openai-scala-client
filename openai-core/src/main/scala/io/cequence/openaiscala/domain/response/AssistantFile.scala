@@ -4,6 +4,7 @@ import io.cequence.openaiscala.domain.{AssistantId, FileId}
 
 import java.{util => ju}
 
+// TODO: not used anywhere
 final case class AssistantFile(
   // The identifier, which can be referenced in API endpoints.
   id: FileId,

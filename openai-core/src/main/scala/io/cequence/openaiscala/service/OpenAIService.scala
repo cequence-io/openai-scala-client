@@ -5,31 +5,7 @@ import akka.util.ByteString
 import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.domain.{
-  AssistantId,
-  AssistantTool,
-  AssistantToolOutput,
-  AssistantToolResource,
-  Attachment,
-  BaseMessage,
-  ChatRole,
-  ChunkingStrategy,
-  ForcableTool,
-  FunctionSpec,
-  Pagination,
-  Run,
-  RunStep,
-  SortOrder,
-  Thread,
-  ThreadFullMessage,
-  ThreadMessage,
-  ThreadMessageFile,
-  ToolChoice,
-  ToolSpec,
-  VectorStore,
-  VectorStoreFile,
-  VectorStoreFileStatus
-}
+import io.cequence.openaiscala.domain._
 
 import java.io.File
 import scala.concurrent.Future
@@ -47,18 +23,23 @@ import scala.concurrent.Future
  *   - '''Edits''': createEdit (deprecated)
  *   - '''Images''': createImage, createImageEdit, createImageVariation
  *   - '''Embeddings''': createEmbeddings
+ *   - '''Batches''': createBatch, retrieveBatch, cancelBatch, and listBatches
  *   - '''Audio''': createAudioTranscription, createAudioTranslation, and createAudioSpeech
  *   - '''Files''': listFiles, uploadFile, deleteFile, retrieveFile, and retrieveFileContent
  *   - '''Fine-tunes''': createFineTune, listFineTunes, retrieveFineTune, cancelFineTune,
  *     listFineTuneEvents, listFineTuneCheckpoints, and deleteFineTuneModel
  *   - '''Moderations''': createModeration
+ *   - '''Assistants''': createAssistant, listAssistants, retrieveAssistant, modifyAssistant,
+ *     and deleteAssistant
  *   - '''Threads''': createThread, retrieveThread, modifyThread, and deleteThread
  *   - '''Thread Messages''': createThreadMessage, retrieveThreadMessage, modifyThreadMessage,
  *     listThreadMessages, retrieveThreadMessageFile, and listThreadMessageFiles
- *   - '''Assistants''': createAssistant, listAssistants, retrieveAssistant, modifyAssistant,
- *     and deleteAssistant
- *   - '''Assistant Files''': createAssistantFile, listAssistantFiles, retrieveAssistantFile,
- *     and deleteAssistantFile
+ *   - '''Runs''': createRun, etc.
+ *   - '''Run Steps''': listRunSteps, etc.
+ *   - '''Vector Stores''': createVectorStore, etc.
+ *   - '''Vector Store Files''': createVectorStoreFile, etc.
+ *   - '''Vector Store File Batches''': createVectorStoreFileBatch, etc.
+ *
  * @since Jan
  *   2023
  */
@@ -104,36 +85,6 @@ trait OpenAIService extends OpenAICoreService {
     responseFunctionName: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatFunCompletion
   ): Future[ChatFunCompletionResponse]
-
-  def createRun(
-    threadId: String,
-    assistantId: AssistantId,
-    instructions: Option[String] = None,
-    additionalInstructions: Option[String] = None,
-    additionalMessages: Seq[BaseMessage] = Seq.empty,
-    tools: Seq[ForcableTool] = Seq.empty,
-    responseToolChoice: Option[ToolChoice] = None,
-    settings: CreateRunSettings = DefaultSettings.CreateRun,
-    stream: Boolean
-  ): Future[Run]
-
-  def submitToolOutputs(
-    threadId: String,
-    runId: String,
-    toolOutputs: Option[Seq[AssistantToolOutput]]
-  ): Future[Run]
-
-  def retrieveRun(
-    threadId: String,
-    runId: String
-  ): Future[Option[Run]]
-
-  def listRunSteps(
-    threadId: String,
-    runId: String,
-    pagination: Pagination = Pagination.default,
-    order: Option[SortOrder] = None
-  ): Future[Seq[RunStep]]
 
   /**
    * Creates a model response for the given chat conversation expecting a tool call.
@@ -481,149 +432,6 @@ trait OpenAIService extends OpenAICoreService {
   ): Future[Option[Source[ByteString, _]]]
 
   /**
-   * Create a vector store.
-   *
-   * @param file_ids
-   *   A list of File IDs that the vector store should use (optional). Useful for tools like
-   *   file_search that can access files.
-   * @param name
-   *   The name of the vector store.
-   * @param expires_after
-   *   The expiration policy for a vector store. TODO
-   * @param metadata
-   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
-   *   storing additional information about the object in a structured format. Keys can be a
-   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
-   * @return
-   *
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/vector-stores/create">OpenAI
-   *   Doc</a>
-   */
-  def createVectorStore(
-    fileIds: Seq[String] = Nil,
-    name: Option[String] = None,
-    metadata: Map[String, Any] = Map()
-  ): Future[VectorStore]
-
-  /**
-   * Returns a list of vector stores.
-   *
-   * @param limit
-   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
-   *   the default is 20. Defaults to 20
-   * @param order
-   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
-   *   for descending order. Defaults to desc
-   * @param after
-   *   A cursor for use in pagination. after is an object ID that defines your place in the
-   *   list. For instance, if you make a list request and receive 100 objects, ending with
-   *   obj_foo, your subsequent call can include after=obj_foo in order to fetch the next page
-   *   of the list.
-   * @param before
-   *   A cursor for use in pagination. before is an object ID that defines your place in the
-   *   list. For instance, if you make a list request and receive 100 objects, ending with
-   *   obj_foo, your subsequent call can include before=obj_foo in order to fetch the previous
-   *   page of the list.
-   * @return
-   *   thread messages
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/vector-stores/list">OpenAI
-   *   Doc</a>
-   */
-  def listVectorStores(
-    pagination: Pagination = Pagination.default,
-    order: Option[SortOrder] = None
-  ): Future[Seq[VectorStore]]
-
-  /**
-   * Deletes a vector store.
-   *
-   * @param vectorStoreId
-   *   The ID of the vector store to use for this request
-   * @return
-   *   enum indicating whether the vector store was deleted
-   *
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/vector-stores/delete">OpenAI
-   *   Doc</a>
-   */
-  def deleteVectorStore(
-    vectorStoreId: String
-  ): Future[DeleteResponse]
-
-  /**
-   * Creates a vector store file.
-   *
-   * @param vectorStoreId
-   *   The ID of the vector store to use for this request
-   * @param fileId
-   *   The ID of the file to use for this request
-   * @param chunkingStrategy
-   *   The chunking strategy to use for this request
-   * @return
-   *   vector store file
-   *
-   * @see
-   *   <a
-   *   href="https://platform.openai.com/docs/api-reference/vector-stores-files/createFile">OpenAI
-   *   Doc</a>
-   */
-  def createVectorStoreFile(
-    vectorStoreId: String,
-    fileId: String,
-    chunkingStrategy: ChunkingStrategy = ChunkingStrategy.AutoChunkingStrategy
-  ): Future[VectorStoreFile]
-
-  /**
-   * Returns a list of vector store files.
-   *
-   * @param vectorStoreId
-   *   The ID of the vector store to use for this request
-   * @param pagination
-   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
-   *   the default is 20. Defaults to 20
-   * @param order
-   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
-   *   for descending order. Defaults to desc
-   * @param filter
-   *   Filter by the status of the vector store file. Defaults to None
-   * @return
-   *   vector store files
-   *
-   * @see
-   *   <a
-   *   href="https://platform.openai.com/docs/api-reference/vector-stores-files/listFiles">OpenAI
-   *   Doc</a>
-   */
-  def listVectorStoreFiles(
-    vectorStoreId: String,
-    pagination: Pagination = Pagination.default,
-    order: Option[SortOrder] = None,
-    filter: Option[VectorStoreFileStatus] = None
-  ): Future[Seq[VectorStoreFile]]
-
-  /**
-   * Deletes a vector store file.
-   *
-   * @param vectorStoreId
-   *   The ID of the vector store to use for this request
-   * @param fileId
-   *   The ID of the file to use for this request
-   * @return
-   *   enum indicating whether the vector store file was deleted
-   *
-   * @see
-   *   <a
-   *   href="https://platform.openai.com/docs/api-reference/vector-stores-files/deleteFile">OpenAI
-   *   Doc</a>
-   */
-  def deleteVectorStoreFile(
-    vectorStoreId: String,
-    fileId: String
-  ): Future[DeleteResponse]
-
-  /**
    * Creates a job that fine-tunes a specified model from a given dataset. Response includes
    * details of the enqueued job including job status and the name of the fine-tuned models
    * once complete.
@@ -783,238 +591,9 @@ trait OpenAIService extends OpenAICoreService {
     settings: CreateModerationSettings = DefaultSettings.CreateModeration
   ): Future[ModerationResponse]
 
-  /**
-   * Creates a thread.
-   *
-   * @param messages
-   *   A list of messages to start the thread with.
-   * @param toolResources
-   *   A set of resources that are made available to the assistant's tools in this thread. The
-   *   resources are specific to the type of tool. For example, the code_interpreter tool
-   *   requires a list of file IDs, while the file_search tool requires a list of vector store
-   *   IDs.
-   * @param metadata
-   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
-   *   storing additional information about the object in a structured format. Keys can be a
-   *   maximum of 64 characters long and values can be a maxium of 512 characters long.
-   * @return
-   *   A thread object.
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/threads/createThread">OpenAI
-   *   Doc</a>
-   */
-  def createThread(
-    messages: Seq[ThreadMessage] = Nil,
-    toolResources: Seq[AssistantToolResource] = Nil,
-    metadata: Map[String, String] = Map()
-  ): Future[Thread]
-
-  /**
-   * Retrieves a thread.
-   *
-   * @param threadId
-   *   The ID of the thread to retrieve.
-   * @return
-   *   The thread object matching the specified ID.
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/threads/getThread">OpenAI
-   *   Doc</a>
-   */
-  def retrieveThread(threadId: String): Future[Option[Thread]]
-
-  /**
-   * Modifies a thread.
-   *
-   * @param threadId
-   *   The ID of the thread to modify. Only the metadata can be modified.
-   * @param metadata
-   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
-   *   storing additional information about the object in a structured format. Keys can be a
-   *   maximum of 64 characters long and values can be a maxium of 512 characters long.
-   * @return
-   *   The modified thread object matching the specified ID.
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/threads/modifyThread">OpenAI
-   *   Doc</a>
-   */
-  def modifyThread(
-    threadId: String,
-    metadata: Map[String, String] = Map()
-  ): Future[Option[Thread]]
-
-  /**
-   * Deletes a thread.
-   *
-   * @param threadId
-   *   TThe ID of the thread to delete.
-   * @return
-   *   Deletion status
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/threads/deleteThread">OpenAI
-   *   Doc</a>
-   */
-  def deleteThread(threadId: String): Future[DeleteResponse]
-
-  /**
-   * Creates a thread message.
-   *
-   * @param threadId
-   *   The ID of the thread to create a message for.
-   * @param content
-   *   The content of the message.
-   * @param role
-   *   The role of the entity that is creating the message. Currently only user is supported.
-   * @param attachments
-   *   A list of files attached to the message, and the tools they should be added to.
-   * @param metadata
-   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
-   *   storing additional information about the object in a structured format. Keys can be a
-   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
-   * @return
-   *   A thread message object.
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/messages/createMessage">OpenAI
-   *   Doc</a>
-   */
-  def createThreadMessage(
-    threadId: String,
-    content: String,
-    role: ChatRole = ChatRole.User,
-    attachments: Seq[Attachment] = Nil,
-    metadata: Map[String, String] = Map()
-  ): Future[ThreadFullMessage]
-
-  /**
-   * Retrieves a thread message.
-   *
-   * @param threadId
-   *   The ID of the thread to which this message belongs.
-   * @param messageId
-   *   The ID of the message to retrieve.
-   * @return
-   *   The message object matching the specified ID.
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/messages/getMessage">OpenAI
-   *   Doc</a>
-   */
-  def retrieveThreadMessage(
-    threadId: String,
-    messageId: String
-  ): Future[Option[ThreadFullMessage]]
-
-  /**
-   * Modifies a thread message.
-   *
-   * @param threadId
-   *   The ID of the thread to which this message belongs.
-   * @param messageId
-   *   The ID of the message to modify.
-   * @param metadata
-   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
-   *   storing additional information about the object in a structured format. Keys can be a
-   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
-   * @return
-   *   The modified message object.
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/messages/modifyMessage">OpenAI
-   *   Doc</a>
-   */
-  def modifyThreadMessage(
-    threadId: String,
-    messageId: String,
-    metadata: Map[String, String] = Map()
-  ): Future[Option[ThreadFullMessage]]
-
-  /**
-   * Returns a list of messages for a given thread.
-   *
-   * @param threadId
-   *   The ID of the thread the messages belong to.
-   * @param limit
-   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
-   *   the default is 20. Defaults to 20
-   * @param order
-   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
-   *   for descending order. Defaults to desc
-   * @param after
-   *   A cursor for use in pagination. after is an object ID that defines your place in the
-   *   list. For instance, if you make a list request and receive 100 objects, ending with
-   *   obj_foo, your subsequent call can include after=obj_foo in order to fetch the next page
-   *   of the list.
-   * @param before
-   *   A cursor for use in pagination. before is an object ID that defines your place in the
-   *   list. For instance, if you make a list request and receive 100 objects, ending with
-   *   obj_foo, your subsequent call can include before=obj_foo in order to fetch the previous
-   *   page of the list.
-   * @return
-   *   thread messages
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/messages/listMessages">OpenAI
-   *   Doc</a>
-   */
-  def listThreadMessages(
-    threadId: String,
-    pagination: Pagination = Pagination.default,
-    order: Option[SortOrder] = None
-  ): Future[Seq[ThreadFullMessage]]
-
-  /**
-   * Retrieves a thread message file.
-   *
-   * @param threadId
-   *   The ID of the thread to which the message and File belong.
-   * @param messageId
-   *   The ID of the message the file belongs to.
-   * @param fileId
-   *   The ID of the file being retrieved.
-   * @return
-   *   The thread message file object.
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/messages/getMessageFile">OpenAI
-   *   Doc</a>
-   */
-  def retrieveThreadMessageFile(
-    threadId: String,
-    messageId: String,
-    fileId: String
-  ): Future[Option[ThreadMessageFile]]
-
-  /**
-   * Returns a list of message files.
-   *
-   * @param threadId
-   *   The ID of the thread that the message and files belong to.
-   * @param messageId
-   *   TThe ID of the message the file belongs to.
-   * @param limit
-   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
-   *   the default is 20. Defaults to 20
-   * @param order
-   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
-   *   for descending order. Defaults to desc
-   * @param after
-   *   A cursor for use in pagination. after is an object ID that defines your place in the
-   *   list. For instance, if you make a list request and receive 100 objects, ending with
-   *   obj_foo, your subsequent call can include after=obj_foo in order to fetch the next page
-   *   of the list.
-   * @param before
-   *   A cursor for use in pagination. before is an object ID that defines your place in the
-   *   list. For instance, if you make a list request and receive 100 objects, ending with
-   *   obj_foo, your subsequent call can include before=obj_foo in order to fetch the previous
-   *   page of the list.
-   * @return
-   *   thread message files
-   * @see
-   *   <a
-   *   href="https://platform.openai.com/docs/api-reference/messages/listMessageFiles">OpenAI
-   *   Doc</a>
-   */
-  def listThreadMessageFiles(
-    threadId: String,
-    messageId: String,
-    pagination: Pagination = Pagination.default,
-    order: Option[SortOrder] = None
-  ): Future[Seq[ThreadMessageFile]]
+  ///////////////
+  // ASSISTANT //
+  ///////////////
 
   /**
    * Create an assistant with a model and instructions.
@@ -1157,6 +736,517 @@ trait OpenAIService extends OpenAICoreService {
     fileId: String
   ): Future[DeleteResponse]
 
+  ////////////
+  // THREAD //
+  ////////////
+
+  /**
+   * Creates a thread.
+   *
+   * @param messages
+   *   A list of messages to start the thread with.
+   * @param toolResources
+   *   A set of resources that are made available to the assistant's tools in this thread. The
+   *   resources are specific to the type of tool. For example, the code_interpreter tool
+   *   requires a list of file IDs, while the file_search tool requires a list of vector store
+   *   IDs.
+   * @param metadata
+   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
+   *   storing additional information about the object in a structured format. Keys can be a
+   *   maximum of 64 characters long and values can be a maxium of 512 characters long.
+   * @return
+   *   A thread object.
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/threads/createThread">OpenAI
+   *   Doc</a>
+   */
+  def createThread(
+    messages: Seq[ThreadMessage] = Nil,
+    toolResources: Seq[AssistantToolResource] = Nil,
+    metadata: Map[String, String] = Map()
+  ): Future[Thread]
+
+  /**
+   * Retrieves a thread.
+   *
+   * @param threadId
+   *   The ID of the thread to retrieve.
+   * @return
+   *   The thread object matching the specified ID.
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/threads/getThread">OpenAI
+   *   Doc</a>
+   */
+  def retrieveThread(threadId: String): Future[Option[Thread]]
+
+  /**
+   * Modifies a thread.
+   *
+   * @param threadId
+   *   The ID of the thread to modify. Only the metadata can be modified.
+   * @param metadata
+   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
+   *   storing additional information about the object in a structured format. Keys can be a
+   *   maximum of 64 characters long and values can be a maxium of 512 characters long.
+   * @return
+   *   The modified thread object matching the specified ID.
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/threads/modifyThread">OpenAI
+   *   Doc</a>
+   */
+  def modifyThread(
+    threadId: String,
+    metadata: Map[String, String] = Map()
+  ): Future[Option[Thread]]
+
+  /**
+   * Deletes a thread.
+   *
+   * @param threadId
+   *   TThe ID of the thread to delete.
+   * @return
+   *   Deletion status
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/threads/deleteThread">OpenAI
+   *   Doc</a>
+   */
+  def deleteThread(threadId: String): Future[DeleteResponse]
+
+  ////////////////////
+  // THREAD MESSAGE //
+  ////////////////////
+
+  /**
+   * Creates a thread message.
+   *
+   * @param threadId
+   *   The ID of the thread to create a message for.
+   * @param content
+   *   The content of the message.
+   * @param role
+   *   The role of the entity that is creating the message. Currently only user is supported.
+   * @param attachments
+   *   A list of files attached to the message, and the tools they should be added to.
+   * @param metadata
+   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
+   *   storing additional information about the object in a structured format. Keys can be a
+   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
+   * @return
+   *   A thread message object.
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/messages/createMessage">OpenAI
+   *   Doc</a>
+   */
+  def createThreadMessage(
+    threadId: String,
+    content: String,
+    role: ChatRole = ChatRole.User,
+    attachments: Seq[Attachment] = Nil,
+    metadata: Map[String, String] = Map()
+  ): Future[ThreadFullMessage]
+
+  /**
+   * Retrieves a thread message.
+   *
+   * @param threadId
+   *   The ID of the thread to which this message belongs.
+   * @param messageId
+   *   The ID of the message to retrieve.
+   * @return
+   *   The message object matching the specified ID.
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/messages/getMessage">OpenAI
+   *   Doc</a>
+   */
+  def retrieveThreadMessage(
+    threadId: String,
+    messageId: String
+  ): Future[Option[ThreadFullMessage]]
+
+  /**
+   * Modifies a thread message.
+   *
+   * @param threadId
+   *   The ID of the thread to which this message belongs.
+   * @param messageId
+   *   The ID of the message to modify.
+   * @param metadata
+   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
+   *   storing additional information about the object in a structured format. Keys can be a
+   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
+   * @return
+   *   The modified message object.
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/messages/modifyMessage">OpenAI
+   *   Doc</a>
+   */
+  def modifyThreadMessage(
+    threadId: String,
+    messageId: String,
+    metadata: Map[String, String] = Map()
+  ): Future[Option[ThreadFullMessage]]
+
+  /**
+   * Returns a list of messages for a given thread.
+   *
+   * @param threadId
+   *   The ID of the thread the messages belong to.
+   * @param limit
+   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
+   *   the default is 20. Defaults to 20
+   * @param order
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
+   *   for descending order. Defaults to desc
+   * @param after
+   *   A cursor for use in pagination. after is an object ID that defines your place in the
+   *   list. For instance, if you make a list request and receive 100 objects, ending with
+   *   obj_foo, your subsequent call can include after=obj_foo in order to fetch the next page
+   *   of the list.
+   * @param before
+   *   A cursor for use in pagination. before is an object ID that defines your place in the
+   *   list. For instance, if you make a list request and receive 100 objects, ending with
+   *   obj_foo, your subsequent call can include before=obj_foo in order to fetch the previous
+   *   page of the list.
+   * @return
+   *   thread messages
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/messages/listMessages">OpenAI
+   *   Doc</a>
+   */
+  def listThreadMessages(
+    threadId: String,
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None
+  ): Future[Seq[ThreadFullMessage]]
+
+  /////////////////
+  // THREAD FILE //
+  /////////////////
+
+  /**
+   * Retrieves a thread message file.
+   *
+   * @param threadId
+   *   The ID of the thread to which the message and File belong.
+   * @param messageId
+   *   The ID of the message the file belongs to.
+   * @param fileId
+   *   The ID of the file being retrieved.
+   * @return
+   *   The thread message file object.
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/messages/getMessageFile">OpenAI
+   *   Doc</a>
+   */
+  def retrieveThreadMessageFile(
+    threadId: String,
+    messageId: String,
+    fileId: String
+  ): Future[Option[ThreadMessageFile]]
+
+  /**
+   * Returns a list of message files.
+   *
+   * @param threadId
+   *   The ID of the thread that the message and files belong to.
+   * @param messageId
+   *   TThe ID of the message the file belongs to.
+   * @param limit
+   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
+   *   the default is 20. Defaults to 20
+   * @param order
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
+   *   for descending order. Defaults to desc
+   * @param after
+   *   A cursor for use in pagination. after is an object ID that defines your place in the
+   *   list. For instance, if you make a list request and receive 100 objects, ending with
+   *   obj_foo, your subsequent call can include after=obj_foo in order to fetch the next page
+   *   of the list.
+   * @param before
+   *   A cursor for use in pagination. before is an object ID that defines your place in the
+   *   list. For instance, if you make a list request and receive 100 objects, ending with
+   *   obj_foo, your subsequent call can include before=obj_foo in order to fetch the previous
+   *   page of the list.
+   * @return
+   *   thread message files
+   * @see
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/messages/listMessageFiles">OpenAI
+   *   Doc</a>
+   */
+  def listThreadMessageFiles(
+    threadId: String,
+    messageId: String,
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None
+  ): Future[Seq[ThreadMessageFile]]
+
+  /////////
+  // RUN //
+  /////////
+
+  /**
+   * Creates a run for a given thread and assistant.
+   *
+   * @param threadId
+   * @param assistantId
+   * @param instructions
+   * @param additionalInstructions
+   * @param additionalMessages
+   * @param tools
+   * @param responseToolChoice
+   * @param settings
+   * @param stream
+   *   // TODO: streamed version
+   * @return
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/runs/createRun">OpenAI Doc</a>
+   */
+  def createRun(
+    threadId: String,
+    assistantId: String,
+    // TODO: move this to settings
+    instructions: Option[String] = None,
+    additionalInstructions: Option[String] = None,
+    additionalMessages: Seq[BaseMessage] = Seq.empty,
+    tools: Seq[ForcableTool] = Seq.empty,
+    responseToolChoice: Option[ToolChoice] = None,
+    settings: CreateRunSettings = DefaultSettings.CreateRun,
+    stream: Boolean
+  ): Future[Run]
+
+  // TODO: def createThreadAndRun - https://platform.openai.com/docs/api-reference/runs/createThreadAndRun
+
+  // TODO: def listRuns - https://platform.openai.com/docs/api-reference/runs/listRuns
+
+  /**
+   * Retrieves a run.
+   *
+   * @param threadId
+   * @param runId
+   * @return
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/runs/getRun">OpenAI Doc</a>
+   */
+  def retrieveRun(
+    threadId: String,
+    runId: String
+  ): Future[Option[Run]]
+
+  // TODO: def modifyRun - https://platform.openai.com/docs/api-reference/runs/modifyRun
+
+  /**
+   * Submits tool outputs to run. When a run has the status: "requires_action" and
+   * required_action.type is submit_tool_outputs, this endpoint can be used to submit the
+   * outputs from the tool calls once they're all completed. All outputs must be submitted in a
+   * single request.
+   *
+   * TODO: streamed version
+   *
+   * @param threadId
+   * @param runId
+   * @param toolOutputs
+   * @return
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/runs/submitToolOutputs">OpenAI
+   *   Doc</a>
+   */
+  def submitToolOutputs(
+    threadId: String,
+    runId: String,
+    toolOutputs: Seq[AssistantToolOutput]
+  ): Future[Run]
+
+  // TODO: cancelRun - https://platform.openai.com/docs/api-reference/runs/cancelRun
+
+  ///////////////
+  // RUN STEPS //
+  ///////////////
+
+  /**
+   * Returns a list of run steps belonging to a run.
+   *
+   * @param threadId
+   * @param runId
+   * @param pagination
+   * @param order
+   * @return
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/run-steps/listRunSteps">OpenAI
+   *   Doc</a>
+   */
+  def listRunSteps(
+    threadId: String,
+    runId: String,
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None
+  ): Future[Seq[RunStep]]
+
+  // TODO: retrieveRunStep - https://platform.openai.com/docs/api-reference/run-steps/getRunStep
+
+  //////////////////
+  // VECTOR STORE //
+  //////////////////
+
+  /**
+   * Create a vector store.
+   *
+   * @param file_ids
+   *   A list of File IDs that the vector store should use (optional). Useful for tools like
+   *   file_search that can access files.
+   * @param name
+   *   The name of the vector store.
+   * @param expires_after
+   *   The expiration policy for a vector store. TODO
+   * @param metadata
+   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
+   *   storing additional information about the object in a structured format. Keys can be a
+   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
+   * @return
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/vector-stores/create">OpenAI
+   *   Doc</a>
+   */
+  def createVectorStore(
+    fileIds: Seq[String] = Nil,
+    name: Option[String] = None,
+    metadata: Map[String, Any] = Map()
+  ): Future[VectorStore]
+
+  /**
+   * Returns a list of vector stores.
+   *
+   * @param limit
+   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
+   *   the default is 20. Defaults to 20
+   * @param order
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
+   *   for descending order. Defaults to desc
+   * @param after
+   *   A cursor for use in pagination. after is an object ID that defines your place in the
+   *   list. For instance, if you make a list request and receive 100 objects, ending with
+   *   obj_foo, your subsequent call can include after=obj_foo in order to fetch the next page
+   *   of the list.
+   * @param before
+   *   A cursor for use in pagination. before is an object ID that defines your place in the
+   *   list. For instance, if you make a list request and receive 100 objects, ending with
+   *   obj_foo, your subsequent call can include before=obj_foo in order to fetch the previous
+   *   page of the list.
+   * @return
+   *   thread messages
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/vector-stores/list">OpenAI
+   *   Doc</a>
+   */
+  def listVectorStores(
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None
+  ): Future[Seq[VectorStore]]
+
+  // TODO: retrieveVectorStore - https://platform.openai.com/docs/api-reference/vector-stores/get
+
+  /**
+   * Deletes a vector store.
+   *
+   * @param vectorStoreId
+   *   The ID of the vector store to use for this request
+   * @return
+   *   enum indicating whether the vector store was deleted
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/vector-stores/delete">OpenAI
+   *   Doc</a>
+   */
+  def deleteVectorStore(
+    vectorStoreId: String
+  ): Future[DeleteResponse]
+
+  ///////////////////////
+  // VECTOR STORE FILE //
+  ///////////////////////
+
+  /**
+   * Creates a vector store file.
+   *
+   * @param vectorStoreId
+   *   The ID of the vector store to use for this request
+   * @param fileId
+   *   The ID of the file to use for this request
+   * @param chunkingStrategy
+   *   The chunking strategy to use for this request
+   * @return
+   *   vector store file
+   *
+   * @see
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/vector-stores-files/createFile">OpenAI
+   *   Doc</a>
+   */
+  def createVectorStoreFile(
+    vectorStoreId: String,
+    fileId: String,
+    chunkingStrategy: ChunkingStrategy = ChunkingStrategy.AutoChunkingStrategy
+  ): Future[VectorStoreFile]
+
+  /**
+   * Returns a list of vector store files.
+   *
+   * @param vectorStoreId
+   *   The ID of the vector store to use for this request
+   * @param pagination
+   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
+   *   the default is 20. Defaults to 20
+   * @param order
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
+   *   for descending order. Defaults to desc
+   * @param filter
+   *   Filter by the status of the vector store file. Defaults to None
+   * @return
+   *   vector store files
+   *
+   * @see
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/vector-stores-files/listFiles">OpenAI
+   *   Doc</a>
+   */
+  def listVectorStoreFiles(
+    vectorStoreId: String,
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None,
+    filter: Option[VectorStoreFileStatus] = None
+  ): Future[Seq[VectorStoreFile]]
+
+  // TODO: retrieveVectorStoreFile - https://platform.openai.com/docs/api-reference/vector-stores-files/getFile
+
+  /**
+   * Deletes a vector store file.
+   *
+   * @param vectorStoreId
+   *   The ID of the vector store to use for this request
+   * @param fileId
+   *   The ID of the file to use for this request
+   * @return
+   *   enum indicating whether the vector store file was deleted
+   *
+   * @see
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/vector-stores-files/deleteFile">OpenAI
+   *   Doc</a>
+   */
+  def deleteVectorStoreFile(
+    vectorStoreId: String,
+    fileId: String
+  ): Future[DeleteResponse]
+
+  ///////////
+  // BATCH //
+  ///////////
+
   /**
    * Creates and executes a batch from an uploaded file of requests.
    *
@@ -1278,5 +1368,4 @@ trait OpenAIService extends OpenAICoreService {
     pagination: Pagination = Pagination.default,
     order: Option[SortOrder] = None
   ): Future[Seq[Batch]]
-
 }

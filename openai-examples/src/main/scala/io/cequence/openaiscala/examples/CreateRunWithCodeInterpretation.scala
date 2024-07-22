@@ -1,15 +1,6 @@
 package io.cequence.openaiscala.examples
 
-import io.cequence.openaiscala.domain.{
-  AssistantId,
-  CodeInterpreterSpec,
-  ModelId,
-  RequiredAction,
-  Run,
-  RunStatus,
-  ThreadMessage,
-  ToolChoice
-}
+import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateRunSettings
 
 import scala.concurrent.Future
@@ -45,7 +36,7 @@ object CreateRunWithCodeInterpretation extends Example with PollingHelper {
 
       run <- service.createRun(
         threadId = thread.id,
-        assistantId = AssistantId(assistantId),
+        assistantId = assistantId,
         instructions = None,
         responseToolChoice = Some(ToolChoice.EnforcedTool(CodeInterpreterSpec)),
         tools = Seq(CodeInterpreterSpec),

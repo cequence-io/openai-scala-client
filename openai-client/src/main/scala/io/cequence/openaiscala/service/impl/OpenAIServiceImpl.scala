@@ -13,7 +13,7 @@ import io.cequence.openaiscala.service.{HandleOpenAIErrorCodes, OpenAIService}
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits._
 import io.cequence.wsclient.domain.RichResponse
-import play.api.libs.json.{JsObject, JsValue, Json, Reads}
+import play.api.libs.json.{JsArray, JsObject, JsValue, Json, Reads}
 
 import java.io.File
 import java.nio.charset.StandardCharsets
@@ -68,7 +68,7 @@ private[service] trait OpenAIServiceImpl
 
   override def createRun(
     threadId: String,
-    assistantId: AssistantId,
+    assistantId: String,
     instructions: Option[String],
     additionalInstructions: Option[String],
     additionalMessages: Seq[BaseMessage],
@@ -84,7 +84,7 @@ private[service] trait OpenAIServiceImpl
     val messageJsons = additionalMessages.map(Json.toJson(_)(messageWrites))
 
     val runParams = jsonBodyParams(
-      Param.assistant_id -> Some(assistantId.id),
+      Param.assistant_id -> Some(assistantId),
       Param.additional_instructions -> instructions,
       Param.additional_messages ->
         (if (messageJsons.nonEmpty) Some(messageJsons) else None)
@@ -102,20 +102,23 @@ private[service] trait OpenAIServiceImpl
   def submitToolOutputs(
     threadId: String,
     runId: String,
-    toolOutputs: Option[Seq[AssistantToolOutput]]
-  ): Future[Run] = {
+    toolOutputs: Seq[AssistantToolOutput]
+  ): Future[Run] =
     execPOST(
       EndPoint.threads,
       Some(s"$threadId/runs/$runId/submit_tool_outputs"),
       bodyParams = Seq(
-        Param.tool_outputs -> toolOutputs
-          .map(_.map(Json.toJson(_)(assistantToolOutputFormat)))
-          .map(Json.toJson(_))
+        Param.tool_outputs -> (
+          if (toolOutputs.nonEmpty)
+            Some(
+              JsArray(toolOutputs.map(Json.toJson(_)(assistantToolOutputFormat)))
+            )
+          else None
+        )
       )
     ).map(
       _.asSafeJson[Run]
     )
-  }
 
   override def retrieveRun(
     threadId: String,

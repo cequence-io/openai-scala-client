@@ -620,8 +620,6 @@ object JsonFormats {
   implicit lazy val threadMessageFileFormat: Format[ThreadMessageFile] =
     Json.format[ThreadMessageFile]
 
-  implicit lazy val assistantIdFormat: Format[AssistantId] = Json.valueFormat[AssistantId]
-
   implicit lazy val assistantToolResourceVectorStoreFormat
     : Format[AssistantToolResource.VectorStore] = {
     implicit val stringStringMapFormat: Format[Map[String, String]] =
@@ -692,7 +690,7 @@ object JsonFormats {
   )(Attachment.apply, unlift(Attachment.unapply))
 
   implicit lazy val assistantReads: Reads[Assistant] = (
-    (__ \ "id").read[AssistantId] and
+    (__ \ "id").read[String] and
       (__ \ "created_at").read[ju.Date] and
       (__ \ "name").readNullable[String] and
       (__ \ "description").readNullable[String] and
