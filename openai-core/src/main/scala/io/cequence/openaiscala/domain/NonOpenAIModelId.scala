@@ -20,8 +20,7 @@ object NonOpenAIModelId {
   val meta_llama_3_8b_instruct = "meta-llama-3-8b-instruct" // OctoML
   val llama_v3p1_405b_instruct = "llama-v3p1-405b-instruct" // Fireworks AI
   val llama_v3p1_70b_instruct = "llama-v3p1-70b-instruct" // Fireworks AI
-  val llama_v3p1_8b_instruct =
-    "accounts/fireworks/models/llama-v3p1-8b-instruct" // Fireworks AI
+  val llama_v3p1_8b_instruct = "llama-v3p1-8b-instruct" // Fireworks AI
   val llama_v3_70b_instruct = "llama-v3-70b-instruct" // Fireworks AI
   val llama_v3_8b_instruct = "llama-v3-8b-instruct" // Fireworks AI
   val llama_3_1_405b_reasoning = "llama-3.1-405b-reasoning" // Groq
