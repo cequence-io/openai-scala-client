@@ -33,7 +33,7 @@ object FireworksAICreateChatCompletion extends ExampleBase[OpenAIChatCompletionS
   )
 
   // note that for e.g. mixtral_8x22b_instruct we need an adapter to convert system messages
-  private val modelId = NonOpenAIModelId.yi_large
+  private val modelId = NonOpenAIModelId.llama_v3p1_405b_instruct
 
   override protected def run: Future[_] =
     service

@@ -29,7 +29,7 @@ object GroqCreateChatCompletionStreamed
     UserMessage("What is the weather like in Norway?")
   )
 
-  private val modelId = NonOpenAIModelId.mixtral_8x7b_32768
+  private val modelId = NonOpenAIModelId.llama_3_1_70b_versatile // mixtral_8x7b_32768
 
   override protected def run: Future[_] =
     service

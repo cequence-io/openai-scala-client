@@ -13,12 +13,22 @@ object NonOpenAIModelId {
   val claude_instant_1_2 = "claude-instant-1.2"
 
   // Llama2/3
-  val llama_v3_8b_instruct = "llama-v3-8b-instruct" // Fireworks AI
-  val llama3_8b_8192 = "llama3-8b-8192" // Groq
-  val llama_v3_70b_instruct = "llama-v3-70b-instruct" // Fireworks AI
-  val llama3_70b_8192 = "llama3-70b-8192" // Groq
-  val meta_llama_3_8b_instruct = "meta-llama-3-8b-instruct" // OctoML
+  val meta_llama_3_1_405b_instruct = "meta-llama-3.1-405b-instruct" // OctoML
+  val meta_llama_3_1_70b_instruct = "meta-llama-3.1-70b-instruct" // OctoML
+  val meta_llama_3_1_8b_instruct = "meta-llama-3.1-8b-instruct" // OctoML
   val meta_llama_3_70b_instruct = "meta-llama-3-70b-instruct" // OctoML
+  val meta_llama_3_8b_instruct = "meta-llama-3-8b-instruct" // OctoML
+  val llama_v3p1_405b_instruct = "llama-v3p1-405b-instruct" // Fireworks AI
+  val llama_v3p1_70b_instruct = "llama-v3p1-70b-instruct" // Fireworks AI
+  val llama_v3p1_8b_instruct =
+    "accounts/fireworks/models/llama-v3p1-8b-instruct" // Fireworks AI
+  val llama_v3_70b_instruct = "llama-v3-70b-instruct" // Fireworks AI
+  val llama_v3_8b_instruct = "llama-v3-8b-instruct" // Fireworks AI
+  val llama_3_1_405b_reasoning = "llama-3.1-405b-reasoning" // Groq
+  val llama_3_1_70b_versatile = "llama-3.1-70b-versatile" // Groq
+  val llama_3_1_8b_instant = "llama-3.1-8b-instant" // Groq
+  val llama3_70b_8192 = "llama3-70b-8192" // Groq
+  val llama3_8b_8192 = "llama3-8b-8192" // Groq
   val hermes_2_pro_llama_3_8b = "hermes-2-pro-llama-3-8b" // OctoML
   val llama2 = "llama2" // Ollama
   val llama_2_7b_chat = "llama-2-7b-chat"
@@ -35,6 +45,8 @@ object NonOpenAIModelId {
   val llama_2_70b_chat_hf = "meta-llama/Llama-2-70b-chat-hf" // Together AI
   val llama_2_7b_chat_hf = "meta-llama/Llama-2-7b-chat-hf" // Together AI
   val llama_3_70b_chat_hf = "meta-llama/Llama-3-70b-chat-hf" // Together AI
+  val meta_llama_3_70B_instruct_turbo =
+    "meta-llama/Meta-Llama-3-70B-Instruct-Turbo" // Together AI
   val llama_3_8b_chat_hf = "meta-llama/Llama-3-8b-chat-hf" // Together AI
   @Deprecated
   val meta_llama_3_70b_instruct_to_ai = "meta-llama/Meta-Llama-3-70B-Instruct" // Together AI
