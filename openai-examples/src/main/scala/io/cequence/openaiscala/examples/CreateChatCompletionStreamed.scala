@@ -22,7 +22,7 @@ object CreateChatCompletionStreamed extends ExampleBase[OpenAIStreamedService] {
     service
       .createChatCompletionStreamed(
         messages = messages,
-        settings = CreateChatCompletionSettings(ModelId.gpt_3_5_turbo)
+        settings = CreateChatCompletionSettings(ModelId.gpt_4o_mini)
       )
       .runWith(
         Sink.foreach { completion =>
