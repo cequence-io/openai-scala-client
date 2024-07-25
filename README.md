@@ -33,10 +33,11 @@ In addition to the OpenAI API, this library also supports API-compatible provide
 - [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) - cloud-based, offers a vast selection of open-source models
 - [Anthropic](https://www.anthropic.com/api) - cloud-based, a major competitor to OpenAI, features proprietary/closed-source models such as Claude3 - Haiku, Sonnet, and Opus
 - [Google Vertex AI](https://cloud.google.com/vertex-ai) (🔥 **New**)  - cloud-based, features proprietary/closed-source models such as Gemini 1.5 Pro and flash
-- [Groq](https://wow.groq.com/) - cloud-based, known for its super-fast inference with LPUs
-- [Fireworks AI](https://fireworks.ai/) - cloud-based
-- [OctoAI](https://octo.ai/) - cloud-based
-- [TogetherAI](https://www.together.ai/) (🔥 **New**) - cloud-based
+- [Groq](https://wow.groq.com/) - cloud-based provider, known for its super-fast inference with LPUs
+- [Fireworks AI](https://fireworks.ai/) - cloud-based provider
+- [OctoAI](https://octo.ai/) - cloud-based provider
+- [TogetherAI](https://www.together.ai/) (🔥 **New**) - cloud-based provider
+- [Mistral](https://mistral.ai/) (🔥 **New**) - cloud-based, leading open-source LLM company
 - [Ollama](https://ollama.com/) - runs locally, serves as an umbrella for open-source LLMs including LLaMA3, dbrx, and Command-R
 - [FastChat](https://github.com/lm-sys/FastChat) - runs locally, serves as an umbrella for open-source LLMs such as Vicuna, Alpaca, and FastChat-T5
 
