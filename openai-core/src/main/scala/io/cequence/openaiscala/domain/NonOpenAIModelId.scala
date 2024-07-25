@@ -40,6 +40,12 @@ object NonOpenAIModelId {
   val llama2_7b_summarize = "llama2-7b-summarize" // Fireworks AI (completion)
   val llamaguard_7b = "llamaguard-7b" // OctoML
   val medllama2 = "medllama2" // Ollama
+  val meta_llama_3_1_405b_instruct_turbo =
+    "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo" // Together AI
+  val meta_llama_3_1_70b_instruct_turbo =
+    "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo" // Together AI
+  val meta_llama_3_1_8b_instruct_turbo =
+    "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo" // Together AI
   val llama_2_13b_chat_hf = "meta-llama/Llama-2-13b-chat-hf" // Together AI
   val llama_2_70b_chat_hf = "meta-llama/Llama-2-70b-chat-hf" // Together AI
   val llama_2_7b_chat_hf = "meta-llama/Llama-2-7b-chat-hf" // Together AI
@@ -53,6 +59,19 @@ object NonOpenAIModelId {
   val meta_llama_3_8b_instruct_to_ai = "meta-llama/Meta-Llama-3-8B-Instruct" // Together AI
 
   // Mistral
+  // currently points to mistral-large-2407. mistral-large-2402 will be deprecated shortly.
+  val mistral_large_latest = "mistral-large-latest" // Mistral
+  val mistral_large_2407 = "mistral-large-2407" // Mistral
+  val mistral_large_240 = "mistral-large-240" // Mistral
+  // currently points to mistral-medium-2312. The previous mistral-medium has been dated and tagged as mistral-medium-2312. Mistral Medium will be deprecated shortly.
+  val mistral_medium_latest = "mistral-medium-latest" // Mistral
+  val mistral_medium_2312 = "mistral-medium-2312" // Mistral
+  // mistral-small-latest: currently points to mistral-small-2402. Mistral Small will be deprecated shortly.
+  val mistral_small_latest = "mistral-small-latest" // Mistral
+  val mistral_small_2402 = "mistral-small-2402" // Mistral
+  // open-mistral-nemo: currently points to open-mistral-nemo-2407.
+  val open_mistral_nemo = "open-mistral-nemo" // Mistral
+  val open_mistral_nemo_2407 = "open-mistral-nemo-2407" // Mistral
   val mixtral_8x22b = "mixtral-8x22b" // Fireworks AI and OctML (completion API)
   @Deprecated
   val mixtral_8x22b_instruct_preview = "mixtral-8x22b-instruct-preview" // Fireworks AI
