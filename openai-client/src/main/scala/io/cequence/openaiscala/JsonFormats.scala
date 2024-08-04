@@ -7,7 +7,7 @@ import io.cequence.openaiscala.domain.AssistantToolResource.{
 import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain.ChunkingStrategy.StaticChunkingStrategy
 import io.cequence.openaiscala.domain.FineTune.WeightsAndBiases
-import io.cequence.openaiscala.domain.ToolChoice.EnforcedTool
+//import io.cequence.openaiscala.domain.RunTool.{CodeInterpreterTool, FileSearchTool, FunctionTool}
 import io.cequence.openaiscala.domain.StepDetail.{MessageCreation, ToolCalls}
 import io.cequence.openaiscala.domain.response.AssistantToolResourceResponse.{
   CodeInterpreterResourcesResponse,
@@ -821,38 +821,68 @@ object JsonFormats {
 
   implicit lazy val runFormat: Format[Run] = Json.format[Run]
 
-  implicit val toolChoiceFormat: Format[ToolChoice] = {
-    import ToolChoice._
+  implicit lazy val functionToolFormat: Format[RunTool.FunctionTool] =
+    Json.format[RunTool.FunctionTool]
 
-    val enforcedToolReads: Reads[EnforcedTool] = Reads { json =>
+  implicit lazy val runToolFormat: Format[RunTool] = {
+    val runToolWrites: Writes[RunTool] = Writes {
+      case RunTool.CodeInterpreterTool => Json.obj("type" -> "code_interpreter")
+      case RunTool.FileSearchTool      => Json.obj("type" -> "file_search")
+      case RunTool.FunctionTool(name) =>
+        Json.obj("type" -> "function", "function" -> Json.obj("name" -> name))
+    }
+
+    val runToolReads: Reads[RunTool] = Reads { json =>
       (json \ "type").validate[String].flatMap {
-        case "code_interpreter" => JsSuccess(EnforcedTool(CodeInterpreterSpec))
-        case "file_search"      => JsSuccess(EnforcedTool(FileSearchSpec))
-        case "function" => {
-          val functionSpec = (json \ "function").as[FunctionSpec]
-          JsSuccess(EnforcedTool(functionSpec))
-        }
+        case "code_interpreter" => JsSuccess(RunTool.CodeInterpreterTool)
+        case "file_search"      => JsSuccess(RunTool.FileSearchTool)
+        case "function" =>
+          (json \ "function" \ "name").validate[String].map(RunTool.FunctionTool)
         case _ => JsError("Unknown type")
       }
     }
+
+    Format(runToolReads, runToolWrites)
+  }
+
+  implicit lazy val forcableToolFormat: Format[ForcableTool] = {
+    val reades: Reads[ForcableTool] = Reads { json =>
+      (json \ "type").validate[String].flatMap {
+        case "code_interpreter" => JsSuccess(CodeInterpreterSpec)
+        case "file_search"      => JsSuccess(FileSearchSpec)
+        case "function"         => json.validate[FunctionSpec]
+        case unsupportedType =>
+          JsError(s"Unsupported type of a forceable tool: $unsupportedType")
+      }
+    }
+
+    val writes: Writes[ForcableTool] = Writes {
+      case CodeInterpreterSpec => Json.obj("type" -> "code_interpreter")
+      case FileSearchSpec      => Json.obj("type" -> "file_search")
+      case functionTool: FunctionSpec =>
+        Json.toJson(functionTool).as[JsObject] + ("type" -> JsString("function"))
+    }
+
+    Format(reades, writes)
+  }
+
+  implicit val toolChoiceFormat: Format[ToolChoice] = {
+    import ToolChoice._
 
     val reads: Reads[ToolChoice] = Reads { json =>
       json.validate[String].flatMap {
         case "none"     => JsSuccess(None)
         case "auto"     => JsSuccess(Auto)
         case "required" => JsSuccess(Required)
-        case _          => enforcedToolReads.reads(json)
+        case _          => runToolFormat.reads(json).map(EnforcedTool)
       }
     }
 
     val writes: Writes[ToolChoice] = Writes {
-      case None                              => JsString("none")
-      case Auto                              => JsString("auto")
-      case Required                          => JsString("required")
-      case EnforcedTool(CodeInterpreterSpec) => Json.obj("type" -> "code_interpreter")
-      case EnforcedTool(FileSearchSpec)      => Json.obj("type" -> "file_search")
-      case EnforcedTool(FunctionSpec(name, _, _)) =>
-        Json.obj("type" -> "function", "function" -> Json.obj("name" -> name))
+      case None                  => JsString("none")
+      case Auto                  => JsString("auto")
+      case Required              => JsString("required")
+      case EnforcedTool(runTool) => runToolFormat.writes(runTool)
     }
 
     Format(reads, writes)

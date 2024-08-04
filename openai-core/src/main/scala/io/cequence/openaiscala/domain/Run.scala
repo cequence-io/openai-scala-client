@@ -26,7 +26,7 @@ object ToolChoice {
   case object None extends ToolChoice
   case object Auto extends ToolChoice
   case object Required extends ToolChoice
-  case class EnforcedTool(spec: ForcableTool) extends ToolChoice
+  case class EnforcedTool(spec: RunTool) extends ToolChoice
 }
 
 case class RequiredAction(

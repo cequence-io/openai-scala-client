@@ -178,26 +178,9 @@ private[service] trait OpenAIServiceImpl
     tools: Seq[ForcableTool],
     maybeResponseToolChoice: Option[ToolChoice]
   ): Seq[(Param, Option[JsValue])] = {
-    val toolJsons = tools.map {
-      case CodeInterpreterSpec => Map("type" -> "code_interpreter")
-      case FileSearchSpec      => Map("type" -> "file_search")
-      case tool: FunctionSpec  => Map("type" -> "function", "function" -> Json.toJson(tool))
-    }
-
-    val maybeToolChoiceParam = maybeResponseToolChoice.map {
-      case ToolChoice.None                         => "none"
-      case ToolChoice.Auto                         => "auto"
-      case ToolChoice.Required                     => "required"
-      case ToolChoice.EnforcedTool(FileSearchSpec) => Map("type" -> "file_search")
-      case ToolChoice.EnforcedTool(CodeInterpreterSpec) =>
-        Map("type" -> "code_interpreter")
-      case ToolChoice.EnforcedTool(FunctionSpec(name, _, _)) =>
-        Map("type" -> "function", "function" -> Map("name" -> name))
-    }
-
     val extraParams = jsonBodyParams(
-      Param.tools -> Some(toolJsons),
-      Param.tool_choice -> maybeToolChoiceParam
+      Param.tools -> Some(tools.map(Json.toJson(_))),
+      Param.tool_choice -> maybeResponseToolChoice.map(Json.toJson(_))
     )
 
     extraParams

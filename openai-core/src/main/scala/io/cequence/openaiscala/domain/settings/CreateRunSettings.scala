@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.domain.settings
 
+import io.cequence.openaiscala.domain.Run.TruncationStrategy
 import io.cequence.openaiscala.domain.response.ResponseFormat
 
 case class CreateRunSettings(
@@ -9,5 +10,7 @@ case class CreateRunSettings(
   topP: Option[Double] = None,
   maxPromptTokens: Option[Int] = None,
   maxCompletionTokens: Option[Int] = None,
+  truncationStrategy: Option[TruncationStrategy] = None,
+  parallelToolCalls: Option[Boolean] = None,
   responseFormat: Option[ResponseFormat] = None
 )
