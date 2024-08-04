@@ -58,7 +58,7 @@ trait OpenAIServiceWrapper
     instructions: Option[String],
     additionalInstructions: Option[String],
     additionalMessages: Seq[BaseMessage],
-    tools: Seq[ForcableTool],
+    tools: Seq[AssistantTool],
     responseToolChoice: Option[ToolChoice] = None,
     settings: CreateRunSettings = DefaultSettings.CreateRun,
     stream: Boolean

@@ -5,6 +5,7 @@ import io.cequence.openaiscala.domain.{FunctionSpec, ModelId, ThreadMessage}
 import scala.collection.immutable.ListMap
 import scala.concurrent.Future
 import io.cequence.openaiscala.domain
+import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain.response.Assistant
 
 object CreateRun extends Example {
@@ -17,7 +18,7 @@ object CreateRun extends Example {
         "You plan my week."
       ),
       tools = Seq(
-        FunctionSpec("name", description = None, Map())
+        FunctionTool("name", description = None, Map())
       ),
       toolResources = Seq()
     )
@@ -45,7 +46,7 @@ object CreateRun extends Example {
           "If you need the weather forecast for a specific city and date, you can use the weather_forecast_for_city function."
         ),
         tools = Seq(
-          FunctionSpec(
+          FunctionTool(
             "weather_forecast_for_city",
             description =
               Some("returns the weather forecast for a given day in the given city"),

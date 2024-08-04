@@ -5,7 +5,7 @@ import akka.util.ByteString
 import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.domain.{AssistantId, AssistantTool, AssistantToolOutput, AssistantToolResource, Attachment, BaseMessage, ChatRole, ChunkingStrategy, ForcableTool, FunctionSpec, Pagination, Run, RunStep, RunTool, SortOrder, Thread, ThreadFullMessage, ThreadMessage, ThreadMessageFile, ToolChoice, ToolSpec, VectorStore, VectorStoreFile, VectorStoreFileStatus}
+import io.cequence.openaiscala.domain.{AssistantId, AssistantTool, AssistantToolOutput, AssistantToolResource, Attachment, BaseMessage, ChatRole, ChunkingStrategy, FunctionSpec, Pagination, Run, RunStep, SortOrder, Thread, ThreadFullMessage, ThreadMessage, ThreadMessageFile, ToolChoice, ToolSpec, VectorStore, VectorStoreFile, VectorStoreFileStatus}
 
 import java.io.File
 import scala.concurrent.Future
@@ -87,7 +87,7 @@ trait OpenAIService extends OpenAICoreService {
     instructions: Option[String] = None,
     additionalInstructions: Option[String] = None,
     additionalMessages: Seq[BaseMessage] = Seq.empty,
-    tools: Seq[ForcableTool] = Seq.empty,
+    tools: Seq[AssistantTool] = Seq.empty,
     responseToolChoice: Option[ToolChoice] = None,
     settings: CreateRunSettings = DefaultSettings.CreateRun,
     stream: Boolean

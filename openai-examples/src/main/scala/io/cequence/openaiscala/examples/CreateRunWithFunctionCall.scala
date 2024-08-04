@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.examples
 
+import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateRunSettings
 import io.cequence.openaiscala.service.adapter.OpenAIServiceAdapters
@@ -111,8 +112,8 @@ object CreateRunWithFunctionCall extends Example {
       println("Assistant answer:" + finalMessages.map(_.content).mkString("\n"))
     }
 
-  val tools: Seq[FunctionSpec] = Seq(
-    FunctionSpec(
+  val tools: Seq[FunctionTool] = Seq(
+    FunctionTool(
       name = "get_current_weather",
       description = Some("Get the current weather in a given location"),
       parameters = Map(

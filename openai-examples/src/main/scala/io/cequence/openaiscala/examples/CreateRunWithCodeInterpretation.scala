@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.examples
 
+import io.cequence.openaiscala.domain.AssistantTool.CodeInterpreterTool
 import io.cequence.openaiscala.domain.{AssistantId, CodeInterpreterSpec, ModelId, RequiredAction, Run, RunStatus, RunTool, ThreadMessage, ToolChoice}
 import io.cequence.openaiscala.domain.settings.CreateRunSettings
 
@@ -39,7 +40,7 @@ object CreateRunWithCodeInterpretation extends Example with PollingHelper {
         assistantId = AssistantId(assistantId),
         instructions = None,
         responseToolChoice = Some(ToolChoice.EnforcedTool(RunTool.CodeInterpreterTool)),
-        tools = Seq(CodeInterpreterSpec),
+        tools = Seq(CodeInterpreterTool),
         settings = CreateRunSettings(
           model = Some(ModelId.gpt_4o),
           temperature = Some(0.0),

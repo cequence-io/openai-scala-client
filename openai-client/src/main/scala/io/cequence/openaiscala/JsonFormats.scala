@@ -157,10 +157,10 @@ object JsonFormats {
     Format(assistantsFunctionSpecReads, assistantsFunctionSpecWrites)
   }
 
-  implicit lazy val messageToolFormat: Format[MessageTool] = {
+  implicit lazy val messageToolFormat: Format[MessageAttachmentTool] = {
     val typeDiscriminatorKey = "type"
 
-    Format[MessageTool](
+    Format[MessageAttachmentTool](
       (json: JsValue) => {
         (json \ typeDiscriminatorKey).validate[String].flatMap {
           case "code_interpreter" => JsSuccess(CodeInterpreterSpec)
@@ -168,7 +168,7 @@ object JsonFormats {
           case _                  => JsError("Unknown type")
         }
       },
-      { (tool: MessageTool) =>
+      { (tool: MessageAttachmentTool) =>
         tool match {
           case CodeInterpreterSpec => Json.obj(typeDiscriminatorKey -> "code_interpreter")
           case FileSearchSpec      => Json.obj(typeDiscriminatorKey -> "file_search")
@@ -179,31 +179,40 @@ object JsonFormats {
 
   implicit lazy val assistantToolFormat: Format[AssistantTool] = {
     val typeDiscriminatorKey = "type"
+    implicit val mapFormat = JsonUtil.StringAnyMapFormat
+
+    implicit lazy val assistantFunctionToolFormat: Format[AssistantTool.FunctionTool] =
+      Json.format[AssistantTool.FunctionTool]
+    implicit lazy val assistantFileSearchToolFormat: Format[AssistantTool.FileSearchTool] =
+      Json.format[AssistantTool.FileSearchTool]
 
     Format[AssistantTool](
       (json: JsValue) => {
         (json \ typeDiscriminatorKey).validate[String].flatMap {
-          case "code_interpreter" => JsSuccess(CodeInterpreterSpec)
-          case "file_search"      => JsSuccess(FileSearchSpec)
-          case "function"         => json.validate[FunctionSpec](assistantsFunctionSpecFormat)
-          case _                  => JsError("Unknown type")
+          case "code_interpreter" => JsSuccess(AssistantTool.CodeInterpreterTool)
+          case "file_search" =>
+            json.validate[AssistantTool.FileSearchTool](assistantFileSearchToolFormat)
+          case "function" =>
+            json.validate[AssistantTool.FunctionTool](assistantFunctionToolFormat)
+          case _ => JsError("Unknown type")
         }
       },
       { (tool: AssistantTool) =>
-        val commonJson = Json.obj {
+        val typeField = Json.obj {
           val discriminatorValue = tool match {
-            case CodeInterpreterSpec   => "code_interpreter"
-            case FileSearchSpec        => "file_search"
-            case FunctionSpec(_, _, _) => "function"
+            case AssistantTool.CodeInterpreterTool   => "code_interpreter"
+            case AssistantTool.FileSearchTool(_)     => "file_search"
+            case AssistantTool.FunctionTool(_, _, _) => "function"
           }
           typeDiscriminatorKey -> discriminatorValue
         }
-        tool match {
-          case CodeInterpreterSpec => commonJson
-          case FileSearchSpec      => commonJson
-          case ft: FunctionSpec =>
-            commonJson ++ Json.toJson(ft)(assistantsFunctionSpecFormat).as[JsObject]
+        val customFields = tool match {
+          case AssistantTool.CodeInterpreterTool            => JsObject.empty
+          case fileSearchTool: AssistantTool.FileSearchTool => Json.toJson(fileSearchTool).as[JsObject]
+          case functionTool: AssistantTool.FunctionTool =>
+            Json.toJson(functionTool).as[JsObject]
         }
+        typeField ++ customFields
       }
     )
   }
@@ -658,7 +667,7 @@ object JsonFormats {
 
   implicit lazy val attachmentFormat: Format[Attachment] = (
     (__ \ "file_id").formatNullable[FileId] and
-      (__ \ "tools").format[Seq[MessageTool]]
+      (__ \ "tools").format[Seq[MessageAttachmentTool]]
   )(Attachment.apply, unlift(Attachment.unapply))
 
   implicit lazy val assistantReads: Reads[Assistant] = (
@@ -845,26 +854,26 @@ object JsonFormats {
     Format(runToolReads, runToolWrites)
   }
 
-  implicit lazy val forcableToolFormat: Format[ForcableTool] = {
-    val reades: Reads[ForcableTool] = Reads { json =>
-      (json \ "type").validate[String].flatMap {
-        case "code_interpreter" => JsSuccess(CodeInterpreterSpec)
-        case "file_search"      => JsSuccess(FileSearchSpec)
-        case "function"         => json.validate[FunctionSpec]
-        case unsupportedType =>
-          JsError(s"Unsupported type of a forceable tool: $unsupportedType")
-      }
-    }
-
-    val writes: Writes[ForcableTool] = Writes {
-      case CodeInterpreterSpec => Json.obj("type" -> "code_interpreter")
-      case FileSearchSpec      => Json.obj("type" -> "file_search")
-      case functionTool: FunctionSpec =>
-        Json.toJson(functionTool).as[JsObject] + ("type" -> JsString("function"))
-    }
-
-    Format(reades, writes)
-  }
+//  implicit lazy val forcableToolFormat: Format[ForcableTool] = {
+//    val reades: Reads[ForcableTool] = Reads { json =>
+//      (json \ "type").validate[String].flatMap {
+//        case "code_interpreter" => JsSuccess(CodeInterpreterSpec)
+//        case "file_search"      => JsSuccess(FileSearchSpec)
+//        case "function"         => json.validate[FunctionSpec]
+//        case unsupportedType =>
+//          JsError(s"Unsupported type of a forceable tool: $unsupportedType")
+//      }
+//    }
+//
+//    val writes: Writes[ForcableTool] = Writes {
+//      case CodeInterpreterSpec => Json.obj("type" -> "code_interpreter")
+//      case FileSearchSpec      => Json.obj("type" -> "file_search")
+//      case functionTool: FunctionSpec =>
+//        Json.toJson(functionTool).as[JsObject] + ("type" -> JsString("function"))
+//    }
+//
+//    Format(reades, writes)
+//  }
 
   implicit val toolChoiceFormat: Format[ToolChoice] = {
     import ToolChoice._

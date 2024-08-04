@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.examples
 
+import io.cequence.openaiscala.domain.AssistantTool.FileSearchTool
 import io.cequence.openaiscala.domain.AssistantToolResource.FileSearchResources
 import io.cequence.openaiscala.domain.response.FileInfo
 import io.cequence.openaiscala.domain.settings.CreateRunSettings
@@ -42,7 +43,7 @@ object CreateRunWithVectorStore extends Example {
         instructions = Some(
           "You pick the talks meeting my criteria I should attend at a conference."
         ),
-        tools = Seq(FileSearchSpec),
+        tools = Seq(FileSearchTool()),
         toolResources = Seq(FileSearchResources(Seq(vectorStoreId)))
       )
     } yield assistant
@@ -79,7 +80,7 @@ object CreateRunWithVectorStore extends Example {
       run <- service.createRun(
         threadId = eventsThread.id,
         assistantId = assistantId,
-        tools = Seq(FileSearchSpec),
+        tools = Seq(FileSearchTool()),
         responseToolChoice = Some(ToolChoice.EnforcedTool(RunTool.FileSearchTool)),
         settings = CreateRunSettings(),
         stream = false

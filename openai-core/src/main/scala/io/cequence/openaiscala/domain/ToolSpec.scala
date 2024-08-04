@@ -1,16 +1,12 @@
 package io.cequence.openaiscala.domain
 
-sealed trait ForcableTool
-
 sealed trait ToolSpec
 
-sealed trait MessageTool
+sealed trait MessageAttachmentTool
 
-sealed trait AssistantTool
+case object CodeInterpreterSpec extends MessageAttachmentTool
 
-case object CodeInterpreterSpec extends AssistantTool with MessageTool with ForcableTool
-
-case object FileSearchSpec extends AssistantTool with MessageTool with ForcableTool
+case object FileSearchSpec extends MessageAttachmentTool
 
 case class FunctionSpec(
   // The name of the function to be called.
@@ -24,5 +20,3 @@ case class FunctionSpec(
   // See the guide for examples, and the JSON Schema reference for documentation about the format.
   parameters: Map[String, Any]
 ) extends ToolSpec
-    with AssistantTool
-    with ForcableTool

@@ -61,6 +61,7 @@ case class Run(
   incomplete_details: Option[Reason],
   model: String,
   instructions: Option[String],
+  tools: Seq[AssistantTool],
   usage: Option[UsageInfo]
   //  tool_choice: Either[String, Any], // Replace Any with the actual type when available
   //  response_format: Either[String, Any] // Replace Any with the actual type when available
