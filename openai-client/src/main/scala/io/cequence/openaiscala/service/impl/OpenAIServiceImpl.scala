@@ -44,7 +44,7 @@ private[service] trait OpenAIServiceImpl
 
   override def createChatFunCompletion(
     messages: Seq[BaseMessage],
-    functions: Seq[FunctionSpec],
+    functions: Seq[ChatCompletionTool],
     responseFunctionName: Option[String],
     settings: CreateChatCompletionSettings
   ): Future[ChatFunCompletionResponse] = {
@@ -52,7 +52,7 @@ private[service] trait OpenAIServiceImpl
       createBodyParamsForChatCompletion(messages, settings, stream = false)
 
     val extraParams = jsonBodyParams(
-      Param.functions -> Some(functions.map(Json.toJson(_)(functionSpecFormat))),
+      Param.functions -> Some(functions.map(Json.toJson(_)(chatCompletionToolWrites))),
       Param.function_call -> responseFunctionName.map(name =>
         Map("name" -> name)
       ) // otherwise "auto" is used by default (if functions are present)
@@ -99,7 +99,10 @@ private[service] trait OpenAIServiceImpl
     )
   }
 
-  override def cancelRun(threadId: String, runId: String): Future[Run] =
+  override def cancelRun(
+    threadId: String,
+    runId: String
+  ): Future[Run] =
     execPOST(
       EndPoint.threads,
       Some(s"$threadId/runs/$runId/cancel")
@@ -107,7 +110,11 @@ private[service] trait OpenAIServiceImpl
       _.asSafeJson[Run]
     )
 
-  override def modifyRun(threadId: String, runId: String, metadata: Map[String, String]): Future[Run] =
+  override def modifyRun(
+    threadId: String,
+    runId: String,
+    metadata: Map[String, String]
+  ): Future[Run] =
     execPOST(
       EndPoint.threads,
       Some(s"$threadId/runs/$runId"),
@@ -151,7 +158,10 @@ private[service] trait OpenAIServiceImpl
       handleNotFoundAndError(response).map(_.asSafeJson[Run])
     }
 
-  override def listRuns(threadId: String, pagination: Pagination): Future[Seq[Run]] =
+  override def listRuns(
+    threadId: String,
+    pagination: Pagination
+  ): Future[Seq[Run]] =
     execGET(
       EndPoint.threads,
       Some(s"$threadId/runs"),
@@ -188,15 +198,16 @@ private[service] trait OpenAIServiceImpl
 
   override def createChatToolCompletion(
     messages: Seq[BaseMessage],
-    tools: Seq[ToolSpec],
+    tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatFunCompletion
   ): Future[ChatToolCompletionResponse] = {
     val coreParams =
       createBodyParamsForChatCompletion(messages, settings, stream = false)
 
-    val toolJsons: Seq[Map[String, Object]] = tools.map { case tool: FunctionSpec =>
-      Map("type" -> "function", "function" -> Json.toJson(tool))
+    val toolJsons: Seq[Map[String, Object]] = tools.map {
+      case tool: AssistantTool.FunctionTool =>
+        Map("type" -> "function", "function" -> Json.toJson(tool))
     }
 
     val extraParams = jsonBodyParams(

@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.service
 
-import io.cequence.openaiscala.domain.FunctionSpec
+import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 
 import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
@@ -8,9 +8,9 @@ import scala.reflect.ClassTag
 // rewritten from https://github.com/hmarr/openai-chat-tokens
 // TODO: consider using a json schema; also avoid using mutable data structures
 object FunctionCallOpenAISerializer {
-  def formatFunctionDefinitions(functions: Seq[FunctionSpec]): String = {
+  def formatFunctionDefinitions(functions: Seq[FunctionTool]): String = {
     val lines = ListBuffer("namespace functions {", "")
-    for (f: FunctionSpec <- functions) {
+    for (f: FunctionTool <- functions) {
       if (f.description.isDefined) {
         lines += s"// ${f.description.get}"
       }

@@ -1,7 +1,10 @@
 package io.cequence.openaiscala.service
 
 import akka.stream.Materializer
-import io.cequence.openaiscala.{OpenAIScalaClientTimeoutException, OpenAIScalaClientUnknownHostException}
+import io.cequence.openaiscala.{
+  OpenAIScalaClientTimeoutException,
+  OpenAIScalaClientUnknownHostException
+}
 import io.cequence.wsclient.domain.{RichResponse, WsRequestContext}
 import io.cequence.wsclient.service.WSClientEngine
 import io.cequence.wsclient.service.ws.PlayWSClientEngine

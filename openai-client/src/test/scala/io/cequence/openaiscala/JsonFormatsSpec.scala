@@ -202,32 +202,32 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
     }
 
     "serialize and deserialize run tools" in {
-        testCodec[RunTool](
-          RunTool.CodeInterpreterTool,
-          """{
+      testCodec[RunTool](
+        RunTool.CodeInterpreterTool,
+        """{
              |  "type" : "code_interpreter"
              |}""".stripMargin,
-          Pretty
-        )
+        Pretty
+      )
 
-        testCodec[RunTool](
-          RunTool.FileSearchTool,
-          """{
+      testCodec[RunTool](
+        RunTool.FileSearchTool,
+        """{
             |  "type" : "file_search"
             |}""".stripMargin,
-          Pretty
-        )
+        Pretty
+      )
 
-        testCodec[RunTool](
-          RunTool.FunctionTool("function-name"),
-          """{
+      testCodec[RunTool](
+        RunTool.FunctionTool("function-name"),
+        """{
           |  "type" : "function",
           |  "function" : {
           |    "name" : "function-name"
           |  }
           |}""".stripMargin,
-          Pretty
-        )
+        Pretty
+      )
     }
 
     "serialize and deserialize none, auto, and required tool choices" in {
@@ -298,7 +298,10 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       testCodec[Attachment](
         Attachment(
           fileId = Some(FileId("file-id-1")),
-          tools = Seq(CodeInterpreterSpec, FileSearchSpec)
+          tools = Seq(
+            MessageAttachmentTool.CodeInterpreterSpec,
+            MessageAttachmentTool.FileSearchSpec
+          )
         ),
         attachmentJson,
         Pretty
@@ -508,7 +511,7 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
   private def testSerialization[A](
     value: A,
     json: String,
-    printMode: JsonPrintMode = Compact,
+    printMode: JsonPrintMode = Compact
   )(
     implicit format: Format[A]
   ): Unit = {

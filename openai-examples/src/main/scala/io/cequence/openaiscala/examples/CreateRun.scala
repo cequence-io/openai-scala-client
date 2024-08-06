@@ -1,12 +1,12 @@
 package io.cequence.openaiscala.examples
-import io.cequence.openaiscala.domain.settings.CreateRunSettings
-import io.cequence.openaiscala.domain.{FunctionSpec, ModelId, ThreadMessage}
-
-import scala.collection.immutable.ListMap
-import scala.concurrent.Future
 import io.cequence.openaiscala.domain
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain.response.Assistant
+import io.cequence.openaiscala.domain.settings.CreateRunSettings
+import io.cequence.openaiscala.domain.{ModelId, ThreadMessage}
+
+import scala.collection.immutable.ListMap
+import scala.concurrent.Future
 
 object CreateRun extends Example {
 

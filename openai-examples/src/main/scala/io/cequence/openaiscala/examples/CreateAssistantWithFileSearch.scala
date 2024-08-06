@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.examples
 
 import io.cequence.openaiscala.domain.AssistantTool.FileSearchTool
-import io.cequence.openaiscala.domain.{AssistantToolResource, FileSearchSpec, ModelId}
+import io.cequence.openaiscala.domain.{AssistantToolResource, ModelId}
 
 import scala.concurrent.Future
 

@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.examples
 
 import io.cequence.openaiscala.domain.AssistantTool.CodeInterpreterTool
-import io.cequence.openaiscala.domain.{CodeInterpreterSpec, ModelId}
+import io.cequence.openaiscala.domain.ModelId
 
 import scala.concurrent.Future
 

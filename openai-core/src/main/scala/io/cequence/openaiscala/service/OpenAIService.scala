@@ -5,7 +5,29 @@ import akka.util.ByteString
 import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.domain.{AssistantId, AssistantTool, AssistantToolOutput, AssistantToolResource, Attachment, BaseMessage, ChatRole, ChunkingStrategy, FunctionSpec, Pagination, Run, RunStep, SortOrder, Thread, ThreadFullMessage, ThreadMessage, ThreadMessageFile, ToolChoice, ToolSpec, VectorStore, VectorStoreFile, VectorStoreFileStatus}
+import io.cequence.openaiscala.domain.{
+  AssistantId,
+  AssistantTool,
+  AssistantToolOutput,
+  AssistantToolResource,
+  Attachment,
+  BaseMessage,
+  ChatCompletionTool,
+  ChatRole,
+  ChunkingStrategy,
+  Pagination,
+  Run,
+  RunStep,
+  SortOrder,
+  Thread,
+  ThreadFullMessage,
+  ThreadMessage,
+  ThreadMessageFile,
+  ToolChoice,
+  VectorStore,
+  VectorStoreFile,
+  VectorStoreFileStatus
+}
 
 import java.io.File
 import scala.concurrent.Future
@@ -76,7 +98,7 @@ trait OpenAIService extends OpenAICoreService {
   @Deprecated
   def createChatFunCompletion(
     messages: Seq[BaseMessage],
-    functions: Seq[FunctionSpec],
+    functions: Seq[ChatCompletionTool],
     responseFunctionName: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatFunCompletion
   ): Future[ChatFunCompletionResponse]
@@ -142,13 +164,15 @@ trait OpenAIService extends OpenAICoreService {
   /**
    * Returns a list of runs belonging to a thread.
    *
-   * @param threadId The ID of the thread the run belongs to.
+   * @param threadId
+   *   The ID of the thread the run belongs to.
    * @param pagination
-   * @return A list of run objects.
+   * @return
+   *   A list of run objects.
    */
   def listRuns(
     threadId: String,
-    pagination: Pagination = Pagination.default,
+    pagination: Pagination = Pagination.default
   ): Future[Seq[Run]]
 
   def listRunSteps(
@@ -180,7 +204,7 @@ trait OpenAIService extends OpenAICoreService {
   // TODO: add support for 'parallel_tool_calls'
   def createChatToolCompletion(
     messages: Seq[BaseMessage],
-    tools: Seq[ToolSpec],
+    tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatToolCompletion
   ): Future[ChatToolCompletionResponse]

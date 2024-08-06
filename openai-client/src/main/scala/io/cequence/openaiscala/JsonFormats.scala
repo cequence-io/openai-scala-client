@@ -1,5 +1,10 @@
 package io.cequence.openaiscala
 
+import io.cequence.openaiscala.domain.AssistantTool.{
+  CodeInterpreterTool,
+  FileSearchTool,
+  FunctionTool
+}
 import io.cequence.openaiscala.domain.AssistantToolResource.{
   CodeInterpreterResources,
   FileSearchResources
@@ -126,36 +131,36 @@ object JsonFormats {
 
   implicit lazy val messageSpecFormat: Format[MessageSpec] = Json.format[MessageSpec]
 
-  implicit lazy val functionSpecFormat: Format[FunctionSpec] = {
+  implicit lazy val chatCompletionToolFormat: Format[FunctionTool] = {
     // use just here for FunctionSpec
     implicit lazy val stringAnyMapFormat: Format[Map[String, Any]] =
       JsonUtil.StringAnyMapFormat
-    Json.format[FunctionSpec]
+    Json.format[FunctionTool]
   }
 
-  val assistantsFunctionSpecFormat: Format[FunctionSpec] = {
-    implicit lazy val stringAnyMapFormat: Format[Map[String, Any]] =
-      JsonUtil.StringAnyMapFormat
-
-    val assistantsFunctionSpecWrites: Writes[FunctionSpec] = new Writes[FunctionSpec] {
-      def writes(fs: FunctionSpec): JsValue = Json.obj(
-        "type" -> "function",
-        "function" -> Json.obj(
-          "name" -> fs.name,
-          "description" -> fs.description,
-          "parameters" -> fs.parameters
-        )
-      )
-    }
-
-    val assistantsFunctionSpecReads: Reads[FunctionSpec] = (
-      (JsPath \ "function" \ "name").read[String] and
-        (JsPath \ "function" \ "description").readNullable[String] and
-        (JsPath \ "function" \ "parameters").read[Map[String, Any]]
-    )(FunctionSpec.apply _)
-
-    Format(assistantsFunctionSpecReads, assistantsFunctionSpecWrites)
-  }
+//  val assistantsFunctionSpecFormat: Format[FunctionTool] = {
+//    implicit lazy val stringAnyMapFormat: Format[Map[String, Any]] =
+//      JsonUtil.StringAnyMapFormat
+//
+//    val assistantsFunctionSpecWrites: Writes[FunctionSpec] = new Writes[FunctionSpec] {
+//      def writes(fs: FunctionSpec): JsValue = Json.obj(
+//        "type" -> "function",
+//        "function" -> Json.obj(
+//          "name" -> fs.name,
+//          "description" -> fs.description,
+//          "parameters" -> fs.parameters
+//        )
+//      )
+//    }
+//
+//    val assistantsFunctionSpecReads: Reads[FunctionSpec] = (
+//      (JsPath \ "function" \ "name").read[String] and
+//        (JsPath \ "function" \ "description").readNullable[String] and
+//        (JsPath \ "function" \ "parameters").read[Map[String, Any]]
+//    )(FunctionSpec.apply _)
+//
+//    Format(assistantsFunctionSpecReads, assistantsFunctionSpecWrites)
+//  }
 
   implicit lazy val messageToolFormat: Format[MessageAttachmentTool] = {
     val typeDiscriminatorKey = "type"
@@ -163,15 +168,17 @@ object JsonFormats {
     Format[MessageAttachmentTool](
       (json: JsValue) => {
         (json \ typeDiscriminatorKey).validate[String].flatMap {
-          case "code_interpreter" => JsSuccess(CodeInterpreterSpec)
-          case "file_search"      => JsSuccess(FileSearchSpec)
+          case "code_interpreter" => JsSuccess(MessageAttachmentTool.CodeInterpreterSpec)
+          case "file_search"      => JsSuccess(MessageAttachmentTool.FileSearchSpec)
           case _                  => JsError("Unknown type")
         }
       },
       { (tool: MessageAttachmentTool) =>
         tool match {
-          case CodeInterpreterSpec => Json.obj(typeDiscriminatorKey -> "code_interpreter")
-          case FileSearchSpec      => Json.obj(typeDiscriminatorKey -> "file_search")
+          case MessageAttachmentTool.CodeInterpreterSpec =>
+            Json.obj(typeDiscriminatorKey -> "code_interpreter")
+          case MessageAttachmentTool.FileSearchSpec =>
+            Json.obj(typeDiscriminatorKey -> "file_search")
         }
       }
     )
@@ -200,17 +207,18 @@ object JsonFormats {
       { (tool: AssistantTool) =>
         val typeField = Json.obj {
           val discriminatorValue = tool match {
-            case AssistantTool.CodeInterpreterTool   => "code_interpreter"
-            case AssistantTool.FileSearchTool(_)     => "file_search"
-            case AssistantTool.FunctionTool(_, _, _) => "function"
+            case AssistantTool.CodeInterpreterTool      => "code_interpreter"
+            case AssistantTool.FileSearchTool(_)        => "file_search"
+            case AssistantTool.FunctionTool(_, _, _, _) => "function"
           }
           typeDiscriminatorKey -> discriminatorValue
         }
         val customFields = tool match {
-          case AssistantTool.CodeInterpreterTool            => JsObject.empty
-          case fileSearchTool: AssistantTool.FileSearchTool => Json.toJson(fileSearchTool).as[JsObject]
+          case AssistantTool.CodeInterpreterTool => JsObject.empty
+          case fileSearchTool: AssistantTool.FileSearchTool =>
+            Json.toJson(fileSearchTool).as[JsObject]
           case functionTool: AssistantTool.FunctionTool =>
-            Json.toJson(functionTool).as[JsObject]
+            Json.toJson(functionTool)(assistantFunctionToolFormat).as[JsObject]
         }
         typeField ++ customFields
       }
@@ -302,12 +310,13 @@ object JsonFormats {
   implicit lazy val assistantToolOutputFormat: Format[AssistantToolOutput] =
     Json.format[AssistantToolOutput]
 
-  implicit lazy val toolWrites: Writes[ToolSpec] = Writes[ToolSpec] {
-    _ match {
-      case x: FunctionSpec =>
-        Json.obj("type" -> "function", "function" -> Json.toJson(x))
+  implicit lazy val chatCompletionToolWrites: Writes[ChatCompletionTool] =
+    Writes[ChatCompletionTool] {
+      _ match {
+        case x: FunctionTool =>
+          Json.obj("type" -> "function", "function" -> Json.toJson(x))
+      }
     }
-  }
 
   implicit lazy val topLogprobInfoormat: Format[TopLogprobInfo] = {
     val reads: Reads[TopLogprobInfo] = (

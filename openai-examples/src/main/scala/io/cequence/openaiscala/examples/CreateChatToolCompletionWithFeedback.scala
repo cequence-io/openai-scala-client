@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.examples
 
+import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import play.api.libs.json.Json
@@ -18,7 +19,7 @@ object CreateChatToolCompletionWithFeedback extends Example {
 
   // as a param type we can use "number", "string", "boolean", "object", "array", and "null"
   val tools = Seq(
-    FunctionSpec(
+    FunctionTool(
       name = "get_current_weather",
       description = Some("Get the current weather in a given location"),
       parameters = Map(

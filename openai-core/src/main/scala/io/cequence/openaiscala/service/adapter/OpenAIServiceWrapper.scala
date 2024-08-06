@@ -40,7 +40,7 @@ trait OpenAIServiceWrapper
 
   override def createChatFunCompletion(
     messages: Seq[BaseMessage],
-    functions: Seq[FunctionSpec],
+    functions: Seq[ChatCompletionTool],
     responseFunctionName: Option[String],
     settings: CreateChatCompletionSettings
   ): Future[ChatFunCompletionResponse] = wrap(
@@ -124,7 +124,7 @@ trait OpenAIServiceWrapper
 
   override def createChatToolCompletion(
     messages: Seq[BaseMessage],
-    tools: Seq[ToolSpec],
+    tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
   ): Future[ChatToolCompletionResponse] = wrap(

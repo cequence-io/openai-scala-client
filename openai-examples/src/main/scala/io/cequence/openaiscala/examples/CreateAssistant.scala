@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.examples
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
-import io.cequence.openaiscala.domain.{FunctionSpec, ModelId}
+import io.cequence.openaiscala.domain.ModelId
 
 import scala.concurrent.Future
 

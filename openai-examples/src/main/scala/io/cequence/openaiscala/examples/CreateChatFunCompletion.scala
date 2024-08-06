@@ -1,6 +1,8 @@
 package io.cequence.openaiscala.examples
 
-import io.cequence.openaiscala.domain.{BaseMessage, FunctionSpec, UserMessage}
+import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
+import io.cequence.openaiscala.domain.{BaseMessage, UserMessage}
+
 import scala.concurrent.Future
 
 object CreateChatFunCompletion extends Example {
@@ -10,8 +12,8 @@ object CreateChatFunCompletion extends Example {
   )
 
   // as a param type we can use "number", "string", "boolean", "object", "array", and "null"
-  val functions: Seq[FunctionSpec] = Seq(
-    FunctionSpec(
+  val functions: Seq[FunctionTool] = Seq(
+    FunctionTool(
       name = "get_current_weather",
       description = Some("Get the current weather in a given location"),
       parameters = Map(
