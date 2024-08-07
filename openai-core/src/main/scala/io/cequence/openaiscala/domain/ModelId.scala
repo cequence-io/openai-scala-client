@@ -161,9 +161,9 @@ object ModelId {
 
   // GPT-4
 
-  // flagship multimodal model, 128K context, currently points to gpt-4o-2024-05-13
+  // flagship multimodal model, 128K context, currently points to "gpt-4o-2024-08-06, training data up to Oct 2023
   val gpt_4o = "gpt-4o"
-  // flagship multimodal model, 128K context, training data up to Oct 2023
+  val gpt_4o_2024_08_06 = "gpt-4o-2024-08-06"
   val gpt_4o_2024_05_13 = "gpt-4o-2024-05-13"
   // cost-efficient small model, 128K context, currently points to gpt-4o-mini-2024-07-18
   val gpt_4o_mini = "gpt-4o-mini"
