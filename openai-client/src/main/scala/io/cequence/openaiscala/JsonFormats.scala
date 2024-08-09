@@ -533,7 +533,7 @@ object JsonFormats {
 
   implicit lazy val assistantToolResourceWrites: Writes[AssistantToolResource] = {
     case c: CodeInterpreterResources =>
-      Json.obj("code_interpreter" -> Json.obj("file_ids" -> c.fileIds))
+      Json.obj("code_interpreter" -> Json.obj("file_ids" -> c.fileIds.map(_.file_id)))
 
     case f: FileSearchResources =>
       assert(
