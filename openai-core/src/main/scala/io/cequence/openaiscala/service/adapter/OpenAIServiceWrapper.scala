@@ -94,9 +94,10 @@ trait OpenAIServiceWrapper
   def submitToolOutputs(
     threadId: String,
     runId: String,
-    toolOutputs: Option[Seq[AssistantToolOutput]]
+    toolOutputs: Seq[AssistantToolOutput],
+    stream: Boolean
   ): Future[Run] = wrap(
-    _.submitToolOutputs(threadId, runId, toolOutputs)
+    _.submitToolOutputs(threadId, runId, toolOutputs, stream)
   )
 
   def retrieveRun(

@@ -188,8 +188,18 @@ object JsonFormats {
     val typeDiscriminatorKey = "type"
     implicit val mapFormat = JsonUtil.StringAnyMapFormat
 
-    implicit lazy val assistantFunctionToolFormat: Format[AssistantTool.FunctionTool] =
-      Json.format[AssistantTool.FunctionTool]
+    implicit lazy val assistantFunctionToolFormat: Format[AssistantTool.FunctionTool] = {
+      val reads = Reads[AssistantTool.FunctionTool] { json =>
+        for {
+          name <- (json \ "name").validate[String]
+          description <- (json \ "description").validateOpt[String]
+          parameters <- (json \ "parameters").validate[Map[String, Any]]
+          strict <- (json \ "strict").validateOpt[Boolean]
+        } yield AssistantTool.FunctionTool(name, description, parameters, strict)
+      }
+      val writes = Json.writes[AssistantTool.FunctionTool]
+      Format(reads, writes)
+    }
     implicit lazy val assistantFileSearchToolFormat: Format[AssistantTool.FileSearchTool] =
       Json.format[AssistantTool.FileSearchTool]
 

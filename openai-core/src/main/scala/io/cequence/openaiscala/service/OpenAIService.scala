@@ -150,10 +150,25 @@ trait OpenAIService extends OpenAICoreService {
     metadata: Map[String, String]
   ): Future[Run]
 
+  /**
+   * When a run has the status: "requires_action" and required_action.type is submit_tool_outputs, this endpoint can be used to submit the outputs from the tool calls once they're all completed. All outputs must be submitted in a single request.
+   *
+   * @param threadId
+   *   The ID of the thread to which this run belongs.
+   * @param runId
+   *   The ID of the run that requires the tool output submission.
+   * @param toolOutputs
+   *   A list of tools for which the outputs are being submitted.
+   * @param stream
+   *   If true, returns a stream of events that happen during the Run as server-sent events, terminating when the Run enters a terminal state with a data: [DONE] message.
+   * @return
+   *   The modified run object matching the specified ID.
+   */
   def submitToolOutputs(
     threadId: String,
     runId: String,
-    toolOutputs: Option[Seq[AssistantToolOutput]]
+    toolOutputs: Seq[AssistantToolOutput],
+    stream: Boolean
   ): Future[Run]
 
   def retrieveRun(
