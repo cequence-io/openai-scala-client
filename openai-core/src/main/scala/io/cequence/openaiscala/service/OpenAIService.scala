@@ -167,12 +167,15 @@ trait OpenAIService extends OpenAICoreService {
    * @param threadId
    *   The ID of the thread the run belongs to.
    * @param pagination
+   * @param order
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc for descending order.
    * @return
    *   A list of run objects.
    */
   def listRuns(
     threadId: String,
-    pagination: Pagination = Pagination.default
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None
   ): Future[Seq[Run]]
 
   def listRunSteps(

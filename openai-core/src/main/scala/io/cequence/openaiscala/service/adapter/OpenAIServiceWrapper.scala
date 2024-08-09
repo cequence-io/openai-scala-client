@@ -117,9 +117,10 @@ trait OpenAIServiceWrapper
 
   override def listRuns(
     threadId: String,
-    pagination: Pagination
+    pagination: Pagination,
+    order: Option[SortOrder] = None
   ): Future[Seq[Run]] = wrap(
-    _.listRuns(threadId, pagination)
+    _.listRuns(threadId, pagination, order)
   )
 
   override def createChatToolCompletion(

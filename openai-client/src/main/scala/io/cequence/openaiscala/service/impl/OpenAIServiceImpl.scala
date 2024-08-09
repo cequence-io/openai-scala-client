@@ -160,12 +160,13 @@ private[service] trait OpenAIServiceImpl
 
   override def listRuns(
     threadId: String,
-    pagination: Pagination
+    pagination: Pagination,
+    order: Option[SortOrder] = None
   ): Future[Seq[Run]] =
     execGET(
       EndPoint.threads,
       Some(s"$threadId/runs"),
-      params = paginationParams(pagination)
+      params = paginationParams(pagination) :+ Param.order -> order
     ).map { response =>
       readAttribute(response.json, "data").asSafeArray[Run]
     }
