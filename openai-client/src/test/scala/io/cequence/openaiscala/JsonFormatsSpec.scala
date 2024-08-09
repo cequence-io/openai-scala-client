@@ -486,6 +486,47 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       )(threadMessageContentFormat)
     }
 
+    "serialize and deserialize assistant tools" in {
+      testCodec[AssistantTool](
+        AssistantTool.CodeInterpreterTool,
+        """{
+            |  "type" : "code_interpreter"
+            |}""".stripMargin,
+        Pretty
+      )
+
+      testCodec[AssistantTool](
+        AssistantTool.FileSearchTool(Some(10)),
+        """{
+            |  "type" : "file_search",
+            |  "file_search" : {
+            |    "max_num_results" : 10
+            |  }
+            |}""".stripMargin,
+        Pretty
+      )
+
+      testCodec[AssistantTool](
+        AssistantTool.FunctionTool(
+          name = "function-name",
+          description = Some("function description"),
+          parameters = Map(),
+          strict = Some(true)
+        ),
+        """{
+            |  "type" : "function",
+            |  "function" : {
+            |    "name" : "function-name",
+            |    "description" : "function description",
+            |    "parameters" : {},
+            |    "strict" : true
+            |  }
+            |}""".stripMargin,
+        Pretty,
+        justSemantics = true
+      )
+    }
+
   }
 
   private def testCodec[A](

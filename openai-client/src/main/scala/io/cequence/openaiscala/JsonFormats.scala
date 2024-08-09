@@ -188,29 +188,32 @@ object JsonFormats {
     val typeDiscriminatorKey = "type"
     implicit val mapFormat = JsonUtil.StringAnyMapFormat
 
-    implicit lazy val assistantFunctionToolFormat: Format[AssistantTool.FunctionTool] = {
+    lazy val assistantFunctionToolFormat: Format[AssistantTool.FunctionTool] = {
       val reads = Reads[AssistantTool.FunctionTool] { json =>
         for {
           name <- (json \ "name").validate[String]
           description <- (json \ "description").validateOpt[String]
-          parameters <- (json \ "parameters").validate[Map[String, Any]]
+          parameters <- (json \ "parameters").validate[Map[String, Any]](mapFormat)
           strict <- (json \ "strict").validateOpt[Boolean]
-        } yield AssistantTool.FunctionTool(name, description, parameters, strict)
+        } yield
+          AssistantTool.FunctionTool(name, description, parameters, strict)
       }
       val writes = Json.writes[AssistantTool.FunctionTool]
       Format(reads, writes)
     }
-    implicit lazy val assistantFileSearchToolFormat: Format[AssistantTool.FileSearchTool] =
+    lazy val assistantFileSearchToolFormat: Format[AssistantTool.FileSearchTool] = {
+      implicit val config = JsonConfiguration(SnakeCase)
       Json.format[AssistantTool.FileSearchTool]
+    }
 
     Format[AssistantTool](
       (json: JsValue) => {
         (json \ typeDiscriminatorKey).validate[String].flatMap {
           case "code_interpreter" => JsSuccess(AssistantTool.CodeInterpreterTool)
           case "file_search" =>
-            json.validate[AssistantTool.FileSearchTool](assistantFileSearchToolFormat)
+            (json \ "file_search").validate[AssistantTool.FileSearchTool](assistantFileSearchToolFormat)
           case "function" =>
-            json.validate[AssistantTool.FunctionTool](assistantFunctionToolFormat)
+            (json \ "function").validate[AssistantTool.FunctionTool](assistantFunctionToolFormat)
           case _ => JsError("Unknown type")
         }
       },
@@ -226,9 +229,9 @@ object JsonFormats {
         val customFields = tool match {
           case AssistantTool.CodeInterpreterTool => JsObject.empty
           case fileSearchTool: AssistantTool.FileSearchTool =>
-            Json.toJson(fileSearchTool).as[JsObject]
+            JsObject(Seq("file_search" -> Json.toJson(fileSearchTool)(assistantFileSearchToolFormat).as[JsObject]))
           case functionTool: AssistantTool.FunctionTool =>
-            Json.toJson(functionTool)(assistantFunctionToolFormat).as[JsObject]
+            JsObject(Seq("function" -> Json.toJson(functionTool)(assistantFunctionToolFormat).as[JsObject]))
         }
         typeField ++ customFields
       }
