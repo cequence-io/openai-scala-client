@@ -98,7 +98,12 @@ object CreateRunWithFunctionCall extends Example {
           tool_call_id = toolCall.id
         )
       }
-      _ <- service.submitToolOutputs(updatedRun.thread_id, updatedRun.id, toolMessages, stream = false)
+      _ <- service.submitToolOutputs(
+        updatedRun.thread_id,
+        updatedRun.id,
+        toolMessages,
+        stream = false
+      )
       _ = java.lang.Thread.sleep(5000)
       finalMessages <- service.listThreadMessages(eventsThread.id)
     } yield {

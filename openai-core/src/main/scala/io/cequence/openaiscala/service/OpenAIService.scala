@@ -151,7 +151,9 @@ trait OpenAIService extends OpenAICoreService {
   ): Future[Run]
 
   /**
-   * When a run has the status: "requires_action" and required_action.type is submit_tool_outputs, this endpoint can be used to submit the outputs from the tool calls once they're all completed. All outputs must be submitted in a single request.
+   * When a run has the status: "requires_action" and required_action.type is
+   * submit_tool_outputs, this endpoint can be used to submit the outputs from the tool calls
+   * once they're all completed. All outputs must be submitted in a single request.
    *
    * @param threadId
    *   The ID of the thread to which this run belongs.
@@ -160,7 +162,8 @@ trait OpenAIService extends OpenAICoreService {
    * @param toolOutputs
    *   A list of tools for which the outputs are being submitted.
    * @param stream
-   *   If true, returns a stream of events that happen during the Run as server-sent events, terminating when the Run enters a terminal state with a data: [DONE] message.
+   *   If true, returns a stream of events that happen during the Run as server-sent events,
+   *   terminating when the Run enters a terminal state with a data: [DONE] message.
    * @return
    *   The modified run object matching the specified ID.
    */
@@ -183,7 +186,8 @@ trait OpenAIService extends OpenAICoreService {
    *   The ID of the thread the run belongs to.
    * @param pagination
    * @param order
-   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc for descending order.
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
+   *   for descending order.
    * @return
    *   A list of run objects.
    */
@@ -220,7 +224,8 @@ trait OpenAIService extends OpenAICoreService {
    *   The ID of the run the run steps belong to.
    * @param pagination
    * @param order
-   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc for descending order.
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
+   *   for descending order.
    * @return
    *   A list of run step objects.
    */

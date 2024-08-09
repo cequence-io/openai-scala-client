@@ -178,7 +178,7 @@ private[service] trait OpenAIServiceImpl
   ): Future[Option[RunStep]] =
     execGETRich(
       EndPoint.threads,
-        Some(s"$threadID/runs/$runId/steps/$stepId")
+      Some(s"$threadID/runs/$runId/steps/$stepId")
     ).map { response =>
       handleNotFoundAndError(response).map(_.asSafeJson[RunStep])
     }

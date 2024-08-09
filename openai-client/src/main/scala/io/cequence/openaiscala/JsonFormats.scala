@@ -195,8 +195,7 @@ object JsonFormats {
           description <- (json \ "description").validateOpt[String]
           parameters <- (json \ "parameters").validate[Map[String, Any]](mapFormat)
           strict <- (json \ "strict").validateOpt[Boolean]
-        } yield
-          AssistantTool.FunctionTool(name, description, parameters, strict)
+        } yield AssistantTool.FunctionTool(name, description, parameters, strict)
       }
       val writes = Json.writes[AssistantTool.FunctionTool]
       Format(reads, writes)
@@ -211,9 +210,11 @@ object JsonFormats {
         (json \ typeDiscriminatorKey).validate[String].flatMap {
           case "code_interpreter" => JsSuccess(AssistantTool.CodeInterpreterTool)
           case "file_search" =>
-            (json \ "file_search").validate[AssistantTool.FileSearchTool](assistantFileSearchToolFormat)
+            (json \ "file_search")
+              .validate[AssistantTool.FileSearchTool](assistantFileSearchToolFormat)
           case "function" =>
-            (json \ "function").validate[AssistantTool.FunctionTool](assistantFunctionToolFormat)
+            (json \ "function")
+              .validate[AssistantTool.FunctionTool](assistantFunctionToolFormat)
           case _ => JsError("Unknown type")
         }
       },
@@ -229,9 +230,21 @@ object JsonFormats {
         val customFields = tool match {
           case AssistantTool.CodeInterpreterTool => JsObject.empty
           case fileSearchTool: AssistantTool.FileSearchTool =>
-            JsObject(Seq("file_search" -> Json.toJson(fileSearchTool)(assistantFileSearchToolFormat).as[JsObject]))
+            JsObject(
+              Seq(
+                "file_search" -> Json
+                  .toJson(fileSearchTool)(assistantFileSearchToolFormat)
+                  .as[JsObject]
+              )
+            )
           case functionTool: AssistantTool.FunctionTool =>
-            JsObject(Seq("function" -> Json.toJson(functionTool)(assistantFunctionToolFormat).as[JsObject]))
+            JsObject(
+              Seq(
+                "function" -> Json
+                  .toJson(functionTool)(assistantFunctionToolFormat)
+                  .as[JsObject]
+              )
+            )
         }
         typeField ++ customFields
       }
