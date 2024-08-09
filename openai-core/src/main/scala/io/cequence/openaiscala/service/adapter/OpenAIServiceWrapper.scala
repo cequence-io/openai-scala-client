@@ -107,6 +107,13 @@ trait OpenAIServiceWrapper
     _.retrieveRun(threadId, runId)
   )
 
+  override def retrieveRunStep(
+    threadID: String,
+    runId: String,
+    stepId: String
+  ): Future[Option[RunStep]] =
+    wrap(_.retrieveRunStep(threadID, runId, stepId))
+
   override def listRunSteps(
     threadId: String,
     runId: String,

@@ -193,6 +193,37 @@ trait OpenAIService extends OpenAICoreService {
     order: Option[SortOrder] = None
   ): Future[Seq[Run]]
 
+  /**
+   * Retrieves a run step.
+   *
+   * @param threadID
+   *   The ID of the thread to which the run and run step belongs.
+   * @param runId
+   *   The ID of the run to which the run step belongs.
+   * @param stepId
+   *   The ID of the run step to retrieve.
+   * @return
+   *   The run step object matching the specified ID.
+   */
+  def retrieveRunStep(
+    threadID: String,
+    runId: String,
+    stepId: String
+  ): Future[Option[RunStep]]
+
+  /**
+   * Returns a list of run steps belonging to a run.
+   *
+   * @param threadId
+   *   The ID of the thread the run and run step belongs to.
+   * @param runId
+   *   The ID of the run the run steps belong to.
+   * @param pagination
+   * @param order
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc for descending order.
+   * @return
+   *   A list of run step objects.
+   */
   def listRunSteps(
     threadId: String,
     runId: String,

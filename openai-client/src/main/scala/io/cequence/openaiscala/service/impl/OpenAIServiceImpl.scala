@@ -171,6 +171,18 @@ private[service] trait OpenAIServiceImpl
       readAttribute(response.json, "data").asSafeArray[Run]
     }
 
+  override def retrieveRunStep(
+    threadID: String,
+    runId: String,
+    stepId: String
+  ): Future[Option[RunStep]] =
+    execGETRich(
+      EndPoint.threads,
+        Some(s"$threadID/runs/$runId/steps/$stepId")
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafeJson[RunStep])
+    }
+
   override def listRunSteps(
     threadId: String,
     runId: String,
