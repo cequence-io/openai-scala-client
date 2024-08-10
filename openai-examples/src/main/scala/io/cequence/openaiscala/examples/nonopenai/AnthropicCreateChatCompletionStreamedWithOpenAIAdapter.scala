@@ -44,7 +44,7 @@ object AnthropicCreateChatCompletionStreamedWithOpenAIAdapter
         )
 
     val sourceWithRetry: Source[String, _] = RestartSource.onFailuresWithBackoff(
-      minBackoff = 0.5 seconds,
+      minBackoff = 0.5.seconds,
       maxBackoff = 20.seconds,
       randomFactor = 0.2,
       maxRestarts = 3
