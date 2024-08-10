@@ -13,6 +13,8 @@
         </encoder>
     </appender>
 
+    <logger name="PlayWSStreamClientEngine" level="INFO"/>
+
     <!--
     <logger name="com.ning.http.client" level="INFO"/>
     -->
