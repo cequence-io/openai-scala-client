@@ -89,6 +89,16 @@ private[service] class OpenAIVertexAIChatCompletionService(
     }
   }
 
+  override def createJsonChatCompletionStreamed(
+    messages: Seq[BaseMessage],
+    jsonSchema: Map[String, Any],
+    settings: CreateChatCompletionSettings
+  ): Source[ChatCompletionChunkResponse, NotUsed] =
+    createChatCompletionStreamed(
+      messages,
+      settings
+    ) // TODO: is using a regular createChatCompletionStreamed the proper way?
+
   private def createModel(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings

@@ -51,8 +51,6 @@ private[service] trait OpenAIChatCompletionServiceImpl
       Some(jsonSchema)
     ).toList
 
-    params.foreach(println)
-
     execPOST(
       EndPoint.chat_completions,
       bodyParams = params

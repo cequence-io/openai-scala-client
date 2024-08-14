@@ -236,5 +236,12 @@ object OpenAIStreamedServiceImplicits {
       settings: CreateChatCompletionSettings
     ): Source[ChatCompletionChunkResponse, NotUsed] =
       streamedServiceExtra.createChatCompletionStreamed(messages, settings)
+
+    override def createJsonChatCompletionStreamed(
+      messages: Seq[BaseMessage],
+      jsonSchema: Map[String, Any],
+      settings: CreateChatCompletionSettings = DefaultSettings.CreateJsonChatCompletion
+    ): Source[ChatCompletionChunkResponse, NotUsed] =
+      streamedServiceExtra.createJsonChatCompletionStreamed(messages, jsonSchema, settings)
   }
 }

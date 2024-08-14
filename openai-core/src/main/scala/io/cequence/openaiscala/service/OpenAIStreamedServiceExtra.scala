@@ -54,4 +54,11 @@ trait OpenAIStreamedServiceExtra
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
   ): Source[ChatCompletionChunkResponse, NotUsed]
+
+  def createJsonChatCompletionStreamed(
+    messages: Seq[BaseMessage],
+    jsonSchema: Map[String, Any],
+    settings: CreateChatCompletionSettings = DefaultSettings.CreateJsonChatCompletion
+  ): Source[ChatCompletionChunkResponse, NotUsed]
+
 }

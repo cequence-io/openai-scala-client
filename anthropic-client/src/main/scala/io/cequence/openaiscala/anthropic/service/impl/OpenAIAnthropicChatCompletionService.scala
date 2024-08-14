@@ -48,9 +48,9 @@ private[service] class OpenAIAnthropicChatCompletionService(
   }
 
   override def createJsonChatCompletion( // TODO: is using a regular createChatCompletion the proper way?
-                                         messages: Seq[BaseMessage],
-                                         jsonSchema: Map[String, Any],
-                                         settings: CreateChatCompletionSettings
+    messages: Seq[BaseMessage],
+    jsonSchema: Map[String, Any],
+    settings: CreateChatCompletionSettings
   ): Future[ChatCompletionResponse] =
     createChatCompletion(messages, settings)
 
@@ -75,6 +75,19 @@ private[service] class OpenAIAnthropicChatCompletionService(
         toAnthropic(settings, messages)
       )
       .map(toOpenAI)
+
+  override def createJsonChatCompletionStreamed(
+    messages: Seq[BaseMessage],
+    jsonSchema: Map[String, Any],
+    settings: CreateChatCompletionSettings
+  ): Source[ChatCompletionChunkResponse, NotUsed] = {
+    underlying
+      .createMessageStreamed(
+        toAnthropic(messages),
+        toAnthropic(settings, messages)
+      )
+      .map(toOpenAI)
+  }
 
   /**
    * Closes the underlying ws client, and releases all its resources.
