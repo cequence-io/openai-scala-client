@@ -83,4 +83,5 @@ sealed trait ChatCompletionResponseFormatType extends EnumValue
 object ChatCompletionResponseFormatType {
   case object text extends ChatCompletionResponseFormatType
   case object json_object extends ChatCompletionResponseFormatType
+  case object json_schema extends ChatCompletionResponseFormatType
 }

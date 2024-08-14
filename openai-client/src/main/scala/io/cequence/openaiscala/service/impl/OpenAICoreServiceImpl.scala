@@ -47,6 +47,18 @@ private[service] trait OpenAICoreServiceImpl
       _.asSafeJson[TextCompletionResponse]
     )
 
+  override def createJsonCompletion(
+    prompt: String,
+    jsonSchema: Map[String, Any],
+    settings: CreateCompletionSettings
+  ): Future[TextCompletionResponse] =
+    execPOST(
+      EndPoint.completions,
+      bodyParams = createBodyParamsForCompletion(prompt, settings, stream = false)
+    ).map(
+      _.asSafeJson[TextCompletionResponse]
+    )
+
   override def createEmbeddings(
     input: Seq[String],
     settings: CreateEmbeddingsSettings
@@ -77,8 +89,9 @@ trait CompletionBodyMaker {
   protected def createBodyParamsForCompletion(
     prompt: String,
     settings: CreateCompletionSettings,
-    stream: Boolean
-  ): Seq[(Param, Option[JsValue])] =
+    stream: Boolean,
+    jsonSchema: Option[Map[String, Any]] = None
+  ): Seq[(Param, Option[JsValue])] = {
     jsonBodyParams(
       Param.prompt -> Some(prompt),
       Param.model -> Some(settings.model),
@@ -104,6 +117,18 @@ trait CompletionBodyMaker {
         if (settings.logit_bias.isEmpty) None else Some(settings.logit_bias)
       },
       Param.user -> settings.user,
-      Param.seed -> settings.seed
+      Param.seed -> settings.seed,
+      Param.response_format -> jsonSchema.map { schema =>
+        val schema1 = Map(
+          "type" -> "json_schema",
+          "json_schema" -> Map(
+            "name" -> "output_schema", // TODO
+            "schema" -> schema
+          )
+        )
+        schema1 ++ (if (settings.strict) Map("strict" -> true) else Map())
+      }
     )
+  }
+
 }
