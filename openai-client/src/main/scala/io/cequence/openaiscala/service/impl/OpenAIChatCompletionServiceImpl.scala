@@ -38,6 +38,29 @@ private[service] trait OpenAIChatCompletionServiceImpl
     ).map(
       _.asSafeJson[ChatCompletionResponse]
     )
+
+  override def createJsonChatCompletion(
+    messages: Seq[BaseMessage],
+    jsonSchema: Map[String, Any],
+    settings: CreateChatCompletionSettings
+  ): Future[ChatCompletionResponse] = {
+    val params = createBodyParamsForChatCompletion(
+      messages.toList,
+      settings,
+      stream = false,
+      Some(jsonSchema)
+    ).toList
+
+    params.foreach(println)
+
+    execPOST(
+      EndPoint.chat_completions,
+      bodyParams = params
+    ).map(
+      _.asSafeJson[ChatCompletionResponse]
+    )
+  }
+
 }
 
 trait ChatCompletionBodyMaker {
@@ -47,7 +70,8 @@ trait ChatCompletionBodyMaker {
   protected def createBodyParamsForChatCompletion(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings,
-    stream: Boolean
+    stream: Boolean,
+    jsonSchema: Option[Map[String, Any]] = None
   ): Seq[(Param, Option[JsValue])] = {
     assert(messages.nonEmpty, "At least one message expected.")
 
@@ -77,8 +101,21 @@ trait ChatCompletionBodyMaker {
       Param.logprobs -> settings.logprobs,
       Param.top_logprobs -> settings.top_logprobs,
       Param.seed -> settings.seed,
-      Param.response_format -> settings.response_format_type.map { formatType =>
-        Map("type" -> formatType.toString)
+      Param.response_format -> settings.response_format_type.map {
+        formatType: ChatCompletionResponseFormatType =>
+          if (formatType != ChatCompletionResponseFormatType.json_schema)
+            Map("type" -> formatType.toString)
+          else
+            jsonSchema.map { schema =>
+              val schema1 = Map(
+                "type" -> "json_schema",
+                "json_schema" -> Map(
+                  "name" -> "output_schema", // TODO
+                  "schema" -> schema
+                )
+              )
+              schema1 // ++ (if (settings.strict) Map("strict" -> true) else Map())
+            }
       },
       Param.extra_params -> {
         if (settings.extra_params.nonEmpty) Some(settings.extra_params) else None

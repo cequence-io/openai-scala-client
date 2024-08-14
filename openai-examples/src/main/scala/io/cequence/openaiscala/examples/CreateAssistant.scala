@@ -13,7 +13,7 @@ object CreateAssistant extends Example {
           "You are a personal math tutor. When asked a question, write and run Python code to answer the question."
         ),
         tools = Seq(
-          FunctionSpec("name", description = None, Map())
+          FunctionSpec("name", description = None, parameters = Map())
         ),
         toolResources = Seq()
       )

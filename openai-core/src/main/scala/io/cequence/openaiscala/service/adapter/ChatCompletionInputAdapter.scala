@@ -34,4 +34,15 @@ private class ChatCompletionInputAdapter[S <: OpenAIChatCompletionService](
 
   override def close(): Unit =
     underlying.close()
+
+  override def createJsonChatCompletion(
+    messages: Seq[BaseMessage],
+    jsonSchema: Map[String, Any],
+    settings: CreateChatCompletionSettings
+  ): Future[ChatCompletionResponse] =
+    underlying.createJsonChatCompletion(
+      adaptMessages(messages),
+      jsonSchema,
+      adaptSettings(settings)
+    )
 }

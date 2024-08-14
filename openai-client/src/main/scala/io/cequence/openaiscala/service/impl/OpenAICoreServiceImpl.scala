@@ -47,18 +47,6 @@ private[service] trait OpenAICoreServiceImpl
       _.asSafeJson[TextCompletionResponse]
     )
 
-  override def createJsonCompletion(
-    prompt: String,
-    jsonSchema: Map[String, Any],
-    settings: CreateCompletionSettings
-  ): Future[TextCompletionResponse] =
-    execPOST(
-      EndPoint.completions,
-      bodyParams = createBodyParamsForCompletion(prompt, settings, stream = false)
-    ).map(
-      _.asSafeJson[TextCompletionResponse]
-    )
-
   override def createEmbeddings(
     input: Seq[String],
     settings: CreateEmbeddingsSettings

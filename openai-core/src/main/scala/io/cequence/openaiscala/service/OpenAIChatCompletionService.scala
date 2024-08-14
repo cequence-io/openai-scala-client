@@ -31,4 +31,11 @@ trait OpenAIChatCompletionService extends OpenAIServiceConsts with CloseableServ
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
   ): Future[ChatCompletionResponse]
+
+  def createJsonChatCompletion(
+    messages: Seq[BaseMessage],
+    jsonSchema: Map[String, Any],
+    settings: CreateChatCompletionSettings =
+      DefaultSettings.CreateJsonChatCompletion
+  ): Future[ChatCompletionResponse]
 }

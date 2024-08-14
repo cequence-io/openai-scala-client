@@ -143,6 +143,7 @@ object JsonFormats {
         "function" -> Json.obj(
           "name" -> fs.name,
           "description" -> fs.description,
+          "strict" -> fs.strict,
           "parameters" -> fs.parameters
         )
       )
@@ -151,6 +152,7 @@ object JsonFormats {
     val assistantsFunctionSpecReads: Reads[FunctionSpec] = (
       (JsPath \ "function" \ "name").read[String] and
         (JsPath \ "function" \ "description").readNullable[String] and
+        (JsPath \ "function" \ "strict").readNullable[Boolean] and
         (JsPath \ "function" \ "parameters").read[Map[String, Any]]
     )(FunctionSpec.apply _)
 
@@ -192,9 +194,9 @@ object JsonFormats {
       { (tool: AssistantTool) =>
         val commonJson = Json.obj {
           val discriminatorValue = tool match {
-            case CodeInterpreterSpec   => "code_interpreter"
-            case FileSearchSpec        => "file_search"
-            case FunctionSpec(_, _, _) => "function"
+            case CodeInterpreterSpec      => "code_interpreter"
+            case FileSearchSpec           => "file_search"
+            case FunctionSpec(_, _, _, _) => "function"
           }
           typeDiscriminatorKey -> discriminatorValue
         }
@@ -879,7 +881,7 @@ object JsonFormats {
       case Required                          => JsString("required")
       case EnforcedTool(CodeInterpreterSpec) => Json.obj("type" -> "code_interpreter")
       case EnforcedTool(FileSearchSpec)      => Json.obj("type" -> "file_search")
-      case EnforcedTool(FunctionSpec(name, _, _)) =>
+      case EnforcedTool(FunctionSpec(name, _, _, _)) =>
         Json.obj("type" -> "function", "function" -> Json.obj("name" -> name))
     }
 

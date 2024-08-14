@@ -525,14 +525,6 @@ trait OpenAICoreServiceWrapper
     _.createCompletion(prompt, settings)
   )
 
-  override def createJsonCompletion(
-    prompt: String,
-    jsonSchema: Map[String, Any],
-    settings: CreateCompletionSettings
-  ): Future[TextCompletionResponse] = wrap(
-    _.createJsonCompletion(prompt, jsonSchema, settings)
-  )
-
   override def createEmbeddings(
     input: Seq[String],
     settings: CreateEmbeddingsSettings
@@ -562,5 +554,13 @@ trait OpenAIChatCompletionServiceWrapper
     settings: CreateChatCompletionSettings
   ): Future[ChatCompletionResponse] = wrap(
     _.createChatCompletion(messages, settings)
+  )
+
+  override def createJsonChatCompletion(
+    messages: Seq[BaseMessage],
+    jsonSchema: Map[String, Any],
+    settings: CreateChatCompletionSettings
+  ): Future[ChatCompletionResponse] = wrap(
+    _.createJsonChatCompletion(messages, jsonSchema, settings)
   )
 }

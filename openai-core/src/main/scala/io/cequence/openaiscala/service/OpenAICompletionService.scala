@@ -35,4 +35,5 @@ trait OpenAICompletionService extends OpenAIServiceConsts with CloseableService 
     prompt: String,
     settings: CreateCompletionSettings = DefaultSettings.CreateCompletion
   ): Future[TextCompletionResponse]
+
 }

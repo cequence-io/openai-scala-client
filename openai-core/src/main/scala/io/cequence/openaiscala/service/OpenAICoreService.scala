@@ -56,12 +56,6 @@ trait OpenAICoreService extends OpenAIChatCompletionService with OpenAICompletio
     settings: CreateCompletionSettings = DefaultSettings.CreateCompletion
   ): Future[TextCompletionResponse]
 
-  def createJsonCompletion(
-    prompt: String,
-    jsonSchema: Map[String, Any],
-    settings: CreateCompletionSettings = DefaultSettings.CreateCompletion.copy(strict = true),
-  ): Future[TextCompletionResponse]
-
   /**
    * Creates a model response for the given chat conversation. Note that this is defined
    * already in [[OpenAIChatCompletionService]], but it is repeated here for clarity.
@@ -77,6 +71,13 @@ trait OpenAICoreService extends OpenAIChatCompletionService with OpenAICompletio
   def createChatCompletion(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
+  ): Future[ChatCompletionResponse]
+
+  def createJsonChatCompletion( // TODO: rename everywhere to createJsonChatCompletion
+    messages: Seq[BaseMessage],
+    jsonSchema: Map[String, Any],
+    settings: CreateChatCompletionSettings =
+      DefaultSettings.CreateJsonChatCompletion.copy(strict = true)
   ): Future[ChatCompletionResponse]
 
   /**
