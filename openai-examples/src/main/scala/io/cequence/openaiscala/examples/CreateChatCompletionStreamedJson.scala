@@ -2,7 +2,6 @@ package io.cequence.openaiscala.examples
 
 import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain._
-import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.examples.fixtures.TestFixtures
 import io.cequence.openaiscala.service.OpenAIServiceFactory
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._

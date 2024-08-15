@@ -1,7 +1,5 @@
 package io.cequence.openaiscala.examples.fixtures
 
-import scala.collection.immutable.ListMap
-
 trait TestFixtures {
 
   val capitalsPrompt = "Give me the most populous capital cities in JSON format."
