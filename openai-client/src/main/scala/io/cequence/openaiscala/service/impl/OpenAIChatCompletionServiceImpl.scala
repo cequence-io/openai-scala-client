@@ -100,7 +100,7 @@ trait ChatCompletionBodyMaker {
       Param.top_logprobs -> settings.top_logprobs,
       Param.seed -> settings.seed,
       Param.response_format -> settings.response_format_type.map {
-        formatType: ChatCompletionResponseFormatType =>
+        (formatType: ChatCompletionResponseFormatType) =>
           if (formatType != ChatCompletionResponseFormatType.json_schema)
             Map("type" -> formatType.toString)
           else
