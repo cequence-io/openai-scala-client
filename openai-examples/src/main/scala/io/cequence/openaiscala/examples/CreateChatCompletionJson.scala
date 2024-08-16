@@ -2,10 +2,11 @@ package io.cequence.openaiscala.examples
 
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.examples.fixtures.TestFixtures
+import io.cequence.openaiscala.service.OpenAIServiceConsts
 
 import scala.concurrent.Future
 
-object CreateChatCompletionJson extends Example with TestFixtures {
+object CreateChatCompletionJson extends Example with TestFixtures with OpenAIServiceConsts {
 
   val messages = Seq(
     SystemMessage(capitalsPrompt),
@@ -14,9 +15,9 @@ object CreateChatCompletionJson extends Example with TestFixtures {
 
   override protected def run: Future[_] =
     service
-      .createJsonChatCompletion(
+      .createChatCompletion(
         messages = messages,
-        jsonSchema = capitalsSchema
+        settings = DefaultSettings.createJsonChatCompletion(capitalsSchema)
       )
       .map { content =>
         printMessageContent(content)

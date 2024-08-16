@@ -73,13 +73,6 @@ trait OpenAICoreService extends OpenAIChatCompletionService with OpenAICompletio
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
   ): Future[ChatCompletionResponse]
 
-  def createJsonChatCompletion( // TODO: rename everywhere to createJsonChatCompletion
-    messages: Seq[BaseMessage],
-    jsonSchema: Map[String, Any],
-    settings: CreateChatCompletionSettings =
-      DefaultSettings.CreateJsonChatCompletion.copy(strict = true)
-  ): Future[ChatCompletionResponse]
-
   /**
    * Creates an embedding vector representing the input text.
    *

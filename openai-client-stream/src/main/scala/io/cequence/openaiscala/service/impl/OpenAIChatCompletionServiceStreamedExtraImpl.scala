@@ -47,31 +47,4 @@ private[service] trait OpenAIChatCompletionServiceStreamedExtraImpl
         )
       }
 
-  override def createJsonChatCompletionStreamed(
-    messages: Seq[BaseMessage],
-    jsonSchema: Map[String, Any],
-    settings: CreateChatCompletionSettings
-  ): Source[ChatCompletionChunkResponse, NotUsed] = {
-    engine
-      .execJsonStream(
-        EndPoint.chat_completions.toString(),
-        "POST",
-        bodyParams = paramTuplesToStrings(
-          createBodyParamsForChatCompletion(
-            messages,
-            settings,
-            stream = true,
-            Some(jsonSchema)
-          ) // :+ ("json_schema" -> jsonSchemaStr)
-        )
-      )
-      .map { (json: JsValue) =>
-        (json \ "error").toOption.map { error =>
-          throw new OpenAIScalaClientException(error.toString())
-        }.getOrElse(
-          json.asSafe[ChatCompletionChunkResponse]
-        )
-      }
-  }
-
 }

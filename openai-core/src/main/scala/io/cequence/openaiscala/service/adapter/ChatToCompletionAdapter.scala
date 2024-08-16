@@ -92,23 +92,6 @@ private class ChatToCompletionAdapter[
     usage = response.usage
   )
 
-  override def createJsonChatCompletion(
-    messages: Seq[BaseMessage],
-    jsonSchema: Map[String, Any],
-    settings: CreateChatCompletionSettings
-  ): Future[ChatCompletionResponse] =
-    underlying
-      .createCompletion(
-        prompt = messages.map {
-          case m: SystemMessage    => m.content
-          case m: UserMessage      => s"Q: ${m.content}"
-          case m: AssistantMessage => s"A: ${m.content}"
-          case m => throw new OpenAIScalaClientException("Unsupported message type: " + m)
-        }.mkString("\n"),
-        settings = toCompletionSettings(settings)
-      )
-      .map(toChatCompletionResponse)
-
   override def close(): Unit =
     underlying.close()
 

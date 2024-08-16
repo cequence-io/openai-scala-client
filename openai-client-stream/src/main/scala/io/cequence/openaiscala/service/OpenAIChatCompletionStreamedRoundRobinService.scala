@@ -36,17 +36,6 @@ object OpenAIChatCompletionStreamedRoundRobinService {
         settings
       )
 
-    override def createJsonChatCompletionStreamed(
-      messages: Seq[BaseMessage],
-      jsonSchema: Map[String, Any],
-      settings: CreateChatCompletionSettings
-    ): Source[ChatCompletionChunkResponse, NotUsed] =
-      getService.createJsonChatCompletionStreamed(
-        messages,
-        jsonSchema,
-        settings
-      )
-
     override def close(): Unit =
       underlyings.foreach(_.close())
   }

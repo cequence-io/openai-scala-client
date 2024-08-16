@@ -556,11 +556,4 @@ trait OpenAIChatCompletionServiceWrapper
     _.createChatCompletion(messages, settings)
   )
 
-  override def createJsonChatCompletion(
-    messages: Seq[BaseMessage],
-    jsonSchema: Map[String, Any],
-    settings: CreateChatCompletionSettings
-  ): Future[ChatCompletionResponse] = wrap(
-    _.createJsonChatCompletion(messages, jsonSchema, settings)
-  )
 }

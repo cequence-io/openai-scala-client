@@ -48,23 +48,6 @@ object OpenAIChatCompletionServiceRouter {
           defaultService.createChatCompletion(messages, settings)
       }
 
-    override def createJsonChatCompletion(
-      messages: Seq[BaseMessage],
-      jsonSchema: Map[String, Any],
-      settings: CreateChatCompletionSettings
-    ): Future[ChatCompletionResponse] =
-      modelServiceMap.get(settings.model) match {
-        case Some((modelService, modelToUse)) =>
-          modelService.createJsonChatCompletion(
-            messages,
-            jsonSchema,
-            settings.copy(model = modelToUse)
-          )
-
-        case None =>
-          defaultService.createJsonChatCompletion(messages, jsonSchema, settings)
-      }
-
     def close(): Unit =
       modelServiceMap.values.foreach(_._1.close())
   }

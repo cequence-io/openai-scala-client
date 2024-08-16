@@ -47,13 +47,6 @@ private[service] class OpenAIAnthropicChatCompletionService(
     // TODO: recover and wrap exceptions
   }
 
-  override def createJsonChatCompletion( // TODO: is using a regular createChatCompletion the proper way?
-    messages: Seq[BaseMessage],
-    jsonSchema: Map[String, Any],
-    settings: CreateChatCompletionSettings
-  ): Future[ChatCompletionResponse] =
-    createChatCompletion(messages, settings)
-
   /**
    * Creates a completion for the chat message(s) with streamed results.
    *
@@ -75,19 +68,6 @@ private[service] class OpenAIAnthropicChatCompletionService(
         toAnthropic(settings, messages)
       )
       .map(toOpenAI)
-
-  override def createJsonChatCompletionStreamed(
-    messages: Seq[BaseMessage],
-    jsonSchema: Map[String, Any],
-    settings: CreateChatCompletionSettings
-  ): Source[ChatCompletionChunkResponse, NotUsed] = {
-    underlying
-      .createMessageStreamed(
-        toAnthropic(messages),
-        toAnthropic(settings, messages)
-      )
-      .map(toOpenAI)
-  }
 
   /**
    * Closes the underlying ws client, and releases all its resources.

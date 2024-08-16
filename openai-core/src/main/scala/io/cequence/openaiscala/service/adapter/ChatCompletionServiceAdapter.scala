@@ -32,10 +32,4 @@ private class ChatCompletionServiceAdapter[S <: CloseableService](
     underlying.close()
   }
 
-  override def createJsonChatCompletion(
-    messages: Seq[BaseMessage],
-    jsonSchema: Map[String, Any],
-    settings: CreateChatCompletionSettings
-  ): Future[ChatCompletionResponse] =
-    chatCompletionService.createJsonChatCompletion(messages, jsonSchema, settings)
 }
