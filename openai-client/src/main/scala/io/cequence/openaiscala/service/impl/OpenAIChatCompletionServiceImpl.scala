@@ -10,7 +10,6 @@ import io.cequence.wsclient.service.WSClient
 import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithEngine
 import play.api.libs.json.{JsValue, Json}
 
-import scala.collection.immutable
 import scala.concurrent.Future
 
 /**

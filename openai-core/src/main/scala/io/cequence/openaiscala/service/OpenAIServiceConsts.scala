@@ -38,13 +38,14 @@ trait OpenAIServiceConsts {
       max_tokens = Some(1000)
     )
 
-    def createJsonChatCompletion(jsonSchema: Map[String, Any]) = CreateChatCompletionSettings(
-      model = ModelId.gpt_4o_2024_08_06,
-      max_tokens = Some(1000),
-      strict = true,
-      response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
-      jsonSchema = Some(jsonSchema)
-    )
+    def createJsonChatCompletion(jsonSchema: Map[String, Any]): CreateChatCompletionSettings =
+      CreateChatCompletionSettings(
+        model = ModelId.gpt_4o_2024_08_06,
+        max_tokens = Some(1000),
+        strict = true,
+        response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
+        jsonSchema = Some(jsonSchema)
+      )
 
     val CreateChatFunCompletion = CreateChatCompletionSettings(
       model = ModelId.gpt_3_5_turbo_1106,
