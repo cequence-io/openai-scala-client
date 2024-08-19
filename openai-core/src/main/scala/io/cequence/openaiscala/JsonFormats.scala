@@ -101,14 +101,14 @@ object JsonFormats {
   implicit val assistantToolMessageReads: Reads[AssistantToolMessage] = (
     (__ \ "content").readNullable[String] and
       (__ \ "name").readNullable[String] and
-      (__ \ "tool_calls").read[JsArray]
+      (__ \ "tool_calls").readNullable[JsArray]
   ) {
     (
       content,
       name,
       tool_calls
     ) =>
-      val idToolCalls = tool_calls.value.toSeq.map { toolCall =>
+      val idToolCalls = tool_calls.getOrElse(JsArray()).value.map { toolCall =>
         val callId = (toolCall \ "id").as[String]
         val callType = (toolCall \ "type").as[String]
         val call: ToolCallSpec = callType match {
