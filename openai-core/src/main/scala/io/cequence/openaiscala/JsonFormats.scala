@@ -108,7 +108,7 @@ object JsonFormats {
       name,
       tool_calls
     ) =>
-      val idToolCalls = tool_calls.getOrElse(JsArray()).value.map { toolCall =>
+      val idToolCalls = tool_calls.getOrElse(JsArray()).value.toSeq.map { toolCall =>
         val callId = (toolCall \ "id").as[String]
         val callType = (toolCall \ "type").as[String]
         val call: ToolCallSpec = callType match {
