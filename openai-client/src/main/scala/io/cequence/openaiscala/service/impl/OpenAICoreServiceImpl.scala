@@ -77,8 +77,7 @@ trait CompletionBodyMaker {
   protected def createBodyParamsForCompletion(
     prompt: String,
     settings: CreateCompletionSettings,
-    stream: Boolean,
-    jsonSchema: Option[Map[String, Any]] = None
+    stream: Boolean
   ): Seq[(Param, Option[JsValue])] = {
     jsonBodyParams(
       Param.prompt -> Some(prompt),
@@ -105,17 +104,7 @@ trait CompletionBodyMaker {
         if (settings.logit_bias.isEmpty) None else Some(settings.logit_bias)
       },
       Param.user -> settings.user,
-      Param.seed -> settings.seed,
-      Param.response_format -> jsonSchema.map { schema =>
-        val schema1 = Map(
-          "type" -> "json_schema",
-          "json_schema" -> Map(
-            "name" -> "output_schema", // TODO
-            "schema" -> schema
-          )
-        )
-        schema1 ++ (if (settings.strict) Map("strict" -> true) else Map())
-      }
+      Param.seed -> settings.seed
     )
   }
 
