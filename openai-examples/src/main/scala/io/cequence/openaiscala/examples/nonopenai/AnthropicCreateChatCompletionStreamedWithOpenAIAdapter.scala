@@ -65,10 +65,10 @@ object AnthropicCreateChatCompletionStreamedWithOpenAIAdapter
         ) => {
           done.onComplete {
             case scala.util.Success(_) =>
-              logger.debug(s"Response completed successfully.")
+              logger.debug("Response completed successfully.")
 
             case scala.util.Failure(ex) =>
-              logger.error(s"Response failed with an exception.", ex)
+              logger.error("Response failed with an exception.", ex)
           }
         }
       )

@@ -555,4 +555,5 @@ trait OpenAIChatCompletionServiceWrapper
   ): Future[ChatCompletionResponse] = wrap(
     _.createChatCompletion(messages, settings)
   )
+
 }

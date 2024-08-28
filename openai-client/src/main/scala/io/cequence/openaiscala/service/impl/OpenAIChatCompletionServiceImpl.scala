@@ -38,6 +38,7 @@ private[service] trait OpenAIChatCompletionServiceImpl
     ).map(
       _.asSafeJson[ChatCompletionResponse]
     )
+
 }
 
 trait ChatCompletionBodyMaker {
@@ -77,8 +78,25 @@ trait ChatCompletionBodyMaker {
       Param.logprobs -> settings.logprobs,
       Param.top_logprobs -> settings.top_logprobs,
       Param.seed -> settings.seed,
-      Param.response_format -> settings.response_format_type.map { formatType =>
-        Map("type" -> formatType.toString)
+      Param.response_format -> {
+        val map =
+          settings.response_format_type.map { (formatType: ChatCompletionResponseFormatType) =>
+            if (formatType != ChatCompletionResponseFormatType.json_schema)
+              Map("type" -> formatType.toString)
+            else
+              settings.jsonSchema.map { schema =>
+                val schema1 = Map(
+                  "type" -> "json_schema",
+                  "json_schema" -> Map(
+                    "name" -> "output_schema", // TODO
+                    "schema" -> schema
+                  )
+                )
+                schema1 // ++ (if (settings.strict) Map("strict" -> true) else Map())
+              }
+          }
+
+        map
       },
       Param.extra_params -> {
         if (settings.extra_params.nonEmpty) Some(settings.extra_params) else None

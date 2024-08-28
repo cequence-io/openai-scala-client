@@ -236,5 +236,6 @@ object OpenAIStreamedServiceImplicits {
       settings: CreateChatCompletionSettings
     ): Source[ChatCompletionChunkResponse, NotUsed] =
       streamedServiceExtra.createChatCompletionStreamed(messages, settings)
+
   }
 }

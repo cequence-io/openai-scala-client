@@ -34,4 +34,5 @@ private class ChatCompletionInputAdapter[S <: OpenAIChatCompletionService](
 
   override def close(): Unit =
     underlying.close()
+
 }

@@ -46,4 +46,5 @@ private[service] trait OpenAIChatCompletionServiceStreamedExtraImpl
           json.asSafe[ChatCompletionChunkResponse]
         )
       }
+
 }

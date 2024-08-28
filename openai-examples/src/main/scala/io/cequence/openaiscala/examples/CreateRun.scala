@@ -17,7 +17,7 @@ object CreateRun extends Example {
         "You plan my week."
       ),
       tools = Seq(
-        FunctionSpec("name", description = None, Map())
+        FunctionSpec("name", description = None, parameters = Map())
       ),
       toolResources = Seq()
     )
@@ -49,7 +49,7 @@ object CreateRun extends Example {
             "weather_forecast_for_city",
             description =
               Some("returns the weather forecast for a given day in the given city"),
-            ListMap(
+            parameters = ListMap(
               "type" -> "object",
               "properties" -> ListMap(
                 "city" -> ListMap("type" -> "string", "description" -> "The city name"),

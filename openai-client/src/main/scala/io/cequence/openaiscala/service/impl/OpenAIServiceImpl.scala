@@ -162,7 +162,7 @@ private[service] trait OpenAIServiceImpl
       case ToolChoice.EnforcedTool(FileSearchSpec) => Map("type" -> "file_search")
       case ToolChoice.EnforcedTool(CodeInterpreterSpec) =>
         Map("type" -> "code_interpreter")
-      case ToolChoice.EnforcedTool(FunctionSpec(name, _, _)) =>
+      case ToolChoice.EnforcedTool(FunctionSpec(name, _, _, _)) =>
         Map("type" -> "function", "function" -> Map("name" -> name))
     }
 
