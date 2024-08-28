@@ -224,14 +224,12 @@ object JsonFormats {
         }
 
       case ChatRole.Tool =>
-        json.asOpt[AssistantToolMessage] match {
-          case Some(assistantToolMessage) => assistantToolMessage
-          case None                       => json.as[ToolMessage]
-        }
+        json.as[ToolMessage]
 
       case ChatRole.Assistant =>
-        json.asOpt[AssistantToolMessage] match {
-          case Some(assistantToolMessage) => assistantToolMessage
+        // if contains tool_calls, then it is AssistantToolMessage
+        (json \ "tool_calls").asOpt[JsArray] match {
+          case Some(_) => json.as[AssistantToolMessage]
           case None =>
             json.asOpt[AssistantMessage] match {
               case Some(assistantMessage) => assistantMessage
