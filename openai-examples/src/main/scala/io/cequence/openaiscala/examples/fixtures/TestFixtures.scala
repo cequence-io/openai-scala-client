@@ -1,10 +1,18 @@
 package io.cequence.openaiscala.examples.fixtures
 
+import io.cequence.openaiscala.domain.settings.JsonSchema
+
 trait TestFixtures {
 
   val capitalsPrompt = "Give me the most populous capital cities in JSON format."
 
-  val capitalsSchema = Map(
+  val capitalsSchema = JsonSchema(
+    name = "capitals_response",
+    strict = true,
+    structure = capitalsSchemaStructure
+  )
+
+  lazy private val capitalsSchemaStructure = Map(
     "type" -> "object",
     "properties" -> Map(
       "countries" -> Map(
