@@ -70,8 +70,7 @@ private class ChatToCompletionAdapter[
     best_of = None,
     logit_bias = settings.logit_bias,
     user = settings.user,
-    seed = settings.seed,
-    strict = settings.strict
+    seed = settings.seed
   )
 
   private def toChatCompletionResponse(

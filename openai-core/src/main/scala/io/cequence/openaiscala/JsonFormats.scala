@@ -19,6 +19,7 @@ import io.cequence.openaiscala.domain.response.ResponseFormat.{
   TextResponse
 }
 import io.cequence.openaiscala.domain.response._
+import io.cequence.openaiscala.domain.settings.JsonSchema
 import io.cequence.openaiscala.domain.{ThreadMessageFile, _}
 import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.JsonUtil.{enumFormat, snakeEnumFormat}
@@ -942,4 +943,9 @@ object JsonFormats {
     Format(stepDetailReads, stepDetailWrites)
   }
 
+  implicit val jsonSchemaFormat: Format[JsonSchema] = {
+    implicit lazy val stringAnyMapFormat: Format[Map[String, Any]] =
+      JsonUtil.StringAnyMapFormat
+    Json.format[JsonSchema]
+  }
 }

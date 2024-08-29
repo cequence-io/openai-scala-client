@@ -7,7 +7,7 @@ import scala.concurrent.Future
 
 object CreateChatCompletion extends Example {
 
-  val messages = Seq(
+  private val messages = Seq(
     SystemMessage("You are a helpful assistant."),
     UserMessage("What is the weather like in Norway?")
   )

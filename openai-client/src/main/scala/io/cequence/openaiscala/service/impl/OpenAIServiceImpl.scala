@@ -184,7 +184,10 @@ private[service] trait OpenAIServiceImpl
       createBodyParamsForChatCompletion(messages, settings, stream = false)
 
     val toolJsons: Seq[Map[String, Object]] = tools.map { case tool: FunctionSpec =>
-      Map("type" -> "function", "function" -> Json.toJson(tool))
+      Map(
+        "type" -> "function",
+        "function" -> Json.toJson(tool)
+      )
     }
 
     val extraParams = jsonBodyParams(
