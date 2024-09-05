@@ -372,6 +372,29 @@ trait OpenAIServiceWrapper
     _.createThread(messages, toolResources, metadata)
   )
 
+  override def createThreadAndRun(
+    assistantId: AssistantId,
+    thread: Option[ThreadAndRun],
+    instructions: Option[String],
+    tools: Seq[AssistantTool],
+    toolResources: Option[ThreadAndRunToolResource],
+    toolChoice: Option[ToolChoice],
+    settings: CreateThreadAndRunSettings,
+    stream: Boolean
+  ): Future[Run] =
+    wrap(
+      _.createThreadAndRun(
+        assistantId,
+        thread,
+        instructions,
+        tools,
+        toolResources,
+        toolChoice,
+        settings,
+        stream
+      )
+    )
+
   override def retrieveThread(
     threadId: String
   ): Future[Option[Thread]] = wrap(
@@ -447,7 +470,7 @@ trait OpenAIServiceWrapper
     description: Option[String] = None,
     instructions: Option[String] = None,
     tools: Seq[AssistantTool] = Seq.empty[AssistantTool],
-    toolResources: Seq[AssistantToolResource] = Seq.empty[AssistantToolResource],
+    toolResources: Option[AssistantToolResource] = None,
     metadata: Map[String, String] = Map.empty
   ): Future[Assistant] = wrap(
     _.createAssistant(model, name, description, instructions, tools, toolResources, metadata)

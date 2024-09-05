@@ -23,7 +23,8 @@ private[service] trait OpenAICoreServiceImpl
     with OpenAIChatCompletionServiceImpl
     with HandleOpenAIErrorCodes
     with CompletionBodyMaker
-    with RunBodyMaker {
+    with RunBodyMaker
+    with ThreadAndRunBodyMaker {
 
   override def listModels: Future[Seq[ModelInfo]] =
     execGET(EndPoint.models).map { response =>

@@ -9,10 +9,17 @@ import io.cequence.openaiscala.domain.AssistantToolResource.{
   CodeInterpreterResources,
   FileSearchResources
 }
+import io.cequence.openaiscala.domain.AssistantToolResource.{
+  CodeInterpreterResources,
+  FileSearchResources
+}
 import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain.ChunkingStrategy.StaticChunkingStrategy
 import io.cequence.openaiscala.domain.FineTune.WeightsAndBiases
+import io.cequence.openaiscala.domain.ThreadAndRun.Content.ContentBlock.ImageDetail
 //import io.cequence.openaiscala.domain.RunTool.{CodeInterpreterTool, FileSearchTool, FunctionTool}
+import io.cequence.openaiscala.domain.Run.TruncationStrategy
+import io.cequence.openaiscala.domain.ToolChoice.EnforcedTool
 import io.cequence.openaiscala.domain.StepDetail.{MessageCreation, ToolCalls}
 import io.cequence.openaiscala.domain.response.AssistantToolResourceResponse.{
   CodeInterpreterResourcesResponse,
@@ -162,7 +169,7 @@ object JsonFormats {
 //    Format(assistantsFunctionSpecReads, assistantsFunctionSpecWrites)
 //  }
 
-  implicit lazy val messageToolFormat: Format[MessageAttachmentTool] = {
+  implicit lazy val messageAttachmentToolFormat: Format[MessageAttachmentTool] = {
     val typeDiscriminatorKey = "type"
 
     Format[MessageAttachmentTool](
@@ -531,11 +538,18 @@ object JsonFormats {
     }.foldLeft(Json.obj())(_ ++ _)
   }
 
+  implicit lazy val assistantToolResourceCodeInterpreterResourceWrites
+    : Writes[AssistantToolResource.CodeInterpreterResources] =
+    Writes { c =>
+      Json.obj("code_interpreter" -> Json.obj("file_ids" -> c.fileIds))
+    }
   implicit lazy val assistantToolResourceWrites: Writes[AssistantToolResource] = {
     case c: CodeInterpreterResources =>
       Json.obj("code_interpreter" -> Json.obj("file_ids" -> c.fileIds.map(_.file_id)))
 
-    case f: FileSearchResources =>
+  implicit lazy val assistantToolResourceFileSearchResourceWrites
+    : Writes[AssistantToolResource.FileSearchResources] =
+    Writes { f =>
       assert(
         f.vectorStoreIds.isEmpty || f.vectorStores.isEmpty,
         "Only one of vector_store_ids or vector_stores should be provided."
@@ -550,31 +564,50 @@ object JsonFormats {
         else Json.obj()
 
       Json.obj("file_search" -> (vectorStoreIdsJson ++ vectorStoresJson))
+    }
+
+  implicit lazy val assistantToolResourceWrites: Writes[AssistantToolResource] =
+    Json.writes[AssistantToolResource]
+
+  implicit lazy val threadAndRunCodeInterpreterResourceWrites
+    : Writes[ThreadAndRunToolResource.CodeInterpreterResource] = {
+    implicit val config: JsonConfiguration = JsonConfiguration(JsonNaming.SnakeCase)
+    Json.writes[ThreadAndRunToolResource.CodeInterpreterResource]
   }
 
-  implicit lazy val assistantToolResourceReads: Reads[AssistantToolResource] = Reads { json =>
-    (json \ "code_interpreter").toOption.map { codeInterpreterJson =>
-      (codeInterpreterJson \ "file_ids")
-        .validate[Seq[FileId]]
-        .map(CodeInterpreterResources.apply)
-    }.orElse(
-      (json \ "file_search").toOption.map { fileSearchJson =>
-        val fileSearchVectorStoreIds = (fileSearchJson \ "vector_store_ids").asOpt[Seq[String]]
+  implicit lazy val threadAndRunFileSearchResourceWrites
+    : Writes[ThreadAndRunToolResource.FileSearchResource] =
+    Json.writes[ThreadAndRunToolResource.FileSearchResource]
 
-        val fileSearchVectorStores = (json \ "file_search" \ "vector_stores")
-          .asOpt[Seq[AssistantToolResource.VectorStore]]
-
-        JsSuccess(
-          FileSearchResources(
-            fileSearchVectorStoreIds.getOrElse(Nil),
-            fileSearchVectorStores.getOrElse(Nil)
-          )
-        )
-      }
-    ).getOrElse(
-      JsError("Expected code_interpreter or file_search")
-    )
+  implicit lazy val threadAndRunToolResourceWrites: Writes[ThreadAndRunToolResource] = {
+    implicit val config: JsonConfiguration = JsonConfiguration(JsonNaming.SnakeCase)
+    Json.writes[ThreadAndRunToolResource]
   }
+
+//  implicit lazy val assistantToolResourceReads: Reads[AssistantToolResource] = Reads { json =>
+//    for {
+//      codeInterpreter <- (json \ "code_interpreter").toOption.map { codeInterpreterJson =>
+//        (codeInterpreterJson \ "file_ids")
+//          .validate[Seq[FileId]]
+//          .map(CodeInterpreterResources.apply)
+//      }
+//      fileSearch <-
+//        (json \ "file_search").toOption.map { fileSearchJson =>
+//          val fileSearchVectorStoreIds =
+//            (fileSearchJson \ "vector_store_ids").asOpt[Seq[String]]
+//
+//          val fileSearchVectorStores = (json \ "file_search" \ "vector_stores")
+//            .asOpt[Seq[AssistantToolResource.VectorStore]]
+//
+//          JsSuccess(
+//            FileSearchResources(
+//              fileSearchVectorStoreIds.getOrElse(Nil),
+//              fileSearchVectorStores.getOrElse(Nil)
+//            )
+//          )
+//        }
+//    } yield (codeInterpreter and fileSearch)(AssistantToolResource.apply)
+//  }
 
   implicit lazy val threadReads: Reads[Thread] =
     (
@@ -642,7 +675,8 @@ object JsonFormats {
       JsonUtil.StringStringMapFormat
     (
       (__ \ "file_ids").format[Seq[FileId]] and
-        (__ \ "metadata").format[Map[String, String]]
+        (__ \ "metadata").format[Map[String, String]] and
+        (__ \ "chunking_strategy").formatNullable[ChunkingStrategy]
     )(
       AssistantToolResource.VectorStore.apply,
       unlift(AssistantToolResource.VectorStore.unapply)
@@ -986,6 +1020,61 @@ object JsonFormats {
     }
 
     Format(stepDetailReads, stepDetailWrites)
+  }
+
+  implicit lazy val truncationStrategyWrites: Writes[TruncationStrategy] =
+    Json.format[TruncationStrategy]
+
+  implicit lazy val threadWrites: Writes[Thread] = Json.writes[Thread]
+
+  implicit lazy val threadAndRunRoleWrites: Writes[ThreadAndRunRole] =
+    Writes {
+      case ChatRole.Assistant => JsString("assistant")
+      case ChatRole.User      => JsString("user")
+    }
+
+  implicit lazy val theadAndRunImageFileDetailsWrites
+    : Writes[ThreadAndRun.Content.ContentBlock.ImageFileDetail] = Writes {
+    case ImageDetail.Low  => JsString("low")
+    case ImageDetail.High => JsString("high")
+  }
+
+  implicit lazy val threadAndRunContentBlockWrites
+    : Writes[ThreadAndRun.Content.ContentBlock] = {
+    implicit val mapFormat = JsonUtil.StringAnyMapFormat
+    Writes {
+      case ThreadAndRun.Content.ContentBlock.TextBlock(text) =>
+        Json.toJson("type" -> "text", "text" -> text)
+      case ThreadAndRun.Content.ContentBlock.ImageFileBlock(fileId, detail) =>
+        Json.toJson(
+          "type" -> "image_file",
+          "image_file" -> Json.obj("file_id" -> fileId, "detail" -> Json.toJson(detail))
+        )
+    }
+  }
+
+  implicit lazy val threadAndRunContentWrites: Writes[ThreadAndRun.Content] = Writes {
+    case ThreadAndRun.Content.SingleString(text)  => JsString(text)
+    case ThreadAndRun.Content.ContentBlocks(tool) => JsArray(tool.map(Json.toJson(_)))
+  }
+
+  implicit lazy val theadAndRunMessageWrites: Writes[ThreadAndRun.Message] = {
+    implicit val mapFormat = JsonUtil.StringAnyMapFormat
+    Writes { case message =>
+      Json.obj(
+        "content" -> Json.toJson(message.content),
+        "role" -> Json.toJson(message.role),
+        "attachments" -> Json.toJson(message.attachments),
+        "metadata" -> Json.toJson(message.metadata)
+      )
+    }
+  }
+
+  implicit lazy val threadAndRunWrites: Writes[ThreadAndRun] = {
+    // snake case naming strategy
+    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
+    implicit val mapFormat = JsonUtil.StringAnyMapFormat
+    Json.writes[ThreadAndRun]
   }
 
 }

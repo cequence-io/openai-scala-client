@@ -99,6 +99,33 @@ private[service] trait OpenAIServiceImpl
     )
   }
 
+  override def createThreadAndRun(
+    assistantId: AssistantId,
+    thread: Option[ThreadAndRun],
+    instructions: Option[String],
+    tools: Seq[AssistantTool],
+    toolResources: Option[ThreadAndRunToolResource],
+    toolChoice: Option[ToolChoice],
+    settings: CreateThreadAndRunSettings,
+    stream: Boolean
+  ): Future[Run] = {
+    val coreParams = createBodyParamsForThreadAndRun(settings, stream)
+    val runParams = jsonBodyParams(
+      Param.assistant_id -> Some(assistantId.id),
+      Param.thread -> thread.map(Json.toJson(_)),
+      Param.instructions -> Some(instructions),
+      // Param.tools -> Some(Json.toJson(tools)),
+      Param.tool_resources -> toolResources.map(Json.toJson(_)),
+      Param.tool_choice -> toolChoice.map(Json.toJson(_))
+    )
+    execPOST(
+      EndPoint.threads_and_runs,
+      bodyParams = coreParams ++ runParams
+    ).map(
+      _.asSafeJson[Run]
+    )
+  }
+
   override def cancelRun(
     threadId: String,
     runId: String
@@ -863,7 +890,7 @@ private[service] trait OpenAIServiceImpl
     description: Option[String],
     instructions: Option[String],
     tools: Seq[AssistantTool],
-    toolResources: Seq[AssistantToolResource] = Seq.empty[AssistantToolResource],
+    toolResources: Option[AssistantToolResource] = None,
     metadata: Map[String, String]
   ): Future[Assistant] = {
     val toolResourcesJson =
@@ -879,8 +906,7 @@ private[service] trait OpenAIServiceImpl
         Param.description -> Some(description),
         Param.instructions -> Some(instructions),
         Param.tools -> Some(Json.toJson(tools)),
-        Param.tool_resources -> (if (toolResources.nonEmpty) Some(toolResourcesJson)
-                                 else None),
+        Param.tool_resources -> toolResources.map(Json.toJson(_)),
         Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
       )
     ).map(

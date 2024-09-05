@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.domain
 
+// TODO: create a ThreadAndRunTool marker for createThreadAndRun function, currently the method uses AssistantTool
 sealed trait AssistantTool
 
 sealed trait ChatCompletionTool

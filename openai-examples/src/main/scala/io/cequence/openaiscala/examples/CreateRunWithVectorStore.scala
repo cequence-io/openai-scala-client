@@ -44,7 +44,7 @@ object CreateRunWithVectorStore extends Example {
           "You pick the talks meeting my criteria I should attend at a conference."
         ),
         tools = Seq(FileSearchTool()),
-        toolResources = Seq(FileSearchResources(Seq(vectorStoreId)))
+        toolResources = Some(AssistantToolResource(FileSearchResources(Seq(vectorStoreId))))
       )
     } yield assistant
 
@@ -57,7 +57,7 @@ object CreateRunWithVectorStore extends Example {
           )
         ),
         metadata = Map("user_id" -> userId),
-        toolResources = Seq(FileSearchResources(Seq(vectorStoreId)))
+        toolResources = Some(AssistantToolResource(FileSearchResources(Seq(vectorStoreId))))
       )
       _ = println(thread)
     } yield thread

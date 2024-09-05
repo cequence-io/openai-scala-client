@@ -16,11 +16,11 @@ object CreateAssistantWithFileSearch extends Example {
         ),
         instructions = None,
         tools = Seq(FileSearchTool()),
-        toolResources = Seq(
+        toolResources = Some(AssistantToolResource(
           AssistantToolResource.FileSearchResources(
             vectorStoreIds = Seq("vs_xxx")
           )
-        )
+        ))
       )
     } yield println(assistant)
 }

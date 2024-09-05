@@ -20,6 +20,7 @@ object EndPoint {
   case object fine_tunes extends EndPoint("fine_tuning/jobs")
   case object moderations extends EndPoint
   case object threads extends EndPoint
+  case object threads_and_runs extends EndPoint("threads/runs")
   case object batches extends EndPoint
   case object assistants extends EndPoint
   case object vector_stores extends EndPoint
@@ -105,11 +106,15 @@ object Param {
   case object chunking_strategy extends Param
   case object filter extends Param
   case object max_prompt_tokens extends Param
+  case object max_completion_tokens extends Param
   case object `object` extends Param
   case object assistant_id extends Param
   case object thread_id extends Param
   case object additional_instructions extends Param
   case object additional_messages extends Param
+  case object truncation_strategy extends Param
+  case object parallel_tool_calls extends Param
+  case object thread extends Param
   // empty string param to sneak in extra parameters
   case object extra_params extends Param(" ")
 }

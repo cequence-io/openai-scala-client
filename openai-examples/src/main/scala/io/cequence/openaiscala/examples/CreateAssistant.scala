@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.examples
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
-import io.cequence.openaiscala.domain.ModelId
+import io.cequence.openaiscala.domain.{AssistantToolResource, ModelId}
 
 import scala.concurrent.Future
 
@@ -16,7 +16,7 @@ object CreateAssistant extends Example {
         tools = Seq(
           FunctionTool("name", description = None, Map())
         ),
-        toolResources = Seq()
+        toolResources = Some(AssistantToolResource()),
       )
     } yield println(assistant)
 }

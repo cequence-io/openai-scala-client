@@ -5,29 +5,7 @@ import akka.util.ByteString
 import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.domain.{
-  AssistantId,
-  AssistantTool,
-  AssistantToolOutput,
-  AssistantToolResource,
-  Attachment,
-  BaseMessage,
-  ChatCompletionTool,
-  ChatRole,
-  ChunkingStrategy,
-  Pagination,
-  Run,
-  RunStep,
-  SortOrder,
-  Thread,
-  ThreadFullMessage,
-  ThreadMessage,
-  ThreadMessageFile,
-  ToolChoice,
-  VectorStore,
-  VectorStoreFile,
-  VectorStoreFileStatus
-}
+import io.cequence.openaiscala.domain.{AssistantId, AssistantTool, AssistantToolOutput, AssistantToolResource, Attachment, BaseMessage, ChatCompletionTool, ChatRole, ChunkingStrategy, Pagination, Run, RunStep, SortOrder, Thread, ThreadAndRun, ThreadAndRunToolResource, ThreadFullMessage, ThreadMessage, ThreadMessageFile, ToolChoice, VectorStore, VectorStoreFile, VectorStoreFileStatus}
 
 import java.io.File
 import scala.concurrent.Future
@@ -112,6 +90,46 @@ trait OpenAIService extends OpenAICoreService {
     tools: Seq[AssistantTool] = Seq.empty,
     responseToolChoice: Option[ToolChoice] = None,
     settings: CreateRunSettings = DefaultSettings.CreateRun,
+    stream: Boolean
+  ): Future[Run]
+
+  /**
+   * @param assistantId
+   *   The ID of the assistant to use to execute this run.
+   * @param thread
+   *   The ID of the thread to run.
+   * @param instructions
+   *   Override the default system message of the assistant. This is useful for modifying the
+   *   behavior on a per-run basis.
+   * @param tools
+   *   Override the tools the assistant can use for this run. This is useful for modifying the
+   *   behavior on a per-run basis.
+   * @param toolResources
+   *   A set of resources that are used by the assistant's tools. The resources are specific to
+   *   the type of tool. For example, the code_interpreter tool requires a list of file IDs,
+   *   while the file_search tool requires a list of vector store IDs.
+   * @param toolChoice
+   *   Controls which (if any) tool is called by the model. none means the model will not call
+   *   any tools and instead generates a message. auto is the default value and means the model
+   *   can pick between generating a message or calling one or more tools. required means the
+   *   model must call one or more tools before responding to the user. Specifying a particular
+   *   tool like {"type": "file_search"} or {"type": "function", "function": {"name":
+   *   "my_function"}} forces the model to call that tool.
+   * @param settings
+   * @param stream
+   *   If true, returns a stream of events that happen during the Run as server-sent events,
+   *   terminating when the Run enters a terminal state with a data: [DONE] message.
+   * @returns
+   *   A run object.
+   */
+  def createThreadAndRun(
+    assistantId: AssistantId,
+    thread: Option[ThreadAndRun],
+    instructions: Option[String] = None,
+    tools: Seq[AssistantTool] = Seq.empty,
+    toolResources: Option[ThreadAndRunToolResource] = None,
+    toolChoice: Option[ToolChoice] = None,
+    settings: CreateThreadAndRunSettings = DefaultSettings.CreateThreadAndRun,
     stream: Boolean
   ): Future[Run]
 
@@ -1151,7 +1169,7 @@ trait OpenAIService extends OpenAICoreService {
     description: Option[String] = None,
     instructions: Option[String] = None,
     tools: Seq[AssistantTool] = Seq.empty[AssistantTool],
-    toolResources: Seq[AssistantToolResource] = Seq.empty[AssistantToolResource],
+    toolResources: Option[AssistantToolResource] = None,
     metadata: Map[String, String] = Map.empty
   ): Future[Assistant]
 

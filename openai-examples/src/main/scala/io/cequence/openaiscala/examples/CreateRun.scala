@@ -20,7 +20,7 @@ object CreateRun extends Example {
       tools = Seq(
         FunctionTool("name", description = None, Map())
       ),
-      toolResources = Seq()
+      toolResources = None
     )
   } yield assistant
 
