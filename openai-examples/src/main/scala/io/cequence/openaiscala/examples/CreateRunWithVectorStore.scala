@@ -57,7 +57,7 @@ object CreateRunWithVectorStore extends Example {
           )
         ),
         metadata = Map("user_id" -> userId),
-        toolResources = Some(AssistantToolResource(FileSearchResources(Seq(vectorStoreId))))
+        toolResources = Seq(AssistantToolResource(FileSearchResources(Seq(vectorStoreId))))
       )
       _ = println(thread)
     } yield thread

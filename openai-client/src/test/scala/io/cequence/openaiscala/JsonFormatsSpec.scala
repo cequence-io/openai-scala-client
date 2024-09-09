@@ -184,7 +184,13 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
 
     "serialize and deserialize code interpreter's resources" in {
       testCodec[AssistantToolResource](
-        CodeInterpreterResources(Seq(FileId("file-id-1"), FileId("file-id-2"))),
+        AssistantToolResource(
+//          Some(
+          CodeInterpreterResources(
+            Seq(FileId("file-id-1"), FileId("file-id-2"))
+          )
+//          )
+        ),
         codeInterpreterResourcesJson,
         Pretty
       )
@@ -192,9 +198,11 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
 
     "serialize and deserialize file search's resources" ignore {
       testCodec[AssistantToolResource](
-        FileSearchResources(
-          Seq("vs_xxx"),
-          Seq(VectorStore(Seq(FileId("file-id-1")), Map("key" -> "value")))
+        AssistantToolResource(
+          FileSearchResources(
+            Seq("vs_xxx"),
+            Seq(VectorStore(Seq(FileId("file-id-1")), Map("key" -> "value")))
+          )
         ),
         fileSearchResourcesJson,
         Pretty
