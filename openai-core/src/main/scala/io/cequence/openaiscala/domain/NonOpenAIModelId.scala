@@ -13,6 +13,8 @@ object NonOpenAIModelId {
   val claude_instant_1_2 = "claude-instant-1.2"
 
   // Llama2/3
+  val llama3_1_8b = "llama3.1-8b" // Cerebras
+  val llama3_1_70b = "llama3.1-70b" // Cerebras
   val meta_llama_3_1_405b_instruct = "meta-llama-3.1-405b-instruct" // OctoML
   val meta_llama_3_1_70b_instruct = "meta-llama-3.1-70b-instruct" // OctoML
   val meta_llama_3_1_8b_instruct = "meta-llama-3.1-8b-instruct" // OctoML
