@@ -17,7 +17,10 @@ object CreateThreadMessage extends Example {
             Some(FileId("file-1")),
             tools = Seq(MessageAttachmentTool.CodeInterpreterSpec)
           ),
-          Attachment(Some(FileId("file-2")), tools = Seq(MessageAttachmentTool.FileSearchSpec))
+          Attachment(
+            Some(FileId("file-2")),
+            tools = Seq(MessageAttachmentTool.FileSearchSpec)
+          )
         ),
         metadata = Map("user_id" -> Random.nextInt().toString)
       )

@@ -185,18 +185,16 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
     "serialize and deserialize code interpreter's resources" in {
       testCodec[AssistantToolResource](
         AssistantToolResource(
-//          Some(
           CodeInterpreterResources(
             Seq(FileId("file-id-1"), FileId("file-id-2"))
           )
-//          )
         ),
         codeInterpreterResourcesJson,
         Pretty
       )
     }
 
-    "serialize and deserialize file search's resources" ignore {
+    "serialize and deserialize file search's resources" in {
       testCodec[AssistantToolResource](
         AssistantToolResource(
           FileSearchResources(

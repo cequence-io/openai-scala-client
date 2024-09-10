@@ -1,0 +1,250 @@
+# CUSTOMER RELATIONSHIP AGREEMENT
+
+This Customer Relationship Agreement ("CRA") is entered into as of 1 July 2020 (the "Effective Date") by and between Microsoft Corporation, with registered office at 1 Microsoft Way, Redmon, Washington, on behalf of itself and any of its Affiliates ("Microsoft"), and ACME Inc., with registered office at 11 Broadway Avenue, New York, on behalf of itself and any of its Affiliates and/or parent company/ies ("Customer"), individually a "Party" and collectively the "Parties". The Parties agree as follows:
+
+## 1. DEFINITIONS
+
+Capitalized terms shall have the meanings provided in this section or as specified in the body of the Agreement.
+
+**"Agreement"** means this Customer Relationship Agreement, and unless the context requires otherwise, includes all Schedules, and any addendums, exhibits or attachments to any of the foregoing.
+
+**"Affiliate"** means any entity that directly or indirectly controls, is controlled by, or is under common control with the subject entity. "Control," for purposes of this definition, means direct or indirect ownership or control of more than 50% of the voting interests of the subject entity. Affiliates of Microsoft include any of its corporate Affiliates which may be specified or otherwise assigned rights or obligations under this Agreement or any Schedule, addendum, exhibit, attachment or any amendment.
+
+**"Customer Data"** means all data incl. personal data or personally identifiable information submitted by Customer to the Saas Platform or provided to Microsoft as part of the Services provided.
+
+**"Disabling Code"** means viruses, worms, time bombs, Trojan horses and other harmful or malicious code, files, scripts, agents or programs.
+
+**"Documentation"** means any proprietary information or documentation made available to Customer by Microsoft for use with the Saas Platform, including any documentation available online through the Saas Platform dashboard or otherwise.
+
+**"Schedule"** means each Microsoft ordering document incl. Statement of Work ("SOW") signed by duly authorized representatives of both Parties which references this Agreement, identifies the Solution ordered by Customer from Microsoft, sets forth the prices for the Solution, and contains other applicable information terms and conditions.
+
+**"Services"** means configuration, implementation, consulting, training, and such other services as may be described in a Schedule.
+
+**"SaaS Platform"** means, collectively, the online, web-based applications and platform provided by Microsoft and ordered by Customer pursuant to this Agreement and as specified in one or more Schedule(s).
+
+**"Service Level Agreement" ("SLA")** means support service levels for each applicable subscription to SaaS Platform.
+
+**"Solution"** means, collectively, the provision of the SaaS Platform and the Services specified in one or more Schedule(s).
+
+**"Term"** means the time period for the provision of the Solution, as specified in a Schedule. This Agreement will terminate as specified below.
+
+## 2. SOLUTION
+
+### 2.1 Provision of Solution
+
+Microsoft will provide to Customer the Solution pursuant to this Agreement, the SLA and the relevant Schedule during the applicable Term. The Solution will be provided pursuant to this Agreement and the specifications set forth in the applicable Schedule.
+
+### 2.2 SaaS Platform Access and Use
+
+With respect to each Schedule and the SaaS Platform identified therein, as of the Effective Date set forth in the applicable Schedule, Microsoft shall and hereby does grant to Customer a non-exclusive right and license to access and use the SaaS Platform for the term set forth in the applicable Schedule under the conditions and requirements set forth in the applicable Schedule.
+### 2.3 Third Party Applications
+
+Microsoft may offer Customer the ability to use third-party applications in combination with the SaaS Platform. Any such third- party application will be subject to acceptance by Customer. In connection with any such third-party application agreed to by Customer, Customer acknowledges and agrees that Microsoft may allow the third-party providers access to Customer Data as required for the interoperation of such third-party application with the SaaS Platform. The use of a third- party application with the SaaS Platform may also require Customer to agree to a separate agreement or terms and conditions with the provider of the third- party application, which will govern Customer's use of such third-party application.
+
+## 3. RESPONSIBILITIES AND RESTRICTIONS
+
+### 3.1 Microsoft Responsibilities
+
+Microsoft will provide access to the SaaS Platform to Customer during the Term in accordance with this Agreement and the applicable Schedule and will perform Services in accordance with this Agreement and the applicable Schedule. Microsoft shall with all means commercially reasonable to provide the SaaS and shall house its infrastructure for the SaaS in a secure facility. Microsoft shall monitor and record the performance of the SaaS and compliance with its specifications in order to provide reasonable assurance that the SaaS Platform is operating as expected, is appropriately and securely accessible from and to the internet, and has adequate physical resources available for proper operation, such as CPU, memory, storage, and bandwidth.
+
+### 3.2 Customer Responsibilities
+
+Customer is responsible for all activity that occurs under Customer's accounts by or on behalf of Customer. Customer agrees to (a) be solely responsible for all user activity, which must be in accordance with this Agreement and the Documentation, (b) be solely responsible for Customer Data (other than with respect to Microsoft obligations set forth in the Agreement), (c) obtain and maintain during the Term all necessary consents, agreements and approvals from individuals or any other third parties for all actual or intended uses of information, data or other content Customer will use in connection with the Solution, (d) use commercially reasonable efforts to prevent unauthorized access to, or use of, the Solution and notify Microsoft promptly of any known unauthorized access or use, and (e) use the Solution only in accordance with applicable laws and regulations and terms of use.
+
+### 3.3 Restrictions
+
+Customer will not (a) use, or permit the use of, the Solution except as expressly authorized under this Agreement or the Documentation, (b) interfere with or disrupt the integrity or performance of the SaaS Platform or any third-party application or third-party data or content contained therein, or (c) disrupt, disable, translate, decompile, or reverse engineer the Solution, or (d) take any other action with respect to the Solution not expressly permitted under this Agreement or the Documentation. In the respective Schedule, the parties will agree the restrictions related to the numbers of users or numbers of computers, devices, servers and networks owned or operated by or for Customer that use or access the SaaS, or other restrictions related to database sizes or the number of documents or transactions processed.
+
+### 3.4 Privacy and Data Protection
+
+This Agreement incorporates the Data Protection Addendum set forth at www.Microsoft.io/dpa ("DPA") when applicable Privacy Laws (as defined in the DPA) apply to Customer's use of the Services to process Personal Data (as defined in the DPA). Each Party expressly agrees that the DPA shall apply and govern all activities concerning the processing of personal data for the purposes of this CRA. The DPA may be updated by Microsoft from time to time and Microsoft may provide Provider written notice of such updates.
+
+## 4. FEES AND PAYMENT
+
+### 4.1 Fees
+
+Customer shall pay all fees specified in all Schedule hereunder ("Fees") for the Solution. Except as otherwise specified herein or in the Schedule, Fees will be quoted and paid in Euros.
+
+### 4.2 Invoicing and Payment
+
+If a purchase order is required by Customer, Customer will provide Microsoft with a valid purchase order within five (5) days from the execution of the applicable Schedule or change order if not agreed otherwise. Any terms and conditions on any purchase order shall not be deemed a part of this Agreement or otherwise binding Microsoft. Microsoft will invoice Customer in accordance with the relevant Schedule. Unless otherwise stated in the Schedule, Fees are due net thirty (30) days from Customer's date of the invoice ("Invoice Due Date"). Customer is responsible for providing Microsoft with complete, accurate and up to date billing and contact information.
+
+### 4.3 Suspension of Solution
+
+Except with respect to any Fees disputed in good faith by Customer, if any Fees for the SaaS Platform or Services are thirty (30) or more days overdue, Microsoft may, without limiting Microsoft's other rights and remedies, suspend Services and Customer's use of the SaaS Platform until such amounts are paid in full.
+
+### 4.4 Payment Disputes
+
+If an invoiced amount is disputed in good faith by Customer, Customer must notify Microsoft in writing and provide sufficiently detailed support of any invoice dispute within ten (10) business days of Customer's receipt of invoice. If Customer fails to do so, Customer is deemed to have waived its right to dispute that invoice and the invoice will be deemed accurate and valid. Nothing in this section shall be deemed to waive Customer's obligation to pay any undisputed amounts in accordance with Section 4.2 (Invoicing and Payment).
+
+### 4.5 Taxes
+
+The Fees are exclusive of all taxes, levies, duties or similar governmental assessments of any nature (collectively, "Taxes"). Customer is responsible for paying all Taxes associated with Customer purchases hereunder except for those based on Microsoft's net income, property, or employee withholdings. Taxes shall not be deducted from the payments to Microsoft, except as required by law, in which case the amount payable shall be increased as necessary, so that after making all required deductions and withholdings, Microsoft receives and retains (free from any Tax liability) an amount equal to the amount it would have received had no such deductions or withholdings been made.
+
+## 5. PROPRIETARY RIGHTS
+
+### 5.1 Microsoft Ownership
+
+Subject to any rights expressly granted to Customer in the Agreement, Microsoft and its licensors, as applicable, reserve all right, title and interest in and to the Solution, including information presented in any form and intellectual property rights ("Microsoft IP"). In addition, Customer agrees that Microsoft is the owner of all right, title and interest in all intellectual property in any work, including, but not limited to, all inventions, methods, processes, flow charts, algorithms, documentation, adversary information, report templates, know-how, inventions, models, and computer programs including any source code or object code, (and any enhancements and modifications made thereto) contained within the Solution and any suggestions, enhancement requests, recommendations, or feedback provided by Customer (collectively, the "Microsoft Materials"), and Customer hereby assigns to Microsoft all right, title and interest in and to any copyrights that Customer may have in and to such Microsoft Material. Any license to the Microsoft Solution or Microsoft Materials expires or terminates upon the expiration or termination of any individual Schedule and/or this CRA.
+
+### 5.2 Customer Ownership and Licenses
+
+As between Microsoft and Customer, Customer owns all rights, title and interest in and to (a) all Customer Data and (b) any information supplied by Customer to Microsoft as may be specified in any Schedule (collectively, "Customer Materials"). Customer grants Microsoft a non-exclusive, non-transferable, royalty free, non-sublicenseable (except as needed for the provision of Solution or as set forth herein) worldwide right to access and use Customer Materials solely to provide the Solution to Customer at Customer's request. No other rights or implied licenses in Customer Materials are granted to Microsoft other than as expressly set forth herein.
+
+### 5.3 Feedback and Derivative Works
+
+Customer is not required to provide (a) any suggestions, enhancement requests, recommendations, or other feedback ("Feedback") or (b) any ideas, technology, developments, derivative works or other intellectual property ("Derivative Works") related to the Solution or any test features, services or products to which Customer is given access. If Customer does so, Customer grants Microsoft a royalty-free, worldwide, transferable, sublicensable, irrevocable, perpetual license to use, or incorporate into any of its services, any Feedback or Derivative Works. Customer may only create Derivative Works relating to the Solution or any test features, services or products to which Customer is given access, with prior written consent from Microsoft.
+
+## 6. CONFIDENTIALITY
+
+### 6.1 Definition of Confidential Information
+
+As used herein, "Confidential Information" means all confidential information disclosed by a Party ("Discloser") to the other Party ("Recipient"), whether orally or in writing, that is designated as confidential or that reasonably should be understood to be confidential given the nature of the information and the circumstances of disclosure. Customer Confidential Information will include, but is not limited to, Customer Data; Microsoft Confidential Information includes, but is not limited to, the SaaS Platform, information or technology used in connection with the Solution, this Agreement and all Schedules; and Confidential Information of each Discloser includes Discloser's non-public business and marketing plans, technology and technical information, product plans and designs, and business processes. Confidential Information does not include any information that (a) is or becomes generally known to the public without breach of any obligation owed to Discloser, (b) was known to Recipient prior to its disclosure by Discloser without breach of any obligation owed to Discloser, (c) is received from a third party without any obligation of confidentiality, or (d) was independently developed by Recipient without reference to or use of Discloser's Confidential Information.
+
+### 6.2 Protection of Confidential Information
+
+Except as otherwise permitted in writing by Discloser, Recipient will (a) use the same degree of care that it uses to protect the confidentiality of its own Confidential Information of like kind (but in no event less than reasonable care) and use Discloser's Confidential Information only for purposes of this Agreement, and (b) Recipient will limit access to Confidential Information of Discloser to those of its employees, contractors and agents who need such access for purposes consistent with this Agreement and who have agreed to confidentiality obligations with Recipient that are no less stringent than those herein. In addition to the foregoing, Recipient may disclose Confidential Information in any due diligence of Recipient in connection with any corporate transaction, provided that such disclosure is made under a binding obligation of confidentiality with terms similar to those herein.
+
+### 6.3 Protection of Customer Data
+
+Without limiting the above, Microsoft will maintain commercially reasonable administrative, physical, and technical safeguards designed to protect the security and confidentiality of Customer Data. Except (a) in order to provide the Solution, (b) to prevent or address service or technical problems in connection with support matters, or (c) as expressly permitted in writing by Customer, Microsoft will not modify Customer Data or disclose Customer Data (unless compelled by law in accordance with Section 6.4 (Compelled Disclosure)).
+
+### 6.4 Compelled Disclosure
+
+Recipient may disclose Confidential Information of Discloser to the extent required or compelled by law to do so, provided Recipient gives Discloser prior notice of such compelled disclosure (unless notice is prohibited by law) and reasonable assistance, at Discloser's cost, if Discloser wishes to contest the disclosure. If Recipient is compelled by law to disclose Discloser's Confidential Information as part of a civil proceeding, and Discloser is not contesting the disclosure, Discloser will reimburse Recipient for its reasonable cost of compiling and providing secure access to such Confidential Information.
+
+## 7. WARRANTIES AND DISCLAIMERS
+
+### 7.1 Microsoft Warranties
+
+Microsoft warrants that (a) the SaaS Platform to the best of Microsoft's knowledge will perform substantially in accordance with the Documentation made available to Customer, the functionality of the SaaS Platform will not be materially decreased during the Term and (c) the Services to the best of Microsoft's knowledge will be performed in a professional and workmanlike manner. For any breach of the foregoing warranties, Customer's exclusive remedy will be as provided in Section 10.3 (Termination for Cause) and Section 10.5 (Refund or Payment upon Termination). Notwithstanding the foregoing, if any Schedule has a Term of more than twelve (12) months, in the event Microsoft or any of its licensors determine to materially change or cease offering any material element of the Solution, Microsoft may effect such change or cessation following reasonable notice thereof to Customer and the relevant Schedule shall be amended to reflect such change.
+
+### 7.2 Mutual Warranties
+
+Each Party represents and warrants that (a) it has the legal power to enter into this Agreement, (b) it will use commercially reasonable efforts through the use of anti-virus protection not to transmit to the other Party any Disabling Code, and (c) it will comply with all applicable laws with respect to its rights and obligations pursuant to this Agreement.
+
+### 7.3 Disclaimers
+
+EXCEPT AS EXPRESSLY PROVIDED HEREIN, MICROSOFT MAKES NO WARRANTIES OF ANY KIND, WHETHER EXPRESS, IMPLIED, STATUTORY OR OTHERWISE, AND SPECIFICALLY DISCLAIMS ALL IMPLIED WARRANTIES, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF MERCHANTABILITY, NON-INFRINGEMENT OR FITNESS FOR A PARTICULAR PURPOSE, TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW.
+
+## 8. INDEMNIFICATION
+
+### 8.1 Indemnification by Microsoft
+
+Microsoft will defend, indemnify and hold harmless Customer against any claim, demand, suit, or proceeding ("Claim") made or brought against Customer by a third party alleging that the provision of the Solution as permitted hereunder infringes or misappropriates the intellectual property rights of a third party; provided that Customer (a) promptly gives Microsoft written notice of the Claim; (b) gives Microsoft sole control of the defense and settlement of the Claim (provided that Microsoft may not settle any Claim without Customer's written approval, which will not be unreasonably withheld or delayed, unless the settlement unconditionally releases Customer of all liability); and (c) provides to Microsoft all reasonable assistance, at Microsoft's expense. Microsoft has no obligation to indemnify a Claim if it arises from: (i) Customer Data or Customer Materials; or (ii) unauthorized modification or use of the Solution; or otherwise relating to Customer's acts or omissions not in accordance with, or in breach of, the terms of this Agreement.
+
+### 8.2 Indemnification by Customer
+
+Customer will defend, indemnify and hold harmless Microsoft against any Claim made or brought against Microsoft by a third party (a) relating to or arising from Customer's misappropriation of Microsoft's IP or use of the Solution in violation of this Agreement, or (b) relating to or arising from Microsoft's permitted use of Customer Data, Customer Materials; provided that Microsoft (i) promptly gives Customer written notice of the Claim; (ii) gives Customer sole control of the defense and settlement of the Claim (provided that Customer may not settle any Claim without Microsoft's written approval, which will not be unreasonably withheld or delayed, unless the settlement unconditionally releases Microsoft of all liability); and (iii) provides to Customer all reasonable assistance, at Customer's expense.
+
+### 8.3 Exclusive Remedy
+
+This Section 9 (Indemnification) states the indemnifying Party's sole liability to, and the indemnified Party's exclusive remedy against, the other Party for any type of Claim described in this Section.
+
+## 9. LIMITATION OF LIABILITY
+
+### 9.1 Limitation of Liability
+
+IN NO EVENT WILL EITHER PARTY'S AGGREGATE LIABILITY ARISING OUT OF OR RELATED TO THIS AGREEMENT, WHETHER IN CONTRACT, TORT OR UNDER ANY OTHER THEORY OF LIABILITY, EXCEED THE TOTAL AMOUNT PAID BY CUSTOMER HEREUNDER IN THE 12 MONTHS PRECEDING THE INCIDENT GIVING RISE TO THE LIABILITY. THE FOREGOING WILL NOT LIMIT CUSTOMER'S PAYMENT OBLIGATIONS UNDER THIS AGREEMENT.
+
+### 9.2 Exclusion of Consequential and Related Damages
+
+IN NO EVENT WILL EITHER PARTY HAVE ANY LIABILITY TO THE OTHER PARTY FOR ANY LOST PROFITS OR REVENUES OR FOR ANY INDIRECT, SPECIAL, INCIDENTAL, CONSEQUENTIAL, COVER OR PUNITIVE DAMAGES HOWEVER CAUSED, WHETHER IN CONTRACT, TORT OR UNDER ANY OTHER THEORY OF LIABILITY, AND WHETHER OR NOT THE PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+
+### 9.3 Applicability of Limitations
+
+The foregoing limitations, exclusions and disclaimers shall apply, regardless of whether the claim for such damages is based in contract, warranty, strict liability, negligence, and tort or otherwise. Insofar as applicable law prohibits any limitation herein, the Parties agree that such limitation will be automatically modified, but only to the extent so as to make the limitation permitted to the fullest extent possible under such law.
+
+## 10. TERM AND TERMINATION
+
+### 10.1 Term of Agreement
+
+This Agreement commences on the Effective Date and will remain in effect until the earlier of (a) the expiration or termination of all Schedules under this Agreement or (b) the termination of this Agreement in accordance with this Section. Upon termination of this Agreement for any reason, all rights and subscriptions granted to Customer including all Schedules will immediately terminate and Customer will cease using the Solution. For avoidance of doubt, upon termination of any Schedule, the Solution provided pursuant to such Schedule shall cease and Customer shall stop using such Solution.
+
+### 10.2 Automatic Renewal
+
+Subscriptions for the SaaS Platform commence on the Order Date specified in the applicable Schedule and continue for the subscription Term specified therein, unless otherwise terminated. Except as otherwise specified herein or in the applicable Schedule, all subscriptions will automatically renew for additional periods of one year (each a "Renewal Term") at the list price in effect at the time of renewal unless either Party gives the other Party written notice of non-renewal at least 60 days prior to the end of the applicable Term or Renewal Term.
+
+### 10.3 Termination for Cause
+
+A Party may terminate this Agreement or any applicable Schedule for cause: (a) upon 30 days' written notice to the other Party of a material breach (including details sufficient to identify the material breach) if such breach remains uncured at the expiration of such period, (b) immediately for material violations of confidentiality obligations, or (c) if the other Party becomes the subject of a petition in bankruptcy or any other proceeding relating to insolvency, receivership, liquidation or assignment for the benefit of creditors.
+
+### 10.4 Survival
+
+Any provision of this Agreement that expressly or by implication is intended to survive termination, regardless of the date, cause or manner of such termination, and including but not limited to rights of action accruing prior to termination and payment obligations, will survive such termination and will continue in full force and effect.
+
+### 10.5 Refund or Payment upon Termination
+
+Upon any termination for cause by Customer, Microsoft will refund Customer a pro-rata portion of any prepaid SaaS Platform Fees that cover the remainder of the Term after the effective date of termination and a pro-rata portion of any prepaid Services Fees that cover Services that have not been delivered as of the effective date of termination. Upon any termination for cause by Microsoft, Customer will pay any unpaid Fees covering the remainder of the Term of all subscriptions under the applicable Schedules after the effective date of termination and for any Services provided up to the date of termination. In no event will any termination relieve Customer of the obligation to pay any Fees payable to Microsoft for the period prior to the effective date of termination.
+
+## 11. SERVICES
+
+### 11.1 Availability of Customer Resources
+
+Customer will make available to Microsoft certain of Customer personnel, business information and other relevant information as reasonably required by Microsoft in the performance of any Services hereunder or as specified in any applicable Schedule. Customer will ensure that competent personnel are available during normal working hours to provide information and other support to Microsoft while providing Services. Customer acknowledges that the timeliness or provision of Services may be dependent on such Customer's personnel availability and cooperation.
+
+### 11.2 Compliance with Customer or Microsoft Rules
+
+If applicable, while on the premises of the other Party for training or other services, each Party will take reasonable measures to have its personnel comply with the other Party's reasonable rules and policies regarding safety, security, and conduct made known to such Party, and will at Customer's request promptly remove from the project any of its personnel not following such rules and regulations.
+
+## 12. DISPUTE RESOLUTION, GOVERNING LAW & NOTICES
+
+### 12.1 Dispute Resolution, Governing Law
+
+The Parties will use reasonable efforts to resolve any dispute between them in good faith prior to initiating legal action. This Agreement will be governed by the laws of New York and subject to jurisdiction of New York courts.
+
+### 12.2 Manner of Giving Notice
+
+Except as otherwise specified in this Agreement, all notices, permissions and approvals hereunder will be in writing signed by authorized signatories and will be deemed to have been given upon delivery via e-mail (confirmed receipt requested). Billing-related notices will be addressed to the relevant billing contact designated by Customer on the Schedule.
+
+### 12.3 Waiver of Jury Trial
+
+Each Party hereby waives any right to jury trial in connection with any action or litigation in any way arising out of or related to this Agreement.
+
+## 13. GENERAL PROVISIONS
+
+### 13.1 No Dependence on Future Functionality
+
+Customer agrees that Customer is not entering into this Agreement or any Schedule contingent on the provision of any future functionality relating in any way to the Solution unless expressly provided in any Schedule and no statement or other information made or provided orally or otherwise shall be binding unless specifically set forth in an Schedule.
+
+### 13.2 Export Compliance
+
+Each Party represents that it is not named on any US, UK or EU government list of persons or entities prohibited from receiving exports or otherwise restricted from doing business with any US, UK or EU company, and Customer will not access or use the Solution in violation of any US, UK or EU export embargo, prohibition, or restriction.
+
+### 13.3 Force Majeure
+
+Neither Party will be in default for failing to perform any obligation hereunder, if such failure is caused solely by supervening conditions beyond the failing Party's reasonable control, including without limitation acts of God, civil commotion, strikes, terrorism, failure of third-party networks or services or the public Internet, power outages, labor disputes or governmental demands or restrictions.
+
+### 13.4 Relationship of the Parties
+
+The Parties are independent contractors. This Agreement does not create a partnership, franchise, joint venture, agency, and fiduciary or employment relationship between the Parties.
+
+### 13.5 No Third-Party Beneficiaries
+
+There are no third-party beneficiaries to this Agreement, unless expressly stated otherwise.
+
+### 13.6 Waiver and Cumulative Remedies
+
+No failure or delay by either Party in exercising any right under this Agreement will constitute a waiver of that right. Other than as expressly stated herein, the remedies provided herein are in addition to, and not exclusive of, any other remedies of a Party at law or in equity.
+
+### 13.7 Severability
+
+If any provision of this Agreement is held by a court of competent jurisdiction to be contrary to law, the provision will be modified by the court and interpreted so as best to accomplish the objectives of the original provision to the fullest extent permitted by law, and the remaining provisions of this Agreement will remain in effect.
+
+### 13.8 Order of Precedence
+
+In the event of a conflict among any of the foregoing documents, the order of priority shall Customer Relationship Agreement Confidential be in descending order as follows: (1) the DPA; (2) the Schedule (only for that specific transaction); (3) this CRA; and (4) any other addenda.
+
+### 13.9 Assignment
+
+Neither Party may assign any of its rights or obligations hereunder, whether by operation of law or otherwise, without the prior written consent of the other Party (not to be unreasonably withheld or delayed). Notwithstanding the foregoing, either Party may assign this Agreement in its entirety (including all Schedules), without consent of the other Party, to its Affiliate or in connection with a merger, acquisition, corporate reorganization, or sale of all or substantially all of its assets. This Agreement will bind and inure to the benefit of the Parties, their respective successors and permitted assigns.
+
+### 13.10 General
+
+This Agreement, including all exhibits and addenda hereto and all Schedules, constitutes the entire agreement between the Parties and supersedes all prior and contemporaneous agreements, proposals or representations, written or oral, concerning its subject matter. No modification, amendment, or waiver of any provision of this Agreement or any Schedule will be effective unless in writing and signed by each Party. However, to the extent of any conflict or inconsistency between the provisions in the body of this Agreement and any exhibit or addendum hereto or any Schedule, the terms of such exhibit, addendum or Schedule will prevail. Notwithstanding any language to the contrary therein, no terms or conditions stated in a Customer purchase order or other order documentation (excluding Schedules) will be incorporated into or form any part of this Agreement, and all such terms or conditions will be null and void. This Agreement may be executed in counterparts, each of which, when so executed and delivered (including by electronic transmission), shall be deemed an original, and both of which shall constitute one and the same agreement.
+
+This Agreement is hereby acknowledged and agreed by each party’s authorized representative.
+
+MICROSOFT CORPORATION ACME INC.
+
+Confidential Customer Relationship Agreement Page 7 of 7

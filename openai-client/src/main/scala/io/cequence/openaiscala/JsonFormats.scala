@@ -568,16 +568,25 @@ object JsonFormats {
       Json.obj("file_search" -> (vectorStoreIdsJson ++ vectorStoresJson))
     }
 
-  implicit lazy val assistantToolResourceWrites: Writes[AssistantToolResource] =
-    Json.writes[AssistantToolResource]
+  implicit lazy val assistantToolResourceWrites: Writes[AssistantToolResource] = Writes {
+    case AssistantToolResource(Some(codeInterpreter), _) =>
+      Json.toJson(codeInterpreter)(assistantToolResourceCodeInterpreterResourceWrites)
+    case AssistantToolResource(_, Some(fileSearch)) =>
+      Json.toJson(fileSearch)(assistantToolResourceFileSearchResourceWrites)
+    case _ => Json.obj()
+  }
 
   implicit lazy val codeInterpreterResourcesReads
-    : Reads[AssistantToolResource.CodeInterpreterResources] =
+    : Reads[AssistantToolResource.CodeInterpreterResources] = {
+    implicit val config: JsonConfiguration = JsonConfiguration(JsonNaming.SnakeCase)
     Json.reads[AssistantToolResource.CodeInterpreterResources]
+  }
 
   implicit lazy val fileSearchResourcesReads
-    : Reads[AssistantToolResource.FileSearchResources] =
+    : Reads[AssistantToolResource.FileSearchResources] = {
+    implicit val config: JsonConfiguration = JsonConfiguration(JsonNaming.SnakeCase)
     Json.reads[AssistantToolResource.FileSearchResources]
+  }
 
   implicit lazy val assistantToolResourceReads: Reads[AssistantToolResource] = (
     (__ \ "code_interpreter").readNullable[AssistantToolResource.CodeInterpreterResources] and
