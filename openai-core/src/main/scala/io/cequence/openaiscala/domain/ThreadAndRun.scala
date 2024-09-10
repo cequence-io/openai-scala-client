@@ -12,10 +12,10 @@ final case class ThreadAndRun(
 object ThreadAndRun {
 
   sealed abstract class Message private (
-                                          val role: ThreadAndRunRole,
-                                          val content: Content,
-                                          val attachments: Seq[Attachment],
-                                          val metadata: Map[String, Any]
+    val role: ThreadAndRunRole,
+    val content: Content,
+    val attachments: Seq[Attachment],
+    val metadata: Map[String, Any]
   )
 
   object Message {
@@ -41,7 +41,12 @@ object ThreadAndRun {
       contentString: String,
       override val attachments: Seq[Attachment] = Seq.empty,
       override val metadata: Map[String, Any] = Map.empty
-    ) extends Message(ChatRole.Assistant, Content.SingleString(contentString), Seq.empty, Map.empty)
+    ) extends Message(
+          ChatRole.Assistant,
+          Content.SingleString(contentString),
+          Seq.empty,
+          Map.empty
+        )
 
     case class AssistantMessageContent(
       contentBlocks: Seq[ContentBlock],

@@ -29,7 +29,7 @@ trait OpenAIServiceConsts {
 
     // TODO: check defaults
     val CreateThreadAndRun = CreateThreadAndRunSettings(
-      model = Some(ModelId.gpt_3_5_turbo),
+      model = Some(ModelId.gpt_3_5_turbo)
     )
 
     val CreateChatCompletion = CreateChatCompletionSettings(
