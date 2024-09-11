@@ -31,6 +31,7 @@ import io.cequence.openaiscala.domain.response.ResponseFormat.{
   TextResponse
 }
 import io.cequence.openaiscala.domain.response._
+import io.cequence.openaiscala.domain.settings.JsonSchema
 import io.cequence.openaiscala.domain.{ThreadMessageFile, _}
 import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.JsonUtil.{enumFormat, snakeEnumFormat}
@@ -113,14 +114,14 @@ object JsonFormats {
   implicit val assistantToolMessageReads: Reads[AssistantToolMessage] = (
     (__ \ "content").readNullable[String] and
       (__ \ "name").readNullable[String] and
-      (__ \ "tool_calls").read[JsArray]
+      (__ \ "tool_calls").readNullable[JsArray]
   ) {
     (
       content,
       name,
       tool_calls
     ) =>
-      val idToolCalls = tool_calls.value.toSeq.map { toolCall =>
+      val idToolCalls = tool_calls.getOrElse(JsArray()).value.toSeq.map { toolCall =>
         val callId = (toolCall \ "id").as[String]
         val callType = (toolCall \ "type").as[String]
         val call: ToolCallSpec = callType match {
@@ -362,8 +363,38 @@ object JsonFormats {
     Format(reads, writes)
   }
 
+  implicit val byteArrayReads: Reads[Seq[Byte]] = new Reads[Seq[Byte]] {
+
+    /**
+     * Parses a JSON representation of a `Seq[Byte]` into a `JsResult[Seq[Byte]]`. This method
+     * expects the JSON to be an array of numbers, where each number represents a valid byte
+     * value (between -128 and 127, inclusive). If the JSON structure is correct and all
+     * numbers are valid byte values, it returns a `JsSuccess` containing the sequence of
+     * bytes. Otherwise, it returns a `JsError` detailing the parsing issue encountered.
+     *
+     * @param json
+     *   The `JsValue` to be parsed, expected to be a `JsArray` of `JsNumber`.
+     * @return
+     *   A `JsResult[Seq[Byte]]` which is either a `JsSuccess` containing the parsed sequence
+     *   of bytes, or a `JsError` with parsing error details.
+     */
+    def reads(json: JsValue): JsResult[Seq[Byte]] = json match {
+      case JsArray(elements) =>
+        try {
+          JsSuccess(elements.map {
+            case JsNumber(n) if n.isValidInt => n.toIntExact.toByte
+            case _ => throw new RuntimeException("Invalid byte value")
+          }.toIndexedSeq)
+        } catch {
+          case e: Exception => JsError("Error parsing byte array: " + e.getMessage)
+        }
+      case _ => JsError("Expected JSON array for byte array")
+    }
+  }
+
   implicit lazy val logprobInfoFormat: Format[LogprobInfo] =
     Json.format[LogprobInfo]
+
   implicit lazy val logprobsFormat: Format[Logprobs] =
     Json.format[Logprobs]
 
@@ -510,11 +541,6 @@ object JsonFormats {
     Json.format[ModerationResponse]
   implicit lazy val threadMessageFormat: Format[ThreadMessage] =
     Json.format[ThreadMessage]
-
-//  implicit lazy val fileIdFormat: Format[FileId] = new Format[FileId] {
-//    def reads(json: JsValue): JsResult[FileId] = json.validate[String].map(FileId(_))
-//    def writes(fileId: FileId): JsValue = JsString(fileId.file_id)
-//  }
 
   implicit lazy val assistantToolResourceResponsesFormat
     : Reads[Seq[AssistantToolResourceResponse]] = Reads { json =>
@@ -1074,4 +1100,9 @@ object JsonFormats {
     Json.writes[ThreadAndRun]
   }
 
+  implicit val jsonSchemaFormat: Format[JsonSchema] = {
+    implicit lazy val stringAnyMapFormat: Format[Map[String, Any]] =
+      JsonUtil.StringAnyMapFormat
+    Json.format[JsonSchema]
+  }
 }

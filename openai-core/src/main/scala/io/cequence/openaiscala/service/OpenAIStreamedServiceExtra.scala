@@ -54,4 +54,5 @@ trait OpenAIStreamedServiceExtra
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
   ): Source[ChatCompletionChunkResponse, NotUsed]
+
 }

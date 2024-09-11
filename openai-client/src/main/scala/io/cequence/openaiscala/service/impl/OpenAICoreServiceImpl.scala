@@ -79,7 +79,7 @@ trait CompletionBodyMaker {
     prompt: String,
     settings: CreateCompletionSettings,
     stream: Boolean
-  ): Seq[(Param, Option[JsValue])] =
+  ): Seq[(Param, Option[JsValue])] = {
     jsonBodyParams(
       Param.prompt -> Some(prompt),
       Param.model -> Some(settings.model),
@@ -107,4 +107,6 @@ trait CompletionBodyMaker {
       Param.user -> settings.user,
       Param.seed -> settings.seed
     )
+  }
+
 }

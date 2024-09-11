@@ -74,13 +74,21 @@ case class CreateChatCompletionSettings(
   seed: Option[Int] = None,
 
   // ad-hoc parameters, not part of the OpenAI API, e.g. for other providers or experimental features
-  extra_params: Map[String, Any] = Map()
-// TODO: add service_tier
-)
+  extra_params: Map[String, Any] = Map.empty,
+
+  // json schema to use if response format = json_schema
+  jsonSchema: Option[JsonSchema] = None
+  // TODO: add service_tier
+) {
+
+  def withJsonSchema(jsonSchema: JsonSchema): CreateChatCompletionSettings =
+    copy(jsonSchema = Some(jsonSchema))
+}
 
 sealed trait ChatCompletionResponseFormatType extends EnumValue
 
 object ChatCompletionResponseFormatType {
   case object text extends ChatCompletionResponseFormatType
   case object json_object extends ChatCompletionResponseFormatType
+  case object json_schema extends ChatCompletionResponseFormatType
 }

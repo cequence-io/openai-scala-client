@@ -13,7 +13,7 @@ import io.cequence.openaiscala.service.{HandleOpenAIErrorCodes, OpenAIService}
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits._
 import io.cequence.wsclient.domain.RichResponse
-import play.api.libs.json.{JsObject, JsValue, Json, Reads}
+import play.api.libs.json.{JsArray, JsObject, JsValue, Json, Reads}
 
 import java.io.File
 import java.nio.charset.StandardCharsets
@@ -161,7 +161,7 @@ private[service] trait OpenAIServiceImpl
     runId: String,
     toolOutputs: Seq[AssistantToolOutput],
     stream: Boolean
-  ): Future[Run] = {
+  ): Future[Run] =
     execPOST(
       EndPoint.threads,
       Some(s"$threadId/runs/$runId/submit_tool_outputs"),
@@ -172,7 +172,6 @@ private[service] trait OpenAIServiceImpl
     ).map(
       _.asSafeJson[Run]
     )
-  }
 
   override def retrieveRun(
     threadId: String,

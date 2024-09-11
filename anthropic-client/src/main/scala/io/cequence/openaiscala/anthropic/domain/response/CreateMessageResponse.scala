@@ -23,7 +23,7 @@ object CreateMessageResponse {
   case object EndTurn extends StopReason("end_turn")
 
   /** We exceeded the requested `max_tokens`` or the model's maximum. */
-  case object MaxTokens extends StopReason("max_tokens")
+  case object MaxTokens extends StopReason("max_tokens") // max_tokens? or length
 
   /** One of your provided custom `stop_sequences`` was generated. */
   case object StopSequence extends StopReason("stop_sequence")

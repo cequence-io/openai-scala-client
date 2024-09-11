@@ -1,8 +1,8 @@
 package io.cequence.openaiscala.examples
 
+import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.AssistantTool.CodeInterpreterTool
 import io.cequence.openaiscala.domain.settings.CreateRunSettings
-import io.cequence.openaiscala.domain._
 
 import scala.concurrent.Future
 

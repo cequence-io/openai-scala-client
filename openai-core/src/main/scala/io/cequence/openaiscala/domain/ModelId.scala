@@ -145,11 +145,13 @@ object ModelId {
   @Deprecated // supported till 09/13/2023, 4k context (March 1st snapshot)
   val gpt_3_5_turbo_0301 = "gpt-3.5-turbo-0301"
   // 4k context (June 13th snapshot), fine-tuned for function calling
+  @Deprecated // supported till 09/13/2023
   val gpt_3_5_turbo_0613 = "gpt-3.5-turbo-0613"
 
   // 16k context
   val gpt_3_5_turbo_16k = "gpt-3.5-turbo-16k"
   // 16k context (June 13th snapshot), fine-tuned for function calling
+  @Deprecated // supported till 09/13/2023
   val gpt_3_5_turbo_16k_0613 = "gpt-3.5-turbo-16k-0613"
   // 16k context (Jan 25th 2024 snapshot)
   val gpt_3_5_turbo_0125 = "gpt-3.5-turbo-0125"
@@ -161,10 +163,19 @@ object ModelId {
 
   // GPT-4
 
-  // flagship multimodal model, currently points to gpt-4o-2024-05-13
+  // flagship multimodal model, 128K context, currently points to "gpt-4o-2024-08-06, training data up to Oct 2023
   val gpt_4o = "gpt-4o"
-  // flagship multimodal model, training data up to Oct 2023
+  // context window: 128,000 tokens, output tokens:	16,384 tokens, Up to Oct 2023
+  val gpt_4o_2024_08_06 = "gpt-4o-2024-08-06"
+  // context window: 128,000 tokens, output tokens:	4,096 tokens, Up to Oct 2023
   val gpt_4o_2024_05_13 = "gpt-4o-2024-05-13"
+  // cost-efficient small model, 128K context, currently points to gpt-4o-mini-2024-07-18
+  val gpt_4o_mini = "gpt-4o-mini"
+  // cost-efficient small model, 128K context, training data up to Oct 2023
+  val gpt_4o_mini_2024_07_18 = "gpt-4o-mini-2024-07-18"
+  // dynamic model continuously updated to the current version of GPT-4o in ChatGPT.
+  // Intended for research and evaluation [2].	128,000 tokens	16,384 tokens	Up to Oct 2023
+  val chatgpt_4o_latest = "chatgpt-4o-latest"
   // 8k context, uses the version 0301 till June 27th, then 0613
   val gpt_4 = "gpt-4"
   @Deprecated // supported till 09/13/2023, 8k context (March 14th snapshot)

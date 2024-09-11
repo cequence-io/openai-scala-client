@@ -93,4 +93,5 @@ private class ChatToCompletionAdapter[
 
   override def close(): Unit =
     underlying.close()
+
 }

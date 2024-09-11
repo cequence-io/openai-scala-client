@@ -5,6 +5,7 @@ import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIServiceConsts}
+import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.ResponseImplicits._
 import io.cequence.wsclient.service.WSClient
 import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithEngine
@@ -38,6 +39,7 @@ private[service] trait OpenAIChatCompletionServiceImpl
     ).map(
       _.asSafeJson[ChatCompletionResponse]
     )
+
 }
 
 trait ChatCompletionBodyMaker {
@@ -77,12 +79,54 @@ trait ChatCompletionBodyMaker {
       Param.logprobs -> settings.logprobs,
       Param.top_logprobs -> settings.top_logprobs,
       Param.seed -> settings.seed,
-      Param.response_format -> settings.response_format_type.map { formatType =>
-        Map("type" -> formatType.toString)
+      Param.response_format -> {
+        settings.response_format_type.map { (formatType: ChatCompletionResponseFormatType) =>
+          if (formatType != ChatCompletionResponseFormatType.json_schema)
+            Map("type" -> formatType.toString)
+          else
+            handleJsonSchema(settings)
+        }
       },
       Param.extra_params -> {
         if (settings.extra_params.nonEmpty) Some(settings.extra_params) else None
       }
     )
   }
+
+  private def handleJsonSchema(
+    settings: CreateChatCompletionSettings
+  ): Map[String, Any] =
+    settings.jsonSchema.map { case JsonSchema(name, strict, structure) =>
+      val adjustedSchema = if (strict) {
+        // set "additionalProperties" -> false on "object" types if strict
+        def addFlagAux(map: Map[String, Any]): Map[String, Any] = {
+          val newMap = map.map { case (key, value) =>
+            val newValue = value match {
+              case obj: Map[String, Any] => addFlagAux(obj)
+              case other                 => other
+            }
+            key -> newValue
+          }
+
+          if (map.get("type").contains("object"))
+            newMap + ("additionalProperties" -> false)
+          else
+            newMap
+        }
+
+        addFlagAux(structure)
+      } else structure
+
+      Map(
+        "type" -> "json_schema",
+        "json_schema" -> Map(
+          "name" -> name,
+          "strict" -> strict,
+          "schema" -> adjustedSchema
+        )
+      )
+    }.getOrElse(
+      // TODO: is it legal?
+      Map("type" -> "json_schema")
+    )
 }

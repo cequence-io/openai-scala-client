@@ -11,19 +11,13 @@ import io.cequence.wsclient.domain.WsRequestContext
 
 import scala.concurrent.Future
 
-/**
- * Requires `FIREWORKS_API_KEY` environment variable to be set.
- *
- * Check out [[ChatCompletionInputAdapterForFireworksAI]] for a more complex example with an
- * input adapter
- */
-object FireworksAICreateChatCompletion extends ExampleBase[OpenAIChatCompletionService] {
+// requires `MISTRAL_API_KEY` environment variable to be set
+object MistralCreateChatCompletion extends ExampleBase[OpenAIChatCompletionService] {
 
-  private val fireworksModelPrefix = "accounts/fireworks/models/"
   override val service: OpenAIChatCompletionService = OpenAIChatCompletionServiceFactory(
-    coreUrl = "https://api.fireworks.ai/inference/v1/",
+    coreUrl = "https://api.mistral.ai/v1/",
     WsRequestContext(authHeaders =
-      Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
+      Seq(("Authorization", s"Bearer ${sys.env("MISTRAL_API_KEY")}"))
     )
   )
 
@@ -32,21 +26,16 @@ object FireworksAICreateChatCompletion extends ExampleBase[OpenAIChatCompletionS
     UserMessage("What is the weather like in Norway?")
   )
 
-  // note that for e.g. mixtral_8x22b_instruct we need an adapter to convert system messages
-  private val modelId = NonOpenAIModelId.llama_v3p1_405b_instruct
+  private val modelId = NonOpenAIModelId.open_mistral_nemo
 
   override protected def run: Future[_] =
     service
       .createChatCompletion(
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = fireworksModelPrefix + modelId,
+          model = modelId,
           temperature = Some(0.1),
-          max_tokens = Some(512),
-          top_p = Some(0.9),
-          presence_penalty = Some(0),
-          // this is how we can add extra (vendor-specific) parameters
-          extra_params = Map("echo" -> true)
+          max_tokens = Some(512)
         )
       )
       .map(printMessageContent)

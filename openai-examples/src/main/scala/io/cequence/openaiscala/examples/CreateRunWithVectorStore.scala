@@ -86,10 +86,10 @@ object CreateRunWithVectorStore extends Example {
         stream = false
       )
 
-      _ = java.lang.Thread.sleep(2000)
+//      _ = Thread.sleep(2000)
       updatedRun <- service.retrieveRun(eventsThread.id, run.id)
 
-      _ = java.lang.Thread.sleep(2000)
+//      _ = Thread.sleep(2000)
       _ = println("============= Thread messages =============")
       messages <- service.listThreadMessages(eventsThread.id)
       _ = messages.map { message =>

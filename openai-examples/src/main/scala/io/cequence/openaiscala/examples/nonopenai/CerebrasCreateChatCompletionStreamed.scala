@@ -4,23 +4,20 @@ import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.examples.ExampleBase
-import io.cequence.openaiscala.service.{
-  OpenAIChatCompletionStreamedServiceExtra,
-  OpenAIChatCompletionStreamedServiceFactory
-}
+import io.cequence.openaiscala.service.{OpenAIChatCompletionStreamedServiceExtra, OpenAIChatCompletionStreamedServiceFactory}
 import io.cequence.wsclient.domain.WsRequestContext
 
 import scala.concurrent.Future
 
-// requires `openai-scala-client-stream` as a dependency and `GROQ_API_KEY` environment variable to be set
-object GroqCreateChatCompletionStreamed
+// requires `openai-scala-client-stream` as a dependency and `CEREBRAS_API_KEY` environment variable to be set
+object CerebrasCreateChatCompletionStreamed
     extends ExampleBase[OpenAIChatCompletionStreamedServiceExtra] {
 
   override val service: OpenAIChatCompletionStreamedServiceExtra =
     OpenAIChatCompletionStreamedServiceFactory(
-      coreUrl = "https://api.groq.com/openai/v1/",
+      coreUrl = "https://api.cerebras.ai/v1/",
       WsRequestContext(authHeaders =
-        Seq(("Authorization", s"Bearer ${sys.env("GROQ_API_KEY")}"))
+        Seq(("Authorization", s"Bearer ${sys.env("CEREBRAS_API_KEY")}"))
       )
     )
 
@@ -29,7 +26,7 @@ object GroqCreateChatCompletionStreamed
     UserMessage("What is the weather like in Norway?")
   )
 
-  private val modelId = NonOpenAIModelId.llama_3_1_70b_versatile // mixtral_8x7b_32768
+  private val modelId = NonOpenAIModelId.llama3_1_70b
 
   override protected def run: Future[_] =
     service

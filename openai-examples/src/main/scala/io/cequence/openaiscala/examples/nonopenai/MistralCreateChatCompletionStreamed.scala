@@ -12,15 +12,15 @@ import io.cequence.wsclient.domain.WsRequestContext
 
 import scala.concurrent.Future
 
-// requires `openai-scala-client-stream` as a dependency and `GROQ_API_KEY` environment variable to be set
-object GroqCreateChatCompletionStreamed
+// requires `openai-scala-client-stream` as a dependency and `MISTRAL_API_KEY` environment variable to be set
+object MistralCreateChatCompletionStreamed
     extends ExampleBase[OpenAIChatCompletionStreamedServiceExtra] {
 
   override val service: OpenAIChatCompletionStreamedServiceExtra =
     OpenAIChatCompletionStreamedServiceFactory(
-      coreUrl = "https://api.groq.com/openai/v1/",
+      coreUrl = "https://api.mistral.ai/v1/",
       WsRequestContext(authHeaders =
-        Seq(("Authorization", s"Bearer ${sys.env("GROQ_API_KEY")}"))
+        Seq(("Authorization", s"Bearer ${sys.env("MISTRAL_API_KEY")}"))
       )
     )
 
@@ -29,7 +29,7 @@ object GroqCreateChatCompletionStreamed
     UserMessage("What is the weather like in Norway?")
   )
 
-  private val modelId = NonOpenAIModelId.llama_3_1_70b_versatile // mixtral_8x7b_32768
+  private val modelId = NonOpenAIModelId.mistral_large_latest
 
   override protected def run: Future[_] =
     service
@@ -37,7 +37,7 @@ object GroqCreateChatCompletionStreamed
         messages = messages,
         settings = CreateChatCompletionSettings(
           model = modelId,
-          temperature = Some(0.01),
+          temperature = Some(0.1),
           max_tokens = Some(512)
         )
       )

@@ -1,12 +1,12 @@
 package io.cequence.openaiscala.domain.response
 
-import io.cequence.openaiscala.domain.{AssistantId, AssistantTool}
+import io.cequence.openaiscala.domain.AssistantTool
 
 import java.{util => ju}
 
 final case class Assistant(
   // The identifier, which can be referenced in API endpoints.
-  id: AssistantId,
+  id: String,
 
   // The Unix timestamp (in seconds) for when the assistant was created.
   created_at: ju.Date,

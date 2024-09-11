@@ -13,12 +13,23 @@ object NonOpenAIModelId {
   val claude_instant_1_2 = "claude-instant-1.2"
 
   // Llama2/3
-  val llama_v3_8b_instruct = "llama-v3-8b-instruct" // Fireworks AI
-  val llama3_8b_8192 = "llama3-8b-8192" // Groq
-  val llama_v3_70b_instruct = "llama-v3-70b-instruct" // Fireworks AI
-  val llama3_70b_8192 = "llama3-70b-8192" // Groq
-  val meta_llama_3_8b_instruct = "meta-llama-3-8b-instruct" // OctoML
+  val llama3_1_8b = "llama3.1-8b" // Cerebras
+  val llama3_1_70b = "llama3.1-70b" // Cerebras
+  val meta_llama_3_1_405b_instruct = "meta-llama-3.1-405b-instruct" // OctoML
+  val meta_llama_3_1_70b_instruct = "meta-llama-3.1-70b-instruct" // OctoML
+  val meta_llama_3_1_8b_instruct = "meta-llama-3.1-8b-instruct" // OctoML
   val meta_llama_3_70b_instruct = "meta-llama-3-70b-instruct" // OctoML
+  val meta_llama_3_8b_instruct = "meta-llama-3-8b-instruct" // OctoML
+  val llama_v3p1_405b_instruct = "llama-v3p1-405b-instruct" // Fireworks AI
+  val llama_v3p1_70b_instruct = "llama-v3p1-70b-instruct" // Fireworks AI
+  val llama_v3p1_8b_instruct = "llama-v3p1-8b-instruct" // Fireworks AI
+  val llama_v3_70b_instruct = "llama-v3-70b-instruct" // Fireworks AI
+  val llama_v3_8b_instruct = "llama-v3-8b-instruct" // Fireworks AI
+  val llama_3_1_405b_reasoning = "llama-3.1-405b-reasoning" // Groq
+  val llama_3_1_70b_versatile = "llama-3.1-70b-versatile" // Groq
+  val llama_3_1_8b_instant = "llama-3.1-8b-instant" // Groq
+  val llama3_70b_8192 = "llama3-70b-8192" // Groq
+  val llama3_8b_8192 = "llama3-8b-8192" // Groq
   val hermes_2_pro_llama_3_8b = "hermes-2-pro-llama-3-8b" // OctoML
   val llama2 = "llama2" // Ollama
   val llama_2_7b_chat = "llama-2-7b-chat"
@@ -31,10 +42,18 @@ object NonOpenAIModelId {
   val llama2_7b_summarize = "llama2-7b-summarize" // Fireworks AI (completion)
   val llamaguard_7b = "llamaguard-7b" // OctoML
   val medllama2 = "medllama2" // Ollama
+  val meta_llama_3_1_405b_instruct_turbo =
+    "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo" // Together AI
+  val meta_llama_3_1_70b_instruct_turbo =
+    "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo" // Together AI
+  val meta_llama_3_1_8b_instruct_turbo =
+    "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo" // Together AI
   val llama_2_13b_chat_hf = "meta-llama/Llama-2-13b-chat-hf" // Together AI
   val llama_2_70b_chat_hf = "meta-llama/Llama-2-70b-chat-hf" // Together AI
   val llama_2_7b_chat_hf = "meta-llama/Llama-2-7b-chat-hf" // Together AI
   val llama_3_70b_chat_hf = "meta-llama/Llama-3-70b-chat-hf" // Together AI
+  val meta_llama_3_70B_instruct_turbo =
+    "meta-llama/Meta-Llama-3-70B-Instruct-Turbo" // Together AI
   val llama_3_8b_chat_hf = "meta-llama/Llama-3-8b-chat-hf" // Together AI
   @Deprecated
   val meta_llama_3_70b_instruct_to_ai = "meta-llama/Meta-Llama-3-70B-Instruct" // Together AI
@@ -42,6 +61,19 @@ object NonOpenAIModelId {
   val meta_llama_3_8b_instruct_to_ai = "meta-llama/Meta-Llama-3-8B-Instruct" // Together AI
 
   // Mistral
+  // currently points to mistral-large-2407. mistral-large-2402 will be deprecated shortly.
+  val mistral_large_latest = "mistral-large-latest" // Mistral
+  val mistral_large_2407 = "mistral-large-2407" // Mistral
+  val mistral_large_240 = "mistral-large-240" // Mistral
+  // currently points to mistral-medium-2312. The previous mistral-medium has been dated and tagged as mistral-medium-2312. Mistral Medium will be deprecated shortly.
+  val mistral_medium_latest = "mistral-medium-latest" // Mistral
+  val mistral_medium_2312 = "mistral-medium-2312" // Mistral
+  // mistral-small-latest: currently points to mistral-small-2402. Mistral Small will be deprecated shortly.
+  val mistral_small_latest = "mistral-small-latest" // Mistral
+  val mistral_small_2402 = "mistral-small-2402" // Mistral
+  // open-mistral-nemo: currently points to open-mistral-nemo-2407.
+  val open_mistral_nemo = "open-mistral-nemo" // Mistral
+  val open_mistral_nemo_2407 = "open-mistral-nemo-2407" // Mistral
   val mixtral_8x22b = "mixtral-8x22b" // Fireworks AI and OctML (completion API)
   @Deprecated
   val mixtral_8x22b_instruct_preview = "mixtral-8x22b-instruct-preview" // Fireworks AI
@@ -91,6 +123,9 @@ object NonOpenAIModelId {
   val qwen2_72b_instruct = "Qwen/Qwen2-72B-Instruct" // Together AI
 
   // Google Vertex AI
+  val gemini_flash_experimental = "gemini-flash-experimental"
+  val gemini_pro_experimental = "gemini-pro-experimental"
+  val gemini_experimental = "gemini-experimental"
   val gemini_1_5_flash_001 = "gemini-1.5-flash-001"
   val gemini_1_5_pro_001 = "gemini-1.5-pro-001"
   val gemini_1_0_pro_001 = "gemini-1.0-pro-001"

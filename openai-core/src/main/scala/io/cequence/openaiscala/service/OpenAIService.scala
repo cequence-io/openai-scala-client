@@ -5,31 +5,7 @@ import akka.util.ByteString
 import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.domain.{
-  AssistantId,
-  AssistantTool,
-  AssistantToolOutput,
-  AssistantToolResource,
-  Attachment,
-  BaseMessage,
-  ChatCompletionTool,
-  ChatRole,
-  ChunkingStrategy,
-  Pagination,
-  Run,
-  RunStep,
-  SortOrder,
-  Thread,
-  ThreadAndRun,
-  ThreadAndRunToolResource,
-  ThreadFullMessage,
-  ThreadMessage,
-  ThreadMessageFile,
-  ToolChoice,
-  VectorStore,
-  VectorStoreFile,
-  VectorStoreFileStatus
-}
+import io.cequence.openaiscala.domain._
 
 import java.io.File
 import scala.concurrent.Future
@@ -47,6 +23,7 @@ import scala.concurrent.Future
  *   - '''Edits''': createEdit (deprecated)
  *   - '''Images''': createImage, createImageEdit, createImageVariation
  *   - '''Embeddings''': createEmbeddings
+ *   - '''Batches''': createBatch, retrieveBatch, cancelBatch, and listBatches
  *   - '''Audio''': createAudioTranscription, createAudioTranslation, and createAudioSpeech
  *   - '''Files''': listFiles, uploadFile, deleteFile, retrieveFile, and retrieveFileContent
  *   - '''Fine-tunes''': createFineTune, listFineTunes, retrieveFineTune, cancelFineTune,
@@ -55,6 +32,11 @@ import scala.concurrent.Future
  *   - '''Threads''': createThread, retrieveThread, modifyThread, and deleteThread
  *   - '''Thread Messages''': createThreadMessage, retrieveThreadMessage, modifyThreadMessage,
  *     listThreadMessages, retrieveThreadMessageFile, and listThreadMessageFiles
+ *   - '''Runs''': createRun, etc.
+ *   - '''Run Steps''': listRunSteps, etc.
+ *   - '''Vector Stores''': createVectorStore, etc.
+ *   - '''Vector Store Files''': createVectorStoreFile, etc.
+ *   - '''Vector Store File Batches''': createVectorStoreFileBatch, etc.
  *   - '''Assistants''': createAssistant, listAssistants, retrieveAssistant, modifyAssistant,
  *     and deleteAssistant
  *   - '''Assistant Files''': createAssistantFile, listAssistantFiles, retrieveAssistantFile,
@@ -147,15 +129,15 @@ trait OpenAIService extends OpenAICoreService {
    *   A run object.
    */
   def createThreadAndRun(
-    assistantId: AssistantId,
-    thread: Option[ThreadAndRun],
-    instructions: Option[String] = None,
-    tools: Seq[AssistantTool] = Seq.empty,
-    toolResources: Option[ThreadAndRunToolResource] = None,
-    toolChoice: Option[ToolChoice] = None,
-    settings: CreateThreadAndRunSettings = DefaultSettings.CreateThreadAndRun,
-    stream: Boolean
-  ): Future[Run]
+                          assistantId: AssistantId,
+                          thread: Option[ThreadAndRun],
+                          instructions: Option[String] = None,
+                          tools: Seq[AssistantTool] = Seq.empty,
+                          toolResources: Option[ThreadAndRunToolResource] = None,
+                          toolChoice: Option[ToolChoice] = None,
+                          settings: CreateThreadAndRunSettings = DefaultSettings.CreateThreadAndRun,
+                          stream: Boolean
+                        ): Future[Run]
 
   /**
    * Cancels a run that is in_progress
@@ -168,9 +150,9 @@ trait OpenAIService extends OpenAICoreService {
    *   The modified run object matching the specified ID.
    */
   def cancelRun(
-    threadId: String,
-    runId: String
-  ): Future[Run]
+                 threadId: String,
+                 runId: String
+               ): Future[Run]
 
   /**
    * Modifies a run.
@@ -187,10 +169,10 @@ trait OpenAIService extends OpenAICoreService {
    *   The modified run object matching the specified ID.
    */
   def modifyRun(
-    threadId: String,
-    runId: String,
-    metadata: Map[String, String]
-  ): Future[Run]
+                 threadId: String,
+                 runId: String,
+                 metadata: Map[String, String]
+               ): Future[Run]
 
   /**
    * When a run has the status: "requires_action" and required_action.type is
@@ -209,17 +191,18 @@ trait OpenAIService extends OpenAICoreService {
    * @return
    *   The modified run object matching the specified ID.
    */
+
   def submitToolOutputs(
     threadId: String,
     runId: String,
-    toolOutputs: Seq[AssistantToolOutput],
-    stream: Boolean
+    toolOutputs: Option[Seq[AssistantToolOutput]]
   ): Future[Run]
 
   def retrieveRun(
     threadId: String,
     runId: String
   ): Future[Option[Run]]
+
 
   /**
    * Returns a list of runs belonging to a thread.
@@ -234,10 +217,10 @@ trait OpenAIService extends OpenAICoreService {
    *   A list of run objects.
    */
   def listRuns(
-    threadId: String,
-    pagination: Pagination = Pagination.default,
-    order: Option[SortOrder] = None
-  ): Future[Seq[Run]]
+                threadId: String,
+                pagination: Pagination = Pagination.default,
+                order: Option[SortOrder] = None
+              ): Future[Seq[Run]]
 
   /**
    * Retrieves a run step.
@@ -252,10 +235,10 @@ trait OpenAIService extends OpenAICoreService {
    *   The run step object matching the specified ID.
    */
   def retrieveRunStep(
-    threadID: String,
-    runId: String,
-    stepId: String
-  ): Future[Option[RunStep]]
+                       threadID: String,
+                       runId: String,
+                       stepId: String
+                     ): Future[Option[RunStep]]
 
   /**
    * Returns a list of run steps belonging to a run.
@@ -271,6 +254,7 @@ trait OpenAIService extends OpenAICoreService {
    * @return
    *   A list of run step objects.
    */
+
   def listRunSteps(
     threadId: String,
     runId: String,
@@ -624,149 +608,6 @@ trait OpenAIService extends OpenAICoreService {
   ): Future[Option[Source[ByteString, _]]]
 
   /**
-   * Create a vector store.
-   *
-   * @param file_ids
-   *   A list of File IDs that the vector store should use (optional). Useful for tools like
-   *   file_search that can access files.
-   * @param name
-   *   The name of the vector store.
-   * @param expires_after
-   *   The expiration policy for a vector store. TODO
-   * @param metadata
-   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
-   *   storing additional information about the object in a structured format. Keys can be a
-   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
-   * @return
-   *
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/vector-stores/create">OpenAI
-   *   Doc</a>
-   */
-  def createVectorStore(
-    fileIds: Seq[String] = Nil,
-    name: Option[String] = None,
-    metadata: Map[String, Any] = Map()
-  ): Future[VectorStore]
-
-  /**
-   * Returns a list of vector stores.
-   *
-   * @param limit
-   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
-   *   the default is 20. Defaults to 20
-   * @param order
-   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
-   *   for descending order. Defaults to desc
-   * @param after
-   *   A cursor for use in pagination. after is an object ID that defines your place in the
-   *   list. For instance, if you make a list request and receive 100 objects, ending with
-   *   obj_foo, your subsequent call can include after=obj_foo in order to fetch the next page
-   *   of the list.
-   * @param before
-   *   A cursor for use in pagination. before is an object ID that defines your place in the
-   *   list. For instance, if you make a list request and receive 100 objects, ending with
-   *   obj_foo, your subsequent call can include before=obj_foo in order to fetch the previous
-   *   page of the list.
-   * @return
-   *   thread messages
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/vector-stores/list">OpenAI
-   *   Doc</a>
-   */
-  def listVectorStores(
-    pagination: Pagination = Pagination.default,
-    order: Option[SortOrder] = None
-  ): Future[Seq[VectorStore]]
-
-  /**
-   * Deletes a vector store.
-   *
-   * @param vectorStoreId
-   *   The ID of the vector store to use for this request
-   * @return
-   *   enum indicating whether the vector store was deleted
-   *
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/vector-stores/delete">OpenAI
-   *   Doc</a>
-   */
-  def deleteVectorStore(
-    vectorStoreId: String
-  ): Future[DeleteResponse]
-
-  /**
-   * Creates a vector store file.
-   *
-   * @param vectorStoreId
-   *   The ID of the vector store to use for this request
-   * @param fileId
-   *   The ID of the file to use for this request
-   * @param chunkingStrategy
-   *   The chunking strategy to use for this request
-   * @return
-   *   vector store file
-   *
-   * @see
-   *   <a
-   *   href="https://platform.openai.com/docs/api-reference/vector-stores-files/createFile">OpenAI
-   *   Doc</a>
-   */
-  def createVectorStoreFile(
-    vectorStoreId: String,
-    fileId: String,
-    chunkingStrategy: ChunkingStrategy = ChunkingStrategy.AutoChunkingStrategy
-  ): Future[VectorStoreFile]
-
-  /**
-   * Returns a list of vector store files.
-   *
-   * @param vectorStoreId
-   *   The ID of the vector store to use for this request
-   * @param pagination
-   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
-   *   the default is 20. Defaults to 20
-   * @param order
-   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
-   *   for descending order. Defaults to desc
-   * @param filter
-   *   Filter by the status of the vector store file. Defaults to None
-   * @return
-   *   vector store files
-   *
-   * @see
-   *   <a
-   *   href="https://platform.openai.com/docs/api-reference/vector-stores-files/listFiles">OpenAI
-   *   Doc</a>
-   */
-  def listVectorStoreFiles(
-    vectorStoreId: String,
-    pagination: Pagination = Pagination.default,
-    order: Option[SortOrder] = None,
-    filter: Option[VectorStoreFileStatus] = None
-  ): Future[Seq[VectorStoreFile]]
-
-  /**
-   * Deletes a vector store file.
-   *
-   * @param vectorStoreId
-   *   The ID of the vector store to use for this request
-   * @param fileId
-   *   The ID of the file to use for this request
-   * @return
-   *   enum indicating whether the vector store file was deleted
-   *
-   * @see
-   *   <a
-   *   href="https://platform.openai.com/docs/api-reference/vector-stores-files/deleteFile">OpenAI
-   *   Doc</a>
-   */
-  def deleteVectorStoreFile(
-    vectorStoreId: String,
-    fileId: String
-  ): Future[DeleteResponse]
-
-  /**
    * Creates a job that fine-tunes a specified model from a given dataset. Response includes
    * details of the enqueued job including job status and the name of the fine-tuned models
    * once complete.
@@ -926,6 +767,157 @@ trait OpenAIService extends OpenAICoreService {
     settings: CreateModerationSettings = DefaultSettings.CreateModeration
   ): Future[ModerationResponse]
 
+  ///////////////
+  // ASSISTANT //
+  ///////////////
+
+  /**
+   * Create an assistant with a model and instructions.
+   *
+   * @param model
+   *   The ID of the model to use. You can use the List models API to see all of your available
+   *   models, or see our Model overview for descriptions of them.
+   * @param name
+   *   The name of the assistant. The maximum length is 256 characters.
+   * @param description
+   *   The description of the assistant. The maximum length is 512 characters.
+   * @param instructions
+   *   The system instructions that the assistant uses. The maximum length is 32768 characters.
+   * @param tools
+   *   A list of tool enabled on the assistant. There can be a maximum of 128 tools per
+   *   assistant. Tools can be of types code_interpreter, retrieval, or function.
+   * @param toolResources
+   *   A set of resources that are used by the assistant's tools. The resources are specific to
+   *   the type of tool. For example, the code_interpreter tool requires a list of file IDs,
+   *   while the file_search tool requires a list of vector store IDs.
+   * @param metadata
+   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
+   *   storing additional information about the object in a structured format. Keys can be a
+   *   maximum of 64 characters long and values can be a maxium of 512 characters long.
+   * @see
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/assistants/createAssistant">OpenAI
+   *   Doc</a>
+   */
+  def createAssistant(
+                       model: String,
+                       name: Option[String] = None,
+                       description: Option[String] = None,
+                       instructions: Option[String] = None,
+                       tools: Seq[AssistantTool] = Seq.empty[AssistantTool],
+                       toolResources: Option[AssistantToolResource] = None,
+                       metadata: Map[String, String] = Map.empty
+                     ): Future[Assistant]
+
+
+  /**
+   * Returns a list of assistants.
+   *
+   * @param limit
+   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
+   *   the default is 20.
+   * @param order
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
+   *   for descending order.
+   * @param after
+   *   A cursor for use in pagination. after is an object ID that defines your place in the
+   *   list. For instance, if you make a list request and receive 100 objects, ending with
+   *   `obj_foo`, your subsequent call can include `after=obj_foo` in order to fetch the next
+   *   page of the list.
+   * @param before
+   *   A cursor for use in pagination. before is an object ID that defines your place in the
+   *   list. For instance, if you make a list request and receive 100 objects, ending with
+   *   `obj_foo`, your subsequent call can include `before=obj_foo`` in order to fetch the
+   *   previous page of the list.
+   * @see
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/assistants/listAssistants">OpenAI
+   *   Doc</a>
+   */
+  def listAssistants(
+                      pagination: Pagination = Pagination.default,
+                      order: Option[SortOrder] = None
+                    ): Future[Seq[Assistant]]
+
+  /**
+   * Retrieves an assistant.
+   *
+   * @param assistantId
+   *   The ID of the assistant to retrieve. <a
+   *   href="https://platform.openai.com/docs/api-reference/assistants/retrieveAssistant">OpenAI
+   *   Doc</a>
+   */
+  def retrieveAssistant(assistantId: String): Future[Option[Assistant]]
+
+
+  /**
+   * Modifies an assistant.
+   *
+   * @param assistantId
+   * @param model
+   *   ID of the model to use. You can use the List models API to see all of your available
+   *   models, or see our Model overview for descriptions of them.
+   * @param name
+   *   The name of the assistant. The maximum length is 256 characters.
+   * @param description
+   *   The description of the assistant. The maximum length is 512 characters.
+   * @param instructions
+   *   The system instructions that the assistant uses. The maximum length is 32768 characters.
+   * @param tools
+   *   A list of tool enabled on the assistant. There can be a maximum of 128 tools per
+   *   assistant. Tools can be of types code_interpreter, retrieval, or function.
+   * @param fileIds
+   *   A list of File IDs attached to this assistant. There can be a maximum of 20 files
+   *   attached to the assistant. Files are ordered by their creation date in ascending order.
+   *   If a file was previously attached to the list but does not show up in the list, it will
+   *   be deleted from the assistant.
+   * @param metadata
+   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
+   *   storing additional information about the object in a structured format. Keys can be a
+   *   maximum of 64 characters long and values can be a maxium of 512 characters long. <a
+   *   href="https://platform.openai.com/docs/api-reference/assistants/modifyAssistant">OpenAI
+   *   Doc</a>
+   */
+  def modifyAssistant(
+                       assistantId: String,
+                       model: Option[String] = None,
+                       name: Option[String] = None,
+                       description: Option[String] = None,
+                       instructions: Option[String] = None,
+                       tools: Seq[AssistantTool] = Seq.empty[AssistantTool],
+                       fileIds: Seq[String] = Seq.empty,
+                       metadata: Map[String, String] = Map.empty
+                     ): Future[Option[Assistant]]
+
+  /**
+   * Delete an assistant.
+   *
+   * @param assistantId
+   *   The ID of the assistant to delete. <a
+   *   href="https://platform.openai.com/docs/api-reference/assistants/deleteAssistant">OpenAI
+   *   Doc</a>
+   */
+  def deleteAssistant(assistantId: String): Future[DeleteResponse]
+
+  /**
+   * Delete an assistant file.
+   *
+   * @param assistantId
+   *   The ID of the assistant that the file belongs to.
+   * @param fileId
+   *   The ID of the file to delete. <a
+   *   href="https://platform.openai.com/docs/api-reference/assistants/deleteAssistantFile">OpenAI
+   *   Doc</a>
+   */
+  def deleteAssistantFile(
+                           assistantId: String,
+                           fileId: String
+                         ): Future[DeleteResponse]
+
+  ////////////
+  // THREAD //
+  ////////////
+
   /**
    * Creates a thread.
    *
@@ -997,6 +989,10 @@ trait OpenAIService extends OpenAICoreService {
    *   Doc</a>
    */
   def deleteThread(threadId: String): Future[DeleteResponse]
+
+  ////////////////////
+  // THREAD MESSAGE //
+  ////////////////////
 
   /**
    * Creates a thread message.
@@ -1101,6 +1097,10 @@ trait OpenAIService extends OpenAICoreService {
     order: Option[SortOrder] = None
   ): Future[Seq[ThreadFullMessage]]
 
+  /////////////////
+  // THREAD FILE //
+  /////////////////
+
   /**
    * Retrieves a thread message file.
    *
@@ -1159,146 +1159,248 @@ trait OpenAIService extends OpenAICoreService {
     order: Option[SortOrder] = None
   ): Future[Seq[ThreadMessageFile]]
 
-  /**
-   * Create an assistant with a model and instructions.
-   *
-   * @param model
-   *   The ID of the model to use. You can use the List models API to see all of your available
-   *   models, or see our Model overview for descriptions of them.
-   * @param name
-   *   The name of the assistant. The maximum length is 256 characters.
-   * @param description
-   *   The description of the assistant. The maximum length is 512 characters.
-   * @param instructions
-   *   The system instructions that the assistant uses. The maximum length is 32768 characters.
-   * @param tools
-   *   A list of tool enabled on the assistant. There can be a maximum of 128 tools per
-   *   assistant. Tools can be of types code_interpreter, retrieval, or function.
-   * @param toolResources
-   *   A set of resources that are used by the assistant's tools. The resources are specific to
-   *   the type of tool. For example, the code_interpreter tool requires a list of file IDs,
-   *   while the file_search tool requires a list of vector store IDs.
-   * @param metadata
-   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
-   *   storing additional information about the object in a structured format. Keys can be a
-   *   maximum of 64 characters long and values can be a maxium of 512 characters long.
-   * @see
-   *   <a
-   *   href="https://platform.openai.com/docs/api-reference/assistants/createAssistant">OpenAI
-   *   Doc</a>
-   */
-  def createAssistant(
-    model: String,
-    name: Option[String] = None,
-    description: Option[String] = None,
-    instructions: Option[String] = None,
-    tools: Seq[AssistantTool] = Seq.empty[AssistantTool],
-    toolResources: Option[AssistantToolResource] = None,
-    metadata: Map[String, String] = Map.empty
-  ): Future[Assistant]
+  /////////
+  // RUN //
+  /////////
 
   /**
-   * Returns a list of assistants.
+   * Creates a run for a given thread and assistant.
+   * @param threadId
+   * @param assistantId
+   * @param additionalInstructions
+   * @param additionalMessages
+   * @param responseToolChoice
+   * @param settings
+   * @param stream
+   *   // TODO: streamed version
+   * @return
    *
-   * @param limit
-   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
-   *   the default is 20.
-   * @param order
-   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
-   *   for descending order.
-   * @param after
-   *   A cursor for use in pagination. after is an object ID that defines your place in the
-   *   list. For instance, if you make a list request and receive 100 objects, ending with
-   *   `obj_foo`, your subsequent call can include `after=obj_foo` in order to fetch the next
-   *   page of the list.
-   * @param before
-   *   A cursor for use in pagination. before is an object ID that defines your place in the
-   *   list. For instance, if you make a list request and receive 100 objects, ending with
-   *   `obj_foo`, your subsequent call can include `before=obj_foo`` in order to fetch the
-   *   previous page of the list.
    * @see
-   *   <a
-   *   href="https://platform.openai.com/docs/api-reference/assistants/listAssistants">OpenAI
+   *   <a href="https://platform.openai.com/docs/api-reference/runs/createRun">OpenAI Doc</a>
+   */
+  def createRun(
+    threadId: String,
+    assistantId: String,
+    // TODO: move this to settings
+    instructions: Option[String] = None,
+    additionalInstructions: Option[String] = None,
+    additionalMessages: Seq[BaseMessage] = Seq.empty,
+    tools: Seq[ForcableTool] = Seq.empty,
+    responseToolChoice: Option[ToolChoice] = None,
+    settings: CreateRunSettings = DefaultSettings.CreateRun,
+    stream: Boolean
+  ): Future[Run]
+
+  // TODO: def createThreadAndRun - https://platform.openai.com/docs/api-reference/runs/createThreadAndRun
+
+  // TODO: def listRuns - https://platform.openai.com/docs/api-reference/runs/listRuns
+
+  /**
+   * Retrieves a run.
+   *
+   * @param threadId
+   * @param runId
+   * @return
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/runs/getRun">OpenAI Doc</a>
+   */
+  def retrieveRun(
+    threadId: String,
+    runId: String
+  ): Future[Option[Run]]
+
+  // TODO: def modifyRun - https://platform.openai.com/docs/api-reference/runs/modifyRun
+
+  /**
+   * Submits tool outputs to run. When a run has the status: "requires_action" and
+   * required_action.type is submit_tool_outputs, this endpoint can be used to submit the
+   * outputs from the tool calls once they're all completed. All outputs must be submitted in a
+   * single request.
+   *
+   * TODO: streamed version
+   *
+   * @param threadId
+   * @param runId
+   * @param toolOutputs
+   * @return
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/runs/submitToolOutputs">OpenAI
    *   Doc</a>
    */
-  def listAssistants(
+  def submitToolOutputs(
+    threadId: String,
+    runId: String,
+    toolOutputs: Seq[AssistantToolOutput]
+  ): Future[Run]
+
+  // TODO: cancelRun - https://platform.openai.com/docs/api-reference/runs/cancelRun
+
+  ///////////////
+  // RUN STEPS //
+  ///////////////
+
+  /**
+   * Returns a list of run steps belonging to a run.
+   *
+   * @param threadId
+   * @param runId
+   * @param pagination
+   * @param order
+   * @return
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/run-steps/listRunSteps">OpenAI
+   *   Doc</a>
+   */
+  def listRunSteps(
+    threadId: String,
+    runId: String,
     pagination: Pagination = Pagination.default,
     order: Option[SortOrder] = None
-  ): Future[Seq[Assistant]]
+  ): Future[Seq[RunStep]]
+
+  // TODO: retrieveRunStep - https://platform.openai.com/docs/api-reference/run-steps/getRunStep
+
+  //////////////////
+  // VECTOR STORE //
+  //////////////////
 
   /**
-   * Retrieves an assistant.
+   * Create a vector store.
    *
-   * @param assistantId
-   *   The ID of the assistant to retrieve. <a
-   *   href="https://platform.openai.com/docs/api-reference/assistants/retrieveAssistant">OpenAI
-   *   Doc</a>
-   */
-  def retrieveAssistant(assistantId: String): Future[Option[Assistant]]
-
-  /**
-   * Modifies an assistant.
-   *
-   * @param assistantId
-   * @param model
-   *   ID of the model to use. You can use the List models API to see all of your available
-   *   models, or see our Model overview for descriptions of them.
+   * @param file_ids
+   *   A list of File IDs that the vector store should use (optional). Useful for tools like
+   *   file_search that can access files.
    * @param name
-   *   The name of the assistant. The maximum length is 256 characters.
-   * @param description
-   *   The description of the assistant. The maximum length is 512 characters.
-   * @param instructions
-   *   The system instructions that the assistant uses. The maximum length is 32768 characters.
-   * @param tools
-   *   A list of tool enabled on the assistant. There can be a maximum of 128 tools per
-   *   assistant. Tools can be of types code_interpreter, retrieval, or function.
-   * @param fileIds
-   *   A list of File IDs attached to this assistant. There can be a maximum of 20 files
-   *   attached to the assistant. Files are ordered by their creation date in ascending order.
-   *   If a file was previously attached to the list but does not show up in the list, it will
-   *   be deleted from the assistant.
-   * @param metadata
-   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
-   *   storing additional information about the object in a structured format. Keys can be a
-   *   maximum of 64 characters long and values can be a maxium of 512 characters long. <a
-   *   href="https://platform.openai.com/docs/api-reference/assistants/modifyAssistant">OpenAI
+   *   The name of the vector store.
+   * @param expires_after
+   *   The expiration policy for a vector store. TODO
+   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
+   * @return
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/vector-stores/create">OpenAI
    *   Doc</a>
    */
-  def modifyAssistant(
-    assistantId: String,
-    model: Option[String] = None,
-    name: Option[String] = None,
-    description: Option[String] = None,
-    instructions: Option[String] = None,
-    tools: Seq[AssistantTool] = Seq.empty[AssistantTool],
-    fileIds: Seq[String] = Seq.empty,
-    metadata: Map[String, String] = Map.empty
-  ): Future[Option[Assistant]]
+  def createVectorStore(
+    fileIds: Seq[String] = Nil,
+    metadata: Map[String, Any] = Map()
+  ): Future[VectorStore]
 
   /**
-   * Delete an assistant.
-   *
-   * @param assistantId
-   *   The ID of the assistant to delete. <a
-   *   href="https://platform.openai.com/docs/api-reference/assistants/deleteAssistant">OpenAI
+   * Returns a list of vector stores.
+   *   the default is 20. Defaults to 20
+   *   for descending order. Defaults to desc
+   *   obj_foo, your subsequent call can include after=obj_foo in order to fetch the next page
+   *   of the list.
+   *   obj_foo, your subsequent call can include before=obj_foo in order to fetch the previous
+   *   page of the list.
+   * @return
+   *   thread messages
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/vector-stores/list">OpenAI
    *   Doc</a>
    */
-  def deleteAssistant(assistantId: String): Future[DeleteResponse]
+  def listVectorStores(
+  ): Future[Seq[VectorStore]]
 
+  // TODO: retrieveVectorStore - https://platform.openai.com/docs/api-reference/vector-stores/get
   /**
-   * Delete an assistant file.
+   * Deletes a vector store.
    *
-   * @param assistantId
-   *   The ID of the assistant that the file belongs to.
-   * @param fileId
-   *   The ID of the file to delete. <a
-   *   href="https://platform.openai.com/docs/api-reference/assistants/deleteAssistantFile">OpenAI
+   * @param vectorStoreId
+   *   The ID of the vector store to use for this request
+   * @return
+   *   enum indicating whether the vector store was deleted
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/vector-stores/delete">OpenAI
    *   Doc</a>
    */
-  def deleteAssistantFile(
-    assistantId: String,
-    fileId: String
+  def deleteVectorStore(
+    vectorStoreId: String
   ): Future[DeleteResponse]
+
+  ///////////////////////
+  // VECTOR STORE FILE //
+  ///////////////////////
+
+  /**
+   * Creates a vector store file.
+   * @param vectorStoreId
+   *   The ID of the vector store to use for this request
+   * @param fileId
+   *   The ID of the file to use for this request
+   * @param chunkingStrategy
+   *   The chunking strategy to use for this request
+   * @return
+   *   vector store file
+   *
+   * @see
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/vector-stores-files/createFile">OpenAI
+   *   Doc</a>
+   */
+  def createVectorStoreFile(
+    vectorStoreId: String,
+    fileId: String,
+    chunkingStrategy: ChunkingStrategy = ChunkingStrategy.AutoChunkingStrategy
+  ): Future[VectorStoreFile]
+
+  /**
+   * Returns a list of vector store files.
+   *
+   * @param vectorStoreId
+   *   The ID of the vector store to use for this request
+   * @param pagination
+   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
+   *   the default is 20. Defaults to 20
+   * @param order
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
+   *   for descending order. Defaults to desc
+   * @param filter
+   *   Filter by the status of the vector store file. Defaults to None
+   * @return
+   *   vector store files
+   *
+   * @see
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/vector-stores-files/listFiles">OpenAI
+   *   Doc</a>
+   */
+  def listVectorStoreFiles(
+    vectorStoreId: String,
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None,
+    filter: Option[VectorStoreFileStatus] = None
+  ): Future[Seq[VectorStoreFile]]
+
+  // TODO: retrieveVectorStoreFile - https://platform.openai.com/docs/api-reference/vector-stores-files/getFile
+  /**
+   * Deletes a vector store file.
+   *
+   * @param vectorStoreId
+   *   The ID of the vector store to use for this request
+   * @param fileId
+   *   The ID of the file to use for this request
+   * @return
+   *   enum indicating whether the vector store file was deleted
+   *
+   * @see
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/vector-stores-files/deleteFile">OpenAI
+   *   Doc</a>
+   */
+  def deleteVectorStoreFile(
+                             vectorStoreId: String,
+                             fileId: String
+                           ): Future[DeleteResponse]
+
+  ///////////
+  // BATCH //
+  ///////////
 
   /**
    * Creates and executes a batch from an uploaded file of requests.
@@ -1421,5 +1523,4 @@ trait OpenAIService extends OpenAICoreService {
     pagination: Pagination = Pagination.default,
     order: Option[SortOrder] = None
   ): Future[Seq[Batch]]
-
 }

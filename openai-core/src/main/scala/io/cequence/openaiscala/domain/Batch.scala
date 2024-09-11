@@ -14,7 +14,7 @@ object Batch {
     }
   }
 
-  sealed trait CompletionWindow extends EnumValue
+  sealed abstract class CompletionWindow extends EnumValue
   object CompletionWindow {
     case object `24h` extends CompletionWindow
   }

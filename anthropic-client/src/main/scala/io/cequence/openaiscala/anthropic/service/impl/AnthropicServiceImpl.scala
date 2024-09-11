@@ -14,6 +14,7 @@ import io.cequence.openaiscala.anthropic.service.{AnthropicService, HandleAnthro
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
 import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithStreamEngine
+import org.slf4j.LoggerFactory
 import play.api.libs.json.{JsValue, Json}
 
 import scala.concurrent.Future
@@ -28,6 +29,8 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
   override protected type PEP = EndPoint
   override protected type PT = Param
+
+  private val logger = LoggerFactory.getLogger("AnthropicServiceImpl")
 
   override def createMessage(
     messages: Seq[Message],
@@ -54,6 +57,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       )
       .map { (json: JsValue) =>
         (json \ "error").toOption.map { error =>
+          logger.error(s"Error in streamed response: ${error.toString()}")
           throw new OpenAIScalaClientException(error.toString())
         }.getOrElse {
           val jsonType = (json \ "type").as[String]
@@ -67,7 +71,9 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
             case "content_block_stop"  => None
             case "message_delta"       => None
             case "message_stop"        => None
-            case _ => throw new OpenAIScalaClientException(s"Unknown message type: $jsonType")
+            case _ =>
+              logger.error(s"Unknown message type: $jsonType")
+              throw new OpenAIScalaClientException(s"Unknown message type: $jsonType")
           }
         }
       }
