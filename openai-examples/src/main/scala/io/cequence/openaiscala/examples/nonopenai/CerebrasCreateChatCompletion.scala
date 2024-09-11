@@ -3,7 +3,10 @@ package io.cequence.openaiscala.examples.nonopenai
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.examples.ExampleBase
-import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIChatCompletionServiceFactory}
+import io.cequence.openaiscala.service.{
+  OpenAIChatCompletionService,
+  OpenAIChatCompletionServiceFactory
+}
 import io.cequence.wsclient.domain.WsRequestContext
 
 import scala.concurrent.Future
