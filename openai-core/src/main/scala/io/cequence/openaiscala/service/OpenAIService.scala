@@ -41,6 +41,7 @@ import scala.concurrent.Future
  *     and deleteAssistant
  *   - '''Assistant Files''': createAssistantFile, listAssistantFiles, retrieveAssistantFile,
  *     and deleteAssistantFile
+ *
  * @since Jan
  *   2023
  */
@@ -87,18 +88,6 @@ trait OpenAIService extends OpenAICoreService {
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatFunCompletion
   ): Future[ChatFunCompletionResponse]
 
-  def createRun(
-    threadId: String,
-    assistantId: AssistantId,
-    instructions: Option[String] = None,
-    additionalInstructions: Option[String] = None,
-    additionalMessages: Seq[BaseMessage] = Seq.empty,
-    tools: Seq[AssistantTool] = Seq.empty,
-    responseToolChoice: Option[ToolChoice] = None,
-    settings: CreateRunSettings = DefaultSettings.CreateRun,
-    stream: Boolean
-  ): Future[Run]
-
   /**
    * @param assistantId
    *   The ID of the assistant to use to execute this run.
@@ -129,15 +118,15 @@ trait OpenAIService extends OpenAICoreService {
    *   A run object.
    */
   def createThreadAndRun(
-                          assistantId: AssistantId,
-                          thread: Option[ThreadAndRun],
-                          instructions: Option[String] = None,
-                          tools: Seq[AssistantTool] = Seq.empty,
-                          toolResources: Option[ThreadAndRunToolResource] = None,
-                          toolChoice: Option[ToolChoice] = None,
-                          settings: CreateThreadAndRunSettings = DefaultSettings.CreateThreadAndRun,
-                          stream: Boolean
-                        ): Future[Run]
+    assistantId: AssistantId,
+    thread: Option[ThreadAndRun],
+    instructions: Option[String] = None,
+    tools: Seq[AssistantTool] = Seq.empty,
+    toolResources: Option[ThreadAndRunToolResource] = None,
+    toolChoice: Option[ToolChoice] = None,
+    settings: CreateThreadAndRunSettings = DefaultSettings.CreateThreadAndRun,
+    stream: Boolean
+  ): Future[Run]
 
   /**
    * Cancels a run that is in_progress
@@ -150,9 +139,9 @@ trait OpenAIService extends OpenAICoreService {
    *   The modified run object matching the specified ID.
    */
   def cancelRun(
-                 threadId: String,
-                 runId: String
-               ): Future[Run]
+    threadId: String,
+    runId: String
+  ): Future[Run]
 
   /**
    * Modifies a run.
@@ -169,40 +158,15 @@ trait OpenAIService extends OpenAICoreService {
    *   The modified run object matching the specified ID.
    */
   def modifyRun(
-                 threadId: String,
-                 runId: String,
-                 metadata: Map[String, String]
-               ): Future[Run]
-
-  /**
-   * When a run has the status: "requires_action" and required_action.type is
-   * submit_tool_outputs, this endpoint can be used to submit the outputs from the tool calls
-   * once they're all completed. All outputs must be submitted in a single request.
-   *
-   * @param threadId
-   *   The ID of the thread to which this run belongs.
-   * @param runId
-   *   The ID of the run that requires the tool output submission.
-   * @param toolOutputs
-   *   A list of tools for which the outputs are being submitted.
-   * @param stream
-   *   If true, returns a stream of events that happen during the Run as server-sent events,
-   *   terminating when the Run enters a terminal state with a data: [DONE] message.
-   * @return
-   *   The modified run object matching the specified ID.
-   */
-
-  def submitToolOutputs(
     threadId: String,
     runId: String,
-    toolOutputs: Option[Seq[AssistantToolOutput]]
+    metadata: Map[String, String]
   ): Future[Run]
 
   def retrieveRun(
     threadId: String,
     runId: String
   ): Future[Option[Run]]
-
 
   /**
    * Returns a list of runs belonging to a thread.
@@ -217,10 +181,10 @@ trait OpenAIService extends OpenAICoreService {
    *   A list of run objects.
    */
   def listRuns(
-                threadId: String,
-                pagination: Pagination = Pagination.default,
-                order: Option[SortOrder] = None
-              ): Future[Seq[Run]]
+    threadId: String,
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None
+  ): Future[Seq[Run]]
 
   /**
    * Retrieves a run step.
@@ -235,32 +199,10 @@ trait OpenAIService extends OpenAICoreService {
    *   The run step object matching the specified ID.
    */
   def retrieveRunStep(
-                       threadID: String,
-                       runId: String,
-                       stepId: String
-                     ): Future[Option[RunStep]]
-
-  /**
-   * Returns a list of run steps belonging to a run.
-   *
-   * @param threadId
-   *   The ID of the thread the run and run step belongs to.
-   * @param runId
-   *   The ID of the run the run steps belong to.
-   * @param pagination
-   * @param order
-   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
-   *   for descending order.
-   * @return
-   *   A list of run step objects.
-   */
-
-  def listRunSteps(
-    threadId: String,
+    threadID: String,
     runId: String,
-    pagination: Pagination = Pagination.default,
-    order: Option[SortOrder] = None
-  ): Future[Seq[RunStep]]
+    stepId: String
+  ): Future[Option[RunStep]]
 
   /**
    * Creates a model response for the given chat conversation expecting a tool call.
@@ -800,15 +742,14 @@ trait OpenAIService extends OpenAICoreService {
    *   Doc</a>
    */
   def createAssistant(
-                       model: String,
-                       name: Option[String] = None,
-                       description: Option[String] = None,
-                       instructions: Option[String] = None,
-                       tools: Seq[AssistantTool] = Seq.empty[AssistantTool],
-                       toolResources: Option[AssistantToolResource] = None,
-                       metadata: Map[String, String] = Map.empty
-                     ): Future[Assistant]
-
+    model: String,
+    name: Option[String] = None,
+    description: Option[String] = None,
+    instructions: Option[String] = None,
+    tools: Seq[AssistantTool] = Seq.empty[AssistantTool],
+    toolResources: Option[AssistantToolResource] = None,
+    metadata: Map[String, String] = Map.empty
+  ): Future[Assistant]
 
   /**
    * Returns a list of assistants.
@@ -835,9 +776,9 @@ trait OpenAIService extends OpenAICoreService {
    *   Doc</a>
    */
   def listAssistants(
-                      pagination: Pagination = Pagination.default,
-                      order: Option[SortOrder] = None
-                    ): Future[Seq[Assistant]]
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None
+  ): Future[Seq[Assistant]]
 
   /**
    * Retrieves an assistant.
@@ -848,7 +789,6 @@ trait OpenAIService extends OpenAICoreService {
    *   Doc</a>
    */
   def retrieveAssistant(assistantId: String): Future[Option[Assistant]]
-
 
   /**
    * Modifies an assistant.
@@ -879,15 +819,15 @@ trait OpenAIService extends OpenAICoreService {
    *   Doc</a>
    */
   def modifyAssistant(
-                       assistantId: String,
-                       model: Option[String] = None,
-                       name: Option[String] = None,
-                       description: Option[String] = None,
-                       instructions: Option[String] = None,
-                       tools: Seq[AssistantTool] = Seq.empty[AssistantTool],
-                       fileIds: Seq[String] = Seq.empty,
-                       metadata: Map[String, String] = Map.empty
-                     ): Future[Option[Assistant]]
+    assistantId: String,
+    model: Option[String] = None,
+    name: Option[String] = None,
+    description: Option[String] = None,
+    instructions: Option[String] = None,
+    tools: Seq[AssistantTool] = Seq.empty[AssistantTool],
+    fileIds: Seq[String] = Seq.empty,
+    metadata: Map[String, String] = Map.empty
+  ): Future[Option[Assistant]]
 
   /**
    * Delete an assistant.
@@ -910,9 +850,9 @@ trait OpenAIService extends OpenAICoreService {
    *   Doc</a>
    */
   def deleteAssistantFile(
-                           assistantId: String,
-                           fileId: String
-                         ): Future[DeleteResponse]
+    assistantId: String,
+    fileId: String
+  ): Future[DeleteResponse]
 
   ////////////
   // THREAD //
@@ -1180,62 +1120,40 @@ trait OpenAIService extends OpenAICoreService {
    */
   def createRun(
     threadId: String,
-    assistantId: String,
+    assistantId: AssistantId,
     // TODO: move this to settings
     instructions: Option[String] = None,
     additionalInstructions: Option[String] = None,
     additionalMessages: Seq[BaseMessage] = Seq.empty,
-    tools: Seq[ForcableTool] = Seq.empty,
+    tools: Seq[AssistantTool] = Seq.empty,
     responseToolChoice: Option[ToolChoice] = None,
     settings: CreateRunSettings = DefaultSettings.CreateRun,
     stream: Boolean
   ): Future[Run]
 
-  // TODO: def createThreadAndRun - https://platform.openai.com/docs/api-reference/runs/createThreadAndRun
-
-  // TODO: def listRuns - https://platform.openai.com/docs/api-reference/runs/listRuns
-
   /**
-   * Retrieves a run.
+   * When a run has the status: "requires_action" and required_action.type is
+   * submit_tool_outputs, this endpoint can be used to submit the outputs from the tool calls
+   * once they're all completed. All outputs must be submitted in a single request.
    *
    * @param threadId
+   *   The ID of the thread to which this run belongs.
    * @param runId
-   * @return
-   *
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/runs/getRun">OpenAI Doc</a>
-   */
-  def retrieveRun(
-    threadId: String,
-    runId: String
-  ): Future[Option[Run]]
-
-  // TODO: def modifyRun - https://platform.openai.com/docs/api-reference/runs/modifyRun
-
-  /**
-   * Submits tool outputs to run. When a run has the status: "requires_action" and
-   * required_action.type is submit_tool_outputs, this endpoint can be used to submit the
-   * outputs from the tool calls once they're all completed. All outputs must be submitted in a
-   * single request.
-   *
-   * TODO: streamed version
-   *
-   * @param threadId
-   * @param runId
+   *   The ID of the run that requires the tool output submission.
    * @param toolOutputs
+   *   A list of tools for which the outputs are being submitted.
+   * @param stream
+   *   If true, returns a stream of events that happen during the Run as server-sent events,
+   *   terminating when the Run enters a terminal state with a data: [DONE] message.
    * @return
-   *
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/runs/submitToolOutputs">OpenAI
-   *   Doc</a>
+   *   The modified run object matching the specified ID.
    */
   def submitToolOutputs(
     threadId: String,
     runId: String,
-    toolOutputs: Seq[AssistantToolOutput]
+    toolOutputs: Seq[AssistantToolOutput],
+    stream: Boolean
   ): Future[Run]
-
-  // TODO: cancelRun - https://platform.openai.com/docs/api-reference/runs/cancelRun
 
   ///////////////
   // RUN STEPS //
@@ -1245,15 +1163,17 @@ trait OpenAIService extends OpenAICoreService {
    * Returns a list of run steps belonging to a run.
    *
    * @param threadId
+   *   The ID of the thread the run and run step belongs to.
    * @param runId
+   *   The ID of the run the run steps belong to.
    * @param pagination
    * @param order
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
+   *   for descending order.
    * @return
-   *
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/run-steps/listRunSteps">OpenAI
-   *   Doc</a>
+   *   A list of run step objects.
    */
+
   def listRunSteps(
     threadId: String,
     runId: String,
@@ -1276,8 +1196,8 @@ trait OpenAIService extends OpenAICoreService {
    * @param name
    *   The name of the vector store.
    * @param expires_after
-   *   The expiration policy for a vector store. TODO
-   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
+   *   The expiration policy for a vector store. TODO maximum of 64 characters long and values
+   *   can be a maximum of 512 characters long.
    * @return
    *
    * @see
@@ -1286,17 +1206,15 @@ trait OpenAIService extends OpenAICoreService {
    */
   def createVectorStore(
     fileIds: Seq[String] = Nil,
+    name: Option[String] = None,
     metadata: Map[String, Any] = Map()
   ): Future[VectorStore]
 
   /**
-   * Returns a list of vector stores.
-   *   the default is 20. Defaults to 20
-   *   for descending order. Defaults to desc
-   *   obj_foo, your subsequent call can include after=obj_foo in order to fetch the next page
-   *   of the list.
-   *   obj_foo, your subsequent call can include before=obj_foo in order to fetch the previous
-   *   page of the list.
+   * Returns a list of vector stores. the default is 20. Defaults to 20 for descending order.
+   * Defaults to desc obj_foo, your subsequent call can include after=obj_foo in order to fetch
+   * the next page of the list. obj_foo, your subsequent call can include before=obj_foo in
+   * order to fetch the previous page of the list.
    * @return
    *   thread messages
    * @see
@@ -1304,6 +1222,8 @@ trait OpenAIService extends OpenAICoreService {
    *   Doc</a>
    */
   def listVectorStores(
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None
   ): Future[Seq[VectorStore]]
 
   // TODO: retrieveVectorStore - https://platform.openai.com/docs/api-reference/vector-stores/get
@@ -1394,9 +1314,9 @@ trait OpenAIService extends OpenAICoreService {
    *   Doc</a>
    */
   def deleteVectorStoreFile(
-                             vectorStoreId: String,
-                             fileId: String
-                           ): Future[DeleteResponse]
+    vectorStoreId: String,
+    fileId: String
+  ): Future[DeleteResponse]
 
   ///////////
   // BATCH //

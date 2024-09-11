@@ -52,7 +52,7 @@ object CreateRunWithFunctionCall extends Example {
   override protected def run: Future[_] =
     for {
       assistant <- createAssistant()
-      assistantId = assistant.id
+      assistantId = AssistantId(assistant.id)
       eventsThread <- createSpecMessagesThread()
 
       _ <- service.listThreadMessages(eventsThread.id).map { messages =>

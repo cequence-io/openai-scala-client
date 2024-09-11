@@ -15,7 +15,6 @@ object CreateAssistant extends Example {
         ),
         tools = Seq(
           FunctionTool("name", description = None, parameters = Map())
-          FunctionTool("name", description = None, Map())
         ),
         toolResources = Some(AssistantToolResource())
       )

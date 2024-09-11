@@ -763,13 +763,13 @@ object JsonFormats {
   )(Attachment.apply, unlift(Attachment.unapply))
 
   implicit lazy val assistantReads: Reads[Assistant] = (
-    (__ \ "id").read[AssistantId] and
+    (__ \ "id").read[String] and
       (__ \ "created_at").read[ju.Date] and
       (__ \ "name").readNullable[String] and
       (__ \ "description").readNullable[String] and
       (__ \ "model").read[String] and
       (__ \ "instructions").readNullable[String] and
-      (__ \ "tools").read[List[AssistantTool]] and
+      (__ \ "tools").read[Seq[AssistantTool]] and
       (__ \ "tool_resources")
         .read[Seq[AssistantToolResourceResponse]]
         .orElse(Reads.pure(Nil)) and
@@ -777,7 +777,7 @@ object JsonFormats {
       (__ \ "temperature").readNullable[Double].orElse(Reads.pure(None)) and
       (__ \ "top_p").readNullable[Double].orElse(Reads.pure(None)) and
       (__ \ "response_format").read[ResponseFormat]
-  )((Assistant.apply _))
+  )(Assistant.apply _)
 
 //  implicit lazy val assistantWrites: Writes[Assistant] =
 //    Json.writes[Assistant]

@@ -3,7 +3,7 @@ import io.cequence.openaiscala.domain
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain.response.Assistant
 import io.cequence.openaiscala.domain.settings.CreateRunSettings
-import io.cequence.openaiscala.domain.{ModelId, ThreadMessage}
+import io.cequence.openaiscala.domain.{AssistantId, ModelId, ThreadMessage}
 
 import scala.collection.immutable.ListMap
 import scala.concurrent.Future
@@ -41,7 +41,7 @@ object CreateRun extends Example {
       eventsThread <- createEventMessages
       run <- service.createRun(
         threadId = eventsThread.id,
-        assistantId = assistant.id,
+        assistantId = AssistantId(assistant.id),
         instructions = Some(
           "If you need the weather forecast for a specific city and date, you can use the weather_forecast_for_city function."
         ),

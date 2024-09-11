@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.examples.scenario
 
 import io.cequence.openaiscala.domain.AssistantTool.FileSearchTool
-import io.cequence.openaiscala.domain.{AssistantToolResource, ThreadMessage}
+import io.cequence.openaiscala.domain.{AssistantId, AssistantToolResource, ThreadMessage}
 import io.cequence.openaiscala.examples.CreateVectorStore.service
 import io.cequence.openaiscala.examples.Example
 
@@ -55,7 +55,7 @@ object Assistants extends Example {
 
       run <- service.createRun(
         thread.id,
-        assistant.id,
+        AssistantId(assistant.id),
         stream = false
       )
 
