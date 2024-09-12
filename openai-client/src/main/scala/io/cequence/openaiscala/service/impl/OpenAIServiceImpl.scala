@@ -126,17 +126,6 @@ private[service] trait OpenAIServiceImpl
     )
   }
 
-  override def cancelRun(
-    threadId: String,
-    runId: String
-  ): Future[Run] =
-    execPOST(
-      EndPoint.threads,
-      Some(s"$threadId/runs/$runId/cancel")
-    ).map(
-      _.asSafeJson[Run]
-    )
-
   override def modifyRun(
     threadId: String,
     runId: String,
@@ -172,6 +161,19 @@ private[service] trait OpenAIServiceImpl
     ).map(
       _.asSafeJson[Run]
     )
+
+  override def cancelRun(
+    threadId: String,
+    runId: String
+  ): Future[Run] = {
+    execPOST(
+      EndPoint.threads,
+      Some(s"$threadId/runs/$runId/cancel")
+    ).map(
+      _.asSafeJson[Run]
+    )
+
+  }
 
   override def retrieveRun(
     threadId: String,
@@ -856,6 +858,15 @@ private[service] trait OpenAIServiceImpl
     ).map { response =>
       readAttribute(response.json, "data").asSafeArray[ThreadFullMessage]
     }
+
+  override def deleteThreadMessage(
+    threadId: String,
+    messageId: String
+  ): Future[DeleteResponse] =
+    execDELETERich(
+      EndPoint.threads,
+      endPointParam = Some(s"$threadId/messages/$messageId")
+    ).map(handleDeleteEndpointResponse)
 
   override def retrieveThreadMessageFile(
     threadId: String,

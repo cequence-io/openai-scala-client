@@ -447,6 +447,13 @@ trait OpenAIServiceWrapper
     _.listThreadMessages(threadId, pagination, order)
   )
 
+  def deleteThreadMessage(
+    threadId: String,
+    messageId: String
+  ): Future[DeleteResponse] = wrap(
+    _.deleteThreadMessage(threadId, messageId)
+  )
+
   override def retrieveThreadMessageFile(
     threadId: String,
     messageId: String,

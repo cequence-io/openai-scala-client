@@ -89,122 +89,6 @@ trait OpenAIService extends OpenAICoreService {
   ): Future[ChatFunCompletionResponse]
 
   /**
-   * @param assistantId
-   *   The ID of the assistant to use to execute this run.
-   * @param thread
-   *   The ID of the thread to run.
-   * @param instructions
-   *   Override the default system message of the assistant. This is useful for modifying the
-   *   behavior on a per-run basis.
-   * @param tools
-   *   Override the tools the assistant can use for this run. This is useful for modifying the
-   *   behavior on a per-run basis.
-   * @param toolResources
-   *   A set of resources that are used by the assistant's tools. The resources are specific to
-   *   the type of tool. For example, the code_interpreter tool requires a list of file IDs,
-   *   while the file_search tool requires a list of vector store IDs.
-   * @param toolChoice
-   *   Controls which (if any) tool is called by the model. none means the model will not call
-   *   any tools and instead generates a message. auto is the default value and means the model
-   *   can pick between generating a message or calling one or more tools. required means the
-   *   model must call one or more tools before responding to the user. Specifying a particular
-   *   tool like {"type": "file_search"} or {"type": "function", "function": {"name":
-   *   "my_function"}} forces the model to call that tool.
-   * @param settings
-   * @param stream
-   *   If true, returns a stream of events that happen during the Run as server-sent events,
-   *   terminating when the Run enters a terminal state with a data: [DONE] message.
-   * @returns
-   *   A run object.
-   */
-  def createThreadAndRun(
-    assistantId: AssistantId,
-    thread: Option[ThreadAndRun],
-    instructions: Option[String] = None,
-    tools: Seq[AssistantTool] = Seq.empty,
-    toolResources: Option[ThreadAndRunToolResource] = None,
-    toolChoice: Option[ToolChoice] = None,
-    settings: CreateThreadAndRunSettings = DefaultSettings.CreateThreadAndRun,
-    stream: Boolean
-  ): Future[Run]
-
-  /**
-   * Cancels a run that is in_progress
-   *
-   * @param threadId
-   *   The ID of the thread to which this run belongs.
-   * @param runId
-   *   The ID of the run to cancel.
-   * @return
-   *   The modified run object matching the specified ID.
-   */
-  def cancelRun(
-    threadId: String,
-    runId: String
-  ): Future[Run]
-
-  /**
-   * Modifies a run.
-   *
-   * @param threadId
-   *   The ID of the thread that was run.
-   * @param runId
-   *   The ID of the run to modify.
-   * @param metadata
-   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
-   *   storing additional information about the object in a structured format. Keys can be a
-   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
-   * @return
-   *   The modified run object matching the specified ID.
-   */
-  def modifyRun(
-    threadId: String,
-    runId: String,
-    metadata: Map[String, String]
-  ): Future[Run]
-
-  def retrieveRun(
-    threadId: String,
-    runId: String
-  ): Future[Option[Run]]
-
-  /**
-   * Returns a list of runs belonging to a thread.
-   *
-   * @param threadId
-   *   The ID of the thread the run belongs to.
-   * @param pagination
-   * @param order
-   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
-   *   for descending order.
-   * @return
-   *   A list of run objects.
-   */
-  def listRuns(
-    threadId: String,
-    pagination: Pagination = Pagination.default,
-    order: Option[SortOrder] = None
-  ): Future[Seq[Run]]
-
-  /**
-   * Retrieves a run step.
-   *
-   * @param threadID
-   *   The ID of the thread to which the run and run step belongs.
-   * @param runId
-   *   The ID of the run to which the run step belongs.
-   * @param stepId
-   *   The ID of the run step to retrieve.
-   * @return
-   *   The run step object matching the specified ID.
-   */
-  def retrieveRunStep(
-    threadID: String,
-    runId: String,
-    stepId: String
-  ): Future[Option[RunStep]]
-
-  /**
    * Creates a model response for the given chat conversation expecting a tool call.
    *
    * @param messages
@@ -1037,6 +921,24 @@ trait OpenAIService extends OpenAICoreService {
     order: Option[SortOrder] = None
   ): Future[Seq[ThreadFullMessage]]
 
+  /**
+   * Deletes a thread message.
+   *
+   * @param threadId
+   *   The ID of the thread to which this message belongs.
+   * @param messageId
+   *   The ID of the message to delete.
+   * @return
+   *   Deletion status.
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/messages/deleteMessage">OpenAI
+   *   Doc</a>
+   */
+  def deleteThreadMessage(
+    threadId: String,
+    messageId: String
+  ): Future[DeleteResponse]
+
   /////////////////
   // THREAD FILE //
   /////////////////
@@ -1132,6 +1034,89 @@ trait OpenAIService extends OpenAICoreService {
   ): Future[Run]
 
   /**
+   * @param assistantId
+   *   The ID of the assistant to use to execute this run.
+   * @param thread
+   *   The ID of the thread to run.
+   * @param instructions
+   *   Override the default system message of the assistant. This is useful for modifying the
+   *   behavior on a per-run basis.
+   * @param tools
+   *   Override the tools the assistant can use for this run. This is useful for modifying the
+   *   behavior on a per-run basis.
+   * @param toolResources
+   *   A set of resources that are used by the assistant's tools. The resources are specific to
+   *   the type of tool. For example, the code_interpreter tool requires a list of file IDs,
+   *   while the file_search tool requires a list of vector store IDs.
+   * @param toolChoice
+   *   Controls which (if any) tool is called by the model. none means the model will not call
+   *   any tools and instead generates a message. auto is the default value and means the model
+   *   can pick between generating a message or calling one or more tools. required means the
+   *   model must call one or more tools before responding to the user. Specifying a particular
+   *   tool like {"type": "file_search"} or {"type": "function", "function": {"name":
+   *   "my_function"}} forces the model to call that tool.
+   * @param settings
+   * @param stream
+   *   If true, returns a stream of events that happen during the Run as server-sent events,
+   *   terminating when the Run enters a terminal state with a data: [DONE] message.
+   * @returns
+   *   A run object.
+   */
+  def createThreadAndRun(
+    assistantId: AssistantId,
+    thread: Option[ThreadAndRun],
+    instructions: Option[String] = None,
+    tools: Seq[AssistantTool] = Seq.empty,
+    toolResources: Option[ThreadAndRunToolResource] = None,
+    toolChoice: Option[ToolChoice] = None,
+    settings: CreateThreadAndRunSettings = DefaultSettings.CreateThreadAndRun,
+    stream: Boolean
+  ): Future[Run]
+
+  /**
+   * Returns a list of runs belonging to a thread.
+   *
+   * @param threadId
+   *   The ID of the thread the run belongs to.
+   * @param pagination
+   * @param order
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
+   *   for descending order.
+   * @return
+   *   A list of run objects.
+   */
+  def listRuns(
+    threadId: String,
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None
+  ): Future[Seq[Run]]
+
+  def retrieveRun(
+    threadId: String,
+    runId: String
+  ): Future[Option[Run]]
+
+  /**
+   * Modifies a run.
+   *
+   * @param threadId
+   *   The ID of the thread that was run.
+   * @param runId
+   *   The ID of the run to modify.
+   * @param metadata
+   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
+   *   storing additional information about the object in a structured format. Keys can be a
+   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
+   * @return
+   *   The modified run object matching the specified ID.
+   */
+  def modifyRun(
+    threadId: String,
+    runId: String,
+    metadata: Map[String, String]
+  ): Future[Run]
+
+  /**
    * When a run has the status: "requires_action" and required_action.type is
    * submit_tool_outputs, this endpoint can be used to submit the outputs from the tool calls
    * once they're all completed. All outputs must be submitted in a single request.
@@ -1155,12 +1140,28 @@ trait OpenAIService extends OpenAICoreService {
     stream: Boolean
   ): Future[Run]
 
+  /**
+   * Cancels a run that is in_progress
+   *
+   * @param threadId
+   *   The ID of the thread to which this run belongs.
+   * @param runId
+   *   The ID of the run to cancel.
+   * @return
+   *   The modified run object matching the specified ID.
+   */
+  def cancelRun(
+    threadId: String,
+    runId: String
+  ): Future[Run]
+
   ///////////////
   // RUN STEPS //
   ///////////////
 
   /**
-   * Returns a list of run steps belonging to a run.
+   * Returns a list of run steps belonging to a run. Returns a list of run steps belonging to a
+   * run.
    *
    * @param threadId
    *   The ID of the thread the run and run step belongs to.
@@ -1181,7 +1182,23 @@ trait OpenAIService extends OpenAICoreService {
     order: Option[SortOrder] = None
   ): Future[Seq[RunStep]]
 
-  // TODO: retrieveRunStep - https://platform.openai.com/docs/api-reference/run-steps/getRunStep
+  /**
+   * Retrieves a run step.
+   *
+   * @param threadID
+   *   The ID of the thread to which the run and run step belongs.
+   * @param runId
+   *   The ID of the run to which the run step belongs.
+   * @param stepId
+   *   The ID of the run step to retrieve.
+   * @return
+   *   The run step object matching the specified ID.
+   */
+  def retrieveRunStep(
+    threadID: String,
+    runId: String,
+    stepId: String
+  ): Future[Option[RunStep]]
 
   //////////////////
   // VECTOR STORE //
