@@ -19,6 +19,15 @@ object RunStatus {
   case object Completed extends RunStatus
   case object Incomplete extends RunStatus
   case object Expired extends RunStatus
+
+  def finishedStates: Set[RunStatus] =
+    Set(
+      Completed,
+      Failed,
+      Cancelled,
+      Incomplete, // TODO: is this a finished state?
+      Expired
+    )
 }
 
 sealed trait ToolChoice

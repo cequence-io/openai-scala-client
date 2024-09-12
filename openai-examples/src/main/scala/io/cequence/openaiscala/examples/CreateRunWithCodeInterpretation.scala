@@ -51,15 +51,8 @@ object CreateRunWithCodeInterpretation extends Example with PollingHelper {
         stream = false
       )
 
-      doneStatues: Set[RunStatus] = Set(
-        RunStatus.Completed,
-        RunStatus.Failed,
-        RunStatus.Expired,
-        RunStatus.Expired
-      )
-
       // poll until done
-      runNew <- pollUntilDone((run: Run) => doneStatues.contains(run.status)) {
+      runNew <- pollUntilDone((run: Run) => RunStatus.finishedStates.contains(run.status)) {
         service
           .retrieveRun(thread.id, run.id)
           .map(
