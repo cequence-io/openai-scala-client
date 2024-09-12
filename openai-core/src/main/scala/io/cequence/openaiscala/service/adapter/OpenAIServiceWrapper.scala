@@ -206,9 +206,9 @@ trait OpenAIServiceWrapper
   override def uploadFile(
     file: File,
     displayFileName: Option[String],
-    settings: UploadFileSettings
+    purpose: FileUploadPurpose
   ): Future[FileInfo] = wrap(
-    _.uploadFile(file, displayFileName, settings)
+    _.uploadFile(file, displayFileName, purpose)
   )
 
   override def uploadBatchFile(

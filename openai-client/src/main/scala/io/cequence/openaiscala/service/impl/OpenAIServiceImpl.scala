@@ -433,14 +433,12 @@ private[service] trait OpenAIServiceImpl
   override def uploadFile(
     file: File,
     displayFileName: Option[String],
-    settings: UploadFileSettings
+    purpose: FileUploadPurpose
   ): Future[FileInfo] =
     execPOSTMultipart(
       EndPoint.files,
       fileParams = Seq((Param.file, file, displayFileName)),
-      bodyParams = Seq(
-        Param.purpose -> Some(settings.purpose)
-      )
+      bodyParams = Seq(Param.purpose -> Some(purpose))
     ).map(
       _.asSafeJson[FileInfo]
     )
@@ -465,13 +463,14 @@ private[service] trait OpenAIServiceImpl
     displayFileName: Option[String]
   ): Future[FileInfo] = {
     readFile(file)
+    // TODO
     // parse the fileContent as Seq[BatchRow] solely for the purpose of validating its structure, OpenAIScalaClientException is thrown if the parsing fails
 
 //    fileRows.map { row =>
 //      Json.parse(row).asSafeArray[BatchRow]
 //    }
 
-    uploadFile(file, displayFileName, DefaultSettings.UploadBatchFile)
+    uploadFile(file, displayFileName, FileUploadPurpose.batch)
   }
 
   override def buildAndUploadBatchFile(

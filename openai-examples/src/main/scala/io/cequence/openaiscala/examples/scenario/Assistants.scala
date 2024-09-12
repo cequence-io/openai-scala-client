@@ -1,6 +1,7 @@
 package io.cequence.openaiscala.examples.scenario
 
 import io.cequence.openaiscala.domain.AssistantTool.FileSearchTool
+import io.cequence.openaiscala.domain.settings.{FileUploadPurpose, UploadFileSettings}
 import io.cequence.openaiscala.domain.{AssistantId, AssistantToolResource, ThreadMessage}
 import io.cequence.openaiscala.examples.CreateVectorStore.service
 import io.cequence.openaiscala.examples.Example
@@ -19,9 +20,12 @@ object Assistants extends Example {
     new File(resource.getFile)
   }
 
-  override protected def run: Future[_] =
+  override protected def run: Future[_] = {
     for {
-      fileInfo <- service.uploadFile(scheduleFile())
+      fileInfo <- service.uploadFile(
+        scheduleFile(),
+        purpose = FileUploadPurpose.assistants
+      )
 
       vectorStore <- service.createVectorStore(
         fileIds = Seq(fileInfo.id),
@@ -69,5 +73,6 @@ object Assistants extends Example {
       println(s"Run created: ${run.id}")
       messages.foreach(println)
     }
+  }
 
 }

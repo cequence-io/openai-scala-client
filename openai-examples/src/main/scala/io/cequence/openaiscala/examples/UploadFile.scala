@@ -1,5 +1,7 @@
 package io.cequence.openaiscala.examples
 
+import io.cequence.openaiscala.domain.settings.FileUploadPurpose
+
 import java.io.File
 import java.nio.file.Paths
 import scala.concurrent.Future
@@ -11,7 +13,7 @@ object UploadFile extends Example {
 
   override protected def run: Future[_] =
     for {
-      fileInfo <- service.uploadFile(scheduleFile())
+      fileInfo <- service.uploadFile(scheduleFile(), purpose = FileUploadPurpose.assistants)
     } yield {
       fileInfo
     }

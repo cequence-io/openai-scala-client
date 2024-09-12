@@ -297,7 +297,7 @@ trait OpenAIService extends OpenAICoreService {
   def uploadFile(
     file: File,
     displayFileName: Option[String] = None,
-    settings: UploadFileSettings = DefaultSettings.UploadFineTuneFile
+    purpose: FileUploadPurpose
   ): Future[FileInfo]
 
   /**

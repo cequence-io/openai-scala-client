@@ -3,7 +3,7 @@ package io.cequence.openaiscala.examples
 import io.cequence.openaiscala.domain.AssistantTool.FileSearchTool
 import io.cequence.openaiscala.domain.AssistantToolResource.FileSearchResources
 import io.cequence.openaiscala.domain.response.FileInfo
-import io.cequence.openaiscala.domain.settings.CreateRunSettings
+import io.cequence.openaiscala.domain.settings.{CreateRunSettings, FileUploadPurpose}
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.service.adapter.OpenAIServiceAdapters
 import io.cequence.openaiscala.service.{OpenAIService, OpenAIServiceFactory}
@@ -29,7 +29,7 @@ object CreateRunWithVectorStore extends Example {
     Paths.get("/Users/boris/proj/cequence/eBF programme 2024 - extracted.pdf").toFile
 
   private def uploadFile: Future[FileInfo] =
-    service.uploadFile(scheduleFile())
+    service.uploadFile(scheduleFile(), purpose = FileUploadPurpose.batch)
 
   private def createVectorStore(file: FileInfo) = {
     service.createVectorStore(fileIds = Seq(file.id), name = Some("Conference Schedule"))
