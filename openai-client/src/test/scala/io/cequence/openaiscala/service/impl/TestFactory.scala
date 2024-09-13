@@ -106,7 +106,7 @@ object TestFactory extends OpenAIServiceConsts {
 //      mockedResponse = mockedResponse
 //    )
 
-  def withResponse(mockedResponse: AHCResponse) =
+  def withResponse(mockedResponse: AHCResponse): OpenAIService =
     TestOpenAIServiceFactory(mockedResponse).customInstance(defaultCoreUrl)
 
   def mockedService401(): OpenAIService = withResponse(mockedResponse401)

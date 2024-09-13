@@ -8,28 +8,20 @@ import io.cequence.openaiscala.domain.AssistantToolResource.{
   FileSearchResources,
   VectorStore
 }
-import io.cequence.openaiscala.domain.response.AssistantToolResourceResponse.{
-  CodeInterpreterResourcesResponse,
-  FileSearchResourcesResponse
-}
 import io.cequence.openaiscala.domain.response.ResponseFormat.{
   JsonObjectResponse,
   StringResponse,
   TextResponse
 }
 import io.cequence.openaiscala.domain.response.{
-  AssistantToolResourceResponse,
   FineTuneHyperparams,
   FineTuneJob,
   ResponseFormat
 }
 import io.cequence.openaiscala.domain._
-import org.scalatest.Ignore
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import play.api.libs.json.{Format, Json}
-
-import java.util.Date
 
 object JsonFormatsSpec {
   sealed trait JsonPrintMode
