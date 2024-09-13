@@ -17,7 +17,7 @@ object OctoMLCreateChatCompletionStreamed
     extends ExampleBase[OpenAIChatCompletionStreamedServiceExtra] {
 
   override val service: OpenAIChatCompletionStreamedServiceExtra =
-    ChatCompletionProvider.streamed.octo
+    ChatCompletionProvider.streamed.octoML
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),

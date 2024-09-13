@@ -15,7 +15,7 @@ import scala.concurrent.Future
 object OctoMLCreateChatCompletion extends ExampleBase[OpenAIChatCompletionService] {
 
   override val service: OpenAIChatCompletionService =
-    ChatCompletionProvider.octo
+    ChatCompletionProvider.octoML
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),

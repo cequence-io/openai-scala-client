@@ -1,12 +1,14 @@
 package io.cequence.openaiscala.examples
 
 import akka.stream.Materializer
+import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.service.{
   OpenAIChatCompletionService,
   OpenAIChatCompletionServiceFactory,
   OpenAIChatCompletionStreamedServiceExtra,
   OpenAIChatCompletionStreamedServiceFactory
 }
+import io.cequence.openaiscala.vertexai.service.VertexAIServiceFactory
 import io.cequence.wsclient.domain.WsRequestContext
 
 import scala.concurrent.ExecutionContext
@@ -22,7 +24,7 @@ object ChatCompletionProvider {
   val Fireworks =
     ProviderSettings("https://api.fireworks.ai/inference/v1/", "FIREWORKS_API_KEY")
   val Mistral = ProviderSettings("https://api.mistral.ai/v1/", "MISTRAL_API_KEY")
-  val Octo = ProviderSettings("https://text.octoai.run/v1/", "OCTOAI_TOKEN")
+  val OctoML = ProviderSettings("https://text.octoai.run/v1/", "OCTOAI_TOKEN")
   val TogetherAI = ProviderSettings("https://api.together.xyz/v1/", "TOGETHERAI_API_KEY")
 
   def cerebras(
@@ -45,15 +47,25 @@ object ChatCompletionProvider {
     m: Materializer
   ): OpenAIChatCompletionService = provide(Mistral)
 
-  def octo(
+  def octoML(
     implicit ec: ExecutionContext,
     m: Materializer
-  ): OpenAIChatCompletionService = provide(Octo)
+  ): OpenAIChatCompletionService = provide(OctoML)
 
   def togetherAI(
     implicit ec: ExecutionContext,
     m: Materializer
   ): OpenAIChatCompletionService = provide(TogetherAI)
+
+  def vertexAI(
+    implicit ec: ExecutionContext,
+    m: Materializer
+  ) = VertexAIServiceFactory.asOpenAI()
+
+  def anthropic(
+    implicit ec: ExecutionContext,
+    m: Materializer
+  ) = AnthropicServiceFactory.asOpenAI()
 
   object streamed {
     def cerebras(
@@ -76,10 +88,10 @@ object ChatCompletionProvider {
       m: Materializer
     ): OpenAIChatCompletionStreamedServiceExtra = provideStreamed(Mistral)
 
-    def octo(
+    def octoML(
       implicit ec: ExecutionContext,
       m: Materializer
-    ): OpenAIChatCompletionStreamedServiceExtra = provideStreamed(Octo)
+    ): OpenAIChatCompletionStreamedServiceExtra = provideStreamed(OctoML)
 
     def togetherAI(
       implicit ec: ExecutionContext,
