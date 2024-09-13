@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.domain
 
-import io.cequence.openaiscala.domain.ThreadAndRun.Content.{ContentBlock, ContentBlocks}
+import io.cequence.openaiscala.domain.ThreadAndRun.Content.ContentBlock
 
 final case class ThreadAndRun(
   // TODO: check whether the message model is restrictive enough

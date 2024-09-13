@@ -2,19 +2,8 @@ package io.cequence.openaiscala.examples.scenario
 
 import io.cequence.openaiscala.domain.AssistantTool.FileSearchTool
 import io.cequence.openaiscala.domain.settings.FileUploadPurpose
-import io.cequence.openaiscala.domain.{
-  AssistantId,
-  AssistantToolResource,
-  Run,
-  RunStatus,
-  ThreadMessage
-}
-import io.cequence.openaiscala.examples.CreateRunWithCodeInterpretation.{
-  pollUntilDone,
-  service
-}
+import io.cequence.openaiscala.domain.{AssistantId, AssistantToolResource, Run, RunStatus}
 import io.cequence.openaiscala.examples.{Example, PollingHelper}
-import io.cequence.openaiscala.examples.scenario.Assistants.{getClass, scheduleFile, service}
 
 import java.io.File
 import scala.concurrent.Future

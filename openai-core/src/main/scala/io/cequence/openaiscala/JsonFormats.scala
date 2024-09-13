@@ -1,18 +1,6 @@
 package io.cequence.openaiscala
 
-import io.cequence.openaiscala.domain.AssistantTool.{
-  CodeInterpreterTool,
-  FileSearchTool,
-  FunctionTool
-}
-import io.cequence.openaiscala.domain.AssistantToolResource.{
-  CodeInterpreterResources,
-  FileSearchResources
-}
-import io.cequence.openaiscala.domain.AssistantToolResource.{
-  CodeInterpreterResources,
-  FileSearchResources
-}
+import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain.ChunkingStrategy.StaticChunkingStrategy
 import io.cequence.openaiscala.domain.FineTune.WeightsAndBiases

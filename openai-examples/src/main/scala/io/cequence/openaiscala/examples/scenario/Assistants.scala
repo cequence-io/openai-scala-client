@@ -1,13 +1,11 @@
 package io.cequence.openaiscala.examples.scenario
 
 import io.cequence.openaiscala.domain.AssistantTool.FileSearchTool
-import io.cequence.openaiscala.domain.settings.{FileUploadPurpose, UploadFileSettings}
+import io.cequence.openaiscala.domain.settings.FileUploadPurpose
 import io.cequence.openaiscala.domain.{AssistantId, AssistantToolResource, ThreadMessage}
-import io.cequence.openaiscala.examples.CreateVectorStore.service
 import io.cequence.openaiscala.examples.Example
 
 import java.io.File
-import java.nio.file.Paths
 import scala.concurrent.Future
 
 object Assistants extends Example {

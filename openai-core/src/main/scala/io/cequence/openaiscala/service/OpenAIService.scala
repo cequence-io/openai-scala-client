@@ -1015,19 +1015,25 @@ trait OpenAIService extends OpenAICoreService {
    * @param assistantId
    *   The ID of the assistant to use to execute this run.
    * @param instructions
-   *   Optional. Overrides the instructions of the assistant. This is useful for modifying the behavior on a per-run basis.
+   *   Optional. Overrides the instructions of the assistant. This is useful for modifying the
+   *   behavior on a per-run basis.
    * @param additionalInstructions
-   *   Optional. Appends additional instructions at the end of the instructions for the run. This is useful for modifying the behavior on a per-run basis without overriding other instructions.
+   *   Optional. Appends additional instructions at the end of the instructions for the run.
+   *   This is useful for modifying the behavior on a per-run basis without overriding other
+   *   instructions.
    * @param additionalMessages
    *   Optional. Adds additional messages to the thread before creating the run.
    * @param tools
-   *   Optional. Override the tools the assistant can use for this run. This is useful for modifying the behavior on a per-run basis.
+   *   Optional. Override the tools the assistant can use for this run. This is useful for
+   *   modifying the behavior on a per-run basis.
    * @param responseToolChoice
-   *   Optional. Controls which (if any) tool is called by the model. Can be "none", "auto", "required", or a specific tool.
+   *   Optional. Controls which (if any) tool is called by the model. Can be "none", "auto",
+   *   "required", or a specific tool.
    * @param settings
    *   Optional. Settings for creating the run, such as model, temperature, top_p, etc.
    * @param stream
-   *   Optional. If true, returns a stream of events that happen during the Run as server-sent events, terminating when the Run enters a terminal state with a data: [DONE] message.
+   *   Optional. If true, returns a stream of events that happen during the Run as server-sent
+   *   events, terminating when the Run enters a terminal state with a data: [DONE] message.
    * @return
    *   `Future[Run]` A future that resolves to a Run object.
    *
@@ -1035,17 +1041,17 @@ trait OpenAIService extends OpenAICoreService {
    *   <a href="https://api.openai.com/v1/threads/{thread_id}/runs">OpenAI API Reference</a>
    */
   def createRun(
-                 threadId: String,
-                 assistantId: AssistantId,
-                 // TODO: move this to settings
-                 instructions: Option[String] = None,
-                 additionalInstructions: Option[String] = None,
-                 additionalMessages: Seq[BaseMessage] = Seq.empty,
-                 tools: Seq[AssistantTool] = Seq.empty,
-                 responseToolChoice: Option[ToolChoice] = None,
-                 settings: CreateRunSettings = DefaultSettings.CreateRun,
-                 stream: Boolean
-               ): Future[Run]
+    threadId: String,
+    assistantId: AssistantId,
+    // TODO: move this to settings
+    instructions: Option[String] = None,
+    additionalInstructions: Option[String] = None,
+    additionalMessages: Seq[BaseMessage] = Seq.empty,
+    tools: Seq[AssistantTool] = Seq.empty,
+    responseToolChoice: Option[ToolChoice] = None,
+    settings: CreateRunSettings = DefaultSettings.CreateRun,
+    stream: Boolean
+  ): Future[Run]
 
   /**
    * @param assistantId

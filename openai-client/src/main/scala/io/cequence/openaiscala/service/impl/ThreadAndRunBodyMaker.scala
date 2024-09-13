@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.service.impl
 
 import io.cequence.openaiscala.JsonFormats._
-import io.cequence.openaiscala.domain.settings.{CreateRunSettings, CreateThreadAndRunSettings}
+import io.cequence.openaiscala.domain.settings.CreateThreadAndRunSettings
 import io.cequence.wsclient.service.WSClient
 import play.api.libs.json.{JsValue, Json}
 
