@@ -317,11 +317,25 @@ trait OpenAIServiceWrapper
     _.createVectorStore(fileIds, name, metadata)
   )
 
+  override def modifyVectorStore(
+    vectorStoreId: String,
+    name: Option[String],
+    metadata: Map[String, Any]
+  ): Future[VectorStore] = wrap(
+    _.modifyVectorStore(vectorStoreId, name, metadata)
+  )
+
   override def listVectorStores(
     pagination: Pagination,
     order: Option[SortOrder]
   ): Future[Seq[VectorStore]] = wrap(
     _.listVectorStores(pagination, order)
+  )
+
+  override def retrieveVectorStore(
+    vectorStoreId: String
+  ): Future[Option[VectorStore]] = wrap(
+    _.retrieveVectorStore(vectorStoreId)
   )
 
   override def deleteVectorStore(
@@ -347,6 +361,14 @@ trait OpenAIServiceWrapper
   ): Future[Seq[VectorStoreFile]] =
     wrap(
       _.listVectorStoreFiles(vectorStoreId, pagination, order, filter)
+    )
+
+  def retrieveVectorStoreFile(
+    vectorStoreId: String,
+    fileId: FileId
+  ): Future[VectorStoreFile] =
+    wrap(
+      _.retrieveVectorStoreFile(vectorStoreId, fileId)
     )
 
   def deleteVectorStoreFile(

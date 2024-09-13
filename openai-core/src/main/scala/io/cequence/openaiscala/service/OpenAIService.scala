@@ -34,16 +34,18 @@ import scala.concurrent.Future
  *     listThreadMessages, retrieveThreadMessageFile, and listThreadMessageFiles
  *   - '''Runs''': createRun, etc.
  *   - '''Run Steps''': listRunSteps, etc.
- *   - '''Vector Stores''': createVectorStore, etc.
- *   - '''Vector Store Files''': createVectorStoreFile, etc.
- *   - '''Vector Store File Batches''': createVectorStoreFileBatch, etc.
+ *   - '''Vector Stores''': createVectorStore, modifyVectorStore, listVectorStores,
+ *     retrieveVectorStore, deleteVectorStore etc.
+ *   - '''Vector Store Files''': createVectorStoreFile, listVectorStoreFiles,
+ *     retrieveVectorStoreFile, deleteVectorStoreFile etc.
+ *   - '''Vector Store File Batches''': TODO etc.
  *   - '''Assistants''': createAssistant, listAssistants, retrieveAssistant, modifyAssistant,
  *     and deleteAssistant
  *   - '''Assistant Files''': createAssistantFile, listAssistantFiles, retrieveAssistantFile,
  *     and deleteAssistantFile
  *
- * @since Jan
- *   2023
+ * @since Sep
+ *   2024
  */
 trait OpenAIService extends OpenAICoreService {
 
@@ -1006,32 +1008,44 @@ trait OpenAIService extends OpenAICoreService {
   /////////
 
   /**
-   * Creates a run for a given thread and assistant.
+   * Creates a run for a specified thread using the given assistant.
+   *
    * @param threadId
+   *   The ID of the thread to run.
    * @param assistantId
+   *   The ID of the assistant to use to execute this run.
+   * @param instructions
+   *   Optional. Overrides the instructions of the assistant. This is useful for modifying the behavior on a per-run basis.
    * @param additionalInstructions
+   *   Optional. Appends additional instructions at the end of the instructions for the run. This is useful for modifying the behavior on a per-run basis without overriding other instructions.
    * @param additionalMessages
+   *   Optional. Adds additional messages to the thread before creating the run.
+   * @param tools
+   *   Optional. Override the tools the assistant can use for this run. This is useful for modifying the behavior on a per-run basis.
    * @param responseToolChoice
+   *   Optional. Controls which (if any) tool is called by the model. Can be "none", "auto", "required", or a specific tool.
    * @param settings
+   *   Optional. Settings for creating the run, such as model, temperature, top_p, etc.
    * @param stream
-   *   // TODO: streamed version
+   *   Optional. If true, returns a stream of events that happen during the Run as server-sent events, terminating when the Run enters a terminal state with a data: [DONE] message.
    * @return
+   *   `Future[Run]` A future that resolves to a Run object.
    *
    * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/runs/createRun">OpenAI Doc</a>
+   *   <a href="https://api.openai.com/v1/threads/{thread_id}/runs">OpenAI API Reference</a>
    */
   def createRun(
-    threadId: String,
-    assistantId: AssistantId,
-    // TODO: move this to settings
-    instructions: Option[String] = None,
-    additionalInstructions: Option[String] = None,
-    additionalMessages: Seq[BaseMessage] = Seq.empty,
-    tools: Seq[AssistantTool] = Seq.empty,
-    responseToolChoice: Option[ToolChoice] = None,
-    settings: CreateRunSettings = DefaultSettings.CreateRun,
-    stream: Boolean
-  ): Future[Run]
+                 threadId: String,
+                 assistantId: AssistantId,
+                 // TODO: move this to settings
+                 instructions: Option[String] = None,
+                 additionalInstructions: Option[String] = None,
+                 additionalMessages: Seq[BaseMessage] = Seq.empty,
+                 tools: Seq[AssistantTool] = Seq.empty,
+                 responseToolChoice: Option[ToolChoice] = None,
+                 settings: CreateRunSettings = DefaultSettings.CreateRun,
+                 stream: Boolean
+               ): Future[Run]
 
   /**
    * @param assistantId
@@ -1224,7 +1238,29 @@ trait OpenAIService extends OpenAICoreService {
   def createVectorStore(
     fileIds: Seq[String] = Nil,
     name: Option[String] = None,
-    metadata: Map[String, Any] = Map()
+    metadata: Map[String, Any] = Map() // TODO: expires after
+  ): Future[VectorStore]
+
+  /**
+   * Modifies a vector store.
+   *
+   * @param vectorStoreId
+   *   The ID of the vector store to modify.
+   * @param name
+   *   The new name of the vector store (optional).
+   * @param metadata
+   *   A map of metadata to update (optional).
+   * @return
+   *   A Future containing the modified VectorStore.
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/vector-stores/modify">OpenAI
+   *   Doc</a>
+   */
+  def modifyVectorStore(
+    vectorStoreId: String,
+    name: Option[String] = None,
+    metadata: Map[String, Any] = Map.empty // TODO: expires after
   ): Future[VectorStore]
 
   /**
@@ -1243,7 +1279,23 @@ trait OpenAIService extends OpenAICoreService {
     order: Option[SortOrder] = None
   ): Future[Seq[VectorStore]]
 
-  // TODO: retrieveVectorStore - https://platform.openai.com/docs/api-reference/vector-stores/get
+  /**
+   * Retrieves a vector store.
+   *
+   * @param vectorStoreId
+   *   The ID of the vector store to retrieve.
+   * @return
+   *   A Future containing an Option of VectorStore. The Option will be None if the vector
+   *   store is not found.
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/vector-stores/retrieve">OpenAI
+   *   Doc</a>
+   */
+  def retrieveVectorStore(
+    vectorStoreId: String
+  ): Future[Option[VectorStore]]
+
   /**
    * Deletes a vector store.
    *
@@ -1314,7 +1366,27 @@ trait OpenAIService extends OpenAICoreService {
     filter: Option[VectorStoreFileStatus] = None
   ): Future[Seq[VectorStoreFile]]
 
-  // TODO: retrieveVectorStoreFile - https://platform.openai.com/docs/api-reference/vector-stores-files/getFile
+  /**
+   * Retrieves a vector store file.
+   *
+   * @param vectorStoreId
+   *   The ID of the vector store to which the file belongs.
+   * @param fileId
+   *   The ID of the file to retrieve.
+   * @return
+   *   A Future containing an Option of VectorStoreFile. The Option will be None if the file is
+   *   not found.
+   *
+   * @see
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/vector-stores-files/getFile">OpenAI
+   *   Doc</a>
+   */
+  def retrieveVectorStoreFile(
+    vectorStoreId: String,
+    fileId: FileId
+  ): Future[VectorStoreFile]
+
   /**
    * Deletes a vector store file.
    *

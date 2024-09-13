@@ -544,6 +544,22 @@ private[service] trait OpenAIServiceImpl
       _.asSafeJson[VectorStore]
     )
 
+  override def modifyVectorStore(
+    vectorStoreId: String,
+    name: Option[String] = None,
+    metadata: Map[String, Any]
+  ): Future[VectorStore] =
+    execPOST(
+      EndPoint.vector_stores,
+      endPointParam = Some(vectorStoreId),
+      bodyParams = jsonBodyParams(
+        Param.name -> name,
+        Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
+      )
+    ).map(
+      _.asSafeJson[VectorStore]
+    )
+
   override def listVectorStores(
     pagination: Pagination,
     order: Option[SortOrder]
@@ -553,6 +569,16 @@ private[service] trait OpenAIServiceImpl
       params = paginationParams(pagination) :+ Param.order -> order
     ).map { response =>
       readAttribute(response.json, "data").asSafeArray[VectorStore]
+    }
+
+  override def retrieveVectorStore(
+    vectorStoreId: String
+  ): Future[Option[VectorStore]] =
+    execGETRich(
+      EndPoint.vector_stores,
+      endPointParam = Some(vectorStoreId)
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafeJson[VectorStore])
     }
 
   override def deleteVectorStore(
@@ -594,6 +620,18 @@ private[service] trait OpenAIServiceImpl
     ).map { response =>
       readAttribute(response.json, "data").asSafeArray[VectorStoreFile]
     }
+
+  def retrieveVectorStoreFile(
+    vectorStoreId: String,
+    fileId: FileId
+  ): Future[VectorStoreFile] = {
+    execGET(
+      EndPoint.vector_stores,
+      endPointParam = Some(s"$vectorStoreId/files/${fileId.file_id}")
+    ).map(
+      _.asSafeJson[VectorStoreFile]
+    )
+  }
 
   override def deleteVectorStoreFile(
     vectorStoreId: String,

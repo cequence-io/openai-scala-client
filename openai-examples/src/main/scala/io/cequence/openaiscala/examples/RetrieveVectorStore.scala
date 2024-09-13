@@ -1,12 +1,13 @@
 package io.cequence.openaiscala.examples
+
 import scala.concurrent.Future
 
-object RetrieveAssistant extends Example {
+object RetrieveVectorStore extends Example {
 
   override protected def run: Future[_] =
     for {
-      assistant <- service.retrieveAssistant(
-        assistantId = "asst_xxx"
+      assistant <- service.retrieveVectorStore(
+        vectorStoreId = "vs_xxx"
       )
     } yield {
       println(assistant)
