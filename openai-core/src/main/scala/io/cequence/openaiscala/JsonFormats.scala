@@ -400,18 +400,19 @@ object JsonFormats {
     Json.format[FineTuneCheckpoint]
   implicit lazy val fineTuneHyperparamsFormat: Format[FineTuneHyperparams] =
     Json.format[FineTuneHyperparams]
-  implicit lazy val fineTuneErrorFormat: Format[Option[FineTuneError]] = new Format[Option[FineTuneError]] {
-    def reads(json: JsValue): JsResult[Option[FineTuneError]] = json match {
-      case JsObject(underlying) if underlying.isEmpty => JsSuccess(None)
-      case JsNull => JsSuccess(None)
-      case _ => Json.reads[FineTuneError].reads(json).map(Some(_))
+  implicit lazy val fineTuneErrorFormat: Format[Option[FineTuneError]] =
+    new Format[Option[FineTuneError]] {
+      def reads(json: JsValue): JsResult[Option[FineTuneError]] = json match {
+        case JsObject(underlying) if underlying.isEmpty => JsSuccess(None)
+        case JsNull                                     => JsSuccess(None)
+        case _ => Json.reads[FineTuneError].reads(json).map(Some(_))
+      }
+
+      def writes(o: Option[FineTuneError]): JsValue = o match {
+        case None        => JsObject.empty
+        case Some(error) => Json.writes[FineTuneError].writes(error)
+      }
     }
-    
-    def writes(o: Option[FineTuneError]): JsValue = o match {
-      case None => JsObject.empty
-      case Some(error) => Json.writes[FineTuneError].writes(error)
-    }
-  }
 
   implicit lazy val fineTuneIntegrationFormat: Format[FineTune.Integration] = {
     val typeDiscriminatorKey = "type"
