@@ -6,7 +6,6 @@ import io.cequence.openaiscala.domain.{NonOpenAIModelId, SystemMessage, UserMess
 import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase}
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
-import io.cequence.openaiscala.vertexai.service.VertexAIServiceFactory
 
 import scala.concurrent.Future
 

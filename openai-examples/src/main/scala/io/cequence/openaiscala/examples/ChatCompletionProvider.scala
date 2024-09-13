@@ -12,6 +12,7 @@ import io.cequence.openaiscala.vertexai.service.VertexAIServiceFactory
 import io.cequence.wsclient.domain.WsRequestContext
 
 import scala.concurrent.ExecutionContext
+import io.cequence.openaiscala.service.StreamedServiceTypes
 
 object ChatCompletionProvider {
   case class ProviderSettings(
@@ -60,12 +61,14 @@ object ChatCompletionProvider {
   def vertexAI(
     implicit ec: ExecutionContext,
     m: Materializer
-  ) = VertexAIServiceFactory.asOpenAI()
+  ): StreamedServiceTypes.OpenAIChatCompletionStreamedService =
+    VertexAIServiceFactory.asOpenAI()
 
   def anthropic(
     implicit ec: ExecutionContext,
     m: Materializer
-  ) = AnthropicServiceFactory.asOpenAI()
+  ): StreamedServiceTypes.OpenAIChatCompletionStreamedService =
+    AnthropicServiceFactory.asOpenAI()
 
   object streamed {
     def cerebras(

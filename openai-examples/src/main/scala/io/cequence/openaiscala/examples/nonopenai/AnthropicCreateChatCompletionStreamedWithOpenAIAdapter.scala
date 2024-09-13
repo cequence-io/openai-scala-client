@@ -3,7 +3,6 @@ package io.cequence.openaiscala.examples.nonopenai
 import akka.NotUsed
 import akka.stream.scaladsl.{RestartSource, Sink, Source}
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{NonOpenAIModelId, SystemMessage, UserMessage}
 import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase}
