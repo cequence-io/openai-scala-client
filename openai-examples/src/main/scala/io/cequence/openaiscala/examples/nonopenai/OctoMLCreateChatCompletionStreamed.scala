@@ -3,7 +3,7 @@ package io.cequence.openaiscala.examples.nonopenai
 import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.examples.ExampleBase
+import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase}
 import io.cequence.openaiscala.service.{
   OpenAIChatCompletionStreamedServiceExtra,
   OpenAIChatCompletionStreamedServiceFactory
@@ -17,12 +17,7 @@ object OctoMLCreateChatCompletionStreamed
     extends ExampleBase[OpenAIChatCompletionStreamedServiceExtra] {
 
   override val service: OpenAIChatCompletionStreamedServiceExtra =
-    OpenAIChatCompletionStreamedServiceFactory(
-      coreUrl = "https://text.octoai.run/v1/",
-      WsRequestContext(authHeaders =
-        Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
-      )
-    )
+    ChatCompletionProvider.streamed.octo
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),
