@@ -8,18 +8,17 @@ import io.cequence.openaiscala.domain.AssistantToolResource.{
   FileSearchResources,
   VectorStore
 }
-import io.cequence.openaiscala.domain.response.AssistantToolResourceResponse.{
-  CodeInterpreterResourcesResponse,
-  FileSearchResourcesResponse
-}
 import io.cequence.openaiscala.domain.response.ResponseFormat.{
   JsonObjectResponse,
   StringResponse,
   TextResponse
 }
-import io.cequence.openaiscala.domain.response.{AssistantToolResourceResponse, ResponseFormat}
+import io.cequence.openaiscala.domain.response.{
+  FineTuneHyperparams,
+  FineTuneJob,
+  ResponseFormat
+}
 import io.cequence.openaiscala.domain._
-import org.scalatest.Ignore
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import play.api.libs.json.{Format, Json}
@@ -440,6 +439,61 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
         Pretty,
         justSemantics = true
       )
+    }
+
+    "deserialize FineTuneJob" in {
+      val json = """{
+                   |  "object" : "fine_tuning.job",
+                   |  "id" : "xxx",
+                   |  "model" : "gpt-4o-2024-08-06",
+                   |  "created_at" : 1725983532,
+                   |  "finished_at" : null,
+                   |  "fine_tuned_model" : null,
+                   |  "organization_id" : "org-xxx",
+                   |  "result_files" : [ ],
+                   |  "status" : "validating_files",
+                   |  "validation_file" : null,
+                   |  "training_file" : "file-xxx",
+                   |  "hyperparameters" : {
+                   |    "n_epochs" : "auto",
+                   |    "batch_size" : "auto",
+                   |    "learning_rate_multiplier" : "auto"
+                   |  },
+                   |  "trained_tokens" : null,
+                   |  "error" : { },
+                   |  "user_provided_suffix" : "lala",
+                   |  "seed" : 342466478,
+                   |  "estimated_finish" : null,
+                   |  "integrations" : [ ]
+                   |}""".stripMargin
+
+      implicit lazy val format: Format[FineTuneJob] = JsonFormats.fineTuneJobFormat
+      implicit lazy val reader = implicitly[Format[FineTuneJob]](format)
+
+      val fineTuneJob = Json.parse(json).as[FineTuneJob](reader)
+
+      fineTuneJob.id shouldBe "xxx"
+      fineTuneJob.model shouldBe "gpt-4o-2024-08-06"
+      fineTuneJob.created_at.toString shouldBe "Tue Sep 10 17:52:12 CEST 2024"
+      fineTuneJob.finished_at shouldBe None
+      fineTuneJob.fine_tuned_model shouldBe None
+      fineTuneJob.organization_id shouldBe "org-xxx"
+      fineTuneJob.status shouldBe "validating_files"
+      fineTuneJob.training_file shouldBe "file-xxx"
+      fineTuneJob.validation_file shouldBe None
+      fineTuneJob.result_files shouldBe Vector()
+      fineTuneJob.trained_tokens shouldBe None
+      fineTuneJob.error shouldBe None
+
+      fineTuneJob.hyperparameters shouldBe FineTuneHyperparams(
+        Some(Right("auto")),
+        Some(Right("auto")),
+        Right("auto")
+      )
+
+      fineTuneJob.integrations shouldBe Some(Seq.empty)
+
+      fineTuneJob.seed shouldBe 342466478
     }
 
     "serialize and deserialize ThreadMessageContent" in {

@@ -2,9 +2,8 @@ package io.cequence.openaiscala.examples.nonopenai
 
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{NonOpenAIModelId, SystemMessage, UserMessage}
-import io.cequence.openaiscala.examples.ExampleBase
+import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase}
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
-import io.cequence.openaiscala.vertexai.service.VertexAIServiceFactory
 
 import scala.concurrent.Future
 
@@ -12,7 +11,8 @@ import scala.concurrent.Future
 object VertexAICreateChatCompletionWithOpenAIAdapter
     extends ExampleBase[OpenAIChatCompletionService] {
 
-  override val service: OpenAIChatCompletionService = VertexAIServiceFactory.asOpenAI()
+  override val service: OpenAIChatCompletionService =
+    ChatCompletionProvider.vertexAI
 
   private val model = NonOpenAIModelId.gemini_1_5_pro_001
 

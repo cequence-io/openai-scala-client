@@ -3,10 +3,9 @@ package io.cequence.openaiscala.examples.nonopenai
 import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{NonOpenAIModelId, SystemMessage, UserMessage}
-import io.cequence.openaiscala.examples.ExampleBase
+import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase}
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
-import io.cequence.openaiscala.vertexai.service.VertexAIServiceFactory
 
 import scala.concurrent.Future
 
@@ -14,7 +13,8 @@ import scala.concurrent.Future
 object VertexAICreateChatCompletionStreamedWithOpenAIAdapter
     extends ExampleBase[OpenAIChatCompletionService] {
 
-  override val service: OpenAIChatCompletionStreamedService = VertexAIServiceFactory.asOpenAI()
+  override val service: OpenAIChatCompletionStreamedService =
+    ChatCompletionProvider.vertexAI
 
   private val model = NonOpenAIModelId.gemini_1_5_flash_001
 

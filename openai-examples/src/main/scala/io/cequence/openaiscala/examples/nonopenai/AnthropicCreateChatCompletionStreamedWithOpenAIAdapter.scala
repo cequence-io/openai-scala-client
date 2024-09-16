@@ -3,10 +3,9 @@ package io.cequence.openaiscala.examples.nonopenai
 import akka.NotUsed
 import akka.stream.scaladsl.{RestartSource, Sink, Source}
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{NonOpenAIModelId, SystemMessage, UserMessage}
-import io.cequence.openaiscala.examples.ExampleBase
+import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase}
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
 import org.slf4j.LoggerFactory
 
@@ -20,7 +19,7 @@ object AnthropicCreateChatCompletionStreamedWithOpenAIAdapter
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   override val service: OpenAIChatCompletionStreamedService =
-    AnthropicServiceFactory.asOpenAI()
+    ChatCompletionProvider.anthropic
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),

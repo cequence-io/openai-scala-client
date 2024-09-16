@@ -2,12 +2,8 @@ package io.cequence.openaiscala.examples.nonopenai
 
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.examples.ExampleBase
-import io.cequence.openaiscala.service.{
-  OpenAIChatCompletionService,
-  OpenAIChatCompletionServiceFactory
-}
-import io.cequence.wsclient.domain.WsRequestContext
+import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase}
+import io.cequence.openaiscala.service.OpenAIChatCompletionService
 
 import scala.concurrent.Future
 
@@ -16,12 +12,8 @@ import scala.concurrent.Future
  */
 object TogetherAICreateChatCompletion extends ExampleBase[OpenAIChatCompletionService] {
 
-  override val service: OpenAIChatCompletionService = OpenAIChatCompletionServiceFactory(
-    coreUrl = "https://api.together.xyz/v1/",
-    WsRequestContext(authHeaders =
-      Seq(("Authorization", s"Bearer ${sys.env("TOGETHERAI_API_KEY")}"))
-    )
-  )
+  override val service: OpenAIChatCompletionService =
+    ChatCompletionProvider.togetherAI
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),

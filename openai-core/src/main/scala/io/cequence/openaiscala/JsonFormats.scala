@@ -439,7 +439,19 @@ object JsonFormats {
     Json.format[FineTuneCheckpoint]
   implicit lazy val fineTuneHyperparamsFormat: Format[FineTuneHyperparams] =
     Json.format[FineTuneHyperparams]
-  implicit lazy val fineTuneErrorFormat: Format[FineTuneError] = Json.format[FineTuneError]
+  implicit lazy val fineTuneErrorFormat: Format[Option[FineTuneError]] =
+    new Format[Option[FineTuneError]] {
+      def reads(json: JsValue): JsResult[Option[FineTuneError]] = json match {
+        case JsObject(underlying) if underlying.isEmpty => JsSuccess(None)
+        case JsNull                                     => JsSuccess(None)
+        case _ => Json.reads[FineTuneError].reads(json).map(Some(_))
+      }
+
+      def writes(o: Option[FineTuneError]): JsValue = o match {
+        case None        => JsObject.empty
+        case Some(error) => Json.writes[FineTuneError].writes(error)
+      }
+    }
 
   implicit lazy val fineTuneIntegrationFormat: Format[FineTune.Integration] = {
     val typeDiscriminatorKey = "type"
@@ -473,7 +485,23 @@ object JsonFormats {
     )
   }
 
-  implicit lazy val fineTuneFormat: Format[FineTuneJob] = Json.format[FineTuneJob]
+  implicit val fineTuneJobFormat: Format[FineTuneJob] = (
+    (__ \ "id").format[String] and
+      (__ \ "model").format[String] and
+      (__ \ "created_at").format[ju.Date] and
+      (__ \ "finished_at").formatNullable[ju.Date] and
+      (__ \ "fine_tuned_model").formatNullable[String] and
+      (__ \ "organization_id").format[String] and
+      (__ \ "status").format[String] and
+      (__ \ "training_file").format[String] and
+      (__ \ "validation_file").formatNullable[String] and
+      (__ \ "result_files").format[Seq[String]] and
+      (__ \ "trained_tokens").formatNullable[Int] and
+      (__ \ "error").format[Option[FineTuneError]](fineTuneErrorFormat) and
+      (__ \ "hyperparameters").format[FineTuneHyperparams] and
+      (__ \ "integrations").formatNullable[Seq[FineTune.Integration]] and
+      (__ \ "seed").format[Int]
+  )(FineTuneJob.apply, unlift(FineTuneJob.unapply))
 
   // somehow ModerationCategories.unapply is not working in Scala3
   implicit lazy val moderationCategoriesFormat: Format[ModerationCategories] = (

@@ -146,7 +146,7 @@ class RetryHelpersSpec
   )(
     test: (Retryable, Future[Int]) => Unit
   ): Unit = {
-    val future = Promise[Int]().future
+    Promise[Int]().future
     val mockRetryable = mock[Retryable]
     when(mockRetryable.attempt())
       .thenReturn(results.head, results.takeRight(results.length - 1): _*)

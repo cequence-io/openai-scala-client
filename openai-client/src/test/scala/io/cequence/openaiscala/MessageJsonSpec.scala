@@ -19,7 +19,7 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
       val content = "You are a helpful assistant."
 
       val message = SystemMessage(content)
-      val plainJson = toJsonObject(message)
+      toJsonObject(message)
       val json = toJson(message)
       val jsonKeys = json.keySet
 
@@ -40,7 +40,7 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
       val name = "euclid_123"
 
       val message = SystemMessage(content, name = Some(name))
-      val plainJson = toJsonObject(message)
+      toJsonObject(message)
       val json = toJson(message)
       val jsonKeys = json.keySet
 
@@ -224,7 +224,7 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
       println(toJsonObject(message))
 
       val messages2 = AssistantMessage(content)
-      val json2 = toJson(messages2)
+      toJson(messages2)
       println(toJsonObject(messages2))
 
 //      json shouldNot be(json2)

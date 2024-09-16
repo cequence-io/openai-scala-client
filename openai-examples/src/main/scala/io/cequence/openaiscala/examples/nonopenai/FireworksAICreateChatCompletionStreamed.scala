@@ -3,12 +3,8 @@ package io.cequence.openaiscala.examples.nonopenai
 import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.examples.ExampleBase
-import io.cequence.openaiscala.service.{
-  OpenAIChatCompletionStreamedServiceExtra,
-  OpenAIChatCompletionStreamedServiceFactory
-}
-import io.cequence.wsclient.domain.WsRequestContext
+import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase}
+import io.cequence.openaiscala.service.OpenAIChatCompletionStreamedServiceExtra
 
 import scala.concurrent.Future
 
@@ -18,12 +14,7 @@ object FireworksAICreateChatCompletionStreamed
 
   private val fireworksModelPrefix = "accounts/fireworks/models/"
   override val service: OpenAIChatCompletionStreamedServiceExtra =
-    OpenAIChatCompletionStreamedServiceFactory(
-      coreUrl = "https://api.fireworks.ai/inference/v1/",
-      WsRequestContext(authHeaders =
-        Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
-      )
-    )
+    ChatCompletionProvider.streamed.fireworks
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),
