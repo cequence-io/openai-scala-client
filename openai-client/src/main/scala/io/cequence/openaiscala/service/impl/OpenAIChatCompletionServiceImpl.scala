@@ -5,7 +5,6 @@ import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIServiceConsts}
-import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.ResponseImplicits._
 import io.cequence.wsclient.service.WSClient
 import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithEngine
