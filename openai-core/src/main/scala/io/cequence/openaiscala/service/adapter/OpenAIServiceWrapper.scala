@@ -40,7 +40,7 @@ trait OpenAIServiceWrapper
 
   override def createChatFunCompletion(
     messages: Seq[BaseMessage],
-    functions: Seq[FunctionSpec],
+    functions: Seq[ChatCompletionTool],
     responseFunctionName: Option[String],
     settings: CreateChatCompletionSettings
   ): Future[ChatFunCompletionResponse] = wrap(
@@ -54,11 +54,11 @@ trait OpenAIServiceWrapper
 
   def createRun(
     threadId: String,
-    assistantId: String,
+    assistantId: AssistantId,
     instructions: Option[String],
     additionalInstructions: Option[String],
     additionalMessages: Seq[BaseMessage],
-    tools: Seq[ForcableTool],
+    tools: Seq[AssistantTool],
     responseToolChoice: Option[ToolChoice] = None,
     settings: CreateRunSettings = DefaultSettings.CreateRun,
     stream: Boolean
@@ -76,12 +76,28 @@ trait OpenAIServiceWrapper
     )
   )
 
+  override def cancelRun(
+    threadId: String,
+    runId: String
+  ): Future[Run] = wrap(
+    _.cancelRun(threadId, runId)
+  )
+
+  override def modifyRun(
+    threadId: String,
+    runId: String,
+    metadata: Map[String, String]
+  ): Future[Run] = wrap(
+    _.modifyRun(threadId, runId, metadata)
+  )
+
   def submitToolOutputs(
     threadId: String,
     runId: String,
-    toolOutputs: Seq[AssistantToolOutput]
+    toolOutputs: Seq[AssistantToolOutput],
+    stream: Boolean
   ): Future[Run] = wrap(
-    _.submitToolOutputs(threadId, runId, toolOutputs)
+    _.submitToolOutputs(threadId, runId, toolOutputs, stream)
   )
 
   def retrieveRun(
@@ -90,6 +106,13 @@ trait OpenAIServiceWrapper
   ): Future[Option[Run]] = wrap(
     _.retrieveRun(threadId, runId)
   )
+
+  override def retrieveRunStep(
+    threadID: String,
+    runId: String,
+    stepId: String
+  ): Future[Option[RunStep]] =
+    wrap(_.retrieveRunStep(threadID, runId, stepId))
 
   override def listRunSteps(
     threadId: String,
@@ -100,9 +123,17 @@ trait OpenAIServiceWrapper
     _.listRunSteps(threadId, runId, pagination, order)
   )
 
+  override def listRuns(
+    threadId: String,
+    pagination: Pagination,
+    order: Option[SortOrder] = None
+  ): Future[Seq[Run]] = wrap(
+    _.listRuns(threadId, pagination, order)
+  )
+
   override def createChatToolCompletion(
     messages: Seq[BaseMessage],
-    tools: Seq[ToolSpec],
+    tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
   ): Future[ChatToolCompletionResponse] = wrap(
@@ -175,9 +206,9 @@ trait OpenAIServiceWrapper
   override def uploadFile(
     file: File,
     displayFileName: Option[String],
-    settings: UploadFileSettings
+    purpose: FileUploadPurpose
   ): Future[FileInfo] = wrap(
-    _.uploadFile(file, displayFileName, settings)
+    _.uploadFile(file, displayFileName, purpose)
   )
 
   override def uploadBatchFile(
@@ -286,11 +317,25 @@ trait OpenAIServiceWrapper
     _.createVectorStore(fileIds, name, metadata)
   )
 
+  override def modifyVectorStore(
+    vectorStoreId: String,
+    name: Option[String],
+    metadata: Map[String, Any]
+  ): Future[VectorStore] = wrap(
+    _.modifyVectorStore(vectorStoreId, name, metadata)
+  )
+
   override def listVectorStores(
     pagination: Pagination,
     order: Option[SortOrder]
   ): Future[Seq[VectorStore]] = wrap(
     _.listVectorStores(pagination, order)
+  )
+
+  override def retrieveVectorStore(
+    vectorStoreId: String
+  ): Future[Option[VectorStore]] = wrap(
+    _.retrieveVectorStore(vectorStoreId)
   )
 
   override def deleteVectorStore(
@@ -318,6 +363,14 @@ trait OpenAIServiceWrapper
       _.listVectorStoreFiles(vectorStoreId, pagination, order, filter)
     )
 
+  def retrieveVectorStoreFile(
+    vectorStoreId: String,
+    fileId: FileId
+  ): Future[VectorStoreFile] =
+    wrap(
+      _.retrieveVectorStoreFile(vectorStoreId, fileId)
+    )
+
   def deleteVectorStoreFile(
     vectorStoreId: String,
     fileId: String
@@ -340,6 +393,29 @@ trait OpenAIServiceWrapper
   ): Future[Thread] = wrap(
     _.createThread(messages, toolResources, metadata)
   )
+
+  override def createThreadAndRun(
+    assistantId: AssistantId,
+    thread: Option[ThreadAndRun],
+    instructions: Option[String],
+    tools: Seq[AssistantTool],
+    toolResources: Option[ThreadAndRunToolResource],
+    toolChoice: Option[ToolChoice],
+    settings: CreateThreadAndRunSettings,
+    stream: Boolean
+  ): Future[Run] =
+    wrap(
+      _.createThreadAndRun(
+        assistantId,
+        thread,
+        instructions,
+        tools,
+        toolResources,
+        toolChoice,
+        settings,
+        stream
+      )
+    )
 
   override def retrieveThread(
     threadId: String
@@ -393,6 +469,13 @@ trait OpenAIServiceWrapper
     _.listThreadMessages(threadId, pagination, order)
   )
 
+  def deleteThreadMessage(
+    threadId: String,
+    messageId: String
+  ): Future[DeleteResponse] = wrap(
+    _.deleteThreadMessage(threadId, messageId)
+  )
+
   override def retrieveThreadMessageFile(
     threadId: String,
     messageId: String,
@@ -416,7 +499,7 @@ trait OpenAIServiceWrapper
     description: Option[String] = None,
     instructions: Option[String] = None,
     tools: Seq[AssistantTool] = Seq.empty[AssistantTool],
-    toolResources: Seq[AssistantToolResource] = Seq.empty[AssistantToolResource],
+    toolResources: Option[AssistantToolResource] = None,
     metadata: Map[String, String] = Map.empty
   ): Future[Assistant] = wrap(
     _.createAssistant(model, name, description, instructions, tools, toolResources, metadata)

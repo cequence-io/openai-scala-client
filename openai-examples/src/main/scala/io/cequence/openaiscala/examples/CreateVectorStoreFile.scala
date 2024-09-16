@@ -1,5 +1,7 @@
 package io.cequence.openaiscala.examples
 
+import io.cequence.openaiscala.domain.settings.FileUploadPurpose
+
 import java.io.{File, PrintWriter}
 import scala.concurrent.Future
 
@@ -20,7 +22,7 @@ object CreateVectorStoreFile extends Example {
   override protected def run: Future[_] = {
     val file = knowledgeTempFile()
     for {
-      fileInfo <- service.uploadFile(file)
+      fileInfo <- service.uploadFile(file, purpose = FileUploadPurpose.assistants)
       vectorStore <- service.createVectorStore(
         fileIds = Seq.empty,
         name = Some("Ice-hockey fans")

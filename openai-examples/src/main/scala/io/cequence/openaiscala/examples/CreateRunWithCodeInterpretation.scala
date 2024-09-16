@@ -1,6 +1,7 @@
 package io.cequence.openaiscala.examples
 
 import io.cequence.openaiscala.domain._
+import io.cequence.openaiscala.domain.AssistantTool.CodeInterpreterTool
 import io.cequence.openaiscala.domain.settings.CreateRunSettings
 
 import scala.concurrent.Future
@@ -36,10 +37,10 @@ object CreateRunWithCodeInterpretation extends Example with PollingHelper {
 
       run <- service.createRun(
         threadId = thread.id,
-        assistantId = assistantId,
+        assistantId = AssistantId(assistantId),
         instructions = None,
-        responseToolChoice = Some(ToolChoice.EnforcedTool(CodeInterpreterSpec)),
-        tools = Seq(CodeInterpreterSpec),
+        responseToolChoice = Some(ToolChoice.EnforcedTool(RunTool.CodeInterpreterTool)),
+        tools = Seq(CodeInterpreterTool),
         settings = CreateRunSettings(
           model = Some(ModelId.gpt_4o),
           temperature = Some(0.0),
@@ -50,15 +51,8 @@ object CreateRunWithCodeInterpretation extends Example with PollingHelper {
         stream = false
       )
 
-      doneStatues: Set[RunStatus] = Set(
-        RunStatus.Completed,
-        RunStatus.Failed,
-        RunStatus.Expired,
-        RunStatus.Expired
-      )
-
       // poll until done
-      runNew <- pollUntilDone((run: Run) => doneStatues.contains(run.status)) {
+      runNew <- pollUntilDone((run: Run) => RunStatus.finishedStates.contains(run.status)) {
         service
           .retrieveRun(thread.id, run.id)
           .map(

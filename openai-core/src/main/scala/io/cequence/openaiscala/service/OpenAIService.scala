@@ -29,19 +29,23 @@ import scala.concurrent.Future
  *   - '''Fine-tunes''': createFineTune, listFineTunes, retrieveFineTune, cancelFineTune,
  *     listFineTuneEvents, listFineTuneCheckpoints, and deleteFineTuneModel
  *   - '''Moderations''': createModeration
- *   - '''Assistants''': createAssistant, listAssistants, retrieveAssistant, modifyAssistant,
- *     and deleteAssistant
  *   - '''Threads''': createThread, retrieveThread, modifyThread, and deleteThread
  *   - '''Thread Messages''': createThreadMessage, retrieveThreadMessage, modifyThreadMessage,
  *     listThreadMessages, retrieveThreadMessageFile, and listThreadMessageFiles
  *   - '''Runs''': createRun, etc.
  *   - '''Run Steps''': listRunSteps, etc.
- *   - '''Vector Stores''': createVectorStore, etc.
- *   - '''Vector Store Files''': createVectorStoreFile, etc.
- *   - '''Vector Store File Batches''': createVectorStoreFileBatch, etc.
+ *   - '''Vector Stores''': createVectorStore, modifyVectorStore, listVectorStores,
+ *     retrieveVectorStore, deleteVectorStore etc.
+ *   - '''Vector Store Files''': createVectorStoreFile, listVectorStoreFiles,
+ *     retrieveVectorStoreFile, deleteVectorStoreFile etc.
+ *   - '''Vector Store File Batches''': TODO etc.
+ *   - '''Assistants''': createAssistant, listAssistants, retrieveAssistant, modifyAssistant,
+ *     and deleteAssistant
+ *   - '''Assistant Files''': createAssistantFile, listAssistantFiles, retrieveAssistantFile,
+ *     and deleteAssistantFile
  *
- * @since Jan
- *   2023
+ * @since Sep
+ *   2024
  */
 trait OpenAIService extends OpenAICoreService {
 
@@ -81,7 +85,7 @@ trait OpenAIService extends OpenAICoreService {
   @Deprecated
   def createChatFunCompletion(
     messages: Seq[BaseMessage],
-    functions: Seq[FunctionSpec],
+    functions: Seq[ChatCompletionTool],
     responseFunctionName: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatFunCompletion
   ): Future[ChatFunCompletionResponse]
@@ -108,7 +112,7 @@ trait OpenAIService extends OpenAICoreService {
   // TODO: add support for 'parallel_tool_calls'
   def createChatToolCompletion(
     messages: Seq[BaseMessage],
-    tools: Seq[ToolSpec],
+    tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatToolCompletion
   ): Future[ChatToolCompletionResponse]
@@ -295,7 +299,7 @@ trait OpenAIService extends OpenAICoreService {
   def uploadFile(
     file: File,
     displayFileName: Option[String] = None,
-    settings: UploadFileSettings = DefaultSettings.UploadFineTuneFile
+    purpose: FileUploadPurpose
   ): Future[FileInfo]
 
   /**
@@ -629,7 +633,7 @@ trait OpenAIService extends OpenAICoreService {
     description: Option[String] = None,
     instructions: Option[String] = None,
     tools: Seq[AssistantTool] = Seq.empty[AssistantTool],
-    toolResources: Seq[AssistantToolResource] = Seq.empty[AssistantToolResource],
+    toolResources: Option[AssistantToolResource] = None,
     metadata: Map[String, String] = Map.empty
   ): Future[Assistant]
 
@@ -919,6 +923,24 @@ trait OpenAIService extends OpenAICoreService {
     order: Option[SortOrder] = None
   ): Future[Seq[ThreadFullMessage]]
 
+  /**
+   * Deletes a thread message.
+   *
+   * @param threadId
+   *   The ID of the thread to which this message belongs.
+   * @param messageId
+   *   The ID of the message to delete.
+   * @return
+   *   Deletion status.
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/messages/deleteMessage">OpenAI
+   *   Doc</a>
+   */
+  def deleteThreadMessage(
+    threadId: String,
+    messageId: String
+  ): Future[DeleteResponse]
+
   /////////////////
   // THREAD FILE //
   /////////////////
@@ -986,99 +1008,193 @@ trait OpenAIService extends OpenAICoreService {
   /////////
 
   /**
-   * Creates a run for a given thread and assistant.
+   * Creates a run for a specified thread using the given assistant.
    *
    * @param threadId
+   *   The ID of the thread to run.
    * @param assistantId
+   *   The ID of the assistant to use to execute this run.
    * @param instructions
+   *   Optional. Overrides the instructions of the assistant. This is useful for modifying the
+   *   behavior on a per-run basis.
    * @param additionalInstructions
+   *   Optional. Appends additional instructions at the end of the instructions for the run.
+   *   This is useful for modifying the behavior on a per-run basis without overriding other
+   *   instructions.
    * @param additionalMessages
+   *   Optional. Adds additional messages to the thread before creating the run.
    * @param tools
+   *   Optional. Override the tools the assistant can use for this run. This is useful for
+   *   modifying the behavior on a per-run basis.
    * @param responseToolChoice
+   *   Optional. Controls which (if any) tool is called by the model. Can be "none", "auto",
+   *   "required", or a specific tool.
    * @param settings
+   *   Optional. Settings for creating the run, such as model, temperature, top_p, etc.
    * @param stream
-   *   // TODO: streamed version
+   *   Optional. If true, returns a stream of events that happen during the Run as server-sent
+   *   events, terminating when the Run enters a terminal state with a data: [DONE] message.
    * @return
+   *   `Future[Run]` A future that resolves to a Run object.
    *
    * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/runs/createRun">OpenAI Doc</a>
+   *   <a href="https://api.openai.com/v1/threads/{thread_id}/runs">OpenAI API Reference</a>
    */
   def createRun(
     threadId: String,
-    assistantId: String,
+    assistantId: AssistantId,
     // TODO: move this to settings
     instructions: Option[String] = None,
     additionalInstructions: Option[String] = None,
     additionalMessages: Seq[BaseMessage] = Seq.empty,
-    tools: Seq[ForcableTool] = Seq.empty,
+    tools: Seq[AssistantTool] = Seq.empty,
     responseToolChoice: Option[ToolChoice] = None,
     settings: CreateRunSettings = DefaultSettings.CreateRun,
     stream: Boolean
   ): Future[Run]
 
-  // TODO: def createThreadAndRun - https://platform.openai.com/docs/api-reference/runs/createThreadAndRun
-
-  // TODO: def listRuns - https://platform.openai.com/docs/api-reference/runs/listRuns
+  /**
+   * @param assistantId
+   *   The ID of the assistant to use to execute this run.
+   * @param thread
+   *   The ID of the thread to run.
+   * @param instructions
+   *   Override the default system message of the assistant. This is useful for modifying the
+   *   behavior on a per-run basis.
+   * @param tools
+   *   Override the tools the assistant can use for this run. This is useful for modifying the
+   *   behavior on a per-run basis.
+   * @param toolResources
+   *   A set of resources that are used by the assistant's tools. The resources are specific to
+   *   the type of tool. For example, the code_interpreter tool requires a list of file IDs,
+   *   while the file_search tool requires a list of vector store IDs.
+   * @param toolChoice
+   *   Controls which (if any) tool is called by the model. none means the model will not call
+   *   any tools and instead generates a message. auto is the default value and means the model
+   *   can pick between generating a message or calling one or more tools. required means the
+   *   model must call one or more tools before responding to the user. Specifying a particular
+   *   tool like {"type": "file_search"} or {"type": "function", "function": {"name":
+   *   "my_function"}} forces the model to call that tool.
+   * @param settings
+   * @param stream
+   *   If true, returns a stream of events that happen during the Run as server-sent events,
+   *   terminating when the Run enters a terminal state with a data: [DONE] message.
+   * @returns
+   *   A run object.
+   */
+  def createThreadAndRun(
+    assistantId: AssistantId,
+    thread: Option[ThreadAndRun],
+    instructions: Option[String] = None,
+    tools: Seq[AssistantTool] = Seq.empty,
+    toolResources: Option[ThreadAndRunToolResource] = None,
+    toolChoice: Option[ToolChoice] = None,
+    settings: CreateThreadAndRunSettings = DefaultSettings.CreateThreadAndRun,
+    stream: Boolean
+  ): Future[Run]
 
   /**
-   * Retrieves a run.
+   * Returns a list of runs belonging to a thread.
    *
    * @param threadId
-   * @param runId
+   *   The ID of the thread the run belongs to.
+   * @param pagination
+   * @param order
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
+   *   for descending order.
    * @return
-   *
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/runs/getRun">OpenAI Doc</a>
+   *   A list of run objects.
    */
+  def listRuns(
+    threadId: String,
+    pagination: Pagination = Pagination.default,
+    order: Option[SortOrder] = None
+  ): Future[Seq[Run]]
+
   def retrieveRun(
     threadId: String,
     runId: String
   ): Future[Option[Run]]
 
-  // TODO: def modifyRun - https://platform.openai.com/docs/api-reference/runs/modifyRun
-
   /**
-   * Submits tool outputs to run. When a run has the status: "requires_action" and
-   * required_action.type is submit_tool_outputs, this endpoint can be used to submit the
-   * outputs from the tool calls once they're all completed. All outputs must be submitted in a
-   * single request.
-   *
-   * TODO: streamed version
+   * Modifies a run.
    *
    * @param threadId
+   *   The ID of the thread that was run.
    * @param runId
-   * @param toolOutputs
+   *   The ID of the run to modify.
+   * @param metadata
+   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
+   *   storing additional information about the object in a structured format. Keys can be a
+   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
    * @return
+   *   The modified run object matching the specified ID.
+   */
+  def modifyRun(
+    threadId: String,
+    runId: String,
+    metadata: Map[String, String]
+  ): Future[Run]
+
+  /**
+   * When a run has the status: "requires_action" and required_action.type is
+   * submit_tool_outputs, this endpoint can be used to submit the outputs from the tool calls
+   * once they're all completed. All outputs must be submitted in a single request.
    *
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/runs/submitToolOutputs">OpenAI
-   *   Doc</a>
+   * @param threadId
+   *   The ID of the thread to which this run belongs.
+   * @param runId
+   *   The ID of the run that requires the tool output submission.
+   * @param toolOutputs
+   *   A list of tools for which the outputs are being submitted.
+   * @param stream
+   *   If true, returns a stream of events that happen during the Run as server-sent events,
+   *   terminating when the Run enters a terminal state with a data: [DONE] message.
+   * @return
+   *   The modified run object matching the specified ID.
    */
   def submitToolOutputs(
     threadId: String,
     runId: String,
-    toolOutputs: Seq[AssistantToolOutput]
+    toolOutputs: Seq[AssistantToolOutput],
+    stream: Boolean
   ): Future[Run]
 
-  // TODO: cancelRun - https://platform.openai.com/docs/api-reference/runs/cancelRun
+  /**
+   * Cancels a run that is in_progress
+   *
+   * @param threadId
+   *   The ID of the thread to which this run belongs.
+   * @param runId
+   *   The ID of the run to cancel.
+   * @return
+   *   The modified run object matching the specified ID.
+   */
+  def cancelRun(
+    threadId: String,
+    runId: String
+  ): Future[Run]
 
   ///////////////
   // RUN STEPS //
   ///////////////
 
   /**
-   * Returns a list of run steps belonging to a run.
+   * Returns a list of run steps belonging to a run. Returns a list of run steps belonging to a
+   * run.
    *
    * @param threadId
+   *   The ID of the thread the run and run step belongs to.
    * @param runId
+   *   The ID of the run the run steps belong to.
    * @param pagination
    * @param order
+   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
+   *   for descending order.
    * @return
-   *
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/run-steps/listRunSteps">OpenAI
-   *   Doc</a>
+   *   A list of run step objects.
    */
+
   def listRunSteps(
     threadId: String,
     runId: String,
@@ -1086,7 +1202,23 @@ trait OpenAIService extends OpenAICoreService {
     order: Option[SortOrder] = None
   ): Future[Seq[RunStep]]
 
-  // TODO: retrieveRunStep - https://platform.openai.com/docs/api-reference/run-steps/getRunStep
+  /**
+   * Retrieves a run step.
+   *
+   * @param threadID
+   *   The ID of the thread to which the run and run step belongs.
+   * @param runId
+   *   The ID of the run to which the run step belongs.
+   * @param stepId
+   *   The ID of the run step to retrieve.
+   * @return
+   *   The run step object matching the specified ID.
+   */
+  def retrieveRunStep(
+    threadID: String,
+    runId: String,
+    stepId: String
+  ): Future[Option[RunStep]]
 
   //////////////////
   // VECTOR STORE //
@@ -1101,11 +1233,8 @@ trait OpenAIService extends OpenAICoreService {
    * @param name
    *   The name of the vector store.
    * @param expires_after
-   *   The expiration policy for a vector store. TODO
-   * @param metadata
-   *   Set of 16 key-value pairs that can be attached to an object. This can be useful for
-   *   storing additional information about the object in a structured format. Keys can be a
-   *   maximum of 64 characters long and values can be a maximum of 512 characters long.
+   *   The expiration policy for a vector store. TODO maximum of 64 characters long and values
+   *   can be a maximum of 512 characters long.
    * @return
    *
    * @see
@@ -1115,28 +1244,36 @@ trait OpenAIService extends OpenAICoreService {
   def createVectorStore(
     fileIds: Seq[String] = Nil,
     name: Option[String] = None,
-    metadata: Map[String, Any] = Map()
+    metadata: Map[String, Any] = Map() // TODO: expires after
   ): Future[VectorStore]
 
   /**
-   * Returns a list of vector stores.
+   * Modifies a vector store.
    *
-   * @param limit
-   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
-   *   the default is 20. Defaults to 20
-   * @param order
-   *   Sort order by the created_at timestamp of the objects. asc for ascending order and desc
-   *   for descending order. Defaults to desc
-   * @param after
-   *   A cursor for use in pagination. after is an object ID that defines your place in the
-   *   list. For instance, if you make a list request and receive 100 objects, ending with
-   *   obj_foo, your subsequent call can include after=obj_foo in order to fetch the next page
-   *   of the list.
-   * @param before
-   *   A cursor for use in pagination. before is an object ID that defines your place in the
-   *   list. For instance, if you make a list request and receive 100 objects, ending with
-   *   obj_foo, your subsequent call can include before=obj_foo in order to fetch the previous
-   *   page of the list.
+   * @param vectorStoreId
+   *   The ID of the vector store to modify.
+   * @param name
+   *   The new name of the vector store (optional).
+   * @param metadata
+   *   A map of metadata to update (optional).
+   * @return
+   *   A Future containing the modified VectorStore.
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/vector-stores/modify">OpenAI
+   *   Doc</a>
+   */
+  def modifyVectorStore(
+    vectorStoreId: String,
+    name: Option[String] = None,
+    metadata: Map[String, Any] = Map.empty // TODO: expires after
+  ): Future[VectorStore]
+
+  /**
+   * Returns a list of vector stores. the default is 20. Defaults to 20 for descending order.
+   * Defaults to desc obj_foo, your subsequent call can include after=obj_foo in order to fetch
+   * the next page of the list. obj_foo, your subsequent call can include before=obj_foo in
+   * order to fetch the previous page of the list.
    * @return
    *   thread messages
    * @see
@@ -1148,7 +1285,22 @@ trait OpenAIService extends OpenAICoreService {
     order: Option[SortOrder] = None
   ): Future[Seq[VectorStore]]
 
-  // TODO: retrieveVectorStore - https://platform.openai.com/docs/api-reference/vector-stores/get
+  /**
+   * Retrieves a vector store.
+   *
+   * @param vectorStoreId
+   *   The ID of the vector store to retrieve.
+   * @return
+   *   A Future containing an Option of VectorStore. The Option will be None if the vector
+   *   store is not found.
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/vector-stores/retrieve">OpenAI
+   *   Doc</a>
+   */
+  def retrieveVectorStore(
+    vectorStoreId: String
+  ): Future[Option[VectorStore]]
 
   /**
    * Deletes a vector store.
@@ -1172,7 +1324,6 @@ trait OpenAIService extends OpenAICoreService {
 
   /**
    * Creates a vector store file.
-   *
    * @param vectorStoreId
    *   The ID of the vector store to use for this request
    * @param fileId
@@ -1221,7 +1372,26 @@ trait OpenAIService extends OpenAICoreService {
     filter: Option[VectorStoreFileStatus] = None
   ): Future[Seq[VectorStoreFile]]
 
-  // TODO: retrieveVectorStoreFile - https://platform.openai.com/docs/api-reference/vector-stores-files/getFile
+  /**
+   * Retrieves a vector store file.
+   *
+   * @param vectorStoreId
+   *   The ID of the vector store to which the file belongs.
+   * @param fileId
+   *   The ID of the file to retrieve.
+   * @return
+   *   A Future containing an Option of VectorStoreFile. The Option will be None if the file is
+   *   not found.
+   *
+   * @see
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/vector-stores-files/getFile">OpenAI
+   *   Doc</a>
+   */
+  def retrieveVectorStoreFile(
+    vectorStoreId: String,
+    fileId: FileId
+  ): Future[VectorStoreFile]
 
   /**
    * Deletes a vector store file.

@@ -183,38 +183,106 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
 
     "serialize and deserialize code interpreter's resources" in {
       testCodec[AssistantToolResource](
-        CodeInterpreterResources(Seq(FileId("file-id-1"), FileId("file-id-2"))),
+        AssistantToolResource(
+          CodeInterpreterResources(
+            Seq(FileId("file-id-1"), FileId("file-id-2"))
+          )
+        ),
         codeInterpreterResourcesJson,
         Pretty
       )
     }
 
-    "serialize and deserialize file search's resources" ignore {
+    "serialize and deserialize file search's resources" in {
       testCodec[AssistantToolResource](
-        FileSearchResources(
-          Seq("vs_xxx"),
-          Seq(VectorStore(Seq(FileId("file-id-1")), Map("key" -> "value")))
+        AssistantToolResource(
+          FileSearchResources(
+            Seq("vs_xxx"),
+            Seq(VectorStore(Seq(FileId("file-id-1")), Map("key" -> "value")))
+          )
         ),
         fileSearchResourcesJson,
         Pretty
       )
     }
 
-//    "serialize and deserialize code interpreter's resources response" in {
-//      testCodec[AssistantToolResourceResponse](
-//        CodeInterpreterResourcesResponse(Seq(FileId("file-id-1"))),
-//        codeInterpreterResourcesResponseJson,
-//        Pretty
-//      )
-//    }
-//
-//    "serialize and deserialize file search's resources response" in {
-//      testCodec[AssistantToolResourceResponse](
-//        FileSearchResourcesResponse(Seq("vs-xxx")),
-//        fileSearchResourcesResponseJson,
-//        Pretty
-//      )
-//    }
+    "serialize and deserialize run tools" in {
+      testCodec[RunTool](
+        RunTool.CodeInterpreterTool,
+        """{
+             |  "type" : "code_interpreter"
+             |}""".stripMargin,
+        Pretty
+      )
+
+      testCodec[RunTool](
+        RunTool.FileSearchTool,
+        """{
+            |  "type" : "file_search"
+            |}""".stripMargin,
+        Pretty
+      )
+
+      testCodec[RunTool](
+        RunTool.FunctionTool("function-name"),
+        """{
+          |  "type" : "function",
+          |  "function" : {
+          |    "name" : "function-name"
+          |  }
+          |}""".stripMargin,
+        Pretty
+      )
+    }
+
+    "serialize and deserialize none, auto, and required tool choices" in {
+      testCodec[ToolChoice](
+        ToolChoice.None,
+        "\"none\"".stripMargin,
+        Pretty
+      )
+
+      testCodec[ToolChoice](
+        ToolChoice.Auto,
+        "\"auto\"".stripMargin,
+        Pretty
+      )
+
+      testCodec[ToolChoice](
+        ToolChoice.Required,
+        "\"required\"".stripMargin,
+        Pretty
+      )
+    }
+
+    "serialize and deserialize enforced tool choices" in {
+      testSerialization[ToolChoice](
+        ToolChoice.EnforcedTool(RunTool.CodeInterpreterTool),
+        """{
+          |  "type" : "code_interpreter"
+          |}""".stripMargin,
+        Pretty
+      )
+
+      testSerialization[ToolChoice](
+        ToolChoice.EnforcedTool(RunTool.FileSearchTool),
+        """{
+          |  "type" : "file_search"
+          |}""".stripMargin,
+        Pretty
+      )
+
+      testSerialization[ToolChoice](
+        ToolChoice.EnforcedTool(RunTool.FunctionTool("function-name")),
+        """{
+          |  "type" : "function",
+          |  "function" : {
+          |    "name" : "function-name"
+          |  }
+          |}""".stripMargin,
+        Pretty
+      )
+    }
 
     "serialize and deserialize a fine-tuning Weights and Biases integration" in {
       val integration = FineTune.WeightsAndBiases(
@@ -235,7 +303,10 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       testCodec[Attachment](
         Attachment(
           fileId = Some(FileId("file-id-1")),
-          tools = Seq(CodeInterpreterSpec, FileSearchSpec)
+          tools = Seq(
+            MessageAttachmentTool.CodeInterpreterSpec,
+            MessageAttachmentTool.FileSearchSpec
+          )
         ),
         attachmentJson,
         Pretty
@@ -475,6 +546,47 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       )(threadMessageContentFormat)
     }
 
+    "serialize and deserialize assistant tools" in {
+      testCodec[AssistantTool](
+        AssistantTool.CodeInterpreterTool,
+        """{
+            |  "type" : "code_interpreter"
+            |}""".stripMargin,
+        Pretty
+      )
+
+      testCodec[AssistantTool](
+        AssistantTool.FileSearchTool(Some(10)),
+        """{
+            |  "type" : "file_search",
+            |  "file_search" : {
+            |    "max_num_results" : 10
+            |  }
+            |}""".stripMargin,
+        Pretty
+      )
+
+      testCodec[AssistantTool](
+        AssistantTool.FunctionTool(
+          name = "function-name",
+          description = Some("function description"),
+          parameters = Map(),
+          strict = Some(true)
+        ),
+        """{
+            |  "type" : "function",
+            |  "function" : {
+            |    "name" : "function-name",
+            |    "description" : "function description",
+            |    "parameters" : {},
+            |    "strict" : true
+            |  }
+            |}""".stripMargin,
+        Pretty,
+        justSemantics = true
+      )
+    }
+
   }
 
   private def testCodec[A](
@@ -493,7 +605,23 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
 
     if (!justSemantics) serialized shouldBe json
 
-    Json.parse(json).as[A] shouldBe value
+    val json2 = Json.parse(json).as[A]
+    json2 shouldBe value
+  }
+
+  private def testSerialization[A](
+    value: A,
+    json: String,
+    printMode: JsonPrintMode = Compact
+  )(
+    implicit format: Format[A]
+  ): Unit = {
+    val jsValue = Json.toJson(value)
+    val serialized = printMode match {
+      case Compact => jsValue.toString()
+      case Pretty  => Json.prettyPrint(jsValue)
+    }
+    serialized shouldBe json
   }
 
   private def testDeserialization[A](

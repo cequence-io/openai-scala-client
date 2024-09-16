@@ -3,6 +3,7 @@ package io.cequence.openaiscala.service
 import com.knuddels.jtokkit.Encodings
 import com.knuddels.jtokkit.api.Encoding
 import io.cequence.openaiscala.JsonFormats
+import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain._
 import play.api.libs.json.Json
 
@@ -110,7 +111,7 @@ trait OpenAICountTokensHelper {
   def countFunMessageTokens(
     model: String,
     messages: Seq[BaseMessage],
-    functions: Seq[FunctionSpec],
+    functions: Seq[FunctionTool],
     responseFunctionName: Option[String]
   ): Int = {
     val encoding = registry.getEncodingForModel(model).orElseThrow
@@ -149,7 +150,7 @@ trait OpenAICountTokensHelper {
 
   private def functionsTokensEstimate(
     encoding: Encoding,
-    functions: Seq[FunctionSpec]
+    functions: Seq[FunctionTool]
   ): Int = {
     val promptDefinitions = FunctionCallOpenAISerializer.formatFunctionDefinitions(functions)
     encoding.countTokens(promptDefinitions) + 9

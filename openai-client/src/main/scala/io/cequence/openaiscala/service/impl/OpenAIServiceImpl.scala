@@ -13,7 +13,7 @@ import io.cequence.openaiscala.service.{HandleOpenAIErrorCodes, OpenAIService}
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits._
 import io.cequence.wsclient.domain.RichResponse
-import play.api.libs.json.{JsArray, JsObject, JsValue, Json, Reads}
+import play.api.libs.json.{JsObject, JsValue, Json, Reads}
 
 import java.io.File
 import java.nio.charset.StandardCharsets
@@ -44,7 +44,7 @@ private[service] trait OpenAIServiceImpl
 
   override def createChatFunCompletion(
     messages: Seq[BaseMessage],
-    functions: Seq[FunctionSpec],
+    functions: Seq[ChatCompletionTool],
     responseFunctionName: Option[String],
     settings: CreateChatCompletionSettings
   ): Future[ChatFunCompletionResponse] = {
@@ -52,7 +52,7 @@ private[service] trait OpenAIServiceImpl
       createBodyParamsForChatCompletion(messages, settings, stream = false)
 
     val extraParams = jsonBodyParams(
-      Param.functions -> Some(functions.map(Json.toJson(_)(functionSpecFormat))),
+      Param.functions -> Some(functions.map(Json.toJson(_)(chatCompletionToolWrites))),
       Param.function_call -> responseFunctionName.map(name =>
         Map("name" -> name)
       ) // otherwise "auto" is used by default (if functions are present)
@@ -68,11 +68,11 @@ private[service] trait OpenAIServiceImpl
 
   override def createRun(
     threadId: String,
-    assistantId: String,
+    assistantId: AssistantId,
     instructions: Option[String],
     additionalInstructions: Option[String],
     additionalMessages: Seq[BaseMessage],
-    tools: Seq[ForcableTool],
+    tools: Seq[AssistantTool],
     responseToolChoice: Option[ToolChoice] = None,
     settings: CreateRunSettings = DefaultSettings.CreateRun,
     stream: Boolean
@@ -84,7 +84,7 @@ private[service] trait OpenAIServiceImpl
     val messageJsons = additionalMessages.map(Json.toJson(_)(messageWrites))
 
     val runParams = jsonBodyParams(
-      Param.assistant_id -> Some(assistantId),
+      Param.assistant_id -> Some(assistantId.id),
       Param.additional_instructions -> instructions,
       Param.additional_messages ->
         (if (messageJsons.nonEmpty) Some(messageJsons) else None)
@@ -99,26 +99,81 @@ private[service] trait OpenAIServiceImpl
     )
   }
 
-  def submitToolOutputs(
+  override def createThreadAndRun(
+    assistantId: AssistantId,
+    thread: Option[ThreadAndRun],
+    instructions: Option[String],
+    tools: Seq[AssistantTool],
+    toolResources: Option[ThreadAndRunToolResource],
+    toolChoice: Option[ToolChoice],
+    settings: CreateThreadAndRunSettings,
+    stream: Boolean
+  ): Future[Run] = {
+    val coreParams = createBodyParamsForThreadAndRun(settings, stream)
+    val runParams = jsonBodyParams(
+      Param.assistant_id -> Some(assistantId.id),
+      Param.thread -> thread.map(Json.toJson(_)),
+      Param.instructions -> Some(instructions),
+      // Param.tools -> Some(Json.toJson(tools)),
+      Param.tool_resources -> toolResources.map(Json.toJson(_)),
+      Param.tool_choice -> toolChoice.map(Json.toJson(_))
+    )
+    execPOST(
+      EndPoint.threads_and_runs,
+      bodyParams = coreParams ++ runParams
+    ).map(
+      _.asSafeJson[Run]
+    )
+  }
+
+  override def modifyRun(
     threadId: String,
     runId: String,
-    toolOutputs: Seq[AssistantToolOutput]
+    metadata: Map[String, String]
   ): Future[Run] =
     execPOST(
       EndPoint.threads,
-      Some(s"$threadId/runs/$runId/submit_tool_outputs"),
-      bodyParams = Seq(
-        Param.tool_outputs -> (
-          if (toolOutputs.nonEmpty)
-            Some(
-              JsArray(toolOutputs.map(Json.toJson(_)(assistantToolOutputFormat)))
-            )
+      Some(s"$threadId/runs/$runId"),
+      bodyParams = jsonBodyParams(
+        Param.metadata -> (
+          if (metadata.nonEmpty)
+            Some(metadata)
           else None
         )
       )
     ).map(
       _.asSafeJson[Run]
     )
+
+  def submitToolOutputs(
+    threadId: String,
+    runId: String,
+    toolOutputs: Seq[AssistantToolOutput],
+    stream: Boolean
+  ): Future[Run] =
+    execPOST(
+      EndPoint.threads,
+      Some(s"$threadId/runs/$runId/submit_tool_outputs"),
+      bodyParams = jsonBodyParams(
+        Param.tool_outputs -> Some(toolOutputs.map(Json.toJson(_)(assistantToolOutputFormat))),
+        Param.stream -> Some(stream)
+      )
+    ).map(
+      _.asSafeJson[Run]
+    )
+
+  override def cancelRun(
+    threadId: String,
+    runId: String
+  ): Future[Run] = {
+    execPOST(
+      EndPoint.threads,
+      Some(s"$threadId/runs/$runId/cancel")
+    ).map(
+      _.asSafeJson[Run]
+    )
+
+  }
 
   override def retrieveRun(
     threadId: String,
@@ -129,6 +184,31 @@ private[service] trait OpenAIServiceImpl
       Some(s"$threadId/runs/$runId")
     ).map { response =>
       handleNotFoundAndError(response).map(_.asSafeJson[Run])
+    }
+
+  override def listRuns(
+    threadId: String,
+    pagination: Pagination,
+    order: Option[SortOrder] = None
+  ): Future[Seq[Run]] =
+    execGET(
+      EndPoint.threads,
+      Some(s"$threadId/runs"),
+      params = paginationParams(pagination) :+ Param.order -> order
+    ).map { response =>
+      readAttribute(response.json, "data").asSafeArray[Run]
+    }
+
+  override def retrieveRunStep(
+    threadID: String,
+    runId: String,
+    stepId: String
+  ): Future[Option[RunStep]] =
+    execGETRich(
+      EndPoint.threads,
+      Some(s"$threadID/runs/$runId/steps/$stepId")
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafeJson[RunStep])
     }
 
   override def listRunSteps(
@@ -146,29 +226,12 @@ private[service] trait OpenAIServiceImpl
     }
 
   private def toolParams(
-    tools: Seq[ForcableTool],
+    tools: Seq[AssistantTool],
     maybeResponseToolChoice: Option[ToolChoice]
   ): Seq[(Param, Option[JsValue])] = {
-    val toolJsons = tools.map {
-      case CodeInterpreterSpec => Map("type" -> "code_interpreter")
-      case FileSearchSpec      => Map("type" -> "file_search")
-      case tool: FunctionSpec  => Map("type" -> "function", "function" -> Json.toJson(tool))
-    }
-
-    val maybeToolChoiceParam = maybeResponseToolChoice.map {
-      case ToolChoice.None                         => "none"
-      case ToolChoice.Auto                         => "auto"
-      case ToolChoice.Required                     => "required"
-      case ToolChoice.EnforcedTool(FileSearchSpec) => Map("type" -> "file_search")
-      case ToolChoice.EnforcedTool(CodeInterpreterSpec) =>
-        Map("type" -> "code_interpreter")
-      case ToolChoice.EnforcedTool(FunctionSpec(name, _, _, _)) =>
-        Map("type" -> "function", "function" -> Map("name" -> name))
-    }
-
     val extraParams = jsonBodyParams(
-      Param.tools -> Some(toolJsons),
-      Param.tool_choice -> maybeToolChoiceParam
+      Param.tools -> Some(tools.map(Json.toJson(_))),
+      Param.tool_choice -> maybeResponseToolChoice.map(Json.toJson(_))
     )
 
     extraParams
@@ -176,18 +239,16 @@ private[service] trait OpenAIServiceImpl
 
   override def createChatToolCompletion(
     messages: Seq[BaseMessage],
-    tools: Seq[ToolSpec],
+    tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatFunCompletion
   ): Future[ChatToolCompletionResponse] = {
     val coreParams =
       createBodyParamsForChatCompletion(messages, settings, stream = false)
 
-    val toolJsons: Seq[Map[String, Object]] = tools.map { case tool: FunctionSpec =>
-      Map(
-        "type" -> "function",
-        "function" -> Json.toJson(tool)
-      )
+    val toolJsons: Seq[Map[String, Object]] = tools.map {
+      case tool: AssistantTool.FunctionTool =>
+        Map("type" -> "function", "function" -> Json.toJson(tool))
     }
 
     val extraParams = jsonBodyParams(
@@ -372,14 +433,12 @@ private[service] trait OpenAIServiceImpl
   override def uploadFile(
     file: File,
     displayFileName: Option[String],
-    settings: UploadFileSettings
+    purpose: FileUploadPurpose
   ): Future[FileInfo] =
     execPOSTMultipart(
       EndPoint.files,
       fileParams = Seq((Param.file, file, displayFileName)),
-      bodyParams = Seq(
-        Param.purpose -> Some(settings.purpose)
-      )
+      bodyParams = Seq(Param.purpose -> Some(purpose))
     ).map(
       _.asSafeJson[FileInfo]
     )
@@ -404,13 +463,14 @@ private[service] trait OpenAIServiceImpl
     displayFileName: Option[String]
   ): Future[FileInfo] = {
     readFile(file)
+    // TODO
     // parse the fileContent as Seq[BatchRow] solely for the purpose of validating its structure, OpenAIScalaClientException is thrown if the parsing fails
 
 //    fileRows.map { row =>
 //      Json.parse(row).asSafeArray[BatchRow]
 //    }
 
-    uploadFile(file, displayFileName, DefaultSettings.UploadBatchFile)
+    uploadFile(file, displayFileName, FileUploadPurpose.batch)
   }
 
   override def buildAndUploadBatchFile(
@@ -484,6 +544,22 @@ private[service] trait OpenAIServiceImpl
       _.asSafeJson[VectorStore]
     )
 
+  override def modifyVectorStore(
+    vectorStoreId: String,
+    name: Option[String] = None,
+    metadata: Map[String, Any]
+  ): Future[VectorStore] =
+    execPOST(
+      EndPoint.vector_stores,
+      endPointParam = Some(vectorStoreId),
+      bodyParams = jsonBodyParams(
+        Param.name -> name,
+        Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
+      )
+    ).map(
+      _.asSafeJson[VectorStore]
+    )
+
   override def listVectorStores(
     pagination: Pagination,
     order: Option[SortOrder]
@@ -493,6 +569,16 @@ private[service] trait OpenAIServiceImpl
       params = paginationParams(pagination) :+ Param.order -> order
     ).map { response =>
       readAttribute(response.json, "data").asSafeArray[VectorStore]
+    }
+
+  override def retrieveVectorStore(
+    vectorStoreId: String
+  ): Future[Option[VectorStore]] =
+    execGETRich(
+      EndPoint.vector_stores,
+      endPointParam = Some(vectorStoreId)
+    ).map { response =>
+      handleNotFoundAndError(response).map(_.asSafeJson[VectorStore])
     }
 
   override def deleteVectorStore(
@@ -534,6 +620,18 @@ private[service] trait OpenAIServiceImpl
     ).map { response =>
       readAttribute(response.json, "data").asSafeArray[VectorStoreFile]
     }
+
+  def retrieveVectorStoreFile(
+    vectorStoreId: String,
+    fileId: FileId
+  ): Future[VectorStoreFile] = {
+    execGET(
+      EndPoint.vector_stores,
+      endPointParam = Some(s"$vectorStoreId/files/${fileId.file_id}")
+    ).map(
+      _.asSafeJson[VectorStoreFile]
+    )
+  }
 
   override def deleteVectorStoreFile(
     vectorStoreId: String,
@@ -798,6 +896,15 @@ private[service] trait OpenAIServiceImpl
       readAttribute(response.json, "data").asSafeArray[ThreadFullMessage]
     }
 
+  override def deleteThreadMessage(
+    threadId: String,
+    messageId: String
+  ): Future[DeleteResponse] =
+    execDELETERich(
+      EndPoint.threads,
+      endPointParam = Some(s"$threadId/messages/$messageId")
+    ).map(handleDeleteEndpointResponse)
+
   override def retrieveThreadMessageFile(
     threadId: String,
     messageId: String,
@@ -830,13 +937,12 @@ private[service] trait OpenAIServiceImpl
     description: Option[String],
     instructions: Option[String],
     tools: Seq[AssistantTool],
-    toolResources: Seq[AssistantToolResource] = Seq.empty[AssistantToolResource],
+    toolResources: Option[AssistantToolResource] = None,
     metadata: Map[String, String]
   ): Future[Assistant] = {
-    val toolResourcesJson =
-      toolResources.map(Json.toJson(_).as[JsObject]).foldLeft(Json.obj()) { case (acc, json) =>
-        acc.deepMerge(json)
-      }
+    toolResources.map(Json.toJson(_).as[JsObject]).foldLeft(Json.obj()) { case (acc, json) =>
+      acc.deepMerge(json)
+    }
 
     execPOST(
       EndPoint.assistants,
@@ -846,8 +952,7 @@ private[service] trait OpenAIServiceImpl
         Param.description -> Some(description),
         Param.instructions -> Some(instructions),
         Param.tools -> Some(Json.toJson(tools)),
-        Param.tool_resources -> (if (toolResources.nonEmpty) Some(toolResourcesJson)
-                                 else None),
+        Param.tool_resources -> toolResources.map(Json.toJson(_)),
         Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
       )
     ).map(

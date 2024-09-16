@@ -1,11 +1,12 @@
 package io.cequence.openaiscala.examples
+import io.cequence.openaiscala.domain
+import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
+import io.cequence.openaiscala.domain.response.Assistant
 import io.cequence.openaiscala.domain.settings.CreateRunSettings
-import io.cequence.openaiscala.domain.{FunctionSpec, ModelId, ThreadMessage}
+import io.cequence.openaiscala.domain.{AssistantId, ModelId, ThreadMessage}
 
 import scala.collection.immutable.ListMap
 import scala.concurrent.Future
-import io.cequence.openaiscala.domain
-import io.cequence.openaiscala.domain.response.Assistant
 
 object CreateRun extends Example {
 
@@ -17,9 +18,9 @@ object CreateRun extends Example {
         "You plan my week."
       ),
       tools = Seq(
-        FunctionSpec("name", description = None, parameters = Map())
+        FunctionTool("name", description = None, parameters = Map())
       ),
-      toolResources = Seq()
+      toolResources = None
     )
   } yield assistant
 
@@ -40,12 +41,12 @@ object CreateRun extends Example {
       eventsThread <- createEventMessages
       run <- service.createRun(
         threadId = eventsThread.id,
-        assistantId = assistant.id,
+        assistantId = AssistantId(assistant.id),
         instructions = Some(
           "If you need the weather forecast for a specific city and date, you can use the weather_forecast_for_city function."
         ),
         tools = Seq(
-          FunctionSpec(
+          FunctionTool(
             "weather_forecast_for_city",
             description =
               Some("returns the weather forecast for a given day in the given city"),

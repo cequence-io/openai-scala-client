@@ -1,6 +1,7 @@
 package io.cequence.openaiscala.examples
 
-import io.cequence.openaiscala.domain.{CodeInterpreterSpec, ModelId}
+import io.cequence.openaiscala.domain.AssistantTool.CodeInterpreterTool
+import io.cequence.openaiscala.domain.ModelId
 
 import scala.concurrent.Future
 
@@ -17,7 +18,7 @@ object CreateAssistantWithCodeInterpreter extends Example {
         instructions = Some(
           "You are a helpful assistant that helps users interpret and visualize data and provide handy statistics on demand."
         ),
-        tools = Seq(CodeInterpreterSpec)
+        tools = Seq(CodeInterpreterTool)
       )
     } yield println(assistant)
 }

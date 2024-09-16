@@ -1,8 +1,9 @@
 package io.cequence.openaiscala.examples
 
+import io.cequence.openaiscala.domain.AssistantTool.FileSearchTool
 import io.cequence.openaiscala.domain.AssistantToolResource.FileSearchResources
 import io.cequence.openaiscala.domain.response.FileInfo
-import io.cequence.openaiscala.domain.settings.CreateRunSettings
+import io.cequence.openaiscala.domain.settings.{CreateRunSettings, FileUploadPurpose}
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.service.adapter.OpenAIServiceAdapters
 import io.cequence.openaiscala.service.{OpenAIService, OpenAIServiceFactory}
@@ -22,30 +23,30 @@ object CreateRunWithVectorStore extends Example {
     )
 
   val userId = "123"
-
   val model = ModelId.gpt_3_5_turbo
 
   private def scheduleFile(): File =
     Paths.get("/Users/boris/proj/cequence/eBF programme 2024 - extracted.pdf").toFile
 
   private def uploadFile: Future[FileInfo] =
-    service.uploadFile(scheduleFile())
+    service.uploadFile(scheduleFile(), purpose = FileUploadPurpose.batch)
 
   private def createVectorStore(file: FileInfo) = {
     service.createVectorStore(fileIds = Seq(file.id), name = Some("Conference Schedule"))
   }
 
-  private def createPlanner(vectorStoreId: String) = for {
-    assistant <- service.createAssistant(
-      model = model,
-      name = Some("Schedule planner"),
-      instructions = Some(
-        "You pick the talks meeting my criteria I should attend at a conference."
-      ),
-      tools = Seq(FileSearchSpec),
-      toolResources = Seq(FileSearchResources(Seq(vectorStoreId)))
-    )
-  } yield assistant
+  private def createPlanner(vectorStoreId: String) =
+    for {
+      assistant <- service.createAssistant(
+        model = model,
+        name = Some("Schedule planner"),
+        instructions = Some(
+          "You pick the talks meeting my criteria I should attend at a conference."
+        ),
+        tools = Seq(FileSearchTool()),
+        toolResources = Some(AssistantToolResource(FileSearchResources(Seq(vectorStoreId))))
+      )
+    } yield assistant
 
   def createSpecMessagesThread(vectorStoreId: String): Future[Thread] =
     for {
@@ -56,13 +57,13 @@ object CreateRunWithVectorStore extends Example {
           )
         ),
         metadata = Map("user_id" -> userId),
-        toolResources = Seq(FileSearchResources(Seq(vectorStoreId)))
+        toolResources = Seq(AssistantToolResource(FileSearchResources(Seq(vectorStoreId))))
       )
       _ = println(thread)
     } yield thread
 
   val vectorStoreId = "vs_6nTuNJKVytSoFke9nvnpptUZ" // createVectorStore(fileInfo).map(_.id)
-  val assistantId = "asst_gIharZ60V7hvf5pQvvjkw7Mf"
+  val assistantId = AssistantId("asst_gIharZ60V7hvf5pQvvjkw7Mf")
   override protected def run: Future[_] =
     for {
 //      fileInfo <- uploadFile
@@ -79,8 +80,8 @@ object CreateRunWithVectorStore extends Example {
       run <- service.createRun(
         threadId = eventsThread.id,
         assistantId = assistantId,
-        tools = Seq(FileSearchSpec),
-        responseToolChoice = Some(ToolChoice.EnforcedTool(FileSearchSpec)),
+        tools = Seq(FileSearchTool()),
+        responseToolChoice = Some(ToolChoice.EnforcedTool(RunTool.FileSearchTool)),
         settings = CreateRunSettings(),
         stream = false
       )

@@ -1,6 +1,8 @@
 package io.cequence.openaiscala.examples
 
-import io.cequence.openaiscala.domain.{AssistantToolResource, FileSearchSpec, ModelId}
+import io.cequence.openaiscala.domain.AssistantTool.FileSearchTool
+import io.cequence.openaiscala.domain.{AssistantToolResource, ModelId}
+
 import scala.concurrent.Future
 
 object CreateAssistantWithFileSearch extends Example {
@@ -13,10 +15,12 @@ object CreateAssistantWithFileSearch extends Example {
           "You are a trustworthy and reliable assistant that helps businesses with their financial reporting."
         ),
         instructions = None,
-        tools = Seq(FileSearchSpec),
-        toolResources = Seq(
-          AssistantToolResource.FileSearchResources(
-            vectorStoreIds = Seq("vs_xxx")
+        tools = Seq(FileSearchTool()),
+        toolResources = Some(
+          AssistantToolResource(
+            AssistantToolResource.FileSearchResources(
+              vectorStoreIds = Seq("vs_xxx")
+            )
           )
         )
       )

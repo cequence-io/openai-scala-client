@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.examples
 
+import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 
@@ -13,7 +14,7 @@ object CreateChatToolCompletion extends Example {
   )
 
   val tools = Seq(
-    FunctionSpec(
+    FunctionTool(
       name = "get_current_weather",
       description = Some("Get the current weather in a given location"),
       parameters = Map(

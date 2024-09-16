@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.examples
 
+import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateRunSettings
 import io.cequence.openaiscala.service.adapter.OpenAIServiceAdapters
@@ -51,7 +52,7 @@ object CreateRunWithFunctionCall extends Example {
   override protected def run: Future[_] =
     for {
       assistant <- createAssistant()
-      assistantId = assistant.id
+      assistantId = AssistantId(assistant.id)
       eventsThread <- createSpecMessagesThread()
 
       _ <- service.listThreadMessages(eventsThread.id).map { messages =>
@@ -97,7 +98,12 @@ object CreateRunWithFunctionCall extends Example {
           tool_call_id = toolCall.id
         )
       }
-      _ <- service.submitToolOutputs(updatedRun.thread_id, updatedRun.id, toolMessages)
+      _ <- service.submitToolOutputs(
+        updatedRun.thread_id,
+        updatedRun.id,
+        toolMessages,
+        stream = false
+      )
       _ = java.lang.Thread.sleep(5000)
       finalMessages <- service.listThreadMessages(eventsThread.id)
     } yield {
@@ -111,8 +117,8 @@ object CreateRunWithFunctionCall extends Example {
       println("Assistant answer:" + finalMessages.map(_.content).mkString("\n"))
     }
 
-  val tools: Seq[FunctionSpec] = Seq(
-    FunctionSpec(
+  val tools: Seq[FunctionTool] = Seq(
+    FunctionTool(
       name = "get_current_weather",
       description = Some("Get the current weather in a given location"),
       parameters = Map(

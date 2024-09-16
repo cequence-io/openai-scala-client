@@ -4,7 +4,6 @@ import akka.testkit.TestKit
 import io.cequence.openaiscala.domain.{
   AssistantMessage,
   BaseMessage,
-  FunctionSpec,
   ModelId,
   SystemMessage,
   UserMessage
@@ -12,6 +11,7 @@ import io.cequence.openaiscala.domain.{
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import akka.actor.ActorSystem
 import com.typesafe.config.{Config, ConfigFactory}
+import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
@@ -97,7 +97,7 @@ class OpenAICountTokensServiceSpec
     }
 
     protected def checkTokensForFunctionCall(
-      functions: Seq[FunctionSpec],
+      functions: Seq[FunctionTool],
       messages: Seq[BaseMessage],
       expectedTokens: Int,
       responseFunctionName: Option[String] = None,
@@ -297,7 +297,7 @@ class OpenAICountTokensServiceSpec
 
   }
 
-  val weatherFunction = FunctionSpec(
+  val weatherFunction = FunctionTool(
     name = "getWeather",
     parameters = Map(
       "type" -> "object",
@@ -319,7 +319,7 @@ class OpenAICountTokensServiceSpec
     }
 
     "count tokens for a chat with function - nested description" in new TestCase {
-      private val function1 = FunctionSpec(
+      private val function1 = FunctionTool(
         name = "function",
         description = Some("description"),
         parameters = Map(
@@ -345,7 +345,7 @@ class OpenAICountTokensServiceSpec
     }
 
     "count tokens for a chat with function - required field" in new TestCase {
-      private val function1 = FunctionSpec(
+      private val function1 = FunctionTool(
         name = "function",
         description = Some("description"),
         parameters = ListMap(
@@ -362,7 +362,7 @@ class OpenAICountTokensServiceSpec
     }
 
     "count tokens for a chat with function - nested description, enums" in new TestCase {
-      private val function1 = FunctionSpec(
+      private val function1 = FunctionTool(
         name = "function",
         description = Some("description1"),
         parameters = ListMap(
@@ -403,7 +403,7 @@ class OpenAICountTokensServiceSpec
     }
 
     "count tokens for a chat with function - two fields in object" in new TestCase {
-      private val function1 = FunctionSpec(
+      private val function1 = FunctionTool(
         name = "get_recipe",
         parameters = ListMap(
           "type" -> "object",
@@ -442,7 +442,7 @@ class OpenAICountTokensServiceSpec
     }
 
     "count tokens for a chat with function - many messages" in new TestCase {
-      private val function1 = FunctionSpec(
+      private val function1 = FunctionTool(
         name = "do_stuff",
         parameters = ListMap("type" -> "object", "properties" -> ListMap())
       )
@@ -456,7 +456,7 @@ class OpenAICountTokensServiceSpec
     }
 
     "count tokens for a chat with function - empty properties in object" in new TestCase {
-      private val function1 = FunctionSpec(
+      private val function1 = FunctionTool(
         name = "do_stuff",
         parameters = ListMap("type" -> "object", "properties" -> ListMap())
       )
@@ -469,7 +469,7 @@ class OpenAICountTokensServiceSpec
     }
 
     "count tokens for a chat with function - gpt4 model" in new TestCase {
-      private val function1 = FunctionSpec(
+      private val function1 = FunctionTool(
         name = "function",
         description = Some("description"),
         parameters = Map(
@@ -499,7 +499,7 @@ class OpenAICountTokensServiceSpec
     }
 
     "count tokens for a chat with function - responseFunctionName is set to Some" in new TestCase {
-      private val function1 = FunctionSpec(
+      private val function1 = FunctionTool(
         name = "function",
         description = Some("description"),
         parameters = Map(
@@ -533,7 +533,7 @@ class OpenAICountTokensServiceSpec
     }
 
     "count tokens for a chat with function - array with enum" in new TestCase {
-      private val function1 = FunctionSpec(
+      private val function1 = FunctionTool(
         name = "function",
         description = Some("description"),
         parameters = Map(

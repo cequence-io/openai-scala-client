@@ -19,6 +19,15 @@ object RunStatus {
   case object Completed extends RunStatus
   case object Incomplete extends RunStatus
   case object Expired extends RunStatus
+
+  def finishedStates: Set[RunStatus] =
+    Set(
+      Completed,
+      Failed,
+      Cancelled,
+      Incomplete, // TODO: is this a finished state?
+      Expired
+    )
 }
 
 sealed trait ToolChoice
@@ -26,7 +35,7 @@ object ToolChoice {
   case object None extends ToolChoice
   case object Auto extends ToolChoice
   case object Required extends ToolChoice
-  case class EnforcedTool(spec: ForcableTool) extends ToolChoice
+  case class EnforcedTool(spec: RunTool) extends ToolChoice
 }
 
 case class RequiredAction(
@@ -61,6 +70,7 @@ case class Run(
   incomplete_details: Option[Reason],
   model: String,
   instructions: Option[String],
+  tools: Seq[AssistantTool],
   usage: Option[UsageInfo]
   //  tool_choice: Either[String, Any], // Replace Any with the actual type when available
   //  response_format: Either[String, Any] // Replace Any with the actual type when available

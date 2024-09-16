@@ -33,6 +33,11 @@ trait OpenAIServiceConsts {
       maxPromptTokens = Some(1000)
     )
 
+    // TODO: check defaults
+    val CreateThreadAndRun = CreateThreadAndRunSettings(
+      model = Some(ModelId.gpt_3_5_turbo)
+    )
+
     val CreateChatCompletion = CreateChatCompletionSettings(
       model = ModelId.gpt_3_5_turbo_1106,
       max_tokens = Some(1000)
@@ -87,10 +92,6 @@ trait OpenAIServiceConsts {
     val CreateTranslation = CreateTranslationSettings(
       model = ModelId.whisper_1
     )
-
-    val UploadFineTuneFile = UploadFileSettings(purpose = FileUploadPurpose.`fine-tune`)
-
-    val UploadBatchFile = UploadFileSettings(purpose = FileUploadPurpose.batch)
 
     val CreateFineTune = CreateFineTuneSettings(
       model = ModelId.gpt_3_5_turbo_0613
