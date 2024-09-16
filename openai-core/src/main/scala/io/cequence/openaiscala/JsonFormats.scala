@@ -197,7 +197,7 @@ object JsonFormats {
       Format(reads, writes)
     }
     lazy val assistantFileSearchToolFormat: Format[AssistantTool.FileSearchTool] = {
-      implicit val config = JsonConfiguration(SnakeCase)
+      implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
       Json.format[AssistantTool.FileSearchTool]
     }
 
@@ -501,9 +501,29 @@ object JsonFormats {
       (__ \ "hyperparameters").format[FineTuneHyperparams] and
       (__ \ "integrations").formatNullable[Seq[FineTune.Integration]] and
       (__ \ "seed").format[Int]
-  )(FineTuneJob.apply, unlift(FineTuneJob.unapply))
+  )(
+    FineTuneJob.apply,
+    // somehow FineTuneJob.unapply is not working in Scala3
+    (x: FineTuneJob) =>
+      (
+        x.id,
+        x.model,
+        x.created_at,
+        x.finished_at,
+        x.fine_tuned_model,
+        x.organization_id,
+        x.status,
+        x.training_file,
+        x.validation_file,
+        x.result_files,
+        x.trained_tokens,
+        x.error,
+        x.hyperparameters,
+        x.integrations,
+        x.seed
+      )
+  )
 
-  // somehow ModerationCategories.unapply is not working in Scala3
   implicit lazy val moderationCategoriesFormat: Format[ModerationCategories] = (
     (__ \ "hate").format[Boolean] and
       (__ \ "hate/threatening").format[Boolean] and
@@ -514,7 +534,8 @@ object JsonFormats {
       (__ \ "violence/graphic").format[Boolean]
   )(
     ModerationCategories.apply,
-    { (x: ModerationCategories) =>
+    // somehow ModerationCategories.unapply is not working in Scala3
+    (x: ModerationCategories) =>
       (
         x.hate,
         x.hate_threatening,
@@ -524,7 +545,6 @@ object JsonFormats {
         x.violence,
         x.violence_graphic
       )
-    }
   )
 
   // somehow ModerationCategoryScores.unapply is not working in Scala3
