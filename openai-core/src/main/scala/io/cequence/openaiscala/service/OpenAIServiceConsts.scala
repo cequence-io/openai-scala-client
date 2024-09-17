@@ -29,21 +29,20 @@ trait OpenAIServiceConsts {
     )
 
     val CreateRun = CreateRunSettings(
-      model = Some(ModelId.gpt_3_5_turbo),
+      model = Some(ModelId.gpt_4o_mini),
       maxPromptTokens = Some(1000)
     )
 
-    // TODO: check defaults
     val CreateThreadAndRun = CreateThreadAndRunSettings(
-      model = Some(ModelId.gpt_3_5_turbo)
+      model = Some(ModelId.gpt_4o_mini)
     )
 
     val CreateChatCompletion = CreateChatCompletionSettings(
-      model = ModelId.gpt_3_5_turbo_1106,
+      model = ModelId.gpt_4o_mini,
       max_tokens = Some(1000)
     )
 
-    def createJsonChatCompletion(jsonSchema: JsonSchema): CreateChatCompletionSettings =
+    def createJsonChatCompletion(jsonSchema: JsonSchemaDef): CreateChatCompletionSettings =
       CreateChatCompletionSettings(
         model = ModelId.gpt_4o_2024_08_06,
         max_tokens = Some(1000),
@@ -52,12 +51,12 @@ trait OpenAIServiceConsts {
       )
 
     val CreateChatFunCompletion = CreateChatCompletionSettings(
-      model = ModelId.gpt_3_5_turbo_1106,
+      model = ModelId.gpt_4o_mini,
       max_tokens = Some(1000)
     )
 
     val CreateChatToolCompletion = CreateChatCompletionSettings(
-      model = ModelId.gpt_3_5_turbo_1106,
+      model = ModelId.gpt_4o_mini,
       max_tokens = Some(1000)
     )
 
@@ -94,7 +93,7 @@ trait OpenAIServiceConsts {
     )
 
     val CreateFineTune = CreateFineTuneSettings(
-      model = ModelId.gpt_3_5_turbo_0613
+      model = ModelId.gpt_4o_2024_08_06
     )
 
     // keep all OpenAI defaults
