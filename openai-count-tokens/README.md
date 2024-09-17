@@ -12,7 +12,7 @@ The currently supported Scala versions are **2.12, 2.13**, and **3**.
 To pull the library you have to add the following dependency to your *build.sbt*
 
 ```
-"io.cequence" %% "openai-scala-count-tokens" % "1.0.0"
+"io.cequence" %% "openai-scala-count-tokens" % "1.1.0"
 ```
 
 or to *pom.xml* (if you use maven)
