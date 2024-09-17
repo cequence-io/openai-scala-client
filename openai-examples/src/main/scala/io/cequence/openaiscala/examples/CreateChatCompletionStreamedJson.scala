@@ -26,7 +26,7 @@ object CreateChatCompletionStreamedJson
     service
       .createChatCompletionStreamed(
         messages = messages,
-        settings = DefaultSettings.createJsonChatCompletion(capitalsSchema)
+        settings = DefaultSettings.createJsonChatCompletion(capitalsSchemaDef1)
       )
       .runWith(
         Sink.foreach { completion =>
