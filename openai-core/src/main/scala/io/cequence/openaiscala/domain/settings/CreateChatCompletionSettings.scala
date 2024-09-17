@@ -77,11 +77,11 @@ case class CreateChatCompletionSettings(
   extra_params: Map[String, Any] = Map.empty,
 
   // json schema to use if response format = json_schema
-  jsonSchema: Option[JsonSchema] = None
+  jsonSchema: Option[JsonSchemaDef] = None
   // TODO: add service_tier
 ) {
 
-  def withJsonSchema(jsonSchema: JsonSchema): CreateChatCompletionSettings =
+  def withJsonSchema(jsonSchema: JsonSchemaDef): CreateChatCompletionSettings =
     copy(jsonSchema = Some(jsonSchema))
 }
 
