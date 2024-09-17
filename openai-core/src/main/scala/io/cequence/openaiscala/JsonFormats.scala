@@ -19,7 +19,7 @@ import io.cequence.openaiscala.domain.response.ResponseFormat.{
   TextResponse
 }
 import io.cequence.openaiscala.domain.response._
-import io.cequence.openaiscala.domain.settings.JsonSchema
+import io.cequence.openaiscala.domain.settings.JsonSchemaDef
 import io.cequence.openaiscala.domain.{ThreadMessageFile, _}
 import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.JsonUtil.{enumFormat, snakeEnumFormat}
@@ -974,7 +974,7 @@ object JsonFormats {
         case "code_interpreter" => JsSuccess(RunTool.CodeInterpreterTool)
         case "file_search"      => JsSuccess(RunTool.FileSearchTool)
         case "function" =>
-          (json \ "function" \ "name").validate[String].map(RunTool.FunctionTool)
+          (json \ "function" \ "name").validate[String].map(RunTool.FunctionTool.apply)
         case _ => JsError("Unknown type")
       }
     }
@@ -1011,7 +1011,7 @@ object JsonFormats {
         case "none"     => JsSuccess(None)
         case "auto"     => JsSuccess(Auto)
         case "required" => JsSuccess(Required)
-        case _          => runToolFormat.reads(json).map(EnforcedTool)
+        case _          => runToolFormat.reads(json).map(EnforcedTool.apply)
       }
     }
 
@@ -1136,9 +1136,155 @@ object JsonFormats {
     Json.writes[ThreadAndRun]
   }
 
-  implicit val jsonSchemaFormat: Format[JsonSchema] = {
-    implicit lazy val stringAnyMapFormat: Format[Map[String, Any]] =
-      JsonUtil.StringAnyMapFormat
-    Json.format[JsonSchema]
+  implicit lazy val jsonTypeFormat: Format[JsonType] = enumFormat[JsonType](
+    JsonType.Object,
+    JsonType.String,
+    JsonType.Number,
+    JsonType.Boolean,
+    JsonType.Null,
+    JsonType.Array
+  )
+
+  implicit lazy val jsonSchemaWrites: Writes[JsonSchema] = {
+    implicit val stringWrites = Json.writes[JsonSchema.String]
+    implicit val numberWrites = Json.writes[JsonSchema.Number]
+    implicit val booleanWrites = Json.writes[JsonSchema.Boolean]
+    //    implicit val nullWrites = Json.writes[JsonSchema.Null]
+
+    def writesAux(o: JsonSchema): JsValue = {
+      val typeValueJson = o.`type`.toString
+
+      val json: JsObject = o match {
+        case c: JsonSchema.String =>
+          val json = Json.toJson(c).as[JsObject]
+          if ((json \ "enum").asOpt[Seq[String]].exists(_.isEmpty)) json - "enum" else json
+
+        case c: JsonSchema.Number =>
+          Json.toJson(c).as[JsObject]
+
+        case c: JsonSchema.Boolean =>
+          Json.toJson(c).as[JsObject]
+
+        case c: JsonSchema.Null =>
+          Json.obj()
+
+        case c: JsonSchema.Object =>
+          Json.obj(
+            "properties" -> JsObject(
+              c.properties.map { case (key, value) => (key, writesAux(value)) }
+            ),
+            "required" -> c.required
+          )
+
+        case c: JsonSchema.Array =>
+          Json.obj(
+            "items" -> writesAux(c.items)
+          )
+      }
+
+      json ++ Json.obj("type" -> typeValueJson)
+    }
+
+    (o: JsonSchema) => writesAux(o)
   }
+
+  implicit lazy val jsonSchemaReads: Reads[JsonSchema] = new Reads[JsonSchema] {
+    implicit val stringReads: Reads[JsonSchema.String] = Json.reads[JsonSchema.String]
+    implicit val numberReads: Reads[JsonSchema.Number] = Json.reads[JsonSchema.Number]
+    implicit val booleanReads: Reads[JsonSchema.Boolean] = Json.reads[JsonSchema.Boolean]
+    //    implicit val nullReads = Json.reads[JsonSchema.Null]
+
+    def readsAux(o: JsValue): JsResult[JsonSchema] = {
+      (o \ "type")
+        .asOpt[JsonType]
+        .map {
+          case JsonType.String =>
+            Json.fromJson[JsonSchema.String](o)
+
+          case JsonType.Number =>
+            Json.fromJson[JsonSchema.Number](o)
+
+          case JsonType.Boolean =>
+            Json.fromJson[JsonSchema.Boolean](o)
+
+          case JsonType.Null =>
+            JsSuccess(JsonSchema.Null())
+
+          case JsonType.Object =>
+            (o \ "properties")
+              .asOpt[JsObject]
+              .map { propertiesJson =>
+                val propertiesResults = propertiesJson.fields.map { case (key, jsValue) =>
+                  (key, readsAux(jsValue))
+                }.toMap
+
+                val propertiesErrors = propertiesResults.collect { case (_, JsError(errors)) =>
+                  errors
+                }
+                val properties = propertiesResults.collect { case (key, JsSuccess(value, _)) =>
+                  (key, value)
+                }
+
+                val required = (o \ "required").asOpt[Seq[String]].getOrElse(Nil)
+
+                if (propertiesErrors.isEmpty)
+                  JsSuccess(JsonSchema.Object(properties, required))
+                else
+                  JsError(propertiesErrors.reduce(_ ++ _))
+              }
+              .getOrElse(
+                JsError("Object schema must have a 'properties' field.")
+              )
+
+          case JsonType.Array =>
+            (o \ "items")
+              .asOpt[JsObject]
+              .map { itemsJson =>
+                readsAux(itemsJson).map { items =>
+                  JsonSchema.Array(items)
+                }
+              }
+              .getOrElse(
+                JsError("Array schema must have an 'items' field.")
+              )
+        }
+        .getOrElse(
+          JsError("Schema must have a 'type' field.")
+        )
+    }
+
+    override def reads(json: JsValue): JsResult[JsonSchema] = readsAux(json)
+  }
+
+  implicit lazy val jsonSchemaFormat: Format[JsonSchema] =
+    Format(jsonSchemaReads, jsonSchemaWrites)
+
+  implicit lazy val eitherJsonSchemaReads: Reads[Either[JsonSchema, Map[String, Any]]] = {
+    implicit val stringAnyMapFormat: Format[Map[String, Any]] =
+      JsonUtil.StringAnyMapFormat
+
+    Reads[Either[JsonSchema, Map[String, Any]]] { (json: JsValue) =>
+      json
+        .validate[JsonSchema]
+        .map(Left(_))
+        .orElse(
+          json.validate[Map[String, Any]].map(Right(_))
+        )
+    }
+  }
+
+  implicit lazy val eitherJsonSchemaWrites: Writes[Either[JsonSchema, Map[String, Any]]] = {
+    implicit val stringAnyMapFormat: Format[Map[String, Any]] =
+      JsonUtil.StringAnyMapFormat
+
+    Writes[Either[JsonSchema, Map[String, Any]]] {
+      case Left(schema) => Json.toJson(schema)
+      case Right(map)   => Json.toJson(map)
+    }
+  }
+
+  implicit lazy val eitherJsonSchemaFormat: Format[Either[JsonSchema, Map[String, Any]]] =
+    Format(eitherJsonSchemaReads, eitherJsonSchemaWrites)
+
+  implicit val jsonSchemaDefFormat: Format[JsonSchemaDef] = Json.format[JsonSchemaDef]
 }

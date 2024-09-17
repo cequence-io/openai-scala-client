@@ -36,12 +36,7 @@ case class FineTuneJob(
   integrations: Option[Seq[FineTune.Integration]],
   // The seed used for the fine-tuning job.
   seed: Int
-) {
-  @Deprecated
-  def updated_at = finished_at
-  @Deprecated
-  def events: Option[Seq[FineTuneEvent]] = None
-}
+)
 
 case class FineTuneEvent(
   id: String,
