@@ -11,8 +11,3 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "3.2.18" % Test,
   "org.scalamock" %% "scalamock" % scalaMock % Test
 )
-
-//libraryDependencies ++= Seq(
-//  "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
-//  "ch.qos.logback" % "logback-classic" % "1.4.7"
-//)

@@ -1,14 +1,19 @@
 package io.cequence.openaiscala.service.impl
 
 import io.cequence.openaiscala.JsonFormats._
-import io.cequence.openaiscala.domain.BaseMessage
+import io.cequence.openaiscala.domain.{BaseMessage, ModelId}
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
+import io.cequence.openaiscala.service.adapter.{
+  ChatCompletionSettingsConversions,
+  MessageConversions
+}
 import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIServiceConsts}
+import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.ResponseImplicits._
 import io.cequence.wsclient.service.WSClient
 import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithEngine
-import play.api.libs.json.{JsValue, Json}
+import play.api.libs.json.{JsObject, JsValue, Json}
 
 import scala.concurrent.Future
 
@@ -45,49 +50,71 @@ trait ChatCompletionBodyMaker {
 
   this: WSClient =>
 
+  private val o1Models = Set(
+    ModelId.o1_preview,
+    ModelId.o1_preview_2024_09_12,
+    ModelId.o1_mini,
+    ModelId.o1_mini_2024_09_12
+  )
+
   protected def createBodyParamsForChatCompletion(
-    messages: Seq[BaseMessage],
+    messagesAux: Seq[BaseMessage],
     settings: CreateChatCompletionSettings,
     stream: Boolean
   ): Seq[(Param, Option[JsValue])] = {
-    assert(messages.nonEmpty, "At least one message expected.")
+    assert(messagesAux.nonEmpty, "At least one message expected.")
 
-    val messageJsons = messages.map(Json.toJson(_)(messageWrites))
+    // O1 models needs some special treatment... revisit this later
+    val messagesFinal =
+      if (o1Models.contains(settings.model))
+        MessageConversions.systemToUserMessages(messagesAux)
+      else
+        messagesAux
+
+    val messageJsons = messagesFinal.map(Json.toJson(_)(messageWrites))
+
+    // O1 models needs some special treatment... revisit this later
+    val settingsFinal =
+      if (o1Models.contains(settings.model))
+        ChatCompletionSettingsConversions.o1Specific(settings)
+      else
+        settings
 
     jsonBodyParams(
       Param.messages -> Some(messageJsons),
-      Param.model -> Some(settings.model),
-      Param.temperature -> settings.temperature,
-      Param.top_p -> settings.top_p,
-      Param.n -> settings.n,
+      Param.model -> Some(settingsFinal.model),
+      Param.temperature -> settingsFinal.temperature,
+      Param.top_p -> settingsFinal.top_p,
+      Param.n -> settingsFinal.n,
       Param.stream -> Some(stream),
       Param.stop -> {
-        settings.stop.size match {
+        settingsFinal.stop.size match {
           case 0 => None
-          case 1 => Some(settings.stop.head)
-          case _ => Some(settings.stop)
+          case 1 => Some(settingsFinal.stop.head)
+          case _ => Some(settingsFinal.stop)
         }
       },
-      Param.max_tokens -> settings.max_tokens,
-      Param.presence_penalty -> settings.presence_penalty,
-      Param.frequency_penalty -> settings.frequency_penalty,
+      Param.max_tokens -> settingsFinal.max_tokens,
+      Param.presence_penalty -> settingsFinal.presence_penalty,
+      Param.frequency_penalty -> settingsFinal.frequency_penalty,
       Param.logit_bias -> {
-        if (settings.logit_bias.isEmpty) None else Some(settings.logit_bias)
+        if (settingsFinal.logit_bias.isEmpty) None else Some(settingsFinal.logit_bias)
       },
-      Param.user -> settings.user,
-      Param.logprobs -> settings.logprobs,
-      Param.top_logprobs -> settings.top_logprobs,
-      Param.seed -> settings.seed,
+      Param.user -> settingsFinal.user,
+      Param.logprobs -> settingsFinal.logprobs,
+      Param.top_logprobs -> settingsFinal.top_logprobs,
+      Param.seed -> settingsFinal.seed,
       Param.response_format -> {
-        settings.response_format_type.map { (formatType: ChatCompletionResponseFormatType) =>
-          if (formatType != ChatCompletionResponseFormatType.json_schema)
-            Map("type" -> formatType.toString)
-          else
-            handleJsonSchema(settings)
+        settingsFinal.response_format_type.map {
+          (formatType: ChatCompletionResponseFormatType) =>
+            if (formatType != ChatCompletionResponseFormatType.json_schema)
+              Map("type" -> formatType.toString)
+            else
+              handleJsonSchema(settingsFinal)
         }
       },
       Param.extra_params -> {
-        if (settings.extra_params.nonEmpty) Some(settings.extra_params) else None
+        if (settingsFinal.extra_params.nonEmpty) Some(settingsFinal.extra_params) else None
       }
     )
   }
@@ -95,26 +122,42 @@ trait ChatCompletionBodyMaker {
   private def handleJsonSchema(
     settings: CreateChatCompletionSettings
   ): Map[String, Any] =
-    settings.jsonSchema.map { case JsonSchema(name, strict, structure) =>
-      val adjustedSchema = if (strict) {
+    settings.jsonSchema.map { case JsonSchemaDef(name, strict, structure) =>
+      val schemaMap: Map[String, Any] = structure match {
+        case Left(schema) =>
+          val json = Json.toJson(schema).as[JsObject]
+          JsonUtil.toValueMap(json)
+
+        case Right(schema) => schema
+      }
+
+      val adjustedSchema: Map[String, Any] = if (strict) {
         // set "additionalProperties" -> false on "object" types if strict
         def addFlagAux(map: Map[String, Any]): Map[String, Any] = {
           val newMap = map.map { case (key, value) =>
-            val newValue = value match {
-              case obj: Map[String, Any] => addFlagAux(obj)
-              case other                 => other
+            val unwrappedValue = value match {
+              case Some(value) => value
+              case other       => other
+            }
+
+            val newValue = unwrappedValue match {
+              case obj: Map[String, Any] =>
+                addFlagAux(obj)
+
+              case other =>
+                other
             }
             key -> newValue
           }
 
-          if (map.get("type").contains("object"))
+          if (Seq("object", Some("object")).contains(map.getOrElse("type", ""))) {
             newMap + ("additionalProperties" -> false)
-          else
+          } else
             newMap
         }
 
-        addFlagAux(structure)
-      } else structure
+        addFlagAux(schemaMap)
+      } else schemaMap
 
       Map(
         "type" -> "json_schema",
