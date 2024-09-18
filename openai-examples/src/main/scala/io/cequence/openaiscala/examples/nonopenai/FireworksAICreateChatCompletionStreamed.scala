@@ -13,8 +13,7 @@ object FireworksAICreateChatCompletionStreamed
     extends ExampleBase[OpenAIChatCompletionStreamedServiceExtra] {
 
   private val fireworksModelPrefix = "accounts/fireworks/models/"
-  override val service: OpenAIChatCompletionStreamedServiceExtra =
-    ChatCompletionProvider.streamed.fireworks
+  override val service: OpenAIChatCompletionStreamedServiceExtra = ChatCompletionProvider.fireworks
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),

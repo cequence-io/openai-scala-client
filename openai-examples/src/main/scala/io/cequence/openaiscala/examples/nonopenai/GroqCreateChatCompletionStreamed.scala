@@ -12,8 +12,7 @@ import scala.concurrent.Future
 object GroqCreateChatCompletionStreamed
     extends ExampleBase[OpenAIChatCompletionStreamedServiceExtra] {
 
-  override val service: OpenAIChatCompletionStreamedServiceExtra =
-    ChatCompletionProvider.streamed.groq
+  override val service: OpenAIChatCompletionStreamedServiceExtra = ChatCompletionProvider.groq
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),

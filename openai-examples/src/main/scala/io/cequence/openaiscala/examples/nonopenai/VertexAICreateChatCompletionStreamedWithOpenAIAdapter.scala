@@ -13,8 +13,7 @@ import scala.concurrent.Future
 object VertexAICreateChatCompletionStreamedWithOpenAIAdapter
     extends ExampleBase[OpenAIChatCompletionService] {
 
-  override val service: OpenAIChatCompletionStreamedService =
-    ChatCompletionProvider.vertexAI
+  override val service: OpenAIChatCompletionStreamedService = ChatCompletionProvider.vertexAI
 
   private val model = NonOpenAIModelId.gemini_1_5_flash_001
 

@@ -12,8 +12,7 @@ import scala.concurrent.Future
  */
 object TogetherAICreateChatCompletion extends ExampleBase[OpenAIChatCompletionService] {
 
-  override val service: OpenAIChatCompletionService =
-    ChatCompletionProvider.togetherAI
+  override val service: OpenAIChatCompletionService = ChatCompletionProvider.togetherAI
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),

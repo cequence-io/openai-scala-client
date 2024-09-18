@@ -16,8 +16,7 @@ import scala.concurrent.Future
 object FireworksAICreateChatCompletion extends ExampleBase[OpenAIChatCompletionService] {
 
   private val fireworksModelPrefix = "accounts/fireworks/models/"
-  override val service: OpenAIChatCompletionService =
-    ChatCompletionProvider.fireworks
+  override val service: OpenAIChatCompletionService = ChatCompletionProvider.fireworks
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),

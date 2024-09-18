@@ -10,8 +10,7 @@ import scala.concurrent.Future
 // requires `OCTOAI_TOKEN` environment variable to be set
 object OctoMLCreateChatCompletion extends ExampleBase[OpenAIChatCompletionService] {
 
-  override val service: OpenAIChatCompletionService =
-    ChatCompletionProvider.octoML
+  override val service: OpenAIChatCompletionService = ChatCompletionProvider.octoML
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),

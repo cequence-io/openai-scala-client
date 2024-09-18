@@ -18,8 +18,7 @@ object AnthropicCreateChatCompletionStreamedWithOpenAIAdapter
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  override val service: OpenAIChatCompletionStreamedService =
-    ChatCompletionProvider.anthropic
+  override val service: OpenAIChatCompletionStreamedService = ChatCompletionProvider.anthropic
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),

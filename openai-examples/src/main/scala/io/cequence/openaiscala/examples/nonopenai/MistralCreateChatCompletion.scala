@@ -10,8 +10,7 @@ import scala.concurrent.Future
 // requires `MISTRAL_API_KEY` environment variable to be set
 object MistralCreateChatCompletion extends ExampleBase[OpenAIChatCompletionService] {
 
-  override val service: OpenAIChatCompletionService =
-    ChatCompletionProvider.mistral
+  override val service: OpenAIChatCompletionService = ChatCompletionProvider.mistral
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),

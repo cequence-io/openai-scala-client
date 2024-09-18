@@ -5,7 +5,7 @@ This is a no-nonsense async Scala client for OpenAI API supporting all the avail
 
 * **Models**: [listModels](https://platform.openai.com/docs/api-reference/models/list), and [retrieveModel](https://platform.openai.com/docs/api-reference/models/retrieve)
 * **Completions**: [createCompletion](https://platform.openai.com/docs/api-reference/completions/create)
-* **Chat Completions**: [createChatCompletion](https://platform.openai.com/docs/api-reference/chat/create) (also with GPT vision support!), [createChatFunCompletion](https://platform.openai.com/docs/api-reference/chat/create) (deprecated), and [createChatToolCompletion](https://platform.openai.com/docs/api-reference/chat/create)
+* **Chat Completions**: [createChatCompletion](https://platform.openai.com/docs/api-reference/chat/create) (also with JSON schema support 🔥), [createChatFunCompletion](https://platform.openai.com/docs/api-reference/chat/create) (deprecated), and [createChatToolCompletion](https://platform.openai.com/docs/api-reference/chat/create)
 * **Edits**: [createEdit](https://platform.openai.com/docs/api-reference/edits/create) (deprecated)
 * **Images**: [createImage](https://platform.openai.com/docs/api-reference/images/create), [createImageEdit](https://platform.openai.com/docs/api-reference/images/create-edit), and [createImageVariation](https://platform.openai.com/docs/api-reference/images/create-variation)
 * **Embeddings**: [createEmbeddings](https://platform.openai.com/docs/api-reference/embeddings/create)
@@ -33,10 +33,11 @@ In addition to the OpenAI API, this library also supports API-compatible provide
 - [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) - cloud-based, offers a vast selection of open-source models
 - [Anthropic](https://www.anthropic.com/api) - cloud-based, a major competitor to OpenAI, features proprietary/closed-source models such as Claude3 - Haiku, Sonnet, and Opus
 - [Google Vertex AI](https://cloud.google.com/vertex-ai) (🔥 **New**)  - cloud-based, features proprietary/closed-source models such as Gemini 1.5 Pro and flash
-- [Groq](https://wow.groq.com/) - cloud-based provider, known for its super-fast inference with LPUs
+- [Groq](https://wow.groq.com/) - cloud-based provider, known for its superfast inference with LPUs
 - [Fireworks AI](https://fireworks.ai/) - cloud-based provider
 - [OctoAI](https://octo.ai/) - cloud-based provider
 - [TogetherAI](https://www.together.ai/) (🔥 **New**) - cloud-based provider
+- [Cerebras](https://cerebras.ai/) (🔥 **New**) - cloud-based provider, superfast (akin to Groq)
 - [Mistral](https://mistral.ai/) (🔥 **New**) - cloud-based, leading open-source LLM company
 - [Ollama](https://ollama.com/) - runs locally, serves as an umbrella for open-source LLMs including LLaMA3, dbrx, and Command-R
 - [FastChat](https://github.com/lm-sys/FastChat) - runs locally, serves as an umbrella for open-source LLMs such as Vicuna, Alpaca, and FastChat-T5

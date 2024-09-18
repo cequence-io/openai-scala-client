@@ -12,8 +12,7 @@ import scala.concurrent.Future
 object CerebrasCreateChatCompletionStreamed
     extends ExampleBase[OpenAIChatCompletionStreamedServiceExtra] {
 
-  override val service: OpenAIChatCompletionStreamedServiceExtra =
-    ChatCompletionProvider.streamed.cerebras
+  override val service: OpenAIChatCompletionStreamedServiceExtra = ChatCompletionProvider.cerebras
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),
