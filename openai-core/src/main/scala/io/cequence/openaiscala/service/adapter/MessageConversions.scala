@@ -13,7 +13,9 @@ object MessageConversions {
     (messages: Seq[BaseMessage]) => {
       val nonSystemMessages = messages.map {
         case SystemMessage(content, _) =>
-          logger.warn(s"System message found but not supported by an underlying model. Converting to a user message instead: '${content}'")
+          logger.warn(
+            s"System message found but not supported by an underlying model. Converting to a user message instead: '${content}'"
+          )
           UserMessage(s"System: ${content}")
 
         case x: BaseMessage => x

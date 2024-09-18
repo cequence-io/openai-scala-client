@@ -9,7 +9,7 @@ sealed trait JsonSchema {
 
 object JsonSchema {
 
-  import java.lang.{ String => JString }
+  import java.lang.{String => JString}
 
   case class Object(
     properties: Map[JString, JsonSchema],

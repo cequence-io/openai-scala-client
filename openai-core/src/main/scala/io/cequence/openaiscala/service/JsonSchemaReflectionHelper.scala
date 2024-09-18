@@ -13,7 +13,8 @@ trait JsonSchemaReflectionHelper {
     dateAsNumber: Boolean = false,
     useRuntimeMirror: Boolean = false
   ): JsonSchema = {
-    val mirror = if (useRuntimeMirror) runtimeMirror(getClass.getClassLoader) else typeTag[T].mirror
+    val mirror =
+      if (useRuntimeMirror) runtimeMirror(getClass.getClassLoader) else typeTag[T].mirror
     asJsonSchema(typeOf[T], mirror, dateAsNumber)
   }
 

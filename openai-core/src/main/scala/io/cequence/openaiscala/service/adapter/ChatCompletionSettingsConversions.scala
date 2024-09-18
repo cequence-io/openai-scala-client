@@ -45,28 +45,36 @@ object ChatCompletionSettingsConversions {
     FieldConversionDef(
       settings => settings.temperature.isDefined && settings.temperature.get != 1,
       _.copy(temperature = Some(1d)),
-      Some("O1 models don't support temperature values other than the default of 1, converting to 1."),
+      Some(
+        "O1 models don't support temperature values other than the default of 1, converting to 1."
+      ),
       warning = true
     ),
     // top_p
     FieldConversionDef(
       settings => settings.top_p.isDefined && settings.top_p.get != 1,
       _.copy(top_p = Some(1d)),
-      Some("O1 models don't support top p values other than the default of 1, converting to 1."),
+      Some(
+        "O1 models don't support top p values other than the default of 1, converting to 1."
+      ),
       warning = true
     ),
     // presence_penalty
     FieldConversionDef(
       settings => settings.presence_penalty.isDefined && settings.presence_penalty.get != 0,
       _.copy(presence_penalty = Some(0d)),
-      Some("O1 models don't support presence penalty values other than the default of 0, converting to 0."),
+      Some(
+        "O1 models don't support presence penalty values other than the default of 0, converting to 0."
+      ),
       warning = true
     ),
     // frequency_penalty
     FieldConversionDef(
       settings => settings.frequency_penalty.isDefined && settings.frequency_penalty.get != 0,
       _.copy(frequency_penalty = Some(0d)),
-      Some("O1 models don't support frequency penalty values other than the default of 0, converting to 0."),
+      Some(
+        "O1 models don't support frequency penalty values other than the default of 0, converting to 0."
+      ),
       warning = true
     )
   )

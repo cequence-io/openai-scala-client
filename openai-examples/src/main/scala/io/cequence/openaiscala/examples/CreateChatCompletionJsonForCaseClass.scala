@@ -9,7 +9,11 @@ import play.api.libs.json.Json
 import scala.concurrent.Future
 
 // experimental
-object CreateChatCompletionJsonForCaseClass extends Example with TestFixtures with JsonSchemaReflectionHelper with OpenAIServiceConsts {
+object CreateChatCompletionJsonForCaseClass
+    extends Example
+    with TestFixtures
+    with JsonSchemaReflectionHelper
+    with OpenAIServiceConsts {
 
   private val messages = Seq(
     SystemMessage(capitalsPrompt),
@@ -18,7 +22,7 @@ object CreateChatCompletionJsonForCaseClass extends Example with TestFixtures wi
 
   // Case class(es)
   private case class CapitalsResponse(
-    countries: Seq[Country],
+    countries: Seq[Country]
   )
 
   private case class Country(
