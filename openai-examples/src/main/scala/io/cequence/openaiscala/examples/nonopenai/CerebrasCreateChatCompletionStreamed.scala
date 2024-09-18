@@ -3,8 +3,13 @@ package io.cequence.openaiscala.examples.nonopenai
 import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase}
-import io.cequence.openaiscala.service.OpenAIChatCompletionStreamedServiceExtra
+import io.cequence.openaiscala.examples.ExampleBase
+import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits.ChatCompletionStreamFactoryExt
+import io.cequence.openaiscala.service.{
+  ChatProviderSettings,
+  OpenAIChatCompletionServiceFactory,
+  OpenAIChatCompletionStreamedServiceExtra
+}
 
 import scala.concurrent.Future
 
@@ -12,7 +17,8 @@ import scala.concurrent.Future
 object CerebrasCreateChatCompletionStreamed
     extends ExampleBase[OpenAIChatCompletionStreamedServiceExtra] {
 
-  override val service: OpenAIChatCompletionStreamedServiceExtra = ChatCompletionProvider.cerebras
+  override val service: OpenAIChatCompletionStreamedServiceExtra =
+    OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.cerebras)
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),

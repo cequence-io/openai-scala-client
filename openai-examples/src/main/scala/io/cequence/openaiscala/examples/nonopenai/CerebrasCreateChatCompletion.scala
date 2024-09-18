@@ -2,8 +2,12 @@ package io.cequence.openaiscala.examples.nonopenai
 
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase}
-import io.cequence.openaiscala.service.OpenAIChatCompletionService
+import io.cequence.openaiscala.examples.ExampleBase
+import io.cequence.openaiscala.service.{
+  ChatProviderSettings,
+  OpenAIChatCompletionService,
+  OpenAIChatCompletionServiceFactory
+}
 
 import scala.concurrent.Future
 
@@ -12,7 +16,8 @@ import scala.concurrent.Future
  */
 object CerebrasCreateChatCompletion extends ExampleBase[OpenAIChatCompletionService] {
 
-  override val service: OpenAIChatCompletionService = ChatCompletionProvider.cerebras
+  override val service: OpenAIChatCompletionService =
+    OpenAIChatCompletionServiceFactory(ChatProviderSettings.cerebras)
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),

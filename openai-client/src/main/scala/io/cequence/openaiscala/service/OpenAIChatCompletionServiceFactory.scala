@@ -1,6 +1,7 @@
 package io.cequence.openaiscala.service
 
 import akka.stream.Materializer
+import io.cequence.openaiscala.domain.ProviderSettings
 import io.cequence.openaiscala.service.impl.OpenAIChatCompletionServiceImpl
 import io.cequence.wsclient.domain.WsRequestContext
 import io.cequence.wsclient.service.WSClientEngine
@@ -33,6 +34,20 @@ object OpenAIChatCompletionServiceFactory
 
 // propose a new name for the trait
 trait IOpenAIChatCompletionServiceFactory[F] extends RawWsServiceFactory[F] {
+
+  def apply(
+    providerSettings: ProviderSettings
+  )(
+    implicit ec: ExecutionContext,
+    materializer: Materializer
+  ): F =
+    apply(
+      coreUrl = providerSettings.coreUrl,
+      WsRequestContext(authHeaders =
+        Seq(("Authorization", s"Bearer ${sys.env(providerSettings.apiKeyEnvVariable)}"))
+      )
+    )
+
   def forAzureAI(
     endpoint: String,
     region: String,

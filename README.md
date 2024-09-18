@@ -131,15 +131,7 @@ Then you can obtain a service in one of the following ways.
 
 -  `OpenAIChatCompletionService` providing solely `createChatCompletion`
 
-1. [Groq](https://wow.groq.com/)
-```scala
-  val service = OpenAIChatCompletionServiceFactory(
-    coreUrl = "https://api.groq.com/openai/v1/",
-    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("GROQ_API_KEY")}"))
-  )
-```
-
-2. [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) - e.g. Cohere R+ model
+1. [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) - e.g. Cohere R+ model
 ```scala
   val service = OpenAIChatCompletionServiceFactory.forAzureAI(
     endpoint = sys.env("AZURE_AI_COHERE_R_PLUS_ENDPOINT"),
@@ -148,35 +140,84 @@ Then you can obtain a service in one of the following ways.
   )
 ```
 
-3. [Anthropic](https://www.anthropic.com/api) (requires our `openai-scala-anthropic-client` lib)
+2. [Anthropic](https://www.anthropic.com/api) - requires `openai-scala-anthropic-client` lib and `ANTHROPIC_API_KEY`
 ```scala
   val service = AnthropicServiceFactory.asOpenAI()
 ```
 
-4. [Fireworks AI](https://fireworks.ai/)
+3. [Google Vertex AI](https://cloud.google.com/vertex-ai) - requires `openai-scala-google-vertexai-client` lib and `VERTEXAI_LOCATION` + `VERTEXAI_PROJECT_ID`
 ```scala
-  val service = OpenAIChatCompletionServiceFactory(
-    coreUrl = "https://api.fireworks.ai/inference/v1/",
-    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
-  )
+  val service = VertexAIServiceFactory.asOpenAI()
 ```
 
-5. [Octo AI](https://octo.ai/)
+4. [Groq](https://wow.groq.com/) - requires `GROQ_API_KEY"`
 ```scala
-  val service = OpenAIChatCompletionServiceFactory(
-    coreUrl = "https://text.octoai.run/v1/",
-    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
-  )
+  val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.groq)
+```
+or with streaming
+```scala
+  val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.groq)
 ```
 
-6. [Ollama](https://ollama.com/)
+5. [Fireworks AI](https://fireworks.ai/) - requires `FIREWORKS_API_KEY"`
+```scala
+  val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.fireworks)
+```
+or with streaming
+```scala
+  val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.fireworks)
+```
+
+6. [Octo AI](https://octo.ai/) - requires `OCTOAI_TOKEN`
+```scala
+  val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.octoML)
+```
+or with streaming
+```scala
+  val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.octoML)
+```
+
+7. [TogetherAI](https://www.together.ai/)  requires `TOGETHERAI_API_KEY`
+```scala
+  val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.togetherAI)
+```
+or with streaming
+```scala
+  val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.togetherAI)
+```
+
+8. [Cerebras](https://cerebras.ai/)  requires `CEREBRAS_API_KEY`
+```scala
+  val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.cerebras)
+```
+or with streaming
+```scala
+  val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.cerebras)
+```
+
+9. [Mistral](https://mistral.ai/) requires `MISTRAL_API_KEY`
+```scala
+  val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.mistral)
+```
+or with streaming
+```scala
+  val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.mistral)
+```
+
+10. [Ollama](https://ollama.com/)
 ```scala
   val service = OpenAIChatCompletionServiceFactory(
     coreUrl = "http://localhost:11434/v1/"
   )
 ```
+or with streaming
+```scala
+  val service = OpenAIChatCompletionServiceFactory.withStreaming(
+    coreUrl = "http://localhost:11434/v1/"
+  )
+```
 
-- Services with additional streaming support - `createCompletionStreamed` and `createChatCompletionStreamed` provided by [OpenAIStreamedServiceExtra](./openai-client-stream/src/main/scala/io/cequence/openaiscala/service/OpenAIStreamedServiceExtra.scala) (requires `openai-scala-client-stream` lib)
+- Note that services with additional streaming support - `createCompletionStreamed` and `createChatCompletionStreamed` provided by [OpenAIStreamedServiceExtra](./openai-client-stream/src/main/scala/io/cequence/openaiscala/service/OpenAIStreamedServiceExtra.scala) (requires `openai-scala-client-stream` lib)
 
 ```scala
   import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIStreamedService
