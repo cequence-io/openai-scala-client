@@ -3,7 +3,10 @@ package io.cequence.openaiscala.examples.nonopenai
 import akka.stream.Materializer
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.domain.ProviderSettings
-import io.cequence.openaiscala.service.{ChatProviderSettings, OpenAIChatCompletionServiceFactory}
+import io.cequence.openaiscala.service.{
+  ChatProviderSettings,
+  OpenAIChatCompletionServiceFactory
+}
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
 import io.cequence.openaiscala.vertexai.service.VertexAIServiceFactory
@@ -82,5 +85,6 @@ object ChatCompletionProvider {
   )(
     implicit ec: ExecutionContext,
     m: Materializer
-  ): OpenAIChatCompletionStreamedService = OpenAIChatCompletionServiceFactory.withStreaming(settings)
+  ): OpenAIChatCompletionStreamedService =
+    OpenAIChatCompletionServiceFactory.withStreaming(settings)
 }

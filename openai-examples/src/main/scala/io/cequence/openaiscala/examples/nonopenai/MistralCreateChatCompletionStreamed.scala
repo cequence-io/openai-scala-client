@@ -12,7 +12,8 @@ import scala.concurrent.Future
 object MistralCreateChatCompletionStreamed
     extends ExampleBase[OpenAIChatCompletionStreamedServiceExtra] {
 
-  override val service: OpenAIChatCompletionStreamedServiceExtra = ChatCompletionProvider.mistral
+  override val service: OpenAIChatCompletionStreamedServiceExtra =
+    ChatCompletionProvider.mistral
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),
