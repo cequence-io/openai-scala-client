@@ -144,7 +144,7 @@ addCommandAlias(
 inThisBuild(
   List(
     scalacOptions += "-Ywarn-unused",
-//    scalaVersion := "2.12.15",
+//    scalaVersion := scala3,
     semanticdbEnabled := true,
     semanticdbVersion := scalafixSemanticdb.revision
   )

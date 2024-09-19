@@ -2,9 +2,9 @@ package io.cequence.openaiscala.service
 
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.JsonSchema
+import io.cequence.openaiscala.service.ReflectionUtil._
 
 import scala.reflect.runtime.universe._
-import io.cequence.openaiscala.service.ReflectionUtil._
 
 // This is experimental and subject to change
 trait JsonSchemaReflectionHelper {
@@ -53,7 +53,7 @@ trait JsonSchemaReflectionHelper {
         val itemsSchema = asJsonSchema(innerType, mirror, dateAsNumber)
         JsonSchema.Array(itemsSchema)
 
-      case t if isCaseClass(t) =>
+      case t if t.isCaseClass() =>
         caseClassAsJsonSchema(t, mirror, dateAsNumber)
 
       // map - TODO
@@ -83,7 +83,7 @@ trait JsonSchemaReflectionHelper {
     mirror: Mirror,
     dateAsNumber: Boolean
   ): JsonSchema = {
-    val memberNamesAndTypes = getCaseClassMemberNamesAndTypes(typ)
+    val memberNamesAndTypes = typ.getCaseClassFields()
 
     val fieldSchemas = memberNamesAndTypes.toSeq.map {
       case (fieldName: String, memberType: Type) =>

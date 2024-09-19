@@ -22,20 +22,18 @@ object ReflectionUtil {
 
     def isOption(): Boolean =
       typ <:< typeOf[Option[_]]
-  }
 
-  def isCaseClass(runType: Type): Boolean =
-    runType.members.exists(m => m.isMethod && m.asMethod.isCaseAccessor)
+    def isCaseClass(): Boolean =
+      typ.members.exists(m => m.isMethod && m.asMethod.isCaseAccessor)
+
+    def getCaseClassFields(): Iterable[(String, Type)] =
+      typ.decls.sorted.collect {
+        case m: MethodSymbol if m.isCaseAccessor => (shortName(m), m.returnType)
+      }
+  }
 
   def shortName(symbol: Symbol): String = {
     val paramFullName = symbol.fullName
     paramFullName.substring(paramFullName.lastIndexOf('.') + 1, paramFullName.length)
   }
-
-  def getCaseClassMemberNamesAndTypes(
-    runType: Type
-  ): Traversable[(String, Type)] =
-    runType.decls.sorted.collect {
-      case m: MethodSymbol if m.isCaseAccessor => (shortName(m), m.returnType)
-    }
 }
