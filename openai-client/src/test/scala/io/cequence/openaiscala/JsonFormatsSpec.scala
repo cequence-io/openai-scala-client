@@ -493,7 +493,8 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
 
       fineTuneJob.id shouldBe "xxx"
       fineTuneJob.model shouldBe "gpt-4o-2024-08-06"
-      fineTuneJob.created_at.toString shouldBe "Tue Sep 10 17:52:12 CEST 2024"
+//      fineTuneJob.created_at.toString shouldBe "Tue Sep 10 17:52:12 CEST 2024" // TODO:
+      fineTuneJob.created_at.toString shouldBe "Tue Sep 10 15:52:12 UTC 2024"
       fineTuneJob.finished_at shouldBe None
       fineTuneJob.fine_tuned_model shouldBe None
       fineTuneJob.organization_id shouldBe "org-xxx"
