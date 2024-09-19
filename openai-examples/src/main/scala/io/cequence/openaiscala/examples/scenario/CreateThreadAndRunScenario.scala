@@ -1,8 +1,8 @@
 package io.cequence.openaiscala.examples.scenario
 
 import io.cequence.openaiscala.domain.AssistantTool.FileSearchTool
+import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.FileUploadPurpose
-import io.cequence.openaiscala.domain.{AssistantId, AssistantToolResource, ModelId, Run, RunStatus}
 import io.cequence.openaiscala.examples.{Example, PollingHelper}
 
 import java.io.File

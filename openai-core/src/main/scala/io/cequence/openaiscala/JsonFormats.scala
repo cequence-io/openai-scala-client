@@ -262,7 +262,7 @@ object JsonFormats {
 
       case ChatRole.Tool =>
         json.as[ToolMessage]
-        // TODO: fixed.... originally was
+      // TODO: fixed.... originally was
 //        json.asOpt[AssistantToolMessage] match {
 //          case Some(assistantToolMessage) => assistantToolMessage
 //          case None                       => json.as[ToolMessage]
