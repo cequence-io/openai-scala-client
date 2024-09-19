@@ -54,7 +54,7 @@ trait OpenAIServiceWrapper
 
   def createRun(
     threadId: String,
-    assistantId: AssistantId,
+    assistantId: String,
     instructions: Option[String],
     additionalInstructions: Option[String],
     additionalMessages: Seq[BaseMessage],
@@ -395,7 +395,7 @@ trait OpenAIServiceWrapper
   )
 
   override def createThreadAndRun(
-    assistantId: AssistantId,
+    assistantId: String,
     thread: Option[ThreadAndRun],
     instructions: Option[String],
     tools: Seq[AssistantTool],

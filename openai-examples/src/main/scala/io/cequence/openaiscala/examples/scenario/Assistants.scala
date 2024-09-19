@@ -2,7 +2,7 @@ package io.cequence.openaiscala.examples.scenario
 
 import io.cequence.openaiscala.domain.AssistantTool.FileSearchTool
 import io.cequence.openaiscala.domain.settings.FileUploadPurpose
-import io.cequence.openaiscala.domain.{AssistantId, AssistantToolResource, ThreadMessage}
+import io.cequence.openaiscala.domain.{AssistantToolResource, ThreadMessage}
 import io.cequence.openaiscala.examples.Example
 
 import java.io.File
@@ -57,7 +57,7 @@ object Assistants extends Example {
 
       run <- service.createRun(
         thread.id,
-        AssistantId(assistant.id),
+        assistant.id,
         stream = false
       )
 

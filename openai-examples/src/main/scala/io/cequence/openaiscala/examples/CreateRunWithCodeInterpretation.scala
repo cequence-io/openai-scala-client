@@ -37,7 +37,7 @@ object CreateRunWithCodeInterpretation extends Example with PollingHelper {
 
       run <- service.createRun(
         threadId = thread.id,
-        assistantId = AssistantId(assistantId),
+        assistantId = assistantId,
         instructions = None,
         responseToolChoice = Some(ToolChoice.EnforcedTool(RunTool.CodeInterpreterTool)),
         tools = Seq(CodeInterpreterTool),

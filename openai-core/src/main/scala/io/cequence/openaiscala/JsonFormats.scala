@@ -746,8 +746,6 @@ object JsonFormats {
   implicit lazy val threadMessageFileFormat: Format[ThreadMessageFile] =
     Json.format[ThreadMessageFile]
 
-  implicit lazy val assistantIdFormat: Format[AssistantId] = Json.valueFormat[AssistantId]
-
   implicit lazy val assistantToolResourceVectorStoreFormat
     : Format[AssistantToolResource.VectorStore] = {
     implicit val stringStringMapFormat: Format[Map[String, String]] =

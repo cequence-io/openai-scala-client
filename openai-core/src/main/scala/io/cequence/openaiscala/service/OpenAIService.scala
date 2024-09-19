@@ -1042,7 +1042,7 @@ trait OpenAIService extends OpenAICoreService {
    */
   def createRun(
     threadId: String,
-    assistantId: AssistantId,
+    assistantId: String,
     // TODO: move this to settings
     instructions: Option[String] = None,
     additionalInstructions: Option[String] = None,
@@ -1083,7 +1083,7 @@ trait OpenAIService extends OpenAICoreService {
    *   A run object.
    */
   def createThreadAndRun(
-    assistantId: AssistantId,
+    assistantId: String,
     thread: Option[ThreadAndRun],
     instructions: Option[String] = None,
     tools: Seq[AssistantTool] = Seq.empty,

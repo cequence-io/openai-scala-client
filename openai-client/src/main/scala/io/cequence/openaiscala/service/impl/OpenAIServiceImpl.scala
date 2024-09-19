@@ -68,7 +68,7 @@ private[service] trait OpenAIServiceImpl
 
   override def createRun(
     threadId: String,
-    assistantId: AssistantId,
+    assistantId: String,
     instructions: Option[String],
     additionalInstructions: Option[String],
     additionalMessages: Seq[BaseMessage],
@@ -84,7 +84,7 @@ private[service] trait OpenAIServiceImpl
     val messageJsons = additionalMessages.map(Json.toJson(_)(messageWrites))
 
     val runParams = jsonBodyParams(
-      Param.assistant_id -> Some(assistantId.id),
+      Param.assistant_id -> Some(assistantId),
       Param.additional_instructions -> instructions,
       Param.additional_messages ->
         (if (messageJsons.nonEmpty) Some(messageJsons) else None)
@@ -100,7 +100,7 @@ private[service] trait OpenAIServiceImpl
   }
 
   override def createThreadAndRun(
-    assistantId: AssistantId,
+    assistantId: String,
     thread: Option[ThreadAndRun],
     instructions: Option[String],
     tools: Seq[AssistantTool],
@@ -111,9 +111,10 @@ private[service] trait OpenAIServiceImpl
   ): Future[Run] = {
     val coreParams = createBodyParamsForThreadAndRun(settings, stream)
     val runParams = jsonBodyParams(
-      Param.assistant_id -> Some(assistantId.id),
+      Param.assistant_id -> Some(assistantId),
       Param.thread -> thread.map(Json.toJson(_)),
       Param.instructions -> Some(instructions),
+      // TODO: tools are ignored?
       // Param.tools -> Some(Json.toJson(tools)),
       Param.tool_resources -> toolResources.map(Json.toJson(_)),
       Param.tool_choice -> toolChoice.map(Json.toJson(_))

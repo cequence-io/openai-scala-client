@@ -63,7 +63,7 @@ object CreateRunWithVectorStore extends Example {
     } yield thread
 
   val vectorStoreId = "vs_6nTuNJKVytSoFke9nvnpptUZ" // createVectorStore(fileInfo).map(_.id)
-  val assistantId = AssistantId("asst_gIharZ60V7hvf5pQvvjkw7Mf")
+  val assistantId = "asst_gIharZ60V7hvf5pQvvjkw7Mf"
   override protected def run: Future[_] =
     for {
 //      fileInfo <- uploadFile

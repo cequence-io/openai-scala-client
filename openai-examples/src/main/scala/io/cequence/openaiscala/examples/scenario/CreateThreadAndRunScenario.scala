@@ -50,7 +50,7 @@ object CreateThreadAndRunScenario extends Example with PollingHelper {
       )
 
       run <- service.createThreadAndRun(
-        assistantId = AssistantId(assistant.id),
+        assistantId = assistant.id,
         thread = None,
         stream = false
       )

@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.examples
 
 import io.cequence.openaiscala.domain.ThreadAndRun.Message.{AssistantMessage, UserMessage}
-import io.cequence.openaiscala.domain.{AssistantId, ThreadAndRun}
+import io.cequence.openaiscala.domain.ThreadAndRun
 
 import scala.concurrent.Future
 
@@ -10,7 +10,7 @@ object CreateThreadAndRun extends Example {
   override protected def run: Future[Unit] =
     for {
       thread <- service.createThreadAndRun(
-        assistantId = AssistantId("assistant-abc123"),
+        assistantId = "assistant-abc123",
         thread = Some(
           ThreadAndRun(
             messages = Seq(
