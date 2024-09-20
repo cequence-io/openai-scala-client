@@ -1190,7 +1190,11 @@ object JsonFormats {
   }
 
   implicit lazy val jsonSchemaReads: Reads[JsonSchema] = new Reads[JsonSchema] {
-    implicit val stringReads: Reads[JsonSchema.String] = Json.reads[JsonSchema.String]
+    implicit val stringReads: Reads[JsonSchema.String] = (
+      (__ \ "description").readNullable[String] and
+        (__ \ "enum").readWithDefault[Seq[String]](Nil)
+    )(JsonSchema.String _)
+
     implicit val numberReads: Reads[JsonSchema.Number] = Json.reads[JsonSchema.Number]
     implicit val booleanReads: Reads[JsonSchema.Boolean] = Json.reads[JsonSchema.Boolean]
     //    implicit val nullReads = Json.reads[JsonSchema.Null]
