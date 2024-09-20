@@ -1193,7 +1193,7 @@ object JsonFormats {
     implicit val stringReads: Reads[JsonSchema.String] = (
       (__ \ "description").readNullable[String] and
         (__ \ "enum").readWithDefault[Seq[String]](Nil)
-    )(JsonSchema.String _)
+    )(JsonSchema.String.apply _)
 
     implicit val numberReads: Reads[JsonSchema.Number] = Json.reads[JsonSchema.Number]
     implicit val booleanReads: Reads[JsonSchema.Boolean] = Json.reads[JsonSchema.Boolean]
