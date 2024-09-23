@@ -5,7 +5,7 @@ import io.cequence.openaiscala.domain.ThreadAndRun.Content.ContentBlock
 final case class ThreadAndRun(
   // TODO: check whether the message model is restrictive enough
   messages: Seq[ThreadAndRun.Message],
-  toolResources: Seq[AssistantToolResource],
+  toolResources: AssistantToolResource,
   metadata: Map[String, Any]
 )
 

@@ -1,5 +1,7 @@
 package io.cequence.openaiscala.examples
 
+import io.cequence.openaiscala.domain.VectorStoreFile
+
 import scala.concurrent.Future
 
 object ListVectorStoreFiles extends Example {
@@ -9,14 +11,20 @@ object ListVectorStoreFiles extends Example {
       vectorStores <- service.listVectorStores()
 
       vectorStoreChunks = vectorStores.sliding(10, 10).toList
-      _ = vectorStoreChunks.map(_.map(x => (x.id, x.name))).foreach(println)
-      files <- Future.traverse(vectorStoreChunks) { vectorStoresChunk =>
+      vsAndFiles <- Future.traverse(vectorStoreChunks) { vectorStoresChunk =>
         Future.traverse(vectorStoresChunk) { vectorStore =>
-          service.listVectorStoreFiles(vectorStore.id).map(file => (vectorStore.name, file))
+          service
+            .listVectorStoreFiles(vectorStore.id)
+            .map((files: Seq[VectorStoreFile]) => (vectorStore, files))
         }
       }
 
     } yield {
-      files.foreach(println)
+      vsAndFiles.flatten.foreach { case (vs, files) =>
+        println(s"Vector Store: ${vs.name}[${vs.id}] (${files.length} files)")
+        files.foreach { file =>
+          println(s"  - ${file.id} (${file.`object`})")
+        }
+      }
     }
 }

@@ -46,25 +46,21 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
   private val codeInterpreterResourcesJson =
     """{
       |  "code_interpreter" : {
-      |    "file_ids" : [ {
-      |      "file_id" : "file-id-1"
-      |    }, {
-      |      "file_id" : "file-id-2"
-      |    } ]
+      |    "file_ids" : [ "file-id-1", "file-id-2" ]
       |  }
       |}""".stripMargin
 
   private val fileSearchResourcesJson1 =
     """{
       |  "file_search" : {
-      |    "vector_store_ids" : [ "vs_xxx" ]
+      |    "vector_store_ids" : [ "vs_xxx", "vs_yyy" ]
       |  }
       |}""".stripMargin
 
+//      |    "vector_store_ids" : [ ],
   private val fileSearchResourcesJson2 =
     """{
       |  "file_search" : {
-      |    "vector_store_ids" : [ ],
       |    "vector_stores" : [ {
       |      "file_ids" : [ {
       |        "file_id" : "file-id-1"
@@ -198,32 +194,30 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       )
     }
 
-//    // TODO
-//    "serialize and deserialize file search's resources with vector store ids" in {
-//      testCodec[AssistantToolResource](
-//        AssistantToolResource(
-//          FileSearchResources(
-//            vectorStoreIds = Seq("vs_xxx")
-//          )
-//        ),
-//        fileSearchResourcesJson1,
-//        Pretty
-//      )
-//    }
-//
-//    // TODO
-//    "serialize and deserialize file search's resources with (new) vector stores" in {
-//      testCodec[AssistantToolResource](
-//        AssistantToolResource(
-//          FileSearchResources(
-//            vectorStoreIds = Nil,
-//            vectorStores = Seq(VectorStore(Seq(FileId("file-id-1")), Map("key" -> "value")))
-//          )
-//        ),
-//        fileSearchResourcesJson2,
-//        Pretty
-//      )
-//    }
+    "serialize and deserialize file search's resources with vector store ids" in {
+      testCodec[AssistantToolResource](
+        AssistantToolResource(
+          FileSearchResources(
+            vectorStoreIds = Seq("vs_xxx", "vs_yyy")
+          )
+        ),
+        fileSearchResourcesJson1,
+        Pretty
+      )
+    }
+
+    "serialize and deserialize file search's resources with (new) vector stores" in {
+      testCodec[AssistantToolResource](
+        AssistantToolResource(
+          FileSearchResources(
+            vectorStoreIds = Nil,
+            vectorStores = Seq(VectorStore(Seq(FileId("file-id-1")), Map("key" -> "value")))
+          )
+        ),
+        fileSearchResourcesJson2,
+        Pretty
+      )
+    }
 
     "serialize and deserialize run tools" in {
       testCodec[RunTool](
@@ -626,6 +620,8 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
     if (!justSemantics) serialized shouldBe json
 
     val json2 = Json.parse(json).as[A]
+
+    println(s"json2 = $json2")
     json2 shouldBe value
   }
 

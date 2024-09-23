@@ -634,9 +634,19 @@ object JsonFormats {
     }
 
   implicit lazy val assistantToolResourceWrites: Writes[AssistantToolResource] = Writes {
-    case AssistantToolResource(Some(codeInterpreter), _) =>
+    case a @ AssistantToolResource(Some(codeInterpreter), _) =>
+      println(s"going to serialize: $a")
+      println(
+        s"json = ${Json.toJson(codeInterpreter)(assistantToolResourceCodeInterpreterResourceWrites)}"
+      )
+
       Json.toJson(codeInterpreter)(assistantToolResourceCodeInterpreterResourceWrites)
-    case AssistantToolResource(_, Some(fileSearch)) =>
+    case a @ AssistantToolResource(_, Some(fileSearch)) =>
+      println(s"going to serialize: $a")
+      println(
+        s"json = ${Json.toJson(fileSearch)(assistantToolResourceFileSearchResourceWrites)}"
+      )
+
       Json.toJson(fileSearch)(assistantToolResourceFileSearchResourceWrites)
     case _ => Json.obj()
   }
@@ -650,7 +660,13 @@ object JsonFormats {
   implicit lazy val fileSearchResourcesReads
     : Reads[AssistantToolResource.FileSearchResources] = {
     implicit val config: JsonConfiguration = JsonConfiguration(JsonNaming.SnakeCase)
-    Json.reads[AssistantToolResource.FileSearchResources]
+
+    (
+      (__ \ "vector_store_ids").read[Seq[String]] and
+        (__ \ "vector_stores")
+          .readNullable[Seq[AssistantToolResource.VectorStore]]
+          .map(_.getOrElse(Seq.empty))
+    )(AssistantToolResource.FileSearchResources.apply _)
   }
 
   implicit lazy val assistantToolResourceReads: Reads[AssistantToolResource] = (
@@ -700,8 +716,10 @@ object JsonFormats {
 
 //  implicit lazy val threadWrites: Writes[Thread] = Json.writes[Thread]
 
-  implicit lazy val fileIdFormat: Format[FileId] =
-    Json.format[FileId]
+  implicit val fileIdFormat: Format[FileId] = Format(
+    Reads.StringReads.map(FileId.apply),
+    Writes[FileId](fileId => JsString(fileId.file_id))
+  )
 
   implicit lazy val threadMessageContentTypeFormat: Format[ThreadMessageContentType] =
     enumFormat[ThreadMessageContentType](
