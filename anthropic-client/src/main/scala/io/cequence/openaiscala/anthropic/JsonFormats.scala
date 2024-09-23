@@ -21,8 +21,8 @@ import io.cequence.openaiscala.anthropic.domain.response.{
 }
 import io.cequence.openaiscala.anthropic.domain.{ChatRole, Content, Message}
 import io.cequence.wsclient.JsonUtil
-  import play.api.libs.functional.syntax._
-  import play.api.libs.json._
+import play.api.libs.functional.syntax._
+import play.api.libs.json._
 
 object JsonFormats extends JsonFormats
 
