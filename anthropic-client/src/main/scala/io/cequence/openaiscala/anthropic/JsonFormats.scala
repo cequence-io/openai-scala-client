@@ -21,8 +21,8 @@ import io.cequence.openaiscala.anthropic.domain.response.{
 }
 import io.cequence.openaiscala.anthropic.domain.{ChatRole, Content, Message}
 import io.cequence.wsclient.JsonUtil
-import play.api.libs.functional.syntax._
-import play.api.libs.json._
+  import play.api.libs.functional.syntax._
+  import play.api.libs.json._
 
 object JsonFormats extends JsonFormats
 
@@ -48,27 +48,25 @@ trait JsonFormats {
   implicit val textBlockReads: Reads[TextBlock] = Json.reads[TextBlock]
 
   implicit val textBlockWrites: Writes[TextBlock] = Json.writes[TextBlock]
-  implicit val imageBlockWrites: Writes[ImageBlock] = new Writes[ImageBlock] {
-    def writes(block: ImageBlock): JsValue = Json.obj(
-      "type" -> "image",
-      "source" -> Json.obj(
-        "type" -> block.`type`,
-        "media_type" -> block.mediaType,
-        "data" -> block.data
+  implicit val imageBlockWrites: Writes[ImageBlock] =
+    (block: ImageBlock) =>
+      Json.obj(
+        "type" -> "image",
+        "source" -> Json.obj(
+          "type" -> block.`type`,
+          "media_type" -> block.mediaType,
+          "data" -> block.data
+        )
       )
-    )
+
+  implicit val contentBlockWrites: Writes[ContentBlock] = {
+    case tb: TextBlock =>
+      Json.obj("type" -> "text") ++ Json.toJson(tb)(textBlockWrites).as[JsObject]
+    case ib: ImageBlock => Json.toJson(ib)(imageBlockWrites)
   }
 
-  implicit val contentBlockWrites: Writes[ContentBlock] = new Writes[ContentBlock] {
-    def writes(block: ContentBlock): JsValue = block match {
-      case tb: TextBlock =>
-        Json.obj("type" -> "text") ++ Json.toJson(tb)(textBlockWrites).as[JsObject]
-      case ib: ImageBlock => Json.toJson(ib)(imageBlockWrites)
-    }
-  }
-
-  implicit val contentBlockReads: Reads[ContentBlock] = new Reads[ContentBlock] {
-    def reads(json: JsValue): JsResult[ContentBlock] = {
+  implicit val contentBlockReads: Reads[ContentBlock] =
+    (json: JsValue) => {
       (json \ "type").validate[String].flatMap {
         case "text" => (json \ "text").validate[String].map(TextBlock.apply)
         case "image" =>
@@ -81,7 +79,6 @@ trait JsonFormats {
         case _ => JsError("Unsupported or invalid content block")
       }
     }
-  }
 
   implicit val contentReads: Reads[Content] = new Reads[Content] {
     def reads(json: JsValue): JsResult[Content] = json match {

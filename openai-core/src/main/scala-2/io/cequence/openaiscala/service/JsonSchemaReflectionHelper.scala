@@ -11,17 +11,19 @@ trait JsonSchemaReflectionHelper {
 
   def jsonSchemaFor[T: TypeTag](
     dateAsNumber: Boolean = false,
-    useRuntimeMirror: Boolean = false
+    useRuntimeMirror: Boolean = false,
+    explicitTypes: Map[String, JsonSchema] = Map()
   ): JsonSchema = {
     val mirror =
       if (useRuntimeMirror) runtimeMirror(getClass.getClassLoader) else typeTag[T].mirror
-    asJsonSchema(typeOf[T], mirror, dateAsNumber)
+    asJsonSchema(typeOf[T], mirror, dateAsNumber, explicitTypes)
   }
 
   private def asJsonSchema(
     typ: Type,
     mirror: Mirror,
-    dateAsNumber: Boolean = false
+    dateAsNumber: Boolean,
+    explicitTypes: Map[String, JsonSchema]
   ): JsonSchema =
     typ match {
       // number
@@ -40,7 +42,13 @@ trait JsonSchemaReflectionHelper {
         JsonSchema.String()
 
       // enum
-      case t if t subMatches (typeOf[Enumeration#Value], typeOf[Enum[_]]) =>
+      case t if t subMatches typeOf[Enumeration#Value] =>
+        // TODO
+        // val enumValues = t.enumValues()
+        JsonSchema.String()
+
+      // java enum
+      case t if t subMatches typeOf[Enum[_]] =>
         JsonSchema.String()
 
       // date
@@ -50,11 +58,11 @@ trait JsonSchemaReflectionHelper {
       // array/seq
       case t if t subMatches (typeOf[Seq[_]], typeOf[Set[_]], typeOf[Array[_]]) =>
         val innerType = t.typeArgs.head
-        val itemsSchema = asJsonSchema(innerType, mirror, dateAsNumber)
+        val itemsSchema = asJsonSchema(innerType, mirror, dateAsNumber, explicitTypes)
         JsonSchema.Array(itemsSchema)
 
       case t if t.isCaseClass() =>
-        caseClassAsJsonSchema(t, mirror, dateAsNumber)
+        caseClassAsJsonSchema(t, mirror, dateAsNumber, explicitTypes)
 
       // map - TODO
       case t if t subMatches (typeOf[Map[String, _]]) =>
@@ -81,14 +89,16 @@ trait JsonSchemaReflectionHelper {
   private def caseClassAsJsonSchema(
     typ: Type,
     mirror: Mirror,
-    dateAsNumber: Boolean
+    dateAsNumber: Boolean,
+    explicitTypes: Map[String, JsonSchema]
   ): JsonSchema = {
     val memberNamesAndTypes = typ.getCaseClassFields()
 
     val fieldSchemas = memberNamesAndTypes.toSeq.map {
       case (fieldName: String, memberType: Type) =>
-        val fieldSchema = asJsonSchema(memberType, mirror, dateAsNumber)
-        (fieldName, fieldSchema, memberType.isOption())
+        val implicitFieldSchema = asJsonSchema(memberType, mirror, dateAsNumber, explicitTypes)
+        val explicitFieldSchema = explicitTypes.get(fieldName)
+        (fieldName, explicitFieldSchema.getOrElse(implicitFieldSchema), memberType.isOption())
     }
 
     val required = fieldSchemas.collect { case (fieldName, _, false) => fieldName }
