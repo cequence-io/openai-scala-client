@@ -662,7 +662,7 @@ object JsonFormats {
     implicit val config: JsonConfiguration = JsonConfiguration(JsonNaming.SnakeCase)
 
     (
-      (__ \ "vector_store_ids").read[Seq[String]] and
+      (__ \ "vector_store_ids").readNullable[Seq[String]].map(_.getOrElse(Seq.empty)) and
         (__ \ "vector_stores")
           .readNullable[Seq[AssistantToolResource.VectorStore]]
           .map(_.getOrElse(Seq.empty))
