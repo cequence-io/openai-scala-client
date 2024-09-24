@@ -57,7 +57,6 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       |  }
       |}""".stripMargin
 
-//      |    "vector_store_ids" : [ ],
   private val fileSearchResourcesJson2 =
     """{
       |  "file_search" : {
@@ -609,8 +608,6 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
     if (!justSemantics) serialized shouldBe json
 
     val json2 = Json.parse(json).as[A]
-
-    println(s"json2 = $json2")
     json2 shouldBe value
   }
 

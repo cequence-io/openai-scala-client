@@ -1,6 +1,9 @@
 package io.cequence.openaiscala.examples
 
-import io.cequence.openaiscala.domain.AssistantToolResource.CodeInterpreterResources
+import io.cequence.openaiscala.domain.AssistantToolResource.{
+  CodeInterpreterResources,
+  FileSearchResources
+}
 import io.cequence.openaiscala.domain.ThreadAndRun.Message.{AssistantMessage, UserMessage}
 import io.cequence.openaiscala.domain.{AssistantToolResource, FileId, ThreadAndRun}
 
@@ -58,8 +61,30 @@ object CreateThreadAndRun extends Example {
         ),
         stream = false
       )
+
+      threadWithFileSearch <- service.createThreadAndRun(
+        assistantId = "asst_GEKjNc6lewoiulFt32mWSqKl",
+        thread = Some(
+          ThreadAndRun(
+            messages = Seq(
+              UserMessage("Tell me about usage of FP in Cequence."),
+              AssistantMessage(
+                "Cequence does use functional programming."
+              ),
+              UserMessage("Could you please provide more comprehensive answer?")
+            ),
+            toolResources = AssistantToolResource(
+              FileSearchResources(vectorStoreIds = Seq("vs_sRwpBFIFYyfWQ3og8X9CQs3A"))
+            ),
+            metadata = Map.empty
+          )
+        ),
+        stream = false
+      )
     } yield {
       println(thread)
+      println(threadWithCodeInterpreter)
+      println(threadWithFileSearch)
     }
 
 }

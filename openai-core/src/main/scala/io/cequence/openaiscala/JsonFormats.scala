@@ -634,19 +634,9 @@ object JsonFormats {
     }
 
   implicit lazy val assistantToolResourceWrites: Writes[AssistantToolResource] = Writes {
-    case a @ AssistantToolResource(Some(codeInterpreter), _) =>
-      println(s"going to serialize: $a")
-      println(
-        s"json = ${Json.toJson(codeInterpreter)(assistantToolResourceCodeInterpreterResourceWrites)}"
-      )
-
+    case AssistantToolResource(Some(codeInterpreter), _) =>
       Json.toJson(codeInterpreter)(assistantToolResourceCodeInterpreterResourceWrites)
-    case a @ AssistantToolResource(_, Some(fileSearch)) =>
-      println(s"going to serialize: $a")
-      println(
-        s"json = ${Json.toJson(fileSearch)(assistantToolResourceFileSearchResourceWrites)}"
-      )
-
+    case AssistantToolResource(_, Some(fileSearch)) =>
       Json.toJson(fileSearch)(assistantToolResourceFileSearchResourceWrites)
     case _ => Json.obj()
   }
@@ -713,8 +703,6 @@ object JsonFormats {
           .orElse(Reads.pure(Nil)) and
         (__ \ "metadata").read[Map[String, String]].orElse(Reads.pure(Map()))
     )(Thread.apply _)
-
-//  implicit lazy val threadWrites: Writes[Thread] = Json.writes[Thread]
 
   implicit val fileIdFormat: Format[FileId] = Format(
     Reads.StringReads.map(FileId.apply),
