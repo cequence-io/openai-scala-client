@@ -1,6 +1,9 @@
 package io.cequence.openaiscala.examples
 
-import io.cequence.openaiscala.domain.settings.{ChatCompletionResponseFormatType, CreateChatCompletionSettings}
+import io.cequence.openaiscala.domain.settings.{
+  ChatCompletionResponseFormatType,
+  CreateChatCompletionSettings
+}
 import io.cequence.openaiscala.domain._
 
 import scala.concurrent.Future

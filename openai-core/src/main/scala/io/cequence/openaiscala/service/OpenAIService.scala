@@ -1227,12 +1227,12 @@ trait OpenAIService extends OpenAICoreService {
   /**
    * Create a vector store.
    *
-   * @param file_ids
+   * @param fileIds
    *   A list of File IDs that the vector store should use (optional). Useful for tools like
    *   file_search that can access files.
    * @param name
    *   The name of the vector store.
-   * @param expires_after
+   * @param metadata
    *   The expiration policy for a vector store. TODO maximum of 64 characters long and values
    *   can be a maximum of 512 characters long.
    * @return
@@ -1244,7 +1244,7 @@ trait OpenAIService extends OpenAICoreService {
   def createVectorStore(
     fileIds: Seq[String] = Nil,
     name: Option[String] = None,
-    metadata: Map[String, Any] = Map() // TODO: expires after
+    metadata: Map[String, Any] = Map.empty // TODO: expires after
   ): Future[VectorStore]
 
   /**

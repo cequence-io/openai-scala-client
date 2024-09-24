@@ -7,7 +7,7 @@ object RetrieveVectorStore extends Example {
   override protected def run: Future[_] =
     for {
       assistant <- service.retrieveVectorStore(
-        vectorStoreId = "vs_xxx"
+        vectorStoreId = "vs_9pl9kTn3ggjzDKYX5AT9JuIG"
       )
     } yield {
       println(assistant)

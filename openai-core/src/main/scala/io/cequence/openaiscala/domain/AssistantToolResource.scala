@@ -7,6 +7,8 @@ final case class AssistantToolResource(
 
 object AssistantToolResource {
 
+  def empty: AssistantToolResource = AssistantToolResource(None, None)
+
   def apply(): AssistantToolResource = AssistantToolResource(None, None)
   def apply(codeInterpreterResources: CodeInterpreterResources): AssistantToolResource =
     AssistantToolResource(Some(codeInterpreterResources), None)

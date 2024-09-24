@@ -260,13 +260,7 @@ object JsonFormats {
           case None              => json.as[UserSeqMessage]
         }
 
-      case ChatRole.Tool =>
-        json.as[ToolMessage]
-      // TODO: fixed.... originally was
-//        json.asOpt[AssistantToolMessage] match {
-//          case Some(assistantToolMessage) => assistantToolMessage
-//          case None                       => json.as[ToolMessage]
-//        }
+      case ChatRole.Tool => json.as[ToolMessage]
 
       case ChatRole.Assistant =>
         // if contains tool_calls, then it is AssistantToolMessage
@@ -650,7 +644,13 @@ object JsonFormats {
   implicit lazy val fileSearchResourcesReads
     : Reads[AssistantToolResource.FileSearchResources] = {
     implicit val config: JsonConfiguration = JsonConfiguration(JsonNaming.SnakeCase)
-    Json.reads[AssistantToolResource.FileSearchResources]
+
+    (
+      (__ \ "vector_store_ids").readNullable[Seq[String]].map(_.getOrElse(Seq.empty)) and
+        (__ \ "vector_stores")
+          .readNullable[Seq[AssistantToolResource.VectorStore]]
+          .map(_.getOrElse(Seq.empty))
+    )(AssistantToolResource.FileSearchResources.apply _)
   }
 
   implicit lazy val assistantToolResourceReads: Reads[AssistantToolResource] = (
@@ -698,10 +698,10 @@ object JsonFormats {
         (__ \ "metadata").read[Map[String, String]].orElse(Reads.pure(Map()))
     )(Thread.apply _)
 
-//  implicit lazy val threadWrites: Writes[Thread] = Json.writes[Thread]
-
-  implicit lazy val fileIdFormat: Format[FileId] =
-    Json.format[FileId]
+  implicit val fileIdFormat: Format[FileId] = Format(
+    Reads.StringReads.map(FileId.apply),
+    Writes[FileId](fileId => JsString(fileId.file_id))
+  )
 
   implicit lazy val threadMessageContentTypeFormat: Format[ThreadMessageContentType] =
     enumFormat[ThreadMessageContentType](

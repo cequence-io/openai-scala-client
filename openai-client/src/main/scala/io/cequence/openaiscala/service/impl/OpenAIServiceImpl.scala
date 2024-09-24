@@ -114,8 +114,7 @@ private[service] trait OpenAIServiceImpl
       Param.assistant_id -> Some(assistantId),
       Param.thread -> thread.map(Json.toJson(_)),
       Param.instructions -> Some(instructions),
-      // TODO: tools are ignored?
-      // Param.tools -> Some(Json.toJson(tools)),
+      Param.tools -> Some(Json.toJson(tools)),
       Param.tool_resources -> toolResources.map(Json.toJson(_)),
       Param.tool_choice -> toolChoice.map(Json.toJson(_))
     )

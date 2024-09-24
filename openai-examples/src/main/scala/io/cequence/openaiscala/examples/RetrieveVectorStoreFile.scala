@@ -9,7 +9,7 @@ object RetrieveVectorStoreFile extends Example {
   override protected def run: Future[_] =
     for {
       assistant <- service.retrieveVectorStoreFile(
-        vectorStoreId = "vs_xxx",
+        vectorStoreId = "vs_9pl9kTn3ggjzDKYX5AT9JuIG",
         fileId = FileId("vsf_xxx")
       )
     } yield {

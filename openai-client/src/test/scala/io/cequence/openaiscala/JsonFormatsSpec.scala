@@ -46,29 +46,22 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
   private val codeInterpreterResourcesJson =
     """{
       |  "code_interpreter" : {
-      |    "file_ids" : [ {
-      |      "file_id" : "file-id-1"
-      |    }, {
-      |      "file_id" : "file-id-2"
-      |    } ]
+      |    "file_ids" : [ "file-id-1", "file-id-2" ]
       |  }
       |}""".stripMargin
 
   private val fileSearchResourcesJson1 =
     """{
       |  "file_search" : {
-      |    "vector_store_ids" : [ "vs_xxx" ]
+      |    "vector_store_ids" : [ "vs_xxx", "vs_yyy" ]
       |  }
       |}""".stripMargin
 
   private val fileSearchResourcesJson2 =
     """{
       |  "file_search" : {
-      |    "vector_store_ids" : [ ],
       |    "vector_stores" : [ {
-      |      "file_ids" : [ {
-      |        "file_id" : "file-id-1"
-      |      } ],
+      |      "file_ids" : [ "file-id-1" ],
       |      "metadata" : {
       |        "key" : "value"
       |      }
@@ -116,9 +109,7 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
 
   private val attachmentJson =
     """{
-      |  "file_id" : {
-      |    "file_id" : "file-id-1"
-      |  },
+      |  "file_id" : "file-id-1",
       |  "tools" : [ {
       |    "type" : "code_interpreter"
       |  }, {
@@ -187,43 +178,38 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
     }
 
     "serialize and deserialize code interpreter's resources" in {
-      testCodec[AssistantToolResource](
+      prettyTestCodec[AssistantToolResource](
         AssistantToolResource(
           CodeInterpreterResources(
             Seq(FileId("file-id-1"), FileId("file-id-2"))
           )
         ),
-        codeInterpreterResourcesJson,
-        Pretty
+        codeInterpreterResourcesJson
       )
     }
 
-//    // TODO
-//    "serialize and deserialize file search's resources with vector store ids" in {
-//      testCodec[AssistantToolResource](
-//        AssistantToolResource(
-//          FileSearchResources(
-//            vectorStoreIds = Seq("vs_xxx")
-//          )
-//        ),
-//        fileSearchResourcesJson1,
-//        Pretty
-//      )
-//    }
-//
-//    // TODO
-//    "serialize and deserialize file search's resources with (new) vector stores" in {
-//      testCodec[AssistantToolResource](
-//        AssistantToolResource(
-//          FileSearchResources(
-//            vectorStoreIds = Nil,
-//            vectorStores = Seq(VectorStore(Seq(FileId("file-id-1")), Map("key" -> "value")))
-//          )
-//        ),
-//        fileSearchResourcesJson2,
-//        Pretty
-//      )
-//    }
+    "serialize and deserialize file search's resources with vector store ids" in {
+      prettyTestCodec[AssistantToolResource](
+        AssistantToolResource(
+          FileSearchResources(
+            vectorStoreIds = Seq("vs_xxx", "vs_yyy")
+          )
+        ),
+        fileSearchResourcesJson1
+      )
+    }
+
+    "serialize and deserialize file search's resources with (new) vector stores" in {
+      prettyTestCodec[AssistantToolResource](
+        AssistantToolResource(
+          FileSearchResources(
+            vectorStoreIds = Nil,
+            vectorStores = Seq(VectorStore(Seq(FileId("file-id-1")), Map("key" -> "value")))
+          )
+        ),
+        fileSearchResourcesJson2
+      )
+    }
 
     "serialize and deserialize run tools" in {
       testCodec[RunTool](
@@ -356,9 +342,7 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       testCodec[VectorStore](
         vectorStore,
         """{
-          |  "file_ids" : [ {
-          |    "file_id" : "file-123"
-          |  } ],
+          |  "file_ids" : [ "file-123" ],
           |  "metadata" : {
           |    "key" : "value"
           |  }
@@ -493,8 +477,6 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
 
       fineTuneJob.id shouldBe "xxx"
       fineTuneJob.model shouldBe "gpt-4o-2024-08-06"
-//      fineTuneJob.created_at.toString shouldBe "Tue Sep 10 17:52:12 CEST 2024" // TODO:
-      fineTuneJob.created_at.toString shouldBe "Tue Sep 10 15:52:12 UTC 2024"
       fineTuneJob.finished_at shouldBe None
       fineTuneJob.fine_tuned_model shouldBe None
       fineTuneJob.organization_id shouldBe "org-xxx"
@@ -628,6 +610,15 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
     val json2 = Json.parse(json).as[A]
     json2 shouldBe value
   }
+
+  private def prettyTestCodec[A](
+    value: A,
+    json: String,
+    justSemantics: Boolean = false
+  )(
+    implicit format: Format[A]
+  ): Unit =
+    testCodec(value, json, Pretty, justSemantics)
 
   private def testSerialization[A](
     value: A,
