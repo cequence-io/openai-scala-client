@@ -260,13 +260,7 @@ object JsonFormats {
           case None              => json.as[UserSeqMessage]
         }
 
-      case ChatRole.Tool =>
-        json.as[ToolMessage]
-      // TODO: fixed.... originally was
-//        json.asOpt[AssistantToolMessage] match {
-//          case Some(assistantToolMessage) => assistantToolMessage
-//          case None                       => json.as[ToolMessage]
-//        }
+      case ChatRole.Tool => json.as[ToolMessage]
 
       case ChatRole.Assistant =>
         // if contains tool_calls, then it is AssistantToolMessage
