@@ -9,7 +9,7 @@ import scala.concurrent.Future
 
 object CreateChatCompletionJson extends Example with TestFixtures with OpenAIServiceConsts {
 
-  val messages = Seq(
+  private val messages: Seq[BaseMessage] = Seq(
     SystemMessage(capitalsPrompt),
     UserMessage("List only african countries")
   )

@@ -28,7 +28,11 @@ Also, we aimed the lib to be self-contained with the fewest dependencies possibl
 
 ---
 
-In addition to the OpenAI API, this library also supports API-compatible providers such as:
+👉 **No time to read a lengthy tutorial? Sure, we hear you! Check out the [examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples) to see how to use the lib in practice.**
+
+---
+
+In addition to the OpenAI API, this library also supports API-compatible providers (see [examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/nonopenai)) such as:
 - [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) - cloud-based, utilizes OpenAI models but with lower latency
 - [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) - cloud-based, offers a vast selection of open-source models
 - [Anthropic](https://www.anthropic.com/api) - cloud-based, a major competitor to OpenAI, features proprietary/closed-source models such as Claude3 - Haiku, Sonnet, and Opus
@@ -41,8 +45,6 @@ In addition to the OpenAI API, this library also supports API-compatible provide
 - [Mistral](https://mistral.ai/) (🔥 **New**) - cloud-based, leading open-source LLM company
 - [Ollama](https://ollama.com/) - runs locally, serves as an umbrella for open-source LLMs including LLaMA3, dbrx, and Command-R
 - [FastChat](https://github.com/lm-sys/FastChat) - runs locally, serves as an umbrella for open-source LLMs such as Vicuna, Alpaca, and FastChat-T5
-
-See [examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/nonopenai) for more details.
 
 ---
 
@@ -153,54 +155,42 @@ Then you can obtain a service in one of the following ways.
 4. [Groq](https://wow.groq.com/) - requires `GROQ_API_KEY"`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.groq)
-```
-or with streaming
-```scala
+  // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.groq)
 ```
 
 5. [Fireworks AI](https://fireworks.ai/) - requires `FIREWORKS_API_KEY"`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.fireworks)
-```
-or with streaming
-```scala
+  // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.fireworks)
 ```
 
 6. [Octo AI](https://octo.ai/) - requires `OCTOAI_TOKEN`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.octoML)
-```
-or with streaming
-```scala
+  // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.octoML)
 ```
 
 7. [TogetherAI](https://www.together.ai/)  requires `TOGETHERAI_API_KEY`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.togetherAI)
-```
-or with streaming
-```scala
+  // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.togetherAI)
 ```
 
 8. [Cerebras](https://cerebras.ai/)  requires `CEREBRAS_API_KEY`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.cerebras)
-```
-or with streaming
-```scala
+  // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.cerebras)
 ```
 
 9. [Mistral](https://mistral.ai/) requires `MISTRAL_API_KEY`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.mistral)
-```
-or with streaming
-```scala
+  // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.mistral)
 ```
 
@@ -305,7 +295,7 @@ Full documentation of each call with its respective inputs and settings is provi
   service.createCompletion(
     text,
     settings = CreateCompletionSettings(
-      model = ModelId.gpt_3_5_turbo_16k,
+      model = ModelId.gpt_4o,
       max_tokens = Some(1500),
       temperature = Some(0.9),
       presence_penalty = Some(0.2),
@@ -340,7 +330,7 @@ For this to work you need to use `OpenAIServiceStreamedFactory` from `openai-sca
 
 ```scala
   val createChatCompletionSettings = CreateChatCompletionSettings(
-    model = ModelId.gpt_3_5_turbo
+    model = ModelId.gpt_4o
   )
 
   val messages = Seq(
@@ -413,7 +403,51 @@ For this to work you need to use `OpenAIServiceStreamedFactory` from `openai-sca
   }
 ```
 
-- 🔥 **New**: Count expected used tokens before calling `createChatCompletions` or `createChatFunCompletions`, this helps you select proper model ex. `gpt-3.5-turbo` or `gpt-3.5-turbo-16k` and reduce costs. This is an experimental feature and it may not work for all models. Requires `openai-scala-count-tokens` lib.
+- Create chat completion with json output (🔥 **New**)
+
+```scala
+  val messages = Seq(
+    SystemMessage("Give me the most populous capital cities in JSON format."),
+    UserMessage("List only african countries")
+  )
+
+  val capitalsSchema = JsonSchema.Object(
+    properties = Map(
+      "countries" -> JsonSchema.Array(
+        items = JsonSchema.Object(
+          properties = Map(
+            "country" -> JsonSchema.String(
+              description = Some("The name of the country")
+            ),
+            "capital" -> JsonSchema.String(
+              description = Some("The capital city of the country")
+            )
+          ),
+          required = Seq("country", "capital")
+        )
+      )
+    ),
+    required = Seq("countries")
+  )
+
+  val jsonSchemaDef = JsonSchemaDef(
+    name = "capitals_response",
+    strict = true,
+    structure = schema
+  )
+
+  service
+    .createChatCompletion(
+      messages = messages,
+      settings = DefaultSettings.createJsonChatCompletion(jsonSchemaDef)
+    )
+    .map { response =>
+      val json = Json.parse(messageContent(response))
+      println(Json.prettyPrint(json))
+    }
+```
+
+- Count expected used tokens before calling `createChatCompletions` or `createChatFunCompletions`, this helps you select proper model and reduce costs. This is an experimental feature and it may not work for all models. Requires `openai-scala-count-tokens` lib.
 
 An example how to count message tokens:
 ```scala
@@ -566,7 +600,6 @@ class MyCompletionService @Inject() (
     coreUrl = "https://text.octoai.run/v1/",
     authHeaders = Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
   )
-
 
   // Anthropic
   val anthropicService = AnthropicServiceFactory.asOpenAI()
