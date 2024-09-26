@@ -13,6 +13,20 @@ object NonOpenAIModelId {
   val claude_instant_1_2 = "claude-instant-1.2"
 
   // Llama2/3
+  val llama_v3p2_1b_instruct = "llama-v3p2-1b-instruct" // Fireworks AI
+  val llama_v3p2_3b_instruct = "llama-v3p2-3b-instruct" // Fireworks AI
+  val llama_v3p2_11b_vision_instruct = "llama-v3p2-11b-vision-instruct" // Fireworks AI
+  val llama_v3p2_90b_vision_instruct = "llama-v3p2-90b-vision-instruct" // Fireworks AI
+  val llama_3_2_90b_vision_instruct_turbo =
+    "meta-llama/Llama-3.2-90B-Vision-Instruct-Turbo" // Together AI
+  val llama_3_2_11b_vision_instruct_turbo =
+    "meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo" // Together AI
+  val llama_3_2_3b_instruct_turbo = "meta-llama/Llama-3.2-3B-Instruct-Turbo" // Together AI
+  val llama_vision_free = "meta-llama/Llama-Vision-Free" // Together AI
+  val llama_3_2_1b_preview = "llama-3.2-1b-preview" // Groq
+  val llama_3_2_3b_preview = "llama-3.2-3b-preview" // Groq
+  val llama_3_2_11b_text_preview = "llama-3.2-11b-text-preview" // Groq
+  val llama_3_2_90b_text_preview = "llama-3.2-90b-text-preview" // Groq
   val llama3_1_8b = "llama3.1-8b" // Cerebras
   val llama3_1_70b = "llama3.1-70b" // Cerebras
   val meta_llama_3_1_405b_instruct = "meta-llama-3.1-405b-instruct" // OctoML
