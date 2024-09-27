@@ -7,6 +7,9 @@ on:
   push:
     branches: [ master ]
 
+env:
+  ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+
 jobs:
   validate:
     name: Validate Code
@@ -19,13 +22,13 @@ jobs:
         with:
           distribution: corretto
           java-version: '11'
-#          cache: 'sbt'
+          cache: 'sbt'
 
       - name: Set up Scala and sbt
         uses: olafurpg/setup-scala@v1
         with:
           java-version: '11'
-#          scala-version: '2.13.10'
+          #          scala-version: '2.13.10'
           sbt-version: '1.8.2'
 
       - name: Validate Code
@@ -49,7 +52,7 @@ jobs:
         with:
           distribution: 'corretto'
           java-version: '11'
-#          cache: 'sbt'
+          cache: 'sbt'
 
       - name: Build & Test
         run: sbt ++${{ matrix.scala }} clean testWithCoverage
@@ -88,7 +91,7 @@ jobs:
         with:
           distribution: ${{ matrix.distribution }}
           java-version: ${{ matrix.jdk }}
-#          cache: 'sbt'
+          cache: 'sbt'
 
       - name: Perform Build / Test
         run: sbt ++${{ matrix.scala }} clean compile test
