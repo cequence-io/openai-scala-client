@@ -21,6 +21,13 @@ jobs:
           java-version: '11'
 #          cache: 'sbt'
 
+      - name: Set up Scala and sbt
+        uses: olafurpg/setup-scala@v1
+        with:
+          java-version: '11'
+#          scala-version: '2.13.10'
+          sbt-version: '1.8.2'
+
       - name: Validate Code
         run: sbt validateCode
 
