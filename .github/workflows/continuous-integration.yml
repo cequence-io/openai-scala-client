@@ -49,7 +49,7 @@ jobs:
         with:
           distribution: 'corretto'
           java-version: '11'
-          cache: 'sbt'
+#          cache: 'sbt'
 
       - name: Build & Test
         run: sbt ++${{ matrix.scala }} clean testWithCoverage
@@ -88,7 +88,7 @@ jobs:
         with:
           distribution: ${{ matrix.distribution }}
           java-version: ${{ matrix.jdk }}
-          cache: 'sbt'
+#          cache: 'sbt'
 
       - name: Perform Build / Test
         run: sbt ++${{ matrix.scala }} clean compile test
