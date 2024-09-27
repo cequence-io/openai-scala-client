@@ -1,4 +1,5 @@
 package io.cequence.openaiscala.examples
+
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain.{AssistantToolResource, ModelId}
 
@@ -8,7 +9,7 @@ object CreateAssistant extends Example {
   override protected def run: Future[_] =
     for {
       assistant <- service.createAssistant(
-        model = ModelId.gpt_3_5_turbo_1106,
+        model = ModelId.gpt_4o_mini,
         name = Some("Math Tutor"),
         instructions = Some(
           "You are a personal math tutor. When asked a question, write and run Python code to answer the question."
