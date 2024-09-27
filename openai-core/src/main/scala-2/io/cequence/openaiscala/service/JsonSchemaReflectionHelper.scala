@@ -52,7 +52,7 @@ trait JsonSchemaReflectionHelper {
         JsonSchema.String()
 
       // date
-      case t if t matches (typeOf[java.util.Date], typeOf[org.joda.time.DateTime]) =>
+      case t if t matches typeOf[java.util.Date] => // , typeOf[org.joda.time.DateTime]
         if (dateAsNumber) JsonSchema.Number() else JsonSchema.String()
 
       // array/seq
