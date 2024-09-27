@@ -15,17 +15,17 @@ jobs:
     name: Validate Code
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup JDK
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: corretto
           java-version: '11'
           cache: 'sbt'
 
       - name: Set up Scala and sbt
-        uses: olafurpg/setup-scala@v1
+        uses: olafurpg/setup-scala@v14
         with:
           java-version: '11'
           #          scala-version: '2.13.10'
@@ -45,10 +45,10 @@ jobs:
         scala: [ '2.12.18', '2.13.11', '3.2.2']
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup JDK
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'corretto'
           java-version: '11'
