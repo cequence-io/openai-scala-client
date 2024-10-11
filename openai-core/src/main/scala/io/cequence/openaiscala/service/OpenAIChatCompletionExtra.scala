@@ -5,7 +5,10 @@ import io.cequence.openaiscala.JsonFormats.eitherJsonSchemaFormat
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import io.cequence.openaiscala.{RetryHelpers, Retryable}
 import io.cequence.openaiscala.domain.response.ChatCompletionResponse
-import io.cequence.openaiscala.domain.settings.{ChatCompletionResponseFormatType, CreateChatCompletionSettings}
+import io.cequence.openaiscala.domain.settings.{
+  ChatCompletionResponseFormatType,
+  CreateChatCompletionSettings
+}
 import io.cequence.openaiscala.domain.{BaseMessage, ChatRole, ModelId, UserMessage}
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.{Format, Json}
@@ -142,7 +145,7 @@ object OpenAIChatCompletionExtra {
 
         (
           settings.copy(
-            response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
+            response_format_type = Some(ChatCompletionResponseFormatType.json_schema)
           ),
           false
         )
