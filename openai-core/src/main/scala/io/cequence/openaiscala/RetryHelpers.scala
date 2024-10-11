@@ -3,6 +3,7 @@ package io.cequence.openaiscala
 import akka.actor.Scheduler
 import akka.pattern.after
 import io.cequence.openaiscala.RetryHelpers.{RetrySettings, retry}
+import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future}
@@ -82,6 +83,8 @@ object RetryHelpers {
 
 trait RetryHelpers {
 
+  private val logger = LoggerFactory.getLogger(this.getClass)
+
   implicit class FutureWithRetry[T](f: Future[T]) {
 
     def retryOnFailure(
@@ -103,6 +106,86 @@ trait RetryHelpers {
         log,
         isRetryable
       )
+    }
+  }
+
+  implicit class FutureWithFailover[IN, T](
+    f: IN => Future[T]
+  ) {
+    def retryOnFailureOrFailover(
+      normalAndFailoverInputsAndMessages: Seq[(IN, String)], // input and string for logging
+      failureMessage: Option[String] = None,
+      log: Option[String => Unit] = Some(println),
+      isRetryable: Throwable => Boolean = {
+        case Retryable(_) => true
+        case _            => false
+      }
+    )(
+      implicit retrySettings: RetrySettings,
+      ec: ExecutionContext,
+      scheduler: Scheduler
+    ): Future[T] =
+      retryOnFailureOrFailoverAux(
+        None,
+        normalAndFailoverInputsAndMessages,
+        failureMessage,
+        log,
+        isRetryable
+      )
+
+    private def retryOnFailureOrFailoverAux(
+      lastException: Option[Throwable],
+      inputsAndMessagesToTryInOrder: Seq[(IN, String)],
+      failureMessage: Option[String] = None,
+      log: Option[String => Unit] = Some(println),
+      isRetryable: Throwable => Boolean = {
+        case Retryable(_) => true
+        case _            => false
+      }
+    )(
+      implicit retrySettings: RetrySettings,
+      ec: ExecutionContext,
+      scheduler: Scheduler
+    ): Future[T] = {
+      inputsAndMessagesToTryInOrder match {
+        case Nil =>
+          val lastExceptionMessage = lastException.map(_.getMessage).getOrElse("N/A")
+          Future.failed(
+            new OpenAIScalaClientException(
+              s"No more failover inputs to try! Last error: ${lastExceptionMessage}"
+            )
+          )
+
+        case _ =>
+          val (input, inputLogMessage) = inputsAndMessagesToTryInOrder.head
+
+          f(input)
+            .retryOnFailure(
+              failureMessage.map(message => s"${inputLogMessage} - ${message}"),
+              log,
+              isRetryable
+            )
+            .recoverWith { case e: Throwable =>
+              val errorMessage = failureMessage
+                .map(message => s"${inputLogMessage} - ${message} after retries!")
+                .getOrElse(
+                  s"${inputLogMessage} failed after retries!"
+                )
+
+              logger.error(
+                s"$errorMessage Initiating failover to ${inputsAndMessagesToTryInOrder.tail.map(_._2).headOption.getOrElse("N/A")}.",
+                e
+              )
+
+              retryOnFailureOrFailoverAux(
+                Some(e),
+                inputsAndMessagesToTryInOrder.tail,
+                failureMessage,
+                log,
+                isRetryable
+              )
+            }
+      }
     }
   }
 }
