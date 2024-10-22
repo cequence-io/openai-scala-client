@@ -31,5 +31,4 @@ private class ChatCompletionServiceAdapter[S <: CloseableService](
     chatCompletionService.close()
     underlying.close()
   }
-
 }

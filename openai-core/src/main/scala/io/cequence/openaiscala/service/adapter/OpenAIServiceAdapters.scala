@@ -1,6 +1,7 @@
 package io.cequence.openaiscala.service.adapter
 
 import akka.actor.Scheduler
+import akka.stream.Materializer
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
@@ -33,6 +34,12 @@ trait OpenAIServiceAdapters[S <: CloseableService] {
     underlyings: S*
   ): S =
     wrapAndDelegate(new RandomOrderAdapter(underlyings))
+
+  def parallelTakeFirst(
+    underlyings: S*)(
+    implicit materializer: Materializer
+  ): S =
+    wrapAndDelegate(new ParallelTakeFirstAdapter(underlyings))
 
   def retry(
     underlying: S,
