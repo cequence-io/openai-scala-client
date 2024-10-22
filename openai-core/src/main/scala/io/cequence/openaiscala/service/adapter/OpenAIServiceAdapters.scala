@@ -36,7 +36,8 @@ trait OpenAIServiceAdapters[S <: CloseableService] {
     wrapAndDelegate(new RandomOrderAdapter(underlyings))
 
   def parallelTakeFirst(
-    underlyings: S*)(
+    underlyings: S*
+  )(
     implicit materializer: Materializer
   ): S =
     wrapAndDelegate(new ParallelTakeFirstAdapter(underlyings))

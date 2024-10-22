@@ -195,4 +195,9 @@ object NonOpenAIModelId {
   val stripedhyena_nous_7b = "togethercomputer/StripedHyena-Nous-7B" // Together AI
   val alpaca_7b = "togethercomputer/alpaca-7b" // Together AI
   val solar_10_7b_instruct_v1_0 = "upstage/SOLAR-10.7B-Instruct-v1.0" // Together AI
+
+  // Grok
+
+  // context 131072
+  val grok_beta = "grok-beta"
 }

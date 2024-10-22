@@ -64,6 +64,14 @@ object ChatCompletionProvider {
   ): OpenAIChatCompletionStreamedService = provide(ChatProviderSettings.togetherAI)
 
   /**
+   * Requires `GROK_API_KEY`
+   */
+  def grok(
+    implicit ec: ExecutionContext,
+    m: Materializer
+  ): OpenAIChatCompletionStreamedService = provide(ChatProviderSettings.grok)
+
+  /**
    * Requires `VERTEXAI_API_KEY` and "VERTEXAI_LOCATION"
    */
   def vertexAI(

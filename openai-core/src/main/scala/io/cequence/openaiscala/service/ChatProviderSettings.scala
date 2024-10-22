@@ -12,4 +12,5 @@ object ChatProviderSettings {
   val octoML = ProviderSettings("https://text.octoai.run/v1/", "OCTOAI_TOKEN")
   val togetherAI =
     ProviderSettings("https://api.together.xyz/v1/", "TOGETHERAI_API_KEY")
+  val grok = ProviderSettings("https://api.x.ai/v1/", "GROK_API_KEY")
 }

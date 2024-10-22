@@ -13,7 +13,7 @@ object VertexAICreateChatCompletionWithOpenAIAdapter
 
   override val service: OpenAIChatCompletionService = ChatCompletionProvider.vertexAI
 
-  private val model = NonOpenAIModelId.gemini_1_5_pro_001
+  private val model = NonOpenAIModelId.gemini_1_5_pro_002
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant who makes jokes about Google."),
