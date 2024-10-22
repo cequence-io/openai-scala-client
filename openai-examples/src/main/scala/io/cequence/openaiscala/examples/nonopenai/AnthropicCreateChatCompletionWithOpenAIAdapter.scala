@@ -22,7 +22,7 @@ object AnthropicCreateChatCompletionWithOpenAIAdapter
     service
       .createChatCompletion(
         messages = messages,
-        settings = CreateChatCompletionSettings(NonOpenAIModelId.claude_3_5_sonnet_20240620)
+        settings = CreateChatCompletionSettings(NonOpenAIModelId.claude_3_5_sonnet_20241022)
       )
       .map { content =>
         println(content.choices.headOption.map(_.message.content).getOrElse("N/A"))
