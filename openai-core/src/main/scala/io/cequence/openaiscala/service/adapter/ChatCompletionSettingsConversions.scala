@@ -1,6 +1,10 @@
 package io.cequence.openaiscala.service.adapter
 
-import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
+import io.cequence.openaiscala.domain.response.ResponseFormat
+import io.cequence.openaiscala.domain.settings.{
+  ChatCompletionResponseFormatType,
+  CreateChatCompletionSettings
+}
 import org.slf4j.LoggerFactory
 
 object ChatCompletionSettingsConversions {
@@ -74,6 +78,16 @@ object ChatCompletionSettingsConversions {
       _.copy(frequency_penalty = Some(0d)),
       Some(
         "O1 models don't support frequency penalty values other than the default of 0, converting to 0."
+      ),
+      warning = true
+    ),
+    // frequency_penalty
+    FieldConversionDef(
+      settings =>
+        settings.response_format_type.isDefined && settings.response_format_type.get != ChatCompletionResponseFormatType.text,
+      _.copy(response_format_type = None),
+      Some(
+        "O1 models don't support json object/schema response format, converting to None."
       ),
       warning = true
     )
