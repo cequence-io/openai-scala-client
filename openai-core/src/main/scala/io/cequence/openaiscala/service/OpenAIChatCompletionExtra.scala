@@ -57,9 +57,10 @@ object OpenAIChatCompletionExtra {
     def createChatCompletionWithJSON[T: Format](
       messages: Seq[BaseMessage],
       settings: CreateChatCompletionSettings,
-      taskNameForLogging: Option[String] = None,
-      maxRetries: Option[Int] = Some(5),
-      retryOnAnyError: Boolean = false
+      failoverModels: Seq[String],
+      maxRetries: Option[Int] = Some(defaultMaxRetries),
+      retryOnAnyError: Boolean = false,
+      taskNameForLogging: Option[String] = None
     )(
       implicit ec: ExecutionContext,
       scheduler: Scheduler
@@ -78,10 +79,14 @@ object OpenAIChatCompletionExtra {
         (messages, settings)
       }
 
-      val callFuture = openAIChatCompletionService
-        .createChatCompletion(
+      openAIChatCompletionService
+        .createChatCompletionWithFailover(
           messagesFinal,
-          settingsFinal
+          settingsFinal,
+          failoverModels,
+          maxRetries,
+          retryOnAnyError,
+          failureMessage = s"${taskNameForLoggingFinal.capitalize} failed."
         )
         .map { response =>
           val content = response.choices.head.message.content
@@ -95,18 +100,6 @@ object OpenAIChatCompletionExtra {
 
           json.as[T]
         }
-
-      maxRetries.map { maxRetries =>
-        implicit val retrySettings: RetrySettings = RetrySettings(maxRetries = maxRetries)
-
-        callFuture.retryOnFailure(
-          failureMessage = Some(s"${taskNameForLoggingFinal.capitalize} failed."),
-          log = Some(logger.warn),
-          isRetryable = isRetryable(retryOnAnyError)
-        )
-      }.getOrElse(
-        callFuture
-      )
     }
 
     private def isRetryable(
@@ -125,7 +118,7 @@ object OpenAIChatCompletionExtra {
     ModelId.gpt_4o_2024_08_06
   )
 
-  private def handleOutputJsonSchema(
+  def handleOutputJsonSchema(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings,
     taskNameForLogging: String,
