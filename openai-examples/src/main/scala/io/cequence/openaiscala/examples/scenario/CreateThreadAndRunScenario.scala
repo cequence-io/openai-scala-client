@@ -3,7 +3,8 @@ package io.cequence.openaiscala.examples.scenario
 import io.cequence.openaiscala.domain.AssistantTool.FileSearchTool
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.FileUploadPurpose
-import io.cequence.openaiscala.examples.{Example, PollingHelper}
+import io.cequence.openaiscala.examples.Example
+import io.cequence.wsclient.service.PollingHelper
 
 import java.io.File
 import scala.concurrent.Future
