@@ -48,8 +48,6 @@ private[service] trait OpenAIChatCompletionServiceImpl
 
 trait ChatCompletionBodyMaker {
 
-  this: WSClient =>
-
   private val o1Models = Set(
     ModelId.o1_preview,
     ModelId.o1_preview_2024_09_12,
@@ -80,7 +78,7 @@ trait ChatCompletionBodyMaker {
       else
         settings
 
-    jsonBodyParams(
+    JsonUtil.jsonBodyParams(
       Param.messages -> Some(messageJsons),
       Param.model -> Some(settingsFinal.model),
       Param.temperature -> settingsFinal.temperature,
