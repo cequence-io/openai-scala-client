@@ -56,20 +56,16 @@ object CreateThreadAndRunScenario extends Example with PollingHelper {
         stream = false
       )
 
-      runNew <- pollUntilDone((run: Run) => RunStatus.finishedStates.contains(run.status)) {
+      runNew <- pollUntilDone((run: Run) => run.isFinished) {
         service
           .retrieveRun(run.thread_id, run.id)
           .map(
-            _.getOrElse(
-              throw new IllegalStateException(s"Run with id ${run.id} not found.")
-            )
+            _.getOrElse(throw new IllegalStateException(s"Run with id ${run.id} not found."))
           )
       }
 
-      _ = println(s"Run status: ${runNew.status}")
-
       // get the messages
-      threadMessages <- service.listThreadMessages(run.thread_id)
+      threadMessages <- service.listThreadMessages(runNew.thread_id)
 
     } yield {
       println(s"File created: ${fileInfo.id}")

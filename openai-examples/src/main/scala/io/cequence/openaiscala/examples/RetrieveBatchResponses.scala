@@ -6,8 +6,7 @@ object RetrieveBatchResponses extends Example {
 
   override protected def run: Future[_] =
     for {
-//      maybeBatchResponses <- service.retrieveBatchResponses("file-A9V1zO4XpjjqBke8Kdp78vMU")
-      maybeBatchResponses <- service.retrieveBatchResponses("batch_Ghy5a9EEXDLFqBcJqANpr17F")
+      maybeBatchResponses <- service.retrieveBatchResponses("batch_xyz")
     } yield {
       maybeBatchResponses match {
         case Some(batchResponses) =>

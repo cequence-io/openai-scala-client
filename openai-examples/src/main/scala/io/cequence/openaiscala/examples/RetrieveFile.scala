@@ -6,7 +6,7 @@ object RetrieveFile extends Example {
 
   override protected def run: Future[_] =
     for {
-      assistant <- service.retrieveFile("file-2bZn9Vu6WicoTMOAEGW92pml")
+      assistant <- service.retrieveFile("file-xyz")
     } yield {
       println(assistant)
     }

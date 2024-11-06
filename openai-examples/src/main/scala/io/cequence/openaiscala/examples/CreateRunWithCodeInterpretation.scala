@@ -53,13 +53,11 @@ object CreateRunWithCodeInterpretation extends Example with PollingHelper {
       )
 
       // poll until done
-      runNew <- pollUntilDone((run: Run) => RunStatus.finishedStates.contains(run.status)) {
+      runNew <- pollUntilDone((run: Run) => run.isFinished) {
         service
           .retrieveRun(thread.id, run.id)
           .map(
-            _.getOrElse(
-              throw new IllegalStateException(s"Run with id ${run.id} not found.")
-            )
+            _.getOrElse(throw new IllegalStateException(s"Run with id ${run.id} not found."))
           )
       }
 

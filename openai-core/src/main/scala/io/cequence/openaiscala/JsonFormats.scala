@@ -1166,7 +1166,7 @@ object JsonFormats {
         case c: JsonSchema.Boolean =>
           Json.toJson(c).as[JsObject]
 
-        case c: JsonSchema.Null =>
+        case _: JsonSchema.Null =>
           Json.obj()
 
         case c: JsonSchema.Object =>
