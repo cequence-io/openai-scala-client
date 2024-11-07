@@ -22,6 +22,7 @@ import io.cequence.openaiscala.anthropic.domain.response.{
 import io.cequence.openaiscala.anthropic.domain.{CacheControl, ChatRole, Content, Message}
 import io.cequence.wsclient.JsonUtil
 import play.api.libs.functional.syntax._
+import play.api.libs.json.JsonNaming.SnakeCase
 import play.api.libs.json._
 
 object JsonFormats extends JsonFormats
@@ -45,9 +46,15 @@ trait JsonFormats {
   implicit lazy val contentBlocksFormat: Format[ContentBlocks] = Json.format[ContentBlocks]
 
   // implicit lazy val textBlockWrites: Writes[TextBlock] = Json.writes[TextBlock]
-  implicit lazy val textBlockReads: Reads[TextBlock] = Json.reads[TextBlock]
+  implicit lazy val textBlockReads: Reads[TextBlock] = {
+    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
+    Json.reads[TextBlock]
+  }
 
-  implicit lazy val textBlockWrites: Writes[TextBlock] = Json.writes[TextBlock]
+  implicit lazy val textBlockWrites: Writes[TextBlock] = {
+    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
+    Json.writes[TextBlock]
+  }
   implicit lazy val imageBlockWrites: Writes[ImageBlock] =
     (block: ImageBlock) =>
       Json.obj(
@@ -105,23 +112,30 @@ trait JsonFormats {
     }
   }
 
-//  implicit lazy val baseMessageWrites: Writes[Message] = new Writes[Message] {
-//    def writes(message: Message): JsValue = message match {
-//      case UserMessage(content) => Json.obj("role" -> "user", "content" -> content)
-//      case UserMessageContent(content) =>
-//        Json.obj(
-//          "role" -> "user",
-//          "content" -> content.map(Json.toJson(_)(contentBlockWrites))
-//        )
-//      case AssistantMessage(content) => Json.obj("role" -> "assistant", "content" -> content)
-//      case AssistantMessageContent(content) =>
-//        Json.obj(
-//          "role" -> "assistant",
-//          "content" -> content.map(Json.toJson(_)(contentBlockWrites))
-//        )
-//      // Add cases for other subclasses if necessary
-//    }
-//  }
+  implicit lazy val baseMessageWrites: Writes[Message] = new Writes[Message] {
+    def writes(message: Message): JsValue = message match {
+      case UserMessage(content, cacheControl) =>
+        val baseObj = Json.obj("role" -> "user", "content" -> content)
+        cacheControl.fold(baseObj)(cc => baseObj + ("cache_control" -> Json.toJson(cc)))
+
+      case UserMessageContent(content) =>
+        Json.obj(
+          "role" -> "user",
+          "content" -> content.map(Json.toJson(_)(contentBlockWrites))
+        )
+
+      case AssistantMessage(content, cacheControl) =>
+        val baseObj = Json.obj("role" -> "assistant", "content" -> content)
+        cacheControl.fold(baseObj)(cc => baseObj + ("cache_control" -> Json.toJson(cc)))
+
+      case AssistantMessageContent(content) =>
+        Json.obj(
+          "role" -> "assistant",
+          "content" -> content.map(Json.toJson(_)(contentBlockWrites))
+        )
+      // Add cases for other subclasses if necessary
+    }
+  }
 
   implicit lazy val baseMessageReads: Reads[Message] = (
     (__ \ "role").read[String] and
@@ -129,19 +143,26 @@ trait JsonFormats {
       (__ \ "cache_control").readNullable[CacheControl]
   ).tupled.flatMap {
     case ("user", JsString(str), cacheControl) => Reads.pure(UserMessage(str, cacheControl))
-    case ("user", json @ JsArray(_), cacheControl) => {
-      val contentBlocks = Json.fromJson[Seq[ContentBlock]](json).map(ContentBlocks(_))
-
+    case ("user", json @ JsArray(_), _) => {
+      Json.fromJson[Seq[ContentBlock]](json) match {
+        case JsSuccess(contentBlocks, _) =>
+          Reads.pure(UserMessageContent(contentBlocks))
+        case JsError(errors) =>
+          Reads(_ => JsError(errors))
+      }
     }
+    case ("assistant", JsString(str), cacheControl) =>
+      Reads.pure(AssistantMessage(str, cacheControl))
 
-//    case ("user", SingleString(text), None)               => Reads.pure(UserMessage(text))
-//    case ("user", SingleString(text), Some(cacheControl)) => Reads.pure(UserMessage(text))
-//    case ("user", ContentBlocks(blocks), None) => Reads.pure(UserMessageContent(blocks))
-//    case ("user", ContentBlocks(blocks), Some(cacheControl)) =>
-//      Reads.pure(UserMessageContent(blocks))
-//    case ("assistant", SingleString(text))    => Reads.pure(AssistantMessage(text))
-//    case ("assistant", ContentBlocks(blocks)) => Reads.pure(AssistantMessageContent(blocks))
-//    case _ => Reads(_ => JsError("Unsupported role or content type"))
+    case ("assistant", json @ JsArray(_), _) => {
+      Json.fromJson[Seq[ContentBlock]](json) match {
+        case JsSuccess(contentBlocks, _) =>
+          Reads.pure(AssistantMessageContent(contentBlocks))
+        case JsError(errors) =>
+          Reads(_ => JsError(errors))
+      }
+    }
+    case _ => Reads(_ => JsError("Unsupported role or content type"))
   }
 
   implicit lazy val createMessageResponseReads: Reads[CreateMessageResponse] = (

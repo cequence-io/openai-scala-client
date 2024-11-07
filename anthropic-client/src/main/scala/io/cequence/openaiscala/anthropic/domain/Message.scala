@@ -13,12 +13,19 @@ sealed abstract class Message private (
 
 object Message {
 
-  case class UserMessage(contentString: String, cacheControl: Option[CacheControl] = None)
-      extends Message(ChatRole.User, SingleString(contentString, cacheControl))
+  case class UserMessage(
+    contentString: String,
+    cacheControl: Option[CacheControl] = None
+  ) extends Message(ChatRole.User, SingleString(contentString, cacheControl))
+
   case class UserMessageContent(contentBlocks: Seq[ContentBlock])
       extends Message(ChatRole.User, ContentBlocks(contentBlocks))
-  case class AssistantMessage(contentString: String)
-      extends Message(ChatRole.Assistant, SingleString(contentString))
+
+  case class AssistantMessage(
+    contentString: String,
+    cacheControl: Option[CacheControl] = None
+  ) extends Message(ChatRole.Assistant, SingleString(contentString, cacheControl))
+
   case class AssistantMessageContent(contentBlocks: Seq[ContentBlock])
       extends Message(ChatRole.Assistant, ContentBlocks(contentBlocks))
 }
