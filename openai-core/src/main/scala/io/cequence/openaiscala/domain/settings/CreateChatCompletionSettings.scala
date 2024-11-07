@@ -74,7 +74,7 @@ case class CreateChatCompletionSettings(
   seed: Option[Int] = None,
 
   // ad-hoc parameters, not part of the OpenAI API, e.g. for other providers or experimental features
-  extra_params: Map[String, Any] = Map.empty,
+  extra_params: Map[String, Any] = Map.empty, // TODO: add
 
   // json schema to use if response format = json_schema
   jsonSchema: Option[JsonSchemaDef] = None

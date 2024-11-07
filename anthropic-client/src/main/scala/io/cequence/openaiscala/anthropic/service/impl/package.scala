@@ -35,7 +35,8 @@ import java.{util => ju}
 
 package object impl extends AnthropicServiceConsts {
 
-  def toAnthropic(messages: Seq[OpenAIBaseMessage]): Seq[Message] =
+  def toAnthropic(messages: Seq[OpenAIBaseMessage])
+    : Seq[Message] = // send settings, cache_system, cache_user, // cache_tools_definition
     // TODO: handle other message types (e.g. assistant)
     messages.collect {
       case OpenAIUserMessage(content, _) => Message.UserMessage(content)
@@ -122,7 +123,7 @@ package object impl extends AnthropicServiceConsts {
     )
 
   def toOpenAIAssistantMessage(content: ContentBlocks): AssistantMessage = {
-    val textContents = content.blocks.collect { case TextBlock(text) => text }
+    val textContents = content.blocks.collect { case TextBlock(text, None) => text } // TODO
     // TODO: log if there is more than one text content
     if (textContents.isEmpty) {
       throw new IllegalArgumentException("No text content found in the response")
