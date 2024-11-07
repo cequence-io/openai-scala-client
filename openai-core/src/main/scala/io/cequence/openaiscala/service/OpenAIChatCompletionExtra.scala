@@ -57,7 +57,7 @@ object OpenAIChatCompletionExtra {
     def createChatCompletionWithJSON[T: Format](
       messages: Seq[BaseMessage],
       settings: CreateChatCompletionSettings,
-      failoverModels: Seq[String],
+      failoverModels: Seq[String] = Nil,
       maxRetries: Option[Int] = Some(defaultMaxRetries),
       retryOnAnyError: Boolean = false,
       taskNameForLogging: Option[String] = None
