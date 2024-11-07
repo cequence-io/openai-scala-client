@@ -14,7 +14,7 @@ trait TestFixtures {
 
   val capitalsSchemaDef2 = capitalsSchemaDefAux(Right(capitalsSchema2))
 
-  def capitalsSchemaDefAux(schema: Either[JsonSchema, Map[String, Any]]) =
+  def capitalsSchemaDefAux(schema: Either[JsonSchema, Map[String, Any]]): JsonSchemaDef =
     JsonSchemaDef(
       name = "capitals_response",
       strict = true,

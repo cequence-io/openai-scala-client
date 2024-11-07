@@ -74,7 +74,9 @@ case class Run(
   usage: Option[UsageInfo]
   //  tool_choice: Either[String, Any], // Replace Any with the actual type when available
   //  response_format: Either[String, Any] // Replace Any with the actual type when available
-)
+) {
+  def isFinished: Boolean = RunStatus.finishedStates.contains(status)
+}
 
 object Run {
 
