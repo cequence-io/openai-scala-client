@@ -3,6 +3,7 @@ package io.cequence.openaiscala.anthropic
 import io.cequence.openaiscala.anthropic.JsonFormatsSpec.JsonPrintMode
 import io.cequence.openaiscala.anthropic.JsonFormatsSpec.JsonPrintMode.{Compact, Pretty}
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{ImageBlock, TextBlock}
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlockBase
 import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.Message.{
   AssistantMessage,
@@ -33,7 +34,12 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
 
     "serialize and deserialize a user message with text content blocks" in {
       val userMessage =
-        UserMessageContent(Seq(TextBlock("Hello, world!"), TextBlock("How are you?")))
+        UserMessageContent(
+          Seq(
+            ContentBlockBase(TextBlock("Hello, world!")),
+            ContentBlockBase(TextBlock("How are you?"))
+          )
+        )
       val json =
         """{"role":"user","content":[{"type":"text","text":"Hello, world!"},{"type":"text","text":"How are you?"}]}"""
       testCodec[Message](userMessage, json)
@@ -47,7 +53,12 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
 
     "serialize and deserialize an assistant message with text content blocks" in {
       val assistantMessage =
-        AssistantMessageContent(Seq(TextBlock("Hello, world!"), TextBlock("How are you?")))
+        AssistantMessageContent(
+          Seq(
+            ContentBlockBase(TextBlock("Hello, world!")),
+            ContentBlockBase(TextBlock("How are you?"))
+          )
+        )
       val json =
         """{"role":"assistant","content":[{"type":"text","text":"Hello, world!"},{"type":"text","text":"How are you?"}]}"""
       testCodec[Message](assistantMessage, json)
@@ -68,7 +79,9 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
 
     "serialize and deserialize a message with an image content" in {
       val userMessage =
-        UserMessageContent(Seq(ImageBlock("base64", "image/jpeg", "/9j/4AAQSkZJRg...")))
+        UserMessageContent(
+          Seq(ContentBlockBase(ImageBlock("base64", "image/jpeg", "/9j/4AAQSkZJRg...")))
+        )
       testCodec[Message](userMessage, expectedImageContentJson, Pretty)
     }
 

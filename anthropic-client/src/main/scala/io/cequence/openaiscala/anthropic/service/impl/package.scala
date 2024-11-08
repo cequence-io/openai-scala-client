@@ -1,14 +1,15 @@
 package io.cequence.openaiscala.anthropic.service
 
+import io.cequence.openaiscala.anthropic.domain.CacheControl.Ephemeral
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
-import io.cequence.openaiscala.anthropic.domain.Content.ContentBlocks
+import io.cequence.openaiscala.anthropic.domain.Content.{ContentBlockBase, ContentBlocks}
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse.UsageInfo
 import io.cequence.openaiscala.anthropic.domain.response.{
   ContentBlockDelta,
   CreateMessageResponse
 }
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
-import io.cequence.openaiscala.anthropic.domain.{Content, Message}
+import io.cequence.openaiscala.anthropic.domain.{CacheControl, Content, Message}
 import io.cequence.openaiscala.domain.response.{
   ChatCompletionChoiceChunkInfo,
   ChatCompletionChoiceInfo,
@@ -35,21 +36,68 @@ import java.{util => ju}
 
 package object impl extends AnthropicServiceConsts {
 
-  def toAnthropic(messages: Seq[OpenAIBaseMessage])
-    : Seq[Message] = // send settings, cache_system, cache_user, // cache_tools_definition
-    // TODO: handle other message types (e.g. assistant)
-    messages.collect {
-      case OpenAIUserMessage(content, _) => Message.UserMessage(content)
-      case OpenAIUserSeqMessage(contents, _) =>
-        Message.UserMessageContent(contents.map(toAnthropic))
-      // legacy message type
-      case MessageSpec(role, content, _) if role == ChatRole.User =>
-        Message.UserMessage(content)
-    }
+  val AnthropicCacheControl = "cache_control"
 
-  def toAnthropic(content: OpenAIContent): Content.ContentBlock = {
+  def toAnthropicMessages(
+    messages: Seq[OpenAIBaseMessage],
+    settings: CreateChatCompletionSettings
+  ): Seq[Message] = {
+    // send settings, cache_system, cache_user, // cache_tools_definition
+    // TODO: handle other message types (e.g. assistant)
+    val useSystemCache: Option[CacheControl] =
+      if (settings.useAnthropicSystemMessagesCache) Some(Ephemeral) else None
+    val countUserMessagesToCache = settings.anthropicCachedUserMessagesCount
+
+    def onlyOnceCacheControl(cacheUsed: Boolean): Option[CacheControl] =
+      if (cacheUsed) None else useSystemCache
+
+    // cacheSystemMessages
+    // cacheUserMessages - number of user messages to cache (1-4) (1-3). 1
+
+//    (system, user) => 1x system, 3x user
+//    (_, user) => 4x user
+//    (system, _) => 1x system
+
+    // construct Anthropic messages out of OpenAI messages
+    // the first N user messages are marked as cached, where N is equal to countUserMessagesToCache
+    // if useSystemCache is true, the last system message is marked as cached
+
+    // so I need to keep track, while foldLefting, of the number of user messages we are still able to cache
+
+    messages
+      .foldLeft((List.empty[Message], countUserMessagesToCache): (List[Message], Int)) {
+        case ((acc, userMessagesToCache), message) =>
+          message match {
+            case OpenAIUserMessage(content, _) =>
+              val cacheControl = if (userMessagesToCache > 0) Some(Ephemeral) else None
+              (
+                acc :+ Message.UserMessage(content, cacheControl),
+                userMessagesToCache - cacheControl.map(_ => 1).getOrElse(0)
+              )
+            case OpenAIUserSeqMessage(contents, _) => {
+              val (contentBlocks, remainingCache) =
+                contents.foldLeft((Seq.empty[ContentBlockBase], userMessagesToCache)) {
+                  case ((acc, cacheLeft), content) =>
+                    val (block, newCacheLeft) = toAnthropic(cacheLeft)(content)
+                    (acc :+ block, newCacheLeft)
+                }
+              (acc :+ Message.UserMessageContent(contentBlocks), remainingCache)
+            }
+
+          }
+      }
+      ._1
+
+  }
+
+  def toAnthropic(userMessagesToCache: Int)(content: OpenAIContent)
+    : (Content.ContentBlockBase, Int) = {
+    val cacheControl = if (userMessagesToCache > 0) Some(Ephemeral) else None
+    val newCacheControlCount = userMessagesToCache - cacheControl.map(_ => 1).getOrElse(0)
     content match {
-      case OpenAITextContent(text) => TextBlock(text)
+      case OpenAITextContent(text) =>
+        (ContentBlockBase(TextBlock(text), cacheControl), newCacheControlCount)
+
       case OpenAIImageContent(url) =>
         if (url.startsWith("data:")) {
           val mediaTypeEncodingAndData = url.drop(5)
@@ -57,7 +105,10 @@ package object impl extends AnthropicServiceConsts {
           val encodingAndData = mediaTypeEncodingAndData.drop(mediaType.length + 1)
           val encoding = mediaType.takeWhile(_ != ',')
           val data = encodingAndData.drop(encoding.length + 1)
-          Content.ContentBlock.ImageBlock(encoding, mediaType, data)
+          ContentBlockBase(
+            Content.ContentBlock.ImageBlock(encoding, mediaType, data),
+            cacheControl
+          ) -> newCacheControlCount
         } else {
           throw new IllegalArgumentException(
             "Image content only supported by providing image data directly."
@@ -123,7 +174,9 @@ package object impl extends AnthropicServiceConsts {
     )
 
   def toOpenAIAssistantMessage(content: ContentBlocks): AssistantMessage = {
-    val textContents = content.blocks.collect { case TextBlock(text, None) => text } // TODO
+    val textContents = content.blocks.collect { case ContentBlockBase(TextBlock(text), _) =>
+      text
+    } // TODO
     // TODO: log if there is more than one text content
     if (textContents.isEmpty) {
       throw new IllegalArgumentException("No text content found in the response")

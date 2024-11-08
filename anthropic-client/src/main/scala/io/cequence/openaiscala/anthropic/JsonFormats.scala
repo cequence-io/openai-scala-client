@@ -1,8 +1,10 @@
 package io.cequence.openaiscala.anthropic
 
+import io.cequence.openaiscala.anthropic.domain.CacheControl.Ephemeral
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{ImageBlock, TextBlock}
 import io.cequence.openaiscala.anthropic.domain.Content.{
   ContentBlock,
+  ContentBlockBase,
   ContentBlocks,
   SingleString
 }
@@ -43,6 +45,8 @@ trait JsonFormats {
 
   implicit lazy val textBlockFormat: Format[TextBlock] = Json.format[TextBlock]
 
+//  implicit lazy val contentBlockBaseFormat: Format[ContentBlockBase] =
+//    Json.format[ContentBlockBase]
   implicit lazy val contentBlocksFormat: Format[ContentBlocks] = Json.format[ContentBlocks]
 
   // implicit lazy val textBlockWrites: Writes[TextBlock] = Json.writes[TextBlock]
@@ -55,8 +59,25 @@ trait JsonFormats {
     implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
     Json.writes[TextBlock]
   }
-  implicit lazy val imageBlockWrites: Writes[ImageBlock] =
-    (block: ImageBlock) =>
+//  implicit lazy val imageBlockWrites: Writes[ImageBlock] =
+//    (block: ImageBlock) =>
+//      Json.obj(
+//        "type" -> "image",
+//        "source" -> Json.obj(
+//          "type" -> block.`type`,
+//          "media_type" -> block.mediaType,
+//          "data" -> block.data
+//        )
+//      )
+
+  implicit lazy val contentBlockWrites: Writes[ContentBlockBase] = {
+    case ContentBlockBase(tb: TextBlock, None) =>
+      Json.obj("type" -> "text") ++ Json.toJson(tb)(textBlockWrites).as[JsObject]
+    case ContentBlockBase(tb: TextBlock, Some(Ephemeral)) =>
+      Json.obj("type" -> "text", "cache_control" -> "ephemeral") ++ Json
+        .toJson(tb)(textBlockWrites)
+        .as[JsObject]
+    case ContentBlockBase(block: ImageBlock, None) =>
       Json.obj(
         "type" -> "image",
         "source" -> Json.obj(
@@ -65,21 +86,27 @@ trait JsonFormats {
           "data" -> block.data
         )
       )
-
-  implicit lazy val contentBlockWrites: Writes[ContentBlock] = {
-    case tb: TextBlock =>
-      Json.obj("type" -> "text") ++ Json.toJson(tb)(textBlockWrites).as[JsObject]
-    case ib: ImageBlock => Json.toJson(ib)(imageBlockWrites)
+    case ContentBlockBase(block: ImageBlock, Some(Ephemeral)) =>
+      Json.obj(
+        "type" -> "image",
+        "cache_control" -> "ephemeral",
+        "source" -> Json.obj(
+          "type" -> block.`type`,
+          "media_type" -> block.mediaType,
+          "data" -> block.data
+        )
+      )
   }
 
-  implicit lazy val contentBlockReads: Reads[ContentBlock] =
+  implicit lazy val contentBlockReads: Reads[ContentBlockBase] =
     (json: JsValue) => {
       (json \ "type").validate[String].flatMap {
         case "text" =>
           ((json \ "text").validate[String] and
             (json \ "cache_control").validateOpt[CacheControl]).tupled.flatMap {
-            case (text, cacheControl) => JsSuccess(TextBlock(text, cacheControl))
-            case _                    => JsError("Invalid text block")
+            case (text, cacheControl) =>
+              JsSuccess(ContentBlockBase(TextBlock(text), cacheControl))
+            case _ => JsError("Invalid text block")
           }
 
         case "image" =>
@@ -88,7 +115,8 @@ trait JsonFormats {
             `type` <- (source \ "type").validate[String]
             mediaType <- (source \ "media_type").validate[String]
             data <- (source \ "data").validate[String]
-          } yield ImageBlock(`type`, mediaType, data)
+            cacheControl <- (json \ "cache_control").validateOpt[CacheControl]
+          } yield ContentBlockBase(ImageBlock(`type`, mediaType, data), cacheControl)
         case _ => JsError("Unsupported or invalid content block")
       }
     }
@@ -107,7 +135,7 @@ trait JsonFormats {
   implicit lazy val contentReads: Reads[Content] = new Reads[Content] {
     def reads(json: JsValue): JsResult[Content] = json match {
       case JsString(str) => JsSuccess(SingleString(str))
-      case JsArray(_)    => Json.fromJson[Seq[ContentBlock]](json).map(ContentBlocks(_))
+      case JsArray(_)    => Json.fromJson[Seq[ContentBlockBase]](json).map(ContentBlocks(_))
       case _             => JsError("Invalid content format")
     }
   }
@@ -144,7 +172,7 @@ trait JsonFormats {
   ).tupled.flatMap {
     case ("user", JsString(str), cacheControl) => Reads.pure(UserMessage(str, cacheControl))
     case ("user", json @ JsArray(_), _) => {
-      Json.fromJson[Seq[ContentBlock]](json) match {
+      Json.fromJson[Seq[ContentBlockBase]](json) match {
         case JsSuccess(contentBlocks, _) =>
           Reads.pure(UserMessageContent(contentBlocks))
         case JsError(errors) =>
@@ -155,7 +183,7 @@ trait JsonFormats {
       Reads.pure(AssistantMessage(str, cacheControl))
 
     case ("assistant", json @ JsArray(_), _) => {
-      Json.fromJson[Seq[ContentBlock]](json) match {
+      Json.fromJson[Seq[ContentBlockBase]](json) match {
         case JsSuccess(contentBlocks, _) =>
           Reads.pure(AssistantMessageContent(contentBlocks))
         case JsError(errors) =>
@@ -168,7 +196,7 @@ trait JsonFormats {
   implicit lazy val createMessageResponseReads: Reads[CreateMessageResponse] = (
     (__ \ "id").read[String] and
       (__ \ "role").read[ChatRole] and
-      (__ \ "content").read[Seq[ContentBlock]].map(ContentBlocks(_)) and
+      (__ \ "content").read[Seq[ContentBlockBase]].map(ContentBlocks(_)) and
       (__ \ "model").read[String] and
       (__ \ "stop_reason").readNullable[String] and
       (__ \ "stop_sequence").readNullable[String] and

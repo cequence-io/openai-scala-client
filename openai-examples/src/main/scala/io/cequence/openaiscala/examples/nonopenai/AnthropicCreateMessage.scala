@@ -1,6 +1,7 @@
 package io.cequence.openaiscala.examples.nonopenai
 
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlockBase
 import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.Message.UserMessage
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse
@@ -31,7 +32,7 @@ object AnthropicCreateMessage extends ExampleBase[AnthropicService] {
 
   private def printMessageContent(response: CreateMessageResponse) = {
     val text =
-      response.content.blocks.collect { case TextBlock(text, _) => text }.mkString(" ")
+      response.content.blocks.collect { case ContentBlockBase(TextBlock(text), _) => text }.mkString(" ")
     println(text)
   }
 }

@@ -1,6 +1,7 @@
 package io.cequence.openaiscala.examples.nonopenai
 
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{ImageBlock, TextBlock}
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlockBase
 import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.Message.UserMessageContent
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse
@@ -28,11 +29,13 @@ object AnthropicCreateMessageWithImage extends ExampleBase[AnthropicService] {
   private val messages: Seq[Message] = Seq(
     UserMessageContent(
       Seq(
-        TextBlock("Describe me what is in the picture!"),
-        ImageBlock(
-          `type` = "base64",
-          mediaType = "image/jpeg",
-          data = imageBase64Source
+        ContentBlockBase(TextBlock("Describe me what is in the picture!")),
+        ContentBlockBase(
+          ImageBlock(
+            `type` = "base64",
+            mediaType = "image/jpeg",
+            data = imageBase64Source
+          )
         )
       )
     )
@@ -63,7 +66,8 @@ object AnthropicCreateMessageWithImage extends ExampleBase[AnthropicService] {
 
   private def printMessageContent(response: CreateMessageResponse) = {
     val text =
-      response.content.blocks.collect { case TextBlock(text, _) => text }.mkString(" ")
+      response.content.blocks.collect { case ContentBlockBase(TextBlock(text), _) => text }
+        .mkString(" ")
     println(text)
   }
 }

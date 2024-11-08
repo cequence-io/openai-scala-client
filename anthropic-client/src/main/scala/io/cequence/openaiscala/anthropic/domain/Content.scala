@@ -12,17 +12,24 @@ trait Cacheable {
 }
 
 object Content {
-  case class SingleString(text: String, override val cacheControl: Option[CacheControl] = None) extends Content
+  case class SingleString(
+    text: String,
+    override val cacheControl: Option[CacheControl] = None
+  ) extends Content
       with Cacheable
 
-  case class ContentBlocks(blocks: Seq[ContentBlock]) extends Content
+  case class ContentBlocks(blocks: Seq[ContentBlockBase]) extends Content
+
+  case class ContentBlockBase(
+    content: ContentBlock,
+    override val cacheControl: Option[CacheControl] = None
+  ) extends Content
+      with Cacheable
 
   sealed trait ContentBlock
 
   object ContentBlock {
-    case class TextBlock(text: String, override val cacheControl: Option[CacheControl] = None)
-      extends ContentBlock
-        with Cacheable
+    case class TextBlock(text: String) extends ContentBlock
 
     case class ImageBlock(
       `type`: String,

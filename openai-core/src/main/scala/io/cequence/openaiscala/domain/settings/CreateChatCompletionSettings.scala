@@ -2,6 +2,8 @@ package io.cequence.openaiscala.domain.settings
 
 import io.cequence.wsclient.domain.EnumValue
 
+import scala.util.Try
+
 case class CreateChatCompletionSettings(
   // ID of the model to use. Currently, only gpt-3.5-turbo and gpt-3.5-turbo-0301 are supported.
   model: String,
@@ -83,6 +85,24 @@ case class CreateChatCompletionSettings(
 
   def withJsonSchema(jsonSchema: JsonSchemaDef): CreateChatCompletionSettings =
     copy(jsonSchema = Some(jsonSchema))
+
+  def anthropicCachedUserMessagesCount: Int =
+    extra_params
+      .get(CreateChatCompletionSettings.AnthropicCachedUserMessagesCount)
+      .flatMap(numberAsString => Try(numberAsString.toString.toInt).toOption)
+      .getOrElse(0)
+
+  def useAnthropicSystemMessagesCache: Boolean =
+    extra_params
+      .get(CreateChatCompletionSettings.AnthropicUseSystemMessagesCache)
+      .map(_.toString)
+      .contains("true")
+
+}
+
+object CreateChatCompletionSettings {
+  val AnthropicCachedUserMessagesCount = "cached_user_messages_count"
+  val AnthropicUseSystemMessagesCache = "use_system_messages_cache"
 }
 
 sealed trait ChatCompletionResponseFormatType extends EnumValue

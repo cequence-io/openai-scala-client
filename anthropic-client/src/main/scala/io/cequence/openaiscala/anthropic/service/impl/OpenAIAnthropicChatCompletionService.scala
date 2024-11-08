@@ -40,7 +40,7 @@ private[service] class OpenAIAnthropicChatCompletionService(
   ): Future[ChatCompletionResponse] = {
     underlying
       .createMessage(
-        toAnthropic(messages),
+        toAnthropicMessages(messages, settings),
         toAnthropic(settings, messages)
       )
       .map(toOpenAI)
@@ -64,7 +64,7 @@ private[service] class OpenAIAnthropicChatCompletionService(
   ): Source[ChatCompletionChunkResponse, NotUsed] =
     underlying
       .createMessageStreamed(
-        toAnthropic(messages),
+        toAnthropicMessages(messages, settings),
         toAnthropic(settings, messages)
       )
       .map(toOpenAI)
