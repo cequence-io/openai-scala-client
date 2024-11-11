@@ -61,7 +61,9 @@ object AnthropicServiceFactory extends AnthropicServiceConsts {
    */
   def apply(
     apiKey: String = getAPIKeyFromEnv(),
-    timeouts: Option[Timeouts] = None
+    timeouts: Option[Timeouts] = None,
+    withPdf: Boolean = false,
+    withCache: Boolean = false
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer
@@ -69,22 +71,9 @@ object AnthropicServiceFactory extends AnthropicServiceConsts {
     val authHeaders = Seq(
       ("x-api-key", s"$apiKey"),
       ("anthropic-version", apiVersion)
-    )
-    new AnthropicServiceClassImpl(defaultCoreUrl, authHeaders, timeouts)
-  }
+    ) ++ (if (withPdf) Seq(("anthropic-beta", "pdfs-2024-09-25")) else Seq.empty) ++
+      (if (withCache) Seq(("anthropic-beta", "prompt-caching-2024-07-31")) else Seq.empty)
 
-  def withPdf(
-    apiKey: String = getAPIKeyFromEnv(),
-    timeouts: Option[Timeouts] = None
-  )(
-    implicit ec: ExecutionContext,
-    materializer: Materializer
-  ): AnthropicService = {
-    val authHeaders = Seq(
-      ("x-api-key", s"$apiKey"),
-      ("anthropic-version", apiVersion),
-      ("anthropic-beta", "pdfs-2024-09-25")
-    )
     new AnthropicServiceClassImpl(defaultCoreUrl, authHeaders, timeouts)
   }
 

@@ -24,7 +24,7 @@ object AnthropicCreateMessageWithPdf extends ExampleBase[AnthropicService] {
   private val pdfBase64Source =
     Base64.getEncoder.encodeToString(readPdfToBytes(localImagePath))
 
-  override protected val service: AnthropicService = AnthropicServiceFactory.withPdf()
+  override protected val service: AnthropicService = AnthropicServiceFactory(withPdf = true)
 
   private val messages: Seq[Message] = Seq(
     UserMessageContent(
@@ -38,6 +38,7 @@ object AnthropicCreateMessageWithPdf extends ExampleBase[AnthropicService] {
   override protected def run: Future[_] =
     service
       .createMessage(
+        None,
         messages,
         settings = AnthropicCreateMessageSettings(
           model =

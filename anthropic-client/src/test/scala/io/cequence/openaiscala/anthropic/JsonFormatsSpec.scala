@@ -99,7 +99,7 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
             )
           )
         val json =
-          """{"role":"user","content":[{"type":"text","text":"Hello, world!","cache_control":"ephemeral"},{"type":"text","text":"How are you?"}]}"""
+          """{"role":"user","content":[{"type":"text","text":"Hello, world!","cache_control":{"type":"ephemeral"}},{"type":"text","text":"How are you?"}]}"""
         testCodec[Message](userMessage, json)
       }
 
@@ -112,7 +112,7 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
             )
           )
         val json =
-          """{"role":"user","content":[{"type":"text","text":"Hello, world!"},{"type":"text","text":"How are you?","cache_control":"ephemeral"}]}"""
+          """{"role":"user","content":[{"type":"text","text":"Hello, world!"},{"type":"text","text":"How are you?","cache_control":{"type":"ephemeral"}}]}"""
         testCodec[Message](userMessage, json)
       }
 
@@ -120,12 +120,15 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
         val userMessage =
           UserMessageContent(
             Seq(
-              MediaBlock.jpeg("Hello, world!", Some(Ephemeral)),
+              MediaBlock.jpeg("/9j/4AAQSkZJRg...", Some(Ephemeral)),
               ContentBlockBase(TextBlock("How are you?"))
             )
           )
+
+        val imageJson =
+          """{"type":"image","source":{"type":"base64","media_type":"image/jpeg","data":"/9j/4AAQSkZJRg..."},"cache_control":{"type":"ephemeral"}}""".stripMargin
         val json =
-          """{"role":"user","content":[{"type":"text","text":"Hello, world!","cache_control":"ephemeral"},{"type":"text","text":"How are you?"}]}"""
+          s"""{"role":"user","content":[$imageJson,{"type":"text","text":"How are you?"}]}"""
         testCodec[Message](userMessage, json)
       }
     }

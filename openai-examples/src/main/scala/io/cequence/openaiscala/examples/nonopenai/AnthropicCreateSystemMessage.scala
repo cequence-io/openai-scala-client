@@ -1,8 +1,10 @@
 package io.cequence.openaiscala.examples.nonopenai
 
-import akka.stream.scaladsl.Sink
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
+import io.cequence.openaiscala.anthropic.domain.Content.{ContentBlockBase, SingleString}
 import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.Message.UserMessage
+import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.service.{AnthropicService, AnthropicServiceFactory}
 import io.cequence.openaiscala.domain.NonOpenAIModelId
@@ -11,25 +13,30 @@ import io.cequence.openaiscala.examples.ExampleBase
 import scala.concurrent.Future
 
 // requires `openai-scala-anthropic-client` as a dependency and `ANTHROPIC_API_KEY` environment variable to be set
-object AnthropicCreateMessageStreamed extends ExampleBase[AnthropicService] {
+object AnthropicCreateSystemMessage extends ExampleBase[AnthropicService] {
 
   override protected val service: AnthropicService = AnthropicServiceFactory()
 
-  val messages: Seq[Message] = Seq(UserMessage("What is the weather like in Norway?"))
+  val messages: Seq[Message] = Seq(
+    UserMessage("Who is the most famous football player in the World?")
+  )
 
   override protected def run: Future[_] =
     service
-      .createMessageStreamed(
-        None,
+      .createMessage(
+        Some(SingleString("You answer in pirate speech.")),
         messages,
         settings = AnthropicCreateMessageSettings(
           model = NonOpenAIModelId.claude_3_haiku_20240307,
           max_tokens = 4096
         )
       )
-      .runWith(
-        Sink.foreach { response =>
-          print(response.delta.text)
-        }
-      )
+      .map(printMessageContent)
+
+  private def printMessageContent(response: CreateMessageResponse) = {
+    val text =
+      response.content.blocks.collect { case ContentBlockBase(TextBlock(text), _) => text }
+        .mkString(" ")
+    println(text)
+  }
 }

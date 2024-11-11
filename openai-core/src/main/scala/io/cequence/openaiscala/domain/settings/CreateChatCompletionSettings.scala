@@ -86,18 +86,6 @@ case class CreateChatCompletionSettings(
   def withJsonSchema(jsonSchema: JsonSchemaDef): CreateChatCompletionSettings =
     copy(jsonSchema = Some(jsonSchema))
 
-  def anthropicCachedUserMessagesCount: Int =
-    extra_params
-      .get(CreateChatCompletionSettings.AnthropicCachedUserMessagesCount)
-      .flatMap(numberAsString => Try(numberAsString.toString.toInt).toOption)
-      .getOrElse(0)
-
-  def useAnthropicSystemMessagesCache: Boolean =
-    extra_params
-      .get(CreateChatCompletionSettings.AnthropicUseSystemMessagesCache)
-      .map(_.toString)
-      .contains("true")
-
 }
 
 object CreateChatCompletionSettings {

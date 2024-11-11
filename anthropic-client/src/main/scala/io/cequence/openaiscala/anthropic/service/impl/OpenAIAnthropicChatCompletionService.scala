@@ -2,6 +2,7 @@ package io.cequence.openaiscala.anthropic.service.impl
 
 import akka.NotUsed
 import akka.stream.scaladsl.Source
+import io.cequence.openaiscala.anthropic.domain.Content
 import io.cequence.openaiscala.anthropic.service.AnthropicService
 import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response.{
@@ -40,8 +41,9 @@ private[service] class OpenAIAnthropicChatCompletionService(
   ): Future[ChatCompletionResponse] = {
     underlying
       .createMessage(
+        toAnthropicSystemMessages(messages, settings),
         toAnthropicMessages(messages, settings),
-        toAnthropic(settings, messages)
+        toAnthropicSettings(settings)
       )
       .map(toOpenAI)
     // TODO: recover and wrap exceptions
@@ -64,8 +66,9 @@ private[service] class OpenAIAnthropicChatCompletionService(
   ): Source[ChatCompletionChunkResponse, NotUsed] =
     underlying
       .createMessageStreamed(
+        toAnthropicSystemMessages(messages, settings),
         toAnthropicMessages(messages, settings),
-        toAnthropic(settings, messages)
+        toAnthropicSettings(settings)
       )
       .map(toOpenAI)
 

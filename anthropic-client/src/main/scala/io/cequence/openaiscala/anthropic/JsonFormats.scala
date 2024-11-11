@@ -41,8 +41,12 @@ trait JsonFormats {
 
   implicit lazy val cacheControlFormat: Format[CacheControl] = new Format[CacheControl] {
     def reads(json: JsValue): JsResult[CacheControl] = json match {
-      case JsObject(Seq(("type", JsString("ephemeral")))) => JsSuccess(CacheControl.Ephemeral)
-      case _                                              => JsError("Invalid cache control")
+      case JsObject(map) =>
+        if (map == Map("type" -> JsString("ephemeral"))) JsSuccess(CacheControl.Ephemeral)
+        else JsError(s"Invalid cache control $map")
+      case x => {
+        JsError(s"Invalid cache control ${x}")
+      }
     }
 
     def writes(cacheControl: CacheControl): JsValue = writeJsObject(cacheControl)
@@ -71,11 +75,8 @@ trait JsonFormats {
 
   implicit lazy val textBlockFormat: Format[TextBlock] = Json.format[TextBlock]
 
-//  implicit lazy val contentBlockBaseFormat: Format[ContentBlockBase] =
-//    Json.format[ContentBlockBase]
   implicit lazy val contentBlocksFormat: Format[ContentBlocks] = Json.format[ContentBlocks]
 
-  // implicit lazy val textBlockWrites: Writes[TextBlock] = Json.writes[TextBlock]
   implicit lazy val textBlockReads: Reads[TextBlock] = {
     implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
     Json.reads[TextBlock]
@@ -85,27 +86,6 @@ trait JsonFormats {
     implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
     Json.writes[TextBlock]
   }
-//  implicit lazy val imageBlockWrites: Writes[ImageBlock] =
-//    (block: ImageBlock) =>
-//      Json.obj(
-//        "type" -> "image",
-//        "source" -> Json.obj(
-//          "type" -> block.`type`,
-//          "media_type" -> block.mediaType,
-//          "data" -> block.data
-//        )
-//      )
-//
-//  implicit lazy val documentBlockWrites: Writes[DocumentBlock] =
-//    (block: DocumentBlock) =>
-//      Json.obj(
-//        "type" -> "document",
-//        "source" -> Json.obj(
-//          "type" -> block.`type`,
-//          "media_type" -> block.mediaType,
-//          "data" -> block.data
-//        )
-//      )
 
   implicit lazy val mediaBlockWrites: Writes[MediaBlock] =
     (block: MediaBlock) =>
@@ -119,7 +99,7 @@ trait JsonFormats {
       )
 
   private def cacheControlToJsObject(maybeCacheControl: Option[CacheControl]): JsObject =
-    maybeCacheControl.fold(Json.obj())(cc => Json.obj("cache_control" -> Json.toJson(cc)))
+    maybeCacheControl.fold(Json.obj())(cc => writeJsObject(cc))
 
   implicit lazy val contentBlockWrites: Writes[ContentBlockBase] = {
     case ContentBlockBase(textBlock @ TextBlock(_), cacheControl) =>
@@ -128,8 +108,7 @@ trait JsonFormats {
         cacheControlToJsObject(cacheControl)
     case ContentBlockBase(media @ MediaBlock(_, _, _, _), maybeCacheControl) =>
       Json.toJson(media)(mediaBlockWrites).as[JsObject] ++
-//        cacheControlToJsObject(maybeCacheControl)
-        maybeCacheControl.map(cc => writeJsObject(cc)).getOrElse(Json.obj())
+        cacheControlToJsObject(maybeCacheControl)
 
   }
 
@@ -160,20 +139,6 @@ trait JsonFormats {
       }
     }
 
-  // CacheControl Reads and Writes
-//  implicit lazy val cacheControlReads: Reads[Option[CacheControl]] =
-//    Reads[Option[CacheControl]] {
-//      case JsObject(Seq("type", JsString("ephemeral"))) =>
-//        JsSuccess(Some(CacheControl.Ephemeral))
-//      case JsNull | JsUndefined() => JsSuccess(None)
-//      case _                      => JsError("Invalid cache control")
-//    }
-//
-//  implicit lazy val cacheControlWrites: Writes[CacheControl] =
-//    Writes[CacheControl] { case CacheControl.Ephemeral =>
-//      Json.obj("cache_control" -> Json.obj("type" -> "ephemeral"))
-//    }
-
   implicit lazy val contentReads: Reads[Content] = new Reads[Content] {
     def reads(json: JsValue): JsResult[Content] = json match {
       case JsString(str) => JsSuccess(SingleString(str))
@@ -182,11 +147,20 @@ trait JsonFormats {
     }
   }
 
+  implicit lazy val contentWrites: Writes[Content] = new Writes[Content] {
+    def writes(content: Content): JsValue = content match {
+      case SingleString(text, cacheControl) =>
+        Json.obj("content" -> text) ++ cacheControlToJsObject(cacheControl)
+      case ContentBlocks(blocks) =>
+        Json.obj("content" -> Json.toJson(blocks)(Writes.seq(contentBlockWrites)))
+    }
+  }
+
   implicit lazy val baseMessageWrites: Writes[Message] = new Writes[Message] {
     def writes(message: Message): JsValue = message match {
       case UserMessage(content, cacheControl) =>
         val baseObj = Json.obj("role" -> "user", "content" -> content)
-        cacheControl.fold(baseObj)(cc => baseObj + ("cache_control" -> Json.toJson(cc)))
+        baseObj ++ cacheControlToJsObject(cacheControl)
 
       case UserMessageContent(content) =>
         Json.obj(
@@ -196,7 +170,7 @@ trait JsonFormats {
 
       case AssistantMessage(content, cacheControl) =>
         val baseObj = Json.obj("role" -> "assistant", "content" -> content)
-        cacheControl.fold(baseObj)(cc => baseObj + ("cache_control" -> Json.toJson(cc)))
+        baseObj ++ cacheControlToJsObject(cacheControl)
 
       case AssistantMessageContent(content) =>
         Json.obj(
