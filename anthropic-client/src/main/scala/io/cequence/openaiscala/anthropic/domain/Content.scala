@@ -31,11 +31,97 @@ object Content {
   object ContentBlock {
     case class TextBlock(text: String) extends ContentBlock
 
+    case class MediaBlock(
+      `type`: String,
+      encoding: String,
+      mediaType: String,
+      data: String
+    ) extends ContentBlock
+
+    object MediaBlock {
+      def pdf(
+        data: String,
+        cacheControl: Option[CacheControl] = None
+      ): ContentBlockBase =
+        ContentBlockBase(
+          MediaBlock("document", "base64", "application/pdf", data),
+          cacheControl
+        )
+
+      def image(
+        mediaType: String
+      )(
+        data: String,
+        cacheControl: Option[CacheControl] = None
+      ): ContentBlockBase =
+        ContentBlockBase(MediaBlock("image", "base64", mediaType, data), cacheControl)
+
+      def jpeg(
+        data: String,
+        cacheControl: Option[CacheControl] = None
+      ): ContentBlockBase = image("image/jpeg")(data, cacheControl)
+
+      def png(
+        data: String,
+        cacheControl: Option[CacheControl] = None
+      ): ContentBlockBase = image("image/png")(data, cacheControl)
+
+      def gif(
+        data: String,
+        cacheControl: Option[CacheControl] = None
+      ): ContentBlockBase = image("image/gif")(data, cacheControl)
+
+      def webp(
+        data: String,
+        cacheControl: Option[CacheControl] = None
+      ): ContentBlockBase = image("image/webp")(data, cacheControl)
+    }
+
     case class ImageBlock(
       `type`: String,
       mediaType: String,
       data: String
     ) extends ContentBlock
+
+    case class DocumentBlock(
+      `type`: String,
+      mediaType: String,
+      data: String
+    ) extends ContentBlock
+
+    object DocumentBlock {
+      def pdf(
+        data: String,
+        cacheControl: Option[CacheControl]
+      ): ContentBlockBase =
+        ContentBlockBase(DocumentBlock("base64", "application/pdf", data), cacheControl)
+    }
+
+    object ImageBlock {
+      def jpeg(
+        data: String,
+        cacheControl: Option[CacheControl]
+      ): ContentBlockBase =
+        ContentBlockBase(ImageBlock("base64", "image/jpeg", data), cacheControl)
+
+      def png(
+        data: String,
+        cacheControl: Option[CacheControl]
+      ): ContentBlockBase =
+        ContentBlockBase(ImageBlock("base64", "image/png", data), cacheControl)
+
+      def gif(
+        data: String,
+        cacheControl: Option[CacheControl]
+      ): ContentBlockBase =
+        ContentBlockBase(ImageBlock("base64", "image/gif", data), cacheControl)
+
+      def webp(
+        data: String,
+        cacheControl: Option[CacheControl]
+      ): ContentBlockBase =
+        ContentBlockBase(ImageBlock("base64", "image/webp", data), cacheControl)
+    }
 
     // TODO: check PDF
   }
