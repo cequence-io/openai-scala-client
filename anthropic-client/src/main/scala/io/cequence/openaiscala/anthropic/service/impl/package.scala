@@ -106,7 +106,7 @@ package object impl extends AnthropicServiceConsts {
           val encoding = mediaType.takeWhile(_ != ',')
           val data = encodingAndData.drop(encoding.length + 1)
           ContentBlockBase(
-            Content.ContentBlock.ImageBlock(encoding, mediaType, data),
+            Content.ContentBlock.MediaBlock("image", encoding, mediaType, data),
             cacheControl
           ) -> newCacheControlCount
         } else {

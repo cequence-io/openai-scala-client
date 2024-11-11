@@ -77,52 +77,5 @@ object Content {
       ): ContentBlockBase = image("image/webp")(data, cacheControl)
     }
 
-    case class ImageBlock(
-      `type`: String,
-      mediaType: String,
-      data: String
-    ) extends ContentBlock
-
-    case class DocumentBlock(
-      `type`: String,
-      mediaType: String,
-      data: String
-    ) extends ContentBlock
-
-    object DocumentBlock {
-      def pdf(
-        data: String,
-        cacheControl: Option[CacheControl]
-      ): ContentBlockBase =
-        ContentBlockBase(DocumentBlock("base64", "application/pdf", data), cacheControl)
-    }
-
-    object ImageBlock {
-      def jpeg(
-        data: String,
-        cacheControl: Option[CacheControl]
-      ): ContentBlockBase =
-        ContentBlockBase(ImageBlock("base64", "image/jpeg", data), cacheControl)
-
-      def png(
-        data: String,
-        cacheControl: Option[CacheControl]
-      ): ContentBlockBase =
-        ContentBlockBase(ImageBlock("base64", "image/png", data), cacheControl)
-
-      def gif(
-        data: String,
-        cacheControl: Option[CacheControl]
-      ): ContentBlockBase =
-        ContentBlockBase(ImageBlock("base64", "image/gif", data), cacheControl)
-
-      def webp(
-        data: String,
-        cacheControl: Option[CacheControl]
-      ): ContentBlockBase =
-        ContentBlockBase(ImageBlock("base64", "image/webp", data), cacheControl)
-    }
-
-    // TODO: check PDF
   }
 }

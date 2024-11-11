@@ -11,26 +11,26 @@ import io.cequence.openaiscala.domain.NonOpenAIModelId
 import io.cequence.openaiscala.examples.ExampleBase
 
 import java.awt.image.RenderedImage
-import java.io.ByteArrayOutputStream
+import java.io.{ByteArrayOutputStream, File}
+import java.nio.file.Files
 import java.util.Base64
 import javax.imageio.ImageIO
 import scala.concurrent.Future
 
 // requires `openai-scala-anthropic-client` as a dependency
-object AnthropicCreateMessageWithImage extends ExampleBase[AnthropicService] {
+object AnthropicCreateMessageWithPdf extends ExampleBase[AnthropicService] {
 
-  private val localImagePath = sys.env("EXAMPLE_IMAGE_PATH")
-  private val bufferedImage = ImageIO.read(new java.io.File(localImagePath))
-  private val imageBase64Source =
-    Base64.getEncoder.encodeToString(imageToBytes(bufferedImage, "jpeg"))
+  private val localImagePath = sys.env("EXAMPLE_PDF_PATH")
+  private val pdfBase64Source =
+    Base64.getEncoder.encodeToString(readPdfToBytes(localImagePath))
 
-  override protected val service: AnthropicService = AnthropicServiceFactory()
+  override protected val service: AnthropicService = AnthropicServiceFactory.withPdf()
 
   private val messages: Seq[Message] = Seq(
     UserMessageContent(
       Seq(
-        ContentBlockBase(TextBlock("Describe to me what is in the picture!")),
-        MediaBlock.jpeg(data = imageBase64Source)
+        ContentBlockBase(TextBlock("Describe to me what is this PDF about!")),
+        MediaBlock.pdf(data = pdfBase64Source)
       )
     )
   )
@@ -40,22 +40,16 @@ object AnthropicCreateMessageWithImage extends ExampleBase[AnthropicService] {
       .createMessage(
         messages,
         settings = AnthropicCreateMessageSettings(
-          model = NonOpenAIModelId.claude_3_opus_20240229,
-          max_tokens = 4096
+          model =
+            NonOpenAIModelId.claude_3_5_sonnet_20241022, // claude-3-5-sonnet-20241022 supports PDF (beta)
+          max_tokens = 8192
         )
       )
       .map(printMessageContent)
 
-  private def imageToBytes(
-    image: RenderedImage,
-    format: String
-  ): Array[Byte] = {
-    val baos = new ByteArrayOutputStream()
-    ImageIO.write(image, format, baos)
-    baos.flush()
-    val imageInByte = baos.toByteArray
-    baos.close()
-    imageInByte
+  def readPdfToBytes(filePath: String): Array[Byte] = {
+    val pdfFile = new File(filePath)
+    Files.readAllBytes(pdfFile.toPath)
   }
 
   private def printMessageContent(response: CreateMessageResponse) = {

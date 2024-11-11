@@ -73,6 +73,21 @@ object AnthropicServiceFactory extends AnthropicServiceConsts {
     new AnthropicServiceClassImpl(defaultCoreUrl, authHeaders, timeouts)
   }
 
+  def withPdf(
+    apiKey: String = getAPIKeyFromEnv(),
+    timeouts: Option[Timeouts] = None
+  )(
+    implicit ec: ExecutionContext,
+    materializer: Materializer
+  ): AnthropicService = {
+    val authHeaders = Seq(
+      ("x-api-key", s"$apiKey"),
+      ("anthropic-version", apiVersion),
+      ("anthropic-beta", "pdfs-2024-09-25")
+    )
+    new AnthropicServiceClassImpl(defaultCoreUrl, authHeaders, timeouts)
+  }
+
   private def getAPIKeyFromEnv(): String =
     Option(System.getenv(envAPIKey)).getOrElse(
       throw new IllegalStateException(

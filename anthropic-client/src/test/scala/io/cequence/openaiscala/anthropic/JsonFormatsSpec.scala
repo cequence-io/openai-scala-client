@@ -3,11 +3,7 @@ package io.cequence.openaiscala.anthropic
 import io.cequence.openaiscala.anthropic.JsonFormatsSpec.JsonPrintMode
 import io.cequence.openaiscala.anthropic.JsonFormatsSpec.JsonPrintMode.{Compact, Pretty}
 import io.cequence.openaiscala.anthropic.domain.CacheControl.Ephemeral
-import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{
-  ImageBlock,
-  MediaBlock,
-  TextBlock
-}
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{MediaBlock, TextBlock}
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlockBase
 import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.Message.{
@@ -124,7 +120,7 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
         val userMessage =
           UserMessageContent(
             Seq(
-              ImageBlock.jpeg("Hello, world!", Some(Ephemeral)),
+              MediaBlock.jpeg("Hello, world!", Some(Ephemeral)),
               ContentBlockBase(TextBlock("How are you?"))
             )
           )

@@ -1,13 +1,8 @@
 package io.cequence.openaiscala.anthropic
 
 import io.cequence.openaiscala.anthropic.domain.CacheControl.Ephemeral
-import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{
-  DocumentBlock,
-  ImageBlock,
-  TextBlock
-}
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{MediaBlock, TextBlock}
 import io.cequence.openaiscala.anthropic.domain.Content.{
-  ContentBlock,
   ContentBlockBase,
   ContentBlocks,
   SingleString
@@ -39,15 +34,18 @@ trait JsonFormats {
     JsonUtil.enumFormat[ChatRole](ChatRole.allValues: _*)
   implicit lazy val usageInfoFormat: Format[UsageInfo] = Json.format[UsageInfo]
 
+  def writeJsObject(cacheControl: CacheControl): JsObject = cacheControl match {
+    case CacheControl.Ephemeral =>
+      Json.obj("cache_control" -> Json.obj("type" -> "ephemeral"))
+  }
+
   implicit lazy val cacheControlFormat: Format[CacheControl] = new Format[CacheControl] {
     def reads(json: JsValue): JsResult[CacheControl] = json match {
       case JsObject(Seq(("type", JsString("ephemeral")))) => JsSuccess(CacheControl.Ephemeral)
       case _                                              => JsError("Invalid cache control")
     }
 
-    def writes(cacheControl: CacheControl): JsValue = cacheControl match {
-      case CacheControl.Ephemeral => Json.obj("type" -> "ephemeral")
-    }
+    def writes(cacheControl: CacheControl): JsValue = writeJsObject(cacheControl)
   }
 
   implicit lazy val cacheControlOptionFormat: Format[Option[CacheControl]] =
@@ -87,22 +85,34 @@ trait JsonFormats {
     implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
     Json.writes[TextBlock]
   }
-  implicit lazy val imageBlockWrites: Writes[ImageBlock] =
-    (block: ImageBlock) =>
+//  implicit lazy val imageBlockWrites: Writes[ImageBlock] =
+//    (block: ImageBlock) =>
+//      Json.obj(
+//        "type" -> "image",
+//        "source" -> Json.obj(
+//          "type" -> block.`type`,
+//          "media_type" -> block.mediaType,
+//          "data" -> block.data
+//        )
+//      )
+//
+//  implicit lazy val documentBlockWrites: Writes[DocumentBlock] =
+//    (block: DocumentBlock) =>
+//      Json.obj(
+//        "type" -> "document",
+//        "source" -> Json.obj(
+//          "type" -> block.`type`,
+//          "media_type" -> block.mediaType,
+//          "data" -> block.data
+//        )
+//      )
+
+  implicit lazy val mediaBlockWrites: Writes[MediaBlock] =
+    (block: MediaBlock) =>
       Json.obj(
-        "type" -> "image",
+        "type" -> block.`type`,
         "source" -> Json.obj(
-          "type" -> block.`type`,
-          "media_type" -> block.mediaType,
-          "data" -> block.data
-        )
-      )
-  implicit lazy val documentBlockWrites: Writes[DocumentBlock] =
-    (block: DocumentBlock) =>
-      Json.obj(
-        "type" -> "document",
-        "source" -> Json.obj(
-          "type" -> block.`type`,
+          "type" -> block.encoding,
           "media_type" -> block.mediaType,
           "data" -> block.data
         )
@@ -116,15 +126,10 @@ trait JsonFormats {
       Json.obj("type" -> "text") ++
         Json.toJson(textBlock)(textBlockWrites).as[JsObject] ++
         cacheControlToJsObject(cacheControl)
-    case ContentBlockBase(imageBlock @ ImageBlock(_, _, _), maybeCacheControl) =>
-      Json.toJson(imageBlock)(imageBlockWrites).as[JsObject] ++
-        cacheControlToJsObject(maybeCacheControl)
-    case ContentBlockBase(documentBlock @ DocumentBlock(_, _, _), maybeCacheControl) =>
-      Json.toJson(documentBlock)(documentBlockWrites).as[JsObject] ++
-        cacheControlToJsObject(maybeCacheControl) ++
-        maybeCacheControl
-          .map(cc => Json.toJson(cc)(cacheControlFormat.writes))
-          .getOrElse(Json.obj())
+    case ContentBlockBase(media @ MediaBlock(_, _, _, _), maybeCacheControl) =>
+      Json.toJson(media)(mediaBlockWrites).as[JsObject] ++
+//        cacheControlToJsObject(maybeCacheControl)
+        maybeCacheControl.map(cc => writeJsObject(cc)).getOrElse(Json.obj())
 
   }
 
@@ -139,23 +144,17 @@ trait JsonFormats {
             case _ => JsError("Invalid text block")
           }
 
-        case "image" =>
+        case imageOrDocument @ ("image" | "document") =>
           for {
             source <- (json \ "source").validate[JsObject]
             `type` <- (source \ "type").validate[String]
             mediaType <- (source \ "media_type").validate[String]
             data <- (source \ "data").validate[String]
             cacheControl <- (json \ "cache_control").validateOpt[CacheControl]
-          } yield ContentBlockBase(ImageBlock(`type`, mediaType, data), cacheControl)
-
-        case "document" =>
-          for {
-            source <- (json \ "source").validate[JsObject]
-            `type` <- (source \ "type").validate[String]
-            mediaType <- (source \ "media_type").validate[String]
-            data <- (source \ "data").validate[String]
-            cacheControl <- (json \ "cache_control").validateOpt[CacheControl]
-          } yield ContentBlockBase(DocumentBlock(`type`, mediaType, data), cacheControl)
+          } yield ContentBlockBase(
+            MediaBlock(imageOrDocument, `type`, mediaType, data),
+            cacheControl
+          )
 
         case _ => JsError("Unsupported or invalid content block")
       }
