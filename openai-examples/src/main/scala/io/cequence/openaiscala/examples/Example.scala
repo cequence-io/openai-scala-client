@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.examples
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorSystem, Scheduler}
 import akka.stream.Materializer
 import io.cequence.openaiscala.domain.response.ChatCompletionResponse
 import io.cequence.openaiscala.service.{OpenAIService, OpenAIServiceFactory}
@@ -16,6 +16,7 @@ trait ExampleBase[T <: CloseableService] {
 
   implicit val system: ActorSystem = ActorSystem()
   implicit val materializer: Materializer = Materializer(system)
+  implicit val scheduler: Scheduler = system.scheduler
   implicit val ec: ExecutionContext = ExecutionContext.Implicits.global
 
   protected val service: T

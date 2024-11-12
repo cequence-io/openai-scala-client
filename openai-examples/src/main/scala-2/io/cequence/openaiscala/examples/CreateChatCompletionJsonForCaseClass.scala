@@ -1,51 +1,53 @@
 package io.cequence.openaiscala.examples
 
 import io.cequence.openaiscala.domain._
-import io.cequence.openaiscala.domain.settings.JsonSchemaDef
-import io.cequence.openaiscala.examples.fixtures.TestFixtures
-import io.cequence.openaiscala.service.{JsonSchemaReflectionHelper, OpenAIServiceConsts}
-import play.api.libs.json.Json
+import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, JsonSchemaDef}
+import io.cequence.openaiscala.service.JsonSchemaReflectionHelper
+import play.api.libs.json.{Format, Json}
+import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
 
 import scala.concurrent.Future
 
-// experimental
-object CreateChatCompletionJsonForCaseClass
-    extends Example
-    with TestFixtures
-    with JsonSchemaReflectionHelper
-    with OpenAIServiceConsts {
+// due to the reflection used in jsonSchemaFor, this example currently works only for Scala 2.12 and 2.13
+object CreateChatCompletionJsonForCaseClass extends Example with JsonSchemaReflectionHelper {
 
-  private val messages = Seq(
-    SystemMessage(capitalsPrompt),
-    UserMessage("List only african countries")
-  )
-
-  // Case class(es)
-  private case class CapitalsResponse(
-    countries: Seq[Country]
-  )
-
-  private case class Country(
+  // data model
+  case class Country(
     country: String,
-    capital: String
+    capital: String,
+    populationMil: Double
   )
+  case class CapitalsResponse(capitals: Seq[Country])
 
-  // json schema def
-  private val jsonSchemaDef: JsonSchemaDef = JsonSchemaDef(
+  // JSON format and schema
+  implicit val countryFormat: Format[Country] = Json.format[Country]
+  implicit val capitalsResponseFormat: Format[CapitalsResponse] = Json.format[CapitalsResponse]
+
+  val jsonSchema: JsonSchemaDef = JsonSchemaDef(
     name = "capitals_response",
     strict = true,
-    // reflective json schema for case class
-    structure = jsonSchemaFor[CapitalsResponse]()
+    jsonSchemaFor[CapitalsResponse]()
   )
 
-  override protected def run: Future[_] =
+  // messages / prompts
+  val messages: Seq[BaseMessage] = Seq(
+    SystemMessage("You are an expert geographer"),
+    UserMessage("List the most populous African countries in the prescribed JSON format")
+  )
+
+  override protected def run: Future[_] = {
+    // chat completion JSON run
     service
-      .createChatCompletion(
-        messages = messages,
-        settings = DefaultSettings.createJsonChatCompletion(jsonSchemaDef)
+      .createChatCompletionWithJSON[CapitalsResponse](
+        messages,
+        settings = CreateChatCompletionSettings(
+          model = ModelId.gpt_4o_2024_08_06,
+          temperature = Some(0),
+          jsonSchema = Some(jsonSchema)
+        )
       )
       .map { response =>
-        val json = Json.parse(messageContent(response))
-        println(Json.prettyPrint(json))
+        response.capitals.foreach(println)
       }
+  }
 }
