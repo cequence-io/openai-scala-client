@@ -33,8 +33,8 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   private val logger = LoggerFactory.getLogger("AnthropicServiceImpl")
 
   override def createMessage(
-    system: Option[Content],
     messages: Seq[Message],
+    system: Option[Content] = None,
     settings: AnthropicCreateMessageSettings
   ): Future[CreateMessageResponse] =
     execPOST(
@@ -93,57 +93,26 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
     val messageJsons = messages.map(Json.toJson(_))
 
-    val systemMessages = Seq(
-      Map(
-        "type" -> "text",
-        "text" -> "You respond in Slovak language."
-      ),
-      Map(
-        "type" -> "text",
-        "text" -> "You make jokes about the question."
-      )
-    )
+    val systemJson = system.map {
+      case single @ Content.SingleString(text, cacheControl) =>
+        if (cacheControl.isEmpty) JsString(text)
+        else {
+          val blocks =
+            Seq(Content.ContentBlockBase(Content.ContentBlock.TextBlock(text), cacheControl))
 
-    val system2 = Content.ContentBlocks(
-      Seq(
-        Content.ContentBlockBase(
-          Content.ContentBlock.TextBlock("You respond in Slovak language.")
-        ),
-        Content.ContentBlockBase(
-          Content.ContentBlock.TextBlock("You make jokes about the question.")
-        )
-      )
-    )
-    val systemJson = system.map { x =>
-      x match {
-        case single @ Content.SingleString(text, cacheControl) =>
-          if (cacheControl.isEmpty) JsString(text)
-          else {
-            val blocks =
-              Seq(Content.ContentBlockBase(Content.ContentBlock.TextBlock(text), cacheControl))
-
-            Json.toJson(blocks)(Writes.seq(contentBlockWrites))
-          }
-        case Content.ContentBlocks(blocks) =>
           Json.toJson(blocks)(Writes.seq(contentBlockWrites))
-        case Content.ContentBlockBase(content, cacheControl) => ???
-      }
-//      Json.toJson(x)(Writes.seq(contentBlockWrites))
-
+        }
+      case Content.ContentBlocks(blocks) =>
+        Json.toJson(blocks)(Writes.seq(contentBlockWrites))
+      case Content.ContentBlockBase(content, cacheControl) =>
+        val blocks = Seq(Content.ContentBlockBase(content, cacheControl))
+        Json.toJson(blocks)(Writes.seq(contentBlockWrites))
     }
-
-    println(s"systemJson: $systemJson")
-
-    val systemMessagesJson = systemMessages.map(Json.toJson(_))
-    println(s"systemMessagesJson: $systemMessagesJson")
 
     jsonBodyParams(
       Param.messages -> Some(messageJsons),
       Param.model -> Some(settings.model),
-//      Param.system -> settings.system,
-      Param.system -> Some(
-        systemJson
-      ),
+      Param.system -> Some(systemJson),
       Param.max_tokens -> Some(settings.max_tokens),
       Param.metadata -> { if (settings.metadata.isEmpty) None else Some(settings.metadata) },
       Param.stop_sequences -> {

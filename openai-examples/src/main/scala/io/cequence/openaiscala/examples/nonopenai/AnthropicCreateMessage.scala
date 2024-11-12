@@ -1,13 +1,8 @@
 package io.cequence.openaiscala.examples.nonopenai
 
-import io.cequence.openaiscala.anthropic.domain.CacheControl.Ephemeral
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
-import io.cequence.openaiscala.anthropic.domain.Content.{
-  ContentBlockBase,
-  ContentBlocks,
-  SingleString
-}
-import io.cequence.openaiscala.anthropic.domain.{Content, Message}
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlockBase
+import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.Message.UserMessage
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
@@ -22,16 +17,13 @@ object AnthropicCreateMessage extends ExampleBase[AnthropicService] {
 
   override protected val service: AnthropicService = AnthropicServiceFactory(withCache = true)
 
-  val systemMessages: Option[Content] = Some(
-    SingleString("Talk in pirate speech", cacheControl = Some(Ephemeral))
-  )
   val messages: Seq[Message] = Seq(UserMessage("What is the weather like in Norway?"))
 
   override protected def run: Future[_] =
     service
       .createMessage(
-        systemMessages,
         messages,
+        None,
         settings = AnthropicCreateMessageSettings(
           model = NonOpenAIModelId.claude_3_haiku_20240307,
           max_tokens = 4096

@@ -88,11 +88,6 @@ case class CreateChatCompletionSettings(
 
 }
 
-object CreateChatCompletionSettings {
-  val AnthropicCachedUserMessagesCount = "cached_user_messages_count"
-  val AnthropicUseSystemMessagesCache = "use_system_messages_cache"
-}
-
 sealed trait ChatCompletionResponseFormatType extends EnumValue
 
 object ChatCompletionResponseFormatType {

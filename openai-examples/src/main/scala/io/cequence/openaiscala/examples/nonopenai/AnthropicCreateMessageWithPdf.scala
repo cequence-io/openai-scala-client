@@ -38,8 +38,8 @@ object AnthropicCreateMessageWithPdf extends ExampleBase[AnthropicService] {
   override protected def run: Future[_] =
     service
       .createMessage(
-        None,
         messages,
+        None,
         settings = AnthropicCreateMessageSettings(
           model =
             NonOpenAIModelId.claude_3_5_sonnet_20241022, // claude-3-5-sonnet-20241022 supports PDF (beta)

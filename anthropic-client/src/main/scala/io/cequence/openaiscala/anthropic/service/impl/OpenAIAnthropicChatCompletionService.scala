@@ -41,8 +41,8 @@ private[service] class OpenAIAnthropicChatCompletionService(
   ): Future[ChatCompletionResponse] = {
     underlying
       .createMessage(
-        toAnthropicSystemMessages(messages, settings),
         toAnthropicMessages(messages, settings),
+        toAnthropicSystemMessages(messages, settings),
         toAnthropicSettings(settings)
       )
       .map(toOpenAI)

@@ -4,16 +4,18 @@ import scala.util.Try
 
 object CreateChatCompletionSettingsOps {
   implicit class RichCreateChatCompletionSettings(settings: CreateChatCompletionSettings) {
+    private val AnthropicCachedUserMessagesCount = "cached_user_messages_count"
+    private val AnthropicUseSystemMessagesCache = "use_system_messages_cache"
 
     def anthropicCachedUserMessagesCount: Int =
       settings.extra_params
-        .get(CreateChatCompletionSettings.AnthropicCachedUserMessagesCount)
+        .get(AnthropicCachedUserMessagesCount)
         .flatMap(numberAsString => Try(numberAsString.toString.toInt).toOption)
         .getOrElse(0)
 
     def useAnthropicSystemMessagesCache: Boolean =
       settings.extra_params
-        .get(CreateChatCompletionSettings.AnthropicUseSystemMessagesCache)
+        .get(AnthropicUseSystemMessagesCache)
         .map(_.toString)
         .contains("true")
   }
