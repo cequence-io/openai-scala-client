@@ -1,9 +1,10 @@
 package io.cequence.openaiscala.service
 
 import akka.actor.Scheduler
+import com.fasterxml.jackson.core.JsonParseException
 import io.cequence.openaiscala.JsonFormats.eitherJsonSchemaFormat
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
-import io.cequence.openaiscala.{RetryHelpers, Retryable}
+import io.cequence.openaiscala.{OpenAIScalaClientException, RetryHelpers, Retryable}
 import io.cequence.openaiscala.domain.response.ChatCompletionResponse
 import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
@@ -57,7 +58,7 @@ object OpenAIChatCompletionExtra {
     def createChatCompletionWithJSON[T: Format](
       messages: Seq[BaseMessage],
       settings: CreateChatCompletionSettings,
-      failoverModels: Seq[String],
+      failoverModels: Seq[String] = Nil,
       maxRetries: Option[Int] = Some(defaultMaxRetries),
       retryOnAnyError: Boolean = false,
       taskNameForLogging: Option[String] = None
@@ -92,7 +93,7 @@ object OpenAIChatCompletionExtra {
           val content = response.choices.head.message.content
           val contentTrimmed = content.stripPrefix("```json").stripSuffix("```").trim
           val contentJson = contentTrimmed.dropWhile(_ != '{')
-          val json = Json.parse(contentJson)
+          val json = parseJsonOrThrow(contentJson)
 
           logger.debug(
             s"${taskNameForLoggingFinal.capitalize} finished in " + (new java.util.Date().getTime - start.getTime) + " ms."
@@ -100,6 +101,17 @@ object OpenAIChatCompletionExtra {
 
           json.as[T]
         }
+    }
+
+    private def parseJsonOrThrow(
+      jsonString: String
+    ) = try {
+      Json.parse(jsonString)
+    } catch {
+      case e: JsonParseException =>
+        val message = "Failed to parse JSON response:\n" + jsonString
+        logger.error(message)
+        throw new OpenAIScalaClientException(message, e)
     }
 
     private def isRetryable(

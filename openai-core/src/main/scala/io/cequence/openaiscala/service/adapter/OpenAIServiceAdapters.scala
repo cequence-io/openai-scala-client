@@ -3,6 +3,7 @@ package io.cequence.openaiscala.service.adapter
 import akka.actor.Scheduler
 import akka.stream.Materializer
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
+import io.cequence.openaiscala.Retryable
 import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.service._
@@ -44,13 +45,17 @@ trait OpenAIServiceAdapters[S <: CloseableService] {
 
   def retry(
     underlying: S,
-    log: Option[String => Unit] = None
+    log: Option[String => Unit] = None,
+    isRetryable: Throwable => Boolean = {
+      case Retryable(_) => true
+      case _            => false
+    }
   )(
     implicit ec: ExecutionContext,
     retrySettings: RetrySettings,
     scheduler: Scheduler
   ): S =
-    wrapAndDelegate(new RetryServiceAdapter(underlying, log))
+    wrapAndDelegate(new RetryServiceAdapter(underlying, log, isRetryable))
 
   def log(
     underlying: S,

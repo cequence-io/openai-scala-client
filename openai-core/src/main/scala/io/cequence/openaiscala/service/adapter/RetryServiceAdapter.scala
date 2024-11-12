@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.service.adapter
 
 import akka.actor.Scheduler
-import io.cequence.openaiscala.RetryHelpers
+import io.cequence.openaiscala.{RetryHelpers, Retryable}
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import io.cequence.wsclient.service.CloseableService
 
@@ -9,7 +9,8 @@ import scala.concurrent.{ExecutionContext, Future}
 
 private class RetryServiceAdapter[+S <: CloseableService](
   underlying: S,
-  log: Option[String => Unit] = None
+  log: Option[String => Unit] = None,
+  isRetryable: Throwable => Boolean
 )(
   implicit ec: ExecutionContext,
   retrySettings: RetrySettings,
@@ -24,7 +25,8 @@ private class RetryServiceAdapter[+S <: CloseableService](
   ): Future[T] =
     fun(underlying).retryOnFailure(
       Some(s"${getFunctionName().capitalize} call failed"),
-      log
+      log,
+      isRetryable
     )
 
   override def close(): Unit =
