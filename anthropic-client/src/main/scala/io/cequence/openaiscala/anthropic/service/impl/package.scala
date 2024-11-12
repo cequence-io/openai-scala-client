@@ -80,7 +80,7 @@ package object impl extends AnthropicServiceConsts {
       .foldLeft((List.empty[Message], countUserMessagesToCache)) {
         case ((acc, userMessagesToCache), message) =>
           message match {
-            case Message.UserMessage(contentString, cacheControl) =>
+            case Message.UserMessage(contentString, _) =>
               val newCacheControl = if (userMessagesToCache > 0) Some(Ephemeral) else None
               (
                 acc :+ Message.UserMessage(contentString, newCacheControl),

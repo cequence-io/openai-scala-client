@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.adapter
 
-import akka.actor.Scheduler
 import io.cequence.openaiscala.{OpenAIScalaClientException, OpenAIScalaClientTimeoutException}
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings

@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.nonopenai
 
-import io.cequence.openaiscala.anthropic.domain.CacheControl.Ephemeral
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
 import io.cequence.openaiscala.anthropic.domain.Content.{ContentBlockBase, SingleString}
 import io.cequence.openaiscala.anthropic.domain.{Content, Message}

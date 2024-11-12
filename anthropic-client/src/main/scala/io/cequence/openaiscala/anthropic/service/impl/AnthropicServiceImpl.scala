@@ -94,7 +94,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     val messageJsons = messages.map(Json.toJson(_))
 
     val systemJson = system.map {
-      case single @ Content.SingleString(text, cacheControl) =>
+      case Content.SingleString(text, cacheControl) =>
         if (cacheControl.isEmpty) JsString(text)
         else {
           val blocks =

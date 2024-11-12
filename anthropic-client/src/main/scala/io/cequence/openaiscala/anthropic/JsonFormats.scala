@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.anthropic
 
-import io.cequence.openaiscala.anthropic.domain.CacheControl.Ephemeral
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{MediaBlock, TextBlock}
 import io.cequence.openaiscala.anthropic.domain.Content.{
   ContentBlockBase,

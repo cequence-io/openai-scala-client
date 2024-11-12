@@ -2,7 +2,6 @@ package io.cequence.openaiscala.anthropic.service.impl
 
 import akka.NotUsed
 import akka.stream.scaladsl.Source
-import io.cequence.openaiscala.anthropic.domain.Content
 import io.cequence.openaiscala.anthropic.service.AnthropicService
 import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response.{

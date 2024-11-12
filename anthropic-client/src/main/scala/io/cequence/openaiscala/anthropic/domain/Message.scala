@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.anthropic.domain
 
 import io.cequence.openaiscala.anthropic.domain.Content.{
-  ContentBlock,
   ContentBlockBase,
   ContentBlocks,
   SingleString

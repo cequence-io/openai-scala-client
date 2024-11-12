@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.service.adapter
 
-import io.cequence.openaiscala.domain.response.ResponseFormat
 import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
   CreateChatCompletionSettings

@@ -10,11 +10,9 @@ import io.cequence.openaiscala.anthropic.service.{AnthropicService, AnthropicSer
 import io.cequence.openaiscala.domain.NonOpenAIModelId
 import io.cequence.openaiscala.examples.ExampleBase
 
-import java.awt.image.RenderedImage
-import java.io.{ByteArrayOutputStream, File}
+import java.io.File
 import java.nio.file.Files
 import java.util.Base64
-import javax.imageio.ImageIO
 import scala.concurrent.Future
 
 // requires `openai-scala-anthropic-client` as a dependency
