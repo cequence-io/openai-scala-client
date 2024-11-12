@@ -48,7 +48,8 @@ package object impl extends AnthropicServiceConsts {
       messages.zipWithIndex.collect { case (SystemMessage(content, _), index) =>
         useSystemCache match {
           case Some(cacheControl) =>
-            if (index == 0) ContentBlockBase(TextBlock(content), Some(cacheControl))
+            if (index == messages.size - 1)
+              ContentBlockBase(TextBlock(content), Some(cacheControl))
             else ContentBlockBase(TextBlock(content), None)
           case None => ContentBlockBase(TextBlock(content))
         }
