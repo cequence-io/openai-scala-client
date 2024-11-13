@@ -31,7 +31,8 @@ import io.cequence.openaiscala.domain.{
   ImageURLContent => OpenAIImageContent,
   TextContent => OpenAITextContent,
   UserMessage => OpenAIUserMessage,
-  UserSeqMessage => OpenAIUserSeqMessage
+  UserSeqMessage => OpenAIUserSeqMessage,
+  AssistantMessage => OpenAIAssistantMessage
 }
 
 import java.{util => ju}
@@ -69,6 +70,8 @@ package object impl extends AnthropicServiceConsts {
       case OpenAIUserMessage(content, _) => Message.UserMessage(content)
       case OpenAIUserSeqMessage(contents, _) =>
         Message.UserMessageContent(contents.map(toAnthropic))
+      case OpenAIAssistantMessage(content, _) => Message.AssistantMessage(content)
+
       // legacy message type
       case MessageSpec(role, content, _) if role == ChatRole.User =>
         Message.UserMessage(content)
