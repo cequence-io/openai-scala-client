@@ -40,8 +40,9 @@ private[service] class OpenAIAnthropicChatCompletionService(
   ): Future[ChatCompletionResponse] = {
     underlying
       .createMessage(
-        toAnthropic(messages),
-        toAnthropic(settings, messages)
+        toAnthropicMessages(messages, settings),
+        toAnthropicSystemMessages(messages, settings),
+        toAnthropicSettings(settings)
       )
       .map(toOpenAI)
     // TODO: recover and wrap exceptions
@@ -64,8 +65,9 @@ private[service] class OpenAIAnthropicChatCompletionService(
   ): Source[ChatCompletionChunkResponse, NotUsed] =
     underlying
       .createMessageStreamed(
-        toAnthropic(messages),
-        toAnthropic(settings, messages)
+        toAnthropicSystemMessages(messages, settings),
+        toAnthropicMessages(messages, settings),
+        toAnthropicSettings(settings)
       )
       .map(toOpenAI)
 

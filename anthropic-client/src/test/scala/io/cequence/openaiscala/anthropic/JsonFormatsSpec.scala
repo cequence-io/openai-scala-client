@@ -2,7 +2,9 @@ package io.cequence.openaiscala.anthropic
 
 import io.cequence.openaiscala.anthropic.JsonFormatsSpec.JsonPrintMode
 import io.cequence.openaiscala.anthropic.JsonFormatsSpec.JsonPrintMode.{Compact, Pretty}
-import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{ImageBlock, TextBlock}
+import io.cequence.openaiscala.anthropic.domain.CacheControl.Ephemeral
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{MediaBlock, TextBlock}
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlockBase
 import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.Message.{
   AssistantMessage,
@@ -33,7 +35,12 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
 
     "serialize and deserialize a user message with text content blocks" in {
       val userMessage =
-        UserMessageContent(Seq(TextBlock("Hello, world!"), TextBlock("How are you?")))
+        UserMessageContent(
+          Seq(
+            ContentBlockBase(TextBlock("Hello, world!")),
+            ContentBlockBase(TextBlock("How are you?"))
+          )
+        )
       val json =
         """{"role":"user","content":[{"type":"text","text":"Hello, world!"},{"type":"text","text":"How are you?"}]}"""
       testCodec[Message](userMessage, json)
@@ -47,7 +54,12 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
 
     "serialize and deserialize an assistant message with text content blocks" in {
       val assistantMessage =
-        AssistantMessageContent(Seq(TextBlock("Hello, world!"), TextBlock("How are you?")))
+        AssistantMessageContent(
+          Seq(
+            ContentBlockBase(TextBlock("Hello, world!")),
+            ContentBlockBase(TextBlock("How are you?"))
+          )
+        )
       val json =
         """{"role":"assistant","content":[{"type":"text","text":"Hello, world!"},{"type":"text","text":"How are you?"}]}"""
       testCodec[Message](assistantMessage, json)
@@ -68,8 +80,57 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
 
     "serialize and deserialize a message with an image content" in {
       val userMessage =
-        UserMessageContent(Seq(ImageBlock("base64", "image/jpeg", "/9j/4AAQSkZJRg...")))
+        UserMessageContent(
+          Seq(
+            ContentBlockBase(MediaBlock("image", "base64", "image/jpeg", "/9j/4AAQSkZJRg..."))
+          )
+        )
       testCodec[Message](userMessage, expectedImageContentJson, Pretty)
+    }
+
+    // TEST CACHING
+    "serialize and deserialize Cache control" should {
+      "serialize and deserialize arbitrary (first) user message with caching" in {
+        val userMessage =
+          UserMessageContent(
+            Seq(
+              ContentBlockBase(TextBlock("Hello, world!"), Some(Ephemeral)),
+              ContentBlockBase(TextBlock("How are you?"))
+            )
+          )
+        val json =
+          """{"role":"user","content":[{"type":"text","text":"Hello, world!","cache_control":{"type":"ephemeral"}},{"type":"text","text":"How are you?"}]}"""
+        testCodec[Message](userMessage, json)
+      }
+
+      "serialize and deserialize arbitrary (second) user message with caching" in {
+        val userMessage =
+          UserMessageContent(
+            Seq(
+              ContentBlockBase(TextBlock("Hello, world!")),
+              ContentBlockBase(TextBlock("How are you?"), Some(Ephemeral))
+            )
+          )
+        val json =
+          """{"role":"user","content":[{"type":"text","text":"Hello, world!"},{"type":"text","text":"How are you?","cache_control":{"type":"ephemeral"}}]}"""
+        testCodec[Message](userMessage, json)
+      }
+
+      "serialize and deserialize arbitrary (first) image content with caching" in {
+        val userMessage =
+          UserMessageContent(
+            Seq(
+              MediaBlock.jpeg("/9j/4AAQSkZJRg...", Some(Ephemeral)),
+              ContentBlockBase(TextBlock("How are you?"))
+            )
+          )
+
+        val imageJson =
+          """{"type":"image","source":{"type":"base64","media_type":"image/jpeg","data":"/9j/4AAQSkZJRg..."},"cache_control":{"type":"ephemeral"}}""".stripMargin
+        val json =
+          s"""{"role":"user","content":[$imageJson,{"type":"text","text":"How are you?"}]}"""
+        testCodec[Message](userMessage, json)
+      }
     }
 
   }

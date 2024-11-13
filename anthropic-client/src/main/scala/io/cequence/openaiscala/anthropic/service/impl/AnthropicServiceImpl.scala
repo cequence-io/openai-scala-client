@@ -9,13 +9,13 @@ import io.cequence.openaiscala.anthropic.domain.response.{
   CreateMessageResponse
 }
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
-import io.cequence.openaiscala.anthropic.domain.{ChatRole, Message}
+import io.cequence.openaiscala.anthropic.domain.{ChatRole, Content, Message}
 import io.cequence.openaiscala.anthropic.service.{AnthropicService, HandleAnthropicErrorCodes}
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
 import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithStreamEngine
 import org.slf4j.LoggerFactory
-import play.api.libs.json.{JsValue, Json}
+import play.api.libs.json.{JsString, JsValue, Json, Writes}
 
 import scala.concurrent.Future
 
@@ -34,16 +34,19 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
   override def createMessage(
     messages: Seq[Message],
+    system: Option[Content] = None,
     settings: AnthropicCreateMessageSettings
   ): Future[CreateMessageResponse] =
     execPOST(
       EndPoint.messages,
-      bodyParams = createBodyParamsForMessageCreation(messages, settings, stream = false)
+      bodyParams =
+        createBodyParamsForMessageCreation(system, messages, settings, stream = false)
     ).map(
       _.asSafeJson[CreateMessageResponse]
     )
 
   override def createMessageStreamed(
+    system: Option[Content],
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings
   ): Source[ContentBlockDelta, NotUsed] =
@@ -52,7 +55,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
         EndPoint.messages.toString(),
         "POST",
         bodyParams = paramTuplesToStrings(
-          createBodyParamsForMessageCreation(messages, settings, stream = true)
+          createBodyParamsForMessageCreation(system, messages, settings, stream = true)
         )
       )
       .map { (json: JsValue) =>
@@ -80,6 +83,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       .collect { case Some(delta) => delta }
 
   private def createBodyParamsForMessageCreation(
+    system: Option[Content],
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings,
     stream: Boolean
@@ -89,10 +93,26 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
     val messageJsons = messages.map(Json.toJson(_))
 
+    val systemJson = system.map {
+      case Content.SingleString(text, cacheControl) =>
+        if (cacheControl.isEmpty) JsString(text)
+        else {
+          val blocks =
+            Seq(Content.ContentBlockBase(Content.ContentBlock.TextBlock(text), cacheControl))
+
+          Json.toJson(blocks)(Writes.seq(contentBlockBaseWrites))
+        }
+      case Content.ContentBlocks(blocks) =>
+        Json.toJson(blocks)(Writes.seq(contentBlockBaseWrites))
+      case Content.ContentBlockBase(content, cacheControl) =>
+        val blocks = Seq(Content.ContentBlockBase(content, cacheControl))
+        Json.toJson(blocks)(Writes.seq(contentBlockBaseWrites))
+    }
+
     jsonBodyParams(
       Param.messages -> Some(messageJsons),
       Param.model -> Some(settings.model),
-      Param.system -> settings.system,
+      Param.system -> Some(systemJson),
       Param.max_tokens -> Some(settings.max_tokens),
       Param.metadata -> { if (settings.metadata.isEmpty) None else Some(settings.metadata) },
       Param.stop_sequences -> {

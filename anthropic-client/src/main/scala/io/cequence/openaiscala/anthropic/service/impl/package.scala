@@ -1,14 +1,15 @@
 package io.cequence.openaiscala.anthropic.service
 
+import io.cequence.openaiscala.anthropic.domain.CacheControl.Ephemeral
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
-import io.cequence.openaiscala.anthropic.domain.Content.ContentBlocks
+import io.cequence.openaiscala.anthropic.domain.Content.{ContentBlockBase, ContentBlocks}
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse.UsageInfo
 import io.cequence.openaiscala.anthropic.domain.response.{
   ContentBlockDelta,
   CreateMessageResponse
 }
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
-import io.cequence.openaiscala.anthropic.domain.{Content, Message}
+import io.cequence.openaiscala.anthropic.domain.{CacheControl, Content, Message}
 import io.cequence.openaiscala.domain.response.{
   ChatCompletionChoiceChunkInfo,
   ChatCompletionChoiceInfo,
@@ -18,6 +19,7 @@ import io.cequence.openaiscala.domain.response.{
   UsageInfo => OpenAIUsageInfo
 }
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
+import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettingsOps.RichCreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{
   AssistantMessage,
   ChatRole,
@@ -35,9 +37,33 @@ import java.{util => ju}
 
 package object impl extends AnthropicServiceConsts {
 
-  def toAnthropic(messages: Seq[OpenAIBaseMessage]): Seq[Message] =
-    // TODO: handle other message types (e.g. assistant)
-    messages.collect {
+  def toAnthropicSystemMessages(
+    messages: Seq[OpenAIBaseMessage],
+    settings: CreateChatCompletionSettings
+  ): Option[ContentBlocks] = {
+    val useSystemCache: Option[CacheControl] =
+      if (settings.useAnthropicSystemMessagesCache) Some(Ephemeral) else None
+
+    val messageStrings =
+      messages.zipWithIndex.collect { case (SystemMessage(content, _), index) =>
+        useSystemCache match {
+          case Some(cacheControl) =>
+            if (index == messages.size - 1)
+              ContentBlockBase(TextBlock(content), Some(cacheControl))
+            else ContentBlockBase(TextBlock(content), None)
+          case None => ContentBlockBase(TextBlock(content))
+        }
+      }
+
+    if (messageStrings.isEmpty) None else Some(ContentBlocks(messageStrings))
+  }
+
+  def toAnthropicMessages(
+    messages: Seq[OpenAIBaseMessage],
+    settings: CreateChatCompletionSettings
+  ): Seq[Message] = {
+
+    val anthropicMessages: Seq[Message] = messages.collect {
       case OpenAIUserMessage(content, _) => Message.UserMessage(content)
       case OpenAIUserSeqMessage(contents, _) =>
         Message.UserMessageContent(contents.map(toAnthropic))
@@ -46,9 +72,44 @@ package object impl extends AnthropicServiceConsts {
         Message.UserMessage(content)
     }
 
-  def toAnthropic(content: OpenAIContent): Content.ContentBlock = {
+    // apply cache control to user messages
+    // crawl through anthropicMessages, and apply to the first N user messages cache control, where N = countUserMessagesToCache
+    val countUserMessagesToCache = settings.anthropicCachedUserMessagesCount
+
+    val anthropicMessagesWithCache: Seq[Message] = anthropicMessages
+      .foldLeft((List.empty[Message], countUserMessagesToCache)) {
+        case ((acc, userMessagesToCache), message) =>
+          message match {
+            case Message.UserMessage(contentString, _) =>
+              val newCacheControl = if (userMessagesToCache > 0) Some(Ephemeral) else None
+              (
+                acc :+ Message.UserMessage(contentString, newCacheControl),
+                userMessagesToCache - newCacheControl.map(_ => 1).getOrElse(0)
+              )
+            case Message.UserMessageContent(contentBlocks) =>
+              val (newContentBlocks, remainingCache) =
+                contentBlocks.foldLeft((Seq.empty[ContentBlockBase], userMessagesToCache)) {
+                  case ((acc, cacheLeft), content) =>
+                    val (block, newCacheLeft) =
+                      toAnthropic(cacheLeft)(content.asInstanceOf[OpenAIContent])
+                    (acc :+ block, newCacheLeft)
+                }
+              (acc :+ Message.UserMessageContent(newContentBlocks), remainingCache)
+            case assistant: Message.AssistantMessage =>
+              (acc :+ assistant, userMessagesToCache)
+            case assistants: Message.AssistantMessageContent =>
+              (acc :+ assistants, userMessagesToCache)
+          }
+      }
+      ._1
+    anthropicMessagesWithCache
+  }
+
+  def toAnthropic(content: OpenAIContent): Content.ContentBlockBase = {
     content match {
-      case OpenAITextContent(text) => TextBlock(text)
+      case OpenAITextContent(text) =>
+        ContentBlockBase(TextBlock(text))
+
       case OpenAIImageContent(url) =>
         if (url.startsWith("data:")) {
           val mediaTypeEncodingAndData = url.drop(5)
@@ -56,7 +117,9 @@ package object impl extends AnthropicServiceConsts {
           val encodingAndData = mediaTypeEncodingAndData.drop(mediaType.length + 1)
           val encoding = mediaType.takeWhile(_ != ',')
           val data = encodingAndData.drop(encoding.length + 1)
-          Content.ContentBlock.ImageBlock(encoding, mediaType, data)
+          ContentBlockBase(
+            Content.ContentBlock.MediaBlock("image", encoding, mediaType, data)
+          )
         } else {
           throw new IllegalArgumentException(
             "Image content only supported by providing image data directly."
@@ -65,17 +128,38 @@ package object impl extends AnthropicServiceConsts {
     }
   }
 
-  def toAnthropic(
-    settings: CreateChatCompletionSettings,
-    messages: Seq[OpenAIBaseMessage]
-  ): AnthropicCreateMessageSettings = {
-    def systemMessagesContent = messages.collect { case SystemMessage(content, _) =>
-      content
-    }.mkString("\n")
+  def toAnthropic(userMessagesToCache: Int)(content: OpenAIContent)
+    : (Content.ContentBlockBase, Int) = {
+    val cacheControl = if (userMessagesToCache > 0) Some(Ephemeral) else None
+    val newCacheControlCount = userMessagesToCache - cacheControl.map(_ => 1).getOrElse(0)
+    content match {
+      case OpenAITextContent(text) =>
+        (ContentBlockBase(TextBlock(text), cacheControl), newCacheControlCount)
 
+      case OpenAIImageContent(url) =>
+        if (url.startsWith("data:")) {
+          val mediaTypeEncodingAndData = url.drop(5)
+          val mediaType = mediaTypeEncodingAndData.takeWhile(_ != ';')
+          val encodingAndData = mediaTypeEncodingAndData.drop(mediaType.length + 1)
+          val encoding = mediaType.takeWhile(_ != ',')
+          val data = encodingAndData.drop(encoding.length + 1)
+          ContentBlockBase(
+            Content.ContentBlock.MediaBlock("image", encoding, mediaType, data),
+            cacheControl
+          ) -> newCacheControlCount
+        } else {
+          throw new IllegalArgumentException(
+            "Image content only supported by providing image data directly."
+          )
+        }
+    }
+  }
+
+  def toAnthropicSettings(
+    settings: CreateChatCompletionSettings
+  ): AnthropicCreateMessageSettings =
     AnthropicCreateMessageSettings(
       model = settings.model,
-      system = if (systemMessagesContent.isEmpty) None else Some(systemMessagesContent),
       max_tokens = settings.max_tokens.getOrElse(DefaultSettings.CreateMessage.max_tokens),
       metadata = Map.empty,
       stop_sequences = settings.stop,
@@ -83,7 +167,6 @@ package object impl extends AnthropicServiceConsts {
       top_p = settings.top_p,
       top_k = None
     )
-  }
 
   def toOpenAI(response: CreateMessageResponse): ChatCompletionResponse =
     ChatCompletionResponse(
@@ -122,7 +205,9 @@ package object impl extends AnthropicServiceConsts {
     )
 
   def toOpenAIAssistantMessage(content: ContentBlocks): AssistantMessage = {
-    val textContents = content.blocks.collect { case TextBlock(text) => text }
+    val textContents = content.blocks.collect { case ContentBlockBase(TextBlock(text), _) =>
+      text
+    } // TODO
     // TODO: log if there is more than one text content
     if (textContents.isEmpty) {
       throw new IllegalArgumentException("No text content found in the response")

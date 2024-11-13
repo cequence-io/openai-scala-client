@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.anthropic.domain
 
 import io.cequence.openaiscala.anthropic.domain.Content.{
-  ContentBlock,
+  ContentBlockBase,
   ContentBlocks,
   SingleString
 }
@@ -13,12 +13,19 @@ sealed abstract class Message private (
 
 object Message {
 
-  case class UserMessage(contentString: String)
-      extends Message(ChatRole.User, SingleString(contentString))
-  case class UserMessageContent(contentBlocks: Seq[ContentBlock])
+  case class UserMessage(
+    contentString: String,
+    cacheControl: Option[CacheControl] = None
+  ) extends Message(ChatRole.User, SingleString(contentString, cacheControl))
+
+  case class UserMessageContent(contentBlocks: Seq[ContentBlockBase])
       extends Message(ChatRole.User, ContentBlocks(contentBlocks))
-  case class AssistantMessage(contentString: String)
-      extends Message(ChatRole.Assistant, SingleString(contentString))
-  case class AssistantMessageContent(contentBlocks: Seq[ContentBlock])
+
+  case class AssistantMessage(
+    contentString: String,
+    cacheControl: Option[CacheControl] = None
+  ) extends Message(ChatRole.Assistant, SingleString(contentString, cacheControl))
+
+  case class AssistantMessageContent(contentBlocks: Seq[ContentBlockBase])
       extends Message(ChatRole.Assistant, ContentBlocks(contentBlocks))
 }

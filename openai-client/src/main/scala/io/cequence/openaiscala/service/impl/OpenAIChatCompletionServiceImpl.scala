@@ -11,7 +11,6 @@ import io.cequence.openaiscala.service.adapter.{
 import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIServiceConsts}
 import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.ResponseImplicits._
-import io.cequence.wsclient.service.WSClient
 import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithEngine
 import play.api.libs.json.{JsObject, JsValue, Json}
 

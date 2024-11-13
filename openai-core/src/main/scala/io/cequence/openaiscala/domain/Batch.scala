@@ -87,15 +87,15 @@ object Batch {
     request_counts: Map[String, Int],
     metadata: Option[Map[String, String]]
   ) {
-    def isRunning =
+    def isRunning: Boolean =
       List("in_progress", "validating", "finalizing", "cancelling").contains(status)
 
     // "failed", "completed", "expired", "cancelled"
-    def isFinished = !isRunning
+    def isFinished: Boolean = !isRunning
 
-    def isSuccess = status == "completed"
+    def isSuccess: Boolean = status == "completed"
 
-    def isFailedOrCancelledOrExpired = isFinished && !isSuccess
+    def isFailedOrCancelledOrExpired: Boolean = isFinished && !isSuccess
   }
 
   case class BatchProcessingErrors(

@@ -1,8 +1,8 @@
 package io.cequence.openaiscala.examples.nonopenai
 
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
-import io.cequence.openaiscala.anthropic.domain.Content.ContentBlockBase
-import io.cequence.openaiscala.anthropic.domain.Message
+import io.cequence.openaiscala.anthropic.domain.Content.{ContentBlockBase, SingleString}
+import io.cequence.openaiscala.anthropic.domain.{Content, Message}
 import io.cequence.openaiscala.anthropic.domain.Message.UserMessage
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
@@ -13,17 +13,22 @@ import io.cequence.openaiscala.examples.ExampleBase
 import scala.concurrent.Future
 
 // requires `openai-scala-anthropic-client` as a dependency and `ANTHROPIC_API_KEY` environment variable to be set
-object AnthropicCreateMessage extends ExampleBase[AnthropicService] {
+object AnthropicCreateSystemMessage extends ExampleBase[AnthropicService] {
 
-  override protected val service: AnthropicService = AnthropicServiceFactory(withCache = true)
+  override protected val service: AnthropicService = AnthropicServiceFactory()
 
-  val messages: Seq[Message] = Seq(UserMessage("What is the weather like in Norway?"))
+  val systemMessages: Option[Content] = Some(
+    SingleString("Talk in pirate speech")
+  )
+  val messages: Seq[Message] = Seq(
+    UserMessage("Who is the most famous football player in the World?")
+  )
 
   override protected def run: Future[_] =
     service
       .createMessage(
         messages,
-        None,
+        Some(SingleString("You answer in pirate speech.")),
         settings = AnthropicCreateMessageSettings(
           model = NonOpenAIModelId.claude_3_haiku_20240307,
           max_tokens = 4096

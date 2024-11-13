@@ -135,7 +135,7 @@ object OpenAIChatCompletionExtra {
     settings: CreateChatCompletionSettings,
     taskNameForLogging: String,
     jsonSchemaModels: Seq[String] = defaultJsonSchemaModels
-  ) = {
+  ): (Seq[BaseMessage], CreateChatCompletionSettings) = {
     val jsonSchemaDef = settings.jsonSchema.getOrElse(
       throw new IllegalArgumentException("JSON schema is not defined but expected.")
     )
