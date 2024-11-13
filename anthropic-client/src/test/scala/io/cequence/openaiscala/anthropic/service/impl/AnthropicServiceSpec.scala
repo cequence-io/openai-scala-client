@@ -53,28 +53,28 @@ class AnthropicServiceSpec extends AsyncWordSpec with GivenWhenThen {
 
     "should throw AnthropicScalaServerErrorException when 500" ignore {
       recoverToSucceededIf[AnthropicScalaServerErrorException] {
-        TestFactory.mockedService500().createMessage(irrelevantMessages, None, settings)
+        TestFactory.mockedService500().createMessage(Some(role), irrelevantMessages, settings)
       }
     }
 
     "should throw AnthropicScalaEngineOverloadedException when 529" ignore {
       recoverToSucceededIf[AnthropicScalaEngineOverloadedException] {
-        TestFactory.mockedService529().createMessage(irrelevantMessages, None, settings)
+        TestFactory.mockedService529().createMessage(Some(role), irrelevantMessages, settings)
       }
     }
 
     "should throw AnthropicScalaClientException when 400" ignore {
       recoverToSucceededIf[AnthropicScalaClientException] {
-        TestFactory.mockedService400().createMessage(irrelevantMessages, None, settings)
+        TestFactory.mockedService400().createMessage(Some(role), irrelevantMessages, settings)
       }
     }
 
     "should throw AnthropicScalaClientException when unknown error code" ignore {
       recoverToSucceededIf[AnthropicScalaClientException] {
-        TestFactory.mockedServiceOther().createMessage(irrelevantMessages, None, settings)
+        TestFactory
+          .mockedServiceOther()
+          .createMessage(Some(role), irrelevantMessages, settings)
       }
     }
-
   }
-
 }
