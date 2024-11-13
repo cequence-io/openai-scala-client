@@ -20,7 +20,6 @@ object AnthropicCreateMessageStreamed extends ExampleBase[AnthropicService] {
   override protected def run: Future[_] =
     service
       .createMessageStreamed(
-        None,
         messages,
         settings = AnthropicCreateMessageSettings(
           model = NonOpenAIModelId.claude_3_haiku_20240307,

@@ -4,6 +4,8 @@ import akka.NotUsed
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.anthropic.JsonFormats
+import io.cequence.openaiscala.anthropic.domain.Message.{SystemMessage, SystemMessageContent}
+import io.cequence.openaiscala.anthropic.domain.{Message => AnthropicMessage}
 import io.cequence.openaiscala.anthropic.domain.response.{
   ContentBlockDelta,
   CreateMessageResponse
@@ -34,19 +36,16 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
   override def createMessage(
     messages: Seq[Message],
-    system: Option[Content] = None,
     settings: AnthropicCreateMessageSettings
   ): Future[CreateMessageResponse] =
     execPOST(
       EndPoint.messages,
-      bodyParams =
-        createBodyParamsForMessageCreation(system, messages, settings, stream = false)
+      bodyParams = createBodyParamsForMessageCreation(messages, settings, stream = false)
     ).map(
       _.asSafeJson[CreateMessageResponse]
     )
 
   override def createMessageStreamed(
-    system: Option[Content],
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings
   ): Source[ContentBlockDelta, NotUsed] =
@@ -55,7 +54,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
         EndPoint.messages.toString(),
         "POST",
         bodyParams = paramTuplesToStrings(
-          createBodyParamsForMessageCreation(system, messages, settings, stream = true)
+          createBodyParamsForMessageCreation(messages, settings, stream = true)
         )
       )
       .map { (json: JsValue) =>
@@ -83,18 +82,21 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       .collect { case Some(delta) => delta }
 
   private def createBodyParamsForMessageCreation(
-    system: Option[Content],
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings,
     stream: Boolean
   ): Seq[(Param, Option[JsValue])] = {
     assert(messages.nonEmpty, "At least one message expected.")
-    assert(messages.head.role == ChatRole.User, "First message must be from user.")
 
-    val messageJsons = messages.map(Json.toJson(_))
+    val (system, nonSystem) = messages.partition(_.isSystem)
 
-    val systemJson = system.map {
-      case Content.SingleString(text, cacheControl) =>
+    assert(nonSystem.head.role == ChatRole.User, "First non-system message must be from user.")
+    assert(system.size <= 1, "System message can be only 1. Use SystemMessageContent to include more content blocks.")
+
+    val messageJsons = nonSystem.map(Json.toJson(_))
+
+    val systemJson: Seq[JsValue] = system.map {
+      case SystemMessage(text, cacheControl) =>
         if (cacheControl.isEmpty) JsString(text)
         else {
           val blocks =
@@ -102,17 +104,17 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
           Json.toJson(blocks)(Writes.seq(contentBlockBaseWrites))
         }
-      case Content.ContentBlocks(blocks) =>
-        Json.toJson(blocks)(Writes.seq(contentBlockBaseWrites))
-      case Content.ContentBlockBase(content, cacheControl) =>
-        val blocks = Seq(Content.ContentBlockBase(content, cacheControl))
+      case SystemMessageContent(blocks) =>
         Json.toJson(blocks)(Writes.seq(contentBlockBaseWrites))
     }
 
     jsonBodyParams(
       Param.messages -> Some(messageJsons),
       Param.model -> Some(settings.model),
-      Param.system -> system.map(_ => systemJson),
+      Param.system -> {
+        if (system.isEmpty) None
+        else Some(systemJson.head)
+      },
       Param.max_tokens -> Some(settings.max_tokens),
       Param.metadata -> { if (settings.metadata.isEmpty) None else Some(settings.metadata) },
       Param.stop_sequences -> {

@@ -3,7 +3,7 @@ package io.cequence.openaiscala.examples.nonopenai
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
 import io.cequence.openaiscala.anthropic.domain.Content.{ContentBlockBase, SingleString}
 import io.cequence.openaiscala.anthropic.domain.{Content, Message}
-import io.cequence.openaiscala.anthropic.domain.Message.UserMessage
+import io.cequence.openaiscala.anthropic.domain.Message.{SystemMessage, UserMessage}
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.service.{AnthropicService, AnthropicServiceFactory}
@@ -17,8 +17,8 @@ object AnthropicCreateSystemMessage extends ExampleBase[AnthropicService] {
 
   override protected val service: AnthropicService = AnthropicServiceFactory()
 
-  val systemMessages: Option[Content] = Some(
-    SingleString("Talk in pirate speech")
+  val systemMessages: Seq[Message] = Seq(
+    SystemMessage("Talk in pirate speech")
   )
   val messages: Seq[Message] = Seq(
     UserMessage("Who is the most famous football player in the World?")
@@ -27,8 +27,7 @@ object AnthropicCreateSystemMessage extends ExampleBase[AnthropicService] {
   override protected def run: Future[_] =
     service
       .createMessage(
-        messages,
-        Some(SingleString("You answer in pirate speech.")),
+        systemMessages ++ messages,
         settings = AnthropicCreateMessageSettings(
           model = NonOpenAIModelId.claude_3_haiku_20240307,
           max_tokens = 4096

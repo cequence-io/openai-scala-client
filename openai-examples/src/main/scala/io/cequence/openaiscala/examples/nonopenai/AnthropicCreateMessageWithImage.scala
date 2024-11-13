@@ -39,7 +39,6 @@ object AnthropicCreateMessageWithImage extends ExampleBase[AnthropicService] {
     service
       .createMessage(
         messages,
-        None,
         settings = AnthropicCreateMessageSettings(
           model = NonOpenAIModelId.claude_3_opus_20240229,
           max_tokens = 4096

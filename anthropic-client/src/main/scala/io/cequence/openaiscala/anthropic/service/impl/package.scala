@@ -3,6 +3,7 @@ package io.cequence.openaiscala.anthropic.service
 import io.cequence.openaiscala.anthropic.domain.CacheControl.Ephemeral
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
 import io.cequence.openaiscala.anthropic.domain.Content.{ContentBlockBase, ContentBlocks}
+import io.cequence.openaiscala.anthropic.domain.Message.SystemMessageContent
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse.UsageInfo
 import io.cequence.openaiscala.anthropic.domain.response.{
   ContentBlockDelta,
@@ -40,7 +41,7 @@ package object impl extends AnthropicServiceConsts {
   def toAnthropicSystemMessages(
     messages: Seq[OpenAIBaseMessage],
     settings: CreateChatCompletionSettings
-  ): Option[ContentBlocks] = {
+  ): Seq[Message] = {
     val useSystemCache: Option[CacheControl] =
       if (settings.useAnthropicSystemMessagesCache) Some(Ephemeral) else None
 
@@ -55,7 +56,8 @@ package object impl extends AnthropicServiceConsts {
         }
       }
 
-    if (messageStrings.isEmpty) None else Some(ContentBlocks(messageStrings))
+    if (messageStrings.isEmpty) Seq.empty
+    else Seq(SystemMessageContent(messageStrings))
   }
 
   def toAnthropicMessages(

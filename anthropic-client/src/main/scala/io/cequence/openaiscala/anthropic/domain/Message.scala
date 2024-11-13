@@ -9,9 +9,19 @@ import io.cequence.openaiscala.anthropic.domain.Content.{
 sealed abstract class Message private (
   val role: ChatRole,
   val content: Content
-)
+) {
+  def isSystem: Boolean = role == ChatRole.System
+}
 
 object Message {
+
+  case class SystemMessage(
+    contentString: String,
+    cacheControl: Option[CacheControl] = None
+  ) extends Message(ChatRole.System, SingleString(contentString, cacheControl))
+
+  case class SystemMessageContent(contentBlocks: Seq[ContentBlockBase])
+      extends Message(ChatRole.System, ContentBlocks(contentBlocks))
 
   case class UserMessage(
     contentString: String,
