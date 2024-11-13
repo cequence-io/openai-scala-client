@@ -92,7 +92,10 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     val (system, nonSystem) = messages.partition(_.isSystem)
 
     assert(nonSystem.head.role == ChatRole.User, "First non-system message must be from user.")
-    assert(system.size <= 1, "System message can be only 1. Use SystemMessageContent to include more content blocks.")
+    assert(
+      system.size <= 1,
+      "System message can be only 1. Use SystemMessageContent to include more content blocks."
+    )
 
     val messageJsons = nonSystem.map(Json.toJson(_))
 
