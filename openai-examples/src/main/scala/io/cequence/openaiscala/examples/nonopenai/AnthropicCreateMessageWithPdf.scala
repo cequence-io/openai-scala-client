@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.examples.nonopenai
 
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{MediaBlock, TextBlock}
-import io.cequence.openaiscala.anthropic.domain.Content.{ContentBlockBase, SingleString}
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlockBase
 import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.Message.{SystemMessage, UserMessageContent}
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse
@@ -37,7 +37,6 @@ object AnthropicCreateMessageWithPdf extends ExampleBase[AnthropicService] {
   override protected def run: Future[_] =
     service
       .createMessage(
-        system = None,
         messages,
         settings = AnthropicCreateMessageSettings(
           model =

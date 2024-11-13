@@ -22,7 +22,6 @@ import io.cequence.openaiscala.domain.response.{
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettingsOps.RichCreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{
-  AssistantMessage,
   ChatRole,
   MessageSpec,
   SystemMessage,
@@ -209,7 +208,7 @@ package object impl extends AnthropicServiceConsts {
       usage = None
     )
 
-  def toOpenAIAssistantMessage(content: ContentBlocks): AssistantMessage = {
+  def toOpenAIAssistantMessage(content: ContentBlocks): OpenAIAssistantMessage = {
     val textContents = content.blocks.collect { case ContentBlockBase(TextBlock(text), _) =>
       text
     } // TODO
@@ -218,7 +217,7 @@ package object impl extends AnthropicServiceConsts {
       throw new IllegalArgumentException("No text content found in the response")
     }
     val singleTextContent = concatenateMessages(textContents)
-    AssistantMessage(singleTextContent, name = None)
+    OpenAIAssistantMessage(singleTextContent, name = None)
   }
 
   private def concatenateMessages(messageContent: Seq[String]): String =

@@ -5,7 +5,6 @@ import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.anthropic.JsonFormats
 import io.cequence.openaiscala.anthropic.domain.Message.{SystemMessage, SystemMessageContent}
-import io.cequence.openaiscala.anthropic.domain.{Message => AnthropicMessage}
 import io.cequence.openaiscala.anthropic.domain.response.{
   ContentBlockDelta,
   CreateMessageResponse
@@ -35,7 +34,6 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   private val logger = LoggerFactory.getLogger("AnthropicServiceImpl")
 
   override def createMessage(
-    system: Option[Content],
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings
   ): Future[CreateMessageResponse] =
