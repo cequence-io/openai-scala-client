@@ -8,10 +8,11 @@ import io.cequence.openaiscala.service.OpenAIChatCompletionService
 import scala.concurrent.Future
 
 // requires `openai-scala-anthropic-client` as a dependency and `ANTHROPIC_API_KEY` environment variable to be set
-object AnthropicCreateChatCompletionWithOpenAIAdapter
+object AnthropicCreateChatCompletionCachedWithOpenAIAdapter
     extends ExampleBase[OpenAIChatCompletionService] {
 
-  override val service: OpenAIChatCompletionService = ChatCompletionProvider.anthropic()
+  override val service: OpenAIChatCompletionService =
+    ChatCompletionProvider.anthropic(withCache = true)
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),

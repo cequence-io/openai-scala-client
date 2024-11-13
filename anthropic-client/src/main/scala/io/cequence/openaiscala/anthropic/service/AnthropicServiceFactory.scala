@@ -38,13 +38,14 @@ object AnthropicServiceFactory extends AnthropicServiceConsts {
    */
   def asOpenAI(
     apiKey: String = getAPIKeyFromEnv(),
-    timeouts: Option[Timeouts] = None
+    timeouts: Option[Timeouts] = None,
+    withCache: Boolean = false
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer
   ): OpenAIChatCompletionStreamedService =
     new OpenAIAnthropicChatCompletionService(
-      AnthropicServiceFactory(apiKey, timeouts)
+      AnthropicServiceFactory(apiKey, timeouts, withPdf = false, withCache)
     )
 
   /**

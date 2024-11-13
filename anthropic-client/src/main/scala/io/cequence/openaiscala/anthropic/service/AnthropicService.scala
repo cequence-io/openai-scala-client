@@ -32,6 +32,7 @@ trait AnthropicService extends CloseableService with AnthropicServiceConsts {
    *   <a href="https://docs.anthropic.com/claude/reference/messages_post">Anthropic Doc</a>
    */
   def createMessage(
+    system: Option[Content],
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings = DefaultSettings.CreateMessage
   ): Future[CreateMessageResponse]
