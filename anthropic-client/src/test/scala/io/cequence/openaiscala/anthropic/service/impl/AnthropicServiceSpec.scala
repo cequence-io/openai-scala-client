@@ -2,6 +2,7 @@ package io.cequence.openaiscala.anthropic.service.impl
 
 import akka.actor.ActorSystem
 import akka.stream.Materializer
+import io.cequence.openaiscala.anthropic.domain.Content.SingleString
 import io.cequence.openaiscala.anthropic.domain.Message.UserMessage
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.service._
@@ -17,6 +18,7 @@ class AnthropicServiceSpec extends AsyncWordSpec with GivenWhenThen {
   implicit val ec: ExecutionContext = ExecutionContext.global
   implicit val materializer: Materializer = Materializer(ActorSystem())
 
+  private val role = SingleString("You are a helpful assistant.")
   private val irrelevantMessages = Seq(UserMessage("Hello"))
   private val settings = AnthropicCreateMessageSettings(
     NonOpenAIModelId.claude_3_haiku_20240307,
@@ -27,25 +29,25 @@ class AnthropicServiceSpec extends AsyncWordSpec with GivenWhenThen {
 
     "should throw AnthropicScalaUnauthorizedException when 401" ignore {
       recoverToSucceededIf[AnthropicScalaUnauthorizedException] {
-        TestFactory.mockedService401().createMessage(irrelevantMessages, None, settings)
+        TestFactory.mockedService401().createMessage(Some(role), irrelevantMessages, settings)
       }
     }
 
     "should throw AnthropicScalaUnauthorizedException when 403" ignore {
       recoverToSucceededIf[AnthropicScalaUnauthorizedException] {
-        TestFactory.mockedService403().createMessage(irrelevantMessages, None, settings)
+        TestFactory.mockedService403().createMessage(Some(role), irrelevantMessages, settings)
       }
     }
 
     "should throw AnthropicScalaNotFoundException when 404" ignore {
       recoverToSucceededIf[AnthropicScalaNotFoundException] {
-        TestFactory.mockedService404().createMessage(irrelevantMessages, None, settings)
+        TestFactory.mockedService404().createMessage(Some(role), irrelevantMessages, settings)
       }
     }
 
     "should throw AnthropicScalaNotFoundException when 429" ignore {
       recoverToSucceededIf[AnthropicScalaRateLimitException] {
-        TestFactory.mockedService429().createMessage(irrelevantMessages, None, settings)
+        TestFactory.mockedService429().createMessage(Some(role), irrelevantMessages, settings)
       }
     }
 
