@@ -64,6 +64,53 @@ trait JsonFormats {
       }
     }
 
+  implicit lazy val contentBlockBaseWrites: Writes[ContentBlockBase] = {
+    case ContentBlockBase(textBlock @ TextBlock(_), cacheControl) =>
+      Json.obj("type" -> "text") ++
+        Json.toJson(textBlock)(textBlockWrites).as[JsObject] ++
+        cacheControlToJsObject(cacheControl)
+    case ContentBlockBase(media @ MediaBlock(_, _, _, _), maybeCacheControl) =>
+      Json.toJson(media)(mediaBlockWrites).as[JsObject] ++
+        cacheControlToJsObject(maybeCacheControl)
+
+  }
+
+  implicit lazy val contentBlockBaseReads: Reads[ContentBlockBase] =
+    (json: JsValue) => {
+      (json \ "type").validate[String].flatMap {
+        case "text" =>
+          ((json \ "text").validate[String] and
+            (json \ "cache_control").validateOpt[CacheControl]).tupled.flatMap {
+            case (text, cacheControl) =>
+              JsSuccess(ContentBlockBase(TextBlock(text), cacheControl))
+            case _ => JsError("Invalid text block")
+          }
+
+        case imageOrDocument @ ("image" | "document") =>
+          for {
+            source <- (json \ "source").validate[JsObject]
+            `type` <- (source \ "type").validate[String]
+            mediaType <- (source \ "media_type").validate[String]
+            data <- (source \ "data").validate[String]
+            cacheControl <- (json \ "cache_control").validateOpt[CacheControl]
+          } yield ContentBlockBase(
+            MediaBlock(imageOrDocument, `type`, mediaType, data),
+            cacheControl
+          )
+
+        case _ => JsError("Unsupported or invalid content block")
+      }
+    }
+
+  implicit lazy val contentBlockBaseFormat: Format[ContentBlockBase] = Format(
+    contentBlockBaseReads,
+    contentBlockBaseWrites
+  )
+  implicit lazy val contentBlockBaseSeqFormat: Format[Seq[ContentBlockBase]] = Format(
+    Reads.seq(contentBlockBaseReads),
+    Writes.seq(contentBlockBaseWrites)
+  )
+
   implicit lazy val userMessageFormat: Format[UserMessage] = Json.format[UserMessage]
   implicit lazy val userMessageContentFormat: Format[UserMessageContent] =
     Json.format[UserMessageContent]
@@ -100,44 +147,6 @@ trait JsonFormats {
   private def cacheControlToJsObject(maybeCacheControl: Option[CacheControl]): JsObject =
     maybeCacheControl.fold(Json.obj())(cc => writeJsObject(cc))
 
-  implicit lazy val contentBlockWrites: Writes[ContentBlockBase] = {
-    case ContentBlockBase(textBlock @ TextBlock(_), cacheControl) =>
-      Json.obj("type" -> "text") ++
-        Json.toJson(textBlock)(textBlockWrites).as[JsObject] ++
-        cacheControlToJsObject(cacheControl)
-    case ContentBlockBase(media @ MediaBlock(_, _, _, _), maybeCacheControl) =>
-      Json.toJson(media)(mediaBlockWrites).as[JsObject] ++
-        cacheControlToJsObject(maybeCacheControl)
-
-  }
-
-  implicit lazy val contentBlockReads: Reads[ContentBlockBase] =
-    (json: JsValue) => {
-      (json \ "type").validate[String].flatMap {
-        case "text" =>
-          ((json \ "text").validate[String] and
-            (json \ "cache_control").validateOpt[CacheControl]).tupled.flatMap {
-            case (text, cacheControl) =>
-              JsSuccess(ContentBlockBase(TextBlock(text), cacheControl))
-            case _ => JsError("Invalid text block")
-          }
-
-        case imageOrDocument @ ("image" | "document") =>
-          for {
-            source <- (json \ "source").validate[JsObject]
-            `type` <- (source \ "type").validate[String]
-            mediaType <- (source \ "media_type").validate[String]
-            data <- (source \ "data").validate[String]
-            cacheControl <- (json \ "cache_control").validateOpt[CacheControl]
-          } yield ContentBlockBase(
-            MediaBlock(imageOrDocument, `type`, mediaType, data),
-            cacheControl
-          )
-
-        case _ => JsError("Unsupported or invalid content block")
-      }
-    }
-
   implicit lazy val contentReads: Reads[Content] = new Reads[Content] {
     def reads(json: JsValue): JsResult[Content] = json match {
       case JsString(str) => JsSuccess(SingleString(str))
@@ -151,7 +160,7 @@ trait JsonFormats {
       case SingleString(text, cacheControl) =>
         Json.obj("content" -> text) ++ cacheControlToJsObject(cacheControl)
       case ContentBlocks(blocks) =>
-        Json.obj("content" -> Json.toJson(blocks)(Writes.seq(contentBlockWrites)))
+        Json.obj("content" -> Json.toJson(blocks)(Writes.seq(contentBlockBaseWrites)))
     }
   }
 
@@ -164,7 +173,7 @@ trait JsonFormats {
       case UserMessageContent(content) =>
         Json.obj(
           "role" -> "user",
-          "content" -> content.map(Json.toJson(_)(contentBlockWrites))
+          "content" -> content.map(Json.toJson(_)(contentBlockBaseWrites))
         )
 
       case AssistantMessage(content, cacheControl) =>
@@ -174,7 +183,7 @@ trait JsonFormats {
       case AssistantMessageContent(content) =>
         Json.obj(
           "role" -> "assistant",
-          "content" -> content.map(Json.toJson(_)(contentBlockWrites))
+          "content" -> content.map(Json.toJson(_)(contentBlockBaseWrites))
         )
       // Add cases for other subclasses if necessary
     }

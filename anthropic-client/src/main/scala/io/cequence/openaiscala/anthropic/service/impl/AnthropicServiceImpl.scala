@@ -100,13 +100,13 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
           val blocks =
             Seq(Content.ContentBlockBase(Content.ContentBlock.TextBlock(text), cacheControl))
 
-          Json.toJson(blocks)(Writes.seq(contentBlockWrites))
+          Json.toJson(blocks)(Writes.seq(contentBlockBaseWrites))
         }
       case Content.ContentBlocks(blocks) =>
-        Json.toJson(blocks)(Writes.seq(contentBlockWrites))
+        Json.toJson(blocks)(Writes.seq(contentBlockBaseWrites))
       case Content.ContentBlockBase(content, cacheControl) =>
         val blocks = Seq(Content.ContentBlockBase(content, cacheControl))
-        Json.toJson(blocks)(Writes.seq(contentBlockWrites))
+        Json.toJson(blocks)(Writes.seq(contentBlockBaseWrites))
     }
 
     jsonBodyParams(
