@@ -17,9 +17,7 @@ object AnthropicCreateSystemMessage extends ExampleBase[AnthropicService] {
 
   override protected val service: AnthropicService = AnthropicServiceFactory()
 
-  val systemMessages: Option[Content] = Some(
-    SingleString("Talk in pirate speech")
-  )
+  val systemMessage: Content = SingleString("Talk in pirate speech")
   val messages: Seq[Message] = Seq(
     UserMessage("Who is the most famous football player in the World?")
   )
@@ -27,8 +25,8 @@ object AnthropicCreateSystemMessage extends ExampleBase[AnthropicService] {
   override protected def run: Future[_] =
     service
       .createMessage(
+        Some(systemMessage),
         messages,
-        Some(SingleString("You answer in pirate speech.")),
         settings = AnthropicCreateMessageSettings(
           model = NonOpenAIModelId.claude_3_haiku_20240307,
           max_tokens = 4096

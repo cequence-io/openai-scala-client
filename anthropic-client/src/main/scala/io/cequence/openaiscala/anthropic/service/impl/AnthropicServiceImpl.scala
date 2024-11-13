@@ -33,8 +33,8 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   private val logger = LoggerFactory.getLogger("AnthropicServiceImpl")
 
   override def createMessage(
+    system: Option[Content],
     messages: Seq[Message],
-    system: Option[Content] = None,
     settings: AnthropicCreateMessageSettings
   ): Future[CreateMessageResponse] =
     execPOST(

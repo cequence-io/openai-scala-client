@@ -1,7 +1,8 @@
 package io.cequence.openaiscala.examples.nonopenai
 
 import akka.stream.scaladsl.Sink
-import io.cequence.openaiscala.anthropic.domain.Message
+import io.cequence.openaiscala.anthropic.domain.Content.SingleString
+import io.cequence.openaiscala.anthropic.domain.{Content, Message}
 import io.cequence.openaiscala.anthropic.domain.Message.UserMessage
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.service.{AnthropicService, AnthropicServiceFactory}
@@ -15,12 +16,13 @@ object AnthropicCreateMessageStreamed extends ExampleBase[AnthropicService] {
 
   override protected val service: AnthropicService = AnthropicServiceFactory()
 
+  val systemMessage: Content = SingleString("You are a helpful assistant.")
   val messages: Seq[Message] = Seq(UserMessage("What is the weather like in Norway?"))
 
   override protected def run: Future[_] =
     service
       .createMessageStreamed(
-        None,
+        Some(systemMessage),
         messages,
         settings = AnthropicCreateMessageSettings(
           model = NonOpenAIModelId.claude_3_haiku_20240307,

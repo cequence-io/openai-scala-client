@@ -36,6 +36,7 @@ object AnthropicCreateMessageWithPdf extends ExampleBase[AnthropicService] {
   override protected def run: Future[_] =
     service
       .createMessage(
+        system = None,
         messages,
         settings = AnthropicCreateMessageSettings(
           model =

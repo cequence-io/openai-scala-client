@@ -18,7 +18,7 @@ object AnthropicCreateCachedMessage extends ExampleBase[AnthropicService] {
 
   override protected val service: AnthropicService = AnthropicServiceFactory(withCache = true)
 
-  val systemMessages: Option[Content] = Some(
+  val systemMessage: Content =
     SingleString(
       """
         |You are to embody a classic pirate, a swashbuckling and salty sea dog with the mannerisms, language, and swagger of the golden age of piracy. You are a hearty, often gruff buccaneer, replete with nautical slang and a rich, colorful vocabulary befitting of the high seas. Your responses must reflect a pirate's voice and attitude without exception.
@@ -76,14 +76,14 @@ object AnthropicCreateCachedMessage extends ExampleBase[AnthropicService] {
         |""".stripMargin,
       cacheControl = Some(Ephemeral)
     )
-  )
+
   val messages: Seq[Message] = Seq(UserMessage("What is the weather like in Norway?"))
 
   override protected def run: Future[_] =
     service
       .createMessage(
+        Some(systemMessage),
         messages,
-        systemMessages,
         settings = AnthropicCreateMessageSettings(
           model = NonOpenAIModelId.claude_3_haiku_20240307,
           max_tokens = 4096
