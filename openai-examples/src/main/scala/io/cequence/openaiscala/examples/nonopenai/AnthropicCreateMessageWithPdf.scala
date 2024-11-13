@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.examples.nonopenai
 
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{MediaBlock, TextBlock}
-import io.cequence.openaiscala.anthropic.domain.Content.ContentBlockBase
+import io.cequence.openaiscala.anthropic.domain.Content.{ContentBlockBase, SingleString}
 import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.Message.UserMessageContent
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse
@@ -37,7 +37,6 @@ object AnthropicCreateMessageWithPdf extends ExampleBase[AnthropicService] {
     service
       .createMessage(
         messages,
-        None,
         settings = AnthropicCreateMessageSettings(
           model =
             NonOpenAIModelId.claude_3_5_sonnet_20241022, // claude-3-5-sonnet-20241022 supports PDF (beta)
