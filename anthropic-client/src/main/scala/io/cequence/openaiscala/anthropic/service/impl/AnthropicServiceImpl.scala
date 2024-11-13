@@ -112,7 +112,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     jsonBodyParams(
       Param.messages -> Some(messageJsons),
       Param.model -> Some(settings.model),
-      Param.system -> Some(systemJson),
+      Param.system -> system.map(_ => systemJson),
       Param.max_tokens -> Some(settings.max_tokens),
       Param.metadata -> { if (settings.metadata.isEmpty) None else Some(settings.metadata) },
       Param.stop_sequences -> {
