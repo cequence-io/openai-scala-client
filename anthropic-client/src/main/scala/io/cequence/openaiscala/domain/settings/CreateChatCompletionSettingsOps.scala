@@ -7,10 +7,23 @@ object CreateChatCompletionSettingsOps {
     private val AnthropicCachedUserMessagesCount = "cached_user_messages_count"
     private val AnthropicUseSystemMessagesCache = "use_system_messages_cache"
 
+    def setAnthropicCachedUserMessagesCount(count: Int): CreateChatCompletionSettings =
+      settings.copy(
+        extra_params = settings.extra_params + (AnthropicCachedUserMessagesCount -> count)
+      )
+
+    def setUseAnthropicSystemMessagesCache(useCache: Boolean): CreateChatCompletionSettings =
+      settings.copy(
+        extra_params = settings.extra_params + (AnthropicUseSystemMessagesCache -> useCache)
+      )
+
     def anthropicCachedUserMessagesCount: Int =
       settings.extra_params
         .get(AnthropicCachedUserMessagesCount)
-        .flatMap(numberAsString => Try(numberAsString.toString.toInt).toOption)
+        .flatMap {
+          case value: Int => Some(value)
+          case value: Any => Try(value.toString.toInt).toOption
+        }
         .getOrElse(0)
 
     def useAnthropicSystemMessagesCache: Boolean =

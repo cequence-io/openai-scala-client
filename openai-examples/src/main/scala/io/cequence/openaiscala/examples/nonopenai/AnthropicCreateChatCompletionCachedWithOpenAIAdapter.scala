@@ -11,7 +11,8 @@ import scala.concurrent.Future
 object AnthropicCreateChatCompletionCachedWithOpenAIAdapter
     extends ExampleBase[OpenAIChatCompletionService] {
 
-  override val service: OpenAIChatCompletionService = ChatCompletionProvider.anthropic(withCache = true)
+  override val service: OpenAIChatCompletionService =
+    ChatCompletionProvider.anthropic(withCache = true)
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),

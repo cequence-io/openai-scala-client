@@ -83,7 +83,8 @@ object ChatCompletionProvider {
    * Requires `ANTHROPIC_API_KEY`
    */
   def anthropic(
-    withCache: Boolean = false)(
+    withCache: Boolean = false
+  )(
     implicit ec: ExecutionContext,
     m: Materializer
   ): OpenAIChatCompletionStreamedService =
