@@ -38,7 +38,6 @@ object AnthropicCreateMessageWithImage extends ExampleBase[AnthropicService] {
   override protected def run: Future[_] =
     service
       .createMessage(
-        system = None,
         messages,
         settings = AnthropicCreateMessageSettings(
           model = NonOpenAIModelId.claude_3_opus_20240229,

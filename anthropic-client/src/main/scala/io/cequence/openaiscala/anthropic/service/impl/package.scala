@@ -3,6 +3,7 @@ package io.cequence.openaiscala.anthropic.service
 import io.cequence.openaiscala.anthropic.domain.CacheControl.Ephemeral
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
 import io.cequence.openaiscala.anthropic.domain.Content.{ContentBlockBase, ContentBlocks}
+import io.cequence.openaiscala.anthropic.domain.Message.SystemMessageContent
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse.UsageInfo
 import io.cequence.openaiscala.anthropic.domain.response.{
   ContentBlockDelta,
@@ -21,7 +22,6 @@ import io.cequence.openaiscala.domain.response.{
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettingsOps.RichCreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{
-  AssistantMessage,
   ChatRole,
   MessageSpec,
   SystemMessage,
@@ -30,7 +30,8 @@ import io.cequence.openaiscala.domain.{
   ImageURLContent => OpenAIImageContent,
   TextContent => OpenAITextContent,
   UserMessage => OpenAIUserMessage,
-  UserSeqMessage => OpenAIUserSeqMessage
+  UserSeqMessage => OpenAIUserSeqMessage,
+  AssistantMessage => OpenAIAssistantMessage
 }
 
 import java.{util => ju}
@@ -40,7 +41,7 @@ package object impl extends AnthropicServiceConsts {
   def toAnthropicSystemMessages(
     messages: Seq[OpenAIBaseMessage],
     settings: CreateChatCompletionSettings
-  ): Option[ContentBlocks] = {
+  ): Seq[Message] = {
     val useSystemCache: Option[CacheControl] =
       if (settings.useAnthropicSystemMessagesCache) Some(Ephemeral) else None
 
@@ -55,7 +56,8 @@ package object impl extends AnthropicServiceConsts {
         }
       }
 
-    if (messageStrings.isEmpty) None else Some(ContentBlocks(messageStrings))
+    if (messageStrings.isEmpty) Seq.empty
+    else Seq(SystemMessageContent(messageStrings))
   }
 
   def toAnthropicMessages(
@@ -67,6 +69,8 @@ package object impl extends AnthropicServiceConsts {
       case OpenAIUserMessage(content, _) => Message.UserMessage(content)
       case OpenAIUserSeqMessage(contents, _) =>
         Message.UserMessageContent(contents.map(toAnthropic))
+      case OpenAIAssistantMessage(content, _) => Message.AssistantMessage(content)
+
       // legacy message type
       case MessageSpec(role, content, _) if role == ChatRole.User =>
         Message.UserMessage(content)
@@ -204,7 +208,7 @@ package object impl extends AnthropicServiceConsts {
       usage = None
     )
 
-  def toOpenAIAssistantMessage(content: ContentBlocks): AssistantMessage = {
+  def toOpenAIAssistantMessage(content: ContentBlocks): OpenAIAssistantMessage = {
     val textContents = content.blocks.collect { case ContentBlockBase(TextBlock(text), _) =>
       text
     } // TODO
@@ -213,7 +217,7 @@ package object impl extends AnthropicServiceConsts {
       throw new IllegalArgumentException("No text content found in the response")
     }
     val singleTextContent = concatenateMessages(textContents)
-    AssistantMessage(singleTextContent, name = None)
+    OpenAIAssistantMessage(singleTextContent, name = None)
   }
 
   private def concatenateMessages(messageContent: Seq[String]): String =

@@ -1,9 +1,9 @@
 package io.cequence.openaiscala.examples.nonopenai
 
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{MediaBlock, TextBlock}
-import io.cequence.openaiscala.anthropic.domain.Content.{ContentBlockBase, SingleString}
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlockBase
 import io.cequence.openaiscala.anthropic.domain.Message
-import io.cequence.openaiscala.anthropic.domain.Message.UserMessageContent
+import io.cequence.openaiscala.anthropic.domain.Message.{SystemMessage, UserMessageContent}
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.service.{AnthropicService, AnthropicServiceFactory}
@@ -25,6 +25,7 @@ object AnthropicCreateMessageWithPdf extends ExampleBase[AnthropicService] {
   override protected val service: AnthropicService = AnthropicServiceFactory(withPdf = true)
 
   private val messages: Seq[Message] = Seq(
+    SystemMessage("Talk in pirate speech. Reply to this prompt as a real pirate!"),
     UserMessageContent(
       Seq(
         ContentBlockBase(TextBlock("Describe to me what is this PDF about!")),
@@ -36,7 +37,6 @@ object AnthropicCreateMessageWithPdf extends ExampleBase[AnthropicService] {
   override protected def run: Future[_] =
     service
       .createMessage(
-        system = None,
         messages,
         settings = AnthropicCreateMessageSettings(
           model =

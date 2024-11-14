@@ -7,8 +7,9 @@ sealed trait ChatRole extends EnumValue {
 }
 
 object ChatRole {
+  case object System extends ChatRole
   case object User extends ChatRole
   case object Assistant extends ChatRole
 
-  def allValues: Seq[ChatRole] = Seq(User, Assistant)
+  def allValues: Seq[ChatRole] = Seq(System, User, Assistant)
 }
