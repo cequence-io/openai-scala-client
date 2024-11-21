@@ -172,6 +172,8 @@ object ModelId {
   // flagship multimodal model, 128K context, currently points to "gpt-4o-2024-08-06, training data up to Oct 2023
   val gpt_4o = "gpt-4o"
   // context window: 128,000 tokens, output tokens:	16,384 tokens, Up to Oct 2023
+  val gpt_4o_2024_11_20 = "gpt-4o-2024-11-20"
+  // context window: 128,000 tokens, output tokens:	16,384 tokens, Up to Oct 2023
   val gpt_4o_2024_08_06 = "gpt-4o-2024-08-06"
   // context window: 128,000 tokens, output tokens:	4,096 tokens, Up to Oct 2023
   val gpt_4o_2024_05_13 = "gpt-4o-2024-05-13"
