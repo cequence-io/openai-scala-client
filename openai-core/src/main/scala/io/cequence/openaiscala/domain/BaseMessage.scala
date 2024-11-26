@@ -3,7 +3,7 @@ package io.cequence.openaiscala.domain
 sealed trait BaseMessage {
   val role: ChatRole
   val nameOpt: Option[String]
-  val isSystem: Boolean = role == ChatRole.System
+  def isSystem: Boolean = role == ChatRole.System
 }
 
 final case class SystemMessage(
