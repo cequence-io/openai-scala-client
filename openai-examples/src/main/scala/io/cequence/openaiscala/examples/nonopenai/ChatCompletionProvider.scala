@@ -90,6 +90,16 @@ object ChatCompletionProvider {
   ): OpenAIChatCompletionStreamedService =
     AnthropicServiceFactory.asOpenAI(withCache = withCache)
 
+  def deepseek(
+    implicit ec: ExecutionContext,
+    m: Materializer
+  ): OpenAIChatCompletionStreamedService = provide(ChatProviderSettings.deepseek)
+
+  def deepseekBeta(
+    implicit ec: ExecutionContext,
+    m: Materializer
+  ): OpenAIChatCompletionStreamedService = provide(ChatProviderSettings.deepseekBeta)
+
   private def provide(
     settings: ProviderSettings
   )(

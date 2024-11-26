@@ -202,4 +202,9 @@ object NonOpenAIModelId {
 
   // context 131072
   val grok_beta = "grok-beta"
+
+  // Deepseek
+  // context 64K, 4K (8KBeta)
+  val deepseek_chat = "deepseek-chat"
+  val deepseek_coder = "deepseek-coder"
 }

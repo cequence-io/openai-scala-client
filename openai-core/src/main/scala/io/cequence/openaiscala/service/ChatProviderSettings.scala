@@ -13,4 +13,6 @@ object ChatProviderSettings {
   val togetherAI =
     ProviderSettings("https://api.together.xyz/v1/", "TOGETHERAI_API_KEY")
   val grok = ProviderSettings("https://api.x.ai/v1/", "GROK_API_KEY")
+  val deepseek = ProviderSettings("https://api.deepseek.com/", "DEEPSEEK_API_KEY")
+  val deepseekBeta = ProviderSettings("https://api.deepseek.com/beta/", "DEEPSEEK_API_KEY")
 }
