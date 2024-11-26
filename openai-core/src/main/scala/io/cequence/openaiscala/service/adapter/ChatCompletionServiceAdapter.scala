@@ -7,6 +7,7 @@ import io.cequence.wsclient.service.CloseableService
 
 import scala.concurrent.Future
 import io.cequence.openaiscala.domain.response.ChatCompletionResponse
+import io.cequence.wsclient.service.adapter.ServiceWrapper
 
 private class ChatCompletionServiceAdapter[S <: CloseableService](
   chatCompletionService: OpenAIChatCompletionService,
@@ -16,7 +17,7 @@ private class ChatCompletionServiceAdapter[S <: CloseableService](
     with OpenAIChatCompletionService {
 
   // we just delegate all the calls to the underlying service
-  override protected[adapter] def wrap[T](
+  override def wrap[T](
     fun: S => Future[T]
   ): Future[T] = fun(underlying)
 

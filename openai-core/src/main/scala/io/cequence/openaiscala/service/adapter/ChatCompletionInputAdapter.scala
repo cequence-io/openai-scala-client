@@ -5,6 +5,7 @@ import io.cequence.openaiscala.domain.response.ChatCompletionResponse
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
 import io.cequence.wsclient.service.CloseableService
+import io.cequence.wsclient.service.adapter.ServiceWrapper
 
 import scala.concurrent.Future
 
@@ -18,7 +19,7 @@ private class ChatCompletionInputAdapter[S <: OpenAIChatCompletionService](
     with OpenAIChatCompletionService {
 
   // we just delegate all the calls to the underlying service
-  override protected[adapter] def wrap[T](
+  override def wrap[T](
     fun: S => Future[T]
   ): Future[T] = fun(underlying)
 

@@ -4,6 +4,7 @@ import akka.actor.Scheduler
 import io.cequence.openaiscala.RetryHelpers
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import io.cequence.wsclient.service.CloseableService
+import io.cequence.wsclient.service.adapter.{FunctionNameHelper, ServiceWrapper}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -20,7 +21,7 @@ private class RetryServiceAdapter[+S <: CloseableService](
     with FunctionNameHelper
     with RetryHelpers {
 
-  override protected[adapter] def wrap[T](
+  override def wrap[T](
     fun: S => Future[T]
   ): Future[T] =
     fun(underlying).retryOnFailure(

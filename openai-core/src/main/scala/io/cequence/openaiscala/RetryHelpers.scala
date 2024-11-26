@@ -85,6 +85,7 @@ trait RetryHelpers {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
+  // TODO: would be better to reevaluate the future otherwise we handle give a chance only to "external" exceptions
   implicit class FutureWithRetry[T](f: Future[T]) {
 
     def retryOnFailure(

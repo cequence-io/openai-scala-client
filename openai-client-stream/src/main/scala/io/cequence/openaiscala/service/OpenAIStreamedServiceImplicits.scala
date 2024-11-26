@@ -4,24 +4,14 @@ import akka.NotUsed
 import akka.stream.Materializer
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.domain.BaseMessage
-import io.cequence.openaiscala.domain.response.{
-  ChatCompletionChunkResponse,
-  TextCompletionResponse
-}
-import io.cequence.openaiscala.domain.settings.{
-  CreateChatCompletionSettings,
-  CreateCompletionSettings
-}
+import io.cequence.openaiscala.domain.response.{ChatCompletionChunkResponse, TextCompletionResponse}
+import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, CreateCompletionSettings}
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIStreamedService
-import io.cequence.openaiscala.service.adapter.ServiceWrapperTypes.CloseableServiceWrapper
-import io.cequence.openaiscala.service.adapter.{
-  OpenAIChatCompletionServiceWrapper,
-  OpenAICoreServiceWrapper,
-  OpenAIServiceWrapper,
-  SimpleServiceWrapper
-}
+import io.cequence.openaiscala.service.adapter.{OpenAIChatCompletionServiceWrapper, OpenAICoreServiceWrapper, OpenAIServiceWrapper}
 import io.cequence.wsclient.domain.WsRequestContext
 import io.cequence.wsclient.service.CloseableService
+import io.cequence.wsclient.service.adapter.ServiceWrapperTypes.CloseableServiceWrapper
+import io.cequence.wsclient.service.adapter.SimpleServiceWrapper
 
 import scala.concurrent.ExecutionContext
 

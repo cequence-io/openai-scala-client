@@ -1,23 +1,12 @@
 package io.cequence.openaiscala.service.adapter
 
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.openaiscala.domain.{
-  AssistantMessage,
-  BaseMessage,
-  SystemMessage,
-  UserMessage
-}
-import io.cequence.openaiscala.domain.response.{
-  ChatCompletionChoiceInfo,
-  ChatCompletionResponse,
-  TextCompletionResponse
-}
-import io.cequence.openaiscala.domain.settings.{
-  CreateChatCompletionSettings,
-  CreateCompletionSettings
-}
+import io.cequence.openaiscala.domain.{AssistantMessage, BaseMessage, SystemMessage, UserMessage}
+import io.cequence.openaiscala.domain.response.{ChatCompletionChoiceInfo, ChatCompletionResponse, TextCompletionResponse}
+import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, CreateCompletionSettings}
 import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAICompletionService}
 import io.cequence.wsclient.service.CloseableService
+import io.cequence.wsclient.service.adapter.ServiceWrapper
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -32,7 +21,7 @@ private class ChatToCompletionAdapter[
     with OpenAIChatCompletionService {
 
   // we just delegate all the calls to the underlying service
-  override protected[adapter] def wrap[T](
+  override def wrap[T](
     fun: S => Future[T]
   ): Future[T] = fun(underlying)
 

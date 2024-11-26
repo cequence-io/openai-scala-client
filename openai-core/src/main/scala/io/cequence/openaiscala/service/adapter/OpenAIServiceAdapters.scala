@@ -1,16 +1,13 @@
 package io.cequence.openaiscala.service.adapter
 
-import akka.actor.Scheduler
-import akka.stream.Materializer
-import io.cequence.openaiscala.RetryHelpers.RetrySettings
-import io.cequence.openaiscala.Retryable
 import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.service._
 import io.cequence.openaiscala.service.adapter.ServiceWrapperTypes._
 import io.cequence.wsclient.service.CloseableService
+import io.cequence.wsclient.service.adapter.ServiceWrapperTypes.CloseableServiceWrapper
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 object OpenAIServiceAdapters {
 
@@ -24,53 +21,7 @@ object OpenAIServiceAdapters {
     new OpenAIServiceAdaptersImpl()
 }
 
-trait OpenAIServiceAdapters[S <: CloseableService] {
-
-  def roundRobin(
-    underlyings: S*
-  ): S =
-    wrapAndDelegate(new RoundRobinAdapter(underlyings))
-
-  def randomOrder(
-    underlyings: S*
-  ): S =
-    wrapAndDelegate(new RandomOrderAdapter(underlyings))
-
-  def parallelTakeFirst(
-    underlyings: S*
-  )(
-    implicit materializer: Materializer
-  ): S =
-    wrapAndDelegate(new ParallelTakeFirstAdapter(underlyings))
-
-  def retry(
-    underlying: S,
-    log: Option[String => Unit] = None,
-    isRetryable: Throwable => Boolean = {
-      case Retryable(_) => true
-      case _            => false
-    }
-  )(
-    implicit ec: ExecutionContext,
-    retrySettings: RetrySettings,
-    scheduler: Scheduler
-  ): S =
-    wrapAndDelegate(new RetryServiceAdapter(underlying, log, isRetryable))
-
-  def log(
-    underlying: S,
-    serviceName: String,
-    log: String => Unit
-  ): S =
-    wrapAndDelegate(new LogServiceAdapter(underlying, serviceName, log))
-
-  def preAction(
-    underlying: S,
-    action: () => Future[Unit]
-  )(
-    implicit ec: ExecutionContext
-  ): S =
-    wrapAndDelegate(new PreServiceAdapter(underlying, action))
+trait OpenAIServiceAdapters[S <: CloseableService] extends ServiceAdapters[S] {
 
   def chatCompletion(
     chatCompletionService: OpenAIChatCompletionService,
@@ -118,10 +69,6 @@ trait OpenAIServiceAdapters[S <: CloseableService] {
     implicit ec: ExecutionContext
   ): S =
     wrapAndDelegateChatCompletion(new ChatToCompletionAdapter(service))
-
-  protected def wrapAndDelegate(
-    delegate: CloseableServiceWrapper[S]
-  ): S
 
   protected def wrapAndDelegateChatCompletion(
     delegate: ChatCompletionCloseableServiceWrapper[S]
