@@ -103,11 +103,12 @@ package object impl extends AnthropicServiceConsts {
 
             case Message.UserMessageContent(contentBlocks) =>
               val (newContentBlocks, remainingCache) =
-                contentBlocks.foldLeft((Seq.empty[ContentBlockBase], userMessagesToCacheCount)) {
-                  case ((acc, cacheLeft), content) =>
-                    val (block, newCacheLeft) =
-                      toAnthropic(cacheLeft)(content.asInstanceOf[OpenAIContent])
-                    (acc :+ block, newCacheLeft)
+                contentBlocks.foldLeft(
+                  (Seq.empty[ContentBlockBase], userMessagesToCacheCount)
+                ) { case ((acc, cacheLeft), content) =>
+                  val (block, newCacheLeft) =
+                    toAnthropic(cacheLeft)(content.asInstanceOf[OpenAIContent])
+                  (acc :+ block, newCacheLeft)
                 }
               (acc :+ Message.UserMessageContent(newContentBlocks), remainingCache)
 
