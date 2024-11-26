@@ -12,7 +12,8 @@ import scala.concurrent.Future
 object DeepseekCreateChatCompletionStreamed
     extends ExampleBase[OpenAIChatCompletionStreamedServiceExtra] {
 
-  override val service: OpenAIChatCompletionStreamedServiceExtra = ChatCompletionProvider.deepseekBeta
+  override val service: OpenAIChatCompletionStreamedServiceExtra =
+    ChatCompletionProvider.deepseekBeta
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),

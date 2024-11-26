@@ -7,7 +7,11 @@ import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.adapter.ServiceWrapperTypes._
-import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAICoreService, OpenAIService}
+import io.cequence.openaiscala.service.{
+  OpenAIChatCompletionService,
+  OpenAICoreService,
+  OpenAIService
+}
 import io.cequence.wsclient.service.adapter.DelegatedCloseableServiceWrapper
 import io.cequence.wsclient.service.adapter.ServiceWrapperTypes.CloseableServiceWrapper
 
