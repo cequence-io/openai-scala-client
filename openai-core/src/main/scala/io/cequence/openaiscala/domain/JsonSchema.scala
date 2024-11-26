@@ -12,11 +12,16 @@ object JsonSchema {
   import java.lang.{String => JString}
 
   case class Object(
-    properties: Map[JString, JsonSchema],
+    properties: Seq[(JString, JsonSchema)],
     required: Seq[JString] = Nil
   ) extends JsonSchema {
     override val `type` = JsonType.Object
   }
+
+  def Object(
+    properties: Map[JString, JsonSchema],
+    required: Seq[JString] = Nil
+  ): Object = Object(properties.toSeq, required)
 
   case class String(
     description: Option[JString] = None,

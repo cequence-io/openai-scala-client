@@ -7,7 +7,7 @@ import io.cequence.openaiscala.service.OpenAIChatCompletionService
 import io.cequence.openaiscala.service.adapter.ServiceWrapperTypes._
 import io.cequence.wsclient.service.CloseableService
 import io.cequence.wsclient.service.adapter.ServiceWrapperTypes.CloseableServiceWrapper
-import io.cequence.wsclient.service.adapter.{DelegatedCloseableServiceWrapper, ServiceWrapper}
+import io.cequence.wsclient.service.adapter.DelegatedCloseableServiceWrapper
 
 import scala.concurrent.Future
 
