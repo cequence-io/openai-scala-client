@@ -5,7 +5,7 @@ This is a no-nonsense async Scala client for OpenAI API supporting all the avail
 
 * **Models**: [listModels](https://platform.openai.com/docs/api-reference/models/list), and [retrieveModel](https://platform.openai.com/docs/api-reference/models/retrieve)
 * **Completions**: [createCompletion](https://platform.openai.com/docs/api-reference/completions/create)
-* **Chat Completions**: [createChatCompletion](https://platform.openai.com/docs/api-reference/chat/create) (also with JSON schema support 🔥), [createChatFunCompletion](https://platform.openai.com/docs/api-reference/chat/create) (deprecated), and [createChatToolCompletion](https://platform.openai.com/docs/api-reference/chat/create)
+* **Chat Completions**: [createChatCompletion](https://platform.openai.com/docs/api-reference/chat/create), [createChatFunCompletion](https://platform.openai.com/docs/api-reference/chat/create) (deprecated), and [createChatToolCompletion](https://platform.openai.com/docs/api-reference/chat/create)
 * **Edits**: [createEdit](https://platform.openai.com/docs/api-reference/edits/create) (deprecated)
 * **Images**: [createImage](https://platform.openai.com/docs/api-reference/images/create), [createImageEdit](https://platform.openai.com/docs/api-reference/images/create-edit), and [createImageVariation](https://platform.openai.com/docs/api-reference/images/create-variation)
 * **Embeddings**: [createEmbeddings](https://platform.openai.com/docs/api-reference/embeddings/create)
@@ -17,11 +17,11 @@ This is a no-nonsense async Scala client for OpenAI API supporting all the avail
 * **Assistants**: [createAssistant](https://platform.openai.com/docs/api-reference/messages/createMessage), [listAssistants](https://platform.openai.com/docs/api-reference/assistants/listAssistants), [retrieveAssistant](https://platform.openai.com/docs/api-reference/assistants/retrieveAssistant), [modifyAssistant](https://platform.openai.com/docs/api-reference/assistants/modifyAssistant), and [deleteAssistant](https://platform.openai.com/docs/api-reference/assistants/deleteAssistant)
 * **Threads**: [createThread](https://platform.openai.com/docs/api-reference/threads/createThread), [retrieveThread](https://platform.openai.com/docs/api-reference/threads/getThread), [modifyThread](https://platform.openai.com/docs/api-reference/threads/modifyThread), and [deleteThread](https://platform.openai.com/docs/api-reference/threads/deleteThread)
 * **Thread Messages**: [createThreadMessage](https://platform.openai.com/docs/api-reference/assistants/createAssistant), [retrieveThreadMessage](https://platform.openai.com/docs/api-reference/messages/getMessage), [modifyThreadMessage](https://platform.openai.com/docs/api-reference/messages/modifyMessage), [listThreadMessages](https://platform.openai.com/docs/api-reference/messages/listMessages), [retrieveThreadMessageFile](https://platform.openai.com/docs/api-reference/messages/getMessageFile), and [listThreadMessageFiles](https://platform.openai.com/docs/api-reference/messages/listMessageFiles)
-* **Runs** (🔥 **New**): [createRun](https://platform.openai.com/docs/api-reference/runs/createRun), [createThreadAndRun](https://platform.openai.com/docs/api-reference/runs/createThreadAndRun), [listRuns](https://platform.openai.com/docs/api-reference/runs/listRuns), [retrieveRun](https://platform.openai.com/docs/api-reference/runs/retrieveRun), [modifyRun](https://platform.openai.com/docs/api-reference/runs/modifyRun), [submitToolOutputs](https://platform.openai.com/docs/api-reference/runs/submitToolOutputs), and [cancelRun](https://platform.openai.com/docs/api-reference/runs/cancelRun)
-* **Run Steps** (🔥 **New**): [listRunSteps](https://platform.openai.com/docs/api-reference/run-steps/listRunSteps), and [retrieveRunStep](https://platform.openai.com/docs/api-reference/run-steps/getRunStep) 
-* **Vector Stores** (🔥 **New**): [createVectorStore](https://platform.openai.com/docs/api-reference/vector-stores/create), [listVectorStores](https://platform.openai.com/docs/api-reference/vector-stores/list), [retrieveVectorStore](https://platform.openai.com/docs/api-reference/vector-stores/retrieve), [modifyVectorStore](https://platform.openai.com/docs/api-reference/vector-stores/modify), and [deleteVectorStore](https://platform.openai.com/docs/api-reference/vector-stores/delete)
-* **Vector Store Files** (🔥 **New**): [createVectorStoreFile](https://platform.openai.com/docs/api-reference/vector-stores-files/createFile), [listVectorStoreFiles](https://platform.openai.com/docs/api-reference/vector-stores-files/listFiles), [retrieveVectorStoreFile](https://platform.openai.com/docs/api-reference/vector-stores-files/getFile), and [deleteVectorStoreFile](https://platform.openai.com/docs/api-reference/vector-stores-files/deleteFile)  
-* **Vector Store File Batches** (🔥 **New**): [createVectorStoreFileBatch](https://platform.openai.com/docs/api-reference/vector-stores-file-batches/createBatch), [retrieveVectorStoreFileBatch](https://platform.openai.com/docs/api-reference/vector-stores-file-batches/getBatch), [cancelVectorStoreFileBatch](https://platform.openai.com/docs/api-reference/vector-stores-file-batches/cancelBatch), and [listVectorStoreBatchFiles](https://platform.openai.com/docs/api-reference/vector-stores-file-batches/listBatchFiles)
+* **Runs**: [createRun](https://platform.openai.com/docs/api-reference/runs/createRun), [createThreadAndRun](https://platform.openai.com/docs/api-reference/runs/createThreadAndRun), [listRuns](https://platform.openai.com/docs/api-reference/runs/listRuns), [retrieveRun](https://platform.openai.com/docs/api-reference/runs/retrieveRun), [modifyRun](https://platform.openai.com/docs/api-reference/runs/modifyRun), [submitToolOutputs](https://platform.openai.com/docs/api-reference/runs/submitToolOutputs), and [cancelRun](https://platform.openai.com/docs/api-reference/runs/cancelRun)
+* **Run Steps**: [listRunSteps](https://platform.openai.com/docs/api-reference/run-steps/listRunSteps), and [retrieveRunStep](https://platform.openai.com/docs/api-reference/run-steps/getRunStep) 
+* **Vector Stores**: [createVectorStore](https://platform.openai.com/docs/api-reference/vector-stores/create), [listVectorStores](https://platform.openai.com/docs/api-reference/vector-stores/list), [retrieveVectorStore](https://platform.openai.com/docs/api-reference/vector-stores/retrieve), [modifyVectorStore](https://platform.openai.com/docs/api-reference/vector-stores/modify), and [deleteVectorStore](https://platform.openai.com/docs/api-reference/vector-stores/delete)
+* **Vector Store Files**: [createVectorStoreFile](https://platform.openai.com/docs/api-reference/vector-stores-files/createFile), [listVectorStoreFiles](https://platform.openai.com/docs/api-reference/vector-stores-files/listFiles), [retrieveVectorStoreFile](https://platform.openai.com/docs/api-reference/vector-stores-files/getFile), and [deleteVectorStoreFile](https://platform.openai.com/docs/api-reference/vector-stores-files/deleteFile)  
+* **Vector Store File Batches**: [createVectorStoreFileBatch](https://platform.openai.com/docs/api-reference/vector-stores-file-batches/createBatch), [retrieveVectorStoreFileBatch](https://platform.openai.com/docs/api-reference/vector-stores-file-batches/getBatch), [cancelVectorStoreFileBatch](https://platform.openai.com/docs/api-reference/vector-stores-file-batches/cancelBatch), and [listVectorStoreBatchFiles](https://platform.openai.com/docs/api-reference/vector-stores-file-batches/listBatchFiles)
 
 Note that in order to be consistent with the OpenAI API naming, the service function names match exactly the API endpoint titles/descriptions with camelcase.
 Also, we aimed the lib to be self-contained with the fewest dependencies possible therefore we ended up using only two libs `play-ahc-ws-standalone` and `play-ws-standalone-json` (at the top level). Additionally, if dependency injection is required we use `scala-guice` lib as well.  
@@ -35,14 +35,16 @@ Also, we aimed the lib to be self-contained with the fewest dependencies possibl
 In addition to the OpenAI API, this library also supports API-compatible providers (see [examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/nonopenai)) such as:
 - [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) - cloud-based, utilizes OpenAI models but with lower latency
 - [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) - cloud-based, offers a vast selection of open-source models
-- [Anthropic](https://www.anthropic.com/api) - cloud-based, a major competitor to OpenAI, features proprietary/closed-source models such as Claude3 - Haiku, Sonnet, and Opus
-- [Google Vertex AI](https://cloud.google.com/vertex-ai) (🔥 **New**)  - cloud-based, features proprietary/closed-source models such as Gemini 1.5 Pro and flash
+- [Anthropic](https://www.anthropic.com/api) - cloud-based, a major competitor to OpenAI, features proprietary/closed-source models such as Claude3 - Haiku, Sonnet, and Opus. 🔥 **New**: now with cache support!
+- [Google Vertex AI](https://cloud.google.com/vertex-ai) - cloud-based, features proprietary/closed-source models such as Gemini 1.5 Pro and flash
 - [Groq](https://wow.groq.com/) - cloud-based provider, known for its superfast inference with LPUs
+- [Grok](https://x.ai/) (🔥 **New**) - cloud-based provider from x.AI
 - [Fireworks AI](https://fireworks.ai/) - cloud-based provider
 - [OctoAI](https://octo.ai/) - cloud-based provider
-- [TogetherAI](https://www.together.ai/) (🔥 **New**) - cloud-based provider
-- [Cerebras](https://cerebras.ai/) (🔥 **New**) - cloud-based provider, superfast (akin to Groq)
-- [Mistral](https://mistral.ai/) (🔥 **New**) - cloud-based, leading open-source LLM company
+- [TogetherAI](https://www.together.ai/) - cloud-based provider
+- [Cerebras](https://cerebras.ai/) - cloud-based provider, superfast (akin to Groq)
+- [Mistral](https://mistral.ai/) - cloud-based, leading open-source LLM company
+- [Deepseek](https://deepseek.com/) (🔥 **New**) - cloud-based provider from China
 - [Ollama](https://ollama.com/) - runs locally, serves as an umbrella for open-source LLMs including LLaMA3, dbrx, and Command-R
 - [FastChat](https://github.com/lm-sys/FastChat) - runs locally, serves as an umbrella for open-source LLMs such as Vicuna, Alpaca, and FastChat-T5
 
@@ -159,42 +161,49 @@ Then you can obtain a service in one of the following ways.
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.groq)
 ```
 
-5. [Fireworks AI](https://fireworks.ai/) - requires `FIREWORKS_API_KEY"`
+5. [Grok](https://x.ai) - requires `GROK_API_KEY"`
+```scala
+  val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.grok)
+  // or with streaming
+  val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.grok)
+```
+
+6. [Fireworks AI](https://fireworks.ai/) - requires `FIREWORKS_API_KEY"`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.fireworks)
   // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.fireworks)
 ```
 
-6. [Octo AI](https://octo.ai/) - requires `OCTOAI_TOKEN`
+7. [Octo AI](https://octo.ai/) - requires `OCTOAI_TOKEN`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.octoML)
   // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.octoML)
 ```
 
-7. [TogetherAI](https://www.together.ai/)  requires `TOGETHERAI_API_KEY`
+8. [TogetherAI](https://www.together.ai/)  requires `TOGETHERAI_API_KEY`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.togetherAI)
   // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.togetherAI)
 ```
 
-8. [Cerebras](https://cerebras.ai/)  requires `CEREBRAS_API_KEY`
+9. [Cerebras](https://cerebras.ai/)  requires `CEREBRAS_API_KEY`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.cerebras)
   // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.cerebras)
 ```
 
-9. [Mistral](https://mistral.ai/) requires `MISTRAL_API_KEY`
+10. [Mistral](https://mistral.ai/) requires `MISTRAL_API_KEY`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.mistral)
   // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.mistral)
 ```
 
-10. [Ollama](https://ollama.com/)
+11. [Ollama](https://ollama.com/)
 ```scala
   val service = OpenAIChatCompletionServiceFactory(
     coreUrl = "http://localhost:11434/v1/"
@@ -249,7 +258,7 @@ or only if streaming is required
 
 Full documentation of each call with its respective inputs and settings is provided in [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala). Since all the calls are async they return responses wrapped in `Future`.
 
-🔥 **New**: There is a new project [openai-scala-client-examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples) where you can find a lot of ready-to-use examples!
+There is a new project [openai-scala-client-examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples) where you can find a lot of ready-to-use examples!
 
 - List models
 
@@ -403,7 +412,7 @@ For this to work you need to use `OpenAIServiceStreamedFactory` from `openai-sca
   }
 ```
 
-- Create chat completion with json output (🔥 **New**)
+- Create chat completion with json output
 
 ```scala
   val messages = Seq(
