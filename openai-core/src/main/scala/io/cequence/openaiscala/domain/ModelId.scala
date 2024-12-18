@@ -162,6 +162,8 @@ object ModelId {
   val gpt_3_5_turbo_1106 = "gpt-3.5-turbo-1106"
 
   // Q*/Strawberry
+  val o1 = "o1"
+  val o1_2024_12_17 = "o1-2024-12-17"
   val o1_preview = "o1-preview"
   val o1_preview_2024_09_12 = "o1-preview-2024-09-12"
   val o1_mini = "o1-mini"
