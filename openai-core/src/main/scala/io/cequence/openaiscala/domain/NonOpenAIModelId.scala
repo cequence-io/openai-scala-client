@@ -14,7 +14,24 @@ object NonOpenAIModelId {
   val claude_2_0 = "claude-2.0"
   val claude_instant_1_2 = "claude-instant-1.2"
 
-  // Llama2/3
+  // Anthropic Bedrock
+  val bedrock_claude_3_5_sonnet_20241022_v2_0 = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+  val bedrock_claude_3_5_sonnet_20240620_v1_0 = "anthropic.claude-3-5-sonnet-20240620-v1:0"
+  val bedrock_claude_3_5_haiku_20241022_v1_0 = "anthropic.claude-3-5-haiku-20241022-v1:0"
+  val bedrock_claude_3_opus_20240229_v1_0 = "anthropic.claude-3-opus-20240229-v1:0"
+  val bedrock_claude_3_sonnet_20240229_v1_0 = "anthropic.claude-3-sonnet-20240229-v1:0"
+  val bedrock_claude_3_haiku_20240307_v1_0 = "anthropic.claude-3-haiku-20240307-v1:0"
+
+  // Nova (Bedrock)
+  val amazon_nova_pro_v1_0 = "amazon.nova-pro-v1:0"
+  val amazon_nova_lite_v1_0 = "amazon.nova-lite-v1:0"
+  val amazon_nova_micro_v1_0 = "amazon.nova-micro-v1:0"
+
+  // Llama
+  val llama_3_3_70b_versatile = "llama-3.3-70b-versatile" // Groq
+  val llama_3_3_70b_specdec = "llama-3.3-70b-specdec" // Groq
+  val llama_v3p3_70b_instruct = "llama-v3p3-70b-instruct" // Fireworks AI
+  val llama_3_3_70B_Instruct_Turbo = "meta-llama/Llama-3.3-70B-Instruct-Turbo" // Together AI
   val llama_v3p2_1b_instruct = "llama-v3p2-1b-instruct" // Fireworks AI
   val llama_v3p2_3b_instruct = "llama-v3p2-3b-instruct" // Fireworks AI
   val llama_v3p2_11b_vision_instruct = "llama-v3p2-11b-vision-instruct" // Fireworks AI
@@ -139,6 +156,7 @@ object NonOpenAIModelId {
   val qwen2_72b_instruct = "Qwen/Qwen2-72B-Instruct" // Together AI
 
   // Google Vertex AI
+  val gemini_2_0_flash_exp = "gemini-2.0-flash-exp"
   val gemini_flash_experimental = "gemini-flash-experimental"
   val gemini_pro_experimental = "gemini-pro-experimental"
   val gemini_experimental = "gemini-experimental"
@@ -202,6 +220,7 @@ object NonOpenAIModelId {
 
   // context 131072
   val grok_beta = "grok-beta"
+  val grok_vision_beta = "grok-vision-beta"
 
   // Deepseek
   // context 64K, 4K (8KBeta)
