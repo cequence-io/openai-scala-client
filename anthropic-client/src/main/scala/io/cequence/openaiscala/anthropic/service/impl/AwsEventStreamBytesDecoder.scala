@@ -4,7 +4,7 @@ import akka.NotUsed
 import akka.stream.scaladsl.Flow
 
 import java.util.Base64
-import play.api.libs.json.{JsString, JsValue, Json}
+import play.api.libs.json.{JsValue, Json}
 
 object AwsEventStreamBytesDecoder {
   def flow: Flow[JsValue, JsValue, NotUsed] = Flow[JsValue].map { eventJson =>

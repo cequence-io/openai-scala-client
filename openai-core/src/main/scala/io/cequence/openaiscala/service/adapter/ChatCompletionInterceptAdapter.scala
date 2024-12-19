@@ -20,36 +20,29 @@ private class ChatCompletionInterceptAdapter[S <: OpenAIChatCompletionService](
     with OpenAIChatCompletionService {
 
   // we just delegate all the calls to the underlying service
-  override def wrap[T](
-    fun: S => Future[T]
-  ): Future[T] = fun(underlying)
+  override def wrap[T](fun: S => Future[T]): Future[T] =
+    fun(underlying)
 
   // but for the chat completion we adapt the messages and settings
   override def createChatCompletion(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
   ): Future[ChatCompletionResponse] = {
-    val timeRequestReceived = new java.util.Date()
+    val timeRequestSent = new java.util.Date()
 
     for {
-      response <- underlying.createChatCompletion(
-        messages,
-        settings
-      )
+      response <- underlying.createChatCompletion(messages, settings)
+      timeResponseReceived = new java.util.Date()
 
-      _ <- {
-        val timeResponseReceived = new java.util.Date()
-
-        intercept(
-          ChatCompletionInterceptData(
-            messages,
-            settings,
-            response,
-            timeRequestReceived,
-            timeResponseReceived
-          )
+      _ <- intercept(
+        ChatCompletionInterceptData(
+          messages,
+          settings,
+          response,
+          timeRequestSent,
+          timeResponseReceived
         )
-      }
+      )
     } yield response
   }
 

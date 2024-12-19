@@ -7,6 +7,6 @@ case class ChatCompletionInterceptData(
   messages: Seq[BaseMessage],
   setting: CreateChatCompletionSettings,
   response: ChatCompletionResponse,
-  timeRequestReceived: java.util.Date,
+  timeRequestSent: java.util.Date,
   timeResponseReceived: java.util.Date
 )
