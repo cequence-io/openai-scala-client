@@ -11,15 +11,15 @@ object AwsEventStreamBytesDecoder {
     // eventJson might look like:
     // { ":message-type":"event", ":event-type":"...", "bytes":"base64string" }
 
-    val base64Str = (eventJson \ "bytes").asOpt[String]
-    base64Str match {
-      case Some(encoded) =>
+    (eventJson \ "bytes")
+      .asOpt[String]
+      .map { encoded =>
         val decoded = Base64.getDecoder.decode(encoded)
         Json.parse(decoded)
-      case None =>
+      }
+      .getOrElse(
         // If there's no "bytes" field, return the original JSON (or handle differently)
         eventJson
-    }
+      )
   }
 }
-

@@ -14,30 +14,33 @@ class AwsEventStreamFrameDecoder extends GraphStage[FlowShape[ByteString, ByteSt
   override def createLogic(attrs: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
     var buffer = ByteString.empty
 
-    setHandler(in, new InHandler {
-      override def onPush(): Unit = {
-        buffer ++= grab(in)
-        emitFrames()
+    setHandler(
+      in,
+      new InHandler {
+        override def onPush(): Unit = {
+          buffer ++= grab(in)
+          emitFrames()
+        }
+        override def onUpstreamFinish(): Unit = {
+          emitFrames()
+          if (buffer.isEmpty) completeStage()
+          else failStage(new RuntimeException("Truncated frame at stream end"))
+        }
       }
-      override def onUpstreamFinish(): Unit = {
-        emitFrames()
-        if (buffer.isEmpty) completeStage()
-        else failStage(new RuntimeException("Truncated frame at stream end"))
-      }
-    })
+    )
 
-    setHandler(out, new OutHandler {
-      override def onPull(): Unit = {
-        if (!hasBeenPulled(in)) pull(in)
+    setHandler(
+      out,
+      new OutHandler {
+        override def onPull(): Unit = {
+          if (!hasBeenPulled(in)) pull(in)
+        }
       }
-    })
+    )
 
     def emitFrames(): Unit = {
       while (buffer.size >= 4) {
         val totalLength = buffer.iterator.getInt
-        println("buffer size: " + buffer.size)
-        println("total length: " + totalLength)
-        println("buffer:       " + buffer.utf8String)
 
         if (buffer.size < 4 + totalLength) {
           // not enough data yet
