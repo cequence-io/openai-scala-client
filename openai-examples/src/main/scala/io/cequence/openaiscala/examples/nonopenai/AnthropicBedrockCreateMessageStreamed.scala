@@ -17,7 +17,9 @@ object AnthropicBedrockCreateMessageStreamed extends ExampleBase[AnthropicServic
 
   val messages: Seq[Message] = Seq(
     SystemMessage("You are a helpful assistant!"),
-    UserMessage("Start with the letter S followed by a quick story about Norway and finish with the letter E.")
+    UserMessage(
+      "Start with the letter S followed by a quick story about Norway and finish with the letter E."
+    )
   )
 
   private val modelId = "us." + NonOpenAIModelId.bedrock_claude_3_5_sonnet_20241022_v2_0
