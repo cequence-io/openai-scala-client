@@ -90,6 +90,15 @@ object ChatCompletionProvider {
   ): OpenAIChatCompletionStreamedService =
     AnthropicServiceFactory.asOpenAI(withCache = withCache)
 
+  /**
+   * Requires `ANTHROPIC_API_KEY`
+   */
+  def anthropicBedrock(
+    implicit ec: ExecutionContext,
+    m: Materializer
+  ): OpenAIChatCompletionStreamedService =
+    AnthropicServiceFactory.bedrockAsOpenAI()
+
   def deepseek(
     implicit ec: ExecutionContext,
     m: Materializer

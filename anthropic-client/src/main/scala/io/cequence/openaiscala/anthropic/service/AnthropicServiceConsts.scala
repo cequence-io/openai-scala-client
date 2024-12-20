@@ -10,6 +10,9 @@ trait AnthropicServiceConsts {
 
   protected val defaultCoreUrl = "https://api.anthropic.com/v1/"
 
+  protected def bedrockCoreUrl(region: String) =
+    s"https://bedrock-runtime.$region.amazonaws.com/"
+
   object DefaultSettings {
 
     val CreateMessage = AnthropicCreateMessageSettings(

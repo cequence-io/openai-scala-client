@@ -2,7 +2,9 @@ package io.cequence.openaiscala.anthropic.service
 
 import akka.stream.Materializer
 import io.cequence.openaiscala.anthropic.service.impl.{
+  AnthropicBedrockServiceImpl,
   AnthropicServiceImpl,
+  BedrockConnectionSettings,
   OpenAIAnthropicChatCompletionService
 }
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
@@ -22,7 +24,13 @@ import scala.concurrent.ExecutionContext
 object AnthropicServiceFactory extends AnthropicServiceConsts {
 
   private def apiVersion = "2023-06-01"
-  private def envAPIKey = "ANTHROPIC_API_KEY"
+
+  object EnvKeys {
+    val anthropicAPIKey = "ANTHROPIC_API_KEY"
+    val bedrockAccessKey = "AWS_BEDROCK_ACCESS_KEY"
+    val bedrockSecretKey = "AWS_BEDROCK_SECRET_KEY"
+    val bedrockRegion = "AWS_BEDROCK_REGION"
+  }
 
   /**
    * Create a new instance of the [[OpenAIChatCompletionService]] wrapping the AnthropicService
@@ -37,7 +45,7 @@ object AnthropicServiceFactory extends AnthropicServiceConsts {
    * @return
    */
   def asOpenAI(
-    apiKey: String = getAPIKeyFromEnv(),
+    apiKey: String = getEnvValue(EnvKeys.anthropicAPIKey),
     timeouts: Option[Timeouts] = None,
     withCache: Boolean = false
   )(
@@ -46,6 +54,19 @@ object AnthropicServiceFactory extends AnthropicServiceConsts {
   ): OpenAIChatCompletionStreamedService =
     new OpenAIAnthropicChatCompletionService(
       AnthropicServiceFactory(apiKey, timeouts, withPdf = false, withCache)
+    )
+
+  def bedrockAsOpenAI(
+    accessKey: String = getEnvValue(EnvKeys.bedrockAccessKey),
+    secretKey: String = getEnvValue(EnvKeys.bedrockSecretKey),
+    region: String = getEnvValue(EnvKeys.bedrockRegion),
+    timeouts: Option[Timeouts] = None
+  )(
+    implicit ec: ExecutionContext,
+    materializer: Materializer
+  ): OpenAIChatCompletionStreamedService =
+    new OpenAIAnthropicChatCompletionService(
+      AnthropicServiceFactory.forBedrock(accessKey, secretKey, region, timeouts)
     )
 
   /**
@@ -61,7 +82,7 @@ object AnthropicServiceFactory extends AnthropicServiceConsts {
    * @return
    */
   def apply(
-    apiKey: String = getAPIKeyFromEnv(),
+    apiKey: String = getEnvValue(EnvKeys.anthropicAPIKey),
     timeouts: Option[Timeouts] = None,
     withPdf: Boolean = false,
     withCache: Boolean = false
@@ -78,17 +99,31 @@ object AnthropicServiceFactory extends AnthropicServiceConsts {
     new AnthropicServiceClassImpl(defaultCoreUrl, authHeaders, timeouts)
   }
 
-  private def getAPIKeyFromEnv(): String =
-    Option(System.getenv(envAPIKey)).getOrElse(
+  def forBedrock(
+    accessKey: String = getEnvValue(EnvKeys.bedrockAccessKey),
+    secretKey: String = getEnvValue(EnvKeys.bedrockSecretKey),
+    region: String = getEnvValue(EnvKeys.bedrockRegion),
+    timeouts: Option[Timeouts] = None
+  )(
+    implicit ec: ExecutionContext,
+    materializer: Materializer
+  ): AnthropicService =
+    new AnthropicBedrockServiceClassImpl(
+      BedrockConnectionSettings(accessKey, secretKey, region),
+      timeouts
+    )
+
+  private def getEnvValue(envKey: String): String =
+    Option(System.getenv(envKey)).getOrElse(
       throw new IllegalStateException(
-        "ANTHROPIC_API_KEY environment variable expected but not set. Alternatively, you can pass the API key explicitly to the factory method."
+        s"${envKey} environment variable expected but not set. Alternatively, you can pass the API key explicitly to the factory method."
       )
     )
 
   private class AnthropicServiceClassImpl(
-    val coreUrl: String,
-    val authHeaders: Seq[(String, String)],
-    val explTimeouts: Option[Timeouts] = None
+    coreUrl: String,
+    authHeaders: Seq[(String, String)],
+    explTimeouts: Option[Timeouts] = None
   )(
     implicit val ec: ExecutionContext,
     val materializer: Materializer
@@ -97,7 +132,25 @@ object AnthropicServiceFactory extends AnthropicServiceConsts {
     override protected val engine: WSClientEngine with WSClientEngineStreamExtra =
       PlayWSStreamClientEngine(
         coreUrl,
-        WsRequestContext(authHeaders = authHeaders, explTimeouts = explTimeouts)
+        WsRequestContext(authHeaders = authHeaders, explTimeouts = explTimeouts),
+        recoverErrors
+      )
+  }
+
+  private class AnthropicBedrockServiceClassImpl(
+    override val connectionInfo: BedrockConnectionSettings,
+    explTimeouts: Option[Timeouts] = None
+  )(
+    implicit val ec: ExecutionContext,
+    val materializer: Materializer
+  ) extends AnthropicBedrockServiceImpl {
+
+    // Play WS engine
+    override protected val engine: WSClientEngine with WSClientEngineStreamExtra =
+      PlayWSStreamClientEngine(
+        coreUrl = bedrockCoreUrl(connectionInfo.region),
+        WsRequestContext(explTimeouts = explTimeouts),
+        recoverErrors
       )
   }
 

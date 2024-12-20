@@ -22,5 +22,6 @@ object Param {
   case object temperature extends Param
   case object top_p extends Param
   case object top_k extends Param
-
+  // bedrock
+  case object anthropic_version extends Param
 }
