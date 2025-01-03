@@ -35,9 +35,9 @@ object ChatCompletionInputAdapterForFireworksAI
   // gemma-7b-it model doesn't support system messages so we need to convert them to user ones
   private val handleSystemMessages = (messages: Seq[BaseMessage]) => {
     val nonSystemMessages = messages.map {
-      case SystemMessage(content, _) => UserMessage(s"System: ${content}")
+      case SystemMessage(content, _)    => UserMessage(s"System: ${content}")
       case DeveloperMessage(content, _) => UserMessage(s"System: ${content}")
-      case x: BaseMessage            => x
+      case x: BaseMessage               => x
     }
 
     // there cannot be two consecutive user messages, so we need to merge them
