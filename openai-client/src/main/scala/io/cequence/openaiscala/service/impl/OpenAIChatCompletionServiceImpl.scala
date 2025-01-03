@@ -47,11 +47,23 @@ private[service] trait OpenAIChatCompletionServiceImpl
 
 trait ChatCompletionBodyMaker {
 
-  private val o1Models = Set(
+  private val noSystemMessageModels = Set(
     ModelId.o1_preview,
     ModelId.o1_preview_2024_09_12,
     ModelId.o1_mini,
     ModelId.o1_mini_2024_09_12
+  )
+
+  private val o1PreviewModels = Set(
+    ModelId.o1_preview,
+    ModelId.o1_preview_2024_09_12,
+    ModelId.o1_mini,
+    ModelId.o1_mini_2024_09_12
+  )
+
+  private val o1Models = Set(
+    ModelId.o1,
+    ModelId.o1_2024_12_17
   )
 
   protected def createBodyParamsForChatCompletion(
@@ -63,7 +75,7 @@ trait ChatCompletionBodyMaker {
 
     // O1 models needs some special treatment... revisit this later
     val messagesFinal =
-      if (o1Models.contains(settings.model))
+      if (noSystemMessageModels.contains(settings.model))
         MessageConversions.systemToUserMessages(messagesAux)
       else
         messagesAux
@@ -72,8 +84,10 @@ trait ChatCompletionBodyMaker {
 
     // O1 models needs some special treatment... revisit this later
     val settingsFinal =
-      if (o1Models.contains(settings.model))
-        ChatCompletionSettingsConversions.o1Specific(settings)
+      if (o1PreviewModels.contains(settings.model))
+        ChatCompletionSettingsConversions.o1Preview(settings)
+      else if (o1Models.contains(settings.model))
+        ChatCompletionSettingsConversions.o1(settings)
       else
         settings
 

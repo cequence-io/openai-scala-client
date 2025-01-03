@@ -32,7 +32,7 @@ object ChatCompletionSettingsConversions {
         } else acc
     }
 
-  private val o1Conversions = Seq(
+  private val o1BaseConversions = Seq(
     // max tokens
     FieldConversionDef(
       _.max_tokens.isDefined,
@@ -79,18 +79,23 @@ object ChatCompletionSettingsConversions {
         "O1 models don't support frequency penalty values other than the default of 0, converting to 0."
       ),
       warning = true
-    ),
-    // frequency_penalty
-    FieldConversionDef(
-      settings =>
-        settings.response_format_type.isDefined && settings.response_format_type.get != ChatCompletionResponseFormatType.text,
-      _.copy(response_format_type = None),
-      Some(
-        "O1 models don't support json object/schema response format, converting to None."
-      ),
-      warning = true
     )
   )
 
-  val o1Specific: SettingsConversion = generic(o1Conversions)
+  private val o1PreviewConversions =
+    o1BaseConversions :+
+      // response format type
+      FieldConversionDef(
+        settings =>
+          settings.response_format_type.isDefined && settings.response_format_type.get != ChatCompletionResponseFormatType.text,
+        _.copy(response_format_type = None),
+        Some(
+          "O1 models don't support json object/schema response format, converting to None."
+        ),
+        warning = true
+      )
+
+  val o1: SettingsConversion = generic(o1BaseConversions)
+
+  val o1Preview: SettingsConversion = generic(o1PreviewConversions)
 }

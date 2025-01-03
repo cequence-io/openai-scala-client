@@ -126,9 +126,10 @@ object OpenAIChatCompletionExtra {
   }
 
   private val defaultJsonSchemaModels = Seq(
-    "openai-" + ModelId.gpt_4o_2024_08_06,
-    ModelId.gpt_4o_2024_08_06
-  )
+    ModelId.gpt_4o_2024_08_06,
+    ModelId.o1,
+    ModelId.o1_2024_12_17
+  ).flatMap(id => Seq(id, "openai-" + id))
 
   def handleOutputJsonSchema(
     messages: Seq[BaseMessage],
@@ -144,7 +145,7 @@ object OpenAIChatCompletionExtra {
 
     val (settingsFinal, addJsonToPrompt) =
       if (jsonSchemaModels.contains(settings.model)) {
-        logger.debug(
+        logger.info(
           s"Using OpenAI json schema mode for ${taskNameForLogging} and the model '${settings.model}' - name: ${jsonSchemaDef.name}, strict: ${jsonSchemaDef.strict}, structure:\n${jsonSchemaString}"
         )
 
@@ -157,7 +158,7 @@ object OpenAIChatCompletionExtra {
       } else {
         // otherwise we failover to json object format and pass json schema to the user prompt
 
-        logger.debug(
+        logger.info(
           s"Using JSON object mode for ${taskNameForLogging} and the model '${settings.model}'. Also passing a JSON schema as part of a user prompt."
         )
 
