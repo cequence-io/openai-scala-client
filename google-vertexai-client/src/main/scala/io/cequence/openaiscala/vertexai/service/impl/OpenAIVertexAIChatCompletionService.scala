@@ -64,7 +64,7 @@ private[service] class OpenAIVertexAIChatCompletionService(
         created = openAIResponse.created,
         model = openAIResponse.model,
         system_fingerprint = openAIResponse.system_fingerprint,
-        choices = openAIResponse.choices.map(info =>
+        choices = openAIResponse.choices.map { info =>
           ChatCompletionChoiceChunkInfo(
             delta = ChunkMessageSpec(
               Some(ChatRole.Assistant),
@@ -73,7 +73,7 @@ private[service] class OpenAIVertexAIChatCompletionService(
             index = info.index,
             finish_reason = info.finish_reason
           )
-        ),
+        },
         usage = openAIResponse.usage
       )
     }

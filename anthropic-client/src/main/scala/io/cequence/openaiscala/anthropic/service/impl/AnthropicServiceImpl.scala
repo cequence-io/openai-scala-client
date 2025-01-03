@@ -7,8 +7,7 @@ import io.cequence.openaiscala.anthropic.domain.response.{
   CreateMessageResponse
 }
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
-import io.cequence.openaiscala.anthropic.domain.{ChatRole, Content, Message}
-import io.cequence.wsclient.JsonUtil.JsonOps
+import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
 
 import scala.concurrent.Future

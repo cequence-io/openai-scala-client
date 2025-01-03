@@ -156,6 +156,7 @@ object NonOpenAIModelId {
   val qwen2_72b_instruct = "Qwen/Qwen2-72B-Instruct" // Together AI
 
   // Google Vertex AI
+  val gemini_2_0_flash_thinking_exp_1219 = "gemini-2.0-flash-thinking-exp-1219"
   val gemini_2_0_flash_exp = "gemini-2.0-flash-exp"
   val gemini_flash_experimental = "gemini-flash-experimental"
   val gemini_pro_experimental = "gemini-pro-experimental"
@@ -224,6 +225,7 @@ object NonOpenAIModelId {
 
   // Deepseek
   // context 64K, 4K (8KBeta)
+  val deepseek_v3 = "deepseek-v3" // Fireworks
   val deepseek_chat = "deepseek-chat"
   val deepseek_coder = "deepseek-coder"
 }
