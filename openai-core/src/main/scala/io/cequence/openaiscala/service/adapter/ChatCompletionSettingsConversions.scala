@@ -90,7 +90,7 @@ object ChatCompletionSettingsConversions {
           settings.response_format_type.isDefined && settings.response_format_type.get != ChatCompletionResponseFormatType.text,
         _.copy(response_format_type = None),
         Some(
-          "O1 models don't support json object/schema response format, converting to None."
+          "O1 (preview) models don't support json object/schema response format, converting to None."
         ),
         warning = true
       )
