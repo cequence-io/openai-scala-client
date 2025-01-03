@@ -11,6 +11,7 @@ sealed trait ThreadAndRunRole
 object ChatRole {
   case object User extends ChatRole with ThreadAndRunRole
   case object System extends ChatRole
+  case object Developer extends ChatRole
   case object Assistant extends ChatRole with ThreadAndRunRole
   @Deprecated
   case object Function extends ChatRole

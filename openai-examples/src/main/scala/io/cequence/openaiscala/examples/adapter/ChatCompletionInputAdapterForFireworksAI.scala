@@ -36,6 +36,7 @@ object ChatCompletionInputAdapterForFireworksAI
   private val handleSystemMessages = (messages: Seq[BaseMessage]) => {
     val nonSystemMessages = messages.map {
       case SystemMessage(content, _) => UserMessage(s"System: ${content}")
+      case DeveloperMessage(content, _) => UserMessage(s"System: ${content}")
       case x: BaseMessage            => x
     }
 

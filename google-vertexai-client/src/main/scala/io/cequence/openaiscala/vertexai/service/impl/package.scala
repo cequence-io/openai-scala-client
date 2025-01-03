@@ -12,6 +12,7 @@ import io.cequence.openaiscala.domain.{
   AssistantMessage,
   BaseMessage,
   ChatRole,
+  DeveloperMessage,
   ImageURLContent,
   MessageSpec,
   SystemMessage,
@@ -98,7 +99,8 @@ package object impl {
     messages: Seq[BaseMessage]
   ): Option[Content] = {
     val contents = messages.collect {
-      case SystemMessage(content, _) => content
+      case SystemMessage(content, _)    => content
+      case DeveloperMessage(content, _) => content
       // legacy message type
       case MessageSpec(role, content, _) if role == ChatRole.System =>
         content

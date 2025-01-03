@@ -20,6 +20,21 @@ final case class SystemMessage(
   def withName(name: String): SystemMessage = this.copy(name = Some(name))
 }
 
+// new system message for o1 models
+final case class DeveloperMessage(
+  // The contents of the message.
+  content: String,
+
+  // An optional name for the participant. Provides the model information to differentiate between participants of the same role.
+  // May contain a-z, A-Z, 0-9, and underscores, with a maximum length of 64 characters.
+  name: Option[String] = None
+) extends BaseMessage {
+  override val role = ChatRole.Developer
+  override val nameOpt = name
+
+  def withName(name: String): DeveloperMessage = this.copy(name = Some(name))
+}
+
 final case class UserMessage(
   // The contents of the message.
   content: String,

@@ -64,6 +64,7 @@ object JsonFormats {
 
   implicit lazy val chatRoleFormat: Format[ChatRole] = enumFormat[ChatRole](
     ChatRole.User,
+    ChatRole.Developer,
     ChatRole.System,
     ChatRole.Assistant,
     ChatRole.Function,
@@ -71,13 +72,11 @@ object JsonFormats {
   )
 
   implicit lazy val contentWrites: Writes[Content] = Writes[Content] {
-    _ match {
-      case c: TextContent =>
-        Json.obj("type" -> "text", "text" -> c.text)
+    case c: TextContent =>
+      Json.obj("type" -> "text", "text" -> c.text)
 
-      case c: ImageURLContent =>
-        Json.obj("type" -> "image_url", "image_url" -> Json.obj("url" -> c.url))
-    }
+    case c: ImageURLContent =>
+      Json.obj("type" -> "image_url", "image_url" -> Json.obj("url" -> c.url))
   }
 
   implicit lazy val contentReads: Reads[Content] = Reads[Content] { (json: JsValue) =>
@@ -93,6 +92,7 @@ object JsonFormats {
     Json.format[FunctionCallSpec]
 
   implicit val systemMessageFormat: Format[SystemMessage] = Json.format[SystemMessage]
+  implicit val developerMessageFormat: Format[DeveloperMessage] = Json.format[DeveloperMessage]
   implicit val userMessageFormat: Format[UserMessage] = Json.format[UserMessage]
   implicit val userSeqMessageFormat: Format[UserSeqMessage] = Json.format[UserSeqMessage]
 
@@ -291,6 +291,8 @@ object JsonFormats {
 
     val json = message match {
       case m: SystemMessage => toJson(m)
+
+      case m: DeveloperMessage => toJson(m)
 
       case m: UserMessage => toJson(m)
 
