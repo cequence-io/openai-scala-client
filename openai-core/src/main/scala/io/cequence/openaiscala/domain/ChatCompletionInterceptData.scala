@@ -9,4 +9,6 @@ case class ChatCompletionInterceptData(
   response: ChatCompletionResponse,
   timeRequestReceived: java.util.Date,
   timeResponseReceived: java.util.Date
-)
+) {
+  def execTimeMs: Long = timeResponseReceived.getTime - timeRequestReceived.getTime
+}

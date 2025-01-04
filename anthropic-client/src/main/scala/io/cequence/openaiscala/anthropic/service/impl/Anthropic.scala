@@ -19,7 +19,7 @@ trait Anthropic
     with HandleAnthropicErrorCodes
     with JsonFormats {
 
-  protected val logger = Logger(LoggerFactory.getLogger(this.getClass))
+  protected val logger: Logger = Logger(LoggerFactory.getLogger(this.getClass))
 
   protected def createBodyParamsForMessageCreation(
     messages: Seq[Message],
