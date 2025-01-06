@@ -225,7 +225,8 @@ object NonOpenAIModelId {
 
   // Deepseek
   // context 64K, 4K (8KBeta)
-  val deepseek_v3 = "deepseek-v3" // Fireworks
   val deepseek_chat = "deepseek-chat"
   val deepseek_coder = "deepseek-coder"
+  val deepseek_v3 = "deepseek-v3" // Fireworks
+  val deepseek_ai_deepseek_v3 = "deepseek-ai/DeepSeek-V3" // Together AI
 }

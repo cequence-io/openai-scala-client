@@ -19,7 +19,7 @@ object TogetherAICreateChatCompletion extends ExampleBase[OpenAIChatCompletionSe
     UserMessage("What is the weather like in Norway?")
   )
 
-  private val modelId = NonOpenAIModelId.yi_34b_chat
+  private val modelId = NonOpenAIModelId.deepseek_ai_deepseek_v3 // yi_34b_chat
 
   override protected def run: Future[_] =
     service
