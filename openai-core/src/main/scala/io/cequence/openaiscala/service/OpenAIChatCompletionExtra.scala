@@ -12,7 +12,7 @@ import io.cequence.openaiscala.domain.settings.{
 }
 import io.cequence.openaiscala.domain.{BaseMessage, ChatRole, ModelId, UserMessage}
 import org.slf4j.{Logger, LoggerFactory}
-import play.api.libs.json.{Format, Json}
+import play.api.libs.json.{Format, JsValue, Json}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -61,7 +61,8 @@ object OpenAIChatCompletionExtra {
       failoverModels: Seq[String] = Nil,
       maxRetries: Option[Int] = Some(defaultMaxRetries),
       retryOnAnyError: Boolean = false,
-      taskNameForLogging: Option[String] = None
+      taskNameForLogging: Option[String] = None,
+      parseJson: String => JsValue = defaultParseJsonOrThrow
     )(
       implicit ec: ExecutionContext,
       scheduler: Scheduler
@@ -93,7 +94,7 @@ object OpenAIChatCompletionExtra {
           val content = response.choices.head.message.content
           val contentTrimmed = content.stripPrefix("```json").stripSuffix("```").trim
           val contentJson = contentTrimmed.dropWhile(_ != '{')
-          val json = parseJsonOrThrow(contentJson)
+          val json = parseJson(contentJson)
 
           logger.debug(
             s"${taskNameForLoggingFinal.capitalize} finished in " + (new java.util.Date().getTime - start.getTime) + " ms."
@@ -103,7 +104,7 @@ object OpenAIChatCompletionExtra {
         }
     }
 
-    private def parseJsonOrThrow(
+    private def defaultParseJsonOrThrow(
       jsonString: String
     ) = try {
       Json.parse(jsonString)

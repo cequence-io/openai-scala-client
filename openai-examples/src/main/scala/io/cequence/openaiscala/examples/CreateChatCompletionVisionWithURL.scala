@@ -24,7 +24,7 @@ object CreateChatCompletionVisionWithURL extends Example {
       .createChatCompletion(
         messages,
         settings = CreateChatCompletionSettings(
-          model = ModelId.gpt_4_vision_preview,
+          model = ModelId.gpt_4o,
           temperature = Some(0),
           max_tokens = Some(300)
         )
