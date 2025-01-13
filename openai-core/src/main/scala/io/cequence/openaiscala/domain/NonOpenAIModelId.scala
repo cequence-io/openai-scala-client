@@ -32,6 +32,7 @@ object NonOpenAIModelId {
   val llama_3_3_70b_specdec = "llama-3.3-70b-specdec" // Groq
   val llama_v3p3_70b_instruct = "llama-v3p3-70b-instruct" // Fireworks AI
   val llama_3_3_70B_Instruct_Turbo = "meta-llama/Llama-3.3-70B-Instruct-Turbo" // Together AI
+  val llama_3_3_70b = "llama-3.3-70b" // Cerebras
   val llama_v3p2_1b_instruct = "llama-v3p2-1b-instruct" // Fireworks AI
   val llama_v3p2_3b_instruct = "llama-v3p2-3b-instruct" // Fireworks AI
   val llama_v3p2_11b_vision_instruct = "llama-v3p2-11b-vision-instruct" // Fireworks AI
@@ -174,6 +175,7 @@ object NonOpenAIModelId {
   val text_embedding_004 = "text-embedding-004"
 
   // Other
+  val phi_3_vision_128k_instruct = "phi-3-vision-128k-instruct" // Fireworks AI
   val drbx_instruct = "dbrx-instruct" // Fireworks AI
   val dbrx_instruct_databricks_to_ai = "databricks/dbrx-instruct" // Together AI
   val dbrx_instruct_medaltv = "medaltv/dbrx-instruct" // Together AI
@@ -228,5 +230,6 @@ object NonOpenAIModelId {
   val deepseek_chat = "deepseek-chat"
   val deepseek_coder = "deepseek-coder"
   val deepseek_v3 = "deepseek-v3" // Fireworks
+  val deepseek_v2_lite_chat = "deepseek-v2-lite-chat" // Fireworks
   val deepseek_ai_deepseek_v3 = "deepseek-ai/DeepSeek-V3" // Together AI
 }
