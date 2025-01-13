@@ -8,21 +8,17 @@ import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.service.{AnthropicService, AnthropicServiceFactory}
 import io.cequence.openaiscala.domain.NonOpenAIModelId
-import io.cequence.openaiscala.examples.ExampleBase
+import io.cequence.openaiscala.examples.{BufferedImageHelper, ExampleBase}
 
-import java.awt.image.RenderedImage
-import java.io.ByteArrayOutputStream
-import java.util.Base64
-import javax.imageio.ImageIO
 import scala.concurrent.Future
 
 // requires `openai-scala-anthropic-client` as a dependency
-object AnthropicCreateMessageWithImage extends ExampleBase[AnthropicService] {
+object AnthropicCreateMessageWithImage
+    extends ExampleBase[AnthropicService]
+    with BufferedImageHelper {
 
-  private val localImagePath = sys.env("EXAMPLE_IMAGE_PATH")
-  private val bufferedImage = ImageIO.read(new java.io.File(localImagePath))
-  private val imageBase64Source =
-    Base64.getEncoder.encodeToString(imageToBytes(bufferedImage, "jpeg"))
+  private lazy val localImagePath = sys.env("EXAMPLE_IMAGE_PATH")
+  private val imageSource = imageBase64Source(new java.io.File(localImagePath))
 
   override protected val service: AnthropicService = AnthropicServiceFactory()
 
@@ -30,7 +26,7 @@ object AnthropicCreateMessageWithImage extends ExampleBase[AnthropicService] {
     UserMessageContent(
       Seq(
         ContentBlockBase(TextBlock("Describe to me what is in the picture!")),
-        MediaBlock.jpeg(data = imageBase64Source)
+        MediaBlock.jpeg(data = imageSource)
       )
     )
   )
@@ -45,18 +41,6 @@ object AnthropicCreateMessageWithImage extends ExampleBase[AnthropicService] {
         )
       )
       .map(printMessageContent)
-
-  private def imageToBytes(
-    image: RenderedImage,
-    format: String
-  ): Array[Byte] = {
-    val baos = new ByteArrayOutputStream()
-    ImageIO.write(image, format, baos)
-    baos.flush()
-    val imageInByte = baos.toByteArray
-    baos.close()
-    imageInByte
-  }
 
   private def printMessageContent(response: CreateMessageResponse) = {
     val text =

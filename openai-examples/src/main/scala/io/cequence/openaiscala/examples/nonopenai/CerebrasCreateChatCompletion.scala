@@ -24,7 +24,7 @@ object CerebrasCreateChatCompletion extends ExampleBase[OpenAIChatCompletionServ
     UserMessage("What is the weather like in Norway?")
   )
 
-  private val modelId = NonOpenAIModelId.llama3_1_8b
+  private val modelId = NonOpenAIModelId.llama_3_3_70b
 
   override protected def run: Future[_] =
     service
