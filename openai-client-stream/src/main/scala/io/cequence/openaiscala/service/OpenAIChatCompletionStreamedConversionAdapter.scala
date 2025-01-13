@@ -6,7 +6,7 @@ import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response.ChatCompletionChunkResponse
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 
-class OpenAIChatCompletionStreamedConversionAdapter {
+object OpenAIChatCompletionStreamedConversionAdapter {
   def apply(
     service: OpenAIChatCompletionStreamedServiceExtra,
     messagesConversion: Seq[BaseMessage] => Seq[BaseMessage],
