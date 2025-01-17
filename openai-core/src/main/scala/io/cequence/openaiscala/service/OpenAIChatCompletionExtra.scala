@@ -128,6 +128,7 @@ object OpenAIChatCompletionExtra {
 
   private val defaultJsonSchemaModels = Seq(
     ModelId.gpt_4o_2024_08_06,
+    ModelId.gpt_4o_2024_11_20,
     ModelId.o1,
     ModelId.o1_2024_12_17
   ).flatMap(id => Seq(id, "openai-" + id))
