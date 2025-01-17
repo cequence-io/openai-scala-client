@@ -8,28 +8,25 @@ import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.service.{AnthropicService, AnthropicServiceFactory}
 import io.cequence.openaiscala.domain.NonOpenAIModelId
-import io.cequence.openaiscala.examples.ExampleBase
+import io.cequence.openaiscala.examples.{BufferedImageHelper, ExampleBase}
 
 import java.io.File
-import java.nio.file.Files
-import java.util.Base64
 import scala.concurrent.Future
 
 // requires `openai-scala-anthropic-client` as a dependency
-object AnthropicCreateMessageWithPdf extends ExampleBase[AnthropicService] {
+object AnthropicCreateMessageWithPdf extends ExampleBase[AnthropicService] with BufferedImageHelper {
 
-  private val localImagePath = sys.env("EXAMPLE_PDF_PATH")
-  private val pdfBase64Source =
-    Base64.getEncoder.encodeToString(readPdfToBytes(localImagePath))
+  private val localPdfPath = sys.env("EXAMPLE_PDF_PATH")
+  private val base64Source = pdfBase64Source(new File(localPdfPath))
 
   override protected val service: AnthropicService = AnthropicServiceFactory(withPdf = true)
 
   private val messages: Seq[Message] = Seq(
-    SystemMessage("Talk in pirate speech. Reply to this prompt as a real pirate!"),
+    SystemMessage("You are a drunk pirate who jokes constantly!"),
     UserMessageContent(
       Seq(
-        ContentBlockBase(TextBlock("Describe to me what is this PDF about!")),
-        MediaBlock.pdf(data = pdfBase64Source)
+        ContentBlockBase(TextBlock("Summarize the document.")),
+        MediaBlock.pdf(data = base64Source)
       )
     )
   )
@@ -45,11 +42,6 @@ object AnthropicCreateMessageWithPdf extends ExampleBase[AnthropicService] {
         )
       )
       .map(printMessageContent)
-
-  def readPdfToBytes(filePath: String): Array[Byte] = {
-    val pdfFile = new File(filePath)
-    Files.readAllBytes(pdfFile.toPath)
-  }
 
   private def printMessageContent(response: CreateMessageResponse) = {
     val text =

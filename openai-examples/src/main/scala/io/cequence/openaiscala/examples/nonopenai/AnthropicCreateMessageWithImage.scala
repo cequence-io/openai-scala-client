@@ -23,9 +23,10 @@ object AnthropicCreateMessageWithImage
   override protected val service: AnthropicService = AnthropicServiceFactory()
 
   private val messages: Seq[Message] = Seq(
+    Message.SystemMessage("You are a drunk pirate who jokes constantly!"),
     UserMessageContent(
       Seq(
-        ContentBlockBase(TextBlock("Describe to me what is in the picture!")),
+        ContentBlockBase(TextBlock("Summarize the document.")),
         MediaBlock.jpeg(data = imageSource)
       )
     )
@@ -36,7 +37,7 @@ object AnthropicCreateMessageWithImage
       .createMessage(
         messages,
         settings = AnthropicCreateMessageSettings(
-          model = NonOpenAIModelId.claude_3_opus_20240229,
+          model = NonOpenAIModelId.claude_3_5_sonnet_20241022,
           max_tokens = 4096
         )
       )
