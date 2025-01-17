@@ -106,8 +106,9 @@ package object impl extends AnthropicServiceConsts {
                 contentBlocks.foldLeft(
                   (Seq.empty[ContentBlockBase], userMessagesToCacheCount)
                 ) { case ((acc, cacheLeft), content) =>
-                  val (block, newCacheLeft) =
-                    toAnthropic(cacheLeft)(content.asInstanceOf[OpenAIContent])
+                  val cacheControl = if (cacheLeft > 0) Some(Ephemeral) else None
+                  val newCacheLeft = cacheLeft - cacheControl.map(_ => 1).getOrElse(0)
+                  val block = content.copy(cacheControl = cacheControl)
                   (acc :+ block, newCacheLeft)
                 }
               (acc :+ Message.UserMessageContent(newContentBlocks), remainingCache)
@@ -133,38 +134,14 @@ package object impl extends AnthropicServiceConsts {
           val mediaTypeEncodingAndData = url.drop(5)
           val mediaType = mediaTypeEncodingAndData.takeWhile(_ != ';')
           val encodingAndData = mediaTypeEncodingAndData.drop(mediaType.length + 1)
-          val encoding = mediaType.takeWhile(_ != ',')
+          val encoding = encodingAndData.takeWhile(_ != ',')
           val data = encodingAndData.drop(encoding.length + 1)
-          ContentBlockBase(
-            Content.ContentBlock.MediaBlock("image", encoding, mediaType, data)
-          )
-        } else {
-          throw new IllegalArgumentException(
-            "Image content only supported by providing image data directly."
-          )
-        }
-    }
-  }
 
-  def toAnthropic(userMessagesToCache: Int)(content: OpenAIContent)
-    : (Content.ContentBlockBase, Int) = {
-    val cacheControl = if (userMessagesToCache > 0) Some(Ephemeral) else None
-    val newCacheControlCount = userMessagesToCache - cacheControl.map(_ => 1).getOrElse(0)
-    content match {
-      case OpenAITextContent(text) =>
-        (ContentBlockBase(TextBlock(text), cacheControl), newCacheControlCount)
+          val `type` = if (mediaType.startsWith("image/")) "image" else "document"
 
-      case OpenAIImageContent(url) =>
-        if (url.startsWith("data:")) {
-          val mediaTypeEncodingAndData = url.drop(5)
-          val mediaType = mediaTypeEncodingAndData.takeWhile(_ != ';')
-          val encodingAndData = mediaTypeEncodingAndData.drop(mediaType.length + 1)
-          val encoding = mediaType.takeWhile(_ != ',')
-          val data = encodingAndData.drop(encoding.length + 1)
           ContentBlockBase(
-            Content.ContentBlock.MediaBlock("image", encoding, mediaType, data),
-            cacheControl
-          ) -> newCacheControlCount
+            Content.ContentBlock.MediaBlock(`type`, encoding, mediaType, data)
+          )
         } else {
           throw new IllegalArgumentException(
             "Image content only supported by providing image data directly."
