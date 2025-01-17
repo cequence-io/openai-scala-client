@@ -222,7 +222,16 @@ object NonOpenAIModelId {
   // Grok
 
   // context 131072
+  val grok_2_latest = "grok-2-latest"
+  val grok_2 = "grok-2"
+  val grok_2_1212 = "grok-2-1212"
+  // context 131072
   val grok_beta = "grok-beta"
+  // context 32768
+  val grok_2_vision_latest = "grok-2-vision-latest"
+  val grok_2_vision = "grok-2-vision"
+  val grok_2_vision_1212 = "grok-2-vision-1212"
+  // context 8192
   val grok_vision_beta = "grok-vision-beta"
 
   // Deepseek

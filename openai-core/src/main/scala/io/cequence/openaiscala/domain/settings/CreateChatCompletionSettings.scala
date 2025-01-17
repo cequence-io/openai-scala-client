@@ -77,48 +77,48 @@ case class CreateChatCompletionSettings(
   // json schema to use if response format = json_schema
   jsonSchema: Option[JsonSchemaDef] = None,
 
-  // Whether or not to store the output of this chat completion request for use in our model distillation or evals products.
-  // TODO: support this
-  store: Option[Boolean] = None,
-
-  // Constrains effort on reasoning for reasoning models
-  // Currently supported values are low, medium, and high.
-  // Reducing reasoning effort can result in faster responses and fewer tokens used on reasoning in a response.
-  // Supported by o1 models only
-  // TODO: support this
-  reasoning_effort: Option[String] = None, // enum
-
-  // Developer-defined tags and values used for filtering completions in the dashboard.
-  // TODO: support this
-  metadata: Map[String, String] = Map.empty,
-
-  // Output types that you would like the model to generate for this request. Most models are capable of generating text, which is the default:
-  // ["text"]
-  // The gpt-4o-audio-preview model can also be used to generate audio. To request that this model generate both text and audio responses, you can use:
-  // ["text", "audio"]
-  // TODO: support this
-  modalities: Seq[String] = Nil, // enum?
-
-  // Configuration for a Predicted Output, which can greatly improve response times when large parts of the model response are known ahead of time.
-  // This is most common when you are regenerating a file with only minor changes to most of the content.
-  // TODO: support this
-  prediction: Option[Any] = None,
-
-  // Parameters for audio output. Required when audio output is requested with modalities: ["audio"].
-  // TODO: support this
-  audio: Option[Any] = None,
-
-  // Specifies the latency tier to use for processing the request. This parameter is relevant for customers subscribed to the scale tier service:
-  // If set to 'auto', and the Project is Scale tier enabled, the system will utilize scale tier credits until they are exhausted.
-  // If set to 'auto', and the Project is not Scale tier enabled, the request will be processed using the default service tier with a lower uptime SLA and no latency guarentee.
-  // If set to 'default', the request will be processed using the default service tier with a lower uptime SLA and no latency guarantee.
-  // When not set, the default behavior is 'auto'.
-  // TODO: support this
-  service_tier: Option[String] = None, // enum
-
-  // Whether to enable parallel function calling during tool use.
-  // TODO: support this
-  parallel_tool_calls: Option[Boolean] = None,
+//  // Whether or not to store the output of this chat completion request for use in our model distillation or evals products.
+//  // TODO: support this
+//  store: Option[Boolean] = None,
+//
+//  // Constrains effort on reasoning for reasoning models
+//  // Currently supported values are low, medium, and high.
+//  // Reducing reasoning effort can result in faster responses and fewer tokens used on reasoning in a response.
+//  // Supported by o1 models only
+//  // TODO: support this
+//  reasoning_effort: Option[String] = None, // enum
+//
+//  // Developer-defined tags and values used for filtering completions in the dashboard.
+//  // TODO: support this
+//  metadata: Map[String, String] = Map.empty,
+//
+//  // Output types that you would like the model to generate for this request. Most models are capable of generating text, which is the default:
+//  // ["text"]
+//  // The gpt-4o-audio-preview model can also be used to generate audio. To request that this model generate both text and audio responses, you can use:
+//  // ["text", "audio"]
+//  // TODO: support this
+//  modalities: Seq[String] = Nil, // enum?
+//
+//  // Configuration for a Predicted Output, which can greatly improve response times when large parts of the model response are known ahead of time.
+//  // This is most common when you are regenerating a file with only minor changes to most of the content.
+//  // TODO: support this
+//  prediction: Option[Any] = None,
+//
+//  // Parameters for audio output. Required when audio output is requested with modalities: ["audio"].
+//  // TODO: support this
+//  audio: Option[Any] = None,
+//
+//  // Specifies the latency tier to use for processing the request. This parameter is relevant for customers subscribed to the scale tier service:
+//  // If set to 'auto', and the Project is Scale tier enabled, the system will utilize scale tier credits until they are exhausted.
+//  // If set to 'auto', and the Project is not Scale tier enabled, the request will be processed using the default service tier with a lower uptime SLA and no latency guarentee.
+//  // If set to 'default', the request will be processed using the default service tier with a lower uptime SLA and no latency guarantee.
+//  // When not set, the default behavior is 'auto'.
+//  // TODO: support this
+//  service_tier: Option[String] = None, // enum
+//
+//  // Whether to enable parallel function calling during tool use.
+//  // TODO: support this
+//  parallel_tool_calls: Option[Boolean] = None,
 
   // ad-hoc parameters, not part of the OpenAI API, e.g. for other providers or experimental features
   extra_params: Map[String, Any] = Map.empty
