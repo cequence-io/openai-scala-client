@@ -18,7 +18,7 @@ object FireworksAIDocumentInlining extends ExampleBase[OpenAIChatCompletionServi
   private val fireworksModelPrefix = "accounts/fireworks/models/"
   override val service: OpenAIChatCompletionService = ChatCompletionProvider.fireworks
 
-  val messages: Seq[BaseMessage] = Seq(
+  private val messages: Seq[BaseMessage] = Seq(
     SystemMessage("You are a helpful assistant."),
     UserSeqMessage(
       Seq(
