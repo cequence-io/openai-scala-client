@@ -10,7 +10,9 @@ import scala.concurrent.Future
 /**
  * Requires `GROK_API_KEY` environment variable to be set.
  */
-object GrokCreateChatCompletionWithImage extends ExampleBase[OpenAIChatCompletionService] with BufferedImageHelper {
+object GrokCreateChatCompletionWithImage
+    extends ExampleBase[OpenAIChatCompletionService]
+    with BufferedImageHelper {
 
   override val service: OpenAIChatCompletionService = ChatCompletionProvider.grok
 

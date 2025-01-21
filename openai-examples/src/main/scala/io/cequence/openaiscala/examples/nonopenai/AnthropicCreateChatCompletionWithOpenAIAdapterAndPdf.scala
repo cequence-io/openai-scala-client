@@ -11,7 +11,7 @@ import scala.concurrent.Future
 // requires `openai-scala-anthropic-client` as a dependency and `ANTHROPIC_API_KEY` environment variable to be set
 object AnthropicCreateChatCompletionWithOpenAIAdapterAndPdf
     extends ExampleBase[OpenAIChatCompletionService]
-      with BufferedImageHelper {
+    with BufferedImageHelper {
 
   private val localPdfPath = sys.env("EXAMPLE_PDF_PATH")
   private val base64Source = pdfBase64Source(new File(localPdfPath))
