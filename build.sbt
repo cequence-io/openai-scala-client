@@ -62,12 +62,18 @@ lazy val google_vertexai_client = (project in file("google-vertexai-client"))
   .dependsOn(core)
   .aggregate(core, client, client_stream)
 
+// note that for perplexity_client we provide a streaming extension within the module as well
+lazy val perplexity_sonar_client = (project in file("perplexity-sonar-client"))
+  .settings(commonSettings *)
+  .dependsOn(core)
+  .aggregate(core, client, client_stream)
+
 lazy val count_tokens = (project in file("openai-count-tokens"))
   .settings(
     (commonSettings ++ Seq(definedTestNames in Test := Nil)) *
   )
   .dependsOn(client)
-  .aggregate(anthropic_client, google_vertexai_client)
+  .aggregate(anthropic_client, google_vertexai_client, perplexity_sonar_client)
 
 lazy val guice = (project in file("openai-guice"))
   .settings(commonSettings *)
@@ -76,8 +82,8 @@ lazy val guice = (project in file("openai-guice"))
 
 lazy val examples = (project in file("openai-examples"))
   .settings(commonSettings *)
-  .dependsOn(client_stream, anthropic_client, google_vertexai_client)
-  .aggregate(client_stream, anthropic_client, google_vertexai_client)
+  .dependsOn(client_stream, anthropic_client, google_vertexai_client, perplexity_sonar_client)
+  .aggregate(client_stream, anthropic_client, google_vertexai_client, perplexity_sonar_client)
 
 // POM settings for Sonatype
 ThisBuild / homepage := Some(
