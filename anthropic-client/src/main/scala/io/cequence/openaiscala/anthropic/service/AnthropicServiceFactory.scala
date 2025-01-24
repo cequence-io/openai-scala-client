@@ -1,12 +1,8 @@
 package io.cequence.openaiscala.anthropic.service
 
 import akka.stream.Materializer
-import io.cequence.openaiscala.anthropic.service.impl.{
-  AnthropicBedrockServiceImpl,
-  AnthropicServiceImpl,
-  BedrockConnectionSettings,
-  OpenAIAnthropicChatCompletionService
-}
+import io.cequence.openaiscala.EnvHelper
+import io.cequence.openaiscala.anthropic.service.impl.{AnthropicBedrockServiceImpl, AnthropicServiceImpl, BedrockConnectionSettings, OpenAIAnthropicChatCompletionService}
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
 import io.cequence.wsclient.domain.{RichResponse, WsRequestContext}
 import io.cequence.wsclient.service.ws.Timeouts
@@ -21,7 +17,7 @@ import scala.concurrent.ExecutionContext
  * Factory for creating instances of the [[AnthropicService]] and an OpenAI adapter for
  * [[OpenAIChatCompletionService]]
  */
-object AnthropicServiceFactory extends AnthropicServiceConsts {
+object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
 
   private def apiVersion = "2023-06-01"
 
@@ -111,13 +107,6 @@ object AnthropicServiceFactory extends AnthropicServiceConsts {
     new AnthropicBedrockServiceClassImpl(
       BedrockConnectionSettings(accessKey, secretKey, region),
       timeouts
-    )
-
-  private def getEnvValue(envKey: String): String =
-    Option(System.getenv(envKey)).getOrElse(
-      throw new IllegalStateException(
-        s"${envKey} environment variable expected but not set. Alternatively, you can pass the API key explicitly to the factory method."
-      )
     )
 
   private class AnthropicServiceClassImpl(

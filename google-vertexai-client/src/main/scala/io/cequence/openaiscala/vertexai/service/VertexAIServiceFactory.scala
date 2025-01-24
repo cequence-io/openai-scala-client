@@ -1,12 +1,13 @@
 package io.cequence.openaiscala.vertexai.service
 
 import com.google.cloud.vertexai.VertexAI
+import io.cequence.openaiscala.EnvHelper
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
 import io.cequence.openaiscala.vertexai.service.impl.OpenAIVertexAIChatCompletionService
 
 import scala.concurrent.ExecutionContext
 
-object VertexAIServiceFactory {
+object VertexAIServiceFactory extends EnvHelper {
 
   private val projectIdKey = "VERTEXAI_PROJECT_ID"
   private val locationIdKey = "VERTEXAI_LOCATION"
@@ -20,8 +21,8 @@ object VertexAIServiceFactory {
    * @return
    */
   def asOpenAI(
-    projectId: String = getEnvValueSafe(projectIdKey),
-    location: String = getEnvValueSafe(locationIdKey)
+    projectId: String = getEnvValue(projectIdKey),
+    location: String = getEnvValue(locationIdKey)
   )(
     implicit ec: ExecutionContext
   ): OpenAIChatCompletionStreamedService =
@@ -30,15 +31,8 @@ object VertexAIServiceFactory {
     )
 
   private def apply(
-    projectId: String = getEnvValueSafe(projectIdKey),
-    location: String = getEnvValueSafe(locationIdKey)
+    projectId: String = getEnvValue(projectIdKey),
+    location: String = getEnvValue(locationIdKey)
   ): VertexAI =
     new VertexAI(projectId, location)
-
-  private def getEnvValueSafe(key: String): String =
-    Option(System.getenv(key)).getOrElse(
-      throw new IllegalStateException(
-        s"${key} environment variable expected but not set. Alternatively, you can pass the value explicitly to the factory method."
-      )
-    )
 }
