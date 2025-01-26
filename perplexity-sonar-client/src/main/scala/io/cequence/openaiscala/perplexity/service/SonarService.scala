@@ -23,7 +23,8 @@ trait SonarService extends CloseableService with SonarServiceConsts {
    * @return
    *   chat completion response
    * @see
-   *   <a href="https://https://docs.perplexity.ai/api-reference/chat-completions">Perplexity Docs</a>
+   *   <a href="https://https://docs.perplexity.ai/api-reference/chat-completions">Perplexity
+   *   Docs</a>
    */
   def createChatCompletion(
     messages: Seq[Message],
@@ -39,7 +40,8 @@ trait SonarService extends CloseableService with SonarServiceConsts {
    * @return
    *   chat completion response
    * @see
-   *   <a href="https://https://docs.perplexity.ai/api-reference/chat-completions">Perplexity Docs</a>
+   *   <a href="https://https://docs.perplexity.ai/api-reference/chat-completions">Perplexity
+   *   Docs</a>
    */
   def createChatCompletionStreamed(
     messages: Seq[Message],

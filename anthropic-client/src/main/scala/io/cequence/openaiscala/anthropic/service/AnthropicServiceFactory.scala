@@ -2,7 +2,12 @@ package io.cequence.openaiscala.anthropic.service
 
 import akka.stream.Materializer
 import io.cequence.openaiscala.EnvHelper
-import io.cequence.openaiscala.anthropic.service.impl.{AnthropicBedrockServiceImpl, AnthropicServiceImpl, BedrockConnectionSettings, OpenAIAnthropicChatCompletionService}
+import io.cequence.openaiscala.anthropic.service.impl.{
+  AnthropicBedrockServiceImpl,
+  AnthropicServiceImpl,
+  BedrockConnectionSettings,
+  OpenAIAnthropicChatCompletionService
+}
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
 import io.cequence.wsclient.domain.{RichResponse, WsRequestContext}
 import io.cequence.wsclient.service.ws.Timeouts
