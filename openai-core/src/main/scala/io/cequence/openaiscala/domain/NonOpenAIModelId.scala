@@ -31,7 +31,9 @@ object NonOpenAIModelId {
   val llama_3_3_70b_versatile = "llama-3.3-70b-versatile" // Groq
   val llama_3_3_70b_specdec = "llama-3.3-70b-specdec" // Groq
   val llama_v3p3_70b_instruct = "llama-v3p3-70b-instruct" // Fireworks AI
-  val llama_3_3_70B_Instruct_Turbo = "meta-llama/Llama-3.3-70B-Instruct-Turbo" // Together AI
+  val llama_3_3_70B_instruct_turbo = "meta-llama/Llama-3.3-70B-Instruct-Turbo" // Together AI
+  val llama_3_3_70B_instruct_turbo_free =
+    "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free" // Together AI
   val llama_3_3_70b = "llama-3.3-70b" // Cerebras
   val llama_v3p2_1b_instruct = "llama-v3p2-1b-instruct" // Fireworks AI
   val llama_v3p2_3b_instruct = "llama-v3p2-3b-instruct" // Fireworks AI
@@ -45,7 +47,9 @@ object NonOpenAIModelId {
   val llama_vision_free = "meta-llama/Llama-Vision-Free" // Together AI
   val llama_3_2_1b_preview = "llama-3.2-1b-preview" // Groq
   val llama_3_2_3b_preview = "llama-3.2-3b-preview" // Groq
+  @Deprecated
   val llama_3_2_11b_text_preview = "llama-3.2-11b-text-preview" // Groq
+  @Deprecated
   val llama_3_2_90b_text_preview = "llama-3.2-90b-text-preview" // Groq
   val llama3_1_8b = "llama3.1-8b" // Cerebras
   val llama3_1_70b = "llama3.1-70b" // Cerebras
@@ -235,19 +239,21 @@ object NonOpenAIModelId {
   val grok_vision_beta = "grok-vision-beta"
 
   // Deepseek
+  val deepseek_r1_distill_llama_70b = "deepseek-r1-distill-llama-70b" // Groq
   // context 64K, 4K (8KBeta)
+  val deepseek_r1 = "deepseek-r1" // Fireworks
+  val deepseek_ai_deepseek_r1 = "deepseek-ai/DeepSeek-R1" // Together AI
   val deepseek_chat = "deepseek-chat"
   val deepseek_coder = "deepseek-coder"
   val deepseek_v3 = "deepseek-v3" // Fireworks
   val deepseek_v2_lite_chat = "deepseek-v2-lite-chat" // Fireworks
   val deepseek_ai_deepseek_v3 = "deepseek-ai/DeepSeek-V3" // Together AI
 
-  // Sonar (Perplexlity)
+  // Sonar (Perplexity)
   // 200k context length
   val sonar_pro = "sonar-pro"
   // 127k context length
   val sonar = "sonar"
-
   // These models will be deprecated and will no longer be available to use after 2/22/2025
   // 127k context window
   val llama_3_1_sonar_small_128k_online = "llama-3.1-sonar-small-128k-online"

@@ -11,6 +11,8 @@ object JsonSchema {
 
   import java.lang.{String => JString}
 
+  type JsonSchemaOrMap = Either[JsonSchema, Map[JString, Any]]
+
   case class Object(
     properties: Seq[(JString, JsonSchema)],
     required: Seq[JString] = Nil
