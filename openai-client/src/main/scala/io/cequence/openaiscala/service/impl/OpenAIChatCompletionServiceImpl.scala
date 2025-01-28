@@ -124,6 +124,11 @@ trait ChatCompletionBodyMaker {
               handleJsonSchema(settingsFinal)
         }
       },
+      Param.parallel_tool_calls -> settingsFinal.parallel_tool_calls,
+      Param.store -> settingsFinal.store,
+      Param.reasoning_effort -> settingsFinal.reasoning_effort.map(_.toString()),
+      Param.service_tier -> settingsFinal.service_tier.map(_.toString()),
+      Param.metadata -> (if (settingsFinal.metadata.nonEmpty) Some(settingsFinal.metadata) else None),
       Param.extra_params -> {
         if (settingsFinal.extra_params.nonEmpty) Some(settingsFinal.extra_params) else None
       }

@@ -21,7 +21,14 @@ case class TextCompletionChoiceInfo(
 case class UsageInfo(
   prompt_tokens: Int,
   total_tokens: Int,
-  completion_tokens: Option[Int]
+  completion_tokens: Option[Int],
+  completion_tokens_details: Option[CompletionTokenDetails] = None
+)
+
+case class CompletionTokenDetails(
+  reasoning_tokens: Int,
+  accepted_prediction_tokens: Int,
+  rejected_prediction_tokens: Int
 )
 
 case class LogprobsInfo(

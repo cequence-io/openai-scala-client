@@ -79,7 +79,16 @@ object ChatCompletionSettingsConversions {
         "O1 models don't support frequency penalty values other than the default of 0, converting to 0."
       ),
       warning = true
-    )
+    ),
+    // parallel_tool_calls
+    FieldConversionDef(
+      settings => settings.parallel_tool_calls.isDefined,
+      _.copy(parallel_tool_calls = None),
+      Some(
+        "O1 models don't support parallel tool calls, converting to None."
+      ),
+      warning = true
+    ),
   )
 
   private val o1PreviewConversions =

@@ -5,19 +5,11 @@ import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain.ChunkingStrategy.StaticChunkingStrategy
 import io.cequence.openaiscala.domain.FineTune.WeightsAndBiases
 import io.cequence.openaiscala.domain.ThreadAndRun.Content.ContentBlock.ImageDetail
-//import io.cequence.openaiscala.domain.RunTool.{CodeInterpreterTool, FileSearchTool, FunctionTool}
+import io.cequence.openaiscala.domain.settings.{ChatCompletionResponseFormatType, ReasoningEffort, ServiceTier}
 import io.cequence.openaiscala.domain.Run.TruncationStrategy
-import io.cequence.openaiscala.domain.ToolChoice.EnforcedTool
 import io.cequence.openaiscala.domain.StepDetail.{MessageCreation, ToolCalls}
-import io.cequence.openaiscala.domain.response.AssistantToolResourceResponse.{
-  CodeInterpreterResourcesResponse,
-  FileSearchResourcesResponse
-}
-import io.cequence.openaiscala.domain.response.ResponseFormat.{
-  JsonObjectResponse,
-  StringResponse,
-  TextResponse
-}
+import io.cequence.openaiscala.domain.response.AssistantToolResourceResponse.{CodeInterpreterResourcesResponse, FileSearchResourcesResponse}
+import io.cequence.openaiscala.domain.response.ResponseFormat.{JsonObjectResponse, StringResponse, TextResponse}
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings.JsonSchemaDef
 import io.cequence.openaiscala.domain.{ThreadMessageFile, _}
@@ -47,6 +39,8 @@ object JsonFormats {
     val writes: Writes[ModelInfo] = Json.writes[ModelInfo]
     Format(reads, writes)
   }
+
+  implicit lazy val completionTokenDetailsFormat: Format[CompletionTokenDetails] = Json.format[CompletionTokenDetails]
 
   implicit lazy val usageInfoFormat: Format[UsageInfo] = Json.format[UsageInfo]
 
@@ -134,30 +128,6 @@ object JsonFormats {
     Json.format[FunctionTool]
   }
 
-//  val assistantsFunctionSpecFormat: Format[FunctionTool] = {
-//    implicit lazy val stringAnyMapFormat: Format[Map[String, Any]] =
-//      JsonUtil.StringAnyMapFormat
-//
-//    val assistantsFunctionSpecWrites: Writes[FunctionSpec] = new Writes[FunctionSpec] {
-//      def writes(fs: FunctionSpec): JsValue = Json.obj(
-//        "type" -> "function",
-//        "function" -> Json.obj(
-//          "name" -> fs.name,
-//          "description" -> fs.description,
-//          "parameters" -> fs.parameters
-//        )
-//      )
-//    }
-//
-//    val assistantsFunctionSpecReads: Reads[FunctionSpec] = (
-//      (JsPath \ "function" \ "name").read[String] and
-//        (JsPath \ "function" \ "description").readNullable[String] and
-//        (JsPath \ "function" \ "parameters").read[Map[String, Any]]
-//    )(FunctionSpec.apply _)
-//
-//    Format(assistantsFunctionSpecReads, assistantsFunctionSpecWrites)
-//  }
-
   implicit lazy val messageAttachmentToolFormat: Format[MessageAttachmentTool] = {
     val typeDiscriminatorKey = "type"
 
@@ -169,13 +139,11 @@ object JsonFormats {
           case _                  => JsError("Unknown type")
         }
       },
-      { (tool: MessageAttachmentTool) =>
-        tool match {
-          case MessageAttachmentTool.CodeInterpreterSpec =>
-            Json.obj(typeDiscriminatorKey -> "code_interpreter")
-          case MessageAttachmentTool.FileSearchSpec =>
-            Json.obj(typeDiscriminatorKey -> "file_search")
-        }
+      {
+        case MessageAttachmentTool.CodeInterpreterSpec =>
+          Json.obj(typeDiscriminatorKey -> "code_interpreter")
+        case MessageAttachmentTool.FileSearchSpec =>
+          Json.obj(typeDiscriminatorKey -> "file_search")
       }
     )
   }
@@ -339,7 +307,24 @@ object JsonFormats {
       }
     }
 
-  implicit lazy val topLogprobInfoormat: Format[TopLogprobInfo] = {
+  implicit val chatCompletionResponseFormatTypeFormat: Format[ChatCompletionResponseFormatType] = enumFormat[ChatCompletionResponseFormatType](
+    ChatCompletionResponseFormatType.json_object,
+    ChatCompletionResponseFormatType.json_schema,
+    ChatCompletionResponseFormatType.text
+  )
+
+  implicit val reasoningEffortFormat: Format[ReasoningEffort] = enumFormat[ReasoningEffort](
+    ReasoningEffort.low,
+    ReasoningEffort.medium,
+    ReasoningEffort.high
+  )
+
+  implicit val serviceTierFormat: Format[ServiceTier] = enumFormat[ServiceTier](
+    ServiceTier.auto,
+    ServiceTier.default
+  )
+
+  implicit lazy val topLogprobInfoFormat: Format[TopLogprobInfo] = {
     val reads: Reads[TopLogprobInfo] = (
       (__ \ "token").read[String] and
         (__ \ "logprob").read[Double] and

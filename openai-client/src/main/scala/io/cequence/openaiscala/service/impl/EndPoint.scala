@@ -115,6 +115,9 @@ object Param {
   case object truncation_strategy extends Param
   case object parallel_tool_calls extends Param
   case object thread extends Param
+  case object store extends Param
+  case object reasoning_effort extends Param
+  case object service_tier extends Param
   // empty string param to sneak in extra parameters
   case object extra_params extends Param(" ")
 }
