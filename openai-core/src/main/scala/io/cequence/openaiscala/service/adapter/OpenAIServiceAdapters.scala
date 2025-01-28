@@ -1,6 +1,10 @@
 package io.cequence.openaiscala.service.adapter
 
-import io.cequence.openaiscala.domain.{BaseMessage, ChatCompletionInterceptData}
+import io.cequence.openaiscala.domain.{
+  AssistantMessage,
+  BaseMessage,
+  ChatCompletionInterceptData
+}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.service._
 import io.cequence.openaiscala.service.adapter.ServiceWrapperTypes._
@@ -39,6 +43,17 @@ trait OpenAIServiceAdapters[S <: CloseableService] extends ServiceAdapters[S] {
   ): S =
     wrapAndDelegateChatCompletion(
       new ChatCompletionInputAdapter(adaptMessages, adaptSettings)(service)
+    )
+
+  def chatCompletionOutput(
+    adaptMessage: AssistantMessage => AssistantMessage
+  )(
+    service: S with OpenAIChatCompletionService
+  )(
+    implicit ec: ExecutionContext
+  ): S =
+    wrapAndDelegateChatCompletion(
+      new ChatCompletionOutputAdapter(adaptMessage)(service)
     )
 
   def chatCompletionIntercept(
