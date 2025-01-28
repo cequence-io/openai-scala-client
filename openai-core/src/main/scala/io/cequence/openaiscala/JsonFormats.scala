@@ -234,6 +234,8 @@ object JsonFormats {
     val message: BaseMessage = role match {
       case ChatRole.System => json.as[SystemMessage]
 
+      case ChatRole.Developer => json.as[DeveloperMessage]
+
       case ChatRole.User =>
         json.asOpt[UserMessage] match {
           case Some(userMessage) => userMessage

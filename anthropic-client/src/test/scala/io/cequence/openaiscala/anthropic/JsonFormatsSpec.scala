@@ -42,7 +42,7 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
           )
         )
       val json =
-        """{"role":"user","content":[{"type":"text","text":"Hello, world!"},{"type":"text","text":"How are you?"}]}"""
+        """{"role":"user","content":[{"type":"text","text":"Hello, world!","citations":[]},{"type":"text","text":"How are you?","citations":[]}]}"""
       testCodec[Message](userMessage, json)
     }
 
@@ -61,7 +61,7 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
           )
         )
       val json =
-        """{"role":"assistant","content":[{"type":"text","text":"Hello, world!"},{"type":"text","text":"How are you?"}]}"""
+        """{"role":"assistant","content":[{"type":"text","text":"Hello, world!","citations":[]},{"type":"text","text":"How are you?","citations":[]}]}"""
       testCodec[Message](assistantMessage, json)
     }
 
@@ -99,7 +99,7 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
             )
           )
         val json =
-          """{"role":"user","content":[{"type":"text","text":"Hello, world!","cache_control":{"type":"ephemeral"}},{"type":"text","text":"How are you?"}]}"""
+          """{"role":"user","content":[{"type":"text","text":"Hello, world!","citations":[],"cache_control":{"type":"ephemeral"}},{"type":"text","text":"How are you?","citations":[]}]}"""
         testCodec[Message](userMessage, json)
       }
 
@@ -112,7 +112,7 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
             )
           )
         val json =
-          """{"role":"user","content":[{"type":"text","text":"Hello, world!"},{"type":"text","text":"How are you?","cache_control":{"type":"ephemeral"}}]}"""
+          """{"role":"user","content":[{"type":"text","text":"Hello, world!","citations":[]},{"type":"text","text":"How are you?","citations":[],"cache_control":{"type":"ephemeral"}}]}"""
         testCodec[Message](userMessage, json)
       }
 
@@ -128,7 +128,7 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
         val imageJson =
           """{"type":"image","source":{"type":"base64","media_type":"image/jpeg","data":"/9j/4AAQSkZJRg..."},"cache_control":{"type":"ephemeral"}}""".stripMargin
         val json =
-          s"""{"role":"user","content":[$imageJson,{"type":"text","text":"How are you?"}]}"""
+          s"""{"role":"user","content":[$imageJson,{"type":"text","text":"How are you?","citations":[]}]}"""
         testCodec[Message](userMessage, json)
       }
     }
