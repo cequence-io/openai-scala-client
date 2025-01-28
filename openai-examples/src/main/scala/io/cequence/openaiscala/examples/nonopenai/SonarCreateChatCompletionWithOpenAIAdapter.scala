@@ -3,6 +3,7 @@ package io.cequence.openaiscala.examples.nonopenai
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.examples.ExampleBase
+import io.cequence.openaiscala.perplexity.service.SonarServiceConsts
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
 
 import scala.concurrent.Future
@@ -11,7 +12,8 @@ import scala.concurrent.Future
  * Requires `SONAR_API_KEY` environment variable to be set.
  */
 object SonarCreateChatCompletionWithOpenAIAdapter
-    extends ExampleBase[OpenAIChatCompletionService] {
+    extends ExampleBase[OpenAIChatCompletionService]
+    with SonarServiceConsts {
 
   override val service: OpenAIChatCompletionService =
     ChatCompletionProvider.sonar
@@ -30,7 +32,8 @@ object SonarCreateChatCompletionWithOpenAIAdapter
         settings = CreateChatCompletionSettings(
           model = modelId,
           temperature = Some(0.1),
-          max_tokens = Some(512)
+          max_tokens = Some(512),
+          extra_params = Map(aHrefForCitationsParam -> true)
         )
       )
       .map(printMessageContent)
