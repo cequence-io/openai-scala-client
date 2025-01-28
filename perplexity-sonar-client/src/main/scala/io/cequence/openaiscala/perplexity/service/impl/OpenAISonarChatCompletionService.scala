@@ -10,7 +10,7 @@ import io.cequence.openaiscala.JsonFormats.eitherJsonSchemaFormat
 import io.cequence.openaiscala.perplexity.domain.Message
 import io.cequence.openaiscala.perplexity.domain.response.{SonarChatCompletionChunkResponse, SonarChatCompletionResponse}
 import io.cequence.openaiscala.perplexity.domain.settings.{SolarResponseFormat, SonarCreateChatCompletionSettings}
-import io.cequence.openaiscala.perplexity.service.{SonarConsts, SonarService, SonarServiceConsts}
+import io.cequence.openaiscala.perplexity.service.{SonarConsts, SonarService}
 import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIChatCompletionStreamedServiceExtra}
 import io.cequence.wsclient.JsonUtil
 import play.api.libs.json.{JsObject, Json}

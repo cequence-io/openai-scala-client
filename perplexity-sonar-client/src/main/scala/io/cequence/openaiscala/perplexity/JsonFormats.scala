@@ -15,6 +15,11 @@ import io.cequence.openaiscala.perplexity.domain.settings.{
   SonarCreateChatCompletionSettings
 }
 import io.cequence.openaiscala.perplexity.domain.{ChatRole, Message}
+import io.cequence.openaiscala.JsonFormats.{
+  chatCompletionChoiceInfoFormat,
+  usageInfoFormat,
+  chatCompletionChoiceChunkInfoFormat
+}
 import io.cequence.wsclient.JsonUtil
 import play.api.libs.functional.syntax._
 import play.api.libs.json._

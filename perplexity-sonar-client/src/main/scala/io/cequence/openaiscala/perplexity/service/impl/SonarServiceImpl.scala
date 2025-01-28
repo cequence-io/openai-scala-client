@@ -5,18 +5,17 @@ import akka.stream.Materializer
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.perplexity.domain.Message
-import io.cequence.openaiscala.perplexity.domain.settings.{SolarResponseFormat, SonarCreateChatCompletionSettings}
+import io.cequence.openaiscala.perplexity.domain.settings.SonarCreateChatCompletionSettings
 import io.cequence.openaiscala.perplexity.JsonFormats._
 import io.cequence.openaiscala.perplexity.domain.response.{SonarChatCompletionChunkResponse, SonarChatCompletionResponse}
 import io.cequence.openaiscala.perplexity.service.SonarService
-import io.cequence.openaiscala.JsonFormats.chatCompletionChunkResponseFormat
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
 import io.cequence.wsclient.domain.WsRequestContext
 import io.cequence.wsclient.service.{WSClientEngine, WSClientEngineStreamExtra}
 import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithStreamEngine
 import io.cequence.wsclient.service.ws.stream.PlayWSStreamClientEngine
-import play.api.libs.json.{JsObject, JsValue, Json, __}
+import play.api.libs.json._
 
 import scala.concurrent.{ExecutionContext, Future}
 
