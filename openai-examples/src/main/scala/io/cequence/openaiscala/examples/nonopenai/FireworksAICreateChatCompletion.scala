@@ -17,13 +17,13 @@ import scala.concurrent.Future
 object FireworksAICreateChatCompletion extends ExampleBase[OpenAIChatCompletionService] {
 
   // thinking process ends with </think>
-  private val keepThinkingOutput = false
+  private val omitThinkingOutput = true
 
   override val service: OpenAIChatCompletionService = {
     val adapters = OpenAIServiceAdapters.forChatCompletionService
     val vanillaService = ChatCompletionProvider.fireworks
 
-    if (!keepThinkingOutput)
+    if (omitThinkingOutput)
       adapters.chatCompletionOutput(MessageConversions.filterOutToThinkEnd)(vanillaService)
     else
       vanillaService

@@ -15,18 +15,18 @@ object FireworksAICreateChatCompletionStreamed
     extends ExampleBase[OpenAIChatCompletionStreamedService] {
 
   // thinking process ends with </think>
-  private val keepThinkingOutput = false
+  private val omitThinkingOutput = true
 
   override val service: OpenAIChatCompletionStreamedService = {
     val vanillaService = ChatCompletionProvider.fireworks
 
-    if (keepThinkingOutput)
-      vanillaService
-    else
+    if (omitThinkingOutput)
       OpenAIChatCompletionIOConversionAdapter(
         vanillaService,
         outputChunkMessageConversion = Some(MessageConversions.filterOutToThinkEndFlow)
       )
+    else
+      vanillaService
   }
 
   private val fireworksModelPrefix = "accounts/fireworks/models/"
