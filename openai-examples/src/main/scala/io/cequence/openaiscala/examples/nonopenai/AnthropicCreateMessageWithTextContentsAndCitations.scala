@@ -13,7 +13,7 @@ import io.cequence.openaiscala.examples.{BufferedImageHelper, ExampleBase}
 import scala.concurrent.Future
 
 // requires `openai-scala-anthropic-client` as a dependency
-object AnthropicCreateMessageWithTextBlock
+object AnthropicCreateMessageWithTextContentsAndCitations
     extends ExampleBase[AnthropicService]
     with BufferedImageHelper {
 
@@ -24,21 +24,22 @@ object AnthropicCreateMessageWithTextBlock
     UserMessageContent(
       Seq(
         ContentBlockBase(TextBlock("Summarize the document.")),
-        MediaBlock.txt(
-          """Tokyo,[a] officially the Tokyo Metropolis,[b] is the capital of Japan.
-            |With a population of over 14 million in the city proper in 2023, it is one of the most populous urban areas in the world.
-            |The Greater Tokyo Area, which includes Tokyo and parts of six neighboring prefectures, is the most populous metropolitan area in the world,
-            |with 41 million residents as of 2024.
-            |
-            |Lying at the head of Tokyo Bay, Tokyo is part of the Kantō region, on the central coast of Honshu, Japan's largest island.
-            |Tokyo serves as Japan's economic center and the seat of both the Japanese government and the Emperor of Japan.
-            |The Tokyo Metropolitan Government administers Tokyo's central 23 special wards, which formerly made up Tokyo City; various commuter towns and suburbs in its western area;
-            |and two outlying island chains, the Tokyo Islands.
-            |Although most of the world recognizes Tokyo as a city, since 1943 its governing structure has been more akin to that of a prefecture,
-            |with an accompanying Governor and Assembly taking precedence over the smaller municipal governments that make up the metropolis.
-            |Special wards in Tokyo include Chiyoda, the site of the National Diet Building and the Tokyo Imperial Palace; Shinjuku,
-            |the city's administrative center; and Shibuya, a hub of commerce and business.
-            |""".stripMargin,
+        MediaBlock.txts(
+          Seq(
+            "Tokyo,[a] officially the Tokyo Metropolis,[b] is the capital of Japan.",
+            """With a population of over 14 million in the city proper in 2023, it is one of the most populous urban areas in the world.
+              |The Greater Tokyo Area, which includes Tokyo and parts of six neighboring prefectures, is the most populous metropolitan area in the world,
+              |with 41 million residents as of 2024""".stripMargin,
+            """Lying at the head of Tokyo Bay, Tokyo is part of the Kantō region, on the central coast of Honshu, Japan's largest island.
+              |Tokyo serves as Japan's economic center and the seat of both the Japanese government and the Emperor of Japan.
+              |The Tokyo Metropolitan Government administers Tokyo's central 23 special wards, which formerly made up Tokyo City; various commuter towns and suburbs in its western area;
+              |and two outlying island chains, the Tokyo Islands.""".stripMargin,
+            """Although most of the world recognizes Tokyo as a city, since 1943 its governing structure has been more akin to that of a prefecture,
+              |with an accompanying Governor and Assembly taking precedence over the smaller municipal governments that make up the metropolis.
+              |Special wards in Tokyo include Chiyoda, the site of the National Diet Building and the Tokyo Imperial Palace; Shinjuku,
+              |the city's administrative center; and Shibuya, a hub of commerce and business.""
+              |""".stripMargin
+          ),
           citations = true
         )
       )
