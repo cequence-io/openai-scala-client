@@ -28,7 +28,8 @@ object JsonFormats extends JsonFormats
 
 trait JsonFormats {
 
-  implicit lazy val chatRoleFormat = JsonUtil.enumFormat[ChatRole](ChatRole.values: _*)
+  implicit lazy val chatRoleFormat: Format[ChatRole] =
+    JsonUtil.enumFormat[ChatRole](ChatRole.values: _*)
 
   implicit lazy val messageWrites: Writes[Message] = (message: Message) =>
     Json.obj(
