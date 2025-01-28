@@ -4,18 +4,10 @@ import akka.NotUsed
 import akka.stream.Materializer
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.openaiscala.domain.response.{
-  ChatCompletionChunkResponse,
-  ChatCompletionResponse
-}
 import io.cequence.openaiscala.perplexity.domain.Message
-import io.cequence.openaiscala.perplexity.domain.settings.SonarCreateChatCompletionSettings
-import io.cequence.openaiscala.perplexity.service.impl.{EndPoint, Param}
+import io.cequence.openaiscala.perplexity.domain.settings.{SolarResponseFormat, SonarCreateChatCompletionSettings}
 import io.cequence.openaiscala.perplexity.JsonFormats._
-import io.cequence.openaiscala.perplexity.domain.response.{
-  SonarChatCompletionChunkResponse,
-  SonarChatCompletionResponse
-}
+import io.cequence.openaiscala.perplexity.domain.response.{SonarChatCompletionChunkResponse, SonarChatCompletionResponse}
 import io.cequence.openaiscala.perplexity.service.SonarService
 import io.cequence.openaiscala.JsonFormats.chatCompletionChunkResponseFormat
 import io.cequence.wsclient.JsonUtil.JsonOps
@@ -24,7 +16,7 @@ import io.cequence.wsclient.domain.WsRequestContext
 import io.cequence.wsclient.service.{WSClientEngine, WSClientEngineStreamExtra}
 import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithStreamEngine
 import io.cequence.wsclient.service.ws.stream.PlayWSStreamClientEngine
-import play.api.libs.json.{JsValue, Json, __}
+import play.api.libs.json.{JsObject, JsValue, Json, __}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -93,7 +85,7 @@ private[service] class SonarServiceImpl(
       Param.frequency_penalty -> settings.frequency_penalty,
       Param.max_tokens -> settings.max_tokens,
       Param.presence_penalty -> settings.presence_penalty,
-      Param.response_format -> settings.response_format.map(_.toString()),
+      Param.response_format -> settings.response_format.map(Json.toJson(_)),
       Param.return_images -> settings.return_images,
       Param.return_related_questions -> settings.return_related_questions,
       Param.search_domain_filter -> (if (settings.search_domain_filter.nonEmpty)

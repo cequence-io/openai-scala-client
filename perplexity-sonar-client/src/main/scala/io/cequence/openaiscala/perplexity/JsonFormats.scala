@@ -11,18 +11,12 @@ import io.cequence.openaiscala.perplexity.domain.response.{
 }
 import io.cequence.openaiscala.perplexity.domain.settings.{
   RecencyFilterType,
-  SolarResponseFormatType,
+  SolarResponseFormat,
   SonarCreateChatCompletionSettings
 }
 import io.cequence.openaiscala.perplexity.domain.{ChatRole, Message}
-import io.cequence.openaiscala.JsonFormats.{
-  chatCompletionChoiceInfoFormat,
-  usageInfoFormat,
-  chatCompletionChoiceChunkInfoFormat
-}
 import io.cequence.wsclient.JsonUtil
 import play.api.libs.functional.syntax._
-import play.api.libs.json.JsonNaming.SnakeCase
 import play.api.libs.json._
 
 object JsonFormats extends JsonFormats
@@ -54,8 +48,41 @@ trait JsonFormats {
 
   implicit lazy val messageFormat: Format[Message] = Format(messageReads, messageWrites)
 
-  implicit lazy val solarResponseFormatTypeFormat: Format[SolarResponseFormatType] =
-    JsonUtil.enumFormat[SolarResponseFormatType](SolarResponseFormatType.values: _*)
+  implicit lazy val solarResponseFormatReads: Reads[SolarResponseFormat] = { (json: JsValue) =>
+    (json \ "type").validate[String].flatMap {
+      case "json_schema" =>
+        (json \ "json_schema" \ "schema")
+          .validate[Map[String, Any]](JsonUtil.StringAnyMapFormat)
+          .map { jsonSchema =>
+            SolarResponseFormat.JsonSchema(jsonSchema)
+          }
+
+      case "regex" =>
+        (json \ "regex" \ "regex").validate[String].map { regex =>
+          SolarResponseFormat.Regex(regex)
+        }
+
+      case _ => JsError("Invalid SolarResponseFormat type")
+    }
+  }
+
+  implicit lazy val solarResponseFormatWrites: Writes[SolarResponseFormat] = {
+    case x: SolarResponseFormat.JsonSchema =>
+      val jsonSchema = Json.toJson(x.jsonSchema)(JsonUtil.StringAnyMapFormat)
+      Json.obj(
+        "type" -> "json_schema",
+        "json_schema" -> Json.obj("schema" -> jsonSchema)
+      )
+
+    case x: SolarResponseFormat.Regex =>
+      Json.obj(
+        "type" -> "regex",
+        "regex" -> Json.obj("regex" -> x.regex)
+      )
+  }
+
+  implicit lazy val solarResponseFormatFormat: Format[SolarResponseFormat] =
+    Format(solarResponseFormatReads, solarResponseFormatWrites)
 
   implicit lazy val recencyFilterTypeFormat: Format[RecencyFilterType] =
     JsonUtil.enumFormat[RecencyFilterType](RecencyFilterType.values: _*)

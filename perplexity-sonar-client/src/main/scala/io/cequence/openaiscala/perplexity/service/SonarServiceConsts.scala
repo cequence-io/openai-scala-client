@@ -7,9 +7,7 @@ import io.cequence.openaiscala.service.ChatProviderSettings
 /**
  * Constants of [[SonarService]], mostly defaults
  */
-trait SonarServiceConsts {
-
-  protected val coreUrl = ChatProviderSettings.sonar.coreUrl
+trait SonarServiceConsts extends SonarConsts {
 
   object DefaultSettings {
 
@@ -17,4 +15,10 @@ trait SonarServiceConsts {
       model = NonOpenAIModelId.sonar
     )
   }
+}
+
+trait SonarConsts {
+  protected val coreUrl = ChatProviderSettings.sonar.coreUrl
+
+  protected val aHrefForCitationsParam = "a_href_for_citations"
 }

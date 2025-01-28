@@ -3,34 +3,17 @@ package io.cequence.openaiscala.perplexity.service.impl
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.openaiscala.domain.{
-  AssistantMessage,
-  BaseMessage,
-  SystemMessage,
-  UserMessage
-}
-import io.cequence.openaiscala.domain.response.{
-  ChatCompletionChunkResponse,
-  ChatCompletionResponse
-}
-import io.cequence.openaiscala.domain.settings.{
-  ChatCompletionResponseFormatType,
-  CreateChatCompletionSettings
-}
+import io.cequence.openaiscala.domain.{AssistantMessage, BaseMessage, SystemMessage, UserMessage}
+import io.cequence.openaiscala.domain.response.{ChatCompletionChunkResponse, ChatCompletionResponse}
+import io.cequence.openaiscala.domain.settings.{ChatCompletionResponseFormatType, CreateChatCompletionSettings}
+import io.cequence.openaiscala.JsonFormats.eitherJsonSchemaFormat
 import io.cequence.openaiscala.perplexity.domain.Message
-import io.cequence.openaiscala.perplexity.domain.response.{
-  SonarChatCompletionChunkResponse,
-  SonarChatCompletionResponse
-}
-import io.cequence.openaiscala.perplexity.domain.settings.{
-  SolarResponseFormatType,
-  SonarCreateChatCompletionSettings
-}
-import io.cequence.openaiscala.perplexity.service.SonarService
-import io.cequence.openaiscala.service.{
-  OpenAIChatCompletionService,
-  OpenAIChatCompletionStreamedServiceExtra
-}
+import io.cequence.openaiscala.perplexity.domain.response.{SonarChatCompletionChunkResponse, SonarChatCompletionResponse}
+import io.cequence.openaiscala.perplexity.domain.settings.{SolarResponseFormat, SonarCreateChatCompletionSettings}
+import io.cequence.openaiscala.perplexity.service.{SonarConsts, SonarService, SonarServiceConsts}
+import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIChatCompletionStreamedServiceExtra}
+import io.cequence.wsclient.JsonUtil
+import play.api.libs.json.{JsObject, Json}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -39,30 +22,39 @@ private[service] class OpenAISonarChatCompletionService(
 )(
   implicit executionContext: ExecutionContext
 ) extends OpenAIChatCompletionService
-    with OpenAIChatCompletionStreamedServiceExtra {
+    with OpenAIChatCompletionStreamedServiceExtra
+    with SonarConsts {
 
   override def createChatCompletion(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
   ): Future[ChatCompletionResponse] = {
+    val addAHrefToCitations = getAHrefCitationParamValue(settings)
+
     underlying
       .createChatCompletion(
         messages.map(toSonarMessage),
         toSonarSetting(settings)
       )
-      .map(toOpenAIResponse)
+      .map(toOpenAIResponse(addAHrefToCitations))
   }
 
   override def createChatCompletionStreamed(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
-  ): Source[ChatCompletionChunkResponse, NotUsed] =
+  ): Source[ChatCompletionChunkResponse, NotUsed] = {
+    val addAHrefToCitations = getAHrefCitationParamValue(settings)
+
     underlying
       .createChatCompletionStreamed(
         messages.map(toSonarMessage),
         toSonarSetting(settings)
       )
-      .map(toOpenAIResponse)
+      .map(toOpenAIChunkResponse(addAHrefToCitations))
+  }
+
+  private def getAHrefCitationParamValue(settings: CreateChatCompletionSettings) =
+    settings.extra_params.get(aHrefForCitationsParam).exists(_.asInstanceOf[Boolean])
 
   private def toSonarMessage(message: BaseMessage): Message =
     message match {
@@ -73,18 +65,26 @@ private[service] class OpenAISonarChatCompletionService(
     }
 
   private def toSonarSetting(settings: CreateChatCompletionSettings)
-    : SonarCreateChatCompletionSettings =
+    : SonarCreateChatCompletionSettings = {
+    def jsonSchema = settings.jsonSchema
+      .map(_.structure)
+      .getOrElse(
+        throw new OpenAIScalaClientException("JsonSchema is expected for Sonar.")
+      )
+
     SonarCreateChatCompletionSettings(
       model = settings.model,
       frequency_penalty = settings.frequency_penalty,
       max_tokens = settings.max_tokens,
       presence_penalty = settings.presence_penalty,
       response_format = settings.response_format_type.flatMap {
-        case ChatCompletionResponseFormatType.json_object =>
-          Some(SolarResponseFormatType.json_schema)
-
-        case ChatCompletionResponseFormatType.json_schema =>
-          Some(SolarResponseFormatType.json_schema)
+        case ChatCompletionResponseFormatType.json_object |
+            ChatCompletionResponseFormatType.json_schema =>
+          Some(
+            SolarResponseFormat.JsonSchema(
+              JsonUtil.toValueMap(Json.toJson(jsonSchema).as[JsObject])
+            )
+          )
 
         case ChatCompletionResponseFormatType.text => None
       },
@@ -96,8 +96,13 @@ private[service] class OpenAISonarChatCompletionService(
       top_k = None,
       top_p = settings.top_p
     )
+  }
 
-  private def toOpenAIResponse(response: SonarChatCompletionResponse): ChatCompletionResponse =
+  private def toOpenAIResponse(
+    addAHrefToCitations: Boolean
+  )(
+    response: SonarChatCompletionResponse
+  ): ChatCompletionResponse =
     ChatCompletionResponse(
       id = response.id,
       created = response.created,
@@ -106,15 +111,19 @@ private[service] class OpenAISonarChatCompletionService(
       choices = response.choices.map(choice =>
         choice.copy(
           message = choice.message.copy(
-            content = s"${choice.message.content}${citationAppendix(response.citations)}"
+            content =
+              s"${choice.message.content}${citationAppendix(response.citations, addAHrefToCitations)}"
           )
         )
       ),
       usage = response.usage
     )
 
-  private def toOpenAIResponse(response: SonarChatCompletionChunkResponse)
-    : ChatCompletionChunkResponse =
+  private def toOpenAIChunkResponse(
+    addAHrefToCitations: Boolean
+  )(
+    response: SonarChatCompletionChunkResponse
+  ): ChatCompletionChunkResponse =
     ChatCompletionChunkResponse(
       id = response.id,
       created = response.created,
@@ -126,7 +135,7 @@ private[service] class OpenAISonarChatCompletionService(
           choice.copy(
             delta = choice.delta.copy(
               content = Some(
-                s"${choice.delta.content.getOrElse("")}${citationAppendix(response.citations)}"
+                s"${choice.delta.content.getOrElse("")}${citationAppendix(response.citations, addAHrefToCitations)}"
               )
             )
           )
@@ -136,8 +145,16 @@ private[service] class OpenAISonarChatCompletionService(
       usage = response.usage
     )
 
-  private def citationAppendix(citations: Seq[String]) =
-    s"\n\nCitations:\n${citations.mkString("\n")}"
+  private def citationAppendix(
+    citations: Seq[String],
+    addAHref: Boolean
+  ) = {
+    val citationsPart = citations.map { citation =>
+      if (addAHref) s"""<a href="$citation">$citation</a>""" else citation
+    }.mkString("\n")
+
+    s"\n\nCitations:\n${citationsPart}"
+  }
 
   /**
    * Closes the underlying ws client, and releases all its resources.

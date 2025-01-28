@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.perplexity.domain.settings
 
+import io.cequence.openaiscala.domain.JsonSchema.JsonSchemaOrMap
 import io.cequence.wsclient.domain.EnumValue
 
 /**
@@ -49,7 +50,7 @@ case class SonarCreateChatCompletionSettings(
   frequency_penalty: Option[Double] = None,
   max_tokens: Option[Int] = None,
   presence_penalty: Option[Double] = None,
-  response_format: Option[SolarResponseFormatType] = None,
+  response_format: Option[SolarResponseFormat] = None,
   return_images: Option[Boolean] = None,
   return_related_questions: Option[Boolean] = None,
   search_domain_filter: Seq[String] = Nil,
@@ -59,13 +60,12 @@ case class SonarCreateChatCompletionSettings(
   top_p: Option[Double] = None
 )
 
-trait SolarResponseFormatType extends EnumValue
+trait SolarResponseFormat
 
-object SolarResponseFormatType {
-  case object json_schema extends SolarResponseFormatType
-  case object regex extends SolarResponseFormatType
-
-  def values: Seq[SolarResponseFormatType] = Seq(json_schema, regex)
+object SolarResponseFormat {
+  // TODO: support JsonSchema but needs to convert "number" type to "integer" type and "description" to "title"
+  case class JsonSchema(jsonSchema: Map[String, Any]) extends SolarResponseFormat
+  case class Regex(regex: String) extends SolarResponseFormat
 }
 
 trait RecencyFilterType extends EnumValue
