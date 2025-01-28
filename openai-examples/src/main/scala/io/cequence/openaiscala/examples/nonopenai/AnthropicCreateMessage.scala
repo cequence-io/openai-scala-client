@@ -33,10 +33,6 @@ object AnthropicCreateMessage extends ExampleBase[AnthropicService] {
       )
       .map(printMessageContent)
 
-  private def printMessageContent(response: CreateMessageResponse) = {
-    val text =
-      response.content.blocks.collect { case ContentBlockBase(TextBlock(text), _) => text }
-        .mkString(" ")
-    println(text)
-  }
+  private def printMessageContent(response: CreateMessageResponse) =
+    println(response.text)
 }
