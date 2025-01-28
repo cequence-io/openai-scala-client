@@ -200,7 +200,7 @@ package object impl extends AnthropicServiceConsts {
     )
 
   def toOpenAIAssistantMessage(content: ContentBlocks): OpenAIAssistantMessage = {
-    val textContents = content.blocks.collect { case ContentBlockBase(TextBlock(text), _) =>
+    val textContents = content.blocks.collect { case ContentBlockBase(TextBlock(text, _), _) =>
       text
     } // TODO
     // TODO: log if there is more than one text content

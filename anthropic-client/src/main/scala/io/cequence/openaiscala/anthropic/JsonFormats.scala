@@ -1,7 +1,12 @@
 package io.cequence.openaiscala.anthropic
 
-import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{MediaBlock, TextBlock}
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{
+  MediaBlock,
+  TextBlock,
+  TextsContentBlock
+}
 import io.cequence.openaiscala.anthropic.domain.Content.{
+  ContentBlock,
   ContentBlockBase,
   ContentBlocks,
   SingleString
@@ -19,7 +24,16 @@ import io.cequence.openaiscala.anthropic.domain.response.{
   CreateMessageResponse,
   DeltaText
 }
-import io.cequence.openaiscala.anthropic.domain.{CacheControl, ChatRole, Content, Message}
+import io.cequence.openaiscala.anthropic.domain.{
+  CacheControl,
+  ChatRole,
+  CitationsFlagRaw,
+  Content,
+  Message,
+  SourceBlockRaw,
+  SourceContentBlockRaw,
+  TextContentRaw
+}
 import io.cequence.wsclient.JsonUtil
 import play.api.libs.functional.syntax._
 import play.api.libs.json.JsonNaming.SnakeCase
@@ -64,43 +78,127 @@ trait JsonFormats {
       }
     }
 
-  implicit lazy val contentBlockBaseWrites: Writes[ContentBlockBase] = {
-    case ContentBlockBase(textBlock @ TextBlock(_), cacheControl) =>
-      Json.obj("type" -> "text") ++
-        Json.toJson(textBlock)(textBlockWrites).as[JsObject] ++
-        cacheControlToJsObject(cacheControl)
-    case ContentBlockBase(media @ MediaBlock(_, _, _, _), maybeCacheControl) =>
-      Json.toJson(media)(mediaBlockWrites).as[JsObject] ++
-        cacheControlToJsObject(maybeCacheControl)
+  // content block - raw - one to one with json
+  implicit val textContentRawFormat: Format[TextContentRaw] = Json.format[TextContentRaw]
 
+  implicit val citationsFlagRawFormat: Format[CitationsFlagRaw] = Json.format[CitationsFlagRaw]
+
+  implicit val sourceBlockRawFormat: Format[SourceBlockRaw] = {
+    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
+    Json.format[SourceBlockRaw]
+  }
+
+  implicit val sourceContentBlockRawFormat: Format[SourceContentBlockRaw] = {
+    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
+    Json.format[SourceContentBlockRaw]
+  }
+
+  implicit lazy val citationFormat: Format[ContentBlock.Citation] = {
+    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
+    Json.format[ContentBlock.Citation]
+  }
+
+  private val textBlockFormat: Format[TextBlock] = {
+    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
+    Json.using[Json.WithDefaultValues].format[TextBlock]
+  }
+
+  implicit lazy val contentBlockWrites: Writes[ContentBlock] = {
+    case x: TextBlock =>
+      Json.obj("type" -> "text") ++ Json.toJson(x)(textBlockFormat).as[JsObject]
+
+    case x: MediaBlock =>
+      Json
+        .toJson(
+          SourceContentBlockRaw(
+            `type` = x.`type`,
+            source = SourceBlockRaw(
+              `type` = x.encoding,
+              mediaType = Some(x.mediaType),
+              data = Some(x.data)
+            ),
+            title = x.title,
+            context = x.context,
+            citations =
+              if (x.citations.getOrElse(false)) Some(CitationsFlagRaw(true)) else None
+          )
+        )(sourceContentBlockRawFormat)
+        .as[JsObject]
+
+    case x: TextsContentBlock =>
+      Json
+        .toJson(
+          SourceContentBlockRaw(
+            `type` = "document",
+            source = SourceBlockRaw(
+              `type` = "content",
+              content = Some(
+                x.texts.map { text =>
+                  TextContentRaw(`type` = "text", text = text)
+                }
+              )
+            ),
+            title = x.title,
+            context = x.context,
+            citations =
+              if (x.citations.getOrElse(false)) Some(CitationsFlagRaw(true)) else None
+          )
+        )(sourceContentBlockRawFormat)
+        .as[JsObject]
+  }
+
+  implicit lazy val contentBlockBaseWrites: Writes[ContentBlockBase] = {
+    case ContentBlockBase(content, cacheControl) =>
+      val jsonObject = Json.toJson(content).as[JsObject]
+      jsonObject ++ cacheControlToJsObject(cacheControl)
   }
 
   implicit lazy val contentBlockBaseReads: Reads[ContentBlockBase] =
-    (json: JsValue) => {
-      (json \ "type").validate[String].flatMap {
-        case "text" =>
-          ((json \ "text").validate[String] and
-            (json \ "cache_control").validateOpt[CacheControl]).tupled.flatMap {
-            case (text, cacheControl) =>
-              JsSuccess(ContentBlockBase(TextBlock(text), cacheControl))
-            case _ => JsError("Invalid text block")
-          }
+    (json: JsValue) =>
+      for {
+        mainType <- (json \ "type").validate[String]
+        cacheControl <- (json \ "cache_control").validateOpt[CacheControl]
+        result: ContentBlockBase <- mainType match {
+          case "text" =>
+            json
+              .validate[TextBlock](textBlockFormat)
+              .map(
+                ContentBlockBase(_, cacheControl)
+              )
 
-        case imageOrDocument @ ("image" | "document") =>
-          for {
-            source <- (json \ "source").validate[JsObject]
-            `type` <- (source \ "type").validate[String]
-            mediaType <- (source \ "media_type").validate[String]
-            data <- (source \ "data").validate[String]
-            cacheControl <- (json \ "cache_control").validateOpt[CacheControl]
-          } yield ContentBlockBase(
-            MediaBlock(imageOrDocument, `type`, mediaType, data),
-            cacheControl
-          )
+          case imageOrDocumentType @ ("image" | "document") =>
+            json.validate[SourceContentBlockRaw](sourceContentBlockRawFormat).map {
+              sourceContentBlockRaw =>
+                val block: ContentBlock = sourceContentBlockRaw.source match {
+                  case SourceBlockRaw("content", _, _, Some(textContents)) =>
+                    val texts = textContents.map(_.text)
+                    TextsContentBlock(
+                      texts,
+                      title = sourceContentBlockRaw.title,
+                      context = sourceContentBlockRaw.context,
+                      citations = sourceContentBlockRaw.citations.map(_.enabled)
+                    )
 
-        case _ => JsError("Unsupported or invalid content block")
-      }
-    }
+                  case SourceBlockRaw(encoding, Some(mediaType), Some(data), _) =>
+                    MediaBlock(
+                      imageOrDocumentType,
+                      encoding,
+                      mediaType,
+                      data,
+                      title = sourceContentBlockRaw.title,
+                      context = sourceContentBlockRaw.context,
+                      citations = sourceContentBlockRaw.citations.map(_.enabled)
+                    )
+
+                  case _ =>
+                    throw new IllegalArgumentException("Unsupported or invalid source block")
+                }
+                ContentBlockBase(block, cacheControl)
+            }
+
+          case _ => JsError("Unsupported or invalid content block")
+        }
+      } yield result
 
   implicit lazy val contentBlockBaseFormat: Format[ContentBlockBase] = Format(
     contentBlockBaseReads,
@@ -119,30 +217,7 @@ trait JsonFormats {
   implicit lazy val assistantMessageContentFormat: Format[AssistantMessageContent] =
     Json.format[AssistantMessageContent]
 
-  implicit lazy val textBlockFormat: Format[TextBlock] = Json.format[TextBlock]
-
   implicit lazy val contentBlocksFormat: Format[ContentBlocks] = Json.format[ContentBlocks]
-
-  implicit lazy val textBlockReads: Reads[TextBlock] = {
-    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
-    Json.reads[TextBlock]
-  }
-
-  implicit lazy val textBlockWrites: Writes[TextBlock] = {
-    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
-    Json.writes[TextBlock]
-  }
-
-  implicit lazy val mediaBlockWrites: Writes[MediaBlock] =
-    (block: MediaBlock) =>
-      Json.obj(
-        "type" -> block.`type`,
-        "source" -> Json.obj(
-          "type" -> block.encoding,
-          "media_type" -> block.mediaType,
-          "data" -> block.data
-        )
-      )
 
   private def cacheControlToJsObject(maybeCacheControl: Option[CacheControl]): JsObject =
     maybeCacheControl.fold(Json.obj())(cc => writeJsObject(cc))
