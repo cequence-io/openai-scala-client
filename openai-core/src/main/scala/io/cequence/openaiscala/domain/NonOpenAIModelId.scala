@@ -150,6 +150,9 @@ object NonOpenAIModelId {
   val gemma_2_9b_it_to_ai = "google/gemma-2-9b-it" // Together AI
 
   // Qwen
+  val qwen2_vl_72b_instruct = "Qwen/Qwen2-VL-72B-Instruct" // Together AI - vision
+  val qwen2_5_72b_instruct_turbo = "Qwen/Qwen2.5-72B-Instruct-Turbo" // Together AI
+  val qwen_qwq_32b_preview = "qwen/qwq-32b-preview" // Together AI - reasoning
   val qwen1_5_0_5b_chat = "Qwen/Qwen1.5-0.5B-Chat" // Together AI
   val qwen1_5_1_8b_chat = "Qwen/Qwen1.5-1.8B-Chat" // Together AI
   val qwen1_5_110b_chat = "Qwen/Qwen1.5-110B-Chat" // Together AI
