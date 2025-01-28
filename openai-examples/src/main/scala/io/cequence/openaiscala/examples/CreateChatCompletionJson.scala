@@ -21,7 +21,7 @@ object CreateChatCompletionJson extends Example with TestFixtures with OpenAISer
         settings = DefaultSettings.createJsonChatCompletion(capitalsSchemaDef1)
       )
       .map { response =>
-        val json = Json.parse(messageContent(response))
+        val json = Json.parse(response.contentHead)
         println(Json.prettyPrint(json))
       }
 }

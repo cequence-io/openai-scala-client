@@ -4,6 +4,7 @@ import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
+import io.cequence.openaiscala.service.adapter.{MessageConversions, OpenAIServiceAdapters}
 
 import scala.concurrent.Future
 
@@ -15,16 +16,27 @@ import scala.concurrent.Future
  */
 object FireworksAICreateChatCompletion extends ExampleBase[OpenAIChatCompletionService] {
 
+  // thinking process ends with </think>
+  private val keepThinkingOutput = false
+
+  override val service: OpenAIChatCompletionService = {
+    val adapters = OpenAIServiceAdapters.forChatCompletionService
+    val vanillaService = ChatCompletionProvider.fireworks
+
+    if (!keepThinkingOutput)
+      adapters.chatCompletionOutput(MessageConversions.filterOutToThinkEnd)(vanillaService)
+    else
+      vanillaService
+  }
+
   private val fireworksModelPrefix = "accounts/fireworks/models/"
-  override val service: OpenAIChatCompletionService = ChatCompletionProvider.fireworks
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),
     UserMessage("What is the weather like in Norway?")
   )
 
-  // note that for e.g. mixtral_8x22b_instruct we need an adapter to convert system messages
-  private val modelId = NonOpenAIModelId.llama_v3p1_405b_instruct
+  private val modelId = NonOpenAIModelId.deepseek_r1 // llama_v3p1_405b_instruct
 
   override protected def run: Future[_] =
     service
@@ -33,7 +45,7 @@ object FireworksAICreateChatCompletion extends ExampleBase[OpenAIChatCompletionS
         settings = CreateChatCompletionSettings(
           model = fireworksModelPrefix + modelId,
           temperature = Some(0.1),
-          max_tokens = Some(512),
+          max_tokens = Some(2048),
           top_p = Some(0.9),
           presence_penalty = Some(0),
           // this is how we can add extra (vendor-specific) parameters
