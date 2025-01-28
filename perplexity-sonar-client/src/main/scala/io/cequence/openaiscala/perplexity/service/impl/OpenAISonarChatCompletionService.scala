@@ -3,15 +3,35 @@ package io.cequence.openaiscala.perplexity.service.impl
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.openaiscala.domain.{AssistantMessage, BaseMessage, SystemMessage, UserMessage}
-import io.cequence.openaiscala.domain.response.{ChatCompletionChunkResponse, ChatCompletionResponse}
-import io.cequence.openaiscala.domain.settings.{ChatCompletionResponseFormatType, CreateChatCompletionSettings}
+import io.cequence.openaiscala.domain.{
+  AssistantMessage,
+  BaseMessage,
+  SystemMessage,
+  UserMessage
+}
+import io.cequence.openaiscala.domain.response.{
+  ChatCompletionChunkResponse,
+  ChatCompletionResponse
+}
+import io.cequence.openaiscala.domain.settings.{
+  ChatCompletionResponseFormatType,
+  CreateChatCompletionSettings
+}
 import io.cequence.openaiscala.JsonFormats.eitherJsonSchemaFormat
 import io.cequence.openaiscala.perplexity.domain.Message
-import io.cequence.openaiscala.perplexity.domain.response.{SonarChatCompletionChunkResponse, SonarChatCompletionResponse}
-import io.cequence.openaiscala.perplexity.domain.settings.{SolarResponseFormat, SonarCreateChatCompletionSettings}
+import io.cequence.openaiscala.perplexity.domain.response.{
+  SonarChatCompletionChunkResponse,
+  SonarChatCompletionResponse
+}
+import io.cequence.openaiscala.perplexity.domain.settings.{
+  SolarResponseFormat,
+  SonarCreateChatCompletionSettings
+}
 import io.cequence.openaiscala.perplexity.service.{SonarConsts, SonarService}
-import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIChatCompletionStreamedServiceExtra}
+import io.cequence.openaiscala.service.{
+  OpenAIChatCompletionService,
+  OpenAIChatCompletionStreamedServiceExtra
+}
 import io.cequence.wsclient.JsonUtil
 import play.api.libs.json.{JsObject, Json}
 

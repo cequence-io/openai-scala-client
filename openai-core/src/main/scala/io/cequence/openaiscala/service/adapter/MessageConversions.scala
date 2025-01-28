@@ -3,7 +3,12 @@ package io.cequence.openaiscala.service.adapter
 import akka.NotUsed
 import akka.stream.scaladsl.Flow
 import io.cequence.openaiscala.domain.response.ChunkMessageSpec
-import io.cequence.openaiscala.domain.{AssistantMessage, BaseMessage, SystemMessage, UserMessage}
+import io.cequence.openaiscala.domain.{
+  AssistantMessage,
+  BaseMessage,
+  SystemMessage,
+  UserMessage
+}
 import org.slf4j.LoggerFactory
 
 object MessageConversions {
@@ -54,7 +59,8 @@ object MessageConversions {
         if (foundEnd) {
           List(messages)
         } else {
-          val endFoundInThisChunk = messages.exists(_.content.exists(_.trim.matches(thinkEndTagRegex)))
+          val endFoundInThisChunk =
+            messages.exists(_.content.exists(_.trim.matches(thinkEndTagRegex)))
 
           if (endFoundInThisChunk) {
             foundEnd = true

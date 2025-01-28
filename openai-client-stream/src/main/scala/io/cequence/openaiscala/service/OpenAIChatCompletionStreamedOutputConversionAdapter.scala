@@ -30,7 +30,8 @@ object OpenAIChatCompletionStreamedOutputConversionAdapter {
         .createChatCompletionStreamed(
           messages,
           settings
-        ).via(conversionStream(messageConversion))
+        )
+        .via(conversionStream(messageConversion))
 
     private def conversionStream(
       messageProcessingFlow: Flow[Seq[ChunkMessageSpec], Seq[ChunkMessageSpec], NotUsed]
@@ -57,10 +58,10 @@ object OpenAIChatCompletionStreamedOutputConversionAdapter {
         val mergeBack = Flow[(ChatCompletionChunkResponse, Seq[ChunkMessageSpec])].map {
           case (response, updatedChoices) =>
             response.copy(
-              choices = response.choices.zip(updatedChoices).map {
-                case (choice, updatedChoice) =>
+              choices =
+                response.choices.zip(updatedChoices).map { case (choice, updatedChoice) =>
                   choice.copy(delta = updatedChoice)
-              }
+                }
             )
         }
 

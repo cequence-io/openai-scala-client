@@ -42,7 +42,7 @@ object Content {
       startCharIndex: Option[Int],
       endCharIndex: Option[Int],
       startBlockIndex: Option[Int],
-      endBlockIndex: Option[Int],
+      endBlockIndex: Option[Int]
     )
 
     case class MediaBlock(

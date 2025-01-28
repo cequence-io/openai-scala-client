@@ -2,7 +2,10 @@ package io.cequence.openaiscala.anthropic.service.impl
 
 import akka.NotUsed
 import akka.stream.scaladsl.Source
-import io.cequence.openaiscala.anthropic.domain.response.{ContentBlockDelta, CreateMessageResponse}
+import io.cequence.openaiscala.anthropic.domain.response.{
+  ContentBlockDelta,
+  CreateMessageResponse
+}
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps

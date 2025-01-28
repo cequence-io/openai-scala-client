@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.examples
 
-import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
+import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, ServiceTier}
 import io.cequence.openaiscala.domain._
 
 import scala.concurrent.Future
@@ -17,12 +17,15 @@ object CreateChatCompletion extends Example {
       .createChatCompletion(
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = ModelId.o1_mini,
+          model = ModelId.gpt_4o,
           temperature = Some(0),
-          max_tokens = Some(4000)
+          max_tokens = Some(4000),
+          service_tier = Some(ServiceTier.auto),
+          metadata = Map()
         )
       )
-      .map { content =>
-        printMessageContent(content)
+      .map { response =>
+        println(response.usage.get)
+        printMessageContent(response)
       }
 }

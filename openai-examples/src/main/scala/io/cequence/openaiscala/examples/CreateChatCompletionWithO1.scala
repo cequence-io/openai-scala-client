@@ -1,7 +1,11 @@
 package io.cequence.openaiscala.examples
 
 import io.cequence.openaiscala.domain._
-import io.cequence.openaiscala.domain.settings.{ChatCompletionResponseFormatType, CreateChatCompletionSettings, ReasoningEffort}
+import io.cequence.openaiscala.domain.settings.{
+  ChatCompletionResponseFormatType,
+  CreateChatCompletionSettings,
+  ReasoningEffort
+}
 
 import scala.concurrent.Future
 

@@ -7,7 +7,10 @@ import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.perplexity.domain.Message
 import io.cequence.openaiscala.perplexity.domain.settings.SonarCreateChatCompletionSettings
 import io.cequence.openaiscala.perplexity.JsonFormats._
-import io.cequence.openaiscala.perplexity.domain.response.{SonarChatCompletionChunkResponse, SonarChatCompletionResponse}
+import io.cequence.openaiscala.perplexity.domain.response.{
+  SonarChatCompletionChunkResponse,
+  SonarChatCompletionResponse
+}
 import io.cequence.openaiscala.perplexity.service.SonarService
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps

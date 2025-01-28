@@ -1,7 +1,13 @@
 package io.cequence.openaiscala.domain.response
 
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.openaiscala.domain.{AssistantFunMessage, AssistantMessage, AssistantToolMessage, BaseMessage, ChatRole}
+import io.cequence.openaiscala.domain.{
+  AssistantFunMessage,
+  AssistantMessage,
+  AssistantToolMessage,
+  BaseMessage,
+  ChatRole
+}
 
 import java.{util => ju}
 
@@ -30,9 +36,13 @@ case class ChatCompletionResponse(
       ChatCompletionChoiceInfo
     ] {
 
-  def contentHead: String = choices.headOption.map(_.message.content).getOrElse(
-    throw new OpenAIScalaClientException(s"No content in the chat completion response ${id}.")
-  )
+  def contentHead: String = choices.headOption
+    .map(_.message.content)
+    .getOrElse(
+      throw new OpenAIScalaClientException(
+        s"No content in the chat completion response ${id}."
+      )
+    )
 }
 
 case class ChatToolCompletionResponse(

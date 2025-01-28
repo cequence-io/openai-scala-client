@@ -21,7 +21,5 @@ object CreateChatCompletionLongResponse extends Example {
           temperature = Some(0)
         )
       )
-      .map { content =>
-        printMessageContent(content)
-      }
+      .map(printMessageContent)
 }

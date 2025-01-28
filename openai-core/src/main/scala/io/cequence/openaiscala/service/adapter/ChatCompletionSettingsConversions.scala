@@ -88,7 +88,7 @@ object ChatCompletionSettingsConversions {
         "O1 models don't support parallel tool calls, converting to None."
       ),
       warning = true
-    ),
+    )
   )
 
   private val o1PreviewConversions =

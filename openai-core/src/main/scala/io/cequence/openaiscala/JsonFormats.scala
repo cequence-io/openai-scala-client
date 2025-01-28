@@ -5,11 +5,22 @@ import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain.ChunkingStrategy.StaticChunkingStrategy
 import io.cequence.openaiscala.domain.FineTune.WeightsAndBiases
 import io.cequence.openaiscala.domain.ThreadAndRun.Content.ContentBlock.ImageDetail
-import io.cequence.openaiscala.domain.settings.{ChatCompletionResponseFormatType, ReasoningEffort, ServiceTier}
+import io.cequence.openaiscala.domain.settings.{
+  ChatCompletionResponseFormatType,
+  ReasoningEffort,
+  ServiceTier
+}
 import io.cequence.openaiscala.domain.Run.TruncationStrategy
 import io.cequence.openaiscala.domain.StepDetail.{MessageCreation, ToolCalls}
-import io.cequence.openaiscala.domain.response.AssistantToolResourceResponse.{CodeInterpreterResourcesResponse, FileSearchResourcesResponse}
-import io.cequence.openaiscala.domain.response.ResponseFormat.{JsonObjectResponse, StringResponse, TextResponse}
+import io.cequence.openaiscala.domain.response.AssistantToolResourceResponse.{
+  CodeInterpreterResourcesResponse,
+  FileSearchResourcesResponse
+}
+import io.cequence.openaiscala.domain.response.ResponseFormat.{
+  JsonObjectResponse,
+  StringResponse,
+  TextResponse
+}
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings.JsonSchemaDef
 import io.cequence.openaiscala.domain.{ThreadMessageFile, _}
@@ -40,7 +51,8 @@ object JsonFormats {
     Format(reads, writes)
   }
 
-  implicit lazy val completionTokenDetailsFormat: Format[CompletionTokenDetails] = Json.format[CompletionTokenDetails]
+  implicit lazy val completionTokenDetailsFormat: Format[CompletionTokenDetails] =
+    Json.format[CompletionTokenDetails]
 
   implicit lazy val usageInfoFormat: Format[UsageInfo] = Json.format[UsageInfo]
 
@@ -307,7 +319,8 @@ object JsonFormats {
       }
     }
 
-  implicit val chatCompletionResponseFormatTypeFormat: Format[ChatCompletionResponseFormatType] = enumFormat[ChatCompletionResponseFormatType](
+  implicit val chatCompletionResponseFormatTypeFormat
+    : Format[ChatCompletionResponseFormatType] = enumFormat[ChatCompletionResponseFormatType](
     ChatCompletionResponseFormatType.json_object,
     ChatCompletionResponseFormatType.json_schema,
     ChatCompletionResponseFormatType.text

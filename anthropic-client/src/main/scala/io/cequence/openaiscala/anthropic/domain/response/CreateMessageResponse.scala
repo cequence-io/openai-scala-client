@@ -22,7 +22,9 @@ final case class CreateMessageResponse(
     textsWithCitations.map(_._2)
 
   def textsWithCitations: Seq[(String, Seq[Citation])] =
-    content.blocks.collect { case ContentBlockBase(TextBlock(text, citations), _) => (text, citations) }
+    content.blocks.collect { case ContentBlockBase(TextBlock(text, citations), _) =>
+      (text, citations)
+    }
 
   def text: String = texts.mkString("")
 }
