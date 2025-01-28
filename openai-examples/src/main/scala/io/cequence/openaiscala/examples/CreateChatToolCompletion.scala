@@ -19,20 +19,24 @@ object CreateChatToolCompletion extends Example {
     FunctionTool(
       name = "get_current_weather",
       description = Some("Get the current weather in a given location"),
-      parameters = Json.toJson(
-        JsonSchema.Object(
-          properties = Seq(
-            "location" -> JsonSchema.String(
-              description = Some("The city and state, e.g. San Francisco, CA")
+      parameters = Json
+        .toJson(
+          JsonSchema.Object(
+            properties = Seq(
+              "location" -> JsonSchema.String(
+                description = Some("The city and state, e.g. San Francisco, CA")
+              ),
+              "unit" -> JsonSchema.String(
+                description = Some("The unit of temperature"),
+                `enum` = Seq("celsius", "fahrenheit")
+              )
             ),
-            "unit" -> JsonSchema.String(
-              description = Some("The unit of temperature"),
-              `enum` = Seq("celsius", "fahrenheit")
-            )
-          ),
-          required = Seq("location")
-        ): JsonSchema
-      ).as[JsObject].value.toMap
+            required = Seq("location")
+          ): JsonSchema
+        )
+        .as[JsObject]
+        .value
+        .toMap
     )
   )
 
@@ -45,7 +49,7 @@ object CreateChatToolCompletion extends Example {
         settings = CreateChatCompletionSettings(
           ModelId.gpt_3_5_turbo_1106,
           parallel_tool_calls = Some(true)
-        ),
+        )
       )
       .map { response =>
         val chatFunCompletionMessage = response.choices.head.message
