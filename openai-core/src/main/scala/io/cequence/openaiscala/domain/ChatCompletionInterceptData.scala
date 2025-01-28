@@ -5,10 +5,10 @@ import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 
 case class ChatCompletionInterceptData(
   messages: Seq[BaseMessage],
-  setting: CreateChatCompletionSettings,
+  settings: CreateChatCompletionSettings,
   response: ChatCompletionResponse,
-  timeRequestReceived: java.util.Date,
+  timeRequestSent: java.util.Date,
   timeResponseReceived: java.util.Date
 ) {
-  def execTimeMs: Long = timeResponseReceived.getTime - timeRequestReceived.getTime
+  def execTimeMs: Long = timeResponseReceived.getTime - timeRequestSent.getTime
 }

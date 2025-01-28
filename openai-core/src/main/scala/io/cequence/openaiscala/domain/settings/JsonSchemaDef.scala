@@ -1,11 +1,12 @@
 package io.cequence.openaiscala.domain.settings
 
 import io.cequence.openaiscala.domain.JsonSchema
+import io.cequence.openaiscala.domain.JsonSchema.JsonSchemaOrMap
 
 case class JsonSchemaDef(
   name: String,
   strict: Boolean = false,
-  structure: Either[JsonSchema, Map[String, Any]] // rename to jsonSchema
+  structure: JsonSchemaOrMap // rename to jsonSchema
 )
 
 object JsonSchemaDef {
