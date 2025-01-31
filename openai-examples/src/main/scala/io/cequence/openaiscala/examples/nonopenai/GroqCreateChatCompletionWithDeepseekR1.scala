@@ -2,6 +2,7 @@ package io.cequence.openaiscala.examples.nonopenai
 
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
+import io.cequence.openaiscala.domain.settings.GroqCreateChatCompletionSettingsOps._
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
 
@@ -10,7 +11,8 @@ import scala.concurrent.Future
 /**
  * Requires `GROQ_API_KEY` environment variable to be set.
  */
-object GroqCreateChatCompletion extends ExampleBase[OpenAIChatCompletionService] {
+object GroqCreateChatCompletionWithDeepseekR1
+    extends ExampleBase[OpenAIChatCompletionService] {
 
   override val service: OpenAIChatCompletionService = ChatCompletionProvider.groq
 
@@ -19,7 +21,7 @@ object GroqCreateChatCompletion extends ExampleBase[OpenAIChatCompletionService]
     UserMessage("What is the weather like in Norway?")
   )
 
-  private val modelId = NonOpenAIModelId.llama_3_3_70b_versatile
+  private val modelId = NonOpenAIModelId.deepseek_r1_distill_llama_70b
 
   override protected def run: Future[_] =
     service
@@ -27,9 +29,10 @@ object GroqCreateChatCompletion extends ExampleBase[OpenAIChatCompletionService]
         messages = messages,
         settings = CreateChatCompletionSettings(
           model = modelId,
-          temperature = Some(0.1),
-          max_tokens = Some(1024)
-        )
+          temperature = Some(0.1)
+        ).setReasoningFormat(ReasoningFormat.hidden)
+          .setMaxCompletionTokens(2048)
+          .setJsonMode(false)
       )
       .map(printMessageContent)
 }
