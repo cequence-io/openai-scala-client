@@ -14,7 +14,8 @@ import scala.concurrent.Future
  * Check out [[ChatCompletionInputAdapterForFireworksAI]] for a more complex example with an
  * input adapter
  */
-object FireworksAICreateChatCompletionWithDeepseek extends ExampleBase[OpenAIChatCompletionService] {
+object FireworksAICreateChatCompletionWithDeepseek
+    extends ExampleBase[OpenAIChatCompletionService] {
 
   // thinking process ends with </think>
   private val omitThinkingOutput = true
