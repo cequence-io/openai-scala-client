@@ -1,9 +1,11 @@
 package io.cequence.openaiscala.service.adapter
 
+import io.cequence.openaiscala.domain.NonOpenAIModelId
 import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
   CreateChatCompletionSettings
 }
+import io.cequence.openaiscala.domain.settings.GroqCreateChatCompletionSettingsOps._
 import org.slf4j.LoggerFactory
 
 object ChatCompletionSettingsConversions {
@@ -107,4 +109,42 @@ object ChatCompletionSettingsConversions {
   val o1: SettingsConversion = generic(o1BaseConversions)
 
   val o1Preview: SettingsConversion = generic(o1PreviewConversions)
+
+  private lazy val groqConversions = Seq(
+    // max tokens
+    FieldConversionDef(
+      settings =>
+        settings.model.endsWith(
+          NonOpenAIModelId.deepseek_r1_distill_llama_70b
+        ) && settings.max_tokens.isDefined,
+      settings =>
+        settings.copy(max_tokens = None).setMaxCompletionTokens(settings.max_tokens.get),
+      Some(
+        "Groq deepseek R1 model doesn't support max_tokens, converting to max_completion_tokens."
+      )
+    ),
+    // json mode
+    FieldConversionDef(
+      settings =>
+        settings.model.endsWith(
+          NonOpenAIModelId.deepseek_r1_distill_llama_70b
+        ) && (settings.response_format_type.contains(
+          ChatCompletionResponseFormatType.json_object
+        ) || settings.response_format_type
+          .contains(ChatCompletionResponseFormatType.json_schema)),
+      settings => settings.copy(response_format_type = None).setJsonMode(true),
+      Some(
+        "Groq deepseek R1 model doesn't support the json schema / object response format type, converting it to json_mode flag instead."
+      )
+    )
+  )
+
+  def groq(
+    reasoningFormat: Option[ReasoningFormat] = None
+  ): SettingsConversion = {
+    val conversions = generic(groqConversions)
+    reasoningFormat
+      .map(reasoningFormat => conversions.andThen(_.setReasoningFormat(reasoningFormat)))
+      .getOrElse(conversions)
+  }
 }
