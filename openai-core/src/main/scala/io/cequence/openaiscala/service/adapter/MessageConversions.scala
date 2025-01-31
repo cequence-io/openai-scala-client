@@ -53,18 +53,26 @@ object MessageConversions {
 
   def filterOutToThinkEndFlow: Flow[Seq[ChunkMessageSpec], Seq[ChunkMessageSpec], NotUsed] = {
     Flow[Seq[ChunkMessageSpec]].statefulMapConcat { () =>
-      var foundEnd = false
+      var startOutput: Option[Boolean] = None
 
       (messages: Seq[ChunkMessageSpec]) => {
-        if (foundEnd) {
-          List(messages)
+        if (startOutput.isDefined) {
+          val nonEmptyLineFound = messages.exists(_.content.exists(_.trim.nonEmpty))
+
+          if (nonEmptyLineFound)
+            startOutput = Some(true)
+
+          if (startOutput.get)
+            List(messages)
+          else
+            List(messages.map(_.copy(content = None)))
         } else {
           val endFoundInThisChunk =
             messages.exists(_.content.exists(_.trim.matches(thinkEndTagRegex)))
 
-          if (endFoundInThisChunk) {
-            foundEnd = true
-          }
+          if (endFoundInThisChunk)
+            startOutput = Some(false)
+
           List(messages.map(_.copy(content = None)))
         }
       }
