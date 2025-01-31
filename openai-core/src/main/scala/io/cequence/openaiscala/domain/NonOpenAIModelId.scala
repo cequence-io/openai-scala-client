@@ -242,7 +242,7 @@ object NonOpenAIModelId {
   val grok_vision_beta = "grok-vision-beta"
 
   // Deepseek
-  val deepseek_r1_distill_llama_70b = "deepseek-r1-distill-llama-70b" // Groq
+  val deepseek_r1_distill_llama_70b = "deepseek-r1-distill-llama-70b" // Groq and Cerebras
   // context 64K, 4K (8KBeta)
   val deepseek_r1 = "deepseek-r1" // Fireworks
   val deepseek_ai_deepseek_r1 = "deepseek-ai/DeepSeek-R1" // Together AI
