@@ -34,7 +34,7 @@ object ChatCompletionSettingsConversions {
         } else acc
     }
 
-  private val o1BaseConversions = Seq(
+  private val oBaseConversions = Seq(
     // max tokens
     FieldConversionDef(
       _.max_tokens.isDefined,
@@ -44,14 +44,14 @@ object ChatCompletionSettingsConversions {
           extra_params =
             settings.extra_params + ("max_completion_tokens" -> settings.max_tokens.get)
         ),
-      Some("O1 models don't support max_tokens, converting to max_completion_tokens")
+      Some("O1/3 models don't support max_tokens, converting to max_completion_tokens")
     ),
     // temperature
     FieldConversionDef(
       settings => settings.temperature.isDefined && settings.temperature.get != 1,
       _.copy(temperature = Some(1d)),
       Some(
-        "O1 models don't support temperature values other than the default of 1, converting to 1."
+        "O1/3 models don't support temperature values other than the default of 1, converting to 1."
       ),
       warning = true
     ),
@@ -60,7 +60,7 @@ object ChatCompletionSettingsConversions {
       settings => settings.top_p.isDefined && settings.top_p.get != 1,
       _.copy(top_p = Some(1d)),
       Some(
-        "O1 models don't support top p values other than the default of 1, converting to 1."
+        "O1/3 models don't support top p values other than the default of 1, converting to 1."
       ),
       warning = true
     ),
@@ -69,7 +69,7 @@ object ChatCompletionSettingsConversions {
       settings => settings.presence_penalty.isDefined && settings.presence_penalty.get != 0,
       _.copy(presence_penalty = Some(0d)),
       Some(
-        "O1 models don't support presence penalty values other than the default of 0, converting to 0."
+        "O1/3 models don't support presence penalty values other than the default of 0, converting to 0."
       ),
       warning = true
     ),
@@ -78,7 +78,7 @@ object ChatCompletionSettingsConversions {
       settings => settings.frequency_penalty.isDefined && settings.frequency_penalty.get != 0,
       _.copy(frequency_penalty = Some(0d)),
       Some(
-        "O1 models don't support frequency penalty values other than the default of 0, converting to 0."
+        "O1/3 models don't support frequency penalty values other than the default of 0, converting to 0."
       ),
       warning = true
     ),
@@ -87,14 +87,14 @@ object ChatCompletionSettingsConversions {
       settings => settings.parallel_tool_calls.isDefined,
       _.copy(parallel_tool_calls = None),
       Some(
-        "O1 models don't support parallel tool calls, converting to None."
+        "O1/3 models don't support parallel tool calls, converting to None."
       ),
       warning = true
     )
   )
 
   private val o1PreviewConversions =
-    o1BaseConversions :+
+    oBaseConversions :+
       // response format type
       FieldConversionDef(
         settings =>
@@ -106,7 +106,7 @@ object ChatCompletionSettingsConversions {
         warning = true
       )
 
-  val o1: SettingsConversion = generic(o1BaseConversions)
+  val o1And3: SettingsConversion = generic(oBaseConversions)
 
   val o1Preview: SettingsConversion = generic(o1PreviewConversions)
 

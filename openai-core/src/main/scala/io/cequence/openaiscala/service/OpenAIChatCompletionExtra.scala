@@ -126,18 +126,20 @@ object OpenAIChatCompletionExtra {
       }
   }
 
-  private val defaultJsonSchemaModels = Seq(
+  private val defaultModelsSupportingJsonSchema = Seq(
     ModelId.gpt_4o_2024_08_06,
     ModelId.gpt_4o_2024_11_20,
     ModelId.o1,
-    ModelId.o1_2024_12_17
-  ).flatMap(id => Seq(id, "openai-" + id))
+    ModelId.o1_2024_12_17,
+    ModelId.o3_mini,
+    ModelId.o3_mini_2025_01_31
+  ).flatMap(id => Seq(id, "openai-" + id, "azure-" + id))
 
   def handleOutputJsonSchema(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings,
     taskNameForLogging: String,
-    jsonSchemaModels: Seq[String] = defaultJsonSchemaModels
+    jsonSchemaModels: Seq[String] = defaultModelsSupportingJsonSchema
   ): (Seq[BaseMessage], CreateChatCompletionSettings) = {
     val jsonSchemaDef = settings.jsonSchema.getOrElse(
       throw new IllegalArgumentException("JSON schema is not defined but expected.")
