@@ -19,7 +19,8 @@ object TogetherAICreateChatCompletion extends ExampleBase[OpenAIChatCompletionSe
     UserMessage("What is the weather like in Norway?")
   )
 
-  private val modelId = NonOpenAIModelId.deepseek_ai_deepseek_v3 // yi_34b_chat
+  private val modelId =
+    NonOpenAIModelId.deepseek_ai_deepseek_r1_distill_llama_70b_free // deepseek_ai_deepseek_v3
 
   override protected def run: Future[_] =
     service
@@ -28,7 +29,7 @@ object TogetherAICreateChatCompletion extends ExampleBase[OpenAIChatCompletionSe
         settings = CreateChatCompletionSettings(
           model = modelId,
           temperature = Some(0.1),
-          max_tokens = Some(512),
+          max_tokens = Some(1024),
           top_p = Some(0.9),
           presence_penalty = Some(0)
         )
