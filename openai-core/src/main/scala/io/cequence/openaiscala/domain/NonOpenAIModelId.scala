@@ -163,22 +163,45 @@ object NonOpenAIModelId {
   val qwen1_5_7b_chat = "Qwen/Qwen1.5-7B-Chat" // Together AI
   val qwen2_72b_instruct = "Qwen/Qwen2-72B-Instruct" // Together AI
 
-  // Google Vertex AI
+  // Google Gemini and Vertex AI
+  val gemini_2_0_pro_exp_02_05 = "gemini-2.0-pro-exp-02-05"
+  val gemini_2_0_pro_exp = "gemini-2.0-pro-exp"
+  val gemini_2_0_flash_thinking_exp_01_21 = "gemini-2.0-flash-thinking-exp-01-21"
   val gemini_2_0_flash_thinking_exp_1219 = "gemini-2.0-flash-thinking-exp-1219"
+  val gemini_2_0_flash_thinking_exp = "gemini-2.0-flash-thinking-exp"
+  val gemini_2_0_flash_lite_preview_02_05 = "gemini-2.0-flash-lite-preview-02-05"
+  val gemini_2_0_flash_lite_preview = "gemini-2.0-flash-lite-preview"
+  val gemini_2_0_flash_001 = "gemini-2.0-flash-001"
+  val gemini_2_0_flash = "gemini-2.0-flash"
   val gemini_2_0_flash_exp = "gemini-2.0-flash-exp"
+
+  val gemini_1_5_flash_8b_exp_0924 = "gemini-1.5-flash-8b-exp-0924"
+  val gemini_1_5_flash_8b_exp_0827 = "gemini-1.5-flash-8b-exp-0827"
+  val gemini_1_5_flash_8b_latest = "gemini-1.5-flash-8b-latest"
+  val gemini_1_5_flash_8b_001 = "gemini-1.5-flash-8b-001"
+  val gemini_1_5_flash_8b = "gemini-1.5-flash-8b"
+  val gemini_1_5_flash_002 = "gemini-1.5-flash-002"
+  val gemini_1_5_flash = "gemini-1.5-flash"
+  val gemini_1_5_flash_001_tuning = "gemini-1.5-flash-001-tuning"
+  val gemini_1_5_flash_001 = "gemini-1.5-flash-001"
+  val gemini_1_5_flash_latest = "gemini-1.5-flash-latest"
+  val gemini_1_5_pro = "gemini-1.5-pro"
+  val gemini_1_5_pro_002 = "gemini-1.5-pro-002"
+  val gemini_1_5_pro_001 = "gemini-1.5-pro-001"
+  val gemini_1_5_pro_latest = "gemini-1.5-pro-latest"
+
+  val gemini_1_0_pro_vision_001 = "gemini-1.0-pro-vision-001"
+  val gemini_1_0_pro_vision_latest = "gemini-1.0-pro-vision-latest"
+  val gemini_1_0_pro_001 = "gemini-1.0-pro-001"
+  val gemini_1_0_pro = "gemini-1.0-pro"
+  val gemini_1_0_pro_latest = "gemini-1.0-pro-latest"
+
+  val gemini_pro = "gemini-pro"
+  val gemini_pro_vision = "gemini-pro-vision"
+  val gemini_exp_1206 = "gemini-exp-1206"
   val gemini_flash_experimental = "gemini-flash-experimental"
   val gemini_pro_experimental = "gemini-pro-experimental"
   val gemini_experimental = "gemini-experimental"
-  val gemini_1_5_pro_latest = "gemini-1.5-pro-latest"
-  val gemini_1_5_pro_002 = "gemini-1.5-pro-002"
-  val gemini_1_5_pro_001 = "gemini-1.5-pro-001"
-  val gemini_1_5_flash_latest = "gemini-1.5-flash-latest"
-  val gemini_1_5_flash_002 = "gemini-1.5-flash-002"
-  val gemini_1_5_flash_001 = "gemini-1.5-flash-001"
-  val gemini_1_5_flash_8b_latest = "gemini-1.5-flash-8b-latest"
-  val gemini_1_5_flash_8b_001 = "gemini-1.5-flash-8b-001"
-  val gemini_1_0_pro_001 = "gemini-1.0-pro-001"
-  val gemini_1_0_pro_vision_001 = "gemini-1.0-pro-vision-001"
   val text_embedding_004 = "text-embedding-004"
 
   // Other
