@@ -1,6 +1,7 @@
 package io.cequence.openaiscala.anthropic
 
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{
+  Citation,
   MediaBlock,
   TextBlock,
   TextsContentBlock
@@ -98,10 +99,19 @@ trait JsonFormats {
     Json.format[ContentBlock.Citation]
   }
 
-  private val textBlockFormat: Format[TextBlock] = {
-    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
-    Json.using[Json.WithDefaultValues].format[TextBlock]
-  }
+  private val textBlockReads: Reads[TextBlock] =
+    Json.using[Json.WithDefaultValues].reads[TextBlock]
+
+  // TODO: revisit this - we don't write citations if empty
+  private val textBlockWrites: Writes[TextBlock] = (
+    (JsPath \ "text").write[String] and
+      (JsPath \ "citations").writeNullable[Seq[Citation]].contramap[Seq[Citation]] {
+        citations =>
+          if (citations.isEmpty) None else Some(citations)
+      }
+  )(unlift(TextBlock.unapply))
+
+  private val textBlockFormat: Format[TextBlock] = Format(textBlockReads, textBlockWrites)
 
   implicit lazy val contentBlockWrites: Writes[ContentBlock] = {
     case x: TextBlock =>
