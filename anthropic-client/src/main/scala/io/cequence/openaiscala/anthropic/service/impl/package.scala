@@ -17,6 +17,7 @@ import io.cequence.openaiscala.domain.response.{
   ChatCompletionChunkResponse,
   ChatCompletionResponse,
   ChunkMessageSpec,
+  PromptTokensDetails,
   UsageInfo => OpenAIUsageInfo
 }
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
@@ -25,13 +26,13 @@ import io.cequence.openaiscala.domain.{
   ChatRole,
   MessageSpec,
   SystemMessage,
+  AssistantMessage => OpenAIAssistantMessage,
   BaseMessage => OpenAIBaseMessage,
   Content => OpenAIContent,
   ImageURLContent => OpenAIImageContent,
   TextContent => OpenAITextContent,
   UserMessage => OpenAIUserMessage,
-  UserSeqMessage => OpenAIUserSeqMessage,
-  AssistantMessage => OpenAIAssistantMessage
+  UserSeqMessage => OpenAIUserSeqMessage
 }
 
 import java.{util => ju}
@@ -215,10 +216,20 @@ package object impl extends AnthropicServiceConsts {
     messageContent.mkString("\n")
 
   def toOpenAI(usageInfo: UsageInfo): OpenAIUsageInfo = {
+    val promptTokens =
+      usageInfo.input_tokens + usageInfo.cache_creation_input_tokens + usageInfo.cache_read_input_tokens
+
     OpenAIUsageInfo(
-      prompt_tokens = usageInfo.input_tokens,
-      total_tokens = usageInfo.input_tokens + usageInfo.output_tokens,
-      completion_tokens = Some(usageInfo.output_tokens)
+      prompt_tokens = promptTokens,
+      completion_tokens = Some(usageInfo.output_tokens),
+      total_tokens = promptTokens + usageInfo.output_tokens,
+      prompt_tokens_details = Some(
+        PromptTokensDetails(
+          cached_tokens = usageInfo.cache_read_input_tokens,
+          audio_tokens = 0
+        )
+      ),
+      completion_tokens_details = None
     )
   }
 }

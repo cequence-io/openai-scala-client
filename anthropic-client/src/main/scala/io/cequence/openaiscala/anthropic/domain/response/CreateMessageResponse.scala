@@ -44,6 +44,8 @@ object CreateMessageResponse {
 
   case class UsageInfo(
     input_tokens: Int,
-    output_tokens: Int
+    output_tokens: Int,
+    cache_creation_input_tokens: Int,
+    cache_read_input_tokens: Int
   )
 }
