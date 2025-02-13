@@ -24,6 +24,7 @@ object FireworksAICreateChatCompletion extends ExampleBase[OpenAIChatCompletionS
     UserMessage("What is the weather like in Norway?")
   )
 
+//  private val modelId = NonOpenAIModelId.deepseek_r1
   private val modelId = NonOpenAIModelId.llama_v3p1_405b_instruct
 
   override protected def run: Future[_] =
