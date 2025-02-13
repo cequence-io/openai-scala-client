@@ -44,7 +44,9 @@ trait IOpenAIChatCompletionServiceFactory[F] extends RawWsServiceFactory[F] {
     apply(
       coreUrl = providerSettings.coreUrl,
       WsRequestContext(authHeaders =
-        Seq(("Authorization", s"Bearer ${sys.env(providerSettings.apiKeyEnvVariable)}"))
+        Seq(
+          ("Authorization", s"Bearer ${sys.env(providerSettings.apiKeyEnvVariable)}"),
+        )
       )
     )
 

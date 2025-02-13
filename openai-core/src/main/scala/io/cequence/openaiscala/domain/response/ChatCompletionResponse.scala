@@ -25,7 +25,7 @@ sealed trait BaseChatCompletionResponse[
 }
 
 case class ChatCompletionResponse(
-  id: String,
+  id: String, // gemini openai has this as null
   created: ju.Date,
   model: String,
   system_fingerprint: Option[String], // new
@@ -122,7 +122,15 @@ case class ChatCompletionChunkResponse(
   choices: Seq[ChatCompletionChoiceChunkInfo],
   // TODO: seems to be provided at the end when some flag is set
   usage: Option[UsageInfo]
-)
+) {
+  def contentHead: Option[String] = choices.headOption
+    .map(_.delta.content)
+    .getOrElse(
+      throw new OpenAIScalaClientException(
+        s"No choices in the chat completion response ${id}."
+      )
+    )
+}
 
 case class ChatCompletionChoiceChunkInfo(
   delta: ChunkMessageSpec,
