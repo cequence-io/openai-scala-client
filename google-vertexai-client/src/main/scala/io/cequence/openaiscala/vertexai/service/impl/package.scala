@@ -157,8 +157,10 @@ package object impl {
     )
     //  Number of candidates to generate.
     setValue(_.setCandidateCount(_: Int), settings.n)
+
     // The maximum number of output tokens to generate per message
     setValue(_.setMaxOutputTokens(_: Int), settings.max_tokens)
+
     // Stop sequences.
     setValue(
       _.addAllStopSequences(_: java.lang.Iterable[String]),
@@ -202,7 +204,13 @@ package object impl {
     OpenAIUsageInfo(
       prompt_tokens = usageInfo.getPromptTokenCount,
       total_tokens = usageInfo.getTotalTokenCount,
-      completion_tokens = Some(usageInfo.getTotalTokenCount - usageInfo.getPromptTokenCount)
+      completion_tokens = Some(usageInfo.getPromptTokenCount)
+//      prompt_tokens_details = Some(
+//        PromptTokensDetails(
+//          cached_tokens = usageInfo.getCachedContentTokenCount.getOrElse(0), TODO: add once available
+//          audio_tokens = 0
+//        )
+//      )
     )
   }
 }
