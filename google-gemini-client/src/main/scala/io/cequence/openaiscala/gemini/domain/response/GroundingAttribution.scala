@@ -28,9 +28,10 @@ object AttributionSourceIdPrefix {
     semanticRetrieverChunk
   )
 
-  def of(value: String): AttributionSourceIdPrefix = values.find(_.toString() == value).getOrElse {
-    throw new OpenAIScalaClientException(s"Unknown attributionSourceIdPrefix: $value")
-  }
+  def of(value: String): AttributionSourceIdPrefix =
+    values.find(_.toString() == value).getOrElse {
+      throw new OpenAIScalaClientException(s"Unknown attributionSourceIdPrefix: $value")
+    }
 }
 
 sealed trait AttributionSourceId {

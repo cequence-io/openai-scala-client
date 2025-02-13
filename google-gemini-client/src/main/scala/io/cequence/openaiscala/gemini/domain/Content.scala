@@ -10,8 +10,14 @@ case class Content(
 
 object Content {
   def apply(parts: Part*): Content = Content(parts, None)
-  def apply(role: ChatRole, parts: Part*): Content = Content(parts, Some(role))
-  def textPart(text: String, role: ChatRole): Content = apply(role, Part.TextPart(text))
+  def apply(
+    role: ChatRole,
+    parts: Part*
+  ): Content = Content(parts, Some(role))
+  def textPart(
+    text: String,
+    role: ChatRole
+  ): Content = apply(role, Part.Text(text))
 }
 
 sealed trait PartPrefix extends EnumValue
@@ -51,7 +57,7 @@ object Part {
    *
    * @param text
    */
-  case class TextPart(text: String) extends Part {
+  case class Text(text: String) extends Part {
     override val prefix: PartPrefix = PartPrefix.text
   }
 
@@ -66,7 +72,7 @@ object Part {
    * @param data
    *   Raw bytes for media formats. A base64-encoded string.
    */
-  case class InlineDataPart(
+  case class InlineData(
     mimeType: String,
     data: String
   ) extends Part {
@@ -88,7 +94,7 @@ object Part {
    * @param args
    *   Optional. The function parameters and values in JSON object format.
    */
-  case class FunctionCallPart(
+  case class FunctionCall(
     id: Option[String],
     name: String,
     args: Map[String, Any] = Map.empty
@@ -112,7 +118,7 @@ object Part {
    * @param response
    *   The function response in JSON object format.
    */
-  case class FunctionResponsePart(
+  case class FunctionResponse(
     id: Option[String],
     name: String,
     response: Map[String, Any]
@@ -129,7 +135,7 @@ object Part {
    * @param fileUri
    *   Required. URI.
    */
-  case class FileDataPart(
+  case class FileData(
     mimeType: Option[String],
     fileUri: String
   ) extends Part {
@@ -148,7 +154,7 @@ object Part {
    * @param code
    *   Required. The code to be executed.
    */
-  case class ExecutableCodePart(
+  case class ExecutableCode(
     language: String, // TODO: enum
     code: String
   ) extends Part {
@@ -164,7 +170,7 @@ object Part {
    *   Optional. Contains stdout when code execution is successful, stderr or other description
    *   otherwise.
    */
-  case class CodeExecutionResultPart(
+  case class CodeExecutionResult(
     outcome: String, // TODO: enum
     output: Option[String]
   ) extends Part {

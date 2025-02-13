@@ -3,6 +3,33 @@ package io.cequence.openaiscala.gemini.domain.settings
 import io.cequence.openaiscala.gemini.domain.{Content, HarmBlockThreshold, HarmCategory, Tool}
 import io.cequence.wsclient.domain.EnumValue
 
+/**
+ * The request body contains data with the following structure:
+ *
+ * @param model
+ *   Required. The model to use for generating content.
+ * @param tools
+ *   Optional. A list of Tools the Model may use to generate the next response. A Tool is a
+ *   piece of code that enables the system to interact with external systems to perform an
+ *   action, or set of actions, outside of knowledge and scope of the Model. Supported Tools
+ *   are Function and codeExecution. Refer to the Function calling and the Code execution
+ *   guides to learn more.
+ * @param toolConfig
+ *   Optional. Tool configuration for any Tool specified in the request. Refer to the Function
+ *   calling guide for a usage example.
+ * @param safetySettings
+ *   Optional. A list of unique SafetySetting instances for blocking unsafe content. This will
+ *   be enforced on the GenerateContentRequest. Refer to the guide for detailed information on
+ *   available safety settings. Also refer to the Safety guidance to learn how to incorporate
+ *   safety considerations in your AI applications.
+ * @param systemInstruction
+ *   Optional. Developer set system instruction(s). Currently, text only.
+ * @param generationConfig
+ *   Optional. Configuration options for model generation and outputs.
+ * @param cachedContent
+ *   Optional. The name of the content cached to use as context to serve the prediction.
+ *   Format: cachedContents/{cachedContent}
+ */
 case class GenerateContentSettings(
   model: String,
   tools: Option[Seq[Tool]] = None,

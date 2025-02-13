@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.gemini.domain.response
 
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.openaiscala.gemini.domain.Part.TextPart
+import io.cequence.openaiscala.gemini.domain.Part.Text
 import io.cequence.openaiscala.gemini.domain.{Content, HarmCategory, HarmProbability, Modality}
 import io.cequence.wsclient.domain.EnumValue
 
@@ -13,7 +13,7 @@ case class GenerateContentResponse(
 ) {
   def contentHeadTexts: Seq[String] =
     candidates.headOption
-      .map(_.content.parts.collect { case TextPart(text) => text })
+      .map(_.content.parts.collect { case Text(text) => text })
       .getOrElse(
         throw new OpenAIScalaClientException(
           s"No candidates in the Gemini generate content response for mode ${modelVersion}."
@@ -62,7 +62,7 @@ case class Candidate(
   groundingAttributions: Seq[GroundingAttribution] = Nil,
   groundingMetadata: Option[GroundingMetadata] = None,
   avgLogprobs: Option[Double] = None,
-//  logprobsResult: Option[LogprobsResult] = None, TODO: cyclic ref to candidate
+  logprobsResult: Option[LogprobsResult] = None,
   index: Option[Int] = None
 )
 
@@ -215,8 +215,8 @@ case class CitationSource(
  * Metadata on the generation request's token usage.
  *
  * @param promptTokenCount
- *   Number of tokens in the prompt. When cachedContent is set, this is still the total effective
- *   prompt size meaning this includes the number of tokens in the cached content.
+ *   Number of tokens in the prompt. When cachedContent is set, this is still the total
+ *   effective prompt size meaning this includes the number of tokens in the cached content.
  * @param cachedContentTokenCount
  *   Number of tokens in the cached part of the prompt (the cached content).
  * @param candidatesTokenCount
@@ -269,7 +269,8 @@ case class LogprobsResult(
 
 /**
  * Candidates with top log probabilities at each decoding step.
- * @param candidates Sorted by log probability in descending order.
+ * @param candidates
+ *   Sorted by log probability in descending order.
  */
 case class TopCandidates(
   candidates: Seq[Candidate]
