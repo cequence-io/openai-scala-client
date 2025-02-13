@@ -157,3 +157,18 @@ final case class MessageSpec(
 ) extends BaseMessage {
   override val nameOpt = name
 }
+
+object BaseMessage {
+  def getTextContent(message: BaseMessage): Option[String] =
+    message match {
+      case SystemMessage(content, _)    => Some(content)
+      case DeveloperMessage(content, _) => Some(content)
+      case UserMessage(content, _)      => Some(content)
+      case UserSeqMessage(contents, _) =>
+        val content = contents.collect { case TextContent(text) => text }.mkString("\n")
+        Some(content)
+      case AssistantMessage(content, _) => Some(content)
+      case MessageSpec(_, content, _)   => Some(content)
+      case _                            => None
+    }
+}
