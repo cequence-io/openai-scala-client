@@ -118,8 +118,6 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       case Pretty  => Json.prettyPrint(jsValue)
     }
 
-    println(serialized)
-
     if (!justSemantics) serialized shouldBe json
 
     val json2 = Json.parse(json).as[A]

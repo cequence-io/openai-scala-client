@@ -288,7 +288,7 @@ trait JsonFormats {
       (__ \ "groundingAttributions").write[Seq[GroundingAttribution]] and
       (__ \ "groundingMetadata").writeNullable[GroundingMetadata] and
       (__ \ "avgLogprobs").writeNullable[Double] and
-      (__ \ "").lazyWriteNullable[LogprobsResult](logprobsResultWrites) and
+      (__ \ "logprobsResult").lazyWriteNullable[LogprobsResult](logprobsResultWrites) and
       (__ \ "index").formatNullable[Int]
   )(
     // somehow unlift(Candidate.unapply) is not working in Scala3
