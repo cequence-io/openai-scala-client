@@ -1,10 +1,10 @@
 package io.cequence.openaiscala.examples.nonopenai
 
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
+import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettingsOps._
 import io.cequence.openaiscala.domain.{NonOpenAIModelId, SystemMessage, UserMessage}
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
-import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettingsOps._
 
 import scala.concurrent.Future
 
