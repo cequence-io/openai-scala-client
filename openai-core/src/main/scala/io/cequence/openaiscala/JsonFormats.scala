@@ -54,6 +54,9 @@ object JsonFormats {
   implicit lazy val completionTokenDetailsFormat: Format[CompletionTokenDetails] =
     Json.format[CompletionTokenDetails]
 
+  implicit lazy val promptTokensDetailsFormat: Format[PromptTokensDetails] =
+    Json.format[PromptTokensDetails]
+
   implicit lazy val usageInfoFormat: Format[UsageInfo] = Json.format[UsageInfo]
 
   private implicit lazy val stringDoubleMapFormat: Format[Map[String, Double]] =

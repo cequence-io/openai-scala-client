@@ -22,6 +22,7 @@ case class UsageInfo(
   prompt_tokens: Int,
   total_tokens: Int,
   completion_tokens: Option[Int],
+  prompt_tokens_details: Option[PromptTokensDetails] = None,
   completion_tokens_details: Option[CompletionTokenDetails] = None
 )
 
@@ -29,6 +30,11 @@ case class CompletionTokenDetails(
   reasoning_tokens: Int,
   accepted_prediction_tokens: Int,
   rejected_prediction_tokens: Int
+)
+
+case class PromptTokensDetails(
+  cached_tokens: Int,
+  audio_tokens: Int
 )
 
 case class LogprobsInfo(
