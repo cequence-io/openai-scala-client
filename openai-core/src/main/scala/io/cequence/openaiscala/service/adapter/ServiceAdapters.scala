@@ -6,7 +6,7 @@ import io.cequence.openaiscala.Retryable
 import io.cequence.wsclient.service.CloseableService
 import io.cequence.wsclient.service.adapter.ServiceBaseAdapters
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 
 trait ServiceAdapters[S <: CloseableService] extends ServiceBaseAdapters[S] {
 

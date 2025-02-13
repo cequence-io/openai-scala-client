@@ -16,4 +16,6 @@ object ChatProviderSettings {
   val deepseek = ProviderSettings("https://api.deepseek.com/", "DEEPSEEK_API_KEY")
   val deepseekBeta = ProviderSettings("https://api.deepseek.com/beta/", "DEEPSEEK_API_KEY")
   val sonar = ProviderSettings("https://api.perplexity.ai/", "SONAR_API_KEY")
+  val geminiCoreURL = "https://generativelanguage.googleapis.com/v1beta/"
+  val gemini = ProviderSettings(s"${geminiCoreURL}openai/", "GOOGLE_API_KEY")
 }
