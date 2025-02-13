@@ -3,9 +3,11 @@ package io.cequence.openaiscala.examples
 import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIStreamedService
+import io.cequence.openaiscala.domain.settings.ReasoningEffort.medium
 import io.cequence.openaiscala.service.OpenAIServiceFactory
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
+import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIStreamedService
+
 import scala.concurrent.Future
 
 // requires `openai-scala-client-stream` as a dependency
@@ -26,8 +28,7 @@ object CreateChatCompletionStreamed extends ExampleBase[OpenAIStreamedService] {
       )
       .runWith(
         Sink.foreach { completion =>
-          val content = completion.choices.headOption.flatMap(_.delta.content)
-          print(content.getOrElse(""))
+          print(completion.contentHead.getOrElse(""))
         }
       )
 }
