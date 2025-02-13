@@ -40,7 +40,7 @@ trait JsonFormats {
   private implicit val codeExecutionResultPartFormat: Format[Part.CodeExecutionResult] =
     Json.format[Part.CodeExecutionResult]
 
-  implicit val partWrites: Writes[Part] = Writes[Part] { part: Part =>
+  implicit val partWrites: Writes[Part] = Writes[Part] { (part: Part) =>
     val prefix = part.prefix.toString()
 
     def toJsonWithPrefix[T: Format](p: T) = {
@@ -59,7 +59,7 @@ trait JsonFormats {
     }
   }
 
-  implicit val partReads: Reads[Part] = { json: JsValue =>
+  implicit val partReads: Reads[Part] = { (json: JsValue) =>
     json.validate[JsObject].map { jsonObject =>
       assert(jsonObject.fields.size == 1)
       val (prefixFieldName, prefixJson) = jsonObject.fields.head
@@ -98,7 +98,7 @@ trait JsonFormats {
   private implicit val googleSearchRetrievalFormat: Format[Tool.GoogleSearchRetrieval] =
     Json.format[Tool.GoogleSearchRetrieval]
 
-  implicit val toolWrites: Writes[Tool] = Writes[Tool] { part: Tool =>
+  implicit val toolWrites: Writes[Tool] = Writes[Tool] { (part: Tool) =>
     val prefix = part.prefix.toString()
 
     def toJsonWithPrefix(json: JsValue) = Json.obj(prefix -> json)
