@@ -60,7 +60,7 @@ trait JsonFormats {
   }
 
   implicit val partReads: Reads[Part] = { (json: JsValue) =>
-    json.validate[JsObject].map { jsonObject =>
+    json.validate[JsObject].map { (jsonObject: JsObject) =>
       assert(jsonObject.fields.size == 1)
       val (prefixFieldName, prefixJson) = jsonObject.fields.head
 
@@ -111,8 +111,8 @@ trait JsonFormats {
     }
   }
 
-  implicit val toolReads: Reads[Tool] = { json: JsValue =>
-    json.validate[JsObject].map { jsonObject =>
+  implicit val toolReads: Reads[Tool] = { (json: JsValue) =>
+    json.validate[JsObject].map { (jsonObject: JsObject) =>
       assert(jsonObject.fields.size == 1, s"Expected exactly one field in $json")
       val (prefixFieldName, prefixJson) = jsonObject.fields.head
 
@@ -140,8 +140,8 @@ trait JsonFormats {
       Json.obj("functionCallingConfig" -> Json.toJson(p))
   }
 
-  implicit val toolConfigReads: Reads[ToolConfig] = { json: JsValue =>
-    json.validate[JsObject].map { jsonObject =>
+  implicit val toolConfigReads: Reads[ToolConfig] = { (json: JsValue) =>
+    json.validate[JsObject].map { (jsonObject: JsObject) =>
       assert(jsonObject.fields.size == 1, s"Expected exactly one field in $json")
       val (prefixFieldName, prefixJson) = jsonObject.fields.head
 
@@ -167,9 +167,17 @@ trait JsonFormats {
   )
 
   implicit lazy val safetySettingFormat: Format[SafetySetting] = (
-    (__ \ "harmCategory").format[HarmCategory] and
-      (__ \ "harmBlockThreshold").format[HarmBlockThreshold]
-  )(SafetySetting.apply, unlift(SafetySetting.unapply))
+    (__ \ "category").format[HarmCategory] and
+      (__ \ "threshold").format[HarmBlockThreshold]
+  )(
+    SafetySetting.apply,
+    // somehow unlift(SafetySetting.unapply) is not working in Scala3
+    (x: SafetySetting) =>
+      (
+        x.category,
+        x.threshold
+      )
+  )
 
   // Generation config
   implicit val prebuiltVoiceConfigFormat: Format[PrebuiltVoiceConfig] =
@@ -181,8 +189,8 @@ trait JsonFormats {
     case p: SpeechConfig.VoiceConfig => Json.obj("voiceConfig" -> Json.toJson(p))
   }
 
-  implicit val speechConfigReads: Reads[SpeechConfig] = { json: JsValue =>
-    json.validate[JsObject].map { jsonObject =>
+  implicit val speechConfigReads: Reads[SpeechConfig] = { (json: JsValue) =>
+    json.validate[JsObject].map { (jsonObject: JsObject) =>
       assert(jsonObject.fields.size == 1, s"Expected exactly one field in $json")
       val (prefixFieldName, prefixJson) = jsonObject.fields.head
 
@@ -220,7 +228,7 @@ trait JsonFormats {
     Json.format[AttributionSourceId.GroundingPassageId]
 
   implicit val attributionSourceIdWrites: Writes[AttributionSourceId] =
-    Writes[AttributionSourceId] { sourceId: AttributionSourceId =>
+    Writes[AttributionSourceId] { (sourceId: AttributionSourceId) =>
       val prefix = sourceId.prefix.toString()
 
       def toJsonWithPrefix[T: Format](item: T) = Json.obj(prefix -> Json.toJson(item))
@@ -231,8 +239,8 @@ trait JsonFormats {
       }
     }
 
-  implicit val attributionSourceIdReads: Reads[AttributionSourceId] = { json: JsValue =>
-    json.validate[JsObject].map { jsonObject =>
+  implicit val attributionSourceIdReads: Reads[AttributionSourceId] = { (json: JsValue) =>
+    json.validate[JsObject].map { (jsonObject: JsObject) =>
       assert(jsonObject.fields.size == 1, s"Expected exactly one field in $json")
       val (prefixFieldName, prefixJson) = jsonObject.fields.head
 
@@ -280,9 +288,24 @@ trait JsonFormats {
       (__ \ "groundingAttributions").write[Seq[GroundingAttribution]] and
       (__ \ "groundingMetadata").writeNullable[GroundingMetadata] and
       (__ \ "avgLogprobs").writeNullable[Double] and
-      (__ \ "logprobsResult").lazyWriteNullable[LogprobsResult](logprobsResultWrites) and
+      (__ \ "").lazyWriteNullable[LogprobsResult](logprobsResultWrites) and
       (__ \ "index").formatNullable[Int]
-  )(unlift(Candidate.unapply))
+  )(
+    // somehow unlift(Candidate.unapply) is not working in Scala3
+    (x: Candidate) =>
+      (
+        x.content,
+        x.finishReason,
+        x.safetyRatings,
+        x.citationMetadata,
+        x.tokenCount,
+        x.groundingAttributions,
+        x.groundingMetadata,
+        x.avgLogprobs,
+        x.logprobsResult,
+        x.index
+      )
+  )
 
   implicit lazy val candidateReads: Reads[Candidate] = (
     (__ \ "content").read[Content] and
@@ -303,7 +326,14 @@ trait JsonFormats {
   implicit lazy val logprobsResultWrites: Writes[LogprobsResult] = (
     (__ \ "topCandidates").write[Seq[TopCandidates]] and
       (__ \ "chosenCandidates").write[Seq[Candidate]]
-  )(unlift(LogprobsResult.unapply))
+  )(
+    // somehow unlift(LogprobsResult.unapply) is not working in Scala3
+    (x: LogprobsResult) =>
+      (
+        x.topCandidates,
+        x.chosenCandidates
+      )
+  )
 
   implicit lazy val logprobsResultReads: Reads[LogprobsResult] = (
     (__ \ "topCandidates").readWithDefault[Seq[TopCandidates]](Nil) and
@@ -323,34 +353,7 @@ trait JsonFormats {
   implicit val modelFormat: Format[Model] = Json.using[Json.WithDefaultValues].format[Model]
   implicit val listModelsFormat: Format[ListModelsResponse] = Json.format[ListModelsResponse]
 
-//  private implicit val expireTimeFormat: Format[Expiration.ExpireTime] =
-//    Json.format[Expiration.ExpireTime]
-//
-//  private implicit val expirationTTLFormat: Format[Expiration.TTL] =
-//    Json.format[Expiration.TTL]
-//
-//  // Cached Content
-//  implicit val expirationWrites: Writes[Expiration] = Writes[Expiration] {
-//    case p: Expiration.ExpireTime =>
-//      Json.obj("expireTime" -> Json.toJson(p))
-//    case p: Expiration.TTL =>
-//      Json.obj("ttl" -> Json.toJson(p))
-//  }
-//
-//  implicit val expirationReads: Reads[Expiration] = { json: JsValue =>
-//    json.validate[JsObject].map { jsonObject =>
-//      assert(jsonObject.fields.size == 1, s"Expected exactly one field in $json")
-//      val (prefixFieldName, prefixJson) = jsonObject.fields.head
-//
-//      prefixFieldName match {
-//        case "expireTime" => prefixJson.as[Expiration.ExpireTime]
-//        case "ttl"        => prefixJson.as[Expiration.TTL]
-//        case _ =>
-//          throw new OpenAIScalaClientException(s"Unknown tool config type: $prefixFieldName")
-//      }
-//    }
-//  }
-//  implicit val expirationFormat: Format[Expiration] = Format(expirationReads, expirationWrites)
+  private val modelsPrefix = "models/"
 
   implicit val cachedContentWrites: Writes[CachedContent] = (
     (__ \ "contents").write[Seq[Content]] and
@@ -376,10 +379,10 @@ trait JsonFormats {
       },
       cachedContent.name,
       cachedContent.displayName,
-      if (cachedContent.model.startsWith("models/")) {
+      if (cachedContent.model.startsWith(modelsPrefix)) {
         cachedContent.model
       } else {
-        s"models/${cachedContent.model}"
+        s"${modelsPrefix}${cachedContent.model}"
       },
       cachedContent.systemInstruction,
       cachedContent.toolConfig
@@ -419,7 +422,7 @@ trait JsonFormats {
           ),
         name = name,
         displayName = displayName,
-        model = model.stripPrefix("models/"),
+        model = model.stripPrefix(modelsPrefix),
         systemInstruction = systemInstruction,
         toolConfig = toolConfig
       )

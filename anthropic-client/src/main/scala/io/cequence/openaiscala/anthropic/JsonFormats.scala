@@ -102,14 +102,21 @@ trait JsonFormats {
   private val textBlockReads: Reads[TextBlock] =
     Json.using[Json.WithDefaultValues].reads[TextBlock]
 
-  // TODO: revisit this - we don't write citations if empty
   private val textBlockWrites: Writes[TextBlock] = (
     (JsPath \ "text").write[String] and
+      // TODO: revisit this - we don't write citations if empty
       (JsPath \ "citations").writeNullable[Seq[Citation]].contramap[Seq[Citation]] {
         citations =>
           if (citations.isEmpty) None else Some(citations)
       }
-  )(unlift(TextBlock.unapply))
+  )(
+    // somehow unlift(TextBlock.unapply) is not working in Scala3
+    (x: TextBlock) =>
+      (
+        x.text,
+        x.citations
+      )
+  )
 
   private val textBlockFormat: Format[TextBlock] = Format(textBlockReads, textBlockWrites)
 
