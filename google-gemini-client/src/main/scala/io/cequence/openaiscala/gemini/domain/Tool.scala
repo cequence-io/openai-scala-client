@@ -122,7 +122,7 @@ case class Schema(
   format: Option[String] = None,
   description: Option[String] = None,
   nullable: Option[Boolean] = None,
-  enum: Option[Seq[String]] = None,
+  `enum`: Option[Seq[String]] = None,
   maxItems: Option[String] = None,
   minItems: Option[String] = None,
   properties: Option[Map[String, Schema]] = None,
