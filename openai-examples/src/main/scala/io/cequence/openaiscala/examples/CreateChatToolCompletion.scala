@@ -1,10 +1,10 @@
 package io.cequence.openaiscala.examples
 
+import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import play.api.libs.json.{JsObject, Json}
-import io.cequence.openaiscala.JsonFormats._
 
 import scala.concurrent.Future
 

@@ -6,9 +6,9 @@ import io.cequence.openaiscala.domain.settings.{
   CreateChatCompletionSettings
 }
 import io.cequence.openaiscala.examples.fixtures.TestFixtures
+import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
 import io.cequence.openaiscala.service.OpenAIServiceConsts
 import play.api.libs.json.{JsObject, Json}
-import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
 
 import scala.concurrent.Future
 

@@ -5,6 +5,7 @@ import io.cequence.openaiscala.domain.settings.{
   CreateTranslationSettings,
   TranscriptResponseFormatType
 }
+
 import scala.concurrent.Future
 
 // translates to English

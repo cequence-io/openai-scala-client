@@ -1,13 +1,8 @@
 package io.cequence.openaiscala.examples
 
 import io.cequence.openaiscala.domain._
-import io.cequence.openaiscala.domain.settings.{
-  CreateImageSettings,
-  ImageQualityType,
-  ImageResponseFormatType,
-  ImageSizeType,
-  ImageStyleType
-}
+import io.cequence.openaiscala.domain.settings._
+
 import scala.concurrent.Future
 
 object CreateImage extends Example {

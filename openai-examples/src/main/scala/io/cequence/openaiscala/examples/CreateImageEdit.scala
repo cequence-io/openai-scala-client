@@ -2,6 +2,7 @@ package io.cequence.openaiscala.examples
 
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings._
+
 import scala.concurrent.Future
 
 object CreateImageEdit extends Example {

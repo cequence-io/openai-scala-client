@@ -2,9 +2,9 @@ package io.cequence.openaiscala.examples
 
 import io.cequence.openaiscala.domain.AssistantTool.FileSearchTool
 import io.cequence.openaiscala.domain.AssistantToolResource.FileSearchResources
+import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.response.FileInfo
 import io.cequence.openaiscala.domain.settings.{CreateRunSettings, FileUploadPurpose}
-import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.service.adapter.OpenAIServiceAdapters
 import io.cequence.openaiscala.service.{OpenAIService, OpenAIServiceFactory}
 

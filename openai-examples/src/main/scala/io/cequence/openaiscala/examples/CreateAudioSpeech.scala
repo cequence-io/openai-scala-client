@@ -1,6 +1,7 @@
 package io.cequence.openaiscala.examples
 
 import akka.stream.scaladsl.FileIO
+
 import java.nio.file.Paths
 import scala.concurrent.Future
 

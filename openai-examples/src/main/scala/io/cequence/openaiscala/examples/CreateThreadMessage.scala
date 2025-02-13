@@ -2,8 +2,8 @@ package io.cequence.openaiscala.examples
 
 import io.cequence.openaiscala.domain.{Attachment, FileId, MessageAttachmentTool}
 
-import scala.util.Random
 import scala.concurrent.Future
+import scala.util.Random
 
 object CreateThreadMessage extends Example {
 

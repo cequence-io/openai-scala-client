@@ -1,12 +1,12 @@
 package io.cequence.openaiscala.examples.adapter
 
-import io.cequence.openaiscala.{OpenAIScalaClientException, OpenAIScalaClientTimeoutException}
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{ModelId, SystemMessage, UserMessage}
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service._
 import io.cequence.openaiscala.service.adapter.OpenAIServiceAdapters
+import io.cequence.openaiscala.{OpenAIScalaClientException, OpenAIScalaClientTimeoutException}
 
 import scala.concurrent.Future
 

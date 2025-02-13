@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.examples
 
-import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, ServiceTier}
 import io.cequence.openaiscala.domain._
+import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, ServiceTier}
 
 import scala.concurrent.Future
 

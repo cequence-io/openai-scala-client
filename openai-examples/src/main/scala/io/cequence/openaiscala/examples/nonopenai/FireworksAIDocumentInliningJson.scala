@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.examples.nonopenai
 
+import io.cequence.openaiscala.JsonFormats.jsonSchemaFormat
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
@@ -8,7 +9,6 @@ import io.cequence.openaiscala.domain.settings.{
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
 import play.api.libs.json.Json
-import io.cequence.openaiscala.JsonFormats.jsonSchemaFormat
 
 import scala.concurrent.Future
 
