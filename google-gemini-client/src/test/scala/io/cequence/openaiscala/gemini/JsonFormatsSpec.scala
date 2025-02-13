@@ -5,7 +5,11 @@ import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.gemini.JsonFormatsSpec.JsonPrintMode
 import io.cequence.openaiscala.gemini.JsonFormatsSpec.JsonPrintMode.{Compact, Pretty}
 import io.cequence.openaiscala.gemini.domain.{ChatRole, Content}
-import io.cequence.openaiscala.gemini.domain.response.{Candidate, CitationMetadata, FinishReason, GroundingAttribution, GroundingMetadata, LogprobsResult, SafetyRating, TopCandidates}
+import io.cequence.openaiscala.gemini.domain.response.{
+  Candidate,
+  LogprobsResult,
+  TopCandidates
+}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import play.api.libs.json.{Format, Json}
@@ -26,14 +30,16 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       prettyTestCodec[Candidate](
         Candidate(
           content = Content.textPart("Hello, world!", ChatRole.User),
-          logprobsResult = Some(LogprobsResult(
-            topCandidates = Nil,
-            chosenCandidates = Seq(
-              Candidate(
-                content = Content.textPart("Hello, back!", ChatRole.Model)
+          logprobsResult = Some(
+            LogprobsResult(
+              topCandidates = Nil,
+              chosenCandidates = Seq(
+                Candidate(
+                  content = Content.textPart("Hello, back!", ChatRole.Model)
+                )
               )
             )
-          )),
+          )
         ),
         """{
           |  "content" : {
