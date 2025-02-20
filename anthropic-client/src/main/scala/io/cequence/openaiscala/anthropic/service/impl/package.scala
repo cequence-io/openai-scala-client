@@ -217,7 +217,7 @@ package object impl extends AnthropicServiceConsts {
 
   def toOpenAI(usageInfo: UsageInfo): OpenAIUsageInfo = {
     val promptTokens =
-      usageInfo.input_tokens + usageInfo.cache_creation_input_tokens + usageInfo.cache_read_input_tokens
+      usageInfo.input_tokens + usageInfo.cache_creation_input_tokens.getOrElse(0) + usageInfo.cache_read_input_tokens.getOrElse(0)
 
     OpenAIUsageInfo(
       prompt_tokens = promptTokens,
@@ -225,7 +225,7 @@ package object impl extends AnthropicServiceConsts {
       total_tokens = promptTokens + usageInfo.output_tokens,
       prompt_tokens_details = Some(
         PromptTokensDetails(
-          cached_tokens = usageInfo.cache_read_input_tokens,
+          cached_tokens = usageInfo.cache_read_input_tokens.getOrElse(0),
           audio_tokens = 0
         )
       ),

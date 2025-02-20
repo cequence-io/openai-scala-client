@@ -2,7 +2,6 @@ package io.cequence.openaiscala.anthropic.service.impl
 
 import akka.NotUsed
 import play.api.libs.json.{JsValue, Json}
-import akka.stream._
 import akka.stream.scaladsl.Flow
 import akka.util.ByteString
 

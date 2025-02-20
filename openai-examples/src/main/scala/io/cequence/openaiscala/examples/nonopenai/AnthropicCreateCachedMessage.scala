@@ -386,8 +386,8 @@ object AnthropicCreateCachedMessage extends ExampleBase[AnthropicService] {
       usage: UsageInfo
     ) = println(s"""
         |Input tokens  : ${usage.input_tokens}
-        |(cache create): ${usage.cache_creation_input_tokens}
-        |(cache read)  : ${usage.cache_read_input_tokens}
+        |(cache create): ${usage.cache_creation_input_tokens.getOrElse(0)}
+        |(cache read)  : ${usage.cache_read_input_tokens.getOrElse(0)}
         |Output tokens : ${usage.output_tokens}
         |""".stripMargin)
 
