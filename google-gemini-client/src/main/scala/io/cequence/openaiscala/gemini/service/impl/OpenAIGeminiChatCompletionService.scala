@@ -56,7 +56,7 @@ private[service] class OpenAIGeminiChatCompletionService(
     val (userMessages, systemMessage) = splitMessage(messages)
 
     for {
-      settings <- handleCaching(systemMessage.get, userMessages, settings)
+      settings <- handleCaching(systemMessage, userMessages, settings)
 
       response <- underlying.generateContent(
         userMessages.map(toGeminiContent),
@@ -71,7 +71,7 @@ private[service] class OpenAIGeminiChatCompletionService(
   ): Source[ChatCompletionChunkResponse, NotUsed] = {
     val (userMessages, systemMessage) = splitMessage(messages)
 
-    val futureSource = handleCaching(systemMessage.get, userMessages, settings).map(settings =>
+    val futureSource = handleCaching(systemMessage, userMessages, settings).map(settings =>
       underlying
         .generateContentStreamed(
           userMessages.map(toGeminiContent),
@@ -85,20 +85,20 @@ private[service] class OpenAIGeminiChatCompletionService(
   }
 
   private def handleCaching(
-    systemMessage: BaseMessage,
+    systemMessage: Option[BaseMessage],
     userMessages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
   ): Future[GenerateContentSettings] =
-    if (settings.geminiCacheSystemMessage) {
+    if (settings.geminiCacheSystemMessage && systemMessage.isDefined) {
       // we cache only the system message
-      cacheMessages(systemMessage, userMessage = None, settings).map { cacheName =>
+      cacheMessages(systemMessage.get, userMessage = None, settings).map { cacheName =>
         // we skip the system message, as it is cached, plus we set the cache name
         toGeminiSettings(settings, systemMessage = None).copy(cachedContent = Some(cacheName))
       }
     } else
       Future.successful(
         // no cache, we pass the system message
-        toGeminiSettings(settings, Some(systemMessage))
+        toGeminiSettings(settings, systemMessage)
       )
 
   // returns the cache name
