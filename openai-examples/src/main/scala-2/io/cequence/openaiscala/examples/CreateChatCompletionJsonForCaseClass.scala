@@ -15,8 +15,10 @@ object CreateChatCompletionJsonForCaseClass extends Example with JsonSchemaRefle
   case class Country(
     country: String,
     capital: String,
-    populationMil: Double
+    populationMil: Int,
+    ratioOfMenToWomen: Double
   )
+
   case class CapitalsResponse(capitals: Seq[Country])
 
   // JSON format and schema

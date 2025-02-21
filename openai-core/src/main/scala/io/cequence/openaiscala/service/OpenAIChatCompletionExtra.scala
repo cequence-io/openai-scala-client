@@ -91,9 +91,9 @@ object OpenAIChatCompletionExtra {
           failureMessage = s"${taskNameForLoggingFinal.capitalize} failed."
         )
         .map { response =>
-          val content = response.choices.head.message.content
+          val content = response.contentHead
           val contentTrimmed = content.stripPrefix("```json").stripSuffix("```").trim
-          val contentJson = contentTrimmed.dropWhile(_ != '{')
+          val contentJson = contentTrimmed.dropWhile(char => char != '{' && char != '[')
           val json = parseJson(contentJson)
 
           logger.debug(

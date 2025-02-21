@@ -31,6 +31,6 @@ object AnthropicCreateChatCompletionCachedWithOpenAIAdapter
         ) // this is how we pass it through the adapter
       )
       .map { content =>
-        println(content.choices.headOption.map(_.message.content).getOrElse("N/A"))
+        println(content.contentHead)
       }
 }

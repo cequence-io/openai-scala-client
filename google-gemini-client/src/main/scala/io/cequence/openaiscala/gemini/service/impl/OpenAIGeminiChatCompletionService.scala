@@ -41,6 +41,14 @@ import io.cequence.openaiscala.service.{
 }
 
 import scala.concurrent.{ExecutionContext, Future}
+import io.cequence.openaiscala.domain.settings.ChatCompletionResponseFormatType
+import io.cequence.openaiscala.domain.JsonSchema
+import io.cequence.openaiscala.gemini.domain.Schema
+import com.typesafe.scalalogging.Logger
+import io.cequence.openaiscala.gemini.domain.SchemaType
+import org.slf4j.LoggerFactory
+
+import scala.collection.immutable.Traversable
 
 private[service] class OpenAIGeminiChatCompletionService(
   underlying: GeminiService
@@ -48,6 +56,8 @@ private[service] class OpenAIGeminiChatCompletionService(
   implicit executionContext: ExecutionContext
 ) extends OpenAIChatCompletionService
     with OpenAIChatCompletionStreamedServiceExtra {
+
+  protected val logger: Logger = Logger(LoggerFactory.getLogger(this.getClass))
 
   override def createChatCompletion(
     messages: Seq[BaseMessage],
@@ -185,7 +195,31 @@ private[service] class OpenAIGeminiChatCompletionService(
   private def toGeminiSettings(
     settings: CreateChatCompletionSettings,
     systemMessage: Option[BaseMessage]
-  ): GenerateContentSettings =
+  ): GenerateContentSettings = {
+
+    // handle json schema
+    val responseFormat =
+      settings.response_format_type.getOrElse(ChatCompletionResponseFormatType.text)
+
+    val jsonSchema =
+      if (
+        responseFormat == ChatCompletionResponseFormatType.json_schema && settings.jsonSchema.isDefined
+      ) {
+        settings.jsonSchema.get.structure match {
+          case Left(schema) =>
+            Some(toGeminiJSONSchema(schema))
+          case Right(_) =>
+            logger.warn(
+              "Map-like legacy JSON schema is not supported for conversion to Gemini schema."
+            )
+            None
+        }
+      } else
+        None
+
+    // check for unsupported fields
+    checkNotSupported(settings)
+
     GenerateContentSettings(
       model = settings.model,
       tools = None, // TODO
@@ -196,7 +230,7 @@ private[service] class OpenAIGeminiChatCompletionService(
         GenerationConfig(
           stopSequences = (if (settings.stop.nonEmpty) Some(settings.stop) else None),
           responseMimeType = None,
-          responseSchema = None, // TODO: support JSON!
+          responseSchema = jsonSchema,
           responseModalities = None,
           candidateCount = settings.n,
           maxOutputTokens = settings.max_tokens,
@@ -214,6 +248,84 @@ private[service] class OpenAIGeminiChatCompletionService(
       ),
       cachedContent = None
     )
+  }
+
+  private def checkNotSupported(
+    settings: CreateChatCompletionSettings
+  ) = {
+    def notSupported(
+      field: CreateChatCompletionSettings => Option[_],
+      fieldName: String
+    ): Unit =
+      field(settings).foreach { _ =>
+        logger.warn(s"Field $fieldName is not yet supported for Gemini. Skipping...")
+      }
+
+    def notSupportedCollection(
+      field: CreateChatCompletionSettings => Traversable[_],
+      fieldName: String
+    ): Unit =
+      if (field(settings).nonEmpty) {
+        logger.warn(s"Field $fieldName is not supported for Gemini. Skipping...")
+      }
+
+    notSupported(_.reasoning_effort, "reasoning_effort")
+    notSupported(_.service_tier, "service_tier")
+    notSupported(_.parallel_tool_calls, "parallel_tool_calls")
+    notSupportedCollection(_.metadata, "metadata")
+    notSupportedCollection(_.logit_bias, "logit_bias")
+    notSupported(_.user, "user")
+    notSupported(_.store, "store")
+  }
+
+  private def toGeminiJSONSchema(
+    jsonSchema: JsonSchema
+  ): Schema = jsonSchema match {
+    case JsonSchema.String(description, enumVals) =>
+      Schema(
+        `type` = SchemaType.STRING,
+        description = description,
+        `enum` = Some(enumVals)
+      )
+
+    case JsonSchema.Number(description) =>
+      Schema(
+        `type` = SchemaType.NUMBER,
+        description = description
+      )
+
+    case JsonSchema.Integer(description) =>
+      Schema(
+        `type` = SchemaType.INTEGER,
+        description = description
+      )
+
+    case JsonSchema.Boolean(description) =>
+      Schema(
+        `type` = SchemaType.BOOLEAN,
+        description = description
+      )
+
+    case JsonSchema.Object(properties, required) =>
+      Schema(
+        `type` = SchemaType.OBJECT,
+        properties = Some(
+          properties.map { case (key, jsonSchema) =>
+            key -> toGeminiJSONSchema(jsonSchema)
+          }.toMap
+        ),
+        required = Some(required)
+      )
+
+    case JsonSchema.Array(items) =>
+      Schema(
+        `type` = SchemaType.ARRAY,
+        items = Some(toGeminiJSONSchema(items))
+      )
+
+    case _ =>
+      throw new OpenAIScalaClientException(s"Unsupported JSON schema type for Gemini.")
+  }
 
   private def toOpenAIResponse(
     response: GenerateContentResponse

@@ -221,11 +221,8 @@ class MessageJsonSpec extends Matchers with AnyWordSpecLike {
       val json = toJson(message)
       val jsonKeys = json.keySet
 
-      println(toJsonObject(message))
-
       val messages2 = AssistantMessage(content)
       toJson(messages2)
-      println(toJsonObject(messages2))
 
 //      json shouldNot be(json2)
 
