@@ -258,7 +258,7 @@ private[service] class OpenAIGeminiChatCompletionService(
       fieldName: String
     ): Unit =
       field(settings).foreach { _ =>
-        logger.warn(s"Field $fieldName is not yet supported for Gemini. Skipping...")
+        logger.warn(s"OpenAI param '$fieldName' is not yet supported by Gemini. Skipping...")
       }
 
     def notSupportedCollection(
@@ -266,7 +266,7 @@ private[service] class OpenAIGeminiChatCompletionService(
       fieldName: String
     ): Unit =
       if (field(settings).nonEmpty) {
-        logger.warn(s"Field $fieldName is not supported for Gemini. Skipping...")
+        logger.warn(s"OpenAI param '$fieldName' is not yet supported by Gemini. Skipping...")
       }
 
     notSupported(_.reasoning_effort, "reasoning_effort")
@@ -404,7 +404,7 @@ private[service] class OpenAIGeminiChatCompletionService(
       prompt_tokens_details = Some(
         PromptTokensDetails(
           cached_tokens = usageMetadata.cachedContentTokenCount.getOrElse(0),
-          audio_tokens = 0
+          audio_tokens = None
         )
       )
     )
