@@ -27,8 +27,7 @@ trait JsonSchemaReflectionHelper {
   ): JsonSchema =
     typ match {
       // integer
-      case t
-          if t matches (typeOf[Int], typeOf[Long], typeOf[Byte]) =>
+      case t if t matches (typeOf[Int], typeOf[Long], typeOf[Byte]) =>
         JsonSchema.Integer()
 
       // number

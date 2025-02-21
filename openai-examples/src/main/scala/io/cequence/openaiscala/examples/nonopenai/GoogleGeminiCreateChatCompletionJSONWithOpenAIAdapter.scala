@@ -1,7 +1,11 @@
 package io.cequence.openaiscala.examples.nonopenai
 
 import io.cequence.openaiscala.domain._
-import io.cequence.openaiscala.domain.settings.{ChatCompletionResponseFormatType, CreateChatCompletionSettings, JsonSchemaDef}
+import io.cequence.openaiscala.domain.settings.{
+  ChatCompletionResponseFormatType,
+  CreateChatCompletionSettings,
+  JsonSchemaDef
+}
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.examples.fixtures.TestFixtures
 import io.cequence.openaiscala.gemini.service.GeminiServiceFactory
@@ -15,7 +19,8 @@ import scala.concurrent.Future
  * Requires `GOOGLE_API_KEY` environment variable to be set.
  */
 object GoogleGeminiCreateChatCompletionJSONWithOpenAIAdapter
-    extends ExampleBase[OpenAIChatCompletionService] with TestFixtures {
+    extends ExampleBase[OpenAIChatCompletionService]
+    with TestFixtures {
 
   override val service: OpenAIChatCompletionService = GeminiServiceFactory.asOpenAI()
 
@@ -36,9 +41,16 @@ object GoogleGeminiCreateChatCompletionJSONWithOpenAIAdapter
             ),
             "commonwealthMember" -> JsonSchema.Boolean(),
             "populationMil" -> JsonSchema.Integer(),
-            "ratioOfMenToWomen" -> JsonSchema.Number(),
+            "ratioOfMenToWomen" -> JsonSchema.Number()
           ),
-          required = Seq("country", "capital", "countrySize", "commonwealthMember", "populationMil", "ratioOfMenToWomen")
+          required = Seq(
+            "country",
+            "capital",
+            "countrySize",
+            "commonwealthMember",
+            "populationMil",
+            "ratioOfMenToWomen"
+          )
         )
       )
     ),
@@ -54,11 +66,13 @@ object GoogleGeminiCreateChatCompletionJSONWithOpenAIAdapter
         settings = CreateChatCompletionSettings(
           model = modelId,
           response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
-          jsonSchema = Some(JsonSchemaDef(
-            name = "countries_response",
-            strict = true,
-            structure = jsonSchema
-          ))
+          jsonSchema = Some(
+            JsonSchemaDef(
+              name = "countries_response",
+              strict = true,
+              structure = jsonSchema
+            )
+          )
         )
       )
       .map(json => println(Json.prettyPrint(json)))

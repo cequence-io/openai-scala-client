@@ -28,7 +28,12 @@ object GoogleGeminiCreateChatCompletionWithOpenAIAdapter
       .createChatCompletion(
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = modelId
+          model = modelId,
+          // unsupported by Google Gemini (just to test)
+          metadata = Map(
+            "chatbot" -> "pirate",
+            "user" -> "5-year-old"
+          )
         )
       )
       .map(printMessageContent)
