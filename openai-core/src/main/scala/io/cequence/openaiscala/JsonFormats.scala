@@ -1154,6 +1154,7 @@ object JsonFormats {
   implicit lazy val jsonSchemaWrites: Writes[JsonSchema] = {
     implicit val stringWrites = Json.writes[JsonSchema.String]
     implicit val numberWrites = Json.writes[JsonSchema.Number]
+    implicit val integerWrites = Json.writes[JsonSchema.Integer]
     implicit val booleanWrites = Json.writes[JsonSchema.Boolean]
     //    implicit val nullWrites = Json.writes[JsonSchema.Null]
 
@@ -1166,6 +1167,9 @@ object JsonFormats {
           if ((json \ "enum").asOpt[Seq[String]].exists(_.isEmpty)) json - "enum" else json
 
         case c: JsonSchema.Number =>
+          Json.toJson(c).as[JsObject]
+
+        case c: JsonSchema.Integer =>
           Json.toJson(c).as[JsObject]
 
         case c: JsonSchema.Boolean =>
@@ -1201,6 +1205,7 @@ object JsonFormats {
     )(JsonSchema.String.apply _)
 
     implicit val numberReads: Reads[JsonSchema.Number] = Json.reads[JsonSchema.Number]
+    implicit val integerReads: Reads[JsonSchema.Integer] = Json.reads[JsonSchema.Integer]
     implicit val booleanReads: Reads[JsonSchema.Boolean] = Json.reads[JsonSchema.Boolean]
     //    implicit val nullReads = Json.reads[JsonSchema.Null]
 
@@ -1213,6 +1218,9 @@ object JsonFormats {
 
           case JsonType.Number =>
             Json.fromJson[JsonSchema.Number](o)
+
+          case JsonType.Integer =>
+            Json.fromJson[JsonSchema.Integer](o)
 
           case JsonType.Boolean =>
             Json.fromJson[JsonSchema.Boolean](o)

@@ -36,6 +36,11 @@ object JsonSchema {
   ) extends JsonSchema {
     override val `type` = JsonType.Number
   }
+  case class Integer(
+    description: Option[JString] = None
+  ) extends JsonSchema {
+    override val `type` = JsonType.Integer
+  }
   case class Boolean(
     description: Option[JString] = None
   ) extends JsonSchema {
@@ -55,6 +60,7 @@ object JsonType {
   case object Object extends JsonType("object")
   case object String extends JsonType("string")
   case object Number extends JsonType("number")
+  case object Integer extends JsonType("integer")
   case object Boolean extends JsonType("boolean")
   case object Null extends JsonType("null")
   case object Array extends JsonType("array")

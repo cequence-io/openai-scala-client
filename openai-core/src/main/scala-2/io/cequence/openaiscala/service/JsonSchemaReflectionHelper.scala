@@ -26,11 +26,14 @@ trait JsonSchemaReflectionHelper {
     explicitTypes: Map[String, JsonSchema]
   ): JsonSchema =
     typ match {
+      // integer
+      case t
+          if t matches (typeOf[Int], typeOf[Long], typeOf[Byte]) =>
+        JsonSchema.Integer()
+
       // number
       case t
-          if t matches (typeOf[Int], typeOf[Long], typeOf[Byte], typeOf[Double], typeOf[
-            Float
-          ], typeOf[BigDecimal], typeOf[BigInt]) =>
+          if t matches (typeOf[Double], typeOf[Float], typeOf[BigDecimal], typeOf[BigInt]) =>
         JsonSchema.Number()
 
       // boolean

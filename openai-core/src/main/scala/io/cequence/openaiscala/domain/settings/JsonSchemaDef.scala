@@ -13,6 +13,7 @@ object JsonSchemaDef {
   def apply(
     name: String,
     strict: Boolean,
+    @Deprecated
     structure: Map[String, Any]
   ): JsonSchemaDef = JsonSchemaDef(name, strict, Right(structure))
 
