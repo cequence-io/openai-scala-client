@@ -250,6 +250,11 @@ object NonOpenAIModelId {
   val solar_10_7b_instruct_v1_0 = "upstage/SOLAR-10.7B-Instruct-v1.0" // Together AI
 
   // Grok
+  // TODO: check these (assumed) names once the models are released
+  val grok_3_latest = "grok-3-latest"
+  val grok_3_mini = "grok-3-mini"
+  val grok_3_reasoning = "grok-3-reasoning"
+  val grok_3_mini_reasoning = "grok-3-mini-reasoning"
 
   // context 131072
   val grok_2_latest = "grok-2-latest"
