@@ -23,7 +23,7 @@ case class UsageInfo(
   total_tokens: Int,
   completion_tokens: Option[Int],
   prompt_tokens_details: Option[PromptTokensDetails] = None,
-  completion_tokens_details: Option[CompletionTokenDetails] = None,
+  completion_tokens_details: Option[CompletionTokenDetails] = None
 //  prompt_cache_hit_tokens: Option[Int],
 //  prompt_cache_miss_tokens: Option[Int]
 )
