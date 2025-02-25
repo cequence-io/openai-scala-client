@@ -94,22 +94,38 @@ private[service] class OpenAIGeminiChatCompletionService(
     Source.fromFutureSource(futureSource).mapMaterializedValue(_ => NotUsed)
   }
 
+  // only system message is cached
   private def handleCaching(
     systemMessage: Option[BaseMessage],
     userMessages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
   ): Future[GenerateContentSettings] =
-    if (settings.geminiCacheSystemMessage && systemMessage.isDefined) {
-      // we cache only the system message
-      cacheMessages(systemMessage.get, userMessage = None, settings).map { cacheName =>
-        // we skip the system message, as it is cached, plus we set the cache name
-        toGeminiSettings(settings, systemMessage = None).copy(cachedContent = Some(cacheName))
-      }
-    } else
+    settings.getSystemCacheName.map { cacheName =>
+      // we use the cached system message instead of the provided one
+      logger.info(s"Using a system message for Gemini from cache: $cacheName")
       Future.successful(
-        // no cache, we pass the system message
-        toGeminiSettings(settings, systemMessage)
+        toGeminiSettings(settings, systemMessage = None).copy(cachedContent = Some(cacheName))
       )
+    }.getOrElse(
+      if (settings.isCacheSystemMessageEnabled && systemMessage.isDefined) {
+        // we cache only the system message
+        cacheMessages(systemMessage.get, userMessage = None, settings).map { cacheName =>
+          logger.info(s"System message for Gemini cached as: $cacheName")
+
+          // we skip the system message, as it is cached, plus we set the cache name
+          toGeminiSettings(settings, systemMessage = None)
+            .copy(cachedContent = Some(cacheName))
+        }
+      } else {
+        if (settings.isCacheSystemMessageEnabled)
+          logger.warn("No system message provided for caching.")
+
+        Future.successful(
+          // no cache, we pass the system message
+          toGeminiSettings(settings, systemMessage)
+        )
+      }
+    )
 
   // returns the cache name
   private def cacheMessages(

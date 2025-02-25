@@ -52,7 +52,7 @@ private[service] class GeminiServiceImpl(
       EndPoint.generateContent(settings.model),
       bodyParams = createBodyParams(contents, settings)
     ).map(
-      _.asSafeJson[GenerateContentResponse]
+      _.asSafeJson[GenerateContentResponse].copy(cachedContent = settings.cachedContent)
     )
 
   override def generateContentStreamed(
@@ -76,7 +76,7 @@ private[service] class GeminiServiceImpl(
         (json \ "error").toOption.map { error =>
           throw new OpenAIScalaClientException(error.toString())
         }.getOrElse {
-          json.asSafe[GenerateContentResponse]
+          json.asSafe[GenerateContentResponse].copy(cachedContent = settings.cachedContent)
         }
       }
   }

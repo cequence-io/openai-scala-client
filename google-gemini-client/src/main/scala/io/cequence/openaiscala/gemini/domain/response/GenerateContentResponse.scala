@@ -9,7 +9,9 @@ case class GenerateContentResponse(
   candidates: Seq[Candidate] = Nil,
   promptFeedback: Option[PromptFeedback] = None,
   usageMetadata: UsageMetadata,
-  modelVersion: String
+  modelVersion: String,
+  // app attribute to reflect the cached content name
+  cachedContent: Option[String] = None
 ) {
   def contentHeadTexts: Seq[String] =
     candidates.headOption
