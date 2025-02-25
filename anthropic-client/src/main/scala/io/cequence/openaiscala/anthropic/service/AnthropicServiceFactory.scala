@@ -93,7 +93,8 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
   ): AnthropicService = {
     val authHeaders = Seq(
       ("x-api-key", s"$apiKey"),
-      ("anthropic-version", apiVersion)
+      ("anthropic-version", apiVersion),
+      ("anthropic-beta", "output-128k-2025-02-19")
     ) ++ (if (withPdf) Seq(("anthropic-beta", "pdfs-2024-09-25")) else Seq.empty) ++
       (if (withCache) Seq(("anthropic-beta", "prompt-caching-2024-07-31")) else Seq.empty)
 

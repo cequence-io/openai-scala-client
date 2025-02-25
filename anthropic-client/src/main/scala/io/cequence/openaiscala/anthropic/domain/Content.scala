@@ -34,6 +34,11 @@ object Content {
       citations: Seq[Citation] = Nil
     ) extends ContentBlock
 
+    case class ThinkingBlock(
+      thinking: String,
+      signature: String
+    ) extends ContentBlock
+
     case class Citation(
       `type`: String,
       citedText: String,

@@ -1,7 +1,11 @@
 package io.cequence.openaiscala.anthropic.domain.response
 
 import io.cequence.openaiscala.anthropic.domain.ChatRole
-import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{Citation, TextBlock}
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{
+  Citation,
+  TextBlock,
+  ThinkingBlock
+}
 import io.cequence.openaiscala.anthropic.domain.Content.{ContentBlockBase, ContentBlocks}
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse.UsageInfo
 import io.cequence.wsclient.domain.NamedEnumValue
@@ -27,6 +31,12 @@ final case class CreateMessageResponse(
     }
 
   def text: String = texts.mkString("")
+
+  def thinkingBlocks: Seq[String] = content.blocks.collect {
+    case ContentBlockBase(ThinkingBlock(text, _), _) => text
+  }
+
+  def thinkingText: String = thinkingBlocks.mkString("")
 }
 
 object CreateMessageResponse {

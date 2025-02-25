@@ -1,40 +1,12 @@
 package io.cequence.openaiscala.anthropic
 
-import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{
-  Citation,
-  MediaBlock,
-  TextBlock,
-  TextsContentBlock
-}
-import io.cequence.openaiscala.anthropic.domain.Content.{
-  ContentBlock,
-  ContentBlockBase,
-  ContentBlocks,
-  SingleString
-}
-import io.cequence.openaiscala.anthropic.domain.Message.{
-  AssistantMessage,
-  AssistantMessageContent,
-  UserMessage,
-  UserMessageContent
-}
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{Citation, MediaBlock, TextBlock, ThinkingBlock, TextsContentBlock}
+import io.cequence.openaiscala.anthropic.domain.Content.{ContentBlock, ContentBlockBase, ContentBlocks, SingleString}
+import io.cequence.openaiscala.anthropic.domain.Message.{AssistantMessage, AssistantMessageContent, UserMessage, UserMessageContent}
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse.UsageInfo
-import io.cequence.openaiscala.anthropic.domain.response.{
-  ContentBlockDelta,
-  CreateMessageChunkResponse,
-  CreateMessageResponse,
-  DeltaText
-}
-import io.cequence.openaiscala.anthropic.domain.{
-  CacheControl,
-  ChatRole,
-  CitationsFlagRaw,
-  Content,
-  Message,
-  SourceBlockRaw,
-  SourceContentBlockRaw,
-  TextContentRaw
-}
+import io.cequence.openaiscala.anthropic.domain.response.{ContentBlockDelta, CreateMessageChunkResponse, CreateMessageResponse, DeltaText}
+import io.cequence.openaiscala.anthropic.domain.settings.{ThinkingSettings, ThinkingType}
+import io.cequence.openaiscala.anthropic.domain.{CacheControl, ChatRole, CitationsFlagRaw, Content, Message, SourceBlockRaw, SourceContentBlockRaw, TextContentRaw}
 import io.cequence.wsclient.JsonUtil
 import play.api.libs.functional.syntax._
 import play.api.libs.json.JsonNaming.SnakeCase
@@ -120,9 +92,14 @@ trait JsonFormats {
 
   private val textBlockFormat: Format[TextBlock] = Format(textBlockReads, textBlockWrites)
 
+  private val thinkingBlockFormat: Format[ThinkingBlock] = Json.format[ThinkingBlock]
+
   implicit lazy val contentBlockWrites: Writes[ContentBlock] = {
     case x: TextBlock =>
       Json.obj("type" -> "text") ++ Json.toJson(x)(textBlockFormat).as[JsObject]
+
+    case x: ThinkingBlock =>
+      Json.obj("type" -> "thinking") ++ Json.toJson(x)(thinkingBlockFormat).as[JsObject]
 
     case x: MediaBlock =>
       Json
@@ -179,6 +156,12 @@ trait JsonFormats {
           case "text" =>
             json
               .validate[TextBlock](textBlockFormat)
+              .map(
+                ContentBlockBase(_, cacheControl)
+              )
+
+          case "thinking" =>
+            json.validate[ThinkingBlock](thinkingBlockFormat)
               .map(
                 ContentBlockBase(_, cacheControl)
               )
@@ -325,4 +308,7 @@ trait JsonFormats {
   implicit lazy val deltaTextReads: Reads[DeltaText] = Json.reads[DeltaText]
   implicit lazy val contentBlockDeltaReads: Reads[ContentBlockDelta] =
     Json.reads[ContentBlockDelta]
+
+  implicit lazy val thinkingTypeFormat: Format[ThinkingType] = JsonUtil.enumFormat[ThinkingType](ThinkingType.values: _*)
+  implicit lazy val thinkingSettingsFormat: Format[ThinkingSettings] = Json.format[ThinkingSettings]
 }

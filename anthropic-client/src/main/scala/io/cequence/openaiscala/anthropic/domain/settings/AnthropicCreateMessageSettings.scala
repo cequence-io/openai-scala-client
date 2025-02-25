@@ -1,5 +1,7 @@
 package io.cequence.openaiscala.anthropic.domain.settings
 
+import io.cequence.wsclient.domain.EnumValue
+
 final case class AnthropicCreateMessageSettings(
   // The model that will complete your prompt.
   // See [[models|https://docs.anthropic.com/claude/docs/models-overview]] for additional details and options.
@@ -37,5 +39,30 @@ final case class AnthropicCreateMessageSettings(
   // Only sample from the top K options for each subsequent token.
   // Used to remove "long tail" low probability responses. Learn more technical details here.
   // Recommended for advanced use cases only. You usually only need to use temperature.
-  top_k: Option[Int] = None
+  top_k: Option[Int] = None,
+
+  // Configuration for enabling Claude's extended thinking.
+  // When enabled, responses include thinking content blocks showing Claude's thinking process before the final answer.
+  // Requires a minimum budget of 1,024 tokens and counts towards your max_tokens limit.
+  thinking: Option[ThinkingSettings] = None
 )
+
+final case class ThinkingSettings(
+  // Determines how many tokens Claude can use for its internal reasoning process. Larger budgets can enable more thorough analysis for complex problems, improving response quality.
+  // Must be ≥1024 and less than max_tokens.
+  // See extended thinking for details.
+  // Required range: x > 1024
+  budget_tokens: Int,
+
+  // Type of thinking process.
+  // Available options: enabled
+  `type`: ThinkingType = ThinkingType.enabled
+)
+
+sealed trait ThinkingType extends EnumValue
+
+object ThinkingType {
+  case object enabled extends ThinkingType
+
+  def values: Seq[ThinkingType] = Seq(enabled)
+}

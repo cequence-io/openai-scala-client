@@ -67,7 +67,8 @@ trait Anthropic
       Param.stream -> stream,
       Param.temperature -> settings.temperature,
       Param.top_p -> settings.top_p,
-      Param.top_k -> settings.top_k
+      Param.top_k -> settings.top_k,
+      Param.thinking -> settings.thinking.map(Json.toJson(_)(thinkingSettingsFormat))
     )
   }
 
