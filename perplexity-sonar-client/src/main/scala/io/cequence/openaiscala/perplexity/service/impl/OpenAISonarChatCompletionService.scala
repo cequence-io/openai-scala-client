@@ -136,7 +136,8 @@ private[service] class OpenAISonarChatCompletionService(
           )
         )
       ),
-      usage = response.usage
+      usage = response.usage,
+      originalResponse = Some(response)
     )
 
   private def toOpenAIChunkResponse(

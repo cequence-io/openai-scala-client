@@ -343,7 +343,8 @@ private[service] class OpenAIGeminiChatCompletionService(
           logprobs = None
         )
       },
-      usage = Some(toOpenAIUsage(response.usageMetadata))
+      usage = Some(toOpenAIUsage(response.usageMetadata)),
+      originalResponse = Some(response)
     )
 
   private def toOpenAIChunkResponse(

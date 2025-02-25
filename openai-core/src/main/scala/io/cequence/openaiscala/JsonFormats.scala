@@ -390,8 +390,29 @@ object JsonFormats {
 
   implicit lazy val chatCompletionChoiceInfoFormat: Format[ChatCompletionChoiceInfo] =
     Json.format[ChatCompletionChoiceInfo]
+
   implicit lazy val chatCompletionResponseFormat: Format[ChatCompletionResponse] =
-    Json.format[ChatCompletionResponse]
+    (
+      (__ \ "id").format[String] and
+      (__ \ "created").format[ju.Date] and
+      (__ \ "model").format[String] and
+      (__ \ "system_fingerprint").formatNullable[String] and
+      (__ \ "choices").format[Seq[ChatCompletionChoiceInfo]] and
+      (__ \ "usage").formatNullable[UsageInfo]
+    )(
+      (id, created, model, system_fingerprint, choices, usage) =>
+        // here we ignore originalResponse
+        ChatCompletionResponse(id, created, model, system_fingerprint, choices, usage, None),
+      (x: ChatCompletionResponse) =>
+        (
+          x.id,
+          x.created,
+          x.model,
+          x.system_fingerprint,
+          x.choices,
+          x.usage
+        )
+    )
 
   implicit lazy val chatToolCompletionChoiceInfoReads: Reads[ChatToolCompletionChoiceInfo] =
     Json.reads[ChatToolCompletionChoiceInfo]
@@ -1146,12 +1167,17 @@ object JsonFormats {
     JsonType.Object,
     JsonType.String,
     JsonType.Number,
+    JsonType.Integer,
     JsonType.Boolean,
     JsonType.Null,
     JsonType.Array
   )
 
-  implicit lazy val jsonSchemaWrites: Writes[JsonSchema] = {
+  //     implicit val config = JsonConfiguration(optionHandlers = OptionHandlers.WritesNull)
+
+  def jsonSchemaWrites(config: Option[JsonConfiguration]): Writes[JsonSchema] = {
+    implicit val implConfig: JsonConfiguration = config.getOrElse(JsonConfiguration())
+
     implicit val stringWrites = Json.writes[JsonSchema.String]
     implicit val numberWrites = Json.writes[JsonSchema.Number]
     implicit val integerWrites = Json.writes[JsonSchema.Integer]
@@ -1197,6 +1223,8 @@ object JsonFormats {
 
     (o: JsonSchema) => writesAux(o)
   }
+
+  implicit lazy val jsonSchemaWrites: Writes[JsonSchema] = jsonSchemaWrites(None)
 
   implicit lazy val jsonSchemaReads: Reads[JsonSchema] = new Reads[JsonSchema] {
     implicit val stringReads: Reads[JsonSchema.String] = (

@@ -178,7 +178,8 @@ package object impl extends AnthropicServiceConsts {
           logprobs = None
         )
       ),
-      usage = Some(toOpenAI(response.usage))
+      usage = Some(toOpenAI(response.usage)),
+      originalResponse = Some(response)
     )
 
   def toOpenAI(blockDelta: ContentBlockDelta): ChatCompletionChunkResponse =

@@ -89,7 +89,8 @@ private class ChatToCompletionAdapter[
         logprobs = None // TODO: convert log probs
       )
     },
-    usage = response.usage
+    usage = response.usage,
+    originalResponse = Some(response)
   )
 
   override def close(): Unit =

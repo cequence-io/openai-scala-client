@@ -92,7 +92,7 @@ object OpenAIChatCompletionExtra {
         )
         .map { response =>
           val content = response.contentHead
-          val contentTrimmed = content.stripPrefix("```json").stripSuffix("```").trim
+          val contentTrimmed = content.trim.stripPrefix("```json").stripSuffix("```").trim
           val contentJson = contentTrimmed.dropWhile(char => char != '{' && char != '[')
           val json = parseJson(contentJson)
 

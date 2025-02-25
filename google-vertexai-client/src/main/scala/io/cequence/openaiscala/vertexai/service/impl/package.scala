@@ -188,7 +188,8 @@ package object impl {
           logprobs = None
         )
       },
-      usage = Some(toOpenAI(response.getUsageMetadata))
+      usage = Some(toOpenAI(response.getUsageMetadata)),
+      originalResponse = Some(response)
     )
 
   def toOpenAIAssistantMessage(content: Content): AssistantMessage = {

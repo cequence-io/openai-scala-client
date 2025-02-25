@@ -28,9 +28,10 @@ case class ChatCompletionResponse(
   id: String, // gemini openai has this as null
   created: ju.Date,
   model: String,
-  system_fingerprint: Option[String], // new
+  system_fingerprint: Option[String],
   choices: Seq[ChatCompletionChoiceInfo],
-  usage: Option[UsageInfo]
+  usage: Option[UsageInfo],
+  originalResponse: Option[Any]
 ) extends BaseChatCompletionResponse[
       AssistantMessage,
       ChatCompletionChoiceInfo
