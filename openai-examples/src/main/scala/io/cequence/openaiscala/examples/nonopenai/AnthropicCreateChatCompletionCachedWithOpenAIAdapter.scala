@@ -26,9 +26,8 @@ object AnthropicCreateChatCompletionCachedWithOpenAIAdapter
         messages = messages,
         settings = CreateChatCompletionSettings(
           NonOpenAIModelId.claude_3_5_sonnet_20241022
-        ).setUseAnthropicSystemMessagesCache(
-          true
-        ) // this is how we pass it through the adapter
+            // this is how we pass it through the adapter
+        ).setUseAnthropicSystemMessagesCache(true)
       )
       .map { content =>
         println(content.contentHead)

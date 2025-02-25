@@ -5,35 +5,13 @@ import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
 import io.cequence.openaiscala.anthropic.domain.Content.{ContentBlockBase, ContentBlocks}
 import io.cequence.openaiscala.anthropic.domain.Message.SystemMessageContent
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse.UsageInfo
-import io.cequence.openaiscala.anthropic.domain.response.{
-  ContentBlockDelta,
-  CreateMessageResponse
-}
-import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
+import io.cequence.openaiscala.anthropic.domain.response.{ContentBlockDelta, CreateMessageResponse, DeltaBlock}
+import io.cequence.openaiscala.anthropic.domain.settings.{AnthropicCreateMessageSettings, ThinkingSettings}
 import io.cequence.openaiscala.anthropic.domain.{CacheControl, Content, Message}
-import io.cequence.openaiscala.domain.response.{
-  ChatCompletionChoiceChunkInfo,
-  ChatCompletionChoiceInfo,
-  ChatCompletionChunkResponse,
-  ChatCompletionResponse,
-  ChunkMessageSpec,
-  PromptTokensDetails,
-  UsageInfo => OpenAIUsageInfo
-}
+import io.cequence.openaiscala.domain.response.{ChatCompletionChoiceChunkInfo, ChatCompletionChoiceInfo, ChatCompletionChunkResponse, ChatCompletionResponse, ChunkMessageSpec, PromptTokensDetails, UsageInfo => OpenAIUsageInfo}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettingsOps.RichCreateChatCompletionSettings
-import io.cequence.openaiscala.domain.{
-  ChatRole,
-  MessageSpec,
-  SystemMessage,
-  AssistantMessage => OpenAIAssistantMessage,
-  BaseMessage => OpenAIBaseMessage,
-  Content => OpenAIContent,
-  ImageURLContent => OpenAIImageContent,
-  TextContent => OpenAITextContent,
-  UserMessage => OpenAIUserMessage,
-  UserSeqMessage => OpenAIUserSeqMessage
-}
+import io.cequence.openaiscala.domain.{ChatRole, MessageSpec, SystemMessage, AssistantMessage => OpenAIAssistantMessage, BaseMessage => OpenAIBaseMessage, Content => OpenAIContent, ImageURLContent => OpenAIImageContent, TextContent => OpenAITextContent, UserMessage => OpenAIUserMessage, UserSeqMessage => OpenAIUserSeqMessage}
 
 import java.{util => ju}
 
@@ -153,7 +131,9 @@ package object impl extends AnthropicServiceConsts {
 
   def toAnthropicSettings(
     settings: CreateChatCompletionSettings
-  ): AnthropicCreateMessageSettings =
+  ): AnthropicCreateMessageSettings = {
+    val thinkingBudget = settings.anthropicThinkingBudgetTokens
+
     AnthropicCreateMessageSettings(
       model = settings.model,
       max_tokens = settings.max_tokens.getOrElse(DefaultSettings.CreateMessage.max_tokens),
@@ -161,8 +141,10 @@ package object impl extends AnthropicServiceConsts {
       stop_sequences = settings.stop,
       temperature = settings.temperature,
       top_p = settings.top_p,
-      top_k = None
+      top_k = None,
+      thinking = thinkingBudget.map(ThinkingSettings(_))
     )
+  }
 
   def toOpenAI(response: CreateMessageResponse): ChatCompletionResponse =
     ChatCompletionResponse(
@@ -192,7 +174,10 @@ package object impl extends AnthropicServiceConsts {
         ChatCompletionChoiceChunkInfo(
           delta = ChunkMessageSpec(
             role = None,
-            content = Some(blockDelta.delta.text)
+            content = blockDelta.delta match {
+              case DeltaBlock.DeltaText(text)     => Some(text)
+              case _ => None
+            }
           ),
           index = blockDelta.index,
           finish_reason = None

@@ -35,7 +35,7 @@ object AnthropicBedrockCreateMessageStreamed extends ExampleBase[AnthropicServic
       )
       .runWith(
         Sink.foreach { response =>
-          print(response.delta.text)
+          print(response.text)
         }
       )
 }

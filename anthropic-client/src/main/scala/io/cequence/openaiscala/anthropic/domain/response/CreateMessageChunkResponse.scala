@@ -8,9 +8,27 @@ case class CreateMessageChunkResponse(
 case class ContentBlockDelta(
   `type`: String,
   index: Int,
-  delta: DeltaText
-)
+  delta: DeltaBlock
+) {
+  def text: String = delta match {
+    case DeltaBlock.DeltaText(text) => text
+    case _ => ""
+  }
+}
 
-case class DeltaText(
-  text: String
-)
+sealed trait DeltaBlock
+
+object DeltaBlock {
+
+  case class DeltaText(
+    text: String
+  ) extends DeltaBlock
+
+  case class DeltaThinking(
+    thinking: String
+  ) extends DeltaBlock
+
+  case class DeltaSignature(
+    signature: String
+  ) extends DeltaBlock
+}
