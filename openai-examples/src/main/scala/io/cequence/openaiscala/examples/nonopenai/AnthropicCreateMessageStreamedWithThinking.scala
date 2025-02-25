@@ -3,7 +3,10 @@ package io.cequence.openaiscala.examples.nonopenai
 import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.Message.{SystemMessage, UserMessage}
-import io.cequence.openaiscala.anthropic.domain.settings.{AnthropicCreateMessageSettings, ThinkingSettings}
+import io.cequence.openaiscala.anthropic.domain.settings.{
+  AnthropicCreateMessageSettings,
+  ThinkingSettings
+}
 import io.cequence.openaiscala.anthropic.service.{AnthropicService, AnthropicServiceFactory}
 import io.cequence.openaiscala.domain.NonOpenAIModelId
 import io.cequence.openaiscala.examples.ExampleBase

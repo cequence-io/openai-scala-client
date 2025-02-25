@@ -12,7 +12,7 @@ case class ContentBlockDelta(
 ) {
   def text: String = delta match {
     case DeltaBlock.DeltaText(text) => text
-    case _ => ""
+    case _                          => ""
   }
 }
 

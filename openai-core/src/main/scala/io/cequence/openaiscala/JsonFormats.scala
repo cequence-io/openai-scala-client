@@ -394,13 +394,20 @@ object JsonFormats {
   implicit lazy val chatCompletionResponseFormat: Format[ChatCompletionResponse] =
     (
       (__ \ "id").format[String] and
-      (__ \ "created").format[ju.Date] and
-      (__ \ "model").format[String] and
-      (__ \ "system_fingerprint").formatNullable[String] and
-      (__ \ "choices").format[Seq[ChatCompletionChoiceInfo]] and
-      (__ \ "usage").formatNullable[UsageInfo]
+        (__ \ "created").format[ju.Date] and
+        (__ \ "model").format[String] and
+        (__ \ "system_fingerprint").formatNullable[String] and
+        (__ \ "choices").format[Seq[ChatCompletionChoiceInfo]] and
+        (__ \ "usage").formatNullable[UsageInfo]
     )(
-      (id, created, model, system_fingerprint, choices, usage) =>
+      (
+        id,
+        created,
+        model,
+        system_fingerprint,
+        choices,
+        usage
+      ) =>
         // here we ignore originalResponse
         ChatCompletionResponse(id, created, model, system_fingerprint, choices, usage, None),
       (x: ChatCompletionResponse) =>

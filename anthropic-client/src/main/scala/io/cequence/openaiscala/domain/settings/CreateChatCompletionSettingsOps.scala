@@ -39,11 +39,9 @@ object CreateChatCompletionSettingsOps {
         .contains("true")
 
     def anthropicThinkingBudgetTokens: Option[Int] =
-      settings.extra_params
-        .get(AnthropicThinkingBudgetTokens)
-        .flatMap {
-          case value: Int => Some(value)
-          case value: Any => Try(value.toString.toInt).toOption
-        }
+      settings.extra_params.get(AnthropicThinkingBudgetTokens).flatMap {
+        case value: Int => Some(value)
+        case value: Any => Try(value.toString.toInt).toOption
+      }
   }
 }

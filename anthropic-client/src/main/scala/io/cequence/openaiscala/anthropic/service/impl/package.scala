@@ -5,13 +5,39 @@ import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
 import io.cequence.openaiscala.anthropic.domain.Content.{ContentBlockBase, ContentBlocks}
 import io.cequence.openaiscala.anthropic.domain.Message.SystemMessageContent
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse.UsageInfo
-import io.cequence.openaiscala.anthropic.domain.response.{ContentBlockDelta, CreateMessageResponse, DeltaBlock}
-import io.cequence.openaiscala.anthropic.domain.settings.{AnthropicCreateMessageSettings, ThinkingSettings}
+import io.cequence.openaiscala.anthropic.domain.response.{
+  ContentBlockDelta,
+  CreateMessageResponse,
+  DeltaBlock
+}
+import io.cequence.openaiscala.anthropic.domain.settings.{
+  AnthropicCreateMessageSettings,
+  ThinkingSettings
+}
 import io.cequence.openaiscala.anthropic.domain.{CacheControl, Content, Message}
-import io.cequence.openaiscala.domain.response.{ChatCompletionChoiceChunkInfo, ChatCompletionChoiceInfo, ChatCompletionChunkResponse, ChatCompletionResponse, ChunkMessageSpec, PromptTokensDetails, UsageInfo => OpenAIUsageInfo}
+import io.cequence.openaiscala.domain.response.{
+  ChatCompletionChoiceChunkInfo,
+  ChatCompletionChoiceInfo,
+  ChatCompletionChunkResponse,
+  ChatCompletionResponse,
+  ChunkMessageSpec,
+  PromptTokensDetails,
+  UsageInfo => OpenAIUsageInfo
+}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettingsOps.RichCreateChatCompletionSettings
-import io.cequence.openaiscala.domain.{ChatRole, MessageSpec, SystemMessage, AssistantMessage => OpenAIAssistantMessage, BaseMessage => OpenAIBaseMessage, Content => OpenAIContent, ImageURLContent => OpenAIImageContent, TextContent => OpenAITextContent, UserMessage => OpenAIUserMessage, UserSeqMessage => OpenAIUserSeqMessage}
+import io.cequence.openaiscala.domain.{
+  ChatRole,
+  MessageSpec,
+  SystemMessage,
+  AssistantMessage => OpenAIAssistantMessage,
+  BaseMessage => OpenAIBaseMessage,
+  Content => OpenAIContent,
+  ImageURLContent => OpenAIImageContent,
+  TextContent => OpenAITextContent,
+  UserMessage => OpenAIUserMessage,
+  UserSeqMessage => OpenAIUserSeqMessage
+}
 
 import java.{util => ju}
 
@@ -175,8 +201,8 @@ package object impl extends AnthropicServiceConsts {
           delta = ChunkMessageSpec(
             role = None,
             content = blockDelta.delta match {
-              case DeltaBlock.DeltaText(text)     => Some(text)
-              case _ => None
+              case DeltaBlock.DeltaText(text) => Some(text)
+              case _                          => None
             }
           ),
           index = blockDelta.index,
