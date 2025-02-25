@@ -1,9 +1,12 @@
 package io.cequence.openaiscala.domain
 
-// this feels a bit awkward, but this is the direction the project is increasingly pursuing
+// TODO: split by providers
 object NonOpenAIModelId {
 
   // Anthropic
+  val claude_3_7_sonnet_latest = "claude-3-7-sonnet-latest"
+  val claude_3_7_sonnet_20250219 = "claude-3-7-sonnet-20250219"
+  val claude_3_5_haiku_latest = "claude-3-5-haiku-latest"
   val claude_3_5_sonnet_20241022 = "claude-3-5-sonnet-20241022"
   val claude_3_5_sonnet_20240620 = "claude-3-5-sonnet-20240620"
   val claude_3_5_haiku_20241022 = "claude-3-5-haiku-20241022"
@@ -15,6 +18,7 @@ object NonOpenAIModelId {
   val claude_instant_1_2 = "claude-instant-1.2"
 
   // Anthropic Bedrock
+  val bedrock_claude_3_7_sonnet_20250219_v1_0 = "anthropic.claude-3-7-sonnet-20250219-v1:0"
   val bedrock_claude_3_5_sonnet_20241022_v2_0 = "anthropic.claude-3-5-sonnet-20241022-v2:0"
   val bedrock_claude_3_5_sonnet_20240620_v1_0 = "anthropic.claude-3-5-sonnet-20240620-v1:0"
   val bedrock_claude_3_5_haiku_20241022_v1_0 = "anthropic.claude-3-5-haiku-20241022-v1:0"
