@@ -33,7 +33,10 @@ object SonarCreateChatCompletionWithOpenAIAdapter
           model = modelId,
           temperature = Some(0.1),
           max_tokens = Some(512),
-          extra_params = Map(aHrefForCitationsParam -> true)
+          extra_params = Map(
+            includeCitationsInTextResponseParam -> true
+//            aHrefForCitationsParam -> true
+          )
         )
       )
       .map(printMessageContent)

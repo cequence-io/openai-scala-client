@@ -21,4 +21,6 @@ trait SonarConsts {
   protected val coreUrl = ChatProviderSettings.sonar.coreUrl
 
   protected val aHrefForCitationsParam = "a_href_for_citations"
+
+  protected val includeCitationsInTextResponseParam = "include_citations_in_text_response"
 }

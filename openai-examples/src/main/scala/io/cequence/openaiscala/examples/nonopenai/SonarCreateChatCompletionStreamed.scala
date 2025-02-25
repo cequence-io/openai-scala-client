@@ -37,6 +37,7 @@ object SonarCreateChatCompletionStreamed extends ExampleBase[SonarService] {
         Sink.foreach { completion =>
           val content = completion.choices.headOption.flatMap(_.delta.content)
           print(content.getOrElse(""))
+
           if (completion.choices.headOption.exists(_.finish_reason.isDefined)) {
             println("\n\nCitations:\n" + completion.citations.mkString("\n"))
           }

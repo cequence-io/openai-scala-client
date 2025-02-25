@@ -6,6 +6,7 @@ import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.{
   AssistantMessage,
   BaseMessage,
+  DeveloperMessage,
   SystemMessage,
   UserMessage
 }
@@ -50,13 +51,14 @@ private[service] class OpenAISonarChatCompletionService(
     settings: CreateChatCompletionSettings
   ): Future[ChatCompletionResponse] = {
     val addAHrefToCitations = getAHrefCitationParamValue(settings)
+    val includeCitationsInTextResponse = getIncludeCitationsInTextResponseParamValue(settings)
 
     underlying
       .createChatCompletion(
         messages.map(toSonarMessage),
         toSonarSetting(settings)
       )
-      .map(toOpenAIResponse(addAHrefToCitations))
+      .map(toOpenAIResponse(includeCitationsInTextResponse, addAHrefToCitations))
   }
 
   override def createChatCompletionStreamed(
@@ -64,21 +66,30 @@ private[service] class OpenAISonarChatCompletionService(
     settings: CreateChatCompletionSettings
   ): Source[ChatCompletionChunkResponse, NotUsed] = {
     val addAHrefToCitations = getAHrefCitationParamValue(settings)
+    val includeCitationsInTextResponse = getIncludeCitationsInTextResponseParamValue(settings)
 
     underlying
       .createChatCompletionStreamed(
         messages.map(toSonarMessage),
         toSonarSetting(settings)
       )
-      .map(toOpenAIChunkResponse(addAHrefToCitations))
+      .map(toOpenAIChunkResponse(includeCitationsInTextResponse, addAHrefToCitations))
   }
 
   private def getAHrefCitationParamValue(settings: CreateChatCompletionSettings) =
     settings.extra_params.get(aHrefForCitationsParam).exists(_.asInstanceOf[Boolean])
 
+  private def getIncludeCitationsInTextResponseParamValue(
+    settings: CreateChatCompletionSettings
+  ) =
+    settings.extra_params
+      .get(includeCitationsInTextResponseParam)
+      .exists(_.asInstanceOf[Boolean])
+
   private def toSonarMessage(message: BaseMessage): Message =
     message match {
       case SystemMessage(content, _)    => Message.SystemMessage(content)
+      case DeveloperMessage(content, _) => Message.SystemMessage(content)
       case UserMessage(content, _)      => Message.UserMessage(content)
       case AssistantMessage(content, _) => Message.AssistantMessage(content)
       case _ => throw new OpenAIScalaClientException(s"Unsupported message type for Sonar.")
@@ -119,6 +130,7 @@ private[service] class OpenAISonarChatCompletionService(
   }
 
   private def toOpenAIResponse(
+    includeCitationsInTextResponse: Boolean,
     addAHrefToCitations: Boolean
   )(
     response: SonarChatCompletionResponse
@@ -132,7 +144,7 @@ private[service] class OpenAISonarChatCompletionService(
         choice.copy(
           message = choice.message.copy(
             content =
-              s"${choice.message.content}${citationAppendix(response.citations, addAHrefToCitations)}"
+              s"${choice.message.content}${citationAppendix(response.citations, includeCitationsInTextResponse, addAHrefToCitations)}"
           )
         )
       ),
@@ -141,6 +153,7 @@ private[service] class OpenAISonarChatCompletionService(
     )
 
   private def toOpenAIChunkResponse(
+    includeCitationsInTextResponse: Boolean,
     addAHrefToCitations: Boolean
   )(
     response: SonarChatCompletionChunkResponse
@@ -156,7 +169,7 @@ private[service] class OpenAISonarChatCompletionService(
           choice.copy(
             delta = choice.delta.copy(
               content = Some(
-                s"${choice.delta.content.getOrElse("")}${citationAppendix(response.citations, addAHrefToCitations)}"
+                s"${choice.delta.content.getOrElse("")}${citationAppendix(response.citations, includeCitationsInTextResponse, addAHrefToCitations)}"
               )
             )
           )
@@ -168,14 +181,16 @@ private[service] class OpenAISonarChatCompletionService(
 
   private def citationAppendix(
     citations: Seq[String],
+    includeCitationsInTextResponse: Boolean,
     addAHref: Boolean
-  ) = {
-    val citationsPart = citations.map { citation =>
-      if (addAHref) s"""<a href="$citation">$citation</a>""" else citation
-    }.mkString("\n")
+  ) =
+    if (includeCitationsInTextResponse) {
+      val citationsPart = citations.map { citation =>
+        if (addAHref) s"""<a href="$citation">$citation</a>""" else citation
+      }.mkString("\n")
 
-    s"\n\nCitations:\n${citationsPart}"
-  }
+      s"\n\nCitations:\n${citationsPart}"
+    } else ""
 
   /**
    * Closes the underlying ws client, and releases all its resources.

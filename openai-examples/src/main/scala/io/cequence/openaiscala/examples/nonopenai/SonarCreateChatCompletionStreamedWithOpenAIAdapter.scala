@@ -34,8 +34,7 @@ object SonarCreateChatCompletionStreamedWithOpenAIAdapter
       )
       .runWith(
         Sink.foreach { completion =>
-          val content = completion.choices.headOption.flatMap(_.delta.content)
-          print(content.getOrElse(""))
+          print(completion.contentHead.getOrElse(""))
         }
       )
 }
