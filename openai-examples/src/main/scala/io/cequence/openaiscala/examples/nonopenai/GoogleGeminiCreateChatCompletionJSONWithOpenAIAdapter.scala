@@ -11,7 +11,7 @@ import io.cequence.openaiscala.examples.fixtures.TestFixtures
 import io.cequence.openaiscala.gemini.service.GeminiServiceFactory
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
 import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
-import play.api.libs.json.{JsArray, JsObject, Json}
+import play.api.libs.json.{JsObject, Json}
 
 import scala.concurrent.Future
 

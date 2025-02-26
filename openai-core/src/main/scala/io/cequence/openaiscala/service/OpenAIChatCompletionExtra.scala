@@ -24,7 +24,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object OpenAIChatCompletionExtra {
 
-  protected val logger: Logger = LoggerFactory.getLogger(this.getClass)
+  protected val logger: Logger = LoggerFactory.getLogger(this.getClass.getSimpleName.stripSuffix("$"))
 
   private val defaultMaxRetries = 5
 
