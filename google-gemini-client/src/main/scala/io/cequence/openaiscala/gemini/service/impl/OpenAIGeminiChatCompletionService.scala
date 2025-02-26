@@ -245,7 +245,7 @@ private[service] class OpenAIGeminiChatCompletionService(
       generationConfig = Some(
         GenerationConfig(
           stopSequences = (if (settings.stop.nonEmpty) Some(settings.stop) else None),
-          responseMimeType = None,
+          responseMimeType = if (jsonSchema.isDefined) Some("application/json") else None,
           responseSchema = jsonSchema,
           responseModalities = None,
           candidateCount = settings.n,

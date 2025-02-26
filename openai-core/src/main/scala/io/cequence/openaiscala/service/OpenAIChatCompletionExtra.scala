@@ -10,7 +10,13 @@ import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
   CreateChatCompletionSettings
 }
-import io.cequence.openaiscala.domain.{BaseMessage, ChatRole, ModelId, UserMessage}
+import io.cequence.openaiscala.domain.{
+  BaseMessage,
+  ChatRole,
+  ModelId,
+  NonOpenAIModelId,
+  UserMessage
+}
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.{Format, JsValue, Json}
 
@@ -55,6 +61,10 @@ object OpenAIChatCompletionExtra {
         )
     }
 
+    /**
+     * Important: pass an explicit list of models that support JSON schema if the default list
+     * is not sufficient!
+     */
     def createChatCompletionWithJSON[T: Format](
       messages: Seq[BaseMessage],
       settings: CreateChatCompletionSettings,
@@ -62,6 +72,7 @@ object OpenAIChatCompletionExtra {
       maxRetries: Option[Int] = Some(defaultMaxRetries),
       retryOnAnyError: Boolean = false,
       taskNameForLogging: Option[String] = None,
+      jsonSchemaModels: Seq[String] = defaultModelsSupportingJsonSchema,
       parseJson: String => JsValue = defaultParseJsonOrThrow
     )(
       implicit ec: ExecutionContext,
@@ -75,7 +86,8 @@ object OpenAIChatCompletionExtra {
         handleOutputJsonSchema(
           messages,
           settings,
-          taskNameForLoggingFinal
+          taskNameForLoggingFinal,
+          jsonSchemaModels
         )
       } else {
         (messages, settings)
@@ -127,13 +139,37 @@ object OpenAIChatCompletionExtra {
   }
 
   private val defaultModelsSupportingJsonSchema = Seq(
+    ModelId.gpt_4o,
     ModelId.gpt_4o_2024_08_06,
     ModelId.gpt_4o_2024_11_20,
     ModelId.o1,
     ModelId.o1_2024_12_17,
     ModelId.o3_mini,
     ModelId.o3_mini_2025_01_31
-  ).flatMap(id => Seq(id, "openai-" + id, "azure-" + id))
+  ).flatMap(id => Seq(id, "openai-" + id, "azure-" + id)) ++
+    Seq(
+      NonOpenAIModelId.gemini_2_0_flash,
+      NonOpenAIModelId.gemini_2_0_flash_001,
+      NonOpenAIModelId.gemini_2_0_pro_exp_02_05,
+      NonOpenAIModelId.gemini_2_0_pro_exp,
+      NonOpenAIModelId.gemini_2_0_flash_001,
+      NonOpenAIModelId.gemini_2_0_flash,
+      NonOpenAIModelId.gemini_2_0_flash_exp,
+      NonOpenAIModelId.gemini_1_5_flash_8b_exp_0924,
+      NonOpenAIModelId.gemini_1_5_flash_8b_exp_0827,
+      NonOpenAIModelId.gemini_1_5_flash_8b_latest,
+      NonOpenAIModelId.gemini_1_5_flash_8b_001,
+      NonOpenAIModelId.gemini_1_5_flash_8b,
+      NonOpenAIModelId.gemini_1_5_flash_002,
+      NonOpenAIModelId.gemini_1_5_flash,
+      NonOpenAIModelId.gemini_1_5_flash_001,
+      NonOpenAIModelId.gemini_1_5_flash_latest,
+      NonOpenAIModelId.gemini_1_5_pro,
+      NonOpenAIModelId.gemini_1_5_pro_002,
+      NonOpenAIModelId.gemini_1_5_pro_001,
+      NonOpenAIModelId.gemini_1_5_pro_latest,
+      NonOpenAIModelId.gemini_exp_1206
+    ).flatMap(id => Seq(id, "google_gemini-"))
 
   def handleOutputJsonSchema(
     messages: Seq[BaseMessage],
@@ -149,7 +185,7 @@ object OpenAIChatCompletionExtra {
 
     val (settingsFinal, addJsonToPrompt) =
       if (jsonSchemaModels.contains(settings.model)) {
-        logger.info(
+        logger.debug(
           s"Using OpenAI json schema mode for ${taskNameForLogging} and the model '${settings.model}' - name: ${jsonSchemaDef.name}, strict: ${jsonSchemaDef.strict}, structure:\n${jsonSchemaString}"
         )
 
@@ -162,7 +198,7 @@ object OpenAIChatCompletionExtra {
       } else {
         // otherwise we failover to json object format and pass json schema to the user prompt
 
-        logger.info(
+        logger.debug(
           s"Using JSON object mode for ${taskNameForLogging} and the model '${settings.model}'. Also passing a JSON schema as part of a user prompt."
         )
 
