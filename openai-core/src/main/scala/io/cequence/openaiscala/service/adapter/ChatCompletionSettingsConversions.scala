@@ -122,20 +122,6 @@ object ChatCompletionSettingsConversions {
       Some(
         "Groq deepseek R1 model doesn't support max_tokens, converting to max_completion_tokens."
       )
-    ),
-    // json mode
-    FieldConversionDef(
-      settings =>
-        settings.model.endsWith(
-          NonOpenAIModelId.deepseek_r1_distill_llama_70b
-        ) && (settings.response_format_type.contains(
-          ChatCompletionResponseFormatType.json_object
-        ) || settings.response_format_type
-          .contains(ChatCompletionResponseFormatType.json_schema)),
-      settings => settings.copy(response_format_type = None).setJsonMode(true),
-      Some(
-        "Groq deepseek R1 model doesn't support the json schema / object response format type, converting it to json_mode flag instead."
-      )
     )
   )
 

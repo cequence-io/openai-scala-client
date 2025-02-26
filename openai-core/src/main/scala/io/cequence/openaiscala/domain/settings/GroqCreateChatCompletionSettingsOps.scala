@@ -2,13 +2,11 @@ package io.cequence.openaiscala.domain.settings
 
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.wsclient.domain.EnumValue
-import play.api.libs.json.Json
 
 object GroqCreateChatCompletionSettingsOps {
   implicit class RichCreateChatCompletionSettings(settings: CreateChatCompletionSettings) {
     private object ExtraParams {
       val reasoningFormat = "reasoning_format"
-      val response_format = "response_format"
       val maxCompletionTokens = "max_completion_tokens"
     }
 
@@ -30,15 +28,6 @@ object GroqCreateChatCompletionSettingsOps {
         case value: Any =>
           throw new OpenAIScalaClientException(s"Invalid reasoning format: $value")
       }
-
-    def setJsonMode(flag: Boolean): CreateChatCompletionSettings = {
-      val extraParams = if (flag)
-        settings.extra_params + (ExtraParams.response_format -> Json.obj("type" -> "json_object"))
-      else
-        settings.extra_params
-
-      settings.copy(extra_params = extraParams)
-    }
 
     def setMaxCompletionTokens(value: Int): CreateChatCompletionSettings =
       settings.copy(

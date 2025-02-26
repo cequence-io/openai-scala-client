@@ -32,7 +32,6 @@ object GroqCreateChatCompletionWithDeepseekR1
           temperature = Some(0.1)
         ).setReasoningFormat(ReasoningFormat.hidden)
           .setMaxCompletionTokens(2048)
-          .setJsonMode(false)
       )
       .map(printMessageContent)
 }

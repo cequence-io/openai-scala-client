@@ -1,12 +1,17 @@
 package io.cequence.openaiscala.examples.nonopenai
 
 import io.cequence.openaiscala.domain._
-import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
+import io.cequence.openaiscala.domain.settings.{
+  ChatCompletionResponseFormatType,
+  CreateChatCompletionSettings,
+  JsonSchemaDef
+}
 import io.cequence.openaiscala.domain.settings.GroqCreateChatCompletionSettingsOps._
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
-import play.api.libs.json.Json
+import play.api.libs.json.{JsObject, Json}
 import io.cequence.openaiscala.JsonFormats.jsonSchemaFormat
+import io.cequence.openaiscala.service.OpenAIChatCompletionExtra.OpenAIChatCompletionImplicits
 
 import scala.concurrent.Future
 
@@ -47,12 +52,20 @@ object GroqCreateChatCompletionJSONWithDeepseekR1
 
   override protected def run: Future[_] =
     service
-      .createChatCompletion(
+      .createChatCompletionWithJSON[JsObject](
         messages = messages,
         settings = CreateChatCompletionSettings(
           model = modelId,
-          temperature = Some(0.1)
-        ).setMaxCompletionTokens(4000).setJsonMode(true)
+          temperature = Some(0.1),
+          response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
+          jsonSchema = Some(
+            JsonSchemaDef(
+              name = "weather_response",
+              strict = true,
+              structure = jsonSchema
+            )
+          )
+        ).setMaxCompletionTokens(4000)
       )
-      .map(printMessageContent)
+      .map(json => println(Json.prettyPrint(json)))
 }
