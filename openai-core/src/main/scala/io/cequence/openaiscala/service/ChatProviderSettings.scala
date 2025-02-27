@@ -18,4 +18,5 @@ object ChatProviderSettings {
   val sonar = ProviderSettings("https://api.perplexity.ai/", "SONAR_API_KEY")
   val geminiCoreURL = "https://generativelanguage.googleapis.com/v1beta/"
   val gemini = ProviderSettings(s"${geminiCoreURL}openai/", "GOOGLE_API_KEY")
+  val novita = ProviderSettings("https://api.novita.ai/v3/openai/", "NOVITA_API_KEY")
 }

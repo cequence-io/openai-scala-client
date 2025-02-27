@@ -24,7 +24,8 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object OpenAIChatCompletionExtra {
 
-  protected val logger: Logger = LoggerFactory.getLogger(this.getClass.getSimpleName.stripSuffix("$"))
+  protected val logger: Logger =
+    LoggerFactory.getLogger(this.getClass.getSimpleName.stripSuffix("$"))
 
   private val defaultMaxRetries = 5
 
@@ -169,7 +170,7 @@ object OpenAIChatCompletionExtra {
       NonOpenAIModelId.gemini_1_5_pro_001,
       NonOpenAIModelId.gemini_1_5_pro_latest,
       NonOpenAIModelId.gemini_exp_1206
-    ).flatMap(id => Seq(id, "google_gemini-"))
+    ).flatMap(id => Seq(id, "google_gemini-" + id))
 
   def handleOutputJsonSchema(
     messages: Seq[BaseMessage],
