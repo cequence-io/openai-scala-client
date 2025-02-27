@@ -1,4 +1,4 @@
-package io.cequence.openaiscala.examples.adapter
+package io.cequence.openaiscala.examples.adapters
 
 import com.typesafe.scalalogging.Logger
 import io.cequence.openaiscala.domain._

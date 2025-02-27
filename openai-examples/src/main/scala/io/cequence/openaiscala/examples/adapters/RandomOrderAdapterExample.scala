@@ -1,4 +1,4 @@
-package io.cequence.openaiscala.examples.adapter
+package io.cequence.openaiscala.examples.adapters
 
 import akka.stream.scaladsl.{Sink, Source}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings

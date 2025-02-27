@@ -1,4 +1,4 @@
-package io.cequence.openaiscala.examples.adapter
+package io.cequence.openaiscala.examples.adapters
 
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{ModelId, NonOpenAIModelId, SystemMessage, UserMessage}

@@ -15,7 +15,7 @@
 
     <logger name="PlayWSStreamClientEngine" level="INFO"/>
 
-    <logger name="OpenAIChatCompletionExtra" level="INFO"/>
+    <logger name="OpenAIChatCompletionExtra" level="DEBUG"/>
 
     <!--
     <logger name="com.ning.http.client" level="INFO"/>
