@@ -171,8 +171,13 @@ object ModelId {
   val o1_mini = "o1-mini"
   val o1_mini_2024_09_12 = "o1-mini-2024-09-12"
 
-  // GPT-4
+  // GPT-4.5
 
+  // currently points to gpt-4.5-preview-2025-02-27
+  val gpt_4_5_preview = "gpt-4.5-preview"
+  // 128k context, knowledge cutoff is Oct 2023
+  val gpt_4_5_preview_2025_02_27 = "gpt-4.5-preview-2025-02-27"
+  // GPT-4
   // flagship multimodal model, 128K context, currently points to "gpt-4o-2024-08-06, training data up to Oct 2023
   val gpt_4o = "gpt-4o"
   // context window: 128,000 tokens, output tokens:	16,384 tokens, Up to Oct 2023

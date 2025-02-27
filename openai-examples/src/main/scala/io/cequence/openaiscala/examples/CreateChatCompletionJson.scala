@@ -1,6 +1,10 @@
 package io.cequence.openaiscala.examples
 
 import io.cequence.openaiscala.domain._
+import io.cequence.openaiscala.domain.settings.{
+  ChatCompletionResponseFormatType,
+  CreateChatCompletionSettings
+}
 import io.cequence.openaiscala.service.OpenAIServiceConsts
 import play.api.libs.json.Json
 
@@ -17,7 +21,12 @@ object CreateChatCompletionJson extends Example with TestFixtures with OpenAISer
     service
       .createChatCompletion(
         messages = messages,
-        settings = DefaultSettings.createJsonChatCompletion(capitalsSchemaDef1)
+        settings = CreateChatCompletionSettings(
+          model = ModelId.gpt_4_5_preview,
+          max_tokens = Some(1000),
+          response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
+          jsonSchema = Some(capitalsSchemaDef1)
+        )
       )
       .map { response =>
         val json = Json.parse(response.contentHead)

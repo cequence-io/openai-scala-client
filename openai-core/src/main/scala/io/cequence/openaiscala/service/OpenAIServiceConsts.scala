@@ -42,14 +42,6 @@ trait OpenAIServiceConsts {
       max_tokens = Some(1000)
     )
 
-    def createJsonChatCompletion(jsonSchema: JsonSchemaDef): CreateChatCompletionSettings =
-      CreateChatCompletionSettings(
-        model = ModelId.gpt_4o_2024_08_06,
-        max_tokens = Some(1000),
-        response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
-        jsonSchema = Some(jsonSchema)
-      )
-
     val CreateChatFunCompletion = CreateChatCompletionSettings(
       model = ModelId.gpt_4o_mini,
       max_tokens = Some(1000)

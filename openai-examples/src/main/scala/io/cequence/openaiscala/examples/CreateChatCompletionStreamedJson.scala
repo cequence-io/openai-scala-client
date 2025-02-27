@@ -2,6 +2,10 @@ package io.cequence.openaiscala.examples
 
 import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain._
+import io.cequence.openaiscala.domain.settings.{
+  ChatCompletionResponseFormatType,
+  CreateChatCompletionSettings
+}
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIStreamedService
 import io.cequence.openaiscala.service.{OpenAIServiceConsts, OpenAIServiceFactory}
@@ -25,7 +29,12 @@ object CreateChatCompletionStreamedJson
     service
       .createChatCompletionStreamed(
         messages = messages,
-        settings = DefaultSettings.createJsonChatCompletion(capitalsSchemaDef1)
+        settings = CreateChatCompletionSettings(
+          model = ModelId.gpt_4_5_preview,
+          max_tokens = Some(1000),
+          response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
+          jsonSchema = Some(capitalsSchemaDef1)
+        )
       )
       .runWith(
         Sink.foreach { completion =>
