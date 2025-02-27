@@ -2,7 +2,7 @@ package io.cequence.openaiscala.examples.scenario
 
 import io.cequence.openaiscala.domain.AssistantTool.FileSearchTool
 import io.cequence.openaiscala.domain.settings.FileUploadPurpose
-import io.cequence.openaiscala.domain.{AssistantToolResource, ThreadMessage}
+import io.cequence.openaiscala.domain.{AssistantToolResource, ModelId, ThreadMessage}
 import io.cequence.openaiscala.examples.Example
 
 import java.io.File
@@ -31,7 +31,7 @@ object Assistants extends Example {
       )
 
       assistant <- service.createAssistant(
-        model = "gpt-4o-2024-05-13",
+        model = ModelId.gpt_4o_2024_05_13,
         name = Some("Customer Relationship Assistant"),
         description = Some(
           "You are a trustworthy and reliable assistant that helps businesses with their customer relationship agreements."

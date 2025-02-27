@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.examples
 
 import io.cequence.openaiscala.domain._
-import io.cequence.openaiscala.examples.fixtures.TestFixtures
 import io.cequence.openaiscala.service.OpenAIServiceConsts
 import play.api.libs.json.Json
 
