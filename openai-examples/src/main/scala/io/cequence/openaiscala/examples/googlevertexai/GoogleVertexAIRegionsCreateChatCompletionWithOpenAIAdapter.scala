@@ -1,4 +1,4 @@
-package io.cequence.openaiscala.examples.vertexai
+package io.cequence.openaiscala.examples.googlevertexai
 
 import com.typesafe.scalalogging.Logger
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.Future
 
 // requires `openai-scala-google-vertexai-client` as a dependency and `VERTEXAI_LOCATION` and `VERTEXAI_PROJECT_ID` environments variable to be set
-object VertexAIRegionsCreateChatCompletionWithOpenAIAdapter
+object GoogleVertexAIRegionsCreateChatCompletionWithOpenAIAdapter
     extends ExampleBase[OpenAIChatCompletionService] {
 
   protected val logger: Logger = Logger(LoggerFactory.getLogger(this.getClass))

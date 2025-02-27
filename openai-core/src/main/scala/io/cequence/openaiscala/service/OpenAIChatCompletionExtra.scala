@@ -146,31 +146,29 @@ object OpenAIChatCompletionExtra {
     ModelId.o1,
     ModelId.o1_2024_12_17,
     ModelId.o3_mini,
-    ModelId.o3_mini_2025_01_31
-  ).flatMap(id => Seq(id, "openai-" + id, "azure-" + id)) ++
-    Seq(
-      NonOpenAIModelId.gemini_2_0_flash,
-      NonOpenAIModelId.gemini_2_0_flash_001,
-      NonOpenAIModelId.gemini_2_0_pro_exp_02_05,
-      NonOpenAIModelId.gemini_2_0_pro_exp,
-      NonOpenAIModelId.gemini_2_0_flash_001,
-      NonOpenAIModelId.gemini_2_0_flash,
-      NonOpenAIModelId.gemini_2_0_flash_exp,
-      NonOpenAIModelId.gemini_1_5_flash_8b_exp_0924,
-      NonOpenAIModelId.gemini_1_5_flash_8b_exp_0827,
-      NonOpenAIModelId.gemini_1_5_flash_8b_latest,
-      NonOpenAIModelId.gemini_1_5_flash_8b_001,
-      NonOpenAIModelId.gemini_1_5_flash_8b,
-      NonOpenAIModelId.gemini_1_5_flash_002,
-      NonOpenAIModelId.gemini_1_5_flash,
-      NonOpenAIModelId.gemini_1_5_flash_001,
-      NonOpenAIModelId.gemini_1_5_flash_latest,
-      NonOpenAIModelId.gemini_1_5_pro,
-      NonOpenAIModelId.gemini_1_5_pro_002,
-      NonOpenAIModelId.gemini_1_5_pro_001,
-      NonOpenAIModelId.gemini_1_5_pro_latest,
-      NonOpenAIModelId.gemini_exp_1206
-    ).flatMap(id => Seq(id, "google_gemini-" + id))
+    ModelId.o3_mini_2025_01_31,
+    NonOpenAIModelId.gemini_2_0_flash,
+    NonOpenAIModelId.gemini_2_0_flash_001,
+    NonOpenAIModelId.gemini_2_0_pro_exp_02_05,
+    NonOpenAIModelId.gemini_2_0_pro_exp,
+    NonOpenAIModelId.gemini_2_0_flash_001,
+    NonOpenAIModelId.gemini_2_0_flash,
+    NonOpenAIModelId.gemini_2_0_flash_exp,
+    NonOpenAIModelId.gemini_1_5_flash_8b_exp_0924,
+    NonOpenAIModelId.gemini_1_5_flash_8b_exp_0827,
+    NonOpenAIModelId.gemini_1_5_flash_8b_latest,
+    NonOpenAIModelId.gemini_1_5_flash_8b_001,
+    NonOpenAIModelId.gemini_1_5_flash_8b,
+    NonOpenAIModelId.gemini_1_5_flash_002,
+    NonOpenAIModelId.gemini_1_5_flash,
+    NonOpenAIModelId.gemini_1_5_flash_001,
+    NonOpenAIModelId.gemini_1_5_flash_latest,
+    NonOpenAIModelId.gemini_1_5_pro,
+    NonOpenAIModelId.gemini_1_5_pro_002,
+    NonOpenAIModelId.gemini_1_5_pro_001,
+    NonOpenAIModelId.gemini_1_5_pro_latest,
+    NonOpenAIModelId.gemini_exp_1206
+  )
 
   def handleOutputJsonSchema(
     messages: Seq[BaseMessage],
@@ -184,8 +182,9 @@ object OpenAIChatCompletionExtra {
     val jsonSchemaJson = Json.toJson(jsonSchemaDef.structure)
     val jsonSchemaString = Json.prettyPrint(jsonSchemaJson)
 
-    val (settingsFinal, addJsonToPrompt) =
-      if (jsonSchemaModels.contains(settings.model)) {
+    val (settingsFinal, addJsonToPrompt) = {
+      // to be more robust we also match models with a suffix
+      if (jsonSchemaModels.contains((model: String) => (settings.model == model) || (settings.model.endsWith("-" + model)))) {
         logger.debug(
           s"Using OpenAI json schema mode for ${taskNameForLogging} and the model '${settings.model}' - name: ${jsonSchemaDef.name}, strict: ${jsonSchemaDef.strict}, structure:\n${jsonSchemaString}"
         )
@@ -211,6 +210,7 @@ object OpenAIChatCompletionExtra {
           true
         )
       }
+    }
 
     val messagesFinal = if (addJsonToPrompt) {
       if (messages.nonEmpty && messages.last.role == ChatRole.User) {

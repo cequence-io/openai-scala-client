@@ -322,6 +322,11 @@ private[service] class OpenAIGeminiChatCompletionService(
         description = description
       )
 
+    case JsonSchema.Null() =>
+      Schema(
+        `type` = SchemaType.TYPE_UNSPECIFIED
+      )
+
     case JsonSchema.Object(properties, required) =>
       Schema(
         `type` = SchemaType.OBJECT,

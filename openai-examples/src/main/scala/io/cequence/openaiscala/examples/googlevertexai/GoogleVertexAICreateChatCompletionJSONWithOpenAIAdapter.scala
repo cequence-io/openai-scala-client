@@ -1,27 +1,20 @@
-package io.cequence.openaiscala.examples.googlegemini
+package io.cequence.openaiscala.examples.googlevertexai
 
 import io.cequence.openaiscala.domain._
-import io.cequence.openaiscala.domain.settings.{
-  ChatCompletionResponseFormatType,
-  CreateChatCompletionSettings,
-  JsonSchemaDef
-}
-import io.cequence.openaiscala.examples.{ExampleBase, TestFixtures}
-import io.cequence.openaiscala.gemini.service.GeminiServiceFactory
-import io.cequence.openaiscala.service.OpenAIChatCompletionService
+import io.cequence.openaiscala.domain.settings.{ChatCompletionResponseFormatType, CreateChatCompletionSettings, JsonSchemaDef}
+import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase, TestFixtures}
 import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
+import io.cequence.openaiscala.service.OpenAIChatCompletionService
 import play.api.libs.json.{JsObject, Json}
 
 import scala.concurrent.Future
 
-/**
- * Requires `GOOGLE_API_KEY` environment variable to be set.
- */
-object GoogleGeminiCreateChatCompletionJSONWithOpenAIAdapter
+// requires `openai-scala-google-vertexai-client` as a dependency and `VERTEXAI_LOCATION` and `VERTEXAI_PROJECT_ID` environments variable to be set
+object GoogleVertexAICreateChatCompletionJSONWithOpenAIAdapter
     extends ExampleBase[OpenAIChatCompletionService]
     with TestFixtures {
 
-  override val service: OpenAIChatCompletionService = GeminiServiceFactory.asOpenAI()
+  override val service: OpenAIChatCompletionService = ChatCompletionProvider.vertexAI
 
   private val messages = Seq(
     SystemMessage("You are an expert geographer"),

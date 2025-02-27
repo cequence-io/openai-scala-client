@@ -1,4 +1,4 @@
-package io.cequence.openaiscala.examples.vertexai
+package io.cequence.openaiscala.examples.googlevertexai
 
 import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
@@ -10,7 +10,7 @@ import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletion
 import scala.concurrent.Future
 
 // requires `openai-scala-google-vertexai-client` as a dependency and `VERTEXAI_LOCATION` and `VERTEXAI_PROJECT_ID` environments variable to be set
-object VertexAICreateChatCompletionStreamedWithOpenAIAdapter
+object GoogleVertexAICreateChatCompletionStreamedWithOpenAIAdapter
     extends ExampleBase[OpenAIChatCompletionService] {
 
   override val service: OpenAIChatCompletionStreamedService = ChatCompletionProvider.vertexAI
@@ -33,9 +33,8 @@ object VertexAICreateChatCompletionStreamedWithOpenAIAdapter
         )
       )
       .runWith(
-        Sink.foreach { completion =>
-          val content = completion.choices.headOption.flatMap(_.delta.content)
-          print(content.getOrElse(""))
+        Sink.foreach { response =>
+          print(response.contentHead.getOrElse(""))
         }
       )
 }

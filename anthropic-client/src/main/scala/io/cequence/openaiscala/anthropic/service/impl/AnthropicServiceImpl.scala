@@ -9,7 +9,6 @@ import io.cequence.openaiscala.anthropic.domain.response.{
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
-import play.api.libs.json.Json
 
 import scala.concurrent.Future
 

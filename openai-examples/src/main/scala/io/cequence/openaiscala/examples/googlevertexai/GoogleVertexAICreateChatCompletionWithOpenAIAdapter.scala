@@ -1,4 +1,4 @@
-package io.cequence.openaiscala.examples.vertexai
+package io.cequence.openaiscala.examples.googlevertexai
 
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{NonOpenAIModelId, SystemMessage, UserMessage}
@@ -8,12 +8,12 @@ import io.cequence.openaiscala.service.OpenAIChatCompletionService
 import scala.concurrent.Future
 
 // requires `openai-scala-google-vertexai-client` as a dependency and `VERTEXAI_LOCATION` and `VERTEXAI_PROJECT_ID` environments variable to be set
-object VertexAICreateChatCompletionWithOpenAIAdapter
+object GoogleVertexAICreateChatCompletionWithOpenAIAdapter
     extends ExampleBase[OpenAIChatCompletionService] {
 
   override val service: OpenAIChatCompletionService = ChatCompletionProvider.vertexAI
 
-  private val model = NonOpenAIModelId.gemini_2_0_flash_thinking_exp_1219
+  private val model = NonOpenAIModelId.gemini_2_0_flash
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant who makes jokes about Google."),
