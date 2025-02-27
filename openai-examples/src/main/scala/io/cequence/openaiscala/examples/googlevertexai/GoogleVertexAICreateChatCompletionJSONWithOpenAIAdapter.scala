@@ -1,7 +1,11 @@
 package io.cequence.openaiscala.examples.googlevertexai
 
 import io.cequence.openaiscala.domain._
-import io.cequence.openaiscala.domain.settings.{ChatCompletionResponseFormatType, CreateChatCompletionSettings, JsonSchemaDef}
+import io.cequence.openaiscala.domain.settings.{
+  ChatCompletionResponseFormatType,
+  CreateChatCompletionSettings,
+  JsonSchemaDef
+}
 import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase, TestFixtures}
 import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
 import io.cequence.openaiscala.service.OpenAIChatCompletionService

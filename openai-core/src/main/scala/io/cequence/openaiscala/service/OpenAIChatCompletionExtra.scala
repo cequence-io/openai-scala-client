@@ -184,7 +184,11 @@ object OpenAIChatCompletionExtra {
 
     val (settingsFinal, addJsonToPrompt) = {
       // to be more robust we also match models with a suffix
-      if (jsonSchemaModels.exists(model => settings.model.equals(model) || settings.model.endsWith("-" + model))) {
+      if (
+        jsonSchemaModels.exists(model =>
+          settings.model.equals(model) || settings.model.endsWith("-" + model)
+        )
+      ) {
         logger.debug(
           s"Using OpenAI json schema mode for ${taskNameForLogging} and the model '${settings.model}' - name: ${jsonSchemaDef.name}, strict: ${jsonSchemaDef.strict}, structure:\n${jsonSchemaString}"
         )

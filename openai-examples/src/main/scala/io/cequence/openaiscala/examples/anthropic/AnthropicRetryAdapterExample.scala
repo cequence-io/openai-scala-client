@@ -13,7 +13,8 @@ object AnthropicRetryAdapterExample extends ExampleBase[OpenAIChatCompletionServ
   private val failingModel = NonOpenAIModelId.claude_3_opus_20240229
   private val workingModel = NonOpenAIModelId.claude_3_haiku_20240307
 
-  override protected val service: OpenAIChatCompletionService = AnthropicTestHelper.timoutingService
+  override protected val service: OpenAIChatCompletionService =
+    AnthropicTestHelper.timoutingService
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),

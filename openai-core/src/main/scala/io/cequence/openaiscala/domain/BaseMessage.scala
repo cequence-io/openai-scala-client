@@ -140,7 +140,7 @@ final case class FunMessage(
 
 /**
  * Deprecation warning: Use typed Message(s), such as SystemMessage, UserMessage, instead. Will
- * be dropped in the next major version.
+ * be dropped in the next major version!
  */
 @Deprecated
 final case class MessageSpec(

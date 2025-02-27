@@ -1,13 +1,17 @@
 package io.cequence.openaiscala.examples.groq
 
+import io.cequence.openaiscala.JsonFormats.jsonSchemaFormat
 import io.cequence.openaiscala.domain._
-import io.cequence.openaiscala.domain.settings.{ChatCompletionResponseFormatType, CreateChatCompletionSettings, JsonSchemaDef}
 import io.cequence.openaiscala.domain.settings.GroqCreateChatCompletionSettingsOps._
+import io.cequence.openaiscala.domain.settings.{
+  ChatCompletionResponseFormatType,
+  CreateChatCompletionSettings,
+  JsonSchemaDef
+}
 import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase}
+import io.cequence.openaiscala.service.OpenAIChatCompletionExtra.OpenAIChatCompletionImplicits
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
 import play.api.libs.json.{JsObject, Json}
-import io.cequence.openaiscala.JsonFormats.jsonSchemaFormat
-import io.cequence.openaiscala.service.OpenAIChatCompletionExtra.OpenAIChatCompletionImplicits
 
 import scala.concurrent.Future
 

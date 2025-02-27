@@ -2,7 +2,11 @@ package io.cequence.openaiscala.examples.anthropic
 
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.examples.{BufferedImageHelper, ChatCompletionProvider, ExampleBase}
+import io.cequence.openaiscala.examples.{
+  BufferedImageHelper,
+  ChatCompletionProvider,
+  ExampleBase
+}
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
 
 import java.io.File

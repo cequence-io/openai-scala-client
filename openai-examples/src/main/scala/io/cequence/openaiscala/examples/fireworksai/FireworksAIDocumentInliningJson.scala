@@ -2,7 +2,10 @@ package io.cequence.openaiscala.examples.fireworksai
 
 import io.cequence.openaiscala.JsonFormats.jsonSchemaFormat
 import io.cequence.openaiscala.domain._
-import io.cequence.openaiscala.domain.settings.{ChatCompletionResponseFormatType, CreateChatCompletionSettings}
+import io.cequence.openaiscala.domain.settings.{
+  ChatCompletionResponseFormatType,
+  CreateChatCompletionSettings
+}
 import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase}
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
 import play.api.libs.json.Json
