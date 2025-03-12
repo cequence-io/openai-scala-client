@@ -296,10 +296,18 @@ object NonOpenAIModelId {
   val deepseek_ai_deepseek_v3 = "deepseek-ai/DeepSeek-V3" // Together AI
 
   // Sonar (Perplexity)
+  // 128k context length
+  val sonar_deep_research = "sonar-deep-research"
+  // 128k context length
+  val sonar_reasoning_pro = "sonar-reasoning-pro"
+  // 128k context length
+  val sonar_reasoning = "sonar-reasoning"
   // 200k context length
   val sonar_pro = "sonar-pro"
-  // 127k context length
+  // 128k context length
   val sonar = "sonar"
+  // 128k context length
+  val r1_1776 = "r1-1776"
   // These models will be deprecated and will no longer be available to use after 2/22/2025
   // 127k context window
   val llama_3_1_sonar_small_128k_online = "llama-3.1-sonar-small-128k-online"
