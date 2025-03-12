@@ -255,6 +255,7 @@ object NonOpenAIModelId {
 
   // Grok
   // TODO: check these (assumed) names once the models are released
+  val grok_3 = "grok_3"
   val grok_3_latest = "grok-3-latest"
   val grok_3_mini = "grok-3-mini"
   val grok_3_reasoning = "grok-3-reasoning"

@@ -99,6 +99,8 @@ package object impl {
           .setRole("USER")
           .addParts(0, Part.newBuilder().setText(content).build())
           .build()
+
+      case _ => throw new OpenAIScalaClientException("Unsupported message type")
     }
 
   def toSystemVertexAI(

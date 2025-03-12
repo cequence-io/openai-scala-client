@@ -2,9 +2,10 @@ package io.cequence.openaiscala.service
 
 import akka.actor.Scheduler
 import com.fasterxml.jackson.core.JsonParseException
+import io.cequence.jsonrepair.JsonRepair
 import io.cequence.openaiscala.JsonFormats.eitherJsonSchemaFormat
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
-import io.cequence.openaiscala.{OpenAIScalaClientException, RetryHelpers, Retryable}
+import io.cequence.openaiscala.{RetryHelpers, Retryable}
 import io.cequence.openaiscala.domain.response.ChatCompletionResponse
 import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
@@ -63,8 +64,44 @@ object OpenAIChatCompletionExtra {
     }
 
     /**
-     * Important: pass an explicit list of models that support JSON schema if the default list
-     * is not sufficient!
+     * Creates a chat completion that returns a JSON-parseable response and converts it to the
+     * specified type T.
+     *
+     * This function handles:
+     *   - Proper JSON schema formatting based on model capabilities
+     *   - Automatic failover to alternative models if specified
+     *   - Retry logic for transient errors
+     *   - JSON response parsing and validation
+     *   - Logging of operation progress and timing
+     *
+     * **Important:** pass an explicit list of models that support JSON schema if the default
+     * list is not sufficient or use `enforceJsonSchemaMode` if you are sure that the model
+     * supports it.
+     *
+     * @tparam T
+     *   The target type to deserialize the JSON response into (must have an implicit Format)
+     * @param messages
+     *   The chat messages (prompts) to send to the model
+     * @param settings
+     *   Chat completion settings including model, temperature, etc.
+     * @param failoverModels
+     *   Alternative models to try if the primary model fails
+     * @param maxRetries
+     *   Maximum number of retry attempts (defaults to 5)
+     * @param retryOnAnyError
+     *   If true, retry on any error; if false, only on errors marked as Retryable. Default is
+     *   false.
+     * @param taskNameForLogging
+     *   Optional name to identify this task in logs
+     * @param jsonSchemaModels
+     *   Models that support JSON schema mode (important to specify if using non-default
+     *   models)
+     * @param enforceJsonSchemaMode
+     *   If true, use OpenAI's native JSON schema mode for compatible models
+     * @param parseJson
+     *   Custom JSON parsing function (defaults to standard parser with error handling)
+     * @return
+     *   Future containing the parsed response of type T
      */
     def createChatCompletionWithJSON[T: Format](
       messages: Seq[BaseMessage],
@@ -74,7 +111,8 @@ object OpenAIChatCompletionExtra {
       retryOnAnyError: Boolean = false,
       taskNameForLogging: Option[String] = None,
       jsonSchemaModels: Seq[String] = defaultModelsSupportingJsonSchema,
-      parseJson: String => JsValue = defaultParseJsonOrThrow
+      enforceJsonSchemaMode: Boolean = false,
+      parseJson: String => JsValue = defaultParseJsonOrRepair
     )(
       implicit ec: ExecutionContext,
       scheduler: Scheduler
@@ -88,7 +126,8 @@ object OpenAIChatCompletionExtra {
           messages,
           settings,
           taskNameForLoggingFinal,
-          jsonSchemaModels
+          jsonSchemaModels,
+          enforceJsonSchemaMode
         )
       } else {
         (messages, settings)
@@ -117,15 +156,15 @@ object OpenAIChatCompletionExtra {
         }
     }
 
-    private def defaultParseJsonOrThrow(
+    private def defaultParseJsonOrRepair(
       jsonString: String
-    ) = try {
+    ): JsValue = try {
       Json.parse(jsonString)
     } catch {
       case e: JsonParseException =>
-        val message = "Failed to parse JSON response:\n" + jsonString
-        logger.error(message)
-        throw new OpenAIScalaClientException(message, e)
+        logger.error(s"Failed to parse JSON response due to: ${e.getMessage}. Repairing...")
+        val repairedJsonString = JsonRepair.repair(jsonString)
+        Json.parse(repairedJsonString)
     }
 
     private def isRetryable(
@@ -169,14 +208,20 @@ object OpenAIChatCompletionExtra {
     NonOpenAIModelId.gemini_1_5_pro_002,
     NonOpenAIModelId.gemini_1_5_pro_001,
     NonOpenAIModelId.gemini_1_5_pro_latest,
-    NonOpenAIModelId.gemini_exp_1206
+    NonOpenAIModelId.gemini_exp_1206,
+    NonOpenAIModelId.grok_2,
+    NonOpenAIModelId.grok_2_1212,
+    NonOpenAIModelId.grok_2_latest,
+    NonOpenAIModelId.grok_3,
+    NonOpenAIModelId.grok_3_latest
   )
 
   def handleOutputJsonSchema(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings,
     taskNameForLogging: String,
-    jsonSchemaModels: Seq[String] = defaultModelsSupportingJsonSchema
+    jsonSchemaModels: Seq[String] = defaultModelsSupportingJsonSchema,
+    enforceJsonSchemaMode: Boolean = false
   ): (Seq[BaseMessage], CreateChatCompletionSettings) = {
     val jsonSchemaDef = settings.jsonSchema.getOrElse(
       throw new IllegalArgumentException("JSON schema is not defined but expected.")
@@ -187,6 +232,7 @@ object OpenAIChatCompletionExtra {
     val (settingsFinal, addJsonToPrompt) = {
       // to be more robust we also match models with a suffix
       if (
+        enforceJsonSchemaMode ||
         jsonSchemaModels.exists(model =>
           settings.model.equals(model) || settings.model.endsWith("-" + model)
         )
