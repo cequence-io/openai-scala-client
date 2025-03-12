@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.anthropic.service
 
+import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.anthropic.domain.CacheControl.Ephemeral
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
 import io.cequence.openaiscala.anthropic.domain.Content.{ContentBlockBase, ContentBlocks}
@@ -84,11 +85,13 @@ package object impl extends AnthropicServiceConsts {
       case OpenAIUserSeqMessage(contents, _) =>
         Message.UserMessageContent(contents.map(toAnthropic))
 
-      case OpenAIAssistantMessage(content, _) => Message.AssistantMessage(content)
+      case OpenAIAssistantMessage(content, _, _) => Message.AssistantMessage(content)
 
       // legacy message type
       case MessageSpec(role, content, _) if role == ChatRole.User =>
         Message.UserMessage(content)
+
+      case _ => throw new OpenAIScalaClientException("Unsupported message type")
     }
 
     // apply cache control to user messages

@@ -19,18 +19,18 @@ trait OpenAIServiceConsts {
     val CreateJsonCompletion = CreateCompletionSettings(
       model = ModelId.gpt_4o_2024_08_06,
       temperature = Some(0.0),
-      max_tokens = Some(1000)
+      max_tokens = Some(4000)
     )
 
     val CreateCompletion = CreateCompletionSettings(
       model = ModelId.gpt_3_5_turbo_instruct,
       temperature = Some(0.7),
-      max_tokens = Some(1000)
+      max_tokens = Some(4000)
     )
 
     val CreateRun = CreateRunSettings(
       model = Some(ModelId.gpt_4o_mini),
-      maxPromptTokens = Some(1000)
+      maxPromptTokens = Some(4000)
     )
 
     val CreateThreadAndRun = CreateThreadAndRunSettings(
@@ -38,18 +38,23 @@ trait OpenAIServiceConsts {
     )
 
     val CreateChatCompletion = CreateChatCompletionSettings(
-      model = ModelId.gpt_4o_mini,
-      max_tokens = Some(1000)
+      model = ModelId.o3_mini,
+      max_tokens = Some(4000)
+    )
+
+    val CreateChatWebSearchCompletion = CreateChatCompletionSettings(
+      model = ModelId.gpt_4o_search_preview,
+      max_tokens = Some(4000)
     )
 
     val CreateChatFunCompletion = CreateChatCompletionSettings(
       model = ModelId.gpt_4o_mini,
-      max_tokens = Some(1000)
+      max_tokens = Some(4000)
     )
 
     val CreateChatToolCompletion = CreateChatCompletionSettings(
       model = ModelId.gpt_4o_mini,
-      max_tokens = Some(1000)
+      max_tokens = Some(4000)
     )
 
     val CreateEdit = CreateEditSettings(

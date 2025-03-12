@@ -6,9 +6,14 @@ import io.cequence.openaiscala.domain.ChunkingStrategy.StaticChunkingStrategy
 import io.cequence.openaiscala.domain.FineTune.WeightsAndBiases
 import io.cequence.openaiscala.domain.ThreadAndRun.Content.ContentBlock.ImageDetail
 import io.cequence.openaiscala.domain.settings.{
+  ApproximateLocation,
   ChatCompletionResponseFormatType,
+  JsonSchemaDef,
   ReasoningEffort,
-  ServiceTier
+  SearchContextSize,
+  ServiceTier,
+  UserLocation,
+  WebSearchOptions
 }
 import io.cequence.openaiscala.domain.Run.TruncationStrategy
 import io.cequence.openaiscala.domain.StepDetail.{MessageCreation, ToolCalls}
@@ -22,7 +27,6 @@ import io.cequence.openaiscala.domain.response.ResponseFormat.{
   TextResponse
 }
 import io.cequence.openaiscala.domain.response._
-import io.cequence.openaiscala.domain.settings.JsonSchemaDef
 import io.cequence.openaiscala.domain.{ThreadMessageFile, _}
 import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.JsonUtil.{enumFormat, snakeEnumFormat}
@@ -108,6 +112,12 @@ object JsonFormats {
   implicit val toolMessageFormat: Format[ToolMessage] = Json.format[ToolMessage]
 
   implicit val assistantMessageFormat: Format[AssistantMessage] = Json.format[AssistantMessage]
+
+  implicit val urlCitationFormat: Format[UrlCitation] = Json.format[UrlCitation]
+  implicit val annotationFormat: Format[Annotation] = Json.format[Annotation]
+  implicit val assistantWebSearchMessageFormat: Format[AssistantWebSearchMessage] =
+    Json.format[AssistantWebSearchMessage]
+
   implicit val assistantToolMessageReads: Reads[AssistantToolMessage] = (
     (__ \ "content").readNullable[String] and
       (__ \ "name").readNullable[String] and
@@ -249,13 +259,15 @@ object JsonFormats {
 
       case ChatRole.Assistant =>
         // if contains tool_calls, then it is AssistantToolMessage
-        (json \ "tool_calls").asOpt[JsArray] match {
-          case Some(_) => json.as[AssistantToolMessage]
-          case None =>
-            json.asOpt[AssistantMessage] match {
-              case Some(assistantMessage) => assistantMessage
-              case None                   => json.as[AssistantFunMessage]
-            }
+        if ((json \ "tool_calls").isDefined) {
+          json.as[AssistantToolMessage]
+        } else if ((json \ "annotations").isDefined) {
+          json.as[AssistantWebSearchMessage]
+        } else {
+          json.asOpt[AssistantMessage] match {
+            case Some(assistantMessage) => assistantMessage
+            case None                   => json.as[AssistantFunMessage]
+          }
         }
 
       case ChatRole.Function => json.as[FunMessage]
@@ -285,6 +297,8 @@ object JsonFormats {
 
       case m: AssistantMessage => toJson(m)
 
+      case m: AssistantWebSearchMessage => toJson(m)
+
       case m: AssistantToolMessage =>
         val calls = m.tool_calls.map { case (callId, call) =>
           call match {
@@ -312,6 +326,22 @@ object JsonFormats {
 
     json.as[JsObject] ++ role ++ name
   }
+
+  implicit val approximateLocationFormat: Format[ApproximateLocation] =
+    Json.format[ApproximateLocation]
+
+  implicit val userLocationFormat: Format[UserLocation] =
+    Json.format[UserLocation]
+
+  implicit val searchContextSizeFormat: Format[SearchContextSize] =
+    enumFormat[SearchContextSize](
+      SearchContextSize.low,
+      SearchContextSize.medium,
+      SearchContextSize.high
+    )
+
+  implicit val webSearchOptionsFormat: Format[WebSearchOptions] =
+    Json.format[WebSearchOptions]
 
   implicit lazy val assistantToolOutputFormat: Format[AssistantToolOutput] =
     Json.format[AssistantToolOutput]
@@ -425,6 +455,13 @@ object JsonFormats {
     Json.reads[ChatToolCompletionChoiceInfo]
   implicit lazy val chatToolCompletionResponseReads: Reads[ChatToolCompletionResponse] =
     Json.reads[ChatToolCompletionResponse]
+
+  implicit lazy val chatWebSearchCompletionChoiceInfoFormat
+    : Format[ChatWebSearchCompletionChoiceInfo] =
+    Json.format[ChatWebSearchCompletionChoiceInfo]
+  implicit lazy val chatWebSearchCompletionResponseFormat
+    : Format[ChatWebSearchCompletionResponse] =
+    Json.format[ChatWebSearchCompletionResponse]
 
   implicit lazy val chatFunCompletionChoiceInfoFormat: Format[ChatFunCompletionChoiceInfo] =
     Json.format[ChatFunCompletionChoiceInfo]

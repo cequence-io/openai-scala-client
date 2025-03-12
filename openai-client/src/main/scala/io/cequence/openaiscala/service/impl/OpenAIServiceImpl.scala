@@ -269,6 +269,24 @@ private[service] trait OpenAIServiceImpl
     )
   }
 
+  override def createChatWebSearchCompletion(
+    messages: Seq[BaseMessage],
+    searchOptions: WebSearchOptions,
+    settings: CreateChatCompletionSettings
+  ): Future[ChatWebSearchCompletionResponse] = {
+    val coreParams =
+      createBodyParamsForChatCompletion(messages, settings, stream = false)
+
+    val searchParams = Json.toJson(searchOptions)
+
+    execPOST(
+      EndPoint.chat_completions,
+      bodyParams = coreParams ++ Seq(Param.web_search_options -> Some(searchParams))
+    ).map(
+      _.asSafeJson[ChatWebSearchCompletionResponse]
+    )
+  }
+
   override def createEdit(
     input: String,
     instruction: String,

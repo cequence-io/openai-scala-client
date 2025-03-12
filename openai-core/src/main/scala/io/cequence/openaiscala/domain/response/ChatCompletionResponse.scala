@@ -2,9 +2,11 @@ package io.cequence.openaiscala.domain.response
 
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.{
+  Annotation,
   AssistantFunMessage,
   AssistantMessage,
   AssistantToolMessage,
+  AssistantWebSearchMessage,
   BaseMessage,
   ChatRole
 }
@@ -50,13 +52,36 @@ case class ChatToolCompletionResponse(
   id: String,
   created: ju.Date,
   model: String,
-  system_fingerprint: Option[String], // new
+  system_fingerprint: Option[String],
   choices: Seq[ChatToolCompletionChoiceInfo],
   usage: Option[UsageInfo]
 ) extends BaseChatCompletionResponse[
       AssistantToolMessage,
       ChatToolCompletionChoiceInfo
     ]
+
+case class ChatWebSearchCompletionResponse(
+  id: String,
+  created: ju.Date,
+  model: String,
+  system_fingerprint: Option[String],
+  choices: Seq[ChatWebSearchCompletionChoiceInfo],
+  usage: Option[UsageInfo]
+) extends BaseChatCompletionResponse[
+      AssistantWebSearchMessage,
+      ChatWebSearchCompletionChoiceInfo
+    ] {
+  def contentHead: String = choices.headOption
+    .map(_.message.content)
+    .getOrElse(
+      throw new OpenAIScalaClientException(
+        s"No content in the chat completion response ${id}."
+      )
+    )
+
+  def annotationsHead: Seq[Annotation] =
+    choices.headOption.map(_.message.annotations).getOrElse(Nil)
+}
 
 case class ChatFunCompletionResponse(
   id: String,
@@ -82,6 +107,13 @@ case class ChatCompletionChoiceInfo(
   finish_reason: Option[String],
   logprobs: Option[Logprobs]
 ) extends BaseChatCompletionChoiceInfo[AssistantMessage]
+
+case class ChatWebSearchCompletionChoiceInfo(
+  message: AssistantWebSearchMessage,
+  index: Int,
+  finish_reason: Option[String],
+  logprobs: Option[Logprobs]
+) extends BaseChatCompletionChoiceInfo[AssistantWebSearchMessage]
 
 case class ChatToolCompletionChoiceInfo(
   message: AssistantToolMessage,

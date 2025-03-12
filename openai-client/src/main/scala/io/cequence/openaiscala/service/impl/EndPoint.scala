@@ -118,6 +118,7 @@ object Param {
   case object store extends Param
   case object reasoning_effort extends Param
   case object service_tier extends Param
+  case object web_search_options extends Param
   // empty string param to sneak in extra parameters
   case object extra_params extends Param(" ")
 }

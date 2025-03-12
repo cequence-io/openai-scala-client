@@ -147,6 +147,14 @@ trait OpenAIServiceWrapper
     )
   )
 
+  override def createChatWebSearchCompletion(
+    messages: Seq[BaseMessage],
+    searchOptions: WebSearchOptions,
+    settings: CreateChatCompletionSettings
+  ): Future[ChatWebSearchCompletionResponse] = wrap(
+    _.createChatWebSearchCompletion(messages, searchOptions, settings)
+  )
+
   override def createEdit(
     input: String,
     instruction: String,

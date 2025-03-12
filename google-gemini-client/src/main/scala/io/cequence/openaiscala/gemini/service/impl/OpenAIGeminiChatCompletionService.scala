@@ -202,7 +202,7 @@ private[service] class OpenAIGeminiChatCompletionService(
 
         Content(parts, Some(ChatRole.User))
 
-      case AssistantMessage(content, _) =>
+      case AssistantMessage(content, _, _) =>
         Content(Seq(Part.Text(content)), Some(ChatRole.Model))
 
       case _ => throw new OpenAIScalaClientException(s"Unsupported message type for Gemini.")

@@ -177,7 +177,12 @@ object ModelId {
   val gpt_4_5_preview = "gpt-4.5-preview"
   // 128k context, knowledge cutoff is Oct 2023
   val gpt_4_5_preview_2025_02_27 = "gpt-4.5-preview-2025-02-27"
+
   // GPT-4
+  // web search
+  val gpt_4o_search_preview = "gpt-4o-search-preview"
+  // web search
+  val gpt_4o_mini_search_preview = "gpt-4o-mini-search-preview"
   // flagship multimodal model, 128K context, currently points to "gpt-4o-2024-08-06, training data up to Oct 2023
   val gpt_4o = "gpt-4o"
   // context window: 128,000 tokens, output tokens:	16,384 tokens, Up to Oct 2023
@@ -222,6 +227,8 @@ object ModelId {
   // includes supports for vision in addition to gpt-4-turbo capabilities
   val gpt_4_vision_preview = "gpt-4-vision-preview"
   val gpt_4_1106_vision_preview = "gpt-4-1106-vision-preview"
+
+  val computer_use_preview = "computer-use-preview"
 
   // Other
   @Deprecated

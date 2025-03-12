@@ -109,13 +109,31 @@ trait OpenAIService extends OpenAICoreService {
    * @see
    *   <a href="https://platform.openai.com/docs/api-reference/chat/create">OpenAI Doc</a>
    */
-  // TODO: add support for 'parallel_tool_calls'
   def createChatToolCompletion(
     messages: Seq[BaseMessage],
     tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatToolCompletion
   ): Future[ChatToolCompletionResponse]
+
+  /**
+   * Chat completion with web search. Supports these models: gpt-4-vision-preview and
+   * gpt-4-1106-vision-preview
+   *
+   * @param messages
+   *   A list of messages comprising the conversation so far.
+   * @param searchOptions
+   * @param settings
+   * @return
+   *   chat completion response with annotations/citations
+   * @see
+   *   <a href="https://platform.openai.com/docs/guides/tools-web-search">OpenAI Doc</a>
+   */
+  def createChatWebSearchCompletion(
+    messages: Seq[BaseMessage],
+    searchOptions: WebSearchOptions = WebSearchOptions(),
+    settings: CreateChatCompletionSettings = DefaultSettings.CreateChatWebSearchCompletion
+  ): Future[ChatWebSearchCompletionResponse]
 
   /**
    * Creates a new edit for the provided input, instruction, and parameters.

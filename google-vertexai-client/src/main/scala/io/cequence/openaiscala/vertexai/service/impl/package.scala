@@ -85,7 +85,7 @@ package object impl {
 
         contentBuilder.build()
 
-      case AssistantMessage(content, _) =>
+      case AssistantMessage(content, _, _) =>
         Content
           .newBuilder()
           .setRole("MODEL")
