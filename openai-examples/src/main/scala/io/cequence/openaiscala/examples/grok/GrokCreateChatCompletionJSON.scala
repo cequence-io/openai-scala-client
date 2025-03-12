@@ -1,4 +1,4 @@
-package io.cequence.openaiscala.examples.groq
+package io.cequence.openaiscala.examples.grok
 
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.GroqCreateChatCompletionSettingsOps._
@@ -15,12 +15,11 @@ import play.api.libs.json.{JsObject, Json}
 import scala.concurrent.Future
 
 /**
- * Requires `GROQ_API_KEY` environment variable to be set.
+ * Requires `GROK_API_KEY` environment variable to be set.
  */
-object GroqCreateChatCompletionJSONWithDeepseekR1
-    extends ExampleBase[OpenAIChatCompletionService] {
+object GrokCreateChatCompletionJSON extends ExampleBase[OpenAIChatCompletionService] {
 
-  override val service: OpenAIChatCompletionService = ChatCompletionProvider.groq
+  override val service: OpenAIChatCompletionService = ChatCompletionProvider.grok
 
   private val jsonSchema: JsonSchema = JsonSchema.Object(
     properties = Seq(
@@ -39,11 +38,11 @@ object GroqCreateChatCompletionJSONWithDeepseekR1
   )
 
   private val messages = Seq(
-    SystemMessage("You are a helpful weather assistant that responds in JSON."),
-    UserMessage("What is the weather like in Norway?")
+    SystemMessage("You are a helpful weather assistant that responds in JSON"),
+    UserMessage("What is the weather like in Norway per major cities/towns?")
   )
 
-  private val modelId = NonOpenAIModelId.deepseek_r1_distill_llama_70b
+  private val modelId = NonOpenAIModelId.grok_2
 
   override protected def run: Future[_] =
     service
