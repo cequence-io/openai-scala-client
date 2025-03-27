@@ -14,6 +14,8 @@ import io.cequence.openaiscala.service.{
 }
 import io.cequence.wsclient.service.adapter.DelegatedCloseableServiceWrapper
 import io.cequence.wsclient.service.adapter.ServiceWrapperTypes.CloseableServiceWrapper
+import io.cequence.openaiscala.domain.responsesapi.{Inputs, Response}
+import io.cequence.openaiscala.domain.responsesapi.CreateModelResponseSettings
 
 import java.io.File
 import scala.concurrent.Future
@@ -589,6 +591,25 @@ trait OpenAIServiceWrapper
   ): Future[Seq[Batch]] =
     wrap(_.listBatches(pagination, order))
 
+  override def createModelResponse(
+    inputs: Inputs,
+    settings: CreateModelResponseSettings
+  ): Future[Response] = wrap(
+    _.createModelResponse(inputs, settings)
+  )
+
+  override def getModelResponse(
+    responseId: String,
+    include: Seq[String]
+  ): Future[Response] = wrap(
+    _.getModelResponse(responseId, include)
+  )
+
+  override def deleteModelResponse(
+    responseId: String
+  ): Future[DeleteResponse] = wrap(
+    _.deleteModelResponse(responseId)
+  )
 }
 
 private class OpenAICoreServiceWrapperImpl(

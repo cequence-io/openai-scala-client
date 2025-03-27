@@ -25,6 +25,7 @@ object EndPoint {
   case object assistants extends EndPoint
   case object vector_stores extends EndPoint
   case object runs extends EndPoint
+  case object responses extends EndPoint
 }
 
 sealed abstract class Param(value: String = "") extends NamedEnumValue(value)

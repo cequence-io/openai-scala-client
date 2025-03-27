@@ -3,6 +3,7 @@ package io.cequence.openaiscala.service.impl
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.cequence.openaiscala.JsonFormats._
+import io.cequence.openaiscala.domain.responsesapi.JsonFormats.{ inputsWrites, createModelResponseSettingsFormat, responseFormat }
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.Batch.BatchRow.buildBatchRows
 import io.cequence.openaiscala.domain.Batch._
@@ -20,6 +21,9 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
+import io.cequence.openaiscala.domain.responsesapi.Inputs
+import io.cequence.openaiscala.domain.responsesapi.CreateModelResponseSettings
+import io.cequence.openaiscala.domain.responsesapi.Response
 
 /**
  * Private impl. of [[OpenAIService]].
@@ -1145,6 +1149,37 @@ private[service] trait OpenAIServiceImpl
       readAttribute(response.json, "data").asSafeArray[Batch]
     }
   }
+
+  override def createModelResponse(
+    inputs: Inputs,
+    settings: CreateModelResponseSettings
+  ): Future[Response] = {
+    val input = inputsWrites.writes(inputs)
+    val body = Json.toJsObject(settings)(createModelResponseSettingsFormat)
+
+    execPOSTBody(
+      EndPoint.responses,
+      body = body ++ Json.obj("input" -> input)
+    ).map(_.asSafeJson[Response])
+  }
+
+  override def getModelResponse(
+    responseId: String,
+    include: Seq[String]
+  ): Future[Response] =
+    execGET(
+      EndPoint.responses,
+      endPointParam = Some(responseId)
+      // params = includeParams(include)
+    ).map(_.asSafeJson[Response])
+
+  override def deleteModelResponse(
+    responseId: String
+  ): Future[DeleteResponse] =
+    execDELETERich(
+      EndPoint.responses,
+      endPointParam = Some(responseId)
+    ).map(handleDeleteEndpointResponse)
 
   private def asSafeJsonIfFound[T: Reads](response: Future[RichResponse]): Future[Option[T]] =
     response.map { response =>

@@ -9,6 +9,9 @@ import io.cequence.openaiscala.domain._
 
 import java.io.File
 import scala.concurrent.Future
+import io.cequence.openaiscala.domain.responsesapi.Inputs
+import io.cequence.openaiscala.domain.responsesapi.CreateModelResponseSettings
+import io.cequence.openaiscala.domain.responsesapi.Response
 
 /**
  * Central service to access all public OpenAI WS endpoints as defined at <a
@@ -18,8 +21,8 @@ import scala.concurrent.Future
  *
  *   - '''Models''': listModels, and retrieveModel
  *   - '''Completions''': createCompletion
- *   - '''Chat Completions''': createChatCompletion, createChatFunCompletion (deprecated), and
- *     createChatToolCompletion
+ *   - '''Chat Completions''': createChatCompletion, createChatWebSearchCompletion,
+ *     createChatFunCompletion (deprecated), and createChatToolCompletion
  *   - '''Edits''': createEdit (deprecated)
  *   - '''Images''': createImage, createImageEdit, createImageVariation
  *   - '''Embeddings''': createEmbeddings
@@ -43,7 +46,7 @@ import scala.concurrent.Future
  *     and deleteAssistant
  *   - '''Assistant Files''': createAssistantFile, listAssistantFiles, retrieveAssistantFile,
  *     and deleteAssistantFile
- *
+ *   - ''''Responses''' - createModelResponse, getModelResponse, and deleteModelResponse
  * @since Sep
  *   2024
  */
@@ -672,7 +675,7 @@ trait OpenAIService extends OpenAICoreService {
    * @param before
    *   A cursor for use in pagination. before is an object ID that defines your place in the
    *   list. For instance, if you make a list request and receive 100 objects, ending with
-   *   `obj_foo`, your subsequent call can include `before=obj_foo`` in order to fetch the
+   *   `obj_foo`, your subsequent call can include `before=obj_foo` in order to fetch the
    *   previous page of the list.
    * @see
    *   <a
@@ -1556,4 +1559,56 @@ trait OpenAIService extends OpenAICoreService {
     pagination: Pagination = Pagination.default,
     order: Option[SortOrder] = None
   ): Future[Seq[Batch]]
+
+  /**
+   * Creates a model response for the given input data.
+   *
+   * @param inputs
+   *   The input data to create a response for.
+   * @param settings
+   *   Settings to customize the response creation.
+   * @return
+   *   A Future containing the Response object.
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/responses/create">OpenAI Doc</a>
+   */
+  def createModelResponse(
+    inputs: Inputs,
+    settings: CreateModelResponseSettings = DefaultSettings.CreateModelResponse
+  ): Future[Response]
+
+  /**
+   * Retrieves a model response by its ID.
+   *
+   * @param responseId
+   *   The ID of the response to retrieve.
+   * @param include
+   *   Optional list of related objects to include in the response.
+   * @return
+   *   A Future containing the Response object.
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/responses/retrieve">OpenAI
+   *   Doc</a>
+   */
+  def getModelResponse(
+    responseId: String,
+    include: Seq[String] = Nil
+  ): Future[Response]
+
+  /**
+   * Deletes a model response by its ID.
+   *
+   * @param responseId
+   *   The ID of the response to delete.
+   * @return
+   *   A Future containing the DeleteResponse object, indicating the result of the deletion.
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/responses/delete">OpenAI Doc</a>
+   */
+  def deleteModelResponse(
+    responseId: String
+  ): Future[DeleteResponse]
 }

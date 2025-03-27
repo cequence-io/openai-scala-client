@@ -2,6 +2,7 @@ package io.cequence.openaiscala.service
 
 import io.cequence.openaiscala.domain.ModelId
 import io.cequence.openaiscala.domain.settings._
+import io.cequence.openaiscala.domain.responsesapi.CreateModelResponseSettings
 
 /**
  * Constants of [[OpenAIService]], mostly defaults
@@ -93,7 +94,10 @@ trait OpenAIServiceConsts {
       model = ModelId.gpt_4o_2024_08_06
     )
 
-    // keep all OpenAI defaults
     val CreateModeration = CreateModerationSettings()
+
+    val CreateModelResponse = CreateModelResponseSettings(
+      model = ModelId.gpt_4o
+    )
   }
 }
