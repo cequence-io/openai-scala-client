@@ -783,10 +783,16 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
           text = "This is a response from the model",
           annotations = Seq(
             Annotation.UrlCitation(
-              startIndex = 0, endIndex = 10, url = "https://example.com/1", title = "annotation1"
+              startIndex = 0,
+              endIndex = 10,
+              url = "https://example.com/1",
+              title = "annotation1"
             ),
             Annotation.UrlCitation(
-              startIndex = 11, endIndex = 21, url = "https://example.com/2", title = "annotation2"
+              startIndex = 11,
+              endIndex = 21,
+              url = "https://example.com/2",
+              title = "annotation2"
             )
           )
         ),
