@@ -38,7 +38,8 @@ object CreateModelResponseWithFunctions extends Example {
         )
       )
       .map { response =>
-        val functionCall = response.outputFunctionCalls.headOption.getOrElse(throw new RuntimeException("No function call output found"))
+        val functionCall = response.outputFunctionCalls.headOption
+          .getOrElse(throw new RuntimeException("No function call output found"))
 
         println(
           s"""Function Call Details:

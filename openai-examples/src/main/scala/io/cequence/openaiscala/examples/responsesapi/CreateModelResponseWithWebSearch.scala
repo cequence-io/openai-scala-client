@@ -23,8 +23,9 @@ object CreateModelResponseWithWebSearch extends Example {
         println(response.outputText.getOrElse("N/A"))
 
         // citations
-        val citations: Seq[Annotation.UrlCitation] = response.outputMessageContents.collect { case e: OutputText =>
-          e.annotations.collect { case citation: Annotation.UrlCitation => citation }
+        val citations: Seq[Annotation.UrlCitation] = response.outputMessageContents.collect {
+          case e: OutputText =>
+            e.annotations.collect { case citation: Annotation.UrlCitation => citation }
         }.flatten
 
         println("Citations:")

@@ -3,7 +3,11 @@ package io.cequence.openaiscala.service.impl
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.cequence.openaiscala.JsonFormats._
-import io.cequence.openaiscala.domain.responsesapi.JsonFormats.{ inputsWrites, createModelResponseSettingsFormat, responseFormat }
+import io.cequence.openaiscala.domain.responsesapi.JsonFormats.{
+  inputsWrites,
+  createModelResponseSettingsFormat,
+  responseFormat
+}
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.Batch.BatchRow.buildBatchRows
 import io.cequence.openaiscala.domain.Batch._

@@ -149,32 +149,33 @@ object JsonFormats {
   private implicit lazy val fileCitationFormat: OFormat[Annotation.FileCitation] =
     Json.format[Annotation.FileCitation]
 
-  private implicit lazy val annotationReads: Reads[Annotation] = {
-    (json: JsValue) => {
+  private implicit lazy val annotationReads: Reads[Annotation] = { (json: JsValue) =>
+    {
       val citationType = (json \ "type").as[String]
 
       println(s"citationType: $citationType")
 
       citationType match {
-        case "url_citation" => urlCitationFormat.reads(json)
+        case "url_citation"  => urlCitationFormat.reads(json)
         case "file_citation" => fileCitationFormat.reads(json)
-        case unknown => JsError(s"Unknown citation type: $unknown")
+        case unknown         => JsError(s"Unknown citation type: $unknown")
       }
     }
   }
 
   private implicit lazy val annotationWrites: Writes[Annotation] = {
-    (annotation: Annotation) => {
-      val jsObject = annotation match {
-        case urlCitation: Annotation.UrlCitation =>  urlCitationFormat.writes(urlCitation)
-        case fileCitation: Annotation.FileCitation =>  fileCitationFormat.writes(fileCitation)
-      }
+    (annotation: Annotation) =>
+      {
+        val jsObject = annotation match {
+          case urlCitation: Annotation.UrlCitation   => urlCitationFormat.writes(urlCitation)
+          case fileCitation: Annotation.FileCitation => fileCitationFormat.writes(fileCitation)
+        }
 
-      jsObject + ("type" -> JsString(annotation.`type`))
-    }
+        jsObject + ("type" -> JsString(annotation.`type`))
+      }
   }
 
-  implicit lazy val annotationFormat: Format[Annotation] = 
+  implicit lazy val annotationFormat: Format[Annotation] =
     Format(annotationReads, annotationWrites)
 
   private implicit lazy val outputMessageContentTextFormat

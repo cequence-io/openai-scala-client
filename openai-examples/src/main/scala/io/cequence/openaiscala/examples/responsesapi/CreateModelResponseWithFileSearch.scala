@@ -30,8 +30,9 @@ object CreateModelResponseWithFileSearch extends Example {
         println(response.outputText.getOrElse("N/A"))
 
         // citations
-        val citations: Seq[Annotation.FileCitation] = response.outputMessageContents.collect { case e: OutputText =>
-          e.annotations.collect { case citation: Annotation.FileCitation => citation }
+        val citations: Seq[Annotation.FileCitation] = response.outputMessageContents.collect {
+          case e: OutputText =>
+            e.annotations.collect { case citation: Annotation.FileCitation => citation }
         }.flatten
 
         println("Citations:")
