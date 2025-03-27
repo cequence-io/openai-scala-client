@@ -95,9 +95,9 @@ final case class Response(
 
   /**
    * Shortcut that returns the output message contents from the response.
-    *
-    * @return
-    */
+   *
+   * @return
+   */
   def outputMessageContents: Seq[OutputMessageContent] =
     output.collect { case output: Message.OutputContent => output.content }.flatten
 
