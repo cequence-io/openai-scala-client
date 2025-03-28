@@ -133,6 +133,7 @@ object ModelId {
   val tts_1_hd_1106 = "tts-1-hd-1106"
   val canary_tts = "canary-tts"
   val canary_whisper = "canary-whisper"
+  val gpt_4o_mini_transcribe = "gpt-4o-mini-transcribe"
 
   // Image gen
   val dall_e_3 = "dall-e-3"
@@ -229,6 +230,7 @@ object ModelId {
   val gpt_4_1106_vision_preview = "gpt-4-1106-vision-preview"
 
   val computer_use_preview = "computer-use-preview"
+  val computer_use_preview_2025_03_11 = "computer-use-preview-2025-03-11"
 
   // Other
   @Deprecated
