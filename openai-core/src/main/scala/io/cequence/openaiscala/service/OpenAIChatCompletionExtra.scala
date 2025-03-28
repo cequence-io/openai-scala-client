@@ -188,6 +188,7 @@ object OpenAIChatCompletionExtra {
     ModelId.o1_2024_12_17,
     ModelId.o3_mini,
     ModelId.o3_mini_2025_01_31,
+    NonOpenAIModelId.gemini_2_5_pro_exp_03_25,
     NonOpenAIModelId.gemini_2_0_flash,
     NonOpenAIModelId.gemini_2_0_flash_001,
     NonOpenAIModelId.gemini_2_0_pro_exp_02_05,
