@@ -168,6 +168,7 @@ object NonOpenAIModelId {
   val qwen2_72b_instruct = "Qwen/Qwen2-72B-Instruct" // Together AI
 
   // Google Gemini and Vertex AI
+  val gemini_2_5_pro_exp_03_25 = "gemini-2.5-pro-exp-03-25"
   val gemini_2_0_pro_exp_02_05 = "gemini-2.0-pro-exp-02-05"
   val gemini_2_0_pro_exp = "gemini-2.0-pro-exp"
   val gemini_2_0_flash_thinking_exp_01_21 = "gemini-2.0-flash-thinking-exp-01-21"
@@ -280,6 +281,7 @@ object NonOpenAIModelId {
   val deepseek_reasoner = "deepseek-reasoner" // Deepseek
   val deepseek_r1_distill_llama_70b =
     "deepseek-r1-distill-llama-70b" // Groq, Cerebras and Fireworks
+  val deepseek_ai_deepSeek_r1 = "deepseek-ai/DeepSeek-R1" // Together AI
   val deepseek_ai_deepseek_r1_distill_llama_70b_free =
     "deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free" // Together AI
   val deepseek_ai_deepseek_r1_distill_llama_70b =
@@ -288,10 +290,11 @@ object NonOpenAIModelId {
     "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B" // Together AI
   val deepseek_ai_deepseek_r1_distill_qwen_1_5b =
     "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B" // Together AI
+  val "deepseek_ai_deepSeek_v3" = "deepseek-ai/DeepSeek-V3"
   val deepseek_ai_deepseek_r1 = "deepseek-ai/DeepSeek-R1" // Together AI
-  // context 64K, 4K (8KBeta)
   val deepseek_r1 = "deepseek-r1" // Fireworks
   val deepseek_v3 = "deepseek-v3" // Fireworks
+  val deepseek_v3_0324 = "deepseek-v3-0324" // Fireworks
   val deepseek_v2_lite_chat = "deepseek-v2-lite-chat" // Fireworks
   val deepseek_ai_deepseek_v3 = "deepseek-ai/DeepSeek-V3" // Together AI
 
