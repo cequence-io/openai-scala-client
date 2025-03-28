@@ -6,13 +6,23 @@ import io.cequence.openaiscala.domain.ChatRole
  * Input types hierarchy:
  *
  *   - Text input (string)
- *   - Input item list (array) \|- Input message (object) - content, role \|- Content - Text
- *     input (string) or Input item content list (array) \|- Input item content \|- Text input
- *     (object) \|- Image input (object) \|- File input (object) \|- Item (object) \|- Input
- *     message (object) - content, role, status \|- Output message (object) \|- File search
- *     tool call (object) \|- Computer tool call (object) \|- Computer tool call output
- *     (object) \|- Web search tool call (object) \|- Function tool call (object) \|- Function
- *     tool call output (object) \|- Reasoning (object) \|- Item reference (object)
+ *   - Input item list (array)
+ *     - Input message (object) - content, role
+ *       - Content - Text input (string) or Input item content list (array)
+ *         - Text input (object)
+ *         - Image input (object)
+ *         - File input (object)
+ *     - Item (object)
+ *       - Input message (object) - content, role, status
+ *       - Output message (object)
+ *       - File search tool call (object)
+ *       - Computer tool call (object)
+ *       - Computer tool call output (object)
+ *       - Web search tool call (object)
+ *       - Function tool call (object)
+ *       - Function tool call output (object)
+ *       - Reasoning (object)
+ *       - Item reference (object)
  */
 trait Input
 
@@ -73,7 +83,13 @@ object Input {
     id: String,
     pendingSafetyChecks: Seq[tools.PendingSafetyCheck] = Nil,
     status: ModelStatus
-  ) = tools.ComputerToolCall(action, callId, id, pendingSafetyChecks, status)
+  ) = tools.ComputerToolCall(
+    action,
+    callId,
+    id,
+    pendingSafetyChecks,
+    status
+  )
 
   def ofComputerToolCallOutput(
     callId: String,
@@ -81,7 +97,13 @@ object Input {
     acknowledgedSafetyChecks: Seq[tools.AcknowledgedSafetyCheck] = Nil,
     id: Option[String] = None,
     status: Option[ModelStatus] = None
-  ) = tools.ComputerToolCallOutput(callId, output, acknowledgedSafetyChecks, id, status)
+  ) = tools.ComputerToolCallOutput(
+    callId,
+    output,
+    acknowledgedSafetyChecks,
+    id,
+    status
+  )
 
   def ofWebSearchToolCall(
     id: String,

@@ -10,7 +10,7 @@ import scala.concurrent.Future
 /**
  * Requires `GOOGLE_API_KEY` environment variable to be set.
  */
-  // TODO: remove this... we have a better provider for Gemini. See [[GoogleGeminiCreateChatCompletionJSONWithOpenAIAdapter]]
+// TODO: remove this... we have a better provider for Gemini. See [[GoogleGeminiCreateChatCompletionJSONWithOpenAIAdapter]]
 object GoogleGeminiCreateChatCompletion extends ExampleBase[OpenAIChatCompletionService] {
 
   override val service: OpenAIChatCompletionService = ChatCompletionProvider.gemini
