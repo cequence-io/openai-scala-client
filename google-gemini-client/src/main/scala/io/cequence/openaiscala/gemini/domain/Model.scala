@@ -44,7 +44,7 @@ case class Model(
   baseModelId: Option[String],
   version: String,
   displayName: String,
-  description: String,
+  description: Option[String],
   inputTokenLimit: Int,
   outputTokenLimit: Int,
   supportedGenerationMethods: Seq[String] = Nil,
