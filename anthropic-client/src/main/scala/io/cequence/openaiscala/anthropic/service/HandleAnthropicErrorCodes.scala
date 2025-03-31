@@ -10,6 +10,11 @@ import io.cequence.wsclient.service.WSClient
  */
 trait HandleAnthropicErrorCodes extends WSClient {
 
+  private val TokenCountExceededMessages = Set(
+    "input length and `max_tokens` exceed context limit",
+    "prompt is too long"
+  )
+
   override protected def handleErrorCodes(
     httpCode: Int,
     message: String
@@ -19,7 +24,7 @@ trait HandleAnthropicErrorCodes extends WSClient {
 
       case 400 => {
         // Check if the error message indicates token count exceeded
-        if (message.toLowerCase.contains("prompt is too long") && message.toLowerCase.contains("tokens")) {
+        if (TokenCountExceededMessages.exists(message.contains)) {
           throw new AnthropicScalaTokenCountExceededException(errorMessage)
         } else {
           // 400 - invalid_request_error: There was an issue with the format or content of your request.

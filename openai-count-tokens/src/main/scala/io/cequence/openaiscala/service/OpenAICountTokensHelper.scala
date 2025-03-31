@@ -166,7 +166,7 @@ trait OpenAICountTokensHelper {
    * @param modelType
    * @return
    */
-  protected def countTokens(
+  def countTokens(
     text: String,
     modelType: Option[ModelType] = None
   ) = {
