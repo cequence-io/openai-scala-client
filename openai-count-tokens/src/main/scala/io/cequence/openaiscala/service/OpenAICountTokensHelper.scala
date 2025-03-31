@@ -6,6 +6,7 @@ import io.cequence.openaiscala.JsonFormats
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain._
 import play.api.libs.json.Json
+import com.knuddels.jtokkit.api.ModelType
 
 // based on: https://jtokkit.knuddels.de/docs/getting-started/recipes/chatml
 trait OpenAICountTokensHelper {
@@ -73,6 +74,7 @@ trait OpenAICountTokensHelper {
 
     message match {
       case m: SystemMessage => count(m.content)
+      case m: DeveloperMessage => count(m.content)
       case m: UserMessage   => count(m.content)
       case m: UserSeqMessage =>
         val contents = m.content.map(Json.toJson(_)(JsonFormats.contentWrites).toString())
@@ -154,5 +156,21 @@ trait OpenAICountTokensHelper {
   ): Int = {
     val promptDefinitions = FunctionCallOpenAISerializer.formatFunctionDefinitions(functions)
     encoding.countTokens(promptDefinitions) + 9
+  }
+
+  /**
+    * Counts the tokens of a text using the encoding for the given model type.
+    * Default model type is GPT_4O, which uses the O200K_BASE encoding.
+    *
+    * @param text
+    * @param modelType
+    * @return
+    */
+  protected def countTokens(
+    text: String,
+    modelType: Option[ModelType] = None
+  ) = {
+    val encoding = registry.getEncodingForModel(modelType.getOrElse(ModelType.GPT_4O))
+    encoding.countTokens(text)
   }
 }
