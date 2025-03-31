@@ -73,9 +73,9 @@ trait OpenAICountTokensHelper {
     def countOpt(s: Option[String]) = s.map(count(_)).getOrElse(0)
 
     message match {
-      case m: SystemMessage => count(m.content)
+      case m: SystemMessage    => count(m.content)
       case m: DeveloperMessage => count(m.content)
-      case m: UserMessage   => count(m.content)
+      case m: UserMessage      => count(m.content)
       case m: UserSeqMessage =>
         val contents = m.content.map(Json.toJson(_)(JsonFormats.contentWrites).toString())
         count(contents: _*)
@@ -159,13 +159,13 @@ trait OpenAICountTokensHelper {
   }
 
   /**
-    * Counts the tokens of a text using the encoding for the given model type.
-    * Default model type is GPT_4O, which uses the O200K_BASE encoding.
-    *
-    * @param text
-    * @param modelType
-    * @return
-    */
+   * Counts the tokens of a text using the encoding for the given model type. Default model
+   * type is GPT_4O, which uses the O200K_BASE encoding.
+   *
+   * @param text
+   * @param modelType
+   * @return
+   */
   protected def countTokens(
     text: String,
     modelType: Option[ModelType] = None
