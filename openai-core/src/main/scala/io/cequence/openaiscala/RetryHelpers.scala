@@ -148,14 +148,24 @@ trait RetryHelpers {
       ec: ExecutionContext,
       scheduler: Scheduler
     ): Future[T] = {
+      assert(
+        inputsAndMessagesToTryInOrder.nonEmpty || lastException.nonEmpty,
+        "At least one input or last exception must be defined!"
+      )
+
       inputsAndMessagesToTryInOrder match {
         case Nil =>
-          val lastExceptionMessage = lastException.map(_.getMessage).getOrElse("N/A")
-          Future.failed(
-            new OpenAIScalaClientException(
-              s"No more failover inputs to try! Last error: ${lastExceptionMessage}"
+          val lastExceptionActual = lastException.getOrElse(
+            throw new OpenAIScalaClientException(
+              s"Should never happen. No last exception provided!"
             )
           )
+
+          logger.error(
+            s"No more failover inputs to try! Throwing the last error: ${lastExceptionActual.getMessage}"
+          )
+
+          Future.failed(lastExceptionActual)
 
         case _ =>
           val (input, inputLogMessage) = inputsAndMessagesToTryInOrder.head

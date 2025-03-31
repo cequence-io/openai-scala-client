@@ -23,6 +23,7 @@ trait ExampleBase[T <: CloseableService] {
 
   def main(args: Array[String]): Unit = {
     run.recover { case e: Exception =>
+      println("Error received:")
       e.printStackTrace()
       closeAll()
       System.exit(1)
