@@ -23,7 +23,6 @@ class AnthropicScalaClientUnknownHostException(
   def this(message: String) = this(message, null)
 }
 
-// TODO: no usage?
 class AnthropicScalaTokenCountExceededException(
   message: String,
   cause: Throwable

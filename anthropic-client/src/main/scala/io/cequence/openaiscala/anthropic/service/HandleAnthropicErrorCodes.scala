@@ -17,6 +17,17 @@ trait HandleAnthropicErrorCodes extends WSClient {
     val errorMessage = s"Code ${httpCode} : ${message}"
     httpCode match {
 
+      case 400 => {
+        // Check if the error message indicates token count exceeded
+        if (message.toLowerCase.contains("prompt is too long") && message.toLowerCase.contains("tokens")) {
+          throw new AnthropicScalaTokenCountExceededException(errorMessage)
+        } else {
+          // 400 - invalid_request_error: There was an issue with the format or content of your request.
+          // We may also use this error type for other 4XX status codes not listed below.
+          throw new AnthropicScalaClientException(errorMessage)
+        }
+      }
+
       // 401 - authentication_error: There’s an issue with your API key.
       case 401 => throw new AnthropicScalaUnauthorizedException(errorMessage)
 
@@ -34,9 +45,6 @@ trait HandleAnthropicErrorCodes extends WSClient {
 
       // 529 - overloaded_error: Anthropic’s API is temporarily overloaded.
       case 529 => throw new AnthropicScalaEngineOverloadedException(errorMessage)
-
-      // 400 - invalid_request_error: There was an issue with the format or content of your request. We may also use this error type for other 4XX status codes not listed below.
-      case 400 => throw new AnthropicScalaClientException(errorMessage)
 
       case _ => throw new AnthropicScalaClientException(errorMessage)
     }
