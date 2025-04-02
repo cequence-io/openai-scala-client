@@ -281,7 +281,6 @@ object NonOpenAIModelId {
   val deepseek_reasoner = "deepseek-reasoner" // Deepseek
   val deepseek_r1_distill_llama_70b =
     "deepseek-r1-distill-llama-70b" // Groq, Cerebras and Fireworks
-  val deepseek_ai_deepSeek_r1 = "deepseek-ai/DeepSeek-R1" // Together AI
   val deepseek_ai_deepseek_r1_distill_llama_70b_free =
     "deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free" // Together AI
   val deepseek_ai_deepseek_r1_distill_llama_70b =
@@ -290,7 +289,6 @@ object NonOpenAIModelId {
     "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B" // Together AI
   val deepseek_ai_deepseek_r1_distill_qwen_1_5b =
     "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B" // Together AI
-  val deepseek_ai_deepSeek_v3 = "deepseek-ai/DeepSeek-V3"
   val deepseek_ai_deepseek_r1 = "deepseek-ai/DeepSeek-R1" // Together AI
   val deepseek_r1 = "deepseek-r1" // Fireworks
   val deepseek_v3 = "deepseek-v3" // Fireworks
