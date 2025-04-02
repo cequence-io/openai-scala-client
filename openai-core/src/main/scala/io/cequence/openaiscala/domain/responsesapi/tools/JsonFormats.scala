@@ -274,7 +274,8 @@ object JsonFormats {
       (__ \ "action").format[ComputerToolAction] and
         (__ \ "call_id").format[String] and
         (__ \ "id").format[String] and
-        (__ \ "pending_safety_checks").formatWithDefault(Seq.empty[PendingSafetyCheck]) and
+        (__ \ "pending_safety_checks")
+          .formatWithDefault[Seq[PendingSafetyCheck]](Seq.empty[PendingSafetyCheck]) and
         (__ \ "status").format[ModelStatus]
     )(
       ComputerToolCall.apply _,
@@ -284,9 +285,9 @@ object JsonFormats {
   implicit lazy val fileSearchToolCallFormat: OFormat[FileSearchToolCall] =
     (
       (__ \ "id").format[String] and
-        (__ \ "queries").formatWithDefault(Seq.empty[String]) and
+        (__ \ "queries").formatWithDefault[Seq[String]](Seq.empty[String]) and
         (__ \ "status").format[ModelStatus] and
-        (__ \ "results").formatWithDefault(Seq.empty[FileSearchResult])
+        (__ \ "results").formatWithDefault[Seq[FileSearchResult]](Seq.empty[FileSearchResult])
     )(
       FileSearchToolCall.apply _,
       (x: FileSearchToolCall) => (x.id, x.queries, x.status, x.results)
@@ -348,7 +349,7 @@ object JsonFormats {
     (
       (__ \ "call_id").format[String] and
         (__ \ "output").format[ComputerScreenshot] and
-        (__ \ "acknowledged_safety_checks").formatWithDefault(
+        (__ \ "acknowledged_safety_checks").formatWithDefault[Seq[AcknowledgedSafetyCheck]](
           Seq.empty[AcknowledgedSafetyCheck]
         ) and
         (__ \ "id").formatNullable[String] and

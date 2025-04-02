@@ -25,7 +25,7 @@ object CreateModelResponseWithFunctions extends Example {
                     description = Some("The city and state, e.g. San Francisco, CA")
                   ),
                   "unit" -> JsonSchema.String(
-                    enum = Seq("celsius", "fahrenheit")
+                    `enum` = Seq("celsius", "fahrenheit")
                   )
                 ),
                 required = Seq("location", "unit")
