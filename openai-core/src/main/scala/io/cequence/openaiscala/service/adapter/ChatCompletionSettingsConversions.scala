@@ -127,9 +127,10 @@ object ChatCompletionSettingsConversions {
     ),
     // reasoning format
     FieldConversionDef(
-      settings => settings.model.endsWith(
-        NonOpenAIModelId.deepseek_r1_distill_llama_70b
-      ) && reasoningFormat.isDefined,
+      settings =>
+        settings.model.endsWith(
+          NonOpenAIModelId.deepseek_r1_distill_llama_70b
+        ) && reasoningFormat.isDefined,
       _.setReasoningFormat(reasoningFormat.get),
       Some(
         s"Setting reasoning format '${reasoningFormat.get}' for Groq deepseek R1 model."

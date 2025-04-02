@@ -104,5 +104,4 @@ object Input {
   def ofItemReference(
     id: String
   ) = ItemReference(id)
-
 }
