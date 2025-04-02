@@ -5,16 +5,10 @@ import io.cequence.openaiscala.domain.responsesapi.tools.JsonFormats._
 import io.cequence.openaiscala.domain.responsesapi.JsonFormats._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
-import play.api.libs.json.{Format, Json, JsObject, JsString}
-import io.cequence.openaiscala.domain.responsesapi.ModelStatus
-import io.cequence.openaiscala.domain.responsesapi.tools.ComputerToolAction.ButtonClick
-import io.cequence.openaiscala.domain.responsesapi.tools.FileFilter.ComparisonOperator
-import io.cequence.openaiscala.domain.ChatRole
 import io.cequence.openaiscala.domain.responsesapi._
-import io.cequence.openaiscala.domain.responsesapi.Annotation
-import io.cequence.openaiscala.domain.responsesapi.OutputMessageContent.OutputText
-import play.api.libs.json.Writes
-import play.api.libs.json.Reads
+import io.cequence.openaiscala.domain.responsesapi.tools._
+import io.cequence.openaiscala.domain.ChatRole
+import play.api.libs.json._
 import java.{util => ju}
 
 object JsonFormatsSpecs {
@@ -139,7 +133,7 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
           filters = Some(
             FileFilter.ComparisonFilter(
               key = "category",
-              `type` = ComparisonOperator.Eq,
+              `type` = FileFilter.ComparisonOperator.Eq,
               value = "document"
             )
           ),
@@ -320,7 +314,7 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
       testCodec[ToolCall](
         ComputerToolCall(
           action = ComputerToolAction.Click(
-            button = ButtonClick.Left,
+            button = ComputerToolAction.ButtonClick.Left,
             x = 100,
             y = 200
           ),
@@ -801,12 +795,14 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
           |    "start_index" : 0,
           |    "end_index" : 10,
           |    "url" : "https://example.com/1",
-          |    "title" : "annotation1"
+          |    "title" : "annotation1",
+          |    "type" : "url_citation"
           |  }, {
           |    "start_index" : 11,
           |    "end_index" : 21,
           |    "url" : "https://example.com/2",
-          |    "title" : "annotation2"
+          |    "title" : "annotation2",
+          |    "type" : "url_citation"
           |  } ],
           |  "text" : "This is a response from the model",
           |  "type" : "output_text"
@@ -940,12 +936,14 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
           |      "start_index" : 0,
           |      "end_index" : 10,
           |      "url" : "https://example.com/citation1",
-          |      "title" : "Citation 1"
+          |      "title" : "Citation 1",
+          |      "type" : "url_citation"
           |    }, {
           |      "start_index" : 12,
           |      "end_index" : 22,
           |      "url" : "https://example.com/reference2",
-          |      "title" : "Reference 2"
+          |      "title" : "Reference 2",
+          |      "type" : "url_citation"
           |    } ],
           |    "text" : "The image shows a classic example of Renaissance architecture.",
           |    "type" : "output_text"
@@ -1117,7 +1115,7 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
     "serialize Input.ofComputerToolCall" in {
       val input = Input.ofComputerToolCall(
         action = ComputerToolAction.Click(
-          button = ButtonClick.Left,
+          button = ComputerToolAction.ButtonClick.Left,
           x = 100,
           y = 200
         ),
@@ -1375,7 +1373,7 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
       testCodec[Output](
         ComputerToolCall(
           action = ComputerToolAction.Click(
-            button = ButtonClick.Left,
+            button = ComputerToolAction.ButtonClick.Left,
             x = 100,
             y = 200
           ),
@@ -1636,7 +1634,7 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
             id = "msg_67ccd2bf17f0819081ff3bb2cf6508e60bb6a6b452d3795b",
             status = ModelStatus.Completed,
             content = Seq(
-              OutputText(
+              OutputMessageContent.OutputText(
                 text =
                   "In a peaceful grove beneath a silver moon, a unicorn named Lumina discovered a hidden pool that reflected the stars. As she dipped her horn into the water, the pool began to shimmer, revealing a pathway to a magical realm of endless night skies. Filled with wonder, Lumina whispered a wish for all who dream to find their own hidden magic, and as she glanced back, her hoofprints sparkled like stardust."
               )
