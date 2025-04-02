@@ -110,7 +110,9 @@ object ChatCompletionSettingsConversions {
 
   val o1Preview: SettingsConversion = generic(o1PreviewConversions)
 
-  private lazy val groqConversions = Seq(
+  def groqConversions(
+    reasoningFormat: Option[ReasoningFormat] = None
+  ) = Seq(
     // max tokens
     FieldConversionDef(
       settings =>
@@ -122,15 +124,16 @@ object ChatCompletionSettingsConversions {
       Some(
         "Groq deepseek R1 model doesn't support max_tokens, converting to max_completion_tokens."
       )
+    ),
+    // reasoning format
+    FieldConversionDef(
+      settings => settings.model.endsWith(
+        NonOpenAIModelId.deepseek_r1_distill_llama_70b
+      ) && reasoningFormat.isDefined,
+      _.setReasoningFormat(reasoningFormat.get),
+      Some(
+        s"Setting reasoning format '${reasoningFormat.get}' for Groq deepseek R1 model."
+      )
     )
   )
-
-  def groq(
-    reasoningFormat: Option[ReasoningFormat] = None
-  ): SettingsConversion = {
-    val conversions = generic(groqConversions)
-    reasoningFormat
-      .map(reasoningFormat => conversions.andThen(_.setReasoningFormat(reasoningFormat)))
-      .getOrElse(conversions)
-  }
 }
