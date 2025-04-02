@@ -1,10 +1,10 @@
 package io.cequence.openaiscala.domain.responsesapi
 
 import io.cequence.openaiscala.domain.ChatRole
+import io.cequence.openaiscala.domain.responsesapi.tools._
 
 trait Input
 
-// shortcuts for creating Inputs
 object Input {
 
   def ofInputTextMessage(
@@ -44,16 +44,16 @@ object Input {
     id: String,
     queries: Seq[String] = Nil,
     status: ModelStatus,
-    results: Seq[tools.FileSearchResult] = Nil
-  ) = tools.FileSearchToolCall(id, queries, status, results)
+    results: Seq[FileSearchResult] = Nil
+  ) = FileSearchToolCall(id, queries, status, results)
 
   def ofComputerToolCall(
-    action: tools.ComputerToolAction,
+    action: ComputerToolAction,
     callId: String,
     id: String,
-    pendingSafetyChecks: Seq[tools.PendingSafetyCheck] = Nil,
+    pendingSafetyChecks: Seq[PendingSafetyCheck] = Nil,
     status: ModelStatus
-  ) = tools.ComputerToolCall(
+  ) = ComputerToolCall(
     action,
     callId,
     id,
@@ -63,11 +63,11 @@ object Input {
 
   def ofComputerToolCallOutput(
     callId: String,
-    output: tools.ComputerScreenshot,
-    acknowledgedSafetyChecks: Seq[tools.AcknowledgedSafetyCheck] = Nil,
+    output: ComputerScreenshot,
+    acknowledgedSafetyChecks: Seq[AcknowledgedSafetyCheck] = Nil,
     id: Option[String] = None,
     status: Option[ModelStatus] = None
-  ) = tools.ComputerToolCallOutput(
+  ) = ComputerToolCallOutput(
     callId,
     output,
     acknowledgedSafetyChecks,
@@ -78,7 +78,7 @@ object Input {
   def ofWebSearchToolCall(
     id: String,
     status: ModelStatus
-  ) = tools.WebSearchToolCall(id, status)
+  ) = WebSearchToolCall(id, status)
 
   def ofFunctionToolCall(
     arguments: String,
@@ -86,14 +86,25 @@ object Input {
     name: String,
     id: Option[String] = None,
     status: Option[ModelStatus] = None
-  ) = tools.FunctionToolCall(arguments, callId, name, id, status)
+  ) = FunctionToolCall(
+    arguments,
+    callId,
+    name,
+    id,
+    status
+  )
 
   def ofFunctionToolCallOutput(
     callId: String,
     output: String,
     id: Option[String] = None,
     status: Option[ModelStatus] = None
-  ) = tools.FunctionToolCallOutput(callId, output, id, status)
+  ) = FunctionToolCallOutput(
+    callId,
+    output,
+    id,
+    status
+  )
 
   def ofReasoning(
     id: String,
