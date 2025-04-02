@@ -6,5 +6,7 @@ object Inputs {
 
   case class Text(text: String) extends Inputs
 
-  case class Items(items: Input*) extends Inputs
+  case class Items(
+    items: Input*
+  ) extends Inputs
 }
