@@ -3,8 +3,31 @@ package io.cequence.openaiscala.domain.responsesapi
 import io.cequence.openaiscala.domain.ChatRole
 import io.cequence.openaiscala.domain.responsesapi.tools._
 
+/**
+ * Input types hierarchy:
+ *
+ *   - Text input (string)
+ *   - Input item list (array)
+ *     - Input message (object) - content, role
+ *       - Content - Text input (string) or Input item content list (array)
+ *         - Text input (object)
+ *         - Image input (object)
+ *         - File input (object)
+ *     - Item (object)
+ *       - Input message (object) - content, role, status
+ *       - Output message (object)
+ *       - File search tool call (object)
+ *       - Computer tool call (object)
+ *       - Computer tool call output (object)
+ *       - Web search tool call (object)
+ *       - Function tool call (object)
+ *       - Function tool call output (object)
+ *       - Reasoning (object)
+ *       - Item reference (object)
+ */
 trait Input
 
+// shortcuts for creating Inputs
 object Input {
 
   def ofInputTextMessage(
