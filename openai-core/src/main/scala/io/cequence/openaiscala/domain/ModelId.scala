@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.domain
 
 /**
- * OpenAI models available as of `2023-12-05`.
+ * OpenAI models available as of `2025-04-02`.
  *
  * @since Jan
  *   2023
@@ -133,7 +133,22 @@ object ModelId {
   val tts_1_hd_1106 = "tts-1-hd-1106"
   val canary_tts = "canary-tts"
   val canary_whisper = "canary-whisper"
+
   val gpt_4o_mini_transcribe = "gpt-4o-mini-transcribe"
+  val gpt_4o_mini_audio_preview = "gpt-4o-mini-audio-preview"
+  val gpt_4o_mini_vision_preview = "gpt-4o-mini-vision-preview"
+  val gpt_4o_mini_voice_preview = "gpt-4o-mini-voice-preview"
+  val gpt_4o_audio_preview = "gpt-4o-audio-preview"
+  val gpt_4o_realtime_preview = "gpt-4o-realtime-preview"
+  val gpt_4o_realtime_2024_12_17 = "gpt-4o-realtime-2024-12-17"
+  val gpt_4o_realtime_2024_10_01_preview = "gpt-4o-realtime-2024-10-01-preview"
+  // 128K context (with training data upto April 2023)
+  // includes supports for vision in addition to gpt-4-turbo capabilities
+  val gpt_4_vision_preview = "gpt-4-vision-preview"
+  val gpt_4_1106_vision_preview = "gpt-4-1106-vision-preview"
+
+  val computer_use_preview = "computer-use-preview"
+  val computer_use_preview_2025_03_11 = "computer-use-preview-2025-03-11"
 
   // Image gen
   val dall_e_3 = "dall-e-3"
@@ -141,7 +156,7 @@ object ModelId {
 
   // GPT-3.5 (ChatGPT)
 
-  // The default ‘gpt-3.5-turbo’ will point to gpt-3.5-turbo-0125 starting Feb 15th.
+  // The default 'gpt-3.5-turbo' will point to gpt-3.5-turbo-0125 starting Feb 15th.
   val gpt_3_5_turbo = "gpt-3.5-turbo"
   @Deprecated // supported till 09/13/2023, 4k context (March 1st snapshot)
   val gpt_3_5_turbo_0301 = "gpt-3.5-turbo-0301"
@@ -165,12 +180,17 @@ object ModelId {
   // Q*/Strawberry
   val o3_mini = "o3-mini"
   val o3_mini_2025_01_31 = "o3-mini-2025-01-31"
+  // High-compute version of o3-mini
+  val o3_mini_high = "o3-mini-high"
   val o1 = "o1"
   val o1_2024_12_17 = "o1-2024-12-17"
   val o1_preview = "o1-preview"
   val o1_preview_2024_09_12 = "o1-preview-2024-09-12"
   val o1_mini = "o1-mini"
   val o1_mini_2024_09_12 = "o1-mini-2024-09-12"
+  // High-compute version of o1 for advanced reasoning
+  val o1_pro = "o1-pro"
+  val o1_pro_2025_03_19 = "o1-pro-2025-03-19"
 
   // GPT-4.5
 
@@ -224,13 +244,6 @@ object ModelId {
   val gpt_4_1106_preview = "gpt-4-1106-preview"
   // 128K context (with training data upto April 2023) - Jan 25th 2024 snapshot
   val gpt_4_0125_preview = "gpt-4-0125-preview"
-  // 128K context (with training data upto April 2023)
-  // includes supports for vision in addition to gpt-4-turbo capabilities
-  val gpt_4_vision_preview = "gpt-4-vision-preview"
-  val gpt_4_1106_vision_preview = "gpt-4-1106-vision-preview"
-
-  val computer_use_preview = "computer-use-preview"
-  val computer_use_preview_2025_03_11 = "computer-use-preview-2025-03-11"
 
   // Other
   @Deprecated
