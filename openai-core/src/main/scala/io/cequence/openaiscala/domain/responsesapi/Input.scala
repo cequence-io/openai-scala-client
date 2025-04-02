@@ -4,15 +4,6 @@ import io.cequence.openaiscala.domain.ChatRole
 
 trait Input
 
-sealed trait Inputs
-
-object Inputs {
-
-  case class Text(text: String) extends Inputs
-
-  case class Items(items: Input*) extends Inputs
-}
-
 // shortcuts for creating Inputs
 object Input {
 
