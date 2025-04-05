@@ -5,16 +5,19 @@ import io.cequence.openaiscala.domain.responsesapi.{ Inputs, Input }
 import io.cequence.openaiscala.domain.responsesapi.InputMessageContent
 import io.cequence.openaiscala.domain.ChatRole
 import io.cequence.openaiscala.examples.Example
+import io.cequence.openaiscala.domain.SortOrder
 
-object CreateModelResponseForImage extends Example {
+object ListModelResponseInputItems extends Example {
 
   override def run: Future[Unit] =
-    service
-      .createModelResponse(
-        Inputs.Items(
+    for {
+      response <- service
+        .createModelResponse(
+          Inputs.Items(
+          Input.ofInputSystemTextMessage("You are a pirate who likes to rhyme."),
           Input.ofInputMessage(
             Seq(
-              InputMessageContent.Text("what is in this image?"),
+              InputMessageContent.Text("What is in this image?"),
               InputMessageContent.Image(
                 imageUrl = Some(
                   "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"
@@ -25,12 +28,11 @@ object CreateModelResponseForImage extends Example {
           )
         )
       )
-      .map { response =>
-        import response.usage._
 
-        println(response.outputText.getOrElse("N/A"))
-        println(inputTokens)
-        println(outputTokens)
-        println(totalTokens)
-      }
+      inputItemsResponse <- service.listModelResponseInputItems(response.id, order = Some(SortOrder.asc))
+    } yield {
+      println(s"Response ID    : ${response.id}")
+      println(s"Response Text  : ${response.outputText.getOrElse("N/A")}")
+      println(s"Input Items    :\n${inputItemsResponse.data.map(item => s"${item.`type`} : ${item.toString()}").mkString("\n")}")
+    }
 }
