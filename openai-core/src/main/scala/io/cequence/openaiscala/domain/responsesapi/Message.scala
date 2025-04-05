@@ -76,7 +76,8 @@ object Message {
   final case class InputContent(
     content: Seq[InputMessageContent],
     role: ChatRole, // user, assistant, system, or developer
-    status: Option[ModelStatus] = None
+    status: Option[ModelStatus] = None,
+    id: Option[String] = None
   ) extends Message
       with Input
 

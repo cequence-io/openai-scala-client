@@ -25,7 +25,9 @@ import io.cequence.openaiscala.domain.responsesapi.tools._
  *       - Reasoning (object)
  *       - Item reference (object)
  */
-trait Input
+trait Input {
+  val `type`: String
+}
 
 // shortcuts for creating Inputs
 object Input {

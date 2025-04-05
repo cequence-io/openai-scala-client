@@ -94,7 +94,7 @@ object JsonFormats {
     Json.format[Reasoning]
 
   // item reference
-  implicit lazy val itemReferenceFormat: Format[ItemReference] =
+  implicit lazy val itemReferenceFormat: OFormat[ItemReference] =
     Json.format[ItemReference]
 
   // input tokens details
@@ -152,9 +152,6 @@ object JsonFormats {
   private implicit lazy val annotationReads: Reads[Annotation] = { (json: JsValue) =>
     {
       val citationType = (json \ "type").as[String]
-
-      println(s"citationType: $citationType")
-
       citationType match {
         case "url_citation"  => urlCitationFormat.reads(json)
         case "file_citation" => fileCitationFormat.reads(json)
@@ -209,36 +206,76 @@ object JsonFormats {
 
   // message hierarchy
 
-  implicit lazy val inputTextMessageFormat: Format[Message.InputText] =
+  implicit lazy val inputTextMessageFormat: OFormat[Message.InputText] =
     Json.format[Message.InputText]
 
-  implicit lazy val inputContentFormat: Format[Message.InputContent] =
+  implicit lazy val inputContentMessageFormat: OFormat[Message.InputContent] =
     Json.format[Message.InputContent]
 
-  implicit lazy val outputContentFormat: OFormat[Message.OutputContent] =
+  implicit lazy val outputContentMessageFormat: OFormat[Message.OutputContent] =
     Json.format[Message.OutputContent]
 
   implicit lazy val messageWrites: Writes[Message] = Writes[Message] {
     case inputTextMessage: Message.InputText => inputTextMessageFormat.writes(inputTextMessage)
-    case inputMessage: Message.InputContent  => inputContentFormat.writes(inputMessage)
-    case outputMessage: Message.OutputContent => outputContentFormat.writes(outputMessage)
+    case inputMessage: Message.InputContent  => inputContentMessageFormat.writes(inputMessage)
+    case outputMessage: Message.OutputContent =>
+      outputContentMessageFormat.writes(outputMessage)
   }
 
   // input hierarchy
 
-  implicit lazy val inputWrites: Writes[Input] = Writes[Input] {
-    case input: Message.InputText      => inputTextMessageFormat.writes(input)
-    case input: Message.InputContent   => inputContentFormat.writes(input)
-    case input: Message.OutputContent  => outputContentFormat.writes(input)
-    case input: FileSearchToolCall     => toolCallFormat.writes(input)
-    case input: ComputerToolCall       => toolCallFormat.writes(input)
-    case input: ComputerToolCallOutput => computerToolCallOutputFormat.writes(input)
-    case input: WebSearchToolCall      => toolCallFormat.writes(input)
-    case input: FunctionToolCall       => toolCallFormat.writes(input)
-    case input: FunctionToolCallOutput => functionToolCallOutputFormat.writes(input)
-    case input: Reasoning              => reasoningFormat.writes(input)
-    case input: ItemReference          => itemReferenceFormat.writes(input)
+  implicit lazy val inputWrites: Writes[Input] = Writes[Input] { (input: Input) =>
+    val jsObject = input match {
+      case input: Message.InputText      => inputTextMessageFormat.writes(input)
+      case input: Message.InputContent   => inputContentMessageFormat.writes(input)
+      case input: Message.OutputContent  => outputContentMessageFormat.writes(input)
+      case input: FileSearchToolCall     => fileSearchToolCallFormat.writes(input)
+      case input: ComputerToolCall       => computerToolCallFormat.writes(input)
+      case input: ComputerToolCallOutput => computerToolCallOutputFormat.writes(input)
+      case input: WebSearchToolCall      => webSearchToolCallFormat.writes(input)
+      case input: FunctionToolCall       => functionToolCallFormat.writes(input)
+      case input: FunctionToolCallOutput => functionToolCallOutputFormat.writes(input)
+      case input: Reasoning              => reasoningFormat.writes(input)
+      case input: ItemReference          => itemReferenceFormat.writes(input)
+    }
+    jsObject + ("type" -> JsString(input.`type`))
   }
+
+  implicit lazy val inputReads: Reads[Input] = Reads[Input] { json =>
+    (json \ "type").as[String] match {
+      case "message" =>
+        // Determine message type based on content
+        (json \ "content").validate[JsValue] match {
+          case JsSuccess(JsString(_), _) => inputTextMessageFormat.reads(json)
+          case JsSuccess(JsArray(items), _) =>
+            items.headOption.map { item =>
+              (item \ "type").validate[String] match {
+                case JsSuccess("output_text", _) | JsSuccess("refusal", _) =>
+                  outputContentMessageFormat.reads(json)
+                case JsSuccess("input_text", _) | JsSuccess("input_image", _) |
+                    JsSuccess("input_file", _) =>
+                  inputContentMessageFormat.reads(json)
+                case _ => JsError("Unknown Input type")
+              }
+            }.getOrElse(JsError("Content array is empty"))
+
+          case JsSuccess(_, _) => JsError("Content is not a string or array")
+          case JsError(_)      => JsError("Missing 'content' field for Input")
+        }
+
+      case "file_search_call"     => fileSearchToolCallFormat.reads(json)
+      case "computer_call"        => computerToolCallFormat.reads(json)
+      case "computer_call_output" => computerToolCallOutputFormat.reads(json)
+      case "web_search_call"      => webSearchToolCallFormat.reads(json)
+      case "function_call"        => functionToolCallFormat.reads(json)
+      case "function_call_output" => functionToolCallOutputFormat.reads(json)
+      case "reasoning"            => reasoningFormat.reads(json)
+      case "item_reference"       => itemReferenceFormat.reads(json)
+      case _                      => JsError("Missing type field for Input")
+    }
+  }
+
+  implicit lazy val inputFormat: Format[Input] = Format(inputReads, inputWrites)
 
   // inputs writes
 
@@ -252,7 +289,7 @@ object JsonFormats {
   implicit lazy val outputFormat: Format[Output] = new Format[Output] {
     override def reads(json: JsValue): JsResult[Output] = {
       (json \ "type").as[String] match {
-        case "message"          => outputContentFormat.reads(json)
+        case "message"          => outputContentMessageFormat.reads(json)
         case "file_search_call" => fileSearchToolCallFormat.reads(json)
         case "web_search_call"  => webSearchToolCallFormat.reads(json)
         case "computer_call"    => computerToolCallFormat.reads(json)
@@ -264,7 +301,7 @@ object JsonFormats {
 
     override def writes(output: Output): JsValue = {
       val jsObject = output match {
-        case output: Message.OutputContent => outputContentFormat.writes(output)
+        case output: Message.OutputContent => outputContentMessageFormat.writes(output)
         case output: FileSearchToolCall    => fileSearchToolCallFormat.writes(output)
         case output: WebSearchToolCall     => webSearchToolCallFormat.writes(output)
         case output: ComputerToolCall      => computerToolCallFormat.writes(output)
@@ -354,4 +391,10 @@ object JsonFormats {
     Json.format[IncompleteDetails]
 
   implicit lazy val responseFormat: Format[Response] = Json.format[Response]
+
+  implicit lazy val responsesDeleteResponseFormat: Format[DeleteResponse] =
+    Json.format[DeleteResponse]
+
+  implicit val inputItemsResponseFormat: Format[InputItemsResponse] =
+    Json.format[InputItemsResponse]
 }
