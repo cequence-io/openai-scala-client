@@ -32,6 +32,11 @@ object NonOpenAIModelId {
   val amazon_nova_micro_v1_0 = "amazon.nova-micro-v1:0"
 
   // Llama
+  // 400B params, 1 mil context
+  val llama4_maverick_instruct_basic = "llama4-maverick-instruct-basic" // Fireworks AI
+  // 107B params, 128k context
+  val llama4_scout_instruct_basic = "llama4-scout-instruct-basic" // Fireworks AI
+  val llama_4_scout_17b_16e_instruct = "meta-llama/llama-4-scout-17b-16e-instruct" // Groq
   val llama_3_3_70b_versatile = "llama-3.3-70b-versatile" // Groq
   val llama_3_3_70b_specdec = "llama-3.3-70b-specdec" // Groq
   val llama_v3p3_70b_instruct = "llama-v3p3-70b-instruct" // Fireworks AI
@@ -103,6 +108,7 @@ object NonOpenAIModelId {
   val meta_llama_3_8b_instruct_to_ai = "meta-llama/Meta-Llama-3-8B-Instruct" // Together AI
 
   // Mistral
+  val mistral_saba_24b = "mistral-saba-24b" // Groq
   // currently points to mistral-large-2407. mistral-large-2402 will be deprecated shortly.
   val mistral_large_latest = "mistral-large-latest" // Mistral
   val mistral_large_2407 = "mistral-large-2407" // Mistral
@@ -282,6 +288,7 @@ object NonOpenAIModelId {
   val deepseek_reasoner = "deepseek-reasoner" // Deepseek
   val deepseek_r1_distill_llama_70b =
     "deepseek-r1-distill-llama-70b" // Groq, Cerebras and Fireworks
+  val deepseek_r1_distill_qwen_32b = "deepseek-r1-distill-qwen-32b" // Groq
   val deepseek_ai_deepseek_r1_distill_llama_70b_free =
     "deepseek-ai/DeepSeek-R1-Distill-Llama-70B-free" // Together AI
   val deepseek_ai_deepseek_r1_distill_llama_70b =

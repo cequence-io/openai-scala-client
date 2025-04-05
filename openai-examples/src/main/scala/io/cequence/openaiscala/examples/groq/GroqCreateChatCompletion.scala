@@ -19,7 +19,7 @@ object GroqCreateChatCompletion extends ExampleBase[OpenAIChatCompletionService]
     UserMessage("What is the weather like in Norway?")
   )
 
-  private val modelId = NonOpenAIModelId.llama_3_3_70b_versatile
+  private val modelId = NonOpenAIModelId.llama_4_scout_17b_16e_instruct
 
   override protected def run: Future[_] =
     service
@@ -28,7 +28,7 @@ object GroqCreateChatCompletion extends ExampleBase[OpenAIChatCompletionService]
         settings = CreateChatCompletionSettings(
           model = modelId,
           temperature = Some(0.1),
-          max_tokens = Some(1024)
+          max_tokens = Some(2000)
         )
       )
       .map(printMessageContent)

@@ -21,7 +21,7 @@ object FireworksAICreateChatCompletionStreamed
     UserMessage("What is the weather like in Norway?")
   )
 
-  private val modelId = NonOpenAIModelId.llama_v3p3_70b_instruct
+  private val modelId = NonOpenAIModelId.llama4_scout_instruct_basic
 
   override protected def run: Future[_] =
     service
@@ -37,8 +37,7 @@ object FireworksAICreateChatCompletionStreamed
       )
       .runWith(
         Sink.foreach { completion =>
-          val content = completion.choices.headOption.flatMap(_.delta.content)
-          print(content.getOrElse(""))
+          print(completion.contentHead.getOrElse(""))
         }
       )
 }

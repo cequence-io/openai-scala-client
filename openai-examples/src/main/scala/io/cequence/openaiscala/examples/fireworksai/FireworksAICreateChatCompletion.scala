@@ -25,7 +25,7 @@ object FireworksAICreateChatCompletion extends ExampleBase[OpenAIChatCompletionS
   )
 
 //  private val modelId = NonOpenAIModelId.deepseek_r1
-  private val modelId = NonOpenAIModelId.llama_v3p1_405b_instruct
+  private val modelId = NonOpenAIModelId.llama4_maverick_instruct_basic
 
   override protected def run: Future[_] =
     service
