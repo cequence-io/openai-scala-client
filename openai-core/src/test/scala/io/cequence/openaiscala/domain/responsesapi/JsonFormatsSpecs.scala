@@ -993,24 +993,25 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
       )
     }
 
-    "serialize Input.ofInputTextMessage" in {
+    "serialize and deserialize Input.ofInputTextMessage" in {
       val input = Input.ofInputTextMessage(
         content = "Hello, world!",
         role = ChatRole.User
       )
 
-      testSerialization[Input](
+      testCodec[Input](
         input,
         """{
           |  "content" : "Hello, world!",
-          |  "role" : "user"
+          |  "role" : "user",
+          |  "type" : "message"
           |}""".stripMargin,
         Pretty
       )
     }
 
-    "serialize Input.ofInputMessage" in {
-      testSerialization[Input](
+    "serialize and deserialize Input.ofInputMessage" in {
+      testCodec[Input](
         Input.ofInputMessage(
           content = Seq(
             InputMessageContent.Text("Hello, I have a question about my data."),
@@ -1026,12 +1027,13 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
           |    "file_id" : "file_abc123",
           |    "type" : "input_file"
           |  } ],
-          |  "role" : "user"
+          |  "role" : "user",
+          |  "type" : "message"
           |}""".stripMargin,
         Pretty
       )
 
-      testSerialization[Input](
+      testCodec[Input](
         Input.ofInputMessage(
           content = Seq(
             InputMessageContent.Text("Hello, I have a question about my data."),
@@ -1049,13 +1051,14 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
           |    "type" : "input_file"
           |  } ],
           |  "role" : "user",
-          |  "status" : "completed"
+          |  "status" : "completed",
+          |  "type" : "message"
           |}""".stripMargin,
         Pretty
       )
     }
 
-    "serialize Input.ofOutputMessage" in {
+    "serialize and deserialize Input.ofOutputMessage" in {
       val input = Input.ofOutputMessage(
         content = Seq(
           OutputMessageContent.OutputText(text = "Here's the analysis of your data.")
@@ -1064,7 +1067,7 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
         status = ModelStatus.Completed
       )
 
-      testSerialization[Input](
+      testCodec[Input](
         input,
         """{
           |  "content" : [ {
@@ -1073,13 +1076,14 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
           |    "type" : "output_text"
           |  } ],
           |  "id" : "output_abc123",
-          |  "status" : "completed"
+          |  "status" : "completed",
+          |  "type" : "message"
           |}""".stripMargin,
         Pretty
       )
     }
 
-    "serialize Input.ofFileSearchToolCall" in {
+    "serialize and deserialize Input.ofFileSearchToolCall" in {
       val input = Input.ofFileSearchToolCall(
         id = "search_abc123",
         queries = Seq("Find documents about machine learning"),
@@ -1095,7 +1099,7 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
         )
       )
 
-      testSerialization[Input](
+      testCodec[Input](
         input,
         """{
           |  "id" : "search_abc123",
@@ -1135,7 +1139,7 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
         status = ModelStatus.InProgress
       )
 
-      testSerialization[Input](
+      testCodec[Input](
         input,
         """{
           |  "action" : {
@@ -1158,7 +1162,7 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
       )
     }
 
-    "serialize Input.ofComputerToolCallOutput" in {
+    "serialize and deserialize Input.ofComputerToolCallOutput" in {
       val input = Input.ofComputerToolCallOutput(
         callId = "computer_call_abc123",
         output = ComputerScreenshot(
@@ -1176,7 +1180,7 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
         status = Some(ModelStatus.Completed)
       )
 
-      testSerialization[Input](
+      testCodec[Input](
         input,
         """{
           |  "call_id" : "computer_call_abc123",
@@ -1191,19 +1195,20 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
           |    "message" : "Action confirmed"
           |  } ],
           |  "id" : "output_abc123",
-          |  "status" : "completed"
+          |  "status" : "completed",
+          |  "type" : "computer_call_output"
           |}""".stripMargin,
         Pretty
       )
     }
 
-    "serialize Input.ofWebSearchToolCall" in {
+    "serialize and deserialize Input.ofWebSearchToolCall" in {
       val input = Input.ofWebSearchToolCall(
         id = "web_search_abc123",
         status = ModelStatus.InProgress
       )
 
-      testSerialization[Input](
+      testCodec[Input](
         input,
         """{
           |  "id" : "web_search_abc123",
@@ -1214,7 +1219,7 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
       )
     }
 
-    "serialize Input.ofFunctionToolCall" in {
+    "serialize and deserialize Input.ofFunctionToolCall" in {
       val input = Input.ofFunctionToolCall(
         arguments = """{"location":"San Francisco, CA"}""",
         callId = "function_call_abc123",
@@ -1223,7 +1228,7 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
         status = Some(ModelStatus.Completed)
       )
 
-      testSerialization[Input](
+      testCodec[Input](
         input,
         """{
           |  "arguments" : "{\"location\":\"San Francisco, CA\"}",
@@ -1237,7 +1242,7 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
       )
     }
 
-    "serialize Input.ofFunctionToolCallOutput" in {
+    "serialize and deserialize Input.ofFunctionToolCallOutput" in {
       val input = Input.ofFunctionToolCallOutput(
         callId = "function_call_abc123",
         output = """{"temperature":72,"unit":"F"}""",
@@ -1245,19 +1250,20 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
         status = Some(ModelStatus.Completed)
       )
 
-      testSerialization[Input](
+      testCodec[Input](
         input,
         """{
           |  "call_id" : "function_call_abc123",
           |  "output" : "{\"temperature\":72,\"unit\":\"F\"}",
           |  "id" : "output_abc123",
-          |  "status" : "completed"
+          |  "status" : "completed",
+          |  "type" : "function_call_output"
           |}""".stripMargin,
         Pretty
       )
     }
 
-    "serialize Input.ofReasoning" in {
+    "serialize and deserialize Input.ofReasoning" in {
       val input = Input.ofReasoning(
         id = "reasoning_abc123",
         summary = Seq(
@@ -1267,7 +1273,7 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
         status = Some(ModelStatus.Completed)
       )
 
-      testSerialization[Input](
+      testCodec[Input](
         input,
         """{
           |  "id" : "reasoning_abc123",
@@ -1276,21 +1282,23 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
           |  }, {
           |    "text" : "Second step: Draw conclusions"
           |  } ],
-          |  "status" : "completed"
+          |  "status" : "completed",
+          |  "type" : "reasoning"
           |}""".stripMargin,
         Pretty
       )
     }
 
-    "serialize Input.ofItemReference" in {
+    "serialize and deserialize Input.ofItemReference" in {
       val input = Input.ofItemReference(
         id = "item_abc123"
       )
 
-      testSerialization[Input](
+      testCodec[Input](
         input,
         """{
-          |  "id" : "item_abc123"
+          |  "id" : "item_abc123",
+          |  "type" : "item_reference"
           |}""".stripMargin,
         Pretty
       )
