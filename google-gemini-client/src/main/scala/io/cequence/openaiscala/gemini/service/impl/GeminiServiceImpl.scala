@@ -22,9 +22,11 @@ import io.cequence.wsclient.service.{WSClientEngine, WSClientEngineStreamExtra}
 import play.api.libs.json._
 
 import scala.concurrent.{ExecutionContext, Future}
+import io.cequence.wsclient.service.ws.Timeouts
 
 private[service] class GeminiServiceImpl(
-  apiKey: String
+  apiKey: String,
+  timeouts: Option[Timeouts] = None
 )(
   override implicit val ec: ExecutionContext,
   implicit val materializer: Materializer
@@ -40,7 +42,8 @@ private[service] class GeminiServiceImpl(
       WsRequestContext(
         extraParams = Seq(
           Param.key.toString() -> apiKey
-        )
+        ),
+        explTimeouts = timeouts
       )
     )
 

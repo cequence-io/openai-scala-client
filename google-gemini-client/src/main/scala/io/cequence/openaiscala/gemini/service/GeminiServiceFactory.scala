@@ -10,6 +10,7 @@ import io.cequence.openaiscala.service.ChatProviderSettings
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
 
 import scala.concurrent.ExecutionContext
+import io.cequence.wsclient.service.ws.Timeouts
 
 /**
  * Factory for creating instances of the [[GeminiService]] and an OpenAI adapter for
@@ -20,11 +21,12 @@ object GeminiServiceFactory extends GeminiServiceConsts with EnvHelper {
   private val apiKeyEnv = ChatProviderSettings.gemini.apiKeyEnvVariable
 
   def apply(
-    apiKey: String = getEnvValue(apiKeyEnv)
+    apiKey: String = getEnvValue(apiKeyEnv),
+    timeouts: Option[Timeouts] = None
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer
-  ): GeminiService = new GeminiServiceImpl(apiKey)
+  ): GeminiService = new GeminiServiceImpl(apiKey, timeouts)
 
   /**
    * Create a new instance of the [[OpenAIChatCompletionService]] wrapping the SonarService
