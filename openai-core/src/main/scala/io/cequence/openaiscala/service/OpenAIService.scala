@@ -12,6 +12,8 @@ import scala.concurrent.Future
 import io.cequence.openaiscala.domain.responsesapi.Inputs
 import io.cequence.openaiscala.domain.responsesapi.CreateModelResponseSettings
 import io.cequence.openaiscala.domain.responsesapi.Response
+import io.cequence.openaiscala.domain.responsesapi.{ DeleteResponse => ResponsesAPIDeleteResponse }
+import io.cequence.openaiscala.domain.responsesapi.InputItemsResponse
 
 /**
  * Central service to access all public OpenAI WS endpoints as defined at <a
@@ -46,7 +48,7 @@ import io.cequence.openaiscala.domain.responsesapi.Response
  *     and deleteAssistant
  *   - '''Assistant Files''': createAssistantFile, listAssistantFiles, retrieveAssistantFile,
  *     and deleteAssistantFile
- *   - ''''Responses''' - createModelResponse, getModelResponse, and deleteModelResponse
+ *   - ''''Responses''' - createModelResponse, getModelResponse, deleteModelResponse, and listModelResponseInputItems
  * @since Sep
  *   2024
  */
@@ -1610,5 +1612,35 @@ trait OpenAIService extends OpenAICoreService {
    */
   def deleteModelResponse(
     responseId: String
-  ): Future[DeleteResponse]
+  ): Future[ResponsesAPIDeleteResponse]
+
+  /**
+   * List input items for a model response.
+   *
+   * @param responseId
+   *   The ID of the response to retrieve input items for.
+   * @param after
+   *   An item ID to list items after, used in pagination.
+   * @param before
+   *   An item ID to list items before, used in pagination.
+   * @param include
+   *   Additional fields to include in the response.
+   * @param limit
+   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 20.
+   * @param order
+   *   The order to return the input items in. Default is asc.
+   * @return
+   *   A list of input item objects.
+   *
+   * @see
+   *   <a href="https://platform.openai.com/docs/api-reference/responses/list-input-items">OpenAI Doc</a>
+   */
+  def listModelResponseInputItems(
+    responseId: String,
+    after: Option[String] = None,
+    before: Option[String] = None,
+    include: Seq[String] = Nil,
+    limit: Option[Int] = None,
+    order: Option[SortOrder] = None
+  ): Future[InputItemsResponse]
 }

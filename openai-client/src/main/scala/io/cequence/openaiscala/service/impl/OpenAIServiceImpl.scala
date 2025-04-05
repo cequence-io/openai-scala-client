@@ -6,7 +6,9 @@ import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.domain.responsesapi.JsonFormats.{
   inputsWrites,
   createModelResponseSettingsFormat,
-  responseFormat
+  responseFormat,
+  inputItemsResponseFormat,
+  responsesDeleteResponseFormat
 }
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.Batch.BatchRow.buildBatchRows
@@ -28,6 +30,8 @@ import scala.util.{Failure, Success, Try}
 import io.cequence.openaiscala.domain.responsesapi.Inputs
 import io.cequence.openaiscala.domain.responsesapi.CreateModelResponseSettings
 import io.cequence.openaiscala.domain.responsesapi.Response
+import io.cequence.openaiscala.domain.responsesapi.{ DeleteResponse => ResponsesAPIDeleteResponse }
+import io.cequence.openaiscala.domain.responsesapi.InputItemsResponse
 
 /**
  * Private impl. of [[OpenAIService]].
@@ -1173,17 +1177,41 @@ private[service] trait OpenAIServiceImpl
   ): Future[Response] =
     execGET(
       EndPoint.responses,
-      endPointParam = Some(responseId)
-      // params = includeParams(include)
+      endPointParam = Some(responseId),
+      params = Seq(
+        Param.include -> (if (include.nonEmpty) Some(include) else None)
+      )
     ).map(_.asSafeJson[Response])
 
   override def deleteModelResponse(
     responseId: String
-  ): Future[DeleteResponse] =
-    execDELETERich(
+  ): Future[ResponsesAPIDeleteResponse] =
+    execDELETE(
       EndPoint.responses,
       endPointParam = Some(responseId)
-    ).map(handleDeleteEndpointResponse)
+    ).map(_.asSafeJson[ResponsesAPIDeleteResponse])
+
+  override def listModelResponseInputItems(
+    responseId: String,
+    after: Option[String] = None,
+    before: Option[String] = None,
+    include: Seq[String] = Nil,
+    limit: Option[Int] = None,
+    order: Option[SortOrder] = None
+  ): Future[InputItemsResponse] =
+    execGET(
+      EndPoint.responses,
+      endPointParam = Some(s"$responseId/input_items"),
+      params = Seq(
+        Param.after -> after,
+        Param.before -> before,
+        Param.include -> (if (include.nonEmpty) Some(include) else None),
+        Param.limit -> limit,
+        Param.order -> order
+      )
+    ).map(
+      _.asSafeJson[InputItemsResponse]
+    )
 
   private def asSafeJsonIfFound[T: Reads](response: Future[RichResponse]): Future[Option[T]] =
     response.map { response =>
