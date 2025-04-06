@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.examples.responsesapi
 
 import scala.concurrent.Future
-import io.cequence.openaiscala.domain.responsesapi.{ Inputs, Input }
+import io.cequence.openaiscala.domain.responsesapi.{Inputs, Input}
 import io.cequence.openaiscala.domain.responsesapi.InputMessageContent
 import io.cequence.openaiscala.domain.ChatRole
 import io.cequence.openaiscala.examples.Example
@@ -11,9 +11,8 @@ object ListModelResponseInputItems extends Example {
 
   override def run: Future[Unit] =
     for {
-      response <- service
-        .createModelResponse(
-          Inputs.Items(
+      response <- service.createModelResponse(
+        Inputs.Items(
           Input.ofInputSystemTextMessage("You are a pirate who likes to rhyme."),
           Input.ofInputMessage(
             Seq(
@@ -29,10 +28,15 @@ object ListModelResponseInputItems extends Example {
         )
       )
 
-      inputItemsResponse <- service.listModelResponseInputItems(response.id, order = Some(SortOrder.asc))
+      inputItemsResponse <- service.listModelResponseInputItems(
+        response.id,
+        order = Some(SortOrder.asc)
+      )
     } yield {
       println(s"Response ID    : ${response.id}")
       println(s"Response Text  : ${response.outputText.getOrElse("N/A")}")
-      println(s"Input Items    :\n${inputItemsResponse.data.map(item => s"${item.`type`} : ${item.toString()}").mkString("\n")}")
+      println(
+        s"Input Items    :\n${inputItemsResponse.data.map(item => s"${item.`type`} : ${item.toString()}").mkString("\n")}"
+      )
     }
 }

@@ -16,7 +16,9 @@ import io.cequence.wsclient.service.adapter.DelegatedCloseableServiceWrapper
 import io.cequence.wsclient.service.adapter.ServiceWrapperTypes.CloseableServiceWrapper
 import io.cequence.openaiscala.domain.responsesapi.{Inputs, Response, InputItemsResponse}
 import io.cequence.openaiscala.domain.responsesapi.CreateModelResponseSettings
-import io.cequence.openaiscala.domain.responsesapi.{ DeleteResponse => ResponsesAPIDeleteResponse }
+import io.cequence.openaiscala.domain.responsesapi.{
+  DeleteResponse => ResponsesAPIDeleteResponse
+}
 
 import java.io.File
 import scala.concurrent.Future

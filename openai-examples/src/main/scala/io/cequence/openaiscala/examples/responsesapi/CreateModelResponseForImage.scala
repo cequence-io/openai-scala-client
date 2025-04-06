@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.examples.responsesapi
 
 import scala.concurrent.Future
-import io.cequence.openaiscala.domain.responsesapi.{ Inputs, Input }
+import io.cequence.openaiscala.domain.responsesapi.{Inputs, Input}
 import io.cequence.openaiscala.domain.responsesapi.InputMessageContent
 import io.cequence.openaiscala.domain.ChatRole
 import io.cequence.openaiscala.examples.Example

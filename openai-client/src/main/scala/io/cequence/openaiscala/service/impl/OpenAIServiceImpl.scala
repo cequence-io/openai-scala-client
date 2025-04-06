@@ -30,7 +30,9 @@ import scala.util.{Failure, Success, Try}
 import io.cequence.openaiscala.domain.responsesapi.Inputs
 import io.cequence.openaiscala.domain.responsesapi.CreateModelResponseSettings
 import io.cequence.openaiscala.domain.responsesapi.Response
-import io.cequence.openaiscala.domain.responsesapi.{ DeleteResponse => ResponsesAPIDeleteResponse }
+import io.cequence.openaiscala.domain.responsesapi.{
+  DeleteResponse => ResponsesAPIDeleteResponse
+}
 import io.cequence.openaiscala.domain.responsesapi.InputItemsResponse
 
 /**

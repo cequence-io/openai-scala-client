@@ -12,7 +12,9 @@ import scala.concurrent.Future
 import io.cequence.openaiscala.domain.responsesapi.Inputs
 import io.cequence.openaiscala.domain.responsesapi.CreateModelResponseSettings
 import io.cequence.openaiscala.domain.responsesapi.Response
-import io.cequence.openaiscala.domain.responsesapi.{ DeleteResponse => ResponsesAPIDeleteResponse }
+import io.cequence.openaiscala.domain.responsesapi.{
+  DeleteResponse => ResponsesAPIDeleteResponse
+}
 import io.cequence.openaiscala.domain.responsesapi.InputItemsResponse
 
 /**
@@ -48,7 +50,8 @@ import io.cequence.openaiscala.domain.responsesapi.InputItemsResponse
  *     and deleteAssistant
  *   - '''Assistant Files''': createAssistantFile, listAssistantFiles, retrieveAssistantFile,
  *     and deleteAssistantFile
- *   - ''''Responses''' - createModelResponse, getModelResponse, deleteModelResponse, and listModelResponseInputItems
+ *   - ''''Responses''' - createModelResponse, getModelResponse, deleteModelResponse, and
+ *     listModelResponseInputItems
  * @since Sep
  *   2024
  */
@@ -1626,14 +1629,17 @@ trait OpenAIService extends OpenAICoreService {
    * @param include
    *   Additional fields to include in the response.
    * @param limit
-   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and the default is 20.
+   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
+   *   the default is 20.
    * @param order
    *   The order to return the input items in. Default is asc.
    * @return
    *   A list of input item objects.
    *
    * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/responses/list-input-items">OpenAI Doc</a>
+   *   <a
+   *   href="https://platform.openai.com/docs/api-reference/responses/list-input-items">OpenAI
+   *   Doc</a>
    */
   def listModelResponseInputItems(
     responseId: String,
