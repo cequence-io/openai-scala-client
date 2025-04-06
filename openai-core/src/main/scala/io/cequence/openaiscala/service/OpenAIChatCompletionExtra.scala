@@ -22,6 +22,7 @@ import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.{Format, JsValue, Json}
 
 import scala.concurrent.{ExecutionContext, Future}
+import com.fasterxml.jackson.core.JsonProcessingException
 
 object OpenAIChatCompletionExtra {
 
@@ -161,8 +162,10 @@ object OpenAIChatCompletionExtra {
     ): JsValue = try {
       Json.parse(jsonString)
     } catch {
-      case e: JsonParseException =>
-        logger.error(s"Failed to parse JSON response due to: ${e.getMessage}. Repairing...")
+      case e: JsonProcessingException =>
+        logger.error(
+          s"Failed to parse JSON response normally; attempting to repair it now. Error: ${e.getMessage()}."
+        )
         val repairedJsonString = JsonRepair.repair(jsonString)
         Json.parse(repairedJsonString)
     }
