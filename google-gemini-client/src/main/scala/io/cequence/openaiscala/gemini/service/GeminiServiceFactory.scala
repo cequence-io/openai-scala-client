@@ -41,12 +41,13 @@ object GeminiServiceFactory extends GeminiServiceConsts with EnvHelper {
    * @return
    */
   def asOpenAI(
-    apiKey: String = getEnvValue(apiKeyEnv)
+    apiKey: String = getEnvValue(apiKeyEnv),
+    timeouts: Option[Timeouts] = None
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer
   ): OpenAIChatCompletionStreamedService =
     new OpenAIGeminiChatCompletionService(
-      new GeminiServiceImpl(apiKey)
+      new GeminiServiceImpl(apiKey, timeouts)
     )
 }
