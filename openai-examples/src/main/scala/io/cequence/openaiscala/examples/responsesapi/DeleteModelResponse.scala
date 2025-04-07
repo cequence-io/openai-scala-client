@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.examples.responsesapi
 
 import scala.concurrent.Future
-import io.cequence.openaiscala.domain.responsesapi.{ Inputs, Input }
+import io.cequence.openaiscala.domain.responsesapi.{Inputs, Input}
 import io.cequence.openaiscala.domain.responsesapi.InputMessageContent
 import io.cequence.openaiscala.domain.ChatRole
 import io.cequence.openaiscala.examples.Example
@@ -10,9 +10,8 @@ object DeleteModelResponse extends Example {
 
   override def run: Future[Unit] =
     for {
-      response <- service
-        .createModelResponse(
-          Inputs.Items(
+      response <- service.createModelResponse(
+        Inputs.Items(
           Input.ofInputSystemTextMessage("You are a pirate who likes to rhyme."),
           Input.ofInputMessage(
             Seq(
