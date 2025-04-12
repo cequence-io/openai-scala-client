@@ -110,14 +110,18 @@ object ChatCompletionSettingsConversions {
 
   val o1Preview: SettingsConversion = generic(o1PreviewConversions)
 
-  def groqConversions(
+  private def groqConversions(
     reasoningFormat: Option[ReasoningFormat] = None
   ) = Seq(
     // max tokens
     FieldConversionDef(
       settings =>
-        settings.model.endsWith(
-          NonOpenAIModelId.deepseek_r1_distill_llama_70b
+        (
+          settings.model.endsWith(
+            NonOpenAIModelId.deepseek_r1_distill_llama_70b
+          ) || settings.model.endsWith(
+            NonOpenAIModelId.deepseek_r1_distill_qwen_32b
+          )
         ) && settings.max_tokens.isDefined,
       settings =>
         settings.copy(max_tokens = None).setMaxCompletionTokens(settings.max_tokens.get),
@@ -128,8 +132,12 @@ object ChatCompletionSettingsConversions {
     // reasoning format
     FieldConversionDef(
       settings =>
-        settings.model.endsWith(
-          NonOpenAIModelId.deepseek_r1_distill_llama_70b
+        (
+          settings.model.endsWith(
+            NonOpenAIModelId.deepseek_r1_distill_llama_70b
+          ) || settings.model.endsWith(
+            NonOpenAIModelId.deepseek_r1_distill_qwen_32b
+          )
         ) && reasoningFormat.isDefined,
       _.setReasoningFormat(reasoningFormat.get),
       Some(
@@ -137,4 +145,7 @@ object ChatCompletionSettingsConversions {
       )
     )
   )
+
+  def groq(reasoningFormat: Option[ReasoningFormat] = None): SettingsConversion =
+    generic(groqConversions(reasoningFormat))
 }

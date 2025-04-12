@@ -1,6 +1,7 @@
 package io.cequence.openaiscala.examples
 
 import scala.concurrent.Future
+
 object CreateCompletion extends Example {
 
   private val text =
