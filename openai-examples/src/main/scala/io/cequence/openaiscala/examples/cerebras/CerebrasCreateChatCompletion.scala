@@ -25,7 +25,7 @@ object CerebrasCreateChatCompletion extends ExampleBase[OpenAIChatCompletionServ
   )
 
 //  private val modelId = NonOpenAIModelId.deepseek_r1_distill_llama_70b
-  private val modelId = NonOpenAIModelId.llama_3_3_70b
+  private val modelId = NonOpenAIModelId.cerebras_llama_4_scout_17b_16e_instruct
 
   override protected def run: Future[_] =
     service

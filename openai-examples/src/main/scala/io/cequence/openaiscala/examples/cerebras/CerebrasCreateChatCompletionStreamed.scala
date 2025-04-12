@@ -25,7 +25,7 @@ object CerebrasCreateChatCompletionStreamed
     UserMessage("What is the weather like in Norway?")
   )
 
-  private val modelId = NonOpenAIModelId.llama3_1_70b
+  private val modelId = NonOpenAIModelId.cerebras_llama_4_scout_17b_16e_instruct
 
   override protected def run: Future[_] =
     service

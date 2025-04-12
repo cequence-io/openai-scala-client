@@ -1,4 +1,4 @@
-package io.cequence.openaiscala.examples.groq
+package io.cequence.openaiscala.examples.cerebras
 
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.GroqCreateChatCompletionSettingsOps._
@@ -15,12 +15,12 @@ import play.api.libs.json.{JsObject, Json}
 import scala.concurrent.Future
 
 /**
- * Requires `GROQ_API_KEY` environment variable to be set.
+ * Requires `CEREBRAS_API_KEY` environment variable to be set.
  */
-object GroqCreateChatCompletionJSONWithDeepseekR1
+object CerebrasCreateChatCompletionJSON
     extends ExampleBase[OpenAIChatCompletionService] {
 
-  override val service: OpenAIChatCompletionService = ChatCompletionProvider.groq
+  override val service: OpenAIChatCompletionService = ChatCompletionProvider.cerebras
 
   private val jsonSchema: JsonSchema = JsonSchema.Object(
     properties = Seq(
@@ -43,8 +43,9 @@ object GroqCreateChatCompletionJSONWithDeepseekR1
     UserMessage("What is the weather like in Norway?")
   )
 
-  private val modelId = NonOpenAIModelId.deepseek_r1_distill_qwen_32b // deepseek_r1_distill_llama_70b
+  private val modelId = NonOpenAIModelId.cerebras_llama_4_scout_17b_16e_instruct
 
+  // TODO: Cerebras should support JSON schema response format (without a conversion to "json mode")
   override protected def run: Future[_] =
     service
       .createChatCompletionWithJSON[JsObject](

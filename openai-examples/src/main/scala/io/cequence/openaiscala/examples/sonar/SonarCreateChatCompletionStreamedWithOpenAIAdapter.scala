@@ -8,10 +8,12 @@ import io.cequence.openaiscala.service.OpenAIChatCompletionStreamedServiceExtra
 
 import scala.concurrent.Future
 import io.cequence.openaiscala.examples.ChatCompletionProvider
+import io.cequence.openaiscala.perplexity.service.SonarServiceConsts
 
 // requires `openai-scala-client-stream` as a dependency and `SONAR_API_KEY` environment variable to be set
 object SonarCreateChatCompletionStreamedWithOpenAIAdapter
-    extends ExampleBase[OpenAIChatCompletionStreamedServiceExtra] {
+    extends ExampleBase[OpenAIChatCompletionStreamedServiceExtra]
+    with SonarServiceConsts {
 
   override val service: OpenAIChatCompletionStreamedServiceExtra =
     ChatCompletionProvider.sonar
@@ -30,7 +32,10 @@ object SonarCreateChatCompletionStreamedWithOpenAIAdapter
         settings = CreateChatCompletionSettings(
           model = modelId,
           temperature = Some(0.01),
-          max_tokens = Some(512)
+          max_tokens = Some(512),
+          extra_params = Map(
+            includeCitationsInTextResponseParam -> true
+          )
         )
       )
       .runWith(

@@ -21,7 +21,7 @@ object TogetherAICreateChatCompletion extends ExampleBase[OpenAIChatCompletionSe
 
   // deepseek_ai_deepseek_r1_distill_llama_70b_free // deepseek_ai_deepseek_v3
   private val modelId =
-    NonOpenAIModelId.llama_4_maverick_17B_128E_instruct_fp8
+    NonOpenAIModelId.meta_llama_llama_4_maverick_17b_128e_instruct_fp8
 
   override protected def run: Future[_] =
     service
