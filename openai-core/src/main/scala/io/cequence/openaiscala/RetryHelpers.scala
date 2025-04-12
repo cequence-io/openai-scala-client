@@ -44,9 +44,11 @@ object RetryHelpers {
         if (attempt < maxAttempts) {
           fun().recoverWith {
             case e: Throwable if isRetryable(e) =>
+              val failureMessagePart = failureMessage.map(message => message.stripSuffix(".") + ". ").getOrElse("")
+
               log.foreach(
                 _(
-                  s"${failureMessage.map(_ + ". ").getOrElse("")}Attempt ${attempt}. Retrying..."
+                  s"${failureMessagePart}Attempt ${attempt}. Retrying..."
                 )
               )
 
