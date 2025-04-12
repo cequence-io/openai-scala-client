@@ -1594,8 +1594,7 @@ trait OpenAIService extends OpenAICoreService {
    *   A Future containing the Response object.
    *
    * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/responses/get">OpenAI
-   *   Doc</a>
+   *   <a href="https://platform.openai.com/docs/api-reference/responses/get">OpenAI Doc</a>
    */
   def getModelResponse(
     responseId: String,
@@ -1637,8 +1636,7 @@ trait OpenAIService extends OpenAICoreService {
    *   A list of input item objects.
    *
    * @see
-   *   <a
-   *   href="https://platform.openai.com/docs/api-reference/responses/input-items">OpenAI
+   *   <a href="https://platform.openai.com/docs/api-reference/responses/input-items">OpenAI
    *   Doc</a>
    */
   def listModelResponseInputItems(
