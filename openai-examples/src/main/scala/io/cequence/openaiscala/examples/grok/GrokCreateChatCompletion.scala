@@ -19,7 +19,7 @@ object GrokCreateChatCompletion extends ExampleBase[OpenAIChatCompletionService]
     UserMessage("What is the weather like in Norway?")
   )
 
-  private val modelId = NonOpenAIModelId.grok_2
+  private val modelId = NonOpenAIModelId.grok_3_mini_fast
 
   override protected def run: Future[_] =
     service

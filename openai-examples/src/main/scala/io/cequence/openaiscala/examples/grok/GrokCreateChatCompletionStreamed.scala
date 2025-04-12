@@ -19,7 +19,7 @@ object GrokCreateChatCompletionStreamed
     UserMessage("What is the weather like in Norway?")
   )
 
-  private val modelId = NonOpenAIModelId.grok_beta
+  private val modelId = NonOpenAIModelId.grok_3_beta
 
   override protected def run: Future[_] =
     service
