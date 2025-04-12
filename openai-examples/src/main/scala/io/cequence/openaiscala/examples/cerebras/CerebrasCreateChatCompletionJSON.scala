@@ -17,8 +17,7 @@ import scala.concurrent.Future
 /**
  * Requires `CEREBRAS_API_KEY` environment variable to be set.
  */
-object CerebrasCreateChatCompletionJSON
-    extends ExampleBase[OpenAIChatCompletionService] {
+object CerebrasCreateChatCompletionJSON extends ExampleBase[OpenAIChatCompletionService] {
 
   override val service: OpenAIChatCompletionService = ChatCompletionProvider.cerebras
 

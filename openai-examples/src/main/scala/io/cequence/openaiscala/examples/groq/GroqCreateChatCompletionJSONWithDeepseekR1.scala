@@ -43,7 +43,8 @@ object GroqCreateChatCompletionJSONWithDeepseekR1
     UserMessage("What is the weather like in Norway?")
   )
 
-  private val modelId = NonOpenAIModelId.deepseek_r1_distill_qwen_32b // deepseek_r1_distill_llama_70b
+  private val modelId =
+    NonOpenAIModelId.deepseek_r1_distill_qwen_32b // deepseek_r1_distill_llama_70b
 
   override protected def run: Future[_] =
     service
