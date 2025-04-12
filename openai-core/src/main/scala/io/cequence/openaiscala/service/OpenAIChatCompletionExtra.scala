@@ -189,7 +189,10 @@ object OpenAIChatCompletionExtra {
     ModelId.gpt_4o_2024_11_20,
     ModelId.o1,
     ModelId.o1_2024_12_17,
+    ModelId.o1_pro,
+    ModelId.o1_pro_2025_03_19,
     ModelId.o3_mini,
+    ModelId.o3_mini_high,
     ModelId.o3_mini_2025_01_31,
     NonOpenAIModelId.gemini_2_5_pro_preview_03_25,
     NonOpenAIModelId.gemini_2_5_pro_exp_03_25,
@@ -219,6 +222,7 @@ object OpenAIChatCompletionExtra {
     NonOpenAIModelId.grok_2_latest,
     NonOpenAIModelId.grok_3,
     NonOpenAIModelId.grok_3_latest
+    // NonOpenAIModelId.cerebras_llama_4_scout_17b_16e_instruct
   )
 
   def handleOutputJsonSchema(
