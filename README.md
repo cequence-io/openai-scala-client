@@ -1,7 +1,7 @@
 # OpenAI Scala Client 🤖
 [![version](https://img.shields.io/badge/version-1.1.2-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT) ![GitHub Stars](https://img.shields.io/github/stars/cequence-io/openai-scala-client?style=social) [![Twitter Follow](https://img.shields.io/twitter/follow/0xbnd?style=social)](https://twitter.com/0xbnd) ![GitHub CI](https://github.com/cequence-io/openai-scala-client/actions/workflows/continuous-integration.yml/badge.svg)
 
-This is a no-nonsense async Scala client for OpenAI API supporting all the available endpoints and params **including streaming**, the newest **chat completion**, **vision**, and **voice routines** (as defined [here](https://beta.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala). The supported calls are: 
+This is a no-nonsense async Scala client for OpenAI API supporting all the available endpoints and params **including streaming**, the newest **chat completion**, **responses API**, **assistants API**, **tools**, **vision**, and **voice routines** (as defined [here](https://platform.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala). The supported calls are: 
 
 * **Models**: [listModels](https://platform.openai.com/docs/api-reference/models/list), and [retrieveModel](https://platform.openai.com/docs/api-reference/models/retrieve)
 * **Completions**: [createCompletion](https://platform.openai.com/docs/api-reference/completions/create)
@@ -22,9 +22,11 @@ This is a no-nonsense async Scala client for OpenAI API supporting all the avail
 * **Vector Stores**: [createVectorStore](https://platform.openai.com/docs/api-reference/vector-stores/create), [listVectorStores](https://platform.openai.com/docs/api-reference/vector-stores/list), [retrieveVectorStore](https://platform.openai.com/docs/api-reference/vector-stores/retrieve), [modifyVectorStore](https://platform.openai.com/docs/api-reference/vector-stores/modify), and [deleteVectorStore](https://platform.openai.com/docs/api-reference/vector-stores/delete)
 * **Vector Store Files**: [createVectorStoreFile](https://platform.openai.com/docs/api-reference/vector-stores-files/createFile), [listVectorStoreFiles](https://platform.openai.com/docs/api-reference/vector-stores-files/listFiles), [retrieveVectorStoreFile](https://platform.openai.com/docs/api-reference/vector-stores-files/getFile), and [deleteVectorStoreFile](https://platform.openai.com/docs/api-reference/vector-stores-files/deleteFile)  
 * **Vector Store File Batches**: [createVectorStoreFileBatch](https://platform.openai.com/docs/api-reference/vector-stores-file-batches/createBatch), [retrieveVectorStoreFileBatch](https://platform.openai.com/docs/api-reference/vector-stores-file-batches/getBatch), [cancelVectorStoreFileBatch](https://platform.openai.com/docs/api-reference/vector-stores-file-batches/cancelBatch), and [listVectorStoreBatchFiles](https://platform.openai.com/docs/api-reference/vector-stores-file-batches/listBatchFiles)
+* **Responses** (🔥 **New**): [createModelResponse](https://platform.openai.com/docs/api-reference/responses/create), [getModelResponse](https://platform.openai.com/docs/api-reference/responses/get), [deleteModelResponse](https://platform.openai.com/docs/api-reference/responses/delete), and [listModelResponseInputItems](https://platform.openai.com/docs/api-reference/responses/input-items)
 
-Note that in order to be consistent with the OpenAI API naming, the service function names match exactly the API endpoint titles/descriptions with camelcase.
-Also, we aimed the lib to be self-contained with the fewest dependencies possible therefore we ended up using only two libs `play-ahc-ws-standalone` and `play-ws-standalone-json` (at the top level). Additionally, if dependency injection is required we use `scala-guice` lib as well.  
+
+Note that in order to be consistent with the OpenAI API naming, the service function names match exactly the API endpoint titles/descriptions in camelCase.
+Also, we aimed for the library to be self-contained with the fewest dependencies possible. Therefore, we implemented our own generic WS client (currently with Play WS backend, which can be swapped for other engines in the future). Additionally, if dependency injection is required, we use the `scala-guice` library.
 
 ---
 
@@ -32,27 +34,34 @@ Also, we aimed the lib to be self-contained with the fewest dependencies possibl
 
 ---
 
-In addition to the OpenAI API, this library also supports API-compatible providers (see [examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/nonopenai)) such as:
-- [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) - cloud-based, utilizes OpenAI models but with lower latency
-- [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) - cloud-based, offers a vast selection of open-source models
-- [Anthropic](https://www.anthropic.com/api) - cloud-based, a major competitor to OpenAI, features proprietary/closed-source models such as Claude3 - Haiku, Sonnet, and Opus. 🔥 **New**: now also through Bedrock!
-- [Google Vertex AI](https://cloud.google.com/vertex-ai) - cloud-based, features proprietary/closed-source models such as Gemini 1.5 Pro and flash
-- [Groq](https://wow.groq.com/) - cloud-based provider, known for its superfast inference with LPUs
-- [Grok](https://x.ai/) - cloud-based provider from x.AI
-- [Fireworks AI](https://fireworks.ai/) - cloud-based provider
-- [OctoAI](https://octo.ai/) - cloud-based provider
-- [TogetherAI](https://www.together.ai/) - cloud-based provider
-- [Cerebras](https://cerebras.ai/) - cloud-based provider, superfast (akin to Groq)
-- [Mistral](https://mistral.ai/) - cloud-based, leading open-source LLM company
-- [Deepseek](https://deepseek.com/) - cloud-based provider from China
-- [Ollama](https://ollama.com/) - runs locally, serves as an umbrella for open-source LLMs including LLaMA3, dbrx, and Command-R
-- [FastChat](https://github.com/lm-sys/FastChat) - runs locally, serves as an umbrella for open-source LLMs such as Vicuna, Alpaca, and FastChat-T5
+In addition to OpenAI, this library supports many other LLM providers. For providers that aren't natively compatible with the chat completion API, we've implemented adapters to streamline integration (see [examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples)).
+
+| Provider | JSON/Structured Output | Tools Support | Description |
+|----------|------------------------|---------------|-------------|
+| [OpenAI](https://platform.openai.com) | Full | Standard + Responses API | Full API support |
+| [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) | Full | Standard + Responses API | OpenAI on Azure|
+| [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) | Varies |  | Open-source models |
+| [Anthropic](https://www.anthropic.com/api) | Implied |  | Claude models |
+| [Google Vertex AI](https://cloud.google.com/vertex-ai) | Full | Yes | Gemini models |
+| [Google Gemini](https://ai.google.dev/) (🔥 **New**) | Full | Yes | Google's models |
+| [Groq](https://wow.groq.com/) | Only JSON object mode | Yes | Fast inference |
+| [Grok](https://x.ai/) | Full |  | x.AI models |
+| [Fireworks AI](https://fireworks.ai/) | Only JSON object mode | | Cloud provider |
+| [Octo AI](https://octo.ai/) | Only JSON object mode |  | Cloud provider (obsolete) |
+| [TogetherAI](https://www.together.ai/) | Only JSON object mode |  | Cloud provider |
+| [Cerebras](https://cerebras.ai/) | Only JSON object mode |  | Fast inference |
+| [Mistral](https://mistral.ai/) | Only JSON object mode |  | Open-source leader |
+| [Deepseek](https://deepseek.com/) | Only JSON object mode |  | Chinese provider |
+| [Ollama](https://ollama.com/) | Varies |  | Local LLMs |
+| [FastChat](https://github.com/lm-sys/FastChat) | Varies |  | Local LLMs |
+| [Novita](https://novita.ai/) (🔥 **New**) | Only JSON object mode |  | Cloud provider |
+| [Perplexity Sonar](https://www.perplexity.ai/) (🔥 **New**) | Only implied |  | Search-based AI |
 
 ---
 
-👉 For background information read an article about the lib/client on [Medium](https://medium.com/@0xbnd/openai-scala-client-is-out-d7577de934ad).
+👉 For background information how the project started read an article about the lib/client on [Medium](https://medium.com/@0xbnd/openai-scala-client-is-out-d7577de934ad).
 
-Also try out our [Scala client for Pinecone vector database](https://github.com/cequence-io/pinecone-scala), or use both clients together! [This demo project](https://github.com/cequence-io/pinecone-openai-scala-demo) shows how to generate and store OpenAI embeddings (with `text-embedding-ada-002` model) into Pinecone and query them afterward. The OpenAI + Pinecone combo is commonly used for autonomous AI agents, such as [babyAGI](https://github.com/yoheinakajima/babyagi) and [AutoGPT](https://github.com/Significant-Gravitas/Auto-GPT).
+Also try out our [Scala client for Pinecone vector database](https://github.com/cequence-io/pinecone-scala), or use both clients together! [This demo project](https://github.com/cequence-io/pinecone-openai-scala-demo) shows how to generate and store OpenAI embeddings into Pinecone and query them afterward. The OpenAI + Pinecone combo is commonly used for autonomous AI agents, such as [babyAGI](https://github.com/yoheinakajima/babyagi) and [AutoGPT](https://github.com/Significant-Gravitas/Auto-GPT).
 
 **✔️ Important**: this is a "community-maintained" library and, as such, has no relation to OpenAI company.
 
@@ -154,56 +163,73 @@ Then you can obtain a service in one of the following ways.
   val service = VertexAIServiceFactory.asOpenAI()
 ```
 
-4. [Groq](https://wow.groq.com/) - requires `GROQ_API_KEY"`
+4. [Google Gemini](https://ai.google.dev/) - requires `openai-scala-google-gemini-client` lib and `GOOGLE_API_KEY`
+```scala
+  val service = GeminiServiceFactory.asOpenAI()
+```
+
+5. [Perplexity Sonar](https://www.perplexity.ai/) - requires `openai-scala-perplexity-client` lib and `SONAR_API_KEY`
+```scala
+  val service = SonarServiceFactory.asOpenAI()
+```
+
+6. [Novita](https://novita.ai/) - requires `NOVITA_API_KEY`
+```scala
+  val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.novita)
+  // or with streaming
+  val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.novita)
+```
+
+7. [Groq](https://wow.groq.com/) - requires `GROQ_API_KEY"`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.groq)
   // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.groq)
 ```
 
-5. [Grok](https://x.ai) - requires `GROK_API_KEY"`
+8. [Grok](https://x.ai) - requires `GROK_API_KEY"`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.grok)
   // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.grok)
 ```
 
-6. [Fireworks AI](https://fireworks.ai/) - requires `FIREWORKS_API_KEY"`
+9. [Fireworks AI](https://fireworks.ai/) - requires `FIREWORKS_API_KEY"`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.fireworks)
   // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.fireworks)
 ```
 
-7. [Octo AI](https://octo.ai/) - requires `OCTOAI_TOKEN`
+10. [Octo AI](https://octo.ai/) - requires `OCTOAI_TOKEN`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.octoML)
   // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.octoML)
 ```
 
-8. [TogetherAI](https://www.together.ai/)  requires `TOGETHERAI_API_KEY`
+11. [TogetherAI](https://www.together.ai/)  requires `TOGETHERAI_API_KEY`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.togetherAI)
   // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.togetherAI)
 ```
 
-9. [Cerebras](https://cerebras.ai/)  requires `CEREBRAS_API_KEY`
+12. [Cerebras](https://cerebras.ai/)  requires `CEREBRAS_API_KEY`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.cerebras)
   // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.cerebras)
 ```
 
-10. [Mistral](https://mistral.ai/) requires `MISTRAL_API_KEY`
+13. [Mistral](https://mistral.ai/) requires `MISTRAL_API_KEY`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.mistral)
   // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.mistral)
 ```
 
-11. [Ollama](https://ollama.com/)
+14. [Ollama](https://ollama.com/)
 ```scala
   val service = OpenAIChatCompletionServiceFactory(
     coreUrl = "http://localhost:11434/v1/"
@@ -275,66 +301,6 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
   )
 ```
 
-- Create completion
-```scala
-  val text = """Extract the name and mailing address from this email:
-               |Dear Kelly,
-               |It was great to talk to you at the seminar. I thought Jane's talk was quite good.
-               |Thank you for the book. Here's my address 2111 Ash Lane, Crestview CA 92002
-               |Best,
-               |Maya
-             """.stripMargin
-
-  service.createCompletion(text).map(completion =>
-    println(completion.choices.head.text)
-  )
-```
-
-- Create completion with a custom setting
-
-```scala
-  val text = """Extract the name and mailing address from this email:
-               |Dear Kelly,
-               |It was great to talk to you at the seminar. I thought Jane's talk was quite good.
-               |Thank you for the book. Here's my address 2111 Ash Lane, Crestview CA 92002
-               |Best,
-               |Maya
-             """.stripMargin
-
-  service.createCompletion(
-    text,
-    settings = CreateCompletionSettings(
-      model = ModelId.gpt_4o,
-      max_tokens = Some(1500),
-      temperature = Some(0.9),
-      presence_penalty = Some(0.2),
-      frequency_penalty = Some(0.2)
-    )
-  ).map(completion =>
-    println(completion.choices.head.text)
-  )
-```
-
-- Create completion with streaming and a custom setting
-
-```scala
-  val source = service.createCompletionStreamed(
-    prompt = "Write me a Shakespeare poem about two cats playing baseball in Russia using at least 2 pages",
-    settings = CreateCompletionSettings(
-      model = ModelId.text_davinci_003,
-      max_tokens = Some(1500),
-      temperature = Some(0.9),
-      presence_penalty = Some(0.2),
-      frequency_penalty = Some(0.2)
-    )
-  )
-
-  source.map(completion => 
-    println(completion.choices.head.text)
-  ).runWith(Sink.ignore)
-```
-For this to work you need to use `OpenAIServiceStreamedFactory` from `openai-scala-client-stream` lib.
-
 - Create chat completion 
 
 ```scala
@@ -353,7 +319,7 @@ For this to work you need to use `OpenAIServiceStreamedFactory` from `openai-sca
     messages = messages,
     settings = createChatCompletionSettings
   ).map { chatCompletion =>
-    println(chatCompletion.choices.head.message.content)
+    println(chatCompletion.contentHead)
   }
 ```
 
@@ -393,7 +359,7 @@ For this to work you need to use `OpenAIServiceStreamedFactory` from `openai-sca
     messages = messages,
     tools = tools,
     responseToolChoice = None, // means "auto"
-    settings = CreateChatCompletionSettings(ModelId.gpt_3_5_turbo_1106)
+    settings = CreateChatCompletionSettings(ModelId.gpt_4o)
   ).map { response =>
     val chatFunCompletionMessage = response.choices.head.message
     val toolCalls = chatFunCompletionMessage.tool_calls.collect {
@@ -412,7 +378,7 @@ For this to work you need to use `OpenAIServiceStreamedFactory` from `openai-sca
   }
 ```
 
-- Create chat completion with json output
+- Create chat completion with json/structured output
 
 ```scala
   val messages = Seq(
@@ -448,13 +414,71 @@ For this to work you need to use `OpenAIServiceStreamedFactory` from `openai-sca
   service
     .createChatCompletion(
       messages = messages,
-      settings = DefaultSettings.createJsonChatCompletion(jsonSchemaDef)
+      settings = CreateChatCompletionSettings(
+        model = ModelId.o3_mini,
+        max_tokens = Some(1000),
+        response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
+        jsonSchema = Some(jsonSchemaDef)
+      )
     )
     .map { response =>
-      val json = Json.parse(messageContent(response))
+      val json = Json.parse(response.contentHead)
       println(Json.prettyPrint(json))
     }
 ```
+
+- Create chat completion with json/structured output using a handly implicit function (`createChatCompletionWithJSON[T]`) that handles JSON extraction with a potential repair, as well as deserialization to an object T.
+
+```scala
+  import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
+
+  ...
+
+  service
+    .createChatCompletionWithJSON[JsObject](
+      messages = messages,
+      settings = CreateChatCompletionSettings(
+        model = ModelId.o3_mini,
+        max_tokens = Some(1000),
+        response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
+        jsonSchema = Some(jsonSchemaDef)
+      )
+    )
+    .map { json =>
+      println(Json.prettyPrint(json))
+    }
+```
+
+- Failover
+
+```
+  private val messages = Seq(
+    SystemMessage("You are a helpful weather assistant."),
+    UserMessage("What is the weather like in Norway?")
+  )
+
+  service
+    .createChatCompletionWithFailover(
+      messages = messages,
+      settings = CreateChatCompletionSettings(
+        model = ModelId.o3_mini
+      ),
+      failoverModels = Seq(ModelId.gpt_4_5_preview, ModelId.gpt_4o),
+      retryOnAnyError = true,
+      failureMessage = "Weather assistant failed to provide a response."
+    )
+    .map { response =>
+      print(response.contentHead)
+    }
+```
+- Failover with JSON/structred outuput
+
+- Responses API (basic)
+
+- Responses API (tool use)
+
+
+
 
 - Count expected used tokens before calling `createChatCompletions` or `createChatFunCompletions`, this helps you select proper model and reduce costs. This is an experimental feature and it may not work for all models. Requires `openai-scala-count-tokens` lib.
 
