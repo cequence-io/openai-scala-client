@@ -34,17 +34,22 @@ object NonOpenAIModelId {
   // Llama
 
   // 17B x 128E, 400B total params, 1M context window (500k currently supported)
-  val llama_4_maverick_17B_128E_instruct_fp8 =
+  val meta_llama_llama_4_maverick_17b_128e_instruct_fp8 =
     "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8" // Together AI
+
   // 17B x 16E, 109B total params, 10M token context (300k currently supported)
-  val llama_4_scout_17B_16E_instruct =
+  val meta_llama_llama_4_scout_17b_1eE_instruct =
     "meta-llama/Llama-4-Scout-17B-16E-Instruct" // Together AI
+
   // 17B x 128E, 400B params, 1 mil context
   val llama4_maverick_instruct_basic = "llama4-maverick-instruct-basic" // Fireworks AI
   // 17B x 16E, 107B params, 128k context
   val llama4_scout_instruct_basic = "llama4-scout-instruct-basic" // Fireworks AI
   // 17B x 16E, 107B params
-  val llama_4_scout_17b_16e_instruct = "meta-llama/llama-4-scout-17b-16e-instruct" // Groq
+  val groq_llama_4_scout_17b_16e_instruct = "meta-llama/llama-4-scout-17b-16e-instruct" // Groq
+  // 17B x 16E, 107B params
+  val cerebras_llama_4_scout_17b_16e_instruct = "llama-4-scout-17b-16e-instruct" // Cerebras
+
   val llama_3_3_70b_versatile = "llama-3.3-70b-versatile" // Groq
   val llama_3_3_70b_specdec = "llama-3.3-70b-specdec" // Groq
   val llama_v3p3_70b_instruct = "llama-v3p3-70b-instruct" // Fireworks AI
