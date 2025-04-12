@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.service
 
 import akka.actor.Scheduler
-import com.fasterxml.jackson.core.JsonParseException
 import io.cequence.jsonrepair.JsonRepair
 import io.cequence.openaiscala.JsonFormats.eitherJsonSchemaFormat
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
@@ -221,7 +220,17 @@ object OpenAIChatCompletionExtra {
     NonOpenAIModelId.grok_2_1212,
     NonOpenAIModelId.grok_2_latest,
     NonOpenAIModelId.grok_3,
-    NonOpenAIModelId.grok_3_latest
+    NonOpenAIModelId.grok_3_beta,
+    NonOpenAIModelId.grok_3_latest,
+    NonOpenAIModelId.grok_3_fast,
+    NonOpenAIModelId.grok_3_fast_beta,
+    NonOpenAIModelId.grok_3_fast_latest,
+    NonOpenAIModelId.grok_3_mini,
+    NonOpenAIModelId.grok_3_mini_beta,
+    NonOpenAIModelId.grok_3_mini_latest,
+    NonOpenAIModelId.grok_3_mini_fast,
+    NonOpenAIModelId.grok_3_mini_fast_beta,
+    NonOpenAIModelId.grok_3_mini_fast_latest,
     // NonOpenAIModelId.cerebras_llama_4_scout_17b_16e_instruct
   )
 
