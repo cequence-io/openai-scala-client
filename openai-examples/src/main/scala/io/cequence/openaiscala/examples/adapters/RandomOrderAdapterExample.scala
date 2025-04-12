@@ -30,7 +30,7 @@ object RandomOrderAdapterExample extends ExampleBase[OpenAIService] {
 
   private val repetitions = 10
   private val parallelism = 1
-  private val modelId = ModelId.gpt_3_5_turbo
+  private val modelId = ModelId.gpt_4o
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),

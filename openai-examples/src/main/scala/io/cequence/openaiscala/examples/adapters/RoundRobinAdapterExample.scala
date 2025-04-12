@@ -35,10 +35,10 @@ object RoundRobinAdapterExample extends ExampleBase[OpenAIService] {
   override protected def run: Future[_] =
     for {
       // runs on the first service
-      _ <- runChatCompletionAux(ModelId.gpt_3_5_turbo)
+      _ <- runChatCompletionAux(ModelId.gpt_4o)
 
       // runs on the second service
-      _ <- runChatCompletionAux(ModelId.gpt_3_5_turbo)
+      _ <- runChatCompletionAux(ModelId.gpt_4o)
     } yield ()
 
   private def runChatCompletionAux(model: String) = {

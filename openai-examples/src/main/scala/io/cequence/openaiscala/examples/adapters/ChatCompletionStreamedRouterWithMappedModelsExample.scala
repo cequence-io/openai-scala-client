@@ -74,7 +74,7 @@ object ChatCompletionStreamedRouterWithMappedModelsExample
       _ <- runChatCompletionAux("ollama-" + NonOpenAIModelId.llama2)
 
       // runs on OpenAI
-      _ <- runChatCompletionAux(ModelId.gpt_3_5_turbo)
+      _ <- runChatCompletionAux(ModelId.gpt_4o)
     } yield ()
 
   private def runChatCompletionAux(model: String) = {

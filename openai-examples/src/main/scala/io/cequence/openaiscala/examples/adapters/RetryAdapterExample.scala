@@ -27,10 +27,10 @@ object RetryAdapterExample extends ExampleBase[OpenAIService] {
     () => Future(throw new OpenAIScalaClientTimeoutException("Fake timeout"))
   )
 
-  // we then map the failing service to a specific model - gpt-3.5-turbo-1106
+  // we then map the failing service to a specific model - gpt_4o
   // for all other models we use the regular service
   private val mergedService = adapters.chatCompletionRouter(
-    serviceModels = Map(failingService -> Seq(ModelId.gpt_3_5_turbo_1106)),
+    serviceModels = Map(failingService -> Seq(ModelId.gpt_4o)),
     regularService
   )
 
@@ -48,13 +48,12 @@ object RetryAdapterExample extends ExampleBase[OpenAIService] {
   override protected def run: Future[_] =
     for {
       // this invokes the failing service, which triggers the retry mechanism
-      _ <- runChatCompletionAux(ModelId.gpt_3_5_turbo_1106).recover {
-        case e: OpenAIScalaClientException =>
-          println(s"Too many retries, giving up on '${e.getMessage}'")
+      _ <- runChatCompletionAux(ModelId.gpt_4o).recover { case e: OpenAIScalaClientException =>
+        println(s"Too many retries, giving up on '${e.getMessage}'")
       }
 
       // should complete without retry
-      _ <- runChatCompletionAux(ModelId.gpt_3_5_turbo_0125)
+      _ <- runChatCompletionAux(ModelId.o3_mini)
     } yield ()
 
   private def runChatCompletionAux(model: String) = {
