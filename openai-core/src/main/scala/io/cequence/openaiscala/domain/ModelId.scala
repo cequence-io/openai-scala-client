@@ -199,6 +199,20 @@ object ModelId {
   // 128k context, knowledge cutoff is Oct 2023
   val gpt_4_5_preview_2025_02_27 = "gpt-4.5-preview-2025-02-27"
 
+  // GPT 4.1
+  // 1,047,576 context window, 32,768 max output tokens, Jun 01, 2024 knowledge cutoff
+  val gpt_4_1 = "gpt-4.1"
+  // 1,047,576 context window, 32,768 max output tokens, Jun 01, 2024 knowledge cutoff
+  val gpt_4_1_2025_04_14 = "gpt-4.1-2025-04-14"
+  // 1,047,576 context window, 32,768 max output tokens, Jun 01, 2024 knowledge cutoff
+  val gpt_4_1_mini = "gpt-4.1-mini"
+  // 1,047,576 context window, 32,768 max output tokens, Jun 01, 2024 knowledge cutoff
+  val gpt_4_1_mini_2025_04_14 = "gpt-4.1-mini-2025-04-14"
+  // 1,047,576 context window, 32,768 max output tokens, Jun 01, 2024 knowledge cutoff
+  val gpt_4_1_nano = "gpt-4.1-nano"
+  // 1,047,576 context window, 32,768 max output tokens, Jun 01, 2024 knowledge cutoff
+  val gpt_4_1_nano_2025_04_14 = "gpt-4.1-nano-2025-04-14"
+
   // GPT-4
   // web search
   val gpt_4o_search_preview = "gpt-4o-search-preview"

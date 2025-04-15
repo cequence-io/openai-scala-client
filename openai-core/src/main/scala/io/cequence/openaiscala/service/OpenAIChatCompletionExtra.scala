@@ -181,6 +181,12 @@ object OpenAIChatCompletionExtra {
   }
 
   private val defaultModelsSupportingJsonSchema = Seq(
+    ModelId.gpt_4_1,
+    ModelId.gpt_4_1_2025_04_14,
+    ModelId.gpt_4_1_mini,
+    ModelId.gpt_4_1_mini_2025_04_14,
+    ModelId.gpt_4_1_nano,
+    ModelId.gpt_4_1_nano_2025_04_14,
     ModelId.gpt_4_5_preview,
     ModelId.gpt_4_5_preview_2025_02_27,
     ModelId.gpt_4o,

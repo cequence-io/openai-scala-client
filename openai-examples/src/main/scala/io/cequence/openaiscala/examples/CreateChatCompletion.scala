@@ -17,7 +17,7 @@ object CreateChatCompletion extends Example {
       .createChatCompletion(
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = ModelId.gpt_4_5_preview,
+          model = ModelId.gpt_4_1,
           temperature = Some(0),
           max_tokens = Some(4000),
           service_tier = Some(ServiceTier.auto),

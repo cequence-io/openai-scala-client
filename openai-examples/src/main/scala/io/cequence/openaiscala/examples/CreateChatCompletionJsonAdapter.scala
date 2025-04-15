@@ -11,7 +11,7 @@ import play.api.libs.json.{JsObject, Json}
 
 import scala.concurrent.Future
 
-object CreateChatCompletionJsonWithO3Mini
+object CreateChatCompletionJsonAdapter
     extends Example
     with TestFixtures
     with OpenAIServiceConsts {
@@ -26,7 +26,7 @@ object CreateChatCompletionJsonWithO3Mini
       .createChatCompletionWithJSON[JsObject](
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = ModelId.o3_mini,
+          model = ModelId.gpt_4_1,
           max_tokens = Some(5000),
           response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
           jsonSchema = Some(capitalsSchemaDef1)

@@ -18,7 +18,7 @@ trait OpenAIServiceConsts {
   object DefaultSettings {
 
     val CreateJsonCompletion = CreateCompletionSettings(
-      model = ModelId.gpt_4o_2024_08_06,
+      model = ModelId.gpt_4_1,
       temperature = Some(0.0),
       max_tokens = Some(4000)
     )
@@ -49,12 +49,12 @@ trait OpenAIServiceConsts {
     )
 
     val CreateChatFunCompletion = CreateChatCompletionSettings(
-      model = ModelId.gpt_4o_mini,
+      model = ModelId.gpt_4_1,
       max_tokens = Some(4000)
     )
 
     val CreateChatToolCompletion = CreateChatCompletionSettings(
-      model = ModelId.gpt_4o_mini,
+      model = ModelId.gpt_4_1,
       max_tokens = Some(4000)
     )
 
