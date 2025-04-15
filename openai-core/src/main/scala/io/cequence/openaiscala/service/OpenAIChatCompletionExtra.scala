@@ -236,7 +236,7 @@ object OpenAIChatCompletionExtra {
     NonOpenAIModelId.grok_3_mini_latest,
     NonOpenAIModelId.grok_3_mini_fast,
     NonOpenAIModelId.grok_3_mini_fast_beta,
-    NonOpenAIModelId.grok_3_mini_fast_latest,
+    NonOpenAIModelId.grok_3_mini_fast_latest
     // NonOpenAIModelId.cerebras_llama_4_scout_17b_16e_instruct
   )
 
