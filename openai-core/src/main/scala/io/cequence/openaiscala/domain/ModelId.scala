@@ -177,7 +177,12 @@ object ModelId {
   // 16k context, gpt_3_5_turbo will point to this model from Dec 11, 2023
   val gpt_3_5_turbo_1106 = "gpt-3.5-turbo-1106"
 
-  // Q*/Strawberry
+  // O models - Q*/Strawberry
+
+  val o4_mini = "o4-mini"
+  val o4_mini_2025_04_16 = "o4-mini-2025-04-16"
+  val o3 = "o3"
+  val o3_2025_04_16 = "o3-2025-04-16"
   val o3_mini = "o3-mini"
   val o3_mini_2025_01_31 = "o3-mini-2025-01-31"
   // High-compute version of o3-mini

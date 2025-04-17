@@ -61,11 +61,18 @@ trait ChatCompletionBodyMaker {
     ModelId.o1_mini_2024_09_12
   )
 
-  private val regularO1Or3Models = Set(
+  private val regularOModels = Set(
     ModelId.o1,
     ModelId.o1_2024_12_17,
+    ModelId.o1_pro,
+    ModelId.o1_pro_2025_03_19,
+    ModelId.o3,
+    ModelId.o3_2025_04_16,
     ModelId.o3_mini,
-    ModelId.o3_mini_2025_01_31
+    ModelId.o3_mini_2025_01_31,
+    ModelId.o3_mini_high,
+    ModelId.o4_mini,
+    ModelId.o4_mini_2025_04_16
   )
 
   protected def createBodyParamsForChatCompletion(
@@ -84,12 +91,12 @@ trait ChatCompletionBodyMaker {
 
     val messageJsons = messagesFinal.map(Json.toJson(_)(messageWrites))
 
-    // O1/3 models need some special treatment... revisit this later
+    // regular O models need some special treatment... revisit this later
     val settingsFinal =
       if (o1PreviewModels.contains(settings.model))
         ChatCompletionSettingsConversions.o1Preview(settings)
-      else if (regularO1Or3Models.contains(settings.model))
-        ChatCompletionSettingsConversions.o1And3(settings)
+      else if (regularOModels.contains(settings.model))
+        ChatCompletionSettingsConversions.o(settings)
       else
         settings
 
