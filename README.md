@@ -40,22 +40,22 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 |----------|------------------------|---------------|-------------|
 | [OpenAI](https://platform.openai.com) | Full | Standard + Responses API | Full API support |
 | [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) | Full | Standard + Responses API | OpenAI on Azure|
-| [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) | Varies |  | Open-source models |
 | [Anthropic](https://www.anthropic.com/api) | Implied |  | Claude models |
-| [Google Vertex AI](https://cloud.google.com/vertex-ai) | Full | Yes | Gemini models |
-| [Google Gemini](https://ai.google.dev/) (🔥 **New**) | Full | Yes | Google's models |
-| [Groq](https://wow.groq.com/) | Only JSON object mode | Yes | Fast inference |
-| [Grok](https://x.ai/) | Full |  | x.AI models |
-| [Fireworks AI](https://fireworks.ai/) | Only JSON object mode | | Cloud provider |
-| [Octo AI](https://octo.ai/) | Only JSON object mode |  | Cloud provider (obsolete) |
-| [TogetherAI](https://www.together.ai/) | Only JSON object mode |  | Cloud provider |
+| [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) | Varies |  | Open-source models |
 | [Cerebras](https://cerebras.ai/) | Only JSON object mode |  | Fast inference |
-| [Mistral](https://mistral.ai/) | Only JSON object mode |  | Open-source leader |
 | [Deepseek](https://deepseek.com/) | Only JSON object mode |  | Chinese provider |
-| [Ollama](https://ollama.com/) | Varies |  | Local LLMs |
 | [FastChat](https://github.com/lm-sys/FastChat) | Varies |  | Local LLMs |
+| [Fireworks AI](https://fireworks.ai/) | Only JSON object mode | | Cloud provider |
+| [Google Gemini](https://ai.google.dev/) (🔥 **New**) | Full | Yes | Google's models |
+| [Google Vertex AI](https://cloud.google.com/vertex-ai) | Full | Yes | Gemini models |
+| [Grok](https://x.ai/) | Full |  | x.AI models |
+| [Groq](https://wow.groq.com/) | Only JSON object mode | | Fast inference |
+| [Mistral](https://mistral.ai/) | Only JSON object mode |  | Open-source leader |
 | [Novita](https://novita.ai/) (🔥 **New**) | Only JSON object mode |  | Cloud provider |
+| [Octo AI](https://octo.ai/) | Only JSON object mode |  | Cloud provider (obsolete) |
+| [Ollama](https://ollama.com/) | Varies |  | Local LLMs |
 | [Perplexity Sonar](https://www.perplexity.ai/) (🔥 **New**) | Only implied |  | Search-based AI |
+| [TogetherAI](https://www.together.ai/) | Only JSON object mode |  | Cloud provider |
 
 ---
 
@@ -378,7 +378,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
   }
 ```
 
-- Create chat completion with json/structured output
+- Create chat completion with **JSON/structured output**
 
 ```scala
   val messages = Seq(
@@ -408,7 +408,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
   val jsonSchemaDef = JsonSchemaDef(
     name = "capitals_response",
     strict = true,
-    structure = schema
+    structure = capitalsSchema
   )
 
   service
@@ -427,7 +427,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
     }
 ```
 
-- Create chat completion with json/structured output using a handly implicit function (`createChatCompletionWithJSON[T]`) that handles JSON extraction with a potential repair, as well as deserialization to an object T.
+- Create chat completion with **JSON/structured output** using a handly implicit function (`createChatCompletionWithJSON[T]`) that handles JSON extraction with a potential repair, as well as deserialization to an object T.
 
 ```scala
   import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
@@ -449,10 +449,12 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
     }
 ```
 
-- Failover
+- **Failover** to alternative models if the primary one fails
 
-```
-  private val messages = Seq(
+```scala
+  import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
+
+  val messages = Seq(
     SystemMessage("You are a helpful weather assistant."),
     UserMessage("What is the weather like in Norway?")
   )
@@ -471,14 +473,235 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
       print(response.contentHead)
     }
 ```
-- Failover with JSON/structred outuput
 
-- Responses API (basic)
+- **Failover** with JSON/structured output
 
-- Responses API (tool use)
+```scala
+  import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
 
+  val capitalsSchema = JsonSchema.Object(
+    properties = Map(
+      "countries" -> JsonSchema.Array(
+        items = JsonSchema.Object(
+          properties = Map(
+            "country" -> JsonSchema.String(
+              description = Some("The name of the country")
+            ),
+            "capital" -> JsonSchema.String(
+              description = Some("The capital city of the country")
+            )
+          ),
+          required = Seq("country", "capital")
+        )
+      )
+    ),
+    required = Seq("countries")
+  )
 
+  val jsonSchemaDef = JsonSchemaDef(
+    name = "capitals_response",
+    strict = true,
+    structure = capitalsSchema
+  )
 
+  // Define the chat messages
+  val messages = Seq(
+    SystemMessage("Give me the most populous capital cities in JSON format."),
+    UserMessage("List only african countries")
+  )
+
+  // Call the service with failover support
+  service
+    .createChatCompletionWithJSON[JsObject](
+      messages = messages,
+      settings = CreateChatCompletionSettings(
+        model = ModelId.o3_mini, // Primary model
+        max_tokens = Some(1000),
+        response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
+        jsonSchema = Some(jsonSchemaDef)
+      ),
+      failoverModels = Seq(
+        ModelId.gpt_4_5_preview,  // First fallback model
+        ModelId.gpt_4o            // Second fallback model
+      ),
+      maxRetries = Some(3),       // Maximum number of retries per model
+      retryOnAnyError = true,     // Retry on any error, not just retryable ones
+      taskNameForLogging = Some("capitals-query") // For better logging
+    )
+    .map { json =>
+      println(Json.prettyPrint(json))
+    }
+```
+
+- **Responses API** - basic usage with textual inputs / messages
+
+```scala
+  import io.cequence.openaiscala.domain.responsesapi.Inputs
+
+  service
+    .createModelResponse(
+      Inputs.Text("What is the capital of France?")
+    )
+    .map { response =>
+      println(response.outputText.getOrElse("N/A"))
+    }
+```
+
+```scala
+  import io.cequence.openaiscala.domain.responsesapi.Input
+
+  service
+    .createModelResponse(
+      Inputs.Items(
+        Input.ofInputSystemTextMessage(
+          "You are a helpful assistant. Be verbose and detailed and don't be afraid to use emojis."
+        ),
+        Input.ofInputUserTextMessage("What is the capital of France?")
+      )
+    )
+    .map { response =>
+      println(response.outputText.getOrElse("N/A"))
+    }
+```
+
+- **Responses API** - image input
+
+```scala
+
+  import io.cequence.openaiscala.domain.responsesapi.{Inputs, Input}
+  import io.cequence.openaiscala.domain.responsesapi.InputMessageContent
+  import io.cequence.openaiscala.domain.ChatRole
+
+  service
+    .createModelResponse(
+      Inputs.Items(
+        Input.ofInputMessage(
+          Seq(
+            InputMessageContent.Text("what is in this image?"),
+            InputMessageContent.Image(
+              imageUrl = Some(
+                "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"
+              )
+            )
+          ),
+          role = ChatRole.User
+        )
+      )
+    )
+    .map { response =>
+      println(response.outputText.getOrElse("N/A"))
+    }
+```
+
+- **Responses API** - tool use (file search)
+
+```scala
+
+  service
+    .createModelResponse(
+      Inputs.Text("What are the attributes of an ancient brown dragon?"),
+      settings = CreateModelResponseSettings(
+        model = ModelId.gpt_4o_2024_08_06,
+        tools = Seq(
+          FileSearchTool(
+            vectorStoreIds = Seq("vs_1234567890"),
+            maxNumResults = Some(20),
+            filters = None,
+            rankingOptions = None
+          )
+        )
+      )
+    )
+    .map { response =>
+      println(response.outputText.getOrElse("N/A"))
+
+      // citations
+      val citations: Seq[Annotation.FileCitation] = response.outputMessageContents.collect {
+        case e: OutputText =>
+          e.annotations.collect { case citation: Annotation.FileCitation => citation }
+      }.flatten
+
+      println("Citations:")
+      citations.foreach { citation =>
+        println(s"${citation.fileId} - ${citation.filename}")
+      }
+    }
+```
+
+- **Responses API** - tool use (web search)
+
+```scala
+  service
+    .createModelResponse(
+      Inputs.Text("What was a positive news story from today?"),
+      settings = CreateModelResponseSettings(
+        model = ModelId.gpt_4o_2024_08_06,
+        tools = Seq(WebSearchTool())
+      )
+    )
+    .map { response =>
+      println(response.outputText.getOrElse("N/A"))
+
+      // citations
+      val citations: Seq[Annotation.UrlCitation] = response.outputMessageContents.collect {
+        case e: OutputText =>
+          e.annotations.collect { case citation: Annotation.UrlCitation => citation }
+      }.flatten
+
+      println("Citations:")
+      citations.foreach { citation =>
+        println(s"${citation.title} - ${citation.url}")
+      }
+    }
+```
+
+- **Responses API** - tool use (function call)
+
+```scala
+  service
+    .createModelResponse(
+      Inputs.Text("What is the weather like in Boston today?"),
+      settings = CreateModelResponseSettings(
+        model = ModelId.gpt_4o_2024_08_06,
+        tools = Seq(
+          FunctionTool(
+            name = "get_current_weather",
+            parameters = JsonSchema.Object(
+              properties = Map(
+                "location" -> JsonSchema.String(
+                  description = Some("The city and state, e.g. San Francisco, CA")
+                ),
+                "unit" -> JsonSchema.String(
+                  `enum` = Seq("celsius", "fahrenheit")
+                )
+              ),
+              required = Seq("location", "unit")
+            ),
+            description = Some("Get the current weather in a given location"),
+            strict = true
+          )
+        ),
+        toolChoice = Some(ToolChoice.Mode.Auto)
+      )
+    )
+    .map { response =>
+      val functionCall = response.outputFunctionCalls.headOption
+        .getOrElse(throw new RuntimeException("No function call output found"))
+
+      println(
+        s"""Function Call Details:
+           |Name: ${functionCall.name}
+           |Arguments: ${functionCall.arguments}
+           |Call ID: ${functionCall.callId}
+           |ID: ${functionCall.id}
+           |Status: ${functionCall.status}""".stripMargin
+      )
+
+      val toolsUsed = response.tools.map(_.typeString)
+
+      println(s"${toolsUsed.size} tools used: ${toolsUsed.mkString(", ")}")
+    }
+```
 
 - Count expected used tokens before calling `createChatCompletions` or `createChatFunCompletions`, this helps you select proper model and reduce costs. This is an experimental feature and it may not work for all models. Requires `openai-scala-count-tokens` lib.
 
@@ -598,7 +821,6 @@ Note that the adapters can be arbitrarily combined/stacked.
     Some(println(_)) // simple logging
   )
 ```
-
 - **Retry** on a specific function using [RetryHelpers](./openai-core/src/main/scala/io/cequence/openaiscala/RetryHelpers.scala) directly
  
 ```scala
@@ -711,3 +933,4 @@ This project is open-source and welcomes any contribution or feedback ([here](ht
 Development of this library has been supported by  [<img src="https://cequence.io/favicon-16x16.png"> - Cequence.io](https://cequence.io) - `The future of contracting` 
 
 Created and maintained by [Peter Banda](https://peterbanda.net).
+
