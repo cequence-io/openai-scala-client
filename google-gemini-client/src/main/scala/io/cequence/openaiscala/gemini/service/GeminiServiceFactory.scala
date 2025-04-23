@@ -32,7 +32,7 @@ object GeminiServiceFactory extends GeminiServiceConsts with EnvHelper {
    * Create a new instance of the [[OpenAIChatCompletionService]] wrapping the SonarService
    *
    * @param apiKey
-   *   The API key to use for authentication (if not specified the SONAR_API_KEY env. variable
+   *   The API key to use for authentication (if not specified the GOOGLE_API_KEY env. variable
    *   will be used)
    * @param timeouts
    *   The explicit timeouts to use for the service (optional)
