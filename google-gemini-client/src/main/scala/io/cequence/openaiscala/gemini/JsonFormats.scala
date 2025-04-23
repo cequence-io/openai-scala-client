@@ -79,7 +79,20 @@ trait JsonFormats {
 
   implicit val partFormat: Format[Part] = Format(partReads, partWrites)
 
-  implicit val contentFormat: Format[Content] = Json.format[Content]
+  implicit val contentWrites: Writes[Content] = (
+    (__ \ "parts").write[Seq[Part]] and
+      (__ \ "role").writeNullable[ChatRole]
+  )(
+    // somehow unlift(Content.unapply) is not working in Scala3
+    (x: Content) => (x.parts, x.role)
+  )
+
+  implicit val contentReads: Reads[Content] = (
+    (__ \ "parts").readWithDefault[Seq[Part]](Nil) and
+      (__ \ "role").readNullable[ChatRole]
+  )(Content.apply(_: Seq[Part], _: Option[ChatRole]))
+
+  implicit val contentFormat: Format[Content] = Format(contentReads, contentWrites)
 
   // Tools
   implicit val toolPrefixFormat: Format[ToolPrefix] = enumFormat(ToolPrefix.values: _*)

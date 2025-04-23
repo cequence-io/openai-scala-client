@@ -67,6 +67,19 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
       )
     }
 
+    "deserialize candidate with empty content" in {
+      testDeserialization[Candidate](
+        Candidate(
+          content = Content.apply()
+        ),
+        """{
+          |  "content" : {},
+          |  "safetyRatings" : [ ],
+          |  "groundingAttributions" : [ ]
+          |}""".stripMargin
+      )
+    }
+
     "serialize and deserialize top candidate" in {
       prettyTestCodec[TopCandidates](
         TopCandidates(
