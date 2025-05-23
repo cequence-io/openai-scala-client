@@ -38,7 +38,13 @@ private[service] class OpenAIVertexAIChatCompletionService(
   ): Future[ChatCompletionResponse] = {
     val model = createModel(messages, settings)
 
-    val javaFuture = model.generateContentAsync(toNonSystemVertexAI(messages))
+    val javaFuture = model.generateContentAsync(
+      toNonSystemVertexAI(
+        messages.filter(message =>
+          message.role != ChatRole.System && message.role != ChatRole.Developer
+        )
+      )
+    )
     val scalaFuture: Future[GenerateContentResponse] =
       toScala(CompletableFuture.supplyAsync(() => javaFuture.get))
 
