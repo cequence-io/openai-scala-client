@@ -328,11 +328,18 @@ private[service] class OpenAIGeminiChatCompletionService(
       )
 
     case JsonSchema.Object(properties, required) =>
-      val propertiesFinal = if (properties.nonEmpty)
-        properties
-      else
-        // GenerateContentRequest.generation_config.response_schema.properties: should be non-empty for OBJECT type
-        Seq("_filler_field" -> JsonSchema.String(Some("Required field to satisfy Gemini's non-empty object schema requirement. Always output 'none'.")))
+      val propertiesFinal =
+        if (properties.nonEmpty)
+          properties
+        else
+          // GenerateContentRequest.generation_config.response_schema.properties: should be non-empty for OBJECT type
+          Seq(
+            "_filler_field" -> JsonSchema.String(
+              Some(
+                "Required field to satisfy Gemini's non-empty object schema requirement. Always output 'none'."
+              )
+            )
+          )
 
       Schema(
         `type` = SchemaType.OBJECT,
