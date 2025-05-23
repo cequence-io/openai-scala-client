@@ -29,7 +29,9 @@ object GoogleVertexAICreateChatCompletionWithOpenAIAdapter
           temperature = Some(0)
         )
       )
-      .map { content =>
-        println(content.contentHead)
+      .map { response =>
+        println(response.contentHead)
+        println("Finish reason: " + response.choices.head.finish_reason.getOrElse("N/A"))
+        println("Usage        : " + response.usage.get)
       }
 }
