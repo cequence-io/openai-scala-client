@@ -4,6 +4,8 @@ package io.cequence.openaiscala.domain
 object NonOpenAIModelId {
 
   // Anthropic
+  val claude_opus_4_20250514 = "claude-opus-4-20250514"
+  val claude_sonnet_4_20250514 = "claude-sonnet-4-20250514"
   val claude_3_7_sonnet_latest = "claude-3-7-sonnet-latest"
   val claude_3_7_sonnet_20250219 = "claude-3-7-sonnet-20250219"
   val claude_3_5_haiku_latest = "claude-3-5-haiku-latest"
@@ -18,6 +20,8 @@ object NonOpenAIModelId {
   val claude_instant_1_2 = "claude-instant-1.2"
 
   // Anthropic Bedrock
+  val bedrock_claude_opus_4_20250514_v1_0 = "anthropic.claude-opus-4-20250514-v1:0"
+  val bedrock_claude_sonnet_4_20250514_v1_0 = "anthropic.claude-sonnet-4-20250514-v1:0"
   val bedrock_claude_3_7_sonnet_20250219_v1_0 = "anthropic.claude-3-7-sonnet-20250219-v1:0"
   val bedrock_claude_3_5_sonnet_20241022_v2_0 = "anthropic.claude-3-5-sonnet-20241022-v2:0"
   val bedrock_claude_3_5_sonnet_20240620_v1_0 = "anthropic.claude-3-5-sonnet-20240620-v1:0"
@@ -187,9 +191,14 @@ object NonOpenAIModelId {
   val qwen2_72b_instruct = "Qwen/Qwen2-72B-Instruct" // Together AI
 
   // Google Gemini and Vertex AI
+  val gemini_2_5_pro_preview_05_06 = "gemini-2.5-pro-preview-05-06"
   val gemini_2_5_pro_preview_03_25 = "gemini-2.5-pro-preview-03-25"
   val gemini_2_5_pro_exp_03_25 = "gemini-2.5-pro-exp-03-25"
+
+  val gemini_2_5_flash_preview_04_17_thinking = "gemini-2.5-flash-preview-04-17-thinking"
   val gemini_2_5_flash_preview_04_17 = "gemini-2.5-flash-preview-04-17"
+  val gemini_2_5_flash_preview_05_20 = "gemini-2.5-flash-preview-05-20"
+
   val gemini_2_0_pro_exp_02_05 = "gemini-2.0-pro-exp-02-05"
   val gemini_2_0_pro_exp = "gemini-2.0-pro-exp"
   val gemini_2_0_flash_thinking_exp_01_21 = "gemini-2.0-flash-thinking-exp-01-21"
