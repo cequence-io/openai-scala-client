@@ -15,7 +15,7 @@ object CreateModelResponseWithWebSearch extends Example {
       .createModelResponse(
         Inputs.Text("What was a positive news story from today?"),
         settings = CreateModelResponseSettings(
-          model = ModelId.gpt_4o_2024_08_06,
+          model = ModelId.gpt_4_1,
           tools = Seq(WebSearchTool())
         )
       )

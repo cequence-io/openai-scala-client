@@ -25,7 +25,7 @@ object AnthropicCreateMessage extends ExampleBase[AnthropicService] {
       .createMessage(
         messages,
         settings = AnthropicCreateMessageSettings(
-          model = NonOpenAIModelId.claude_3_5_haiku_20241022,
+          model = NonOpenAIModelId.claude_opus_4_20250514,
           max_tokens = 4096
         )
       )
