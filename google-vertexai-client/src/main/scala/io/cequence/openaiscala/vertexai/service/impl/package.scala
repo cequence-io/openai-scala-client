@@ -38,6 +38,7 @@ import java.{util => ju}
 import scala.collection.convert.ImplicitConversions.`iterable asJava`
 import scala.collection.convert.ImplicitConversions.`map AsJavaMap`
 import scala.collection.convert.ImplicitConversions.`list asScalaBuffer`
+import io.cequence.openaiscala.domain.response.PromptTokensDetails
 
 package object impl {
 
@@ -100,7 +101,7 @@ package object impl {
           .addParts(0, Part.newBuilder().setText(content).build())
           .build()
 
-      case _ => throw new OpenAIScalaClientException("Unsupported message type")
+      case x: BaseMessage => throw new OpenAIScalaClientException(s"Unsupported message type: ${x.getClass().getName()}")
     }
 
   def toSystemVertexAI(
@@ -267,7 +268,7 @@ package object impl {
           index = candidate.getIndex,
           message = toOpenAIAssistantMessage(candidate.getContent),
           finish_reason =
-            Some(candidate.getFinishReason.getNumber + ": " + candidate.getFinishMessage),
+            Some(candidate.getFinishReason.toString()),
           logprobs = None
         )
       },
@@ -288,13 +289,13 @@ package object impl {
     OpenAIUsageInfo(
       prompt_tokens = usageInfo.getPromptTokenCount,
       total_tokens = usageInfo.getTotalTokenCount,
-      completion_tokens = Some(usageInfo.getPromptTokenCount)
-//      prompt_tokens_details = Some(
-//        PromptTokensDetails(
-//          cached_tokens = usageInfo.getCachedContentTokenCount.getOrElse(0), TODO: add once available
-//          audio_tokens = 0
-//        )
-//      )
+      completion_tokens = Some(usageInfo.getCandidatesTokenCount),
+      // prompt_tokens_details = Some(
+      //   PromptTokensDetails(
+      //     cached_tokens = usageInfo.getCachedContentTokenCount.getOrElse(0),
+      //     audio_tokens = None
+      //   )
+      // )
     )
   }
 }
