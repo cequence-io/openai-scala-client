@@ -181,6 +181,8 @@ object ModelId {
 
   val o4_mini = "o4-mini"
   val o4_mini_2025_04_16 = "o4-mini-2025-04-16"
+  val o3_pro_2025_06_10 = "o3-pro-2025-06-10"
+  val o3_pro = "o3-pro"
   val o3 = "o3"
   val o3_2025_04_16 = "o3-2025-04-16"
   val o3_mini = "o3-mini"
