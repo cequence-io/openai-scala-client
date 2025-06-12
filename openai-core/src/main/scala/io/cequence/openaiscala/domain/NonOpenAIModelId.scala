@@ -191,6 +191,7 @@ object NonOpenAIModelId {
   val qwen2_72b_instruct = "Qwen/Qwen2-72B-Instruct" // Together AI
 
   // Google Gemini and Vertex AI
+  val gemini_2_5_pro_preview_06_05 = "gemini-2.5-pro-preview-06-05"
   val gemini_2_5_pro_preview_05_06 = "gemini-2.5-pro-preview-05-06"
   val gemini_2_5_pro_preview_03_25 = "gemini-2.5-pro-preview-03-25"
   val gemini_2_5_pro_exp_03_25 = "gemini-2.5-pro-exp-03-25"
