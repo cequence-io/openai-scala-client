@@ -180,10 +180,14 @@ object ModelId {
   // O models - Q*/Strawberry
 
   val o4_mini = "o4-mini"
+  val o4_mini_deep_research = "o4-mini-deep-research"
+  val o4_mini_deep_research_2025_06_26 = "o4-mini-deep-research-2025-06-26"
   val o4_mini_2025_04_16 = "o4-mini-2025-04-16"
   val o3_pro_2025_06_10 = "o3-pro-2025-06-10"
   val o3_pro = "o3-pro"
   val o3 = "o3"
+  val o3_deep_research_2025_06_26 = "o3-deep-research-2025-06-26"
+  val o3_deep_research = "o3-deep-research"
   val o3_2025_04_16 = "o3-2025-04-16"
   val o3_mini = "o3-mini"
   val o3_mini_2025_01_31 = "o3-mini-2025-01-31"
