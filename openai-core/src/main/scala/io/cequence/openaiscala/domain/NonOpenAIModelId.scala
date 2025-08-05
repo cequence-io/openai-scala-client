@@ -4,6 +4,7 @@ package io.cequence.openaiscala.domain
 object NonOpenAIModelId {
 
   // Anthropic
+  val claude_opus_4_1_20250805 = "claude-opus-4-1-20250805"
   val claude_opus_4_20250514 = "claude-opus-4-20250514"
   val claude_sonnet_4_20250514 = "claude-sonnet-4-20250514"
   val claude_3_7_sonnet_latest = "claude-3-7-sonnet-latest"
@@ -20,6 +21,7 @@ object NonOpenAIModelId {
   val claude_instant_1_2 = "claude-instant-1.2"
 
   // Anthropic Bedrock
+  val bedrock_claude_opus_4_1_20250805_v1_0 = "anthropic.claude-opus-4-1-20250805-v1:0"
   val bedrock_claude_opus_4_20250514_v1_0 = "anthropic.claude-opus-4-20250514-v1:0"
   val bedrock_claude_sonnet_4_20250514_v1_0 = "anthropic.claude-sonnet-4-20250514-v1:0"
   val bedrock_claude_3_7_sonnet_20250219_v1_0 = "anthropic.claude-3-7-sonnet-20250219-v1:0"
@@ -51,6 +53,8 @@ object NonOpenAIModelId {
   val llama4_scout_instruct_basic = "llama4-scout-instruct-basic" // Fireworks AI
   // 17B x 16E, 107B params
   val groq_llama_4_scout_17b_16e_instruct = "meta-llama/llama-4-scout-17b-16e-instruct" // Groq
+  val groq_llama_4_maverick_17b_128e_instruct = "meta-llama/llama-4-maverick-17b-128e-instruct" // Groq
+    
   // 17B x 16E, 107B params
   val cerebras_llama_4_scout_17b_16e_instruct = "llama-4-scout-17b-16e-instruct" // Cerebras
 
@@ -123,6 +127,8 @@ object NonOpenAIModelId {
   val meta_llama_3_70b_instruct_to_ai = "meta-llama/Meta-Llama-3-70B-Instruct" // Together AI
   @Deprecated
   val meta_llama_3_8b_instruct_to_ai = "meta-llama/Meta-Llama-3-8B-Instruct" // Together AI
+  val groq_llama_prompt_guard_2_22m = "meta-llama/llama-prompt-guard-2-22m" // Groq
+  val groq_llama_prompt_guard_2_86m = "meta-llama/llama-prompt-guard-2-86m" // Groq
 
   // Mistral
   val mistral_saba_24b = "mistral-saba-24b" // Groq
@@ -191,11 +197,13 @@ object NonOpenAIModelId {
   val qwen2_72b_instruct = "Qwen/Qwen2-72B-Instruct" // Together AI
 
   // Google Gemini and Vertex AI
+  val gemini_2_5_pro = "gemini-2.5-pro"
   val gemini_2_5_pro_preview_06_05 = "gemini-2.5-pro-preview-06-05"
   val gemini_2_5_pro_preview_05_06 = "gemini-2.5-pro-preview-05-06"
   val gemini_2_5_pro_preview_03_25 = "gemini-2.5-pro-preview-03-25"
   val gemini_2_5_pro_exp_03_25 = "gemini-2.5-pro-exp-03-25"
 
+  val gemini_2_5_flash = "gemini-2.5-flash"
   val gemini_2_5_flash_preview_04_17_thinking = "gemini-2.5-flash-preview-04-17-thinking"
   val gemini_2_5_flash_preview_04_17 = "gemini-2.5-flash-preview-04-17"
   val gemini_2_5_flash_preview_05_20 = "gemini-2.5-flash-preview-05-20"
@@ -207,6 +215,7 @@ object NonOpenAIModelId {
   val gemini_2_0_flash_thinking_exp = "gemini-2.0-flash-thinking-exp"
   val gemini_2_0_flash_lite_preview_02_05 = "gemini-2.0-flash-lite-preview-02-05"
   val gemini_2_0_flash_lite_preview = "gemini-2.0-flash-lite-preview"
+  val gemini_2_0_flash_lite = "gemini-2.0-flash-lite"
   val gemini_2_0_flash_001 = "gemini-2.0-flash-001"
   val gemini_2_0_flash = "gemini-2.0-flash"
   val gemini_2_0_flash_exp = "gemini-2.0-flash-exp"
@@ -241,6 +250,7 @@ object NonOpenAIModelId {
   val text_embedding_004 = "text-embedding-004"
 
   // Other
+  val moonshotai_kimi_k2_instruct = "moonshotai/kimi-k2-instruct" // Groq
   val phi_3_vision_128k_instruct = "phi-3-vision-128k-instruct" // Fireworks AI
   val drbx_instruct = "dbrx-instruct" // Fireworks AI
   val dbrx_instruct_databricks_to_ai = "databricks/dbrx-instruct" // Together AI
@@ -286,6 +296,10 @@ object NonOpenAIModelId {
   val solar_10_7b_instruct_v1_0 = "upstage/SOLAR-10.7B-Instruct-v1.0" // Together AI
 
   // Grok
+  // context 256,000
+  val grok_4 = "grok-4"
+  val grok_4_latest = "grok-4-latest"
+  val grok_4_0709 = "grok-4-0709"
   // context 131,072
   val grok_3_beta = "grok-3-beta"
   val grok_3 = "grok-3"
@@ -340,6 +354,12 @@ object NonOpenAIModelId {
   val deepseek_v3_0324 = "deepseek-v3-0324" // Fireworks
   val deepseek_v2_lite_chat = "deepseek-v2-lite-chat" // Fireworks
   val deepseek_ai_deepseek_v3 = "deepseek-ai/DeepSeek-V3" // Together AI
+
+  // openai oss
+  val gpt_oss_20b = "gpt-oss-20b" // fireworks
+  val gpt_oss_120b = "gpt-oss-120b" // fireworks, cerabras
+  val openai_gpt_oss_120b = "openai/gpt-oss-120b" // groq, Together AI
+  val openai_gpt_oss_20b = "openai/gpt-oss-20b" // groq, Together AI
 
   // Sonar (Perplexity)
   // 128k context length
