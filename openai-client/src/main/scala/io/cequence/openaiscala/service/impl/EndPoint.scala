@@ -34,6 +34,7 @@ object Param {
   case object model extends Param
   case object prompt extends Param
   case object suffix extends Param
+  @Deprecated
   case object max_tokens extends Param
   case object temperature extends Param
   case object top_p extends Param

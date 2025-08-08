@@ -114,7 +114,7 @@ trait ChatCompletionBodyMaker {
           case _ => Some(settingsFinal.stop)
         }
       },
-      Param.max_tokens -> settingsFinal.max_tokens,
+      Param.max_completion_tokens -> settingsFinal.max_tokens,
       Param.presence_penalty -> settingsFinal.presence_penalty,
       Param.frequency_penalty -> settingsFinal.frequency_penalty,
       Param.logit_bias -> {
