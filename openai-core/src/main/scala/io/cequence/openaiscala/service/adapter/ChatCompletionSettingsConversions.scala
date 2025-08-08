@@ -35,17 +35,6 @@ object ChatCompletionSettingsConversions {
     }
 
   private val oBaseConversions = Seq(
-    // max tokens
-    FieldConversionDef(
-      _.max_tokens.isDefined,
-      settings =>
-        settings.copy(
-          max_tokens = None,
-          extra_params =
-            settings.extra_params + ("max_completion_tokens" -> settings.max_tokens.get)
-        ),
-      Some("O models don't support max_tokens, converting to max_completion_tokens")
-    ),
     // temperature
     FieldConversionDef(
       settings => settings.temperature.isDefined && settings.temperature.get != 1,
