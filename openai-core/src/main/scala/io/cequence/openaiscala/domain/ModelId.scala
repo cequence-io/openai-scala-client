@@ -134,6 +134,12 @@ object ModelId {
   val canary_tts = "canary-tts"
   val canary_whisper = "canary-whisper"
 
+  val gpt_5 = "gpt-5"
+  val gpt_5_2025_08_07 = "gpt-5-2025-08-07"
+  val gpt_5_nano = "gpt-5-nano"
+  val gpt_5_mini = "gpt-5-mini"
+  val gpt_5_mini_2025_08_07 = "gpt-5-mini-2025-08-07"
+
   val gpt_4o_mini_transcribe = "gpt-4o-mini-transcribe"
   val gpt_4o_mini_audio_preview = "gpt-4o-mini-audio-preview"
   val gpt_4o_mini_vision_preview = "gpt-4o-mini-vision-preview"
