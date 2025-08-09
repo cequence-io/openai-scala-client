@@ -53,8 +53,9 @@ object NonOpenAIModelId {
   val llama4_scout_instruct_basic = "llama4-scout-instruct-basic" // Fireworks AI
   // 17B x 16E, 107B params
   val groq_llama_4_scout_17b_16e_instruct = "meta-llama/llama-4-scout-17b-16e-instruct" // Groq
-  val groq_llama_4_maverick_17b_128e_instruct = "meta-llama/llama-4-maverick-17b-128e-instruct" // Groq
-    
+  val groq_llama_4_maverick_17b_128e_instruct =
+    "meta-llama/llama-4-maverick-17b-128e-instruct" // Groq
+
   // 17B x 16E, 107B params
   val cerebras_llama_4_scout_17b_16e_instruct = "llama-4-scout-17b-16e-instruct" // Cerebras
 
