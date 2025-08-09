@@ -203,6 +203,21 @@ object ModelId {
   val o1_pro = "o1-pro"
   val o1_pro_2025_03_19 = "o1-pro-2025-03-19"
 
+  // GPT-5
+  val gpt_5 = "gpt-5"
+  // 400k context window, 128k max output tokens, Oct 01, 2024 knowledge cutoff
+  val gpt_5_2025_08_07 = "gpt-5-2025-08-07"
+
+  val gpt_5_mini = "gpt-5-mini"
+  // 400k context window, 128,000 max output tokens, May 31, 2024 knowledge cutoff
+  val gpt_5_mini_2025_08_07 = "gpt-5-mini-2025-08-07"
+
+  val gpt_5_nano = "gpt-5-nano"
+  // 400k context window, 128,000 max output tokens, May 31, 2024 knowledge cutoff
+  val gpt_5_nano_2025_08_07 = "gpt-5-nano-2025-08-07"
+
+  val gpt_5_chat_latest = "gpt-5-chat-latest"
+
   // GPT-4.5
 
   // currently points to gpt-4.5-preview-2025-02-27
