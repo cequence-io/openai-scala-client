@@ -22,6 +22,7 @@ import play.api.libs.json.{Format, JsValue, Json}
 
 import scala.concurrent.{ExecutionContext, Future}
 import com.fasterxml.jackson.core.JsonProcessingException
+import io.cequence.openaiscala.OpenAIScalaClientException
 
 object OpenAIChatCompletionExtra {
 
@@ -44,9 +45,28 @@ object OpenAIChatCompletionExtra {
     )(
       implicit ec: ExecutionContext,
       scheduler: Scheduler
+    ): Future[ChatCompletionResponse] = 
+      createChatCompletionWithFailoverSettings(
+        messages,
+        settings,
+        failoverModels.map(model => settings.copy(model = model)),
+        maxRetries,
+        retryOnAnyError,
+        failureMessage
+      )
+
+    def createChatCompletionWithFailoverSettings(
+      messages: Seq[BaseMessage],
+      settings: CreateChatCompletionSettings,
+      failoverSettings: Seq[CreateChatCompletionSettings],
+      maxRetries: Option[Int] = Some(defaultMaxRetries),
+      retryOnAnyError: Boolean = false,
+      failureMessage: String
+    )(
+      implicit ec: ExecutionContext,
+      scheduler: Scheduler
     ): Future[ChatCompletionResponse] = {
-      val failoverSettings = failoverModels.map(model => settings.copy(model = model))
-      val allSettingsInOrder = Seq(settings) ++ failoverSettings
+      val allSettingsInOrder = settings +: failoverSettings
 
       implicit val retrySettings: RetrySettings =
         RetrySettings(maxRetries = maxRetries.getOrElse(0))
@@ -152,7 +172,11 @@ object OpenAIChatCompletionExtra {
             s"${taskNameForLoggingFinal.capitalize} finished in " + (new java.util.Date().getTime - start.getTime) + " ms."
           )
 
-          json.as[T]
+          json.asOpt[T].getOrElse(
+            throw new OpenAIScalaClientException(
+              s"Failed to parse JSON response into the expected type. Response: $contentJson"
+            )
+          )
         }
     }
 
@@ -181,6 +205,13 @@ object OpenAIChatCompletionExtra {
   }
 
   private val defaultModelsSupportingJsonSchema = Seq(
+    ModelId.gpt_5,
+    ModelId.gpt_5_2025_08_07,
+    ModelId.gpt_5_mini,
+    ModelId.gpt_5_mini_2025_08_07,
+    ModelId.gpt_5_nano,
+    ModelId.gpt_5_nano_2025_08_07,
+    ModelId.gpt_5_chat_latest,
     ModelId.gpt_4_1,
     ModelId.gpt_4_1_2025_04_14,
     ModelId.gpt_4_1_mini,
@@ -194,6 +225,8 @@ object OpenAIChatCompletionExtra {
     ModelId.gpt_4o_2024_11_20,
     ModelId.o4_mini,
     ModelId.o4_mini_2025_04_16,
+    ModelId.o3_pro,
+    ModelId.o3_pro_2025_06_10,
     ModelId.o3,
     ModelId.o3_2025_04_16,
     ModelId.o3_mini,
@@ -203,9 +236,12 @@ object OpenAIChatCompletionExtra {
     ModelId.o1_2024_12_17,
     ModelId.o1_pro,
     ModelId.o1_pro_2025_03_19,
+    NonOpenAIModelId.gemini_2_5_pro,
+    NonOpenAIModelId.gemini_2_5_pro_preview_06_05,
     NonOpenAIModelId.gemini_2_5_pro_preview_05_06,
     NonOpenAIModelId.gemini_2_5_pro_preview_03_25,
     NonOpenAIModelId.gemini_2_5_pro_exp_03_25,
+    NonOpenAIModelId.gemini_2_5_flash,
     NonOpenAIModelId.gemini_2_5_flash_preview_05_20,
     NonOpenAIModelId.gemini_2_5_flash_preview_04_17,
     NonOpenAIModelId.gemini_2_5_flash_preview_04_17_thinking,

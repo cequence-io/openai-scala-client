@@ -36,6 +36,7 @@ import play.api.libs.json.JsonNaming.SnakeCase
 import play.api.libs.json.{Format, JsValue, Json, _}
 
 import java.{util => ju}
+import io.cequence.openaiscala.domain.settings.Verbosity
 
 object JsonFormats {
   private implicit lazy val dateFormat: Format[ju.Date] = JsonUtil.SecDateFormat
@@ -365,6 +366,12 @@ object JsonFormats {
     ReasoningEffort.low,
     ReasoningEffort.medium,
     ReasoningEffort.high
+  )
+
+  implicit val verbosityFormat: Format[Verbosity] = enumFormat[Verbosity](
+    Verbosity.low,
+    Verbosity.medium,
+    Verbosity.high
   )
 
   implicit val serviceTierFormat: Format[ServiceTier] = enumFormat[ServiceTier](

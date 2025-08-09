@@ -9,14 +9,18 @@ object Retryable {
   ): Option[OpenAIScalaClientException] = Some(t).filter(apply)
 
   def apply(t: OpenAIScalaClientException): Boolean = t match {
-    // we retry on these
-    case _: OpenAIScalaClientTimeoutException    => true
-    case _: OpenAIScalaRateLimitException        => true
-    case _: OpenAIScalaServerErrorException      => true
-    case _: OpenAIScalaEngineOverloadedException => true
+    // we don't retry on these
+    case _: OpenAIScalaClientUnknownHostException  => false
+    case _: OpenAIScalaTokenCountExceededException => false
+    case _: OpenAIScalaUnauthorizedException       => false
 
-    // otherwise don't retry
-    case _ => false
+    // we retry on these
+    case _: OpenAIScalaClientTimeoutException      => true
+    case _: OpenAIScalaRateLimitException          => true
+    case _: OpenAIScalaServerErrorException        => true
+    case _: OpenAIScalaEngineOverloadedException   => true
+    // generic case
+    case _: OpenAIScalaClientException             => true
   }
 }
 

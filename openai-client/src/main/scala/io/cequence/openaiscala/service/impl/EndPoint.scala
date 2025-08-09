@@ -118,6 +118,7 @@ object Param {
   case object thread extends Param
   case object store extends Param
   case object reasoning_effort extends Param
+  case object verbosity extends Param
   case object service_tier extends Param
   case object web_search_options extends Param
   case object include extends Param

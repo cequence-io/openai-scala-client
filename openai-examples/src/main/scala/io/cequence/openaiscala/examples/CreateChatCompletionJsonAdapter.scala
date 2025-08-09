@@ -10,6 +10,8 @@ import io.cequence.openaiscala.service.OpenAIServiceConsts
 import play.api.libs.json.{JsObject, Json}
 
 import scala.concurrent.Future
+import io.cequence.openaiscala.domain.settings.ReasoningEffort
+import io.cequence.openaiscala.domain.settings.Verbosity
 
 object CreateChatCompletionJsonAdapter
     extends Example
@@ -26,8 +28,11 @@ object CreateChatCompletionJsonAdapter
       .createChatCompletionWithJSON[JsObject](
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = ModelId.gpt_4_1,
-          max_tokens = Some(5000),
+          model = ModelId.gpt_5_mini,
+          max_tokens = Some(20000),
+          temperature = Some(0.5), // ignored
+          reasoning_effort = Some(ReasoningEffort.medium),
+          verbosity = Some(Verbosity.low),
           response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
           jsonSchema = Some(capitalsSchemaDef1)
         )

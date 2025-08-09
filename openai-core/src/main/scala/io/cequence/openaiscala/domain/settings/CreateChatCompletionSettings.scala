@@ -86,6 +86,12 @@ case class CreateChatCompletionSettings(
   // Supported by o1 models only
   reasoning_effort: Option[ReasoningEffort] = None,
 
+  // Specifies the verbosity of the model's response. Only supported by gpt-5 models.
+  // Verbosity determines how many output tokens are generated. Lowering the number of tokens reduces overall latency. While the model's reasoning approach stays mostly the same, the model finds ways to answer more concisely—which can either improve or diminish answer quality, depending on your use case. Here are some scenarios for both ends of the verbosity spectrum:
+  // High verbosity: Use when you need the model to provide thorough explanations of documents or perform extensive code refactoring.
+  // Low verbosity: Best for situations where you want concise answers or simple code generation, such as SQL queries.
+  verbosity: Option[Verbosity] = None,
+
   // Specifies the latency tier to use for processing the request. This parameter is relevant for customers subscribed to the scale tier service:
   // If set to 'auto', and the Project is Scale tier enabled, the system will utilize scale tier credits until they are exhausted.
   // If set to 'auto', and the Project is not Scale tier enabled, the request will be processed using the default service tier with a lower uptime SLA and no latency guarentee.
@@ -139,6 +145,14 @@ object ReasoningEffort {
   case object low extends ReasoningEffort
   case object medium extends ReasoningEffort
   case object high extends ReasoningEffort
+}
+
+sealed trait Verbosity extends EnumValue
+
+object Verbosity {
+  case object low extends Verbosity
+  case object medium extends Verbosity
+  case object high extends Verbosity
 }
 
 sealed trait ServiceTier extends EnumValue

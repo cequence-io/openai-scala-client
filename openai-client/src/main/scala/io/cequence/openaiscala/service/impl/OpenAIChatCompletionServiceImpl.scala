@@ -75,6 +75,16 @@ trait ChatCompletionBodyMaker {
     ModelId.o4_mini_2025_04_16
   )
 
+  private val gpt5Models = Set(
+    ModelId.gpt_5,
+    ModelId.gpt_5_2025_08_07,
+    ModelId.gpt_5_mini,
+    ModelId.gpt_5_mini_2025_08_07,
+    ModelId.gpt_5_nano,
+    ModelId.gpt_5_nano_2025_08_07,
+    ModelId.gpt_5_chat_latest
+  )
+
   protected def createBodyParamsForChatCompletion(
     messagesAux: Seq[BaseMessage],
     settings: CreateChatCompletionSettings,
@@ -91,12 +101,14 @@ trait ChatCompletionBodyMaker {
 
     val messageJsons = messagesFinal.map(Json.toJson(_)(messageWrites))
 
-    // regular O models need some special treatment... revisit this later
+    // revisit this later
     val settingsFinal =
       if (o1PreviewModels.contains(settings.model))
         ChatCompletionSettingsConversions.o1Preview(settings)
       else if (regularOModels.contains(settings.model))
         ChatCompletionSettingsConversions.o(settings)
+      else if (gpt5Models.contains(settings.model))
+        ChatCompletionSettingsConversions.gpt5(settings)
       else
         settings
 
@@ -136,6 +148,7 @@ trait ChatCompletionBodyMaker {
       Param.parallel_tool_calls -> settingsFinal.parallel_tool_calls,
       Param.store -> settingsFinal.store,
       Param.reasoning_effort -> settingsFinal.reasoning_effort.map(_.toString()),
+      Param.verbosity -> settingsFinal.verbosity.map(_.toString()),
       Param.service_tier -> settingsFinal.service_tier.map(_.toString()),
       Param.metadata -> (if (settingsFinal.metadata.nonEmpty) Some(settingsFinal.metadata)
                          else None),
