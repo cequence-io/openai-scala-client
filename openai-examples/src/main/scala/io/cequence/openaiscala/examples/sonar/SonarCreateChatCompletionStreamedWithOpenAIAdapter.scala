@@ -23,7 +23,7 @@ object SonarCreateChatCompletionStreamedWithOpenAIAdapter
     UserMessage("What is the weather like in Norway?")
   )
 
-  private val modelId = NonOpenAIModelId.sonar
+  private val modelId = NonOpenAIModelId.sonar_reasoning_pro
 
   override protected def run: Future[_] =
     service
