@@ -45,7 +45,7 @@ object OpenAIChatCompletionExtra {
     )(
       implicit ec: ExecutionContext,
       scheduler: Scheduler
-    ): Future[ChatCompletionResponse] = 
+    ): Future[ChatCompletionResponse] =
       createChatCompletionWithFailoverSettings(
         messages,
         settings,
@@ -172,11 +172,13 @@ object OpenAIChatCompletionExtra {
             s"${taskNameForLoggingFinal.capitalize} finished in " + (new java.util.Date().getTime - start.getTime) + " ms."
           )
 
-          json.asOpt[T].getOrElse(
-            throw new OpenAIScalaClientException(
-              s"Failed to parse JSON response into the expected type. Response: $contentJson"
+          json
+            .asOpt[T]
+            .getOrElse(
+              throw new OpenAIScalaClientException(
+                s"Failed to parse JSON response into the expected type. Response: $contentJson"
+              )
             )
-          )
         }
     }
 

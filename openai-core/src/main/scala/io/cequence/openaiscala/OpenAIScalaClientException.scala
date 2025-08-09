@@ -15,12 +15,12 @@ object Retryable {
     case _: OpenAIScalaUnauthorizedException       => false
 
     // we retry on these
-    case _: OpenAIScalaClientTimeoutException      => true
-    case _: OpenAIScalaRateLimitException          => true
-    case _: OpenAIScalaServerErrorException        => true
-    case _: OpenAIScalaEngineOverloadedException   => true
+    case _: OpenAIScalaClientTimeoutException    => true
+    case _: OpenAIScalaRateLimitException        => true
+    case _: OpenAIScalaServerErrorException      => true
+    case _: OpenAIScalaEngineOverloadedException => true
     // generic case
-    case _: OpenAIScalaClientException             => true
+    case _: OpenAIScalaClientException => true
   }
 }
 
