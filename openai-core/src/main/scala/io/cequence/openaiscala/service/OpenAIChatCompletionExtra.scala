@@ -214,6 +214,8 @@ object OpenAIChatCompletionExtra {
     ModelId.gpt_5_nano,
     ModelId.gpt_5_nano_2025_08_07,
     ModelId.gpt_5_chat_latest,
+    NonOpenAIModelId.openai_gpt_oss_120b,
+    NonOpenAIModelId.openai_gpt_oss_20b,
     ModelId.gpt_4_1,
     ModelId.gpt_4_1_2025_04_14,
     ModelId.gpt_4_1_mini,

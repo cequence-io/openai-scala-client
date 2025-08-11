@@ -17,8 +17,7 @@ import scala.concurrent.Future
 /**
  * Requires `GROQ_API_KEY` environment variable to be set.
  */
-object GroqCreateChatCompletionJSONWithDeepseekR1
-    extends ExampleBase[OpenAIChatCompletionService] {
+object GroqCreateChatCompletionJSON extends ExampleBase[OpenAIChatCompletionService] {
 
   override val service: OpenAIChatCompletionService = ChatCompletionProvider.groq
 
@@ -40,11 +39,10 @@ object GroqCreateChatCompletionJSONWithDeepseekR1
 
   private val messages = Seq(
     SystemMessage("You are a helpful weather assistant that responds in JSON."),
-    UserMessage("What is the weather like in Norway?")
+    UserMessage("What is the weather like in Norway? List several cities.")
   )
 
-  private val modelId =
-    NonOpenAIModelId.deepseek_r1_distill_qwen_32b // deepseek_r1_distill_llama_70b
+  private val modelId = NonOpenAIModelId.openai_gpt_oss_120b
 
   override protected def run: Future[_] =
     service
@@ -53,6 +51,7 @@ object GroqCreateChatCompletionJSONWithDeepseekR1
         settings = CreateChatCompletionSettings(
           model = modelId,
           temperature = Some(0.1),
+          max_tokens = Some(10000),
           response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
           jsonSchema = Some(
             JsonSchemaDef(
@@ -61,7 +60,7 @@ object GroqCreateChatCompletionJSONWithDeepseekR1
               structure = jsonSchema
             )
           )
-        ).setMaxCompletionTokens(4000)
+        )
       )
       .map(json => println(Json.prettyPrint(json)))
 }
