@@ -126,9 +126,45 @@ case class CreateChatCompletionSettings(
   extra_params: Map[String, Any] = Map.empty
 ) {
 
+  def withTemperature(temperature: Double): CreateChatCompletionSettings =
+    copy(temperature = Some(temperature))
+
+  def withTopP(topP: Double): CreateChatCompletionSettings =
+    copy(top_p = Some(topP))
+
+  def withMaxTokens(maxTokens: Int): CreateChatCompletionSettings =
+    copy(max_tokens = Some(maxTokens))
+
+  def withPresencePenalty(presencePenalty: Double): CreateChatCompletionSettings =
+    copy(presence_penalty = Some(presencePenalty))
+
+  def withFrequencyPenalty(frequencyPenalty: Double): CreateChatCompletionSettings =
+    copy(frequency_penalty = Some(frequencyPenalty))
+
+  def withLogitBias(logitBias: Map[String, Int]): CreateChatCompletionSettings =
+    copy(logit_bias = logitBias)
+
+  def withTopLogprobs(topLogprobs: Int): CreateChatCompletionSettings =
+    copy(top_logprobs = Some(topLogprobs))
+
+  def withResponseFormatType(responseFormatType: ChatCompletionResponseFormatType)
+    : CreateChatCompletionSettings =
+    copy(response_format_type = Some(responseFormatType))
+
+  def withReasoningEffort(reasoningEffort: ReasoningEffort): CreateChatCompletionSettings =
+    copy(reasoning_effort = Some(reasoningEffort))
+
+  def withServiceTier(serviceTier: ServiceTier): CreateChatCompletionSettings =
+    copy(service_tier = Some(serviceTier))
+
+  def withParallelToolCalls(parallelToolCalls: Boolean): CreateChatCompletionSettings =
+    copy(parallel_tool_calls = Some(parallelToolCalls))
+
   def withJsonSchema(jsonSchema: JsonSchemaDef): CreateChatCompletionSettings =
     copy(jsonSchema = Some(jsonSchema))
 
+  def withExtraParams(extraParams: Map[String, Any]): CreateChatCompletionSettings =
+    copy(extra_params = extraParams)
 }
 
 sealed trait ChatCompletionResponseFormatType extends EnumValue
