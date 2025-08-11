@@ -44,7 +44,6 @@ object CerebrasCreateChatCompletionJSON extends ExampleBase[OpenAIChatCompletion
 
   private val modelId = NonOpenAIModelId.cerebras_llama_4_scout_17b_16e_instruct
 
-  // TODO: Cerebras should support JSON schema response format (without a conversion to "json mode")
   override protected def run: Future[_] =
     service
       .createChatCompletionWithJSON[JsObject](
@@ -59,8 +58,9 @@ object CerebrasCreateChatCompletionJSON extends ExampleBase[OpenAIChatCompletion
               strict = true,
               structure = jsonSchema
             )
-          )
-        ).setMaxCompletionTokens(4000)
+          ),
+        ),
+        enforceJsonSchemaMode = true
       )
       .map(json => println(Json.prettyPrint(json)))
 }
