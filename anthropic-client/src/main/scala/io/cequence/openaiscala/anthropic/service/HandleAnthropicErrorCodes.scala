@@ -12,7 +12,8 @@ trait HandleAnthropicErrorCodes extends WSClient {
 
   private val TokenCountExceededMessages = Set(
     "input length and `max_tokens` exceed context limit",
-    "prompt is too long"
+    "prompt is too long",
+    "input is too long for requested model" // bedrock
   )
 
   override protected def handleErrorCodes(
@@ -24,7 +25,7 @@ trait HandleAnthropicErrorCodes extends WSClient {
 
       case 400 => {
         // Check if the error message indicates token count exceeded
-        if (TokenCountExceededMessages.exists(message.contains)) {
+        if (TokenCountExceededMessages.exists(message.toLowerCase().contains)) {
           throw new AnthropicScalaTokenCountExceededException(errorMessage)
         } else {
           // 400 - invalid_request_error: There was an issue with the format or content of your request.
