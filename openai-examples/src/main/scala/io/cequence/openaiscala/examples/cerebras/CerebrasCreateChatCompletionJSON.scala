@@ -58,7 +58,7 @@ object CerebrasCreateChatCompletionJSON extends ExampleBase[OpenAIChatCompletion
               strict = true,
               structure = jsonSchema
             )
-          ),
+          )
         ),
         enforceJsonSchemaMode = true
       )
