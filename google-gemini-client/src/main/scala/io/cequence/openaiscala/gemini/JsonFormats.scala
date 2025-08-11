@@ -358,7 +358,19 @@ trait JsonFormats {
 
   implicit lazy val topCandidatesFormat: Format[TopCandidates] = Json.format[TopCandidates]
 
-  implicit val promptFeedbackFormat: Format[PromptFeedback] = Json.format[PromptFeedback]
+  implicit val promptFeedbackReads: Reads[PromptFeedback] = (
+    (__ \ "blockReason").readNullable[BlockReason] and
+      (__ \ "safetyRatings").readWithDefault[Seq[SafetyRating]](Nil)
+  )(PromptFeedback.apply _)
+
+  implicit val promptFeedbackWrites: Writes[PromptFeedback] = (
+    (__ \ "blockReason").writeNullable[BlockReason] and
+      (__ \ "safetyRatings").write[Seq[SafetyRating]]
+  )(unlift(PromptFeedback.unapply))
+
+  implicit val promptFeedbackFormat: Format[PromptFeedback] =
+    Format(promptFeedbackReads, promptFeedbackWrites)
+
   implicit val generateContentResponseFormat: Format[GenerateContentResponse] =
     Json.using[Json.WithDefaultValues].format[GenerateContentResponse]
 

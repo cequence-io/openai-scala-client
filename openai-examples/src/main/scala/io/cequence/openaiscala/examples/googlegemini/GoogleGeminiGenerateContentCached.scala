@@ -32,7 +32,7 @@ object GoogleGeminiGenerateContentCached extends ExampleBase[GeminiService] {
     finally source.close()
   }
 
-  private val model = NonOpenAIModelId.gemini_2_5_flash_preview_04_17
+  private val model = NonOpenAIModelId.gemini_2_5_flash
 
   private val knowledgeTextContent: Content =
     Content.textPart(
