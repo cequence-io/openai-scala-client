@@ -4,6 +4,7 @@ import akka.NotUsed
 import akka.stream.javadsl.{Framing, FramingTruncation}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
+import io.cequence.wsclient.service.ws.PlayJsonUtil
 import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.response.{
   ContentBlockDelta,
@@ -110,7 +111,7 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
       method,
       url,
       headers.toMap,
-      Json.stringify(body),
+      PlayJsonUtil.wsClientStringify(body),
       accessKey = connectionSettings.accessKey,
       secretKey = connectionSettings.secretKey,
       region = connectionSettings.region,
