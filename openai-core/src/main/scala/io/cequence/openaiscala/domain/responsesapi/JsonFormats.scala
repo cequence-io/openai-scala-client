@@ -355,7 +355,24 @@ object JsonFormats {
         (__ \ "stream").writeNullable[Boolean] and
         (__ \ "temperature").writeNullable[Double] and
         (__ \ "text").writeNullable[TextResponseConfig]
-    )(unlift(CreateModelResponseSettingsAuxPart1.unapply))
+    )(
+      // somehow FineTuneJob.unapply is not working in Scala3
+      (x: CreateModelResponseSettingsAuxPart1) =>
+        (
+          x.model,
+          x.include,
+          x.instructions,
+          x.maxOutputTokens,
+          x.metadata,
+          x.parallelToolCalls,
+          x.previousResponseId,
+          x.reasoning,
+          x.store,
+          x.stream,
+          x.temperature,
+          x.text
+        )
+    )
 
   private implicit lazy val createModelResponseSettingsAuxPart2Reads
     : Reads[CreateModelResponseSettingsAuxPart2] =
@@ -391,7 +408,25 @@ object JsonFormats {
         (__ \ "service_tier").writeNullable[String] and
         (__ \ "stream_options").writeNullable[StreamOptions] and
         (__ \ "top_logprobs").writeNullable[Int]
-    )(unlift(CreateModelResponseSettingsAuxPart2.unapply))
+    )(
+      // somehow FineTuneJob.unapply is not working in Scala3
+      (x: CreateModelResponseSettingsAuxPart2) =>
+        (
+          x.toolChoice,
+          x.tools,
+          x.topP,
+          x.truncation,
+          x.user,
+          x.prompt,
+          x.promptCacheKey,
+          x.background,
+          x.maxToolCalls,
+          x.safetyIdentifier,
+          x.serviceTier,
+          x.streamOptions,
+          x.topLogprobs
+        )
+    )
 
   // Compose Reads and Writes for CreateModelResponseSettings using the AuxPart1 and AuxPart2
   implicit lazy val createModelResponseSettingsReads: Reads[CreateModelResponseSettings] =
