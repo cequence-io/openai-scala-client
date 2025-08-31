@@ -366,7 +366,14 @@ trait JsonFormats {
   implicit val promptFeedbackWrites: Writes[PromptFeedback] = (
     (__ \ "blockReason").writeNullable[BlockReason] and
       (__ \ "safetyRatings").write[Seq[SafetyRating]]
-  )(unlift(PromptFeedback.unapply))
+  )(
+    // somehow unlift is not working in Scala3
+    (x: PromptFeedback) =>
+      (
+        x.blockReason,
+        x.safetyRatings
+      )
+  )
 
   implicit val promptFeedbackFormat: Format[PromptFeedback] =
     Format(promptFeedbackReads, promptFeedbackWrites)
