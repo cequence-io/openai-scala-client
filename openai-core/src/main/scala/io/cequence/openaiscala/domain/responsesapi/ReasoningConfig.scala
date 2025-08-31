@@ -12,10 +12,15 @@ import io.cequence.wsclient.domain.EnumValue
  * @param generateSummary
  *   A summary of the reasoning performed by the model. This can be useful for debugging and
  *   understanding the model's reasoning process. One of "concise" or "detailed". Optional.
+ * @param summary
+ *   A summary of the reasoning performed by the model. This can be useful for debugging and
+ *   understanding the model's reasoning process. One of auto, concise, or detailed. Optional.
  */
 case class ReasoningConfig(
   effort: Option[ReasoningEffort] = None,
-  generateSummary: Option[String] = None
+  @deprecated("Use summary instead", "1.3.0")
+  generateSummary: Option[String] = None,
+  summary: Option[String] = None
 )
 
 /**

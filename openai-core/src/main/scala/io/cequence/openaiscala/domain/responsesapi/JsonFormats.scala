@@ -313,8 +313,18 @@ object JsonFormats {
     }
   }
 
+  private def writesNonEmpty(fieldName: String) = (jsObject: JsObject) => {
+    val include = (jsObject \ fieldName).as[JsArray].value
+    if (include.nonEmpty) jsObject else jsObject.-(fieldName)
+  }
+
+  implicit lazy val promptFormat: OFormat[Prompt] = Json.format[Prompt]
+
+  implicit lazy val streamOptionsFormat: OFormat[StreamOptions] = Json.format[StreamOptions]
+
   // create model response
-  implicit lazy val createModelResponseSettingsReads: Reads[CreateModelResponseSettings] =
+  private implicit lazy val createModelResponseSettingsAuxPart1Reads
+    : Reads[CreateModelResponseSettingsAuxPart1] =
     (
       (__ \ "model").read[String] and
         (__ \ "include").readWithDefault[Seq[String]](Nil) and
@@ -327,20 +337,11 @@ object JsonFormats {
         (__ \ "store").readNullable[Boolean] and
         (__ \ "stream").readNullable[Boolean] and
         (__ \ "temperature").readNullable[Double] and
-        (__ \ "text").readNullable[TextResponseConfig] and
-        (__ \ "tool_choice").readNullable[ToolChoice] and
-        (__ \ "tools").readWithDefault[Seq[Tool]](Nil) and
-        (__ \ "top_p").readNullable[Double] and
-        (__ \ "truncation").readNullable[TruncationStrategy] and
-        (__ \ "user").readNullable[String]
-    )(CreateModelResponseSettings.apply _)
+        (__ \ "text").readNullable[TextResponseConfig]
+    )(CreateModelResponseSettingsAuxPart1.apply _)
 
-  private def writesNonEmpty(fieldName: String) = (jsObject: JsObject) => {
-    val include = (jsObject \ fieldName).as[JsArray].value
-    if (include.nonEmpty) jsObject else jsObject.-(fieldName)
-  }
-
-  implicit lazy val createModelResponseSettingsWrites: OWrites[CreateModelResponseSettings] =
+  private implicit lazy val createModelResponseSettingsAuxPart1Writes
+    : OWrites[CreateModelResponseSettingsAuxPart1] =
     (
       (__ \ "model").write[String] and
         (__ \ "include").write[Seq[String]].transform(writesNonEmpty("include")) and
@@ -353,33 +354,88 @@ object JsonFormats {
         (__ \ "store").writeNullable[Boolean] and
         (__ \ "stream").writeNullable[Boolean] and
         (__ \ "temperature").writeNullable[Double] and
-        (__ \ "text").writeNullable[TextResponseConfig] and
-        (__ \ "tool_choice").writeNullable[ToolChoice] and
+        (__ \ "text").writeNullable[TextResponseConfig]
+    )(unlift(CreateModelResponseSettingsAuxPart1.unapply))
+
+  private implicit lazy val createModelResponseSettingsAuxPart2Reads
+    : Reads[CreateModelResponseSettingsAuxPart2] =
+    (
+      (__ \ "tool_choice").readNullable[ToolChoice] and
+        (__ \ "tools").readWithDefault[Seq[Tool]](Nil) and
+        (__ \ "top_p").readNullable[Double] and
+        (__ \ "truncation").readNullable[TruncationStrategy] and
+        (__ \ "user").readNullable[String] and
+        (__ \ "prompt").readNullable[Prompt] and
+        (__ \ "prompt_cache_key").readNullable[String] and
+        (__ \ "background").readNullable[Boolean] and
+        (__ \ "max_tool_calls").readNullable[Int] and
+        (__ \ "safety_identifier").readNullable[String] and
+        (__ \ "service_tier").readNullable[String] and
+        (__ \ "stream_options").readNullable[StreamOptions] and
+        (__ \ "top_logprobs").readNullable[Int]
+    )(CreateModelResponseSettingsAuxPart2.apply _)
+
+  private implicit lazy val createModelResponseSettingsAuxPart2Writes
+    : OWrites[CreateModelResponseSettingsAuxPart2] =
+    (
+      (__ \ "tool_choice").writeNullable[ToolChoice] and
         (__ \ "tools").write[Seq[Tool]].transform(writesNonEmpty("tools")) and
         (__ \ "top_p").writeNullable[Double] and
         (__ \ "truncation").writeNullable[TruncationStrategy] and
-        (__ \ "user").writeNullable[String]
-    )((x: CreateModelResponseSettings) =>
-      (
-        x.model,
-        x.include,
-        x.instructions,
-        x.maxOutputTokens,
-        x.metadata,
-        x.parallelToolCalls,
-        x.previousResponseId,
-        x.reasoning,
-        x.store,
-        x.stream,
-        x.temperature,
-        x.text,
-        x.toolChoice,
-        x.tools,
-        x.topP,
-        x.truncation,
-        x.user
-      )
+        (__ \ "user").writeNullable[String] and
+        (__ \ "prompt").writeNullable[Prompt] and
+        (__ \ "prompt_cache_key").writeNullable[String] and
+        (__ \ "background").writeNullable[Boolean] and
+        (__ \ "max_tool_calls").writeNullable[Int] and
+        (__ \ "safety_identifier").writeNullable[String] and
+        (__ \ "service_tier").writeNullable[String] and
+        (__ \ "stream_options").writeNullable[StreamOptions] and
+        (__ \ "top_logprobs").writeNullable[Int]
+    )(unlift(CreateModelResponseSettingsAuxPart2.unapply))
+
+  // Compose Reads and Writes for CreateModelResponseSettings using the AuxPart1 and AuxPart2
+  implicit lazy val createModelResponseSettingsReads: Reads[CreateModelResponseSettings] =
+    for {
+      part1 <- createModelResponseSettingsAuxPart1Reads
+      part2 <- createModelResponseSettingsAuxPart2Reads
+    } yield CreateModelResponseSettings(
+      model = part1.model,
+      include = part1.include,
+      instructions = part1.instructions,
+      maxOutputTokens = part1.maxOutputTokens,
+      metadata = part1.metadata,
+      parallelToolCalls = part1.parallelToolCalls,
+      previousResponseId = part1.previousResponseId,
+      reasoning = part1.reasoning,
+      store = part1.store,
+      stream = part1.stream,
+      temperature = part1.temperature,
+      text = part1.text,
+      toolChoice = part2.toolChoice,
+      tools = part2.tools,
+      topP = part2.topP,
+      truncation = part2.truncation,
+      user = part2.user,
+      prompt = part2.prompt,
+      promptCacheKey = part2.promptCacheKey,
+      background = part2.background,
+      maxToolCalls = part2.maxToolCalls,
+      safetyIdentifier = part2.safetyIdentifier,
+      serviceTier = part2.serviceTier,
+      streamOptions = part2.streamOptions,
+      topLogprobs = part2.topLogprobs
     )
+
+  implicit lazy val createModelResponseSettingsWrites: OWrites[CreateModelResponseSettings] =
+    OWrites[CreateModelResponseSettings] { x =>
+      val part1Json = createModelResponseSettingsAuxPart1Writes.writes(
+        CreateModelResponseSettings.toAuxPart1(x)
+      )
+      val part2Json = createModelResponseSettingsAuxPart2Writes.writes(
+        CreateModelResponseSettings.toAuxPart2(x)
+      )
+      part1Json ++ part2Json
+    }
 
   implicit lazy val createModelResponseSettingsFormat: OFormat[CreateModelResponseSettings] =
     OFormat(createModelResponseSettingsReads, createModelResponseSettingsWrites)

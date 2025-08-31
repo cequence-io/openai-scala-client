@@ -1946,6 +1946,85 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
           |}""".stripMargin,
         Pretty
       )
+
+      // one more test for new fields
+      testCodec[CreateModelResponseSettings](
+        CreateModelResponseSettings(
+          model = "gpt-4o",
+          prompt = Some(
+            Prompt(
+              id = "prompt_123",
+              variables = Map("customer_name" -> "John Doe"),
+              version = Some("v1.0")
+            )
+          ),
+          promptCacheKey = Some("cache_key_123"),
+          background = Some(true),
+          maxToolCalls = Some(5),
+          safetyIdentifier = Some("safety_level_high"),
+          serviceTier = Some("premium"),
+          streamOptions = Some(StreamOptions(includeObfuscation = Some(true))),
+          topLogprobs = Some(10),
+          tools = Seq(
+            FunctionTool(
+              name = "execute_code",
+              parameters = JsonSchema.Object(
+                properties = Seq(
+                  "code" -> JsonSchema.String(Some("The code to execute")),
+                  "language" -> JsonSchema.String(Some("Programming language"))
+                ),
+                required = Seq("code")
+              ),
+              strict = true,
+              description = Some("Execute code in the specified language")
+            )
+          ),
+          temperature = Some(0.3),
+          topP = Some(0.9)
+        ),
+        """{
+          |  "model" : "gpt-4o",
+          |  "prompt" : {
+          |    "id" : "prompt_123",
+          |    "variables" : {
+          |      "customer_name" : "John Doe"
+          |    },
+          |    "version" : "v1.0"
+          |  },
+          |  "prompt_cache_key" : "cache_key_123",
+          |  "background" : true,
+          |  "max_tool_calls" : 5,
+          |  "safety_identifier" : "safety_level_high",
+          |  "service_tier" : "premium",
+          |  "stream_options" : {
+          |    "include_obfuscation" : true
+          |  },
+          |  "top_logprobs" : 10,
+          |  "tools" : [ {
+          |    "name" : "execute_code",
+          |    "parameters" : {
+          |      "properties" : {
+          |        "code" : {
+          |          "description" : "The code to execute",
+          |          "type" : "string"
+          |        },
+          |        "language" : {
+          |          "description" : "Programming language",
+          |          "type" : "string"
+          |        }
+          |      },
+          |      "required" : [ "code" ],
+          |      "type" : "object"
+          |    },
+          |    "strict" : true,
+          |    "description" : "Execute code in the specified language",
+          |    "type" : "function"
+          |  } ],
+          |  "temperature" : 0.3,
+          |  "top_p" : 0.9
+          |}""".stripMargin,
+        Pretty
+      )
     }
   }
 
