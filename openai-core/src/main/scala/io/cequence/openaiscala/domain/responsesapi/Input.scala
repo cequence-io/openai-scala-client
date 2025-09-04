@@ -2,6 +2,7 @@ package io.cequence.openaiscala.domain.responsesapi
 
 import io.cequence.openaiscala.domain.ChatRole
 import io.cequence.openaiscala.domain.responsesapi.tools._
+import io.cequence.openaiscala.domain.responsesapi.tools.mcp._
 
 /**
  * Input types hierarchy:
@@ -20,10 +21,21 @@ import io.cequence.openaiscala.domain.responsesapi.tools._
  *       - Computer tool call (object)
  *       - Computer tool call output (object)
  *       - Web search tool call (object)
- *       - Function tool call (object)
- *       - Function tool call output (object)
+ *       - Function tool call (object) - Deprecated?
+ *       - Function tool call output (object) - Deprecated?
  *       - Reasoning (object)
+ *       - Reasoning output (object)
  *       - Item reference (object)
+ *       - Image generation call (object)
+ *       - Code interpreter tool call (object)
+ *       - Local shell call (object)
+ *       - Local shell call output (object)
+ *       - MCP list tools (object)
+ *       - MCP approval request (object)
+ *       - MCP approval response (object)
+ *       - MCP tool call (object)
+ *       - Custom tool call output (object)
+ *       - Custom tool call (object)
  */
 trait Input {
   val `type`: String
@@ -136,6 +148,102 @@ object Input {
     summary: Seq[ReasoningText],
     status: Option[ModelStatus] = None
   ) = Reasoning(id, summary, status)
+
+  def ofImageGenerationToolCall(
+    id: String,
+    result: Option[String],
+    status: String
+  ) = ImageGenerationToolCall(
+    id,
+    result,
+    status
+  )
+
+  def ofCodeInterpreterToolCall(
+    id: String,
+    code: Option[String],
+    containerId: String,
+    outputs: Seq[CodeInterpreterOutput],
+    status: String
+  ) = CodeInterpreterToolCall(
+    id,
+    code,
+    containerId,
+    outputs,
+    status
+  )
+
+  def ofCodeInterpreterOutputLogs(
+    logs: String
+  ) = CodeInterpreterOutputLogs(logs)
+
+  def ofCodeInterpreterOutputImage(
+    url: String
+  ) = CodeInterpreterOutputImage(url)
+
+  def ofLocalShellToolCall(
+    action: LocalShellAction,
+    callId: String,
+    id: String,
+    status: String
+  ) = LocalShellToolCall(
+    action,
+    callId,
+    id,
+    status
+  )
+
+  def ofLocalShellAction(
+    command: Seq[String],
+    env: Map[String, String],
+    timeoutMs: Option[Int] = None,
+    user: Option[String] = None,
+    workingDirectory: Option[String] = None
+  ) = LocalShellAction(
+    command,
+    env,
+    timeoutMs,
+    user,
+    workingDirectory
+  )
+
+  def ofLocalShellCallOutput(
+    id: String,
+    output: String,
+    status: Option[String] = None
+  ) = LocalShellCallOutput(
+    id,
+    output,
+    status
+  )
+
+  def ofMCPListTools(
+    id: String,
+    serverLabel: String,
+    tools: Seq[MCPTool],
+    error: Option[String] = None
+  ) = MCPListTools(
+    id,
+    serverLabel,
+    tools,
+    error
+  )
+
+  def ofMCPToolCall(
+    arguments: String,
+    id: String,
+    name: String,
+    serverLabel: String,
+    error: Option[String] = None,
+    output: Option[String] = None
+  ) = MCPToolCall(
+    arguments,
+    id,
+    name,
+    serverLabel,
+    error,
+    output
+  )
 
   def ofItemReference(
     id: String

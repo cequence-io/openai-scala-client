@@ -32,7 +32,7 @@ object InputMessageContent {
   final case class Image(
     fileId: Option[String] = None,
     imageUrl: Option[String] = None,
-    detail: Option[String] = None
+    detail: Option[String] = None // low, high, auto
   ) extends InputMessageContent {
     val `type`: String = "input_image"
   }

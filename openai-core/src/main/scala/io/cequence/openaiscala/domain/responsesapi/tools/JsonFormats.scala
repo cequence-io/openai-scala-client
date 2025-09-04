@@ -10,6 +10,7 @@ import io.cequence.openaiscala.domain.responsesapi.JsonFormats.modelStatusFormat
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
 import io.cequence.openaiscala.domain.responsesapi.tools.ComputerToolAction._
+import io.cequence.openaiscala.domain.responsesapi.tools.mcp._
 
 object JsonFormats {
 
@@ -267,6 +268,7 @@ object JsonFormats {
   // Tool call formats for different types
   implicit lazy val functionToolCallFormat: OFormat[FunctionToolCall] =
     Json.format[FunctionToolCall]
+
   implicit lazy val webSearchToolCallFormat: OFormat[WebSearchToolCall] =
     Json.format[WebSearchToolCall]
   implicit lazy val computerToolCallFormat: OFormat[ComputerToolCall] =
@@ -292,6 +294,24 @@ object JsonFormats {
       FileSearchToolCall.apply _,
       (x: FileSearchToolCall) => (x.id, x.queries, x.status, x.results)
     )
+
+  implicit lazy val imageGenerationToolCallFormat: OFormat[ImageGenerationToolCall] =
+    Json.format[ImageGenerationToolCall]
+
+  implicit lazy val codeInterpreterToolCallFormat: OFormat[CodeInterpreterToolCall] =
+    Json.format[CodeInterpreterToolCall]
+
+  implicit lazy val localShellActionFormat: OFormat[LocalShellAction] =
+    Json.format[LocalShellAction]
+
+  implicit lazy val localShellToolCallFormat: OFormat[LocalShellToolCall] =
+    Json.format[LocalShellToolCall]
+
+  implicit lazy val mcpToolCallFormat: OFormat[MCPToolCall] =
+    Json.format[MCPToolCall]
+
+  implicit lazy val customToolCallFormat: OFormat[CustomToolCall] =
+    Json.format[CustomToolCall]
 
   implicit lazy val toolCallFormat: Format[ToolCall] = new Format[ToolCall] {
     def reads(json: JsValue): JsResult[ToolCall] = {
@@ -359,4 +379,43 @@ object JsonFormats {
       (x: ComputerToolCallOutput) =>
         (x.callId, x.output, x.acknowledgedSafetyChecks, x.id, x.status)
     )
+
+  implicit lazy val codeInterpreterOutputLogsFormat: OFormat[CodeInterpreterOutputLogs] =
+    Json.format[CodeInterpreterOutputLogs]
+
+  implicit lazy val codeInterpreterOutputImageFormat: OFormat[CodeInterpreterOutputImage] =
+    Json.format[CodeInterpreterOutputImage]
+
+  implicit lazy val codeInterpreterOutputFormat: Format[CodeInterpreterOutput] =
+    new Format[CodeInterpreterOutput] {
+      def reads(json: JsValue): JsResult[CodeInterpreterOutput] = {
+        (json \ "type").validate[String].flatMap {
+          case "logs"  => codeInterpreterOutputLogsFormat.reads(json)
+          case "image" => codeInterpreterOutputImageFormat.reads(json)
+          case other   => JsError(s"Unsupported code interpreter output type: $other")
+        }
+      }
+
+      def writes(output: CodeInterpreterOutput): JsValue = {
+        val jsObject: JsObject = output match {
+          case logs: CodeInterpreterOutputLogs => codeInterpreterOutputLogsFormat.writes(logs)
+          case image: CodeInterpreterOutputImage =>
+            codeInterpreterOutputImageFormat.writes(image)
+        }
+
+        jsObject ++ Json.obj("type" -> output.`type`)
+      }
+    }
+
+  implicit lazy val localShellCallOutputFormat: OFormat[LocalShellCallOutput] =
+    Json.format[LocalShellCallOutput]
+
+  implicit lazy val customToolCallOutputFormat: OFormat[CustomToolCallOutput] =
+    Json.format[CustomToolCallOutput]
+
+  implicit lazy val mcpToolFormat: OFormat[MCPTool] =
+    Json.format[MCPTool]
+
+  implicit lazy val mcpListToolsFormat: OFormat[MCPListTools] =
+    Json.format[MCPListTools]
 }

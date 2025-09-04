@@ -20,12 +20,21 @@ import io.cequence.openaiscala.domain.responsesapi.tools.JsonFormats.{
 import io.cequence.openaiscala.domain.responsesapi.tools.JsonFormats.{
   fileSearchToolCallFormat,
   webSearchToolCallFormat,
-  computerToolCallFormat
+  computerToolCallFormat,
+  imageGenerationToolCallFormat,
+  codeInterpreterToolCallFormat,
+  localShellToolCallFormat,
+  localShellCallOutputFormat,
+  mcpListToolsFormat,
+  mcpToolCallFormat,
+  customToolCallOutputFormat,
+  customToolCallFormat
 }
 import play.api.libs.json._
 import play.api.libs.functional.syntax._
 import io.cequence.openaiscala.JsonFormats.chatRoleFormat
 import io.cequence.openaiscala.domain.responsesapi.tools.JsonFormats.functionToolCallFormat
+import io.cequence.openaiscala.domain.responsesapi.tools.mcp._
 
 object JsonFormats {
 
@@ -226,17 +235,25 @@ object JsonFormats {
 
   implicit lazy val inputWrites: Writes[Input] = Writes[Input] { (input: Input) =>
     val jsObject = input match {
-      case input: Message.InputText      => inputTextMessageFormat.writes(input)
-      case input: Message.InputContent   => inputContentMessageFormat.writes(input)
-      case input: Message.OutputContent  => outputContentMessageFormat.writes(input)
-      case input: FileSearchToolCall     => fileSearchToolCallFormat.writes(input)
-      case input: ComputerToolCall       => computerToolCallFormat.writes(input)
-      case input: ComputerToolCallOutput => computerToolCallOutputFormat.writes(input)
-      case input: WebSearchToolCall      => webSearchToolCallFormat.writes(input)
-      case input: FunctionToolCall       => functionToolCallFormat.writes(input)
-      case input: FunctionToolCallOutput => functionToolCallOutputFormat.writes(input)
-      case input: Reasoning              => reasoningFormat.writes(input)
-      case input: ItemReference          => itemReferenceFormat.writes(input)
+      case input: Message.InputText       => inputTextMessageFormat.writes(input)
+      case input: Message.InputContent    => inputContentMessageFormat.writes(input)
+      case input: Message.OutputContent   => outputContentMessageFormat.writes(input)
+      case input: FileSearchToolCall      => fileSearchToolCallFormat.writes(input)
+      case input: ComputerToolCall        => computerToolCallFormat.writes(input)
+      case input: ComputerToolCallOutput  => computerToolCallOutputFormat.writes(input)
+      case input: WebSearchToolCall       => webSearchToolCallFormat.writes(input)
+      case input: FunctionToolCall        => functionToolCallFormat.writes(input)
+      case input: FunctionToolCallOutput  => functionToolCallOutputFormat.writes(input)
+      case input: Reasoning               => reasoningFormat.writes(input)
+      case input: ItemReference           => itemReferenceFormat.writes(input)
+      case input: ImageGenerationToolCall => imageGenerationToolCallFormat.writes(input)
+      case input: CodeInterpreterToolCall => codeInterpreterToolCallFormat.writes(input)
+      case input: LocalShellToolCall      => localShellToolCallFormat.writes(input)
+      case input: LocalShellCallOutput    => localShellCallOutputFormat.writes(input)
+      case input: MCPListTools            => mcpListToolsFormat.writes(input)
+      case input: MCPToolCall             => mcpToolCallFormat.writes(input)
+      case input: CustomToolCallOutput    => customToolCallOutputFormat.writes(input)
+      case input: CustomToolCall          => customToolCallFormat.writes(input)
     }
     jsObject + ("type" -> JsString(input.`type`))
   }
@@ -263,15 +280,23 @@ object JsonFormats {
           case JsError(_)      => JsError("Missing 'content' field for Input")
         }
 
-      case "file_search_call"     => fileSearchToolCallFormat.reads(json)
-      case "computer_call"        => computerToolCallFormat.reads(json)
-      case "computer_call_output" => computerToolCallOutputFormat.reads(json)
-      case "web_search_call"      => webSearchToolCallFormat.reads(json)
-      case "function_call"        => functionToolCallFormat.reads(json)
-      case "function_call_output" => functionToolCallOutputFormat.reads(json)
-      case "reasoning"            => reasoningFormat.reads(json)
-      case "item_reference"       => itemReferenceFormat.reads(json)
-      case _                      => JsError("Missing type field for Input")
+      case "file_search_call"        => fileSearchToolCallFormat.reads(json)
+      case "computer_call"           => computerToolCallFormat.reads(json)
+      case "computer_call_output"    => computerToolCallOutputFormat.reads(json)
+      case "web_search_call"         => webSearchToolCallFormat.reads(json)
+      case "function_call"           => functionToolCallFormat.reads(json)
+      case "function_call_output"    => functionToolCallOutputFormat.reads(json)
+      case "reasoning"               => reasoningFormat.reads(json)
+      case "item_reference"          => itemReferenceFormat.reads(json)
+      case "image_generation_call"   => imageGenerationToolCallFormat.reads(json)
+      case "code_interpreter_call"   => codeInterpreterToolCallFormat.reads(json)
+      case "local_shell_call"        => localShellToolCallFormat.reads(json)
+      case "local_shell_call_output" => localShellCallOutputFormat.reads(json)
+      case "mcp_list_tools"          => mcpListToolsFormat.reads(json)
+      case "mcp_tool_call"           => mcpToolCallFormat.reads(json)
+      case "custom_tool_call_output" => customToolCallOutputFormat.reads(json)
+      case "custom_tool_call"        => customToolCallFormat.reads(json)
+      case _                         => JsError("Missing type field for Input")
     }
   }
 
