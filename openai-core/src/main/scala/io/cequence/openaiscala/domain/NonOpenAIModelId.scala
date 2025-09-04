@@ -359,8 +359,8 @@ object NonOpenAIModelId {
   // openai oss
   val gpt_oss_20b = "gpt-oss-20b" // fireworks
   val gpt_oss_120b = "gpt-oss-120b" // fireworks, cerabras
-  val openai_gpt_oss_120b = "openai/gpt-oss-120b" // groq, Together AI
-  val openai_gpt_oss_20b = "openai/gpt-oss-20b" // groq, Together AI
+  val openai_gpt_oss_120b = "openai/gpt-oss-120b" // groq, Together AI, Novita
+  val openai_gpt_oss_20b = "openai/gpt-oss-20b" // groq, Together AI, Novita
 
   // Sonar (Perplexity)
   // 128k context length
@@ -382,6 +382,7 @@ object NonOpenAIModelId {
   val llama_3_1_sonar_huge_128k_online = "llama-3.1-sonar-huge-128k-online"
 
   // Novita
+  val novita_deepseek_v3_1 = "deepseek/deepseek-v3.1"
   val novita_deepseek_r1 = "deepseek/deepseek-r1"
   val novita_deepseek_v3 = "deepseek/deepseek_v3"
   val novita_llama_3_3_70b_instruct = "meta-llama/llama-3.3-70b-instruct"
