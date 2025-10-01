@@ -231,6 +231,63 @@ object JsonFormats {
       outputContentMessageFormat.writes(outputMessage)
   }
 
+  implicit lazy val messageReads: Reads[Message] = Reads { json =>
+    (json \ "content").validate[JsValue] match {
+        case JsSuccess(JsString(_), _) =>
+          inputTextMessageFormat.reads(json)
+
+        case JsSuccess(JsArray(items), _) =>
+          items.headOption match {
+            case Some(first) =>
+              (first \ "type").validate[String] match {
+                case JsSuccess(tpe, _) if tpe == "output_text" || tpe == "refusal" =>
+                  outputContentMessageFormat.reads(json)
+                case JsSuccess(tpe, _) if tpe == "input_text" || tpe == "input_image" || tpe == "input_file" =>
+                  inputContentMessageFormat.reads(json)
+                case _ =>
+                  JsError("Unknown message content array element type")
+              }
+            case None =>
+              JsError("Content array is empty")
+          }
+
+        case JsSuccess(_, _) =>
+          JsError("Content must be a string or array")
+
+        case JsError(_) =>
+          JsError("Missing 'content' field for Message")
+      }
+  }
+
+  //Supports `instructions` as both a String or an array of InputMessageContent
+  implicit val instructionsReads: Reads[Seq[Message]] = Reads {
+    // OpenAI docs specify `instructions` as a String
+    case JsString(str) =>
+      JsSuccess(Seq(
+        Message.InputContent(
+          Seq(InputMessageContent.Text(str)),
+          //Role is not specified. `User` is used as a default
+          ChatRole.User
+        )
+      ))
+    // However, using a `Reusable Prompt` returns an array of InputMessageContent
+    case JsArray(arr) =>
+      arr
+        .map(_.validate[Message])
+        .foldLeft(JsSuccess(Seq.empty[Message]): JsResult[Seq[Message]]) {
+          case (JsSuccess(acc, _), JsSuccess(m, _)) => JsSuccess(acc :+ m)
+          case (JsError(e1), JsError(e2))          => JsError(e1 ++ e2)
+          case (JsError(e), _)                     => JsError(e)
+          case (_, JsError(e))                     => JsError(e)
+        }
+
+    case _ =>
+      JsError("instructions must be either a string or an array")
+  }
+
+  implicit lazy val messageFormat: Format[Message] = Format(messageReads, messageWrites)
+
+
   // input hierarchy
 
   implicit lazy val inputWrites: Writes[Input] = Writes[Input] { (input: Input) =>

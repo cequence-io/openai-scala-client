@@ -74,7 +74,7 @@ final case class Response(
   error: Option[ResponseError] = None,
   id: String,
   incompleteDetails: Option[IncompleteDetails] = None,
-  instructions: Option[String] = None,
+  instructions: Option[Seq[Message]] = None,
   maxOutputTokens: Option[Int] = None,
   metadata: Option[Map[String, String]] = None,
   model: String,
