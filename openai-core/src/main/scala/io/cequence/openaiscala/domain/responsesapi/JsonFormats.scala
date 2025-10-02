@@ -248,7 +248,7 @@ object JsonFormats {
                   JsError("Unknown message content array element type")
               }
             case None =>
-              JsError("Content array is empty")
+              inputContentMessageFormat.reads(json)
           }
 
         case JsSuccess(_, _) =>

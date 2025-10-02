@@ -1837,6 +1837,97 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
           |}""".stripMargin,
         Pretty
       )
+
+      // Response with instructions as Array but with empty messages (Reusable prompt will add this as empty if unfilled)
+      val responseWithInstructionsAsArrayAndEmptyContent = response.copy(
+        instructions = Some(Seq(
+          Message.InputContent(Seq(InputMessageContent.Text("Act as a helpful assistant")), ChatRole.System),
+          Message.InputContent(Seq.empty, ChatRole.User)
+        ))
+      )
+
+      testCodec[Response](
+        responseWithInstructionsAsArrayAndEmptyContent,
+        """{
+          |  "created_at" : 1620000000,
+          |  "id" : "resp_abc123",
+          |  "instructions" : [
+          |    {
+          |      "type" : "message",
+          |      "content" : [ {
+          |        "type" : "input_text",
+          |        "text" : "Act as a helpful assistant"
+          |      } ],
+          |      "role" : "system"
+          |    }
+          |    ,
+          |    {
+          |      "type" : "message",
+          |      "content" : [],
+          |      "role" : "user"
+          |    }
+          |   ],
+          |  "max_output_tokens" : 1000,
+          |  "metadata" : {
+          |    "key1" : "value1",
+          |    "key2" : "value2"
+          |  },
+          |  "model" : "gpt-4o",
+          |  "output" : [ {
+          |    "content" : [ {
+          |      "annotations" : [ ],
+          |      "text" : "Hello, how can I help you today?",
+          |      "type" : "output_text"
+          |    } ],
+          |    "id" : "output_def456",
+          |    "status" : "completed",
+          |    "type" : "message"
+          |  } ],
+          |  "parallel_tool_calls" : true,
+          |  "reasoning" : {
+          |    "effort" : "medium"
+          |  },
+          |  "status" : "completed",
+          |  "temperature" : 0.7,
+          |  "text" : {
+          |    "format" : {
+          |      "type" : "text"
+          |    }
+          |  },
+          |  "tool_choice" : "auto",
+          |  "tools" : [ {
+          |    "name" : "get_weather",
+          |    "parameters" : {
+          |      "properties" : {
+          |        "location" : {
+          |          "description" : "The city and state, e.g. San Francisco, CA",
+          |          "type" : "string"
+          |        }
+          |      },
+          |      "required" : [ "location" ],
+          |      "type" : "object"
+          |    },
+          |    "strict" : false,
+          |    "description" : "Get the current weather for a location",
+          |    "type" : "function"
+          |  } ],
+          |  "top_p" : 0.9,
+          |  "truncation" : "auto",
+          |  "usage" : {
+          |    "input_tokens" : 50,
+          |    "input_tokens_details" : {
+          |      "cached_tokens" : 50
+          |    },
+          |    "output_tokens" : 150,
+          |    "output_tokens_details" : {
+          |      "reasoning_tokens" : 75
+          |    },
+          |    "total_tokens" : 200
+          |  },
+          |  "user" : "user123"
+          |}""".stripMargin,
+        Pretty
+      )
     }
 
     "serialize and deserialize CreateModelResponse" in {
