@@ -10,7 +10,8 @@ import io.cequence.wsclient.service.adapter.ServiceWrapper
 import scala.concurrent.{ExecutionContext, Future}
 
 private class ChatCompletionInterceptAdapter[S <: OpenAIChatCompletionService](
-  intercept: ChatCompletionInterceptData => Future[Unit]
+  intercept: ChatCompletionInterceptData => Future[Unit],
+  adjustSettingsForCall: CreateChatCompletionSettings => CreateChatCompletionSettings
 )(
   underlying: S
 )(
@@ -34,7 +35,7 @@ private class ChatCompletionInterceptAdapter[S <: OpenAIChatCompletionService](
     for {
       response <- underlying.createChatCompletion(
         messages,
-        settings
+        adjustSettingsForCall(settings)
       )
 
       _ <- {
