@@ -88,8 +88,7 @@ trait RetryHelpers {
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  // TODO: would be better to reevaluate the future otherwise we handle give a chance only to "external" exceptions
-  implicit class FutureWithRetry[T](f: Future[T]) {
+  implicit class FutureWithRetry[T](op: => Future[T]) {
 
     def retryOnFailure(
       failureMessage: Option[String] = None,
@@ -104,7 +103,7 @@ trait RetryHelpers {
       scheduler: Scheduler
     ): Future[T] = {
       retry(
-        () => f,
+        () => op,
         maxAttempts = retrySettings.maxRetries + 1,
         failureMessage,
         log,
@@ -173,7 +172,7 @@ trait RetryHelpers {
         case _ =>
           val (input, inputLogMessage) = inputsAndMessagesToTryInOrder.head
 
-          f(input)
+          (f(input))
             .retryOnFailure(
               failureMessage.map(message => s"${inputLogMessage} - ${message}"),
               log,
