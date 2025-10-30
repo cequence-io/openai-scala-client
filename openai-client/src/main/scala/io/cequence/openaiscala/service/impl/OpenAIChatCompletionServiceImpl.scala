@@ -170,11 +170,33 @@ trait ChatCompletionBodyMaker {
         case Right(schema) => schema
       }
 
-      val adjustedSchema: Map[String, Any] =
-        if (strict)
-          OpenAIChatCompletionExtra.toStrictSchema(structure)
-        else
-          schemaMap
+      val adjustedSchema: Map[String, Any] = if (strict) {
+        // set "additionalProperties" -> false on "object" types if strict
+        def addFlagAux(map: Map[String, Any]): Map[String, Any] = {
+          val newMap = map.map { case (key, value) =>
+            val unwrappedValue = value match {
+              case Some(value) => value
+              case other       => other
+            }
+
+            val newValue = unwrappedValue match {
+              case obj: Map[String, Any] =>
+                addFlagAux(obj)
+
+              case other =>
+                other
+            }
+            key -> newValue
+          }
+
+          if (Seq("object", Some("object")).contains(map.getOrElse("type", ""))) {
+            newMap + ("additionalProperties" -> false)
+          } else
+            newMap
+        }
+
+        addFlagAux(schemaMap)
+      } else schemaMap
 
       Map(
         "type" -> "json_schema",
@@ -188,5 +210,4 @@ trait ChatCompletionBodyMaker {
       // TODO: is it legal?
       Map("type" -> "json_schema")
     )
-
 }
