@@ -24,7 +24,8 @@ final case class CodeInterpreterToolCall(
   containerId: String,
   outputs: Seq[CodeInterpreterOutput],
   status: String
-) extends Input {
+) extends ToolCall
+    with Input {
   val `type`: String = "code_interpreter_call"
 }
 

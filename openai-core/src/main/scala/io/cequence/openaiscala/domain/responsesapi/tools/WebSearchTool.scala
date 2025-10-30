@@ -3,22 +3,39 @@ package io.cequence.openaiscala.domain.responsesapi.tools
 import io.cequence.wsclient.domain.NamedEnumValue
 
 /**
- * This tool searches the web for relevant results to use in a response.
+ * This tool searches the web for relevant results to use in a response. Also serves as web
+ * search preview.
  *
+ * @param filters
+ *   Optional filters for the search, including allowed domains.
  * @param searchContextSize
  *   Optional high level guidance for the amount of context window space to use for the search.
+ *   One of low, medium, or high. Defaults to medium.
  * @param userLocation
  *   Optional approximate location parameters for the search.
- * @param webSearchType
- *   The type of web search tool to use.
+ * @param `type`
+ *   The type of web search tool to use. One of web_search, web_search_2025_08_26,
+ *   web_search_preview, or web_search_preview_2025_03_11.
  */
 case class WebSearchTool(
+  filters: Option[WebSearchFilters] = None,
   searchContextSize: Option[String] = None,
   userLocation: Option[WebSearchUserLocation] = None,
-  `type`: WebSearchType = WebSearchType.Preview
+  `type`: WebSearchType = WebSearchType.WebSearch
 ) extends Tool {
   override def typeString: String = `type`.value
 }
+
+/**
+ * Filters for web search.
+ *
+ * @param allowedDomains
+ *   Allowed domains for the search. If not provided, all domains are allowed. Subdomains of
+ *   the provided domains are allowed as well.
+ */
+case class WebSearchFilters(
+  allowedDomains: Seq[String] = Nil
+)
 
 /**
  * Approximate location parameters for web search.
@@ -44,8 +61,10 @@ case class WebSearchUserLocation(
 sealed abstract class WebSearchType(value: String) extends NamedEnumValue(value)
 
 object WebSearchType {
-  case object Preview extends WebSearchType("web_search_preview")
-  case object Preview20250311 extends WebSearchType("web_search_preview_2025_03_11")
+  case object WebSearch extends WebSearchType("web_search")
+  case object WebSearch20250826 extends WebSearchType("web_search_2025_08_26")
+  case object WebSearchPreview extends WebSearchType("web_search_preview")
+  case object WebSearchPreview20250311 extends WebSearchType("web_search_preview_2025_03_11")
 
-  def values = Seq(Preview, Preview20250311)
+  def values = Seq(WebSearch, WebSearch20250826, WebSearchPreview, WebSearchPreview20250311)
 }

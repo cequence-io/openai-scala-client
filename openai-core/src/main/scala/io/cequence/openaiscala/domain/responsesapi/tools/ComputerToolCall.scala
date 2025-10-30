@@ -193,15 +193,15 @@ object ComputerToolAction {
 /**
  * Represents a pending safety check.
  *
- * @param code
- *   The type of the pending safety check.
  * @param id
  *   The ID of the pending safety check.
+ * @param code
+ *   The type of the pending safety check.
  * @param message
  *   Details about the pending safety check.
  */
 final case class PendingSafetyCheck(
-  code: String,
   id: String,
-  message: String
+  code: Option[String] = None,
+  message: Option[String] = None
 )

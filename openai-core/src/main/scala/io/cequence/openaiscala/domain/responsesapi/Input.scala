@@ -21,11 +21,10 @@ import io.cequence.openaiscala.domain.responsesapi.tools.mcp._
  *       - Computer tool call (object)
  *       - Computer tool call output (object)
  *       - Web search tool call (object)
- *       - Function tool call (object) - Deprecated?
- *       - Function tool call output (object) - Deprecated?
+ *       - Function tool call (object)
+ *       - Function tool call output (object)
  *       - Reasoning (object)
- *       - Reasoning output (object)
- *       - Item reference (object)
+ *       - Reasoning output (object) - deprecated?
  *       - Image generation call (object)
  *       - Code interpreter tool call (object)
  *       - Local shell call (object)
@@ -36,6 +35,7 @@ import io.cequence.openaiscala.domain.responsesapi.tools.mcp._
  *       - MCP tool call (object)
  *       - Custom tool call output (object)
  *       - Custom tool call (object)
+ *     - Item reference (object)
  */
 trait Input {
   val `type`: String
@@ -113,9 +113,10 @@ object Input {
   )
 
   def ofWebSearchToolCall(
+    action: WebSearchAction,
     id: String,
     status: ModelStatus
-  ) = WebSearchToolCall(id, status)
+  ) = WebSearchToolCall(action, id, status)
 
   def ofFunctionToolCall(
     arguments: String,
@@ -133,7 +134,7 @@ object Input {
 
   def ofFunctionToolCallOutput(
     callId: String,
-    output: String,
+    output: FunctionToolOutput,
     id: Option[String] = None,
     status: Option[ModelStatus] = None
   ) = FunctionToolCallOutput(
@@ -145,13 +146,13 @@ object Input {
 
   def ofReasoning(
     id: String,
-    summary: Seq[ReasoningText],
+    summary: Seq[SummaryText],
     status: Option[ModelStatus] = None
-  ) = Reasoning(id, summary, status)
+  ) = Reasoning(id, summary, Nil, None, status)
 
   def ofImageGenerationToolCall(
     id: String,
-    result: Option[String],
+    result: String,
     status: String
   ) = ImageGenerationToolCall(
     id,
@@ -211,7 +212,7 @@ object Input {
     id: String,
     output: String,
     status: Option[String] = None
-  ) = LocalShellCallOutput(
+  ) = LocalShellToolCallOutput(
     id,
     output,
     status
@@ -220,7 +221,7 @@ object Input {
   def ofMCPListTools(
     id: String,
     serverLabel: String,
-    tools: Seq[MCPTool],
+    tools: Seq[MCPToolRef],
     error: Option[String] = None
   ) = MCPListTools(
     id,
@@ -234,15 +235,41 @@ object Input {
     id: String,
     name: String,
     serverLabel: String,
+    approvalRequestId: Option[String] = None,
     error: Option[String] = None,
-    output: Option[String] = None
+    output: Option[String] = None,
+    status: Option[ModelStatus] = None
   ) = MCPToolCall(
     arguments,
     id,
     name,
     serverLabel,
+    approvalRequestId,
     error,
-    output
+    output,
+    status
+  )
+
+  def ofCustomToolCall(
+    callId: String,
+    input: String,
+    name: String,
+    id: Option[String] = None
+  ) = CustomToolCall(
+    callId,
+    input,
+    name,
+    id
+  )
+
+  def ofCustomToolCallOutput(
+    callId: String,
+    output: FunctionToolOutput,
+    id: Option[String] = None
+  ) = CustomToolCallOutput(
+    callId,
+    output,
+    id
   )
 
   def ofItemReference(

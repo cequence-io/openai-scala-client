@@ -41,15 +41,18 @@ object InputMessageContent {
    * A file input to the model.
    *
    * @param fileData
-   *   The content of the file to be sent to the model.
+   *   The base64-encoded data of the file to be sent to the model.
    * @param fileId
    *   The ID of the file to be sent to the model.
+   * @param fileUrl
+   *   The URL of the file to be sent to the model.
    * @param filename
    *   The name of the file to be sent to the model.
    */
   final case class File(
     fileData: Option[String] = None,
     fileId: Option[String] = None,
+    fileUrl: Option[String] = None,
     filename: Option[String] = None
   ) extends InputMessageContent {
     val `type`: String = "input_file"

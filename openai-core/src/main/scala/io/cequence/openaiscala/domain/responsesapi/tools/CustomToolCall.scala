@@ -19,6 +19,7 @@ final case class CustomToolCall(
   input: String,
   name: String,
   id: Option[String] = None
-) extends Input {
+) extends ToolCall
+    with Input {
   val `type`: String = "custom_tool_call"
 }

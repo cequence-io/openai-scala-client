@@ -9,6 +9,11 @@ import io.cequence.openaiscala.domain.responsesapi.tools.FunctionToolCall
 /**
  * Represents a response from the model.
  *
+ * @param background
+ *   Whether to run the model response in the background.
+ * @param conversation
+ *   The conversation that this response belongs to. Input items and output items from this
+ *   response are automatically added to this conversation.
  * @param createdAt
  *   Unix timestamp (in seconds) of when this Response was created.
  * @param error
@@ -26,6 +31,9 @@ import io.cequence.openaiscala.domain.responsesapi.tools.FunctionToolCall
  * @param maxOutputTokens
  *   An upper bound for the number of tokens that can be generated for a response, including
  *   visible output tokens and reasoning tokens.
+ * @param maxToolCalls
+ *   The maximum number of total calls to built-in tools that can be processed in a response.
+ *   This maximum number applies across all built-in tool calls, not per individual tool.
  * @param metadata
  *   Set of 16 key-value pairs that can be attached to an object.
  * @param model
@@ -41,8 +49,20 @@ import io.cequence.openaiscala.domain.responsesapi.tools.FunctionToolCall
  *   Whether to allow the model to run tool calls in parallel.
  * @param previousResponseId
  *   The unique ID of the previous response to the model.
+ * @param prompt
+ *   Reference to a prompt template and its variables.
+ * @param promptCacheKey
+ *   Used by OpenAI to cache responses for similar requests to optimize cache hit rates.
+ *   Replaces the user field.
  * @param reasoning
  *   Configuration options for reasoning models (o-series models only).
+ * @param safetyIdentifier
+ *   A stable identifier used to help detect users of your application that may be violating
+ *   OpenAI's usage policies. Should be a string that uniquely identifies each user (e.g.,
+ *   hashed username or email).
+ * @param serviceTier
+ *   Specifies the processing type used for serving the request. One of auto, default, flex, or
+ *   priority. When not set, the default behavior is auto.
  * @param status
  *   The status of the response generation. One of completed, failed, in_progress, or
  *   incomplete.
@@ -54,6 +74,9 @@ import io.cequence.openaiscala.domain.responsesapi.tools.FunctionToolCall
  *   How the model should select which tool (or tools) to use when generating a response.
  * @param tools
  *   An array of tools the model may call while generating a response.
+ * @param topLogprobs
+ *   An integer between 0 and 20 specifying the number of most likely tokens to return at each
+ *   token position, each with an associated log probability.
  * @param topP
  *   An alternative to sampling with temperature, called nucleus sampling.
  * @param truncation
@@ -70,26 +93,35 @@ import io.cequence.openaiscala.domain.responsesapi.tools.FunctionToolCall
  *   detect abuse.
  */
 final case class Response(
+  background: Option[Boolean] = None,
+  conversation: Option[Conversation] = None,
   createdAt: ju.Date,
   error: Option[ResponseError] = None,
   id: String,
   incompleteDetails: Option[IncompleteDetails] = None,
-  instructions: Option[String] = None,
+  instructions: Option[Inputs] = None,
   maxOutputTokens: Option[Int] = None,
+  maxToolCalls: Option[Int] = None,
   metadata: Option[Map[String, String]] = None,
   model: String,
+  `object`: String = "response",
   output: Seq[Output] = Nil,
   parallelToolCalls: Boolean,
   previousResponseId: Option[String] = None,
+  prompt: Option[Prompt] = None,
+  promptCacheKey: Option[String] = None,
   reasoning: Option[ReasoningConfig] = None,
+  safetyIdentifier: Option[String] = None,
+  serviceTier: Option[String] = None,
   status: ModelStatus,
   temperature: Option[Double] = None,
   text: TextResponseConfig,
   toolChoice: Option[ToolChoice] = None,
   tools: Seq[Tool] = Nil,
+  topLogprobs: Option[Int] = None,
   topP: Option[Double] = None,
   truncation: Option[TruncationStrategy] = None,
-  usage: UsageInfo,
+  usage: Option[UsageInfo] = None,
   user: Option[String] = None
 ) {
 
@@ -147,4 +179,14 @@ case class IncompleteDetails(
 case class ResponseError(
   code: String,
   message: String
+)
+
+/**
+ * Represents a conversation that a response belongs to.
+ *
+ * @param id
+ *   The unique ID of the conversation.
+ */
+case class Conversation(
+  id: String
 )

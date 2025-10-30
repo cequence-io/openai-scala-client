@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.domain.responsesapi
 
+import io.cequence.openaiscala.domain.settings.ReasoningEffort
 import io.cequence.wsclient.domain.EnumValue
 
 /**
@@ -22,18 +23,3 @@ case class ReasoningConfig(
   generateSummary: Option[String] = None,
   summary: Option[String] = None
 )
-
-/**
- * Represents the level of reasoning effort for reasoning models.
- */
-sealed trait ReasoningEffort extends EnumValue {
-  override def toString: String = super.toString.toLowerCase
-}
-
-object ReasoningEffort {
-  case object Low extends ReasoningEffort
-  case object Medium extends ReasoningEffort
-  case object High extends ReasoningEffort
-
-  def values: Seq[ReasoningEffort] = Seq(Low, Medium, High)
-}

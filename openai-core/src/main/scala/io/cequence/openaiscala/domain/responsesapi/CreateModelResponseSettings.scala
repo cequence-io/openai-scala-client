@@ -108,6 +108,7 @@ final case class CreateModelResponseSettings(
   tools: Seq[Tool] = Nil,
   topP: Option[Double] = None,
   truncation: Option[TruncationStrategy] = None,
+  @Deprecated
   user: Option[String] = None,
   prompt: Option[Prompt] = None,
   promptCacheKey: Option[String] = None,

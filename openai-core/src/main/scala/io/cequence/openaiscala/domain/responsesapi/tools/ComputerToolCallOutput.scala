@@ -32,17 +32,17 @@ final case class ComputerToolCallOutput(
 /**
  * Represents a safety check that has been acknowledged by the developer.
  *
- * @param code
- *   The type of the pending safety check.
  * @param id
  *   The ID of the pending safety check.
+ * @param code
+ *   The type of the pending safety check.
  * @param message
  *   Details about the pending safety check.
  */
 final case class AcknowledgedSafetyCheck(
-  code: String,
   id: String,
-  message: String
+  code: Option[String] = None,
+  message: Option[String] = None
 )
 
 /**

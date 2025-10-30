@@ -17,7 +17,7 @@ import io.cequence.openaiscala.domain.responsesapi.Input
 final case class MCPListTools(
   id: String,
   serverLabel: String,
-  tools: Seq[MCPTool],
+  tools: Seq[MCPToolRef],
   error: Option[String] = None
 ) extends Input {
   val `type`: String = "mcp_list_tools"

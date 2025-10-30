@@ -14,7 +14,7 @@ import io.cequence.openaiscala.domain.responsesapi.Input
  */
 final case class CustomToolCallOutput(
   callId: String,
-  output: String,
+  output: FunctionToolOutput,
   id: Option[String] = None
 ) extends Input {
   val `type`: String = "custom_tool_call_output"

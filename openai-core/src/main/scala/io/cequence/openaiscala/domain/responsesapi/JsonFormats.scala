@@ -4,7 +4,7 @@ import java.{util => ju}
 import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.JsonUtil.{enumFormat, snakeEnumFormat}
 import io.cequence.openaiscala.domain.responsesapi.ModelStatus
-import io.cequence.openaiscala.JsonFormats.jsonSchemaFormat
+import io.cequence.openaiscala.JsonFormats.{jsonSchemaFormat, reasoningEffortFormat}
 import io.cequence.openaiscala.domain.responsesapi.{TruncationStrategy, ResponseFormat}
 import io.cequence.openaiscala.domain.ChatRole
 import io.cequence.openaiscala.domain.responsesapi.tools._
@@ -24,9 +24,11 @@ import io.cequence.openaiscala.domain.responsesapi.tools.JsonFormats.{
   imageGenerationToolCallFormat,
   codeInterpreterToolCallFormat,
   localShellToolCallFormat,
-  localShellCallOutputFormat,
+  localShellToolCallOutputFormat,
   mcpListToolsFormat,
   mcpToolCallFormat,
+  mcpApprovalRequestFormat,
+  mcpApprovalResponseFormat,
   customToolCallOutputFormat,
   customToolCallFormat
 }
@@ -86,21 +88,52 @@ object JsonFormats {
   implicit lazy val textResponseConfigFormat: Format[TextResponseConfig] =
     Json.format[TextResponseConfig]
 
-  // reasoning effort
-  implicit lazy val reasoningEffortFormat: Format[ReasoningEffort] =
-    enumFormat[ReasoningEffort](ReasoningEffort.values: _*)
-
   // reasoning config
   implicit lazy val reasoningConfigFormat: Format[ReasoningConfig] =
     Json.format[ReasoningConfig]
 
-  // reasoning text
+  // summary text - custom format to include type field
+  private implicit lazy val summaryTextReads: Reads[SummaryText] =
+    Json.reads[SummaryText]
+
+  private implicit lazy val summaryTextWrites: Writes[SummaryText] =
+    (summaryText: SummaryText) => {
+      Json.obj(
+        "text" -> summaryText.text,
+        "type" -> summaryText.`type`
+      )
+    }
+
+  implicit lazy val summaryTextFormat: Format[SummaryText] =
+    Format(summaryTextReads, summaryTextWrites)
+
+  // reasoning text - custom format to include type field
+  private implicit lazy val reasoningTextReads: Reads[ReasoningText] =
+    Json.reads[ReasoningText]
+
+  private implicit lazy val reasoningTextWrites: Writes[ReasoningText] =
+    (reasoningText: ReasoningText) => {
+      Json.obj(
+        "text" -> reasoningText.text,
+        "type" -> reasoningText.`type`
+      )
+    }
+
   implicit lazy val reasoningTextFormat: Format[ReasoningText] =
-    Json.format[ReasoningText]
+    Format(reasoningTextReads, reasoningTextWrites)
 
   // reasoning
   implicit lazy val reasoningFormat: OFormat[Reasoning] =
-    Json.format[Reasoning]
+    (
+      (__ \ "id").format[String] and
+        (__ \ "summary").formatWithDefault[Seq[SummaryText]](Seq.empty[SummaryText]) and
+        (__ \ "content").formatWithDefault[Seq[ReasoningText]](Seq.empty[ReasoningText]) and
+        (__ \ "encrypted_content").formatNullable[String] and
+        (__ \ "status").formatNullable[ModelStatus]
+    )(
+      Reasoning.apply _,
+      (x: Reasoning) => (x.id, x.summary, x.content, x.encryptedContent, x.status)
+    )
 
   // item reference
   implicit lazy val itemReferenceFormat: OFormat[ItemReference] =
@@ -235,25 +268,27 @@ object JsonFormats {
 
   implicit lazy val inputWrites: Writes[Input] = Writes[Input] { (input: Input) =>
     val jsObject = input match {
-      case input: Message.InputText       => inputTextMessageFormat.writes(input)
-      case input: Message.InputContent    => inputContentMessageFormat.writes(input)
-      case input: Message.OutputContent   => outputContentMessageFormat.writes(input)
-      case input: FileSearchToolCall      => fileSearchToolCallFormat.writes(input)
-      case input: ComputerToolCall        => computerToolCallFormat.writes(input)
-      case input: ComputerToolCallOutput  => computerToolCallOutputFormat.writes(input)
-      case input: WebSearchToolCall       => webSearchToolCallFormat.writes(input)
-      case input: FunctionToolCall        => functionToolCallFormat.writes(input)
-      case input: FunctionToolCallOutput  => functionToolCallOutputFormat.writes(input)
-      case input: Reasoning               => reasoningFormat.writes(input)
-      case input: ItemReference           => itemReferenceFormat.writes(input)
-      case input: ImageGenerationToolCall => imageGenerationToolCallFormat.writes(input)
-      case input: CodeInterpreterToolCall => codeInterpreterToolCallFormat.writes(input)
-      case input: LocalShellToolCall      => localShellToolCallFormat.writes(input)
-      case input: LocalShellCallOutput    => localShellCallOutputFormat.writes(input)
-      case input: MCPListTools            => mcpListToolsFormat.writes(input)
-      case input: MCPToolCall             => mcpToolCallFormat.writes(input)
-      case input: CustomToolCallOutput    => customToolCallOutputFormat.writes(input)
-      case input: CustomToolCall          => customToolCallFormat.writes(input)
+      case input: Message.InputText        => inputTextMessageFormat.writes(input)
+      case input: Message.InputContent     => inputContentMessageFormat.writes(input)
+      case input: Message.OutputContent    => outputContentMessageFormat.writes(input)
+      case input: FileSearchToolCall       => fileSearchToolCallFormat.writes(input)
+      case input: ComputerToolCall         => computerToolCallFormat.writes(input)
+      case input: ComputerToolCallOutput   => computerToolCallOutputFormat.writes(input)
+      case input: WebSearchToolCall        => webSearchToolCallFormat.writes(input)
+      case input: FunctionToolCall         => functionToolCallFormat.writes(input)
+      case input: FunctionToolCallOutput   => functionToolCallOutputFormat.writes(input)
+      case input: Reasoning                => reasoningFormat.writes(input)
+      case input: ItemReference            => itemReferenceFormat.writes(input)
+      case input: ImageGenerationToolCall  => imageGenerationToolCallFormat.writes(input)
+      case input: CodeInterpreterToolCall  => codeInterpreterToolCallFormat.writes(input)
+      case input: LocalShellToolCall       => localShellToolCallFormat.writes(input)
+      case input: LocalShellToolCallOutput => localShellToolCallOutputFormat.writes(input)
+      case input: MCPListTools             => mcpListToolsFormat.writes(input)
+      case input: MCPToolCall              => mcpToolCallFormat.writes(input)
+      case input: MCPApprovalRequest       => mcpApprovalRequestFormat.writes(input)
+      case input: MCPApprovalResponse      => mcpApprovalResponseFormat.writes(input)
+      case input: CustomToolCallOutput     => customToolCallOutputFormat.writes(input)
+      case input: CustomToolCall           => customToolCallFormat.writes(input)
     }
     jsObject + ("type" -> JsString(input.`type`))
   }
@@ -291,9 +326,11 @@ object JsonFormats {
       case "image_generation_call"   => imageGenerationToolCallFormat.reads(json)
       case "code_interpreter_call"   => codeInterpreterToolCallFormat.reads(json)
       case "local_shell_call"        => localShellToolCallFormat.reads(json)
-      case "local_shell_call_output" => localShellCallOutputFormat.reads(json)
+      case "local_shell_call_output" => localShellToolCallOutputFormat.reads(json)
       case "mcp_list_tools"          => mcpListToolsFormat.reads(json)
-      case "mcp_tool_call"           => mcpToolCallFormat.reads(json)
+      case "mcp_call"                => mcpToolCallFormat.reads(json)
+      case "mcp_approval_request"    => mcpApprovalRequestFormat.reads(json)
+      case "mcp_approval_response"   => mcpApprovalResponseFormat.reads(json)
       case "custom_tool_call_output" => customToolCallOutputFormat.reads(json)
       case "custom_tool_call"        => customToolCallFormat.reads(json)
       case _                         => JsError("Missing type field for Input")
@@ -302,12 +339,28 @@ object JsonFormats {
 
   implicit lazy val inputFormat: Format[Input] = Format(inputReads, inputWrites)
 
-  // inputs writes
+  // inputs
+
+  implicit lazy val inputsReads: Reads[Inputs] = Reads[Inputs] {
+    case JsString(text) => JsSuccess(Inputs.Text(text))
+    case JsArray(items) =>
+      val inputResults = items.map(inputReads.reads)
+      val errors = inputResults.collect { case JsError(e) => e }
+      if (errors.nonEmpty) {
+        JsError(errors.flatten)
+      } else {
+        val inputs = inputResults.collect { case JsSuccess(input, _) => input }
+        JsSuccess(Inputs.Items(inputs.toSeq: _*))
+      }
+    case _ => JsError("Expected string or array for Inputs")
+  }
 
   implicit lazy val inputsWrites: Writes[Inputs] = Writes[Inputs] {
     case inputs: Inputs.Text  => JsString(inputs.text)
     case inputs: Inputs.Items => JsArray(inputs.items.map(inputWrites.writes))
   }
+
+  implicit lazy val inputsFormat: Format[Inputs] = Format(inputsReads, inputsWrites)
 
   // output
 
@@ -343,7 +396,17 @@ object JsonFormats {
     if (include.nonEmpty) jsObject else jsObject.-(fieldName)
   }
 
-  implicit lazy val promptFormat: OFormat[Prompt] = Json.format[Prompt]
+  implicit lazy val promptFormat: OFormat[Prompt] = {
+    val reads: Reads[Prompt] = (
+      (__ \ "id").read[String] and
+        (__ \ "variables").readWithDefault[Map[String, String]](Map.empty) and
+        (__ \ "version").readNullable[String]
+    )(Prompt.apply _)
+
+    val writes: OWrites[Prompt] = Json.writes[Prompt]
+
+    OFormat(reads, writes)
+  }
 
   implicit lazy val streamOptionsFormat: OFormat[StreamOptions] = Json.format[StreamOptions]
 
@@ -500,16 +563,126 @@ object JsonFormats {
   implicit lazy val createModelResponseSettingsFormat: OFormat[CreateModelResponseSettings] =
     OFormat(createModelResponseSettingsReads, createModelResponseSettingsWrites)
 
+  implicit lazy val getInputTokensCountSettingsFormat: OFormat[GetInputTokensCountSettings] =
+    Json.format[GetInputTokensCountSettings]
+
   // response
+  implicit lazy val conversationFormat: Format[Conversation] = Json.format[Conversation]
+
   implicit lazy val responseErrorFormat: Format[ResponseError] = Json.format[ResponseError]
 
   implicit lazy val incompleteDetailsFormat: Format[IncompleteDetails] =
     Json.format[IncompleteDetails]
 
-  implicit lazy val responseFormat: Format[Response] = Json.format[Response]
+  // needed because we exceed 22 parameters limit in case class
+  implicit lazy val responseFormat: Format[Response] = new Format[Response] {
+    def reads(json: JsValue): JsResult[Response] = {
+      for {
+        background <- (json \ "background").validateOpt[Boolean]
+        conversation <- (json \ "conversation").validateOpt[Conversation]
+        createdAt <- (json \ "created_at").validate[ju.Date]
+        error <- (json \ "error").validateOpt[ResponseError]
+        id <- (json \ "id").validate[String]
+        incompleteDetails <- (json \ "incomplete_details").validateOpt[IncompleteDetails]
+        instructions <- (json \ "instructions").validateOpt[Inputs]
+        maxOutputTokens <- (json \ "max_output_tokens").validateOpt[Int]
+        maxToolCalls <- (json \ "max_tool_calls").validateOpt[Int]
+        metadata <- (json \ "metadata").validateOpt[Map[String, String]]
+        model <- (json \ "model").validate[String]
+        objectType <- (json \ "object").validateOpt[String].map(_.getOrElse("response"))
+        output <- (json \ "output").validateOpt[Seq[Output]].map(_.getOrElse(Nil))
+        parallelToolCalls <- (json \ "parallel_tool_calls").validate[Boolean]
+        previousResponseId <- (json \ "previous_response_id").validateOpt[String]
+        prompt <- (json \ "prompt").validateOpt[Prompt]
+        promptCacheKey <- (json \ "prompt_cache_key").validateOpt[String]
+        reasoning <- (json \ "reasoning").validateOpt[ReasoningConfig]
+        safetyIdentifier <- (json \ "safety_identifier").validateOpt[String]
+        serviceTier <- (json \ "service_tier").validateOpt[String]
+        status <- (json \ "status").validate[ModelStatus]
+        temperature <- (json \ "temperature").validateOpt[Double]
+        text <- (json \ "text").validate[TextResponseConfig]
+        toolChoice <- (json \ "tool_choice").validateOpt[ToolChoice]
+        tools <- (json \ "tools").validateOpt[Seq[Tool]].map(_.getOrElse(Nil))
+        topLogprobs <- (json \ "top_logprobs").validateOpt[Int]
+        topP <- (json \ "top_p").validateOpt[Double]
+        truncation <- (json \ "truncation").validateOpt[TruncationStrategy]
+        usage <- (json \ "usage").validateOpt[UsageInfo]
+        user <- (json \ "user").validateOpt[String]
+      } yield Response(
+        background,
+        conversation,
+        createdAt,
+        error,
+        id,
+        incompleteDetails,
+        instructions,
+        maxOutputTokens,
+        maxToolCalls,
+        metadata,
+        model,
+        objectType,
+        output,
+        parallelToolCalls,
+        previousResponseId,
+        prompt,
+        promptCacheKey,
+        reasoning,
+        safetyIdentifier,
+        serviceTier,
+        status,
+        temperature,
+        text,
+        toolChoice,
+        tools,
+        topLogprobs,
+        topP,
+        truncation,
+        usage,
+        user
+      )
+    }
+
+    def writes(r: Response): JsValue = {
+      Json.obj(
+        "background" -> r.background,
+        "conversation" -> r.conversation,
+        "created_at" -> r.createdAt,
+        "error" -> r.error,
+        "id" -> r.id,
+        "incomplete_details" -> r.incompleteDetails,
+        "instructions" -> r.instructions,
+        "max_output_tokens" -> r.maxOutputTokens,
+        "max_tool_calls" -> r.maxToolCalls,
+        "metadata" -> r.metadata,
+        "model" -> r.model,
+        "object" -> r.`object`,
+        "output" -> r.output,
+        "parallel_tool_calls" -> r.parallelToolCalls,
+        "previous_response_id" -> r.previousResponseId,
+        "prompt" -> r.prompt,
+        "prompt_cache_key" -> r.promptCacheKey,
+        "reasoning" -> r.reasoning,
+        "safety_identifier" -> r.safetyIdentifier,
+        "service_tier" -> r.serviceTier,
+        "status" -> r.status,
+        "temperature" -> r.temperature,
+        "text" -> r.text,
+        "tool_choice" -> r.toolChoice,
+        "tools" -> r.tools,
+        "top_logprobs" -> r.topLogprobs,
+        "top_p" -> r.topP,
+        "truncation" -> r.truncation,
+        "usage" -> r.usage,
+        "user" -> r.user
+      )
+    }
+  }
 
   implicit lazy val responsesDeleteResponseFormat: Format[DeleteResponse] =
     Json.format[DeleteResponse]
+
+  implicit lazy val inputTokensCountFormat: Format[InputTokensCount] =
+    Json.format[InputTokensCount]
 
   implicit val inputItemsResponseFormat: Format[InputItemsResponse] =
     Json.format[InputItemsResponse]

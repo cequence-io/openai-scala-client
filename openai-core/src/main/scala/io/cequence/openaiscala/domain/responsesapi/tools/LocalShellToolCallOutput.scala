@@ -12,7 +12,7 @@ import io.cequence.openaiscala.domain.responsesapi.Input
  * @param status
  *   The status of the item. One of in_progress, completed, or incomplete. TODO: introduce enum
  */
-final case class LocalShellCallOutput(
+final case class LocalShellToolCallOutput(
   id: String,
   output: String,
   status: Option[String] = None

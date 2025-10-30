@@ -41,9 +41,10 @@ object Output {
   ) = FunctionToolCall(arguments, callId, name, id, status)
 
   def ofWebSearchToolCall(
+    action: WebSearchAction,
     id: String,
     status: ModelStatus
-  ) = WebSearchToolCall(id, status)
+  ) = WebSearchToolCall(action, id, status)
 
   def ofComputerToolCall(
     action: ComputerToolAction,
@@ -55,7 +56,7 @@ object Output {
 
   def ofReasoning(
     id: String,
-    summary: Seq[ReasoningText],
+    summary: Seq[SummaryText],
     status: Option[ModelStatus] = None
-  ) = Reasoning(id, summary, status)
+  ) = Reasoning(id, summary, Nil, None, status)
 }
