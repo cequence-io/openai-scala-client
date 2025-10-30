@@ -4,6 +4,8 @@ package io.cequence.openaiscala.domain
 object NonOpenAIModelId {
 
   // Anthropic
+  val claude_sonnet_4_5_20250929 = "claude-sonnet-4-5-20250929"
+  val claude_haiku_4_5_20251001 = "claude-haiku-4-5-20251001"
   val claude_opus_4_1_20250805 = "claude-opus-4-1-20250805"
   val claude_opus_4_20250514 = "claude-opus-4-20250514"
   val claude_sonnet_4_20250514 = "claude-sonnet-4-20250514"
@@ -21,6 +23,8 @@ object NonOpenAIModelId {
   val claude_instant_1_2 = "claude-instant-1.2"
 
   // Anthropic Bedrock
+  val bedrock_claude_sonnet_4_5_20250929_v1_0 = "anthropic.claude-sonnet-4-5-20250929-v1:0"
+  val bedrock_claude_haiku_4_5_20251001_v1_0 = "anthropic.claude-haiku-4-5-20251001-v1:0"
   val bedrock_claude_opus_4_1_20250805_v1_0 = "anthropic.claude-opus-4-1-20250805-v1:0"
   val bedrock_claude_opus_4_20250514_v1_0 = "anthropic.claude-opus-4-20250514-v1:0"
   val bedrock_claude_sonnet_4_20250514_v1_0 = "anthropic.claude-sonnet-4-20250514-v1:0"
