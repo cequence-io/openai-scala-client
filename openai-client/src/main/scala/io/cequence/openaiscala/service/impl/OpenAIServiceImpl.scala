@@ -376,8 +376,10 @@ private[service] trait OpenAIServiceImpl
         Param.input -> Some(input),
         Param.model -> Some(settings.model),
         Param.voice -> Some(settings.voice.toString),
+        Param.instructions -> settings.instructions,
         Param.speed -> settings.speed,
-        Param.response_format -> settings.response_format.map(_.toString)
+        Param.response_format -> settings.response_format.map(_.toString),
+        Param.stream_format -> settings.stream_format.map(_.toString)
       )
     ).map(_.source)
 
