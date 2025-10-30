@@ -287,7 +287,9 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
     "serialize and deserialize WebSearchTool with all fields" in {
       testCodec[Tool](
         WebSearchTool(
-          filters = Some(WebSearchFilters(allowedDomains = Seq("pubmed.ncbi.nlm.nih.gov", "arxiv.org"))),
+          filters = Some(
+            WebSearchFilters(allowedDomains = Seq("pubmed.ncbi.nlm.nih.gov", "arxiv.org"))
+          ),
           searchContextSize = Some("high"),
           userLocation = Some(
             WebSearchUserLocation(
@@ -581,10 +583,12 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
       testCodec[Tool](
         ImageGenerationTool(
           background = Some(ImageGenerationBackground.auto),
-          inputImageMask = Some(InputImageMask(
-            fileId = Some("file_abc123"),
-            imageUrl = Some("https://example.com/mask.png")
-          )),
+          inputImageMask = Some(
+            InputImageMask(
+              fileId = Some("file_abc123"),
+              imageUrl = Some("https://example.com/mask.png")
+            )
+          ),
           outputFormat = Some("jpeg"),
           outputCompression = Some(85)
         ),
@@ -612,9 +616,11 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
         ImageGenerationTool(
           background = Some(ImageGenerationBackground.auto),
           inputFidelity = Some("medium"),
-          inputImageMask = Some(InputImageMask(
-            fileId = Some("file_mask789")
-          )),
+          inputImageMask = Some(
+            InputImageMask(
+              fileId = Some("file_mask789")
+            )
+          ),
           model = Some("gpt-image-2"),
           moderation = Some("none"),
           outputCompression = Some(75),
@@ -1475,7 +1481,8 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
     "serialize and deserialize MCPTool" in {
       testCodec[MCPToolRef](
         MCPToolRef(
-          inputSchema = Map("type" -> "object", "properties" -> Map("query" -> Map("type" -> "string"))),
+          inputSchema =
+            Map("type" -> "object", "properties" -> Map("query" -> Map("type" -> "string"))),
           name = "search_tool",
           annotations = Map("category" -> "search"),
           description = Some("A tool to search for information")
