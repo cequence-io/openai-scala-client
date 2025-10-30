@@ -55,7 +55,8 @@ case class WebSearchUserLocation(
   region: Option[String] = None,
   timezone: Option[String] = None
 ) {
-  val `type`: String = "approximate" // TODO: compare with ApproximateLocation
+  // TODO: compare with ApproximateLocation
+  val `type`: String = "approximate"
 }
 
 sealed abstract class WebSearchType(value: String) extends NamedEnumValue(value)
@@ -66,6 +67,10 @@ object WebSearchType {
   case object WebSearchPreview extends WebSearchType("web_search_preview")
   case object WebSearchPreview20250311 extends WebSearchType("web_search_preview_2025_03_11")
 
-  def values = Seq(WebSearch, WebSearch20250826, WebSearchPreview, WebSearchPreview20250311)
-
+  def values = Seq(
+    WebSearch,
+    WebSearch20250826,
+    WebSearchPreview,
+    WebSearchPreview20250311
+  )
 }
