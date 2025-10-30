@@ -64,7 +64,7 @@ private[service] class SonarServiceImpl(
         "POST",
         bodyParams = stringParams,
         framingDelimiter = "\r\n\r\n",
-        maxFrameLength = Some(10000) // default 5000 is not enough
+//        maxFrameLength = Some(20000) // default is now 20000 so no need to change
       )
       .map { json =>
         (json \ "error").toOption.map { error =>
