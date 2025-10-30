@@ -178,6 +178,7 @@ object ChatCompletionResponseFormatType {
 sealed trait ReasoningEffort extends EnumValue
 
 object ReasoningEffort {
+  case object minimal extends ReasoningEffort
   case object low extends ReasoningEffort
   case object medium extends ReasoningEffort
   case object high extends ReasoningEffort
