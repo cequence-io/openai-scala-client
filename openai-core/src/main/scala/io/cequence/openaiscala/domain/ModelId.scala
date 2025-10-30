@@ -285,6 +285,8 @@ object ModelId {
   // 128K context (with training data upto April 2023) - Jan 25th 2024 snapshot
   val gpt_4_0125_preview = "gpt-4-0125-preview"
 
+  val gpt_image_1 = "gpt-image-1"
+
   // Other
   @Deprecated
   val code_cushman_001 = "code-cushman-001"
