@@ -367,27 +367,41 @@ object JsonFormats {
   implicit lazy val outputFormat: Format[Output] = new Format[Output] {
     override def reads(json: JsValue): JsResult[Output] = {
       (json \ "type").as[String] match {
-        case "message"          => outputContentMessageFormat.reads(json)
-        case "file_search_call" => fileSearchToolCallFormat.reads(json)
-        case "web_search_call"  => webSearchToolCallFormat.reads(json)
-        case "computer_call"    => computerToolCallFormat.reads(json)
-        case "function_call"    => functionToolCallFormat.reads(json)
-        case "reasoning"        => reasoningFormat.reads(json)
-        case unknown            => JsError(s"Unknown Output type: $unknown")
+        case "message"               => outputContentMessageFormat.reads(json)
+        case "file_search_call"      => fileSearchToolCallFormat.reads(json)
+        case "web_search_call"       => webSearchToolCallFormat.reads(json)
+        case "computer_call"         => computerToolCallFormat.reads(json)
+        case "function_call"         => functionToolCallFormat.reads(json)
+        case "reasoning"             => reasoningFormat.reads(json)
+        case "image_generation_call" => imageGenerationToolCallFormat.reads(json)
+        case "code_interpreter_call" => codeInterpreterToolCallFormat.reads(json)
+        case "local_shell_call"      => localShellToolCallFormat.reads(json)
+        case "mcp_call"              => mcpToolCallFormat.reads(json)
+        case "mcp_list_tools"        => mcpListToolsFormat.reads(json)
+        case "mcp_approval_request"  => mcpApprovalRequestFormat.reads(json)
+        case "custom_tool_call"      => customToolCallFormat.reads(json)
+        case unknown                 => JsError(s"Unknown Output type: $unknown")
       }
     }
 
     override def writes(output: Output): JsValue = {
       val jsObject = output match {
-        case output: Message.OutputContent => outputContentMessageFormat.writes(output)
-        case output: FileSearchToolCall    => fileSearchToolCallFormat.writes(output)
-        case output: WebSearchToolCall     => webSearchToolCallFormat.writes(output)
-        case output: ComputerToolCall      => computerToolCallFormat.writes(output)
-        case output: FunctionToolCall      => functionToolCallFormat.writes(output)
-        case output: Reasoning             => reasoningFormat.writes(output)
+        case output: Message.OutputContent   => outputContentMessageFormat.writes(output)
+        case output: FileSearchToolCall      => fileSearchToolCallFormat.writes(output)
+        case output: WebSearchToolCall       => webSearchToolCallFormat.writes(output)
+        case output: ComputerToolCall        => computerToolCallFormat.writes(output)
+        case output: FunctionToolCall        => functionToolCallFormat.writes(output)
+        case output: Reasoning               => reasoningFormat.writes(output)
+        case output: ImageGenerationToolCall => imageGenerationToolCallFormat.writes(output)
+        case output: CodeInterpreterToolCall => codeInterpreterToolCallFormat.writes(output)
+        case output: LocalShellToolCall      => localShellToolCallFormat.writes(output)
+        case output: MCPToolCall             => mcpToolCallFormat.writes(output)
+        case output: MCPListTools            => mcpListToolsFormat.writes(output)
+        case output: MCPApprovalRequest      => mcpApprovalRequestFormat.writes(output)
+        case output: CustomToolCall          => customToolCallFormat.writes(output)
       }
 
-      jsObject.asInstanceOf[JsObject] + ("type" -> JsString(output.`type`))
+      jsObject + ("type" -> JsString(output.`type`))
     }
   }
 
@@ -399,7 +413,7 @@ object JsonFormats {
   implicit lazy val promptFormat: OFormat[Prompt] = {
     val reads: Reads[Prompt] = (
       (__ \ "id").read[String] and
-        (__ \ "variables").readWithDefault[Map[String, String]](Map.empty) and
+        (__ \ "variables").readWithDefault[Map[String, Any]](Map.empty) and
         (__ \ "version").readNullable[String]
     )(Prompt.apply _)
 

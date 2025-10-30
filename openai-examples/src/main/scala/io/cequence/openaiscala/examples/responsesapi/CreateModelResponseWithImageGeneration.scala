@@ -16,7 +16,7 @@ object CreateModelResponseWithImageGeneration extends Example {
       .createModelResponse(
         Inputs.Text("Generate an image of a sunset over the ocean with a sailboat."),
         settings = CreateModelResponseSettings(
-          model = ModelId.gpt_4o,
+          model = ModelId.gpt_5_nano,
           tools = Seq(
             ImageGenerationTool(
               background = Some(ImageGenerationBackground.auto),

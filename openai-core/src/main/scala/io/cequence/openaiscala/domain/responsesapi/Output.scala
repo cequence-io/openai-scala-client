@@ -3,14 +3,21 @@ package io.cequence.openaiscala.domain.responsesapi
 import io.cequence.openaiscala.domain.responsesapi.tools._
 
 /**
- * Ouptut types hierarchy:
+ * Output types hierarchy:
  *
- *   - Output message (object) - OutputMessage
- *   - File search tool call (object) - FileSearchToolCall
- *   - Function tool call (object) - FunctionToolCall
- *   - Web search tool call (object) - WebSearchToolCall
- *   - Computer tool call (object) - ComputerToolCall
- *   - Reasoning (object) - Reasoning
+ *   - Output message (object) - [[Message.OutputContent]]
+ *   - File search tool call (object) - [[FileSearchToolCall]]
+ *   - Function tool call (object) - [[FunctionToolCall]]
+ *   - Web search tool call (object) - [[WebSearchToolCall]]
+ *   - Computer tool call (object) - [[ComputerToolCall]]
+ *   - Reasoning (object) - [[Reasoning]]
+ *   - Image generation call (object) - [[ImageGenerationToolCall]]
+ *   - Code interpreter tool call (object) - [[CodeInterpreterToolCall]]
+ *   - Local shell call (object) - [[LocalShellToolCall]]
+ *   - MCP tool call (object) - [[mcp.MCPToolCall]]
+ *   - MCP list tools (object) - [[mcp.MCPListTools]]
+ *   - MCP approval request (object) - [[mcp.MCPApprovalRequest]]
+ *   - Custom tool call (object) - [[CustomToolCall]]
  */
 trait Output {
   val `type`: String

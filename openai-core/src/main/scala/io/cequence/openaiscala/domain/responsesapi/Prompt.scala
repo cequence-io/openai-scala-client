@@ -23,6 +23,6 @@ package io.cequence.openaiscala.domain.responsesapi
  */
 case class Prompt(
   id: String,
-  variables: Map[String, String] = Map.empty,
+  variables: Map[String, Any] = Map.empty,
   version: Option[String] = None
 )

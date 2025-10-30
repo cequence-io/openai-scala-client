@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.domain.responsesapi.tools.mcp
 
-import io.cequence.openaiscala.domain.responsesapi.{Input, ModelStatus}
+import io.cequence.openaiscala.domain.responsesapi.{Input, ModelStatus, Output}
 import io.cequence.openaiscala.domain.responsesapi.tools.ToolCall
 
 /**
@@ -34,6 +34,7 @@ final case class MCPToolCall(
   output: Option[String] = None,
   status: Option[ModelStatus] = None
 ) extends ToolCall
-    with Input {
+    with Input
+    with Output {
   val `type`: String = "mcp_call"
 }

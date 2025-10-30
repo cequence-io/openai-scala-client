@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.domain.responsesapi.tools
 
-import io.cequence.openaiscala.domain.responsesapi.Input
+import io.cequence.openaiscala.domain.responsesapi.{Input, Output}
 
 /**
  * Represents a code interpreter tool call made by the model.
@@ -25,7 +25,8 @@ final case class CodeInterpreterToolCall(
   outputs: Seq[CodeInterpreterOutput],
   status: String
 ) extends ToolCall
-    with Input {
+    with Input
+    with Output {
   val `type`: String = "code_interpreter_call"
 }
 

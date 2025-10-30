@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.domain.responsesapi.tools
 
-import io.cequence.openaiscala.domain.responsesapi.Input
+import io.cequence.openaiscala.domain.responsesapi.{Input, Output}
 
 /**
  * Represents an image generation call made by the model.
@@ -17,6 +17,7 @@ final case class ImageGenerationToolCall(
   result: String,
   status: String
 ) extends ToolCall
-    with Input {
+    with Input
+    with Output {
   val `type`: String = "image_generation_call"
 }

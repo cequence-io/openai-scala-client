@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.domain.responsesapi.tools
 
-import io.cequence.openaiscala.domain.responsesapi.Input
+import io.cequence.openaiscala.domain.responsesapi.{Input, Output}
 
 /**
  * A tool call to run a command on the local shell.
@@ -19,7 +19,9 @@ final case class LocalShellToolCall(
   callId: String,
   id: String,
   status: String
-) extends Input {
+) extends ToolCall
+    with Input
+    with Output {
   val `type`: String = "local_shell_call"
 }
 

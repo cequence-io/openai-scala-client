@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.domain.responsesapi.tools.mcp
 
-import io.cequence.openaiscala.domain.responsesapi.Input
+import io.cequence.openaiscala.domain.responsesapi.{Input, Output}
 
 /**
  * A request for human approval of a tool invocation on an MCP server.
@@ -19,6 +19,7 @@ final case class MCPApprovalRequest(
   id: String,
   name: String,
   serverLabel: String
-) extends Input {
+) extends Input
+    with Output {
   val `type`: String = "mcp_approval_request"
 }

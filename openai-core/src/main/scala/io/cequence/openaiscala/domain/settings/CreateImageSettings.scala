@@ -42,7 +42,6 @@ object ImageSizeType {
   case object Large extends ImageSizeType("1024x1024")
   case object LargeLandscape extends ImageSizeType("1792x1024")
   case object LargePortrait extends ImageSizeType("1024x1792")
-
 }
 
 sealed trait ImageResponseFormatType extends EnumValue
