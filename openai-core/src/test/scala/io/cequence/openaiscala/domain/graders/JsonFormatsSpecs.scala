@@ -139,7 +139,8 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
           input = Seq(
             GraderModelInput(
               content = GraderInputContent.InputText(
-                text = "Classify the sentiment of the following statement as one of positive, neutral, or negative"
+                text =
+                  "Classify the sentiment of the following statement as one of positive, neutral, or negative"
               ),
               role = ChatRole.System
             ),
@@ -191,7 +192,8 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
     }
 
     "serialize and deserialize PythonGrader" in {
-      val pythonSource = "\ndef grade(sample: dict, item: dict) -> float:\n    \"\"\"\n    Returns 1.0 if `output_text` equals `label`, otherwise 0.0.\n    \"\"\"\n    output = sample.get(\"output_text\")\n    label = item.get(\"label\")\n    return 1.0 if output == label else 0.0\n"
+      val pythonSource =
+        "\ndef grade(sample: dict, item: dict) -> float:\n    \"\"\"\n    Returns 1.0 if `output_text` equals `label`, otherwise 0.0.\n    \"\"\"\n    output = sample.get(\"output_text\")\n    label = item.get(\"label\")\n    return 1.0 if output == label else 0.0\n"
 
       testCodec[Grader](
         PythonGrader(
