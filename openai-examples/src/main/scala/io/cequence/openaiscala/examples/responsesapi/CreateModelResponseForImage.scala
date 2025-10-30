@@ -26,11 +26,11 @@ object CreateModelResponseForImage extends Example {
         )
       )
       .map { response =>
-        import response.usage._
-
         println(response.outputText.getOrElse("N/A"))
-        println(inputTokens)
-        println(outputTokens)
-        println(totalTokens)
+        response.usage.foreach { usage =>
+          println(usage.inputTokens)
+          println(usage.outputTokens)
+          println(usage.totalTokens)
+        }
       }
 }

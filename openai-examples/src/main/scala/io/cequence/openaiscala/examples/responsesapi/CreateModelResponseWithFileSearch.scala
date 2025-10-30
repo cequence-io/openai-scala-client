@@ -15,7 +15,7 @@ object CreateModelResponseWithFileSearch extends Example {
       .createModelResponse(
         Inputs.Text("What are the attributes of an ancient brown dragon?"),
         settings = CreateModelResponseSettings(
-          model = ModelId.gpt_4o_2024_08_06,
+          model = ModelId.gpt_5_mini,
           tools = Seq(
             FileSearchTool(
               vectorStoreIds = Seq("vs_1234567890"),

@@ -15,7 +15,7 @@ object CreateModelResponseWithFunctions extends Example {
       .createModelResponse(
         Inputs.Text("What is the weather like in Boston today?"),
         settings = CreateModelResponseSettings(
-          model = ModelId.gpt_4o_2024_08_06,
+          model = ModelId.gpt_5_mini,
           tools = Seq(
             FunctionTool(
               name = "get_current_weather",
