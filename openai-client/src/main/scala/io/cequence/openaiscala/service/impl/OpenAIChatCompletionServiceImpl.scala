@@ -187,4 +187,5 @@ trait ChatCompletionBodyMaker {
       // TODO: is it legal?
       Map("type" -> "json_schema")
     )
+
 }
