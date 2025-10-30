@@ -88,6 +88,7 @@ object Param {
   case object style extends Param
   case object voice extends Param
   case object speed extends Param
+  case object stream_format extends Param
   case object metadata extends Param
   case object role extends Param
   case object content extends Param

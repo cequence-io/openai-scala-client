@@ -8,7 +8,11 @@ import io.cequence.openaiscala.service.adapter.{
   ChatCompletionSettingsConversions,
   MessageConversions
 }
-import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIServiceConsts}
+import io.cequence.openaiscala.service.{
+  OpenAIChatCompletionExtra,
+  OpenAIChatCompletionService,
+  OpenAIServiceConsts
+}
 import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.ResponseImplicits._
 import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithEngine
@@ -24,12 +28,8 @@ import scala.concurrent.Future
  */
 private[service] trait OpenAIChatCompletionServiceImpl
     extends OpenAIChatCompletionService
-    with WSClientWithEngine
-    with ChatCompletionBodyMaker
-    with OpenAIServiceConsts {
-
-  override protected type PEP = EndPoint
-  override protected type PT = Param
+    with OpenAIServiceWSBase
+    with ChatCompletionBodyMaker {
 
   override def createChatCompletion(
     messages: Seq[BaseMessage],
@@ -171,31 +171,7 @@ trait ChatCompletionBodyMaker {
       }
 
       val adjustedSchema: Map[String, Any] = if (strict) {
-        // set "additionalProperties" -> false on "object" types if strict
-        def addFlagAux(map: Map[String, Any]): Map[String, Any] = {
-          val newMap = map.map { case (key, value) =>
-            val unwrappedValue = value match {
-              case Some(value) => value
-              case other       => other
-            }
-
-            val newValue = unwrappedValue match {
-              case obj: Map[String, Any] =>
-                addFlagAux(obj)
-
-              case other =>
-                other
-            }
-            key -> newValue
-          }
-
-          if (Seq("object", Some("object")).contains(map.getOrElse("type", ""))) {
-            newMap + ("additionalProperties" -> false)
-          } else
-            newMap
-        }
-
-        addFlagAux(schemaMap)
+        OpenAIChatCompletionExtra.toStrictSchema(structure)
       } else schemaMap
 
       Map(
