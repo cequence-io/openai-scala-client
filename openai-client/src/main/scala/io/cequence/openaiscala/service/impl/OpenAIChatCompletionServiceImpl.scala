@@ -8,11 +8,8 @@ import io.cequence.openaiscala.service.adapter.{
   ChatCompletionSettingsConversions,
   MessageConversions
 }
-import io.cequence.openaiscala.service.{
-  OpenAIChatCompletionExtra,
-  OpenAIChatCompletionService,
-  OpenAIServiceConsts
-}
+import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIServiceConsts}
+import io.cequence.openaiscala.service.OpenAIChatCompletionExtra.toStrictSchema
 import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.ResponseImplicits._
 import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithEngine
