@@ -14,8 +14,16 @@ import io.cequence.openaiscala.service.{
 }
 import io.cequence.wsclient.service.adapter.DelegatedCloseableServiceWrapper
 import io.cequence.wsclient.service.adapter.ServiceWrapperTypes.CloseableServiceWrapper
-import io.cequence.openaiscala.domain.responsesapi.{Inputs, Response, InputItemsResponse}
-import io.cequence.openaiscala.domain.responsesapi.CreateModelResponseSettings
+import io.cequence.openaiscala.domain.responsesapi.{
+  Inputs,
+  Response,
+  InputItemsResponse,
+  InputTokensCount
+}
+import io.cequence.openaiscala.domain.responsesapi.{
+  CreateModelResponseSettings,
+  GetInputTokensCountSettings
+}
 import io.cequence.openaiscala.domain.responsesapi.{
   DeleteResponse => ResponsesAPIDeleteResponse
 }
@@ -612,6 +620,19 @@ trait OpenAIServiceWrapper
     responseId: String
   ): Future[ResponsesAPIDeleteResponse] = wrap(
     _.deleteModelResponse(responseId)
+  )
+
+  override def cancelModelResponse(
+    responseId: String
+  ): Future[Response] = wrap(
+    _.cancelModelResponse(responseId)
+  )
+
+  override def getModelResponseInputTokenCounts(
+    inputs: Inputs,
+    settings: GetInputTokensCountSettings
+  ): Future[InputTokensCount] = wrap(
+    _.getModelResponseInputTokenCounts(inputs, settings)
   )
 
   override def listModelResponseInputItems(

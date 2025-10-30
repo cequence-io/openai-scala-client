@@ -2,7 +2,10 @@ package io.cequence.openaiscala.service
 
 import io.cequence.openaiscala.domain.ModelId
 import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.domain.responsesapi.CreateModelResponseSettings
+import io.cequence.openaiscala.domain.responsesapi.{
+  CreateModelResponseSettings,
+  GetInputTokensCountSettings
+}
 
 /**
  * Constants of [[OpenAIService]], mostly defaults
@@ -49,12 +52,12 @@ trait OpenAIServiceConsts {
     )
 
     val CreateChatFunCompletion = CreateChatCompletionSettings(
-      model = ModelId.gpt_4_1,
+      model = ModelId.gpt_5_mini,
       max_tokens = Some(4000)
     )
 
     val CreateChatToolCompletion = CreateChatCompletionSettings(
-      model = ModelId.gpt_4_1,
+      model = ModelId.gpt_5_mini,
       max_tokens = Some(4000)
     )
 
@@ -97,7 +100,11 @@ trait OpenAIServiceConsts {
     val CreateModeration = CreateModerationSettings()
 
     val CreateModelResponse = CreateModelResponseSettings(
-      model = ModelId.gpt_4o
+      model = ModelId.gpt_5_mini
+    )
+
+    val CreateModelResponseInputTokensCount = GetInputTokensCountSettings(
+      model = Some(ModelId.gpt_5_mini)
     )
   }
 }

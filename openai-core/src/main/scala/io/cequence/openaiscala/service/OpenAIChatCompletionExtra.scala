@@ -17,12 +17,15 @@ import io.cequence.openaiscala.domain.{
   NonOpenAIModelId,
   UserMessage
 }
+import io.cequence.openaiscala.JsonFormats.jsonSchemaFormat
 import org.slf4j.{Logger, LoggerFactory}
-import play.api.libs.json.{Format, JsValue, Json}
+import play.api.libs.json.{Format, JsObject, JsValue, Json}
 
 import scala.concurrent.{ExecutionContext, Future}
 import com.fasterxml.jackson.core.JsonProcessingException
 import io.cequence.openaiscala.OpenAIScalaClientException
+import io.cequence.openaiscala.domain.JsonSchema.JsonSchemaOrMap
+import io.cequence.wsclient.JsonUtil
 
 object OpenAIChatCompletionExtra {
 
@@ -374,5 +377,41 @@ object OpenAIChatCompletionExtra {
     }
 
     (messagesFinal, settingsFinal)
+  }
+
+  def toStrictSchema(jsonSchema: JsonSchemaOrMap): Map[String, Any] = {
+    val schemaMap: Map[String, Any] = jsonSchema match {
+      case Left(schema) =>
+        val json = Json.toJson(schema).as[JsObject]
+        JsonUtil.toValueMap(json)
+
+      case Right(schema) => schema
+    }
+
+    // set "additionalProperties" -> false on "object" types if strict
+    def addFlagAux(map: Map[String, Any]): Map[String, Any] = {
+      val newMap = map.map { case (key, value) =>
+        val unwrappedValue = value match {
+          case Some(value) => value
+          case other       => other
+        }
+
+        val newValue = unwrappedValue match {
+          case obj: Map[String, Any] =>
+            addFlagAux(obj)
+
+          case other =>
+            other
+        }
+        key -> newValue
+      }
+
+      if (Seq("object", Some("object")).contains(map.getOrElse("type", ""))) {
+        newMap + ("additionalProperties" -> false)
+      } else
+        newMap
+    }
+
+    addFlagAux(schemaMap)
   }
 }

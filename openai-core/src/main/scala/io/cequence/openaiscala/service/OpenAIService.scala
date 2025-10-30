@@ -9,13 +9,6 @@ import io.cequence.openaiscala.domain._
 
 import java.io.File
 import scala.concurrent.Future
-import io.cequence.openaiscala.domain.responsesapi.Inputs
-import io.cequence.openaiscala.domain.responsesapi.CreateModelResponseSettings
-import io.cequence.openaiscala.domain.responsesapi.Response
-import io.cequence.openaiscala.domain.responsesapi.{
-  DeleteResponse => ResponsesAPIDeleteResponse
-}
-import io.cequence.openaiscala.domain.responsesapi.InputItemsResponse
 
 /**
  * Central service to access all public OpenAI WS endpoints as defined at <a
@@ -50,12 +43,12 @@ import io.cequence.openaiscala.domain.responsesapi.InputItemsResponse
  *     and deleteAssistant
  *   - '''Assistant Files''': createAssistantFile, listAssistantFiles, retrieveAssistantFile,
  *     and deleteAssistantFile
- *   - ''''Responses''' - createModelResponse, getModelResponse, deleteModelResponse, and
- *     listModelResponseInputItems
+ *   - ''''Responses''' - createModelResponse, getModelResponse, deleteModelResponse,
+ *     cancelModelResponse, getModelResponseInputTokenCounts, and listModelResponseInputItems
  * @since Sep
  *   2024
  */
-trait OpenAIService extends OpenAICoreService {
+trait OpenAIService extends OpenAICoreService with OpenAIResponsesService {
 
   /**
    * Retrieves a model instance, providing basic information about the model such as the owner
@@ -1565,86 +1558,4 @@ trait OpenAIService extends OpenAICoreService {
     order: Option[SortOrder] = None
   ): Future[Seq[Batch]]
 
-  /**
-   * Creates a model response for the given input data.
-   *
-   * @param inputs
-   *   The input data to create a response for.
-   * @param settings
-   *   Settings to customize the response creation.
-   * @return
-   *   A Future containing the Response object.
-   *
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/responses/create">OpenAI Doc</a>
-   */
-  def createModelResponse(
-    inputs: Inputs,
-    settings: CreateModelResponseSettings = DefaultSettings.CreateModelResponse
-  ): Future[Response]
-
-  /**
-   * Retrieves a model response by its ID.
-   *
-   * @param responseId
-   *   The ID of the response to retrieve.
-   * @param include
-   *   Optional list of related objects to include in the response.
-   * @return
-   *   A Future containing the Response object.
-   *
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/responses/get">OpenAI Doc</a>
-   */
-  def getModelResponse(
-    responseId: String,
-    include: Seq[String] = Nil
-  ): Future[Response]
-
-  /**
-   * Deletes a model response by its ID.
-   *
-   * @param responseId
-   *   The ID of the response to delete.
-   * @return
-   *   A Future containing the DeleteResponse object, indicating the result of the deletion.
-   *
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/responses/delete">OpenAI Doc</a>
-   */
-  def deleteModelResponse(
-    responseId: String
-  ): Future[ResponsesAPIDeleteResponse]
-
-  /**
-   * List input items for a model response.
-   *
-   * @param responseId
-   *   The ID of the response to retrieve input items for.
-   * @param after
-   *   An item ID to list items after, used in pagination.
-   * @param before
-   *   An item ID to list items before, used in pagination.
-   * @param include
-   *   Additional fields to include in the response.
-   * @param limit
-   *   A limit on the number of objects to be returned. Limit can range between 1 and 100, and
-   *   the default is 20.
-   * @param order
-   *   The order to return the input items in. Default is asc.
-   * @return
-   *   A list of input item objects.
-   *
-   * @see
-   *   <a href="https://platform.openai.com/docs/api-reference/responses/input-items">OpenAI
-   *   Doc</a>
-   */
-  def listModelResponseInputItems(
-    responseId: String,
-    after: Option[String] = None,
-    before: Option[String] = None,
-    include: Seq[String] = Nil,
-    limit: Option[Int] = None,
-    order: Option[SortOrder] = None
-  ): Future[InputItemsResponse]
 }
