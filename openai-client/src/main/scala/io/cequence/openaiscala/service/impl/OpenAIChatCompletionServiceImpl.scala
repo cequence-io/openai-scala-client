@@ -170,9 +170,11 @@ trait ChatCompletionBodyMaker {
         case Right(schema) => schema
       }
 
-      val adjustedSchema: Map[String, Any] = if (strict) {
-        OpenAIChatCompletionExtra.toStrictSchema(structure)
-      } else schemaMap
+      val adjustedSchema: Map[String, Any] =
+        if (strict) {
+          OpenAIChatCompletionExtra.toStrictSchema(structure)
+        } else
+          schemaMap
 
       Map(
         "type" -> "json_schema",
