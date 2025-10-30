@@ -63,7 +63,7 @@ private[service] class SonarServiceImpl(
         EndPoint.chatCompletion.toString(),
         "POST",
         bodyParams = stringParams,
-        framingDelimiter = "\r\n\r\n",
+        framingDelimiter = "\r\n\r\n"
 //        maxFrameLength = Some(20000) // default is now 20000 so no need to change
       )
       .map { json =>
