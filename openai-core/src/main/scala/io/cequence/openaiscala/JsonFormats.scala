@@ -363,6 +363,7 @@ object JsonFormats {
   )
 
   implicit val reasoningEffortFormat: Format[ReasoningEffort] = enumFormat[ReasoningEffort](
+    ReasoningEffort.minimal,
     ReasoningEffort.low,
     ReasoningEffort.medium,
     ReasoningEffort.high
