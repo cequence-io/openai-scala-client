@@ -19,7 +19,7 @@ import scala.concurrent.Future
  * The Responses API provides a unified interface for creating and managing model responses
  * with support for various tools including file search, web search, and custom functions.
  *
- * ==Available Functions==
+ *   - Available Functions:
  *
  * '''Create Response'''
  *   - [[createModelResponse]] - Creates a new model response from inputs with support for

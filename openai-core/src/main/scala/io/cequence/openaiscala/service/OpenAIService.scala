@@ -43,12 +43,16 @@ import scala.concurrent.Future
  *     and deleteAssistant
  *   - '''Assistant Files''': createAssistantFile, listAssistantFiles, retrieveAssistantFile,
  *     and deleteAssistantFile
- *   - ''''Responses''' - createModelResponse, getModelResponse, deleteModelResponse,
+ *   - '''Responses''': createModelResponse, getModelResponse, deleteModelResponse,
  *     cancelModelResponse, getModelResponseInputTokenCounts, and listModelResponseInputItems
+ *   - '''Graders''': runGrader, and validateGrader
  * @since Sep
  *   2024
  */
-trait OpenAIService extends OpenAICoreService with OpenAIResponsesService {
+trait OpenAIService
+    extends OpenAICoreService
+    with OpenAIResponsesService
+    with OpenAIGraderService {
 
   /**
    * Retrieves a model instance, providing basic information about the model such as the owner

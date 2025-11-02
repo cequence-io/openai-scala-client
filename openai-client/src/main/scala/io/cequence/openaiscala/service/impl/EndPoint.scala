@@ -26,6 +26,7 @@ object EndPoint {
   case object vector_stores extends EndPoint
   case object runs extends EndPoint
   case object responses extends EndPoint
+  case object graders extends EndPoint("fine_tuning/alpha/graders")
 }
 
 sealed abstract class Param(value: String = "") extends NamedEnumValue(value)

@@ -30,6 +30,7 @@ import scala.util.{Failure, Success, Try}
 private[service] trait OpenAIServiceImpl
     extends OpenAICoreServiceImpl
     with OpenAIResponseServiceImpl
+    with OpenAIGraderServiceImpl
     with OpenAIService
     with HandleOpenAIErrorCodes { // TODO: should HandleOpenAIErrorCodes be here?
 
