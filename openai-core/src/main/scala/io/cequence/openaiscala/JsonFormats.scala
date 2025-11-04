@@ -27,7 +27,7 @@ import io.cequence.openaiscala.domain.response.ResponseFormat.{
   TextResponse
 }
 import io.cequence.openaiscala.domain.response._
-import io.cequence.openaiscala.domain.{ThreadMessageFile, _}
+import io.cequence.openaiscala.domain.{HasType, ThreadMessageFile, _}
 import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.JsonUtil.{enumFormat, snakeEnumFormat}
 import play.api.libs.functional.syntax._
@@ -1385,4 +1385,18 @@ object JsonFormats {
     Format(eitherJsonSchemaReads, eitherJsonSchemaWrites)
 
   implicit val jsonSchemaDefFormat: Format[JsonSchemaDef] = Json.format[JsonSchemaDef]
+
+  /**
+   * Wraps an OFormat with type field handling for classes extending HasType. Automatically
+   * adds the `type` field during serialization and validates it during deserialization.
+   *
+   * @param format
+   *   The underlying OFormat to wrap
+   * @tparam T
+   *   The type extending HasType
+   * @return
+   *   A Format that handles type field serialization and validation
+   */
+  def formatWithType[T <: HasType](format: OFormat[T]): OFormat[T] =
+    TypeJsonWrapper(format)
 }
