@@ -43,7 +43,7 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
           )
         )
       val json =
-        """{"role":"user","content":[{"type":"text","text":"Hello, world!"},{"type":"text","text":"How are you?"}]}"""
+        """{"role":"user","content":[{"text":"Hello, world!","type":"text"},{"text":"How are you?","type":"text"}]}"""
       testCodec[Message](userMessage, json)
     }
 
@@ -62,7 +62,7 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
           )
         )
       val json =
-        """{"role":"assistant","content":[{"type":"text","text":"Hello, world!"},{"type":"text","text":"How are you?"}]}"""
+        """{"role":"assistant","content":[{"text":"Hello, world!","type":"text"},{"text":"How are you?","type":"text"}]}"""
       testCodec[Message](assistantMessage, json)
     }
 
@@ -70,12 +70,12 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
       """{
         |  "role" : "user",
         |  "content" : [ {
-        |    "type" : "image",
         |    "source" : {
         |      "type" : "base64",
         |      "media_type" : "image/jpeg",
         |      "data" : "/9j/4AAQSkZJRg..."
-        |    }
+        |    },
+        |    "type" : "image"
         |  } ]
         |}""".stripMargin
 
@@ -95,12 +95,12 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
         val userMessage =
           UserMessageContent(
             Seq(
-              ContentBlockBase(TextBlock("Hello, world!"), Some(Ephemeral)),
+              ContentBlockBase(TextBlock("Hello, world!"), Some(Ephemeral())),
               ContentBlockBase(TextBlock("How are you?"))
             )
           )
         val json =
-          """{"role":"user","content":[{"type":"text","text":"Hello, world!","cache_control":{"type":"ephemeral"}},{"type":"text","text":"How are you?"}]}"""
+          """{"role":"user","content":[{"text":"Hello, world!","type":"text","cache_control":{"type":"ephemeral"}},{"text":"How are you?","type":"text"}]}"""
         testCodec[Message](userMessage, json)
       }
 
@@ -109,11 +109,11 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
           UserMessageContent(
             Seq(
               ContentBlockBase(TextBlock("Hello, world!")),
-              ContentBlockBase(TextBlock("How are you?"), Some(Ephemeral))
+              ContentBlockBase(TextBlock("How are you?"), Some(Ephemeral()))
             )
           )
         val json =
-          """{"role":"user","content":[{"type":"text","text":"Hello, world!"},{"type":"text","text":"How are you?","cache_control":{"type":"ephemeral"}}]}"""
+          """{"role":"user","content":[{"text":"Hello, world!","type":"text"},{"text":"How are you?","type":"text","cache_control":{"type":"ephemeral"}}]}"""
         testCodec[Message](userMessage, json)
       }
 
@@ -121,15 +121,15 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
         val userMessage =
           UserMessageContent(
             Seq(
-              MediaBlock.jpeg("/9j/4AAQSkZJRg...", Some(Ephemeral)),
+              MediaBlock.jpeg("/9j/4AAQSkZJRg...", Some(Ephemeral())),
               ContentBlockBase(TextBlock("How are you?"))
             )
           )
 
         val imageJson =
-          """{"type":"image","source":{"type":"base64","media_type":"image/jpeg","data":"/9j/4AAQSkZJRg..."},"cache_control":{"type":"ephemeral"}}""".stripMargin
+          """{"source":{"type":"base64","media_type":"image/jpeg","data":"/9j/4AAQSkZJRg..."},"type":"image","cache_control":{"type":"ephemeral"}}""".stripMargin
         val json =
-          s"""{"role":"user","content":[$imageJson,{"type":"text","text":"How are you?"}]}"""
+          s"""{"role":"user","content":[$imageJson,{"text":"How are you?","type":"text"}]}"""
         testCodec[Message](userMessage, json)
       }
     }
