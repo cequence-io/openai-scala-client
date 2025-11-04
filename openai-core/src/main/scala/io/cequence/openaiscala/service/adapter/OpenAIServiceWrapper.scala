@@ -4,6 +4,7 @@ import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain._
+import io.cequence.openaiscala.domain.graders.Grader
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.adapter.ServiceWrapperTypes._
@@ -15,10 +16,10 @@ import io.cequence.openaiscala.service.{
 import io.cequence.wsclient.service.adapter.DelegatedCloseableServiceWrapper
 import io.cequence.wsclient.service.adapter.ServiceWrapperTypes.CloseableServiceWrapper
 import io.cequence.openaiscala.domain.responsesapi.{
-  Inputs,
-  Response,
   InputItemsResponse,
-  InputTokensCount
+  InputTokensCount,
+  Inputs,
+  Response
 }
 import io.cequence.openaiscala.domain.responsesapi.{
   CreateModelResponseSettings,
@@ -602,6 +603,10 @@ trait OpenAIServiceWrapper
   ): Future[Seq[Batch]] =
     wrap(_.listBatches(pagination, order))
 
+  ///////////////////
+  // Responses API //
+  ///////////////////
+
   override def createModelResponse(
     inputs: Inputs,
     settings: CreateModelResponseSettings
@@ -644,6 +649,22 @@ trait OpenAIServiceWrapper
     order: Option[SortOrder]
   ): Future[InputItemsResponse] = wrap(
     _.listModelResponseInputItems(responseId, after, before, include, limit, order)
+  )
+
+  /////////////
+  // Graders //
+  /////////////
+
+  override def runGrader(
+    grader: Grader,
+    modelSample: String,
+    item: Map[String, Any]
+  ): Future[String] = wrap(
+    _.runGrader(grader, modelSample, item)
+  )
+
+  override def validateGrader(grader: Grader): Future[Grader] = wrap(
+    _.validateGrader(grader)
   )
 }
 
