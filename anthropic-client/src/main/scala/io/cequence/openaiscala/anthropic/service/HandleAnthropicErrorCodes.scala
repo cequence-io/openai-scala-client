@@ -13,6 +13,7 @@ trait HandleAnthropicErrorCodes extends WSClient {
   private val TokenCountExceededMessages = Set(
     "input length and `max_tokens` exceed context limit",
     "prompt is too long",
+    "which is the maximum allowed number of output tokens",
     "input is too long for requested model" // bedrock
   )
 
