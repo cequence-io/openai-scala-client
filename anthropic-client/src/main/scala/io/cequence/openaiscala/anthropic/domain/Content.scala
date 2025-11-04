@@ -1,10 +1,25 @@
 package io.cequence.openaiscala.anthropic.domain
 
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock
+import io.cequence.openaiscala.domain.HasType
+import io.cequence.wsclient.domain.EnumValue
+import play.api.libs.json.JsObject
+
 sealed trait Content
 
 sealed trait CacheControl
+
 object CacheControl {
-  case object Ephemeral extends CacheControl
+  case class Ephemeral(ttl: Option[CacheTTL] = None) extends CacheControl
+}
+
+sealed trait CacheTTL extends EnumValue
+
+object CacheTTL {
+  case object `5m` extends CacheTTL
+  case object `1h` extends CacheTTL
+
+  def values: Seq[CacheTTL] = Seq(`5m`, `1h`)
 }
 
 trait Cacheable {
@@ -26,18 +41,95 @@ object Content {
   ) extends Content
       with Cacheable
 
-  sealed trait ContentBlock
+  sealed trait ContentBlock extends HasType
 
   object ContentBlock {
     case class TextBlock(
       text: String,
       citations: Seq[Citation] = Nil
-    ) extends ContentBlock
+    ) extends ContentBlock {
+      val `type`: String = "text"
+    }
 
     case class ThinkingBlock(
       thinking: String,
       signature: String
-    ) extends ContentBlock
+    ) extends ContentBlock {
+      val `type`: String = "thinking"
+    }
+
+    case class RedactedThinkingBlock(
+      data: String
+    ) extends ContentBlock {
+      val `type`: String = "redacted_thinking"
+    }
+
+    case class ToolUseBlock(
+      id: String,
+      name: String,
+      input: JsObject
+    ) extends ContentBlock {
+      val `type`: String = "tool_use"
+    }
+
+    case class ServerToolUseBlock(
+      id: String,
+      name: ServerToolName,
+      input: JsObject
+    ) extends ContentBlock {
+      val `type`: String = "server_tool_use"
+    }
+
+    case class WebSearchToolResultBlock(
+      content: WebSearchToolResultContent,
+      toolUseId: String
+    ) extends ContentBlock {
+      val `type`: String = "web_search_tool_result"
+    }
+
+    case class McpToolUseBlock(
+      id: String,
+      name: String,
+      serverName: String,
+      input: JsObject
+    ) extends ContentBlock {
+      val `type`: String = "mcp_tool_use"
+    }
+
+    case class McpToolResultBlock(
+      content: McpToolResultContent,
+      isError: Boolean,
+      toolUseId: String
+    ) extends ContentBlock {
+      val `type`: String = "mcp_tool_result"
+    }
+
+    case class ContainerUploadBlock(
+      fileId: String
+    ) extends ContentBlock {
+      val `type`: String = "container_upload"
+    }
+
+    case class CodeExecutionToolResultBlock(
+      content: CodeExecutionToolResultContent,
+      toolUseId: String
+    ) extends ContentBlock {
+      val `type`: String = "code_execution_tool_result"
+    }
+
+    case class BashCodeExecutionToolResultBlock(
+      content: BashCodeExecutionToolResultContent,
+      toolUseId: String
+    ) extends ContentBlock {
+      val `type`: String = "bash_code_execution_tool_result"
+    }
+
+    case class TextEditorCodeExecutionToolResultBlock(
+      content: TextEditorCodeExecutionToolResultContent,
+      toolUseId: String
+    ) extends ContentBlock {
+      val `type`: String = "text_editor_code_execution_tool_result"
+    }
 
     case class Citation(
       `type`: String,
@@ -47,7 +139,10 @@ object Content {
       startCharIndex: Option[Int],
       endCharIndex: Option[Int],
       startBlockIndex: Option[Int],
-      endBlockIndex: Option[Int]
+      endBlockIndex: Option[Int],
+      startPageNumber: Option[Int],
+      endPageNumber: Option[Int],
+      fileId: Option[String]
     )
 
     case class MediaBlock(
@@ -65,7 +160,19 @@ object Content {
       title: Option[String] = None, // Document Title
       context: Option[String] = None, // Context about the document that will not be cited from
       citations: Option[Boolean] = None
-    ) extends ContentBlock
+    ) extends ContentBlock {
+      override val `type` = "document"
+    }
+
+    // TODO: revisit this
+    case class FileDocumentContentBlock(
+      fileId: String,
+      title: Option[String] = None, // Document Title
+      context: Option[String] = None, // Context about the document that will not be cited from
+      citations: Option[Boolean] = None
+    ) extends ContentBlock {
+      override val `type` = "document"
+    }
 
     object MediaBlock {
       def pdf(
@@ -142,5 +249,237 @@ object Content {
       ): ContentBlockBase = image("image/webp")(data, cacheControl)
     }
 
+  }
+}
+
+sealed trait ServerToolName extends EnumValue
+
+object ServerToolName {
+  case object web_search extends ServerToolName
+  case object web_fetch extends ServerToolName
+  case object code_execution extends ServerToolName
+  case object bash_code_execution extends ServerToolName
+  case object text_editor_code_execution extends ServerToolName
+
+  def values: Seq[ServerToolName] = Seq(
+    web_search,
+    web_fetch,
+    code_execution,
+    bash_code_execution,
+    text_editor_code_execution
+  )
+}
+
+sealed trait WebSearchToolResultContent
+
+object WebSearchToolResultContent {
+
+  case class Success(
+    results: Seq[Item]
+  ) extends WebSearchToolResultContent
+
+  case class Error(
+    errorCode: WebSearchErrorCode
+  ) extends WebSearchToolResultContent
+      with HasType {
+    val `type`: String = "web_search_tool_result_error"
+  }
+
+  case class Item(
+    encryptedContent: String,
+    pageAge: Option[String],
+    title: String,
+    url: String
+  ) extends HasType {
+    val `type`: String = "web_search_result"
+  }
+
+  sealed trait WebSearchErrorCode extends EnumValue
+
+  object WebSearchErrorCode {
+    case object invalid_tool_input extends WebSearchErrorCode
+    case object unavailable extends WebSearchErrorCode
+    case object max_uses_exceeded extends WebSearchErrorCode
+    case object too_many_requests extends WebSearchErrorCode
+    case object query_too_long extends WebSearchErrorCode
+
+    def values: Seq[WebSearchErrorCode] = Seq(
+      invalid_tool_input,
+      unavailable,
+      max_uses_exceeded,
+      too_many_requests,
+      query_too_long
+    )
+  }
+}
+
+sealed trait McpToolResultContent
+
+case class McpToolResultString(
+  value: String
+) extends McpToolResultContent
+
+case class McpToolResultStructured(
+  results: Seq[ToolResultContent]
+) extends McpToolResultContent
+
+case class ToolResultContent(
+  text: String,
+  citations: Seq[ContentBlock.Citation] = Nil
+) extends HasType {
+  val `type`: String = "text"
+}
+
+sealed trait CodeExecutionToolResultContent extends HasType
+
+object CodeExecutionToolResultContent {
+
+  case class Success(
+    content: Seq[Item],
+    returnCode: Int,
+    stderr: String,
+    stdout: String
+  ) extends CodeExecutionToolResultContent {
+    val `type`: String = "code_execution_result"
+  }
+
+  case class Item(
+    fileId: String
+  ) extends HasType {
+    val `type`: String = "code_execution_output"
+  }
+
+  case class Error(
+    errorCode: CodeExecutionErrorCode
+  ) extends CodeExecutionToolResultContent {
+    val `type`: String = "code_execution_tool_result_error"
+  }
+
+  // Code Execution Tool Result types
+  sealed trait CodeExecutionErrorCode extends EnumValue
+
+  object CodeExecutionErrorCode {
+    case object invalid_tool_input extends CodeExecutionErrorCode
+    case object unavailable extends CodeExecutionErrorCode
+    case object too_many_requests extends CodeExecutionErrorCode
+    case object execution_time_exceeded extends CodeExecutionErrorCode
+
+    def values: Seq[CodeExecutionErrorCode] = Seq(
+      invalid_tool_input,
+      unavailable,
+      too_many_requests,
+      execution_time_exceeded
+    )
+  }
+}
+
+sealed trait BashCodeExecutionToolResultContent extends HasType
+
+object BashCodeExecutionToolResultContent {
+
+  case class Success(
+    content: Seq[Item],
+    returnCode: Int,
+    stderr: String,
+    stdout: String
+  ) extends BashCodeExecutionToolResultContent {
+    val `type`: String = "bash_code_execution_result"
+  }
+
+  case class Item(
+    fileId: String
+  ) extends HasType {
+    val `type`: String = "bash_code_execution_output"
+  }
+
+  case class Error(
+    errorCode: BashCodeExecutionErrorCode
+  ) extends BashCodeExecutionToolResultContent {
+    val `type`: String = "bash_code_execution_tool_result_error"
+  }
+
+  // Bash Code Execution Tool Result types
+  sealed trait BashCodeExecutionErrorCode extends EnumValue
+
+  object BashCodeExecutionErrorCode {
+    case object invalid_tool_input extends BashCodeExecutionErrorCode
+    case object unavailable extends BashCodeExecutionErrorCode
+    case object too_many_requests extends BashCodeExecutionErrorCode
+    case object execution_time_exceeded extends BashCodeExecutionErrorCode
+    case object output_file_too_large extends BashCodeExecutionErrorCode
+
+    def values: Seq[BashCodeExecutionErrorCode] = Seq(
+      invalid_tool_input,
+      unavailable,
+      too_many_requests,
+      execution_time_exceeded,
+      output_file_too_large
+    )
+  }
+}
+
+sealed trait TextEditorCodeExecutionToolResultContent extends HasType
+
+object TextEditorCodeExecutionToolResultContent {
+
+  case class Error(
+    errorCode: TextEditorCodeExecutionErrorCode,
+    errorMessage: Option[String]
+  ) extends TextEditorCodeExecutionToolResultContent {
+    val `type`: String = "text_editor_code_execution_tool_result_error"
+  }
+
+  case class ViewResult(
+    content: String,
+    fileType: FileType,
+    numLines: Option[Int],
+    startLine: Option[Int],
+    totalLines: Option[Int]
+  ) extends TextEditorCodeExecutionToolResultContent {
+    val `type`: String = "text_editor_code_execution_view_result"
+  }
+
+  case class CreateResult(
+    isFileUpdate: Boolean
+  ) extends TextEditorCodeExecutionToolResultContent {
+    val `type`: String = "text_editor_code_execution_create_result"
+  }
+
+  case class ReplaceResult(
+    lines: Seq[String] = Nil,
+    newLines: Option[Int] = None,
+    newStart: Option[Int] = None,
+    oldLines: Option[Int] = None,
+    oldStart: Option[Int] = None
+  ) extends TextEditorCodeExecutionToolResultContent {
+    val `type`: String = "text_editor_code_execution_str_replace_result"
+  }
+
+  sealed trait TextEditorCodeExecutionErrorCode extends EnumValue
+
+  object TextEditorCodeExecutionErrorCode {
+    case object invalid_tool_input extends TextEditorCodeExecutionErrorCode
+    case object unavailable extends TextEditorCodeExecutionErrorCode
+    case object too_many_requests extends TextEditorCodeExecutionErrorCode
+    case object execution_time_exceeded extends TextEditorCodeExecutionErrorCode
+    case object file_not_found extends TextEditorCodeExecutionErrorCode
+
+    def values: Seq[TextEditorCodeExecutionErrorCode] = Seq(
+      invalid_tool_input,
+      unavailable,
+      too_many_requests,
+      execution_time_exceeded,
+      file_not_found
+    )
+  }
+
+  sealed trait FileType extends EnumValue
+
+  object FileType {
+    case object text extends FileType
+    case object image extends FileType
+    case object pdf extends FileType
+
+    def values: Seq[FileType] = Seq(text, image, pdf)
   }
 }

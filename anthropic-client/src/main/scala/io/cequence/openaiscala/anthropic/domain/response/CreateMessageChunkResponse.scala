@@ -1,5 +1,7 @@
 package io.cequence.openaiscala.anthropic.domain.response
 
+import io.cequence.openaiscala.domain.HasType
+
 case class CreateMessageChunkResponse(
   `type`: String,
   message: CreateMessageResponse
@@ -16,19 +18,25 @@ case class ContentBlockDelta(
   }
 }
 
-sealed trait DeltaBlock
+sealed trait DeltaBlock extends HasType
 
 object DeltaBlock {
 
   case class DeltaText(
     text: String
-  ) extends DeltaBlock
+  ) extends DeltaBlock {
+    override val `type`: String = "text_delta"
+  }
 
   case class DeltaThinking(
     thinking: String
-  ) extends DeltaBlock
+  ) extends DeltaBlock {
+    override val `type`: String = "thinking_delta"
+  }
 
   case class DeltaSignature(
     signature: String
-  ) extends DeltaBlock
+  ) extends DeltaBlock {
+    override val `type`: String = "signature_delta"
+  }
 }

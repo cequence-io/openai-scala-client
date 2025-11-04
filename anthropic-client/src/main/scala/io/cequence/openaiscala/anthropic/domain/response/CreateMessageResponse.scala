@@ -1,12 +1,18 @@
 package io.cequence.openaiscala.anthropic.domain.response
 
-import io.cequence.openaiscala.anthropic.domain.ChatRole
+import io.cequence.openaiscala.anthropic.domain.{
+  BashCodeExecutionToolResultContent,
+  ChatRole,
+  Content
+}
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{
+  BashCodeExecutionToolResultBlock,
   Citation,
   TextBlock,
-  ThinkingBlock
+  ThinkingBlock,
+  ToolUseBlock
 }
-import io.cequence.openaiscala.anthropic.domain.Content.{ContentBlockBase, ContentBlocks}
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlocks
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse.UsageInfo
 import io.cequence.wsclient.domain.NamedEnumValue
 
@@ -19,6 +25,9 @@ final case class CreateMessageResponse(
   stop_sequence: Option[String],
   usage: UsageInfo
 ) {
+  def blockContents: Seq[Content.ContentBlock] =
+    content.blocks.map(_.content)
+
   def texts: Seq[String] =
     textsWithCitations.map(_._1)
 
@@ -26,15 +35,25 @@ final case class CreateMessageResponse(
     textsWithCitations.map(_._2)
 
   def textsWithCitations: Seq[(String, Seq[Citation])] =
-    content.blocks.collect { case ContentBlockBase(TextBlock(text, citations), _) =>
+    blockContents.collect { case TextBlock(text, citations) =>
       (text, citations)
     }
 
   def text: String = texts.mkString("")
 
-  def thinkingBlocks: Seq[String] = content.blocks.collect {
-    case ContentBlockBase(ThinkingBlock(text, _), _) => text
+  def toolUseBlocks: Seq[ToolUseBlock] =
+    blockContents.collect { case x: ToolUseBlock => x }
+
+  def bashCodeExecutionToolFileIds: Seq[Seq[String]] = blockContents.collect {
+    case BashCodeExecutionToolResultBlock(
+          BashCodeExecutionToolResultContent.Success(content, _, _, _),
+          _
+        ) =>
+      content.map(_.fileId)
   }
+
+  def thinkingBlocks: Seq[String] =
+    blockContents.collect { case ThinkingBlock(text, _) => text }
 
   def thinkingText: String = thinkingBlocks.mkString("")
 }
