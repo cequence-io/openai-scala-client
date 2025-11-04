@@ -103,7 +103,8 @@ package object impl extends AnthropicServiceConsts {
         case ((acc, userMessagesToCacheCount), message) =>
           message match {
             case Message.UserMessage(contentString, _) =>
-              val newCacheControl = if (userMessagesToCacheCount > 0) Some(Ephemeral()) else None
+              val newCacheControl =
+                if (userMessagesToCacheCount > 0) Some(Ephemeral()) else None
               (
                 acc :+ Message.UserMessage(contentString, newCacheControl),
                 userMessagesToCacheCount - newCacheControl.map(_ => 1).getOrElse(0)

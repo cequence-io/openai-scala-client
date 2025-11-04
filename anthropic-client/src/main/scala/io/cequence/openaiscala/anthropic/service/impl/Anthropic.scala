@@ -22,7 +22,7 @@ trait Anthropic
   protected val logger: Logger = Logger(LoggerFactory.getLogger(this.getClass))
 
   protected val skillHeaders: Seq[(String, String)] = Seq(
-    ("anthropic-beta", "skills-2025-10-02"),
+    ("anthropic-beta", "skills-2025-10-02")
 //    ("anthropic-beta", "code-execution-2025-08-25"),
 //    ("anthropic-beta", "files-api-2025-04-14")
   )
