@@ -49,7 +49,7 @@ object AnthropicListSkills extends ExampleBase[AnthropicService] {
 
       if (anthropicSkills.hasMore && anthropicSkills.nextPage.isDefined) {
         println(
-          s"To fetch the next page, use: page = Some(\"${anthropicSkills.nextPage.get}\")"
+          s"To fetch the next page, use: page = Some(${anthropicSkills.nextPage.get})"
         )
         println()
       }
@@ -75,7 +75,7 @@ object AnthropicListSkills extends ExampleBase[AnthropicService] {
       }
 
       if (customSkills.hasMore && customSkills.nextPage.isDefined) {
-        println(s"To fetch the next page, use: page = Some(\"${customSkills.nextPage.get}\")")
+        println(s"To fetch the next page, use: page = Some(${customSkills.nextPage.get})")
         println()
       }
 

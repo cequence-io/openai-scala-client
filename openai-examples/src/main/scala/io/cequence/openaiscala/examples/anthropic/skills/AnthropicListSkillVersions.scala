@@ -45,7 +45,7 @@ object AnthropicListSkillVersions extends ExampleBase[AnthropicService] {
 
         if (response.hasMore && response.nextPage.isDefined) {
           println(
-            s"To fetch the next page, use: page = Some(\"${response.nextPage.get}\")"
+            s"To fetch the next page, use: page = Some(${response.nextPage.get})"
           )
           println()
         }
