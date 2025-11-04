@@ -5,15 +5,30 @@ import akka.stream.javadsl.{Framing, FramingTruncation}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.cequence.wsclient.service.ws.PlayJsonUtil
-import io.cequence.openaiscala.anthropic.domain.Message
+import io.cequence.openaiscala.anthropic.domain.{
+  FileDeleteResponse,
+  FileListResponse,
+  FileMetadata,
+  Message
+}
 import io.cequence.openaiscala.anthropic.domain.response.{
   ContentBlockDelta,
   CreateMessageResponse
 }
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
+import io.cequence.openaiscala.anthropic.domain.skills.{
+  DeleteSkillResponse,
+  DeleteSkillVersionResponse,
+  ListSkillVersionsResponse,
+  ListSkillsResponse,
+  Skill,
+  SkillSource,
+  SkillVersion
+}
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
 import play.api.libs.json.{JsString, JsValue, Json}
 
+import java.io.File
 import scala.concurrent.Future
 
 private[service] trait AnthropicBedrockServiceImpl extends Anthropic with BedrockAuthHelper {
@@ -40,17 +55,19 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
     val jsBodyObject = toJsBodyObject(paramTuplesToStrings(bodyParams))
     val endpoint = invokeEndpoint(settings.model)
 
-    val extraHeaders = createSignatureHeaders(
+    val extraSignatureHeaders = createSignatureHeaders(
       "POST",
       createURL(Some(endpoint)),
       headers = requestContext.authHeaders,
       jsBodyObject
     )
 
+    val extraSkillsHeaders = if (settings.container.isDefined) skillHeaders else Nil
+
     execPOST(
       endpoint,
       bodyParams = bodyParams,
-      extraHeaders = extraHeaders
+      extraHeaders = extraSignatureHeaders ++ extraSkillsHeaders
     ).map(
       _.asSafeJson[CreateMessageResponse]
     )
@@ -118,6 +135,99 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
       service = serviceName
     ).toSeq
   }
+
+  // Skills API is not supported in Bedrock
+  override def createSkill(
+    displayTitle: Option[String],
+    files: Seq[(File, String)]
+  ): Future[Skill] =
+    Future.failed(
+      new UnsupportedOperationException("Skills API is not supported in Anthropic Bedrock")
+    )
+
+  override def listSkills(
+    page: Option[String],
+    limit: Option[Int],
+    source: Option[SkillSource]
+  ): Future[ListSkillsResponse] =
+    Future.failed(
+      new UnsupportedOperationException("Skills API is not supported in Anthropic Bedrock")
+    )
+
+  override def getSkill(skillId: String): Future[Skill] =
+    Future.failed(
+      new UnsupportedOperationException("Skills API is not supported in Anthropic Bedrock")
+    )
+
+  override def deleteSkill(skillId: String): Future[DeleteSkillResponse] =
+    Future.failed(
+      new UnsupportedOperationException("Skills API is not supported in Anthropic Bedrock")
+    )
+
+  override def createSkillVersion(
+    skillId: String,
+    files: Seq[(File, String)]
+  ): Future[SkillVersion] =
+    Future.failed(
+      new UnsupportedOperationException("Skills API is not supported in Anthropic Bedrock")
+    )
+
+  override def listSkillVersions(
+    skillId: String,
+    page: Option[String],
+    limit: Option[Int]
+  ): Future[ListSkillVersionsResponse] =
+    Future.failed(
+      new UnsupportedOperationException("Skills API is not supported in Anthropic Bedrock")
+    )
+
+  override def getSkillVersion(
+    skillId: String,
+    version: String
+  ): Future[SkillVersion] =
+    Future.failed(
+      new UnsupportedOperationException("Skills API is not supported in Anthropic Bedrock")
+    )
+
+  override def deleteSkillVersion(
+    skillId: String,
+    version: String
+  ): Future[DeleteSkillVersionResponse] =
+    Future.failed(
+      new UnsupportedOperationException("Skills API is not supported in Anthropic Bedrock")
+    )
+
+  override def createFile(
+    file: File,
+    filename: Option[String] = None
+  ): Future[FileMetadata] =
+    Future.failed(
+      new UnsupportedOperationException("Files API is not supported in Anthropic Bedrock")
+    )
+
+  override def listFiles(
+    beforeId: Option[String] = None,
+    afterId: Option[String] = None,
+    limit: Option[Int] = None
+  ): Future[FileListResponse] =
+    Future.failed(
+      new UnsupportedOperationException("Files API is not supported in Anthropic Bedrock")
+    )
+
+  override def getFileMetadata(fileId: String): Future[Option[FileMetadata]] =
+    Future.failed(
+      new UnsupportedOperationException("Files API is not supported in Anthropic Bedrock")
+    )
+
+  override def downloadFile(fileId: String): Future[Option[Source[ByteString, _]]] =
+    Future.failed(
+      new UnsupportedOperationException("Files API is not supported in Anthropic Bedrock")
+    )
+
+  override def deleteFile(fileId: String): Future[FileDeleteResponse] =
+    Future.failed(
+      new UnsupportedOperationException("Files API is not supported in Anthropic Bedrock")
+    )
 
   def connectionInfo: BedrockConnectionSettings
 }
