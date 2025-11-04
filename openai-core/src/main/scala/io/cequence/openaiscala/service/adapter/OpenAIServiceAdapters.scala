@@ -101,15 +101,6 @@ trait OpenAIServiceAdapters[S <: CloseableService] extends ServiceAdapters[S] {
   protected def wrapAndDelegateChatCompletion(
     delegate: ChatCompletionCloseableServiceWrapper[S]
   ): S
-
-  def repackExceptions(
-    repackExceptions: PartialFunction[Throwable, Throwable]
-  )(
-    service: S
-  )(
-    implicit ec: ExecutionContext
-  ): S =
-    wrapAndDelegate(new RepackExceptionsAdapter(service, repackExceptions))
 }
 
 private class OpenAIChatCompletionServiceAdaptersImpl

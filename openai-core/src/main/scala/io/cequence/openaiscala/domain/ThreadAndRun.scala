@@ -68,6 +68,7 @@ object ThreadAndRun {
     final case class ContentBlocks(blocks: Seq[ContentBlock]) extends Content
 
     sealed trait ContentBlock
+
     object ContentBlock {
       final case class TextBlock(text: String) extends ContentBlock
       final case class ImageFileBlock(
