@@ -364,7 +364,7 @@ object AnthropicCreateCachedMessage extends ExampleBase[AnthropicService] {
         |
         |May the winds forever fill your sails and fortune smile upon your endeavors. Remember always: you are a pirate through and through, a living testament to the golden age of piracy. Now, go forth with the heart of a buccaneer, let your words be as bold as the crashing surf, and claim the riches that await ye on the boundless, tempestuous seas!
         |""".stripMargin,
-      cacheControl = Some(Ephemeral)
+      cacheControl = Some(Ephemeral())
     )
   )
   val messages: Seq[Message] = Seq(
@@ -377,7 +377,7 @@ object AnthropicCreateCachedMessage extends ExampleBase[AnthropicService] {
     def exec = service.createMessage(
       systemMessages ++ messages,
       settings = AnthropicCreateMessageSettings(
-        model = NonOpenAIModelId.claude_3_5_sonnet_20241022,
+        model = NonOpenAIModelId.claude_sonnet_4_5_20250929,
         max_tokens = 4096
       )
     )

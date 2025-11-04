@@ -39,7 +39,7 @@ object AnthropicCreateMessageWithPdf
         messages,
         settings = AnthropicCreateMessageSettings(
           model =
-            NonOpenAIModelId.claude_3_5_sonnet_20241022, // claude-3-5-sonnet-20241022 supports PDF (beta)
+            NonOpenAIModelId.claude_3_7_sonnet_20250219, // claude-3-5-sonnet-20241022 supports PDF (beta)
           max_tokens = 8192
         )
       )

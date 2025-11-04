@@ -36,9 +36,11 @@ object AnthropicCreateChatCompletionWithOpenAIAdapterAndPdf
     service
       .createChatCompletion(
         messages = messages,
-        settings = CreateChatCompletionSettings(NonOpenAIModelId.claude_3_5_sonnet_20241022)
+        settings = CreateChatCompletionSettings(
+          NonOpenAIModelId.claude_sonnet_4_5_20250929
+        )
       )
-      .map { content =>
-        println(content.choices.headOption.map(_.message.content).getOrElse("N/A"))
+      .map { response =>
+        println(response.contentHead)
       }
 }

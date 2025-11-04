@@ -35,7 +35,7 @@ object AnthropicCreateChatCompletionStreamedWithOpenAIAdapter
         .createChatCompletionStreamed(
           messages = messages,
           settings = CreateChatCompletionSettings(
-            model = NonOpenAIModelId.claude_3_5_sonnet_20240620
+            model = NonOpenAIModelId.claude_3_7_sonnet_20250219
           )
         )
         .map(

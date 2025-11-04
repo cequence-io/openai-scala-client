@@ -18,6 +18,7 @@ object AnthropicCreateChatCompletionWithOpenAIAdapterTokenCountExceeded2
     UserMessage("What is the weather like in Norway?" * 20000)
   )
 
+  // should throw OpenAIScalaTokenCountExceededException
   override protected def run: Future[_] =
     service
       .createChatCompletion(
@@ -25,7 +26,7 @@ object AnthropicCreateChatCompletionWithOpenAIAdapterTokenCountExceeded2
         settings = CreateChatCompletionSettings(
           NonOpenAIModelId.claude_3_7_sonnet_20250219,
           // the second type of "token exceeded" error - input + max_tokens > limit (200000)
-          max_tokens = Some(100000)
+          max_tokens = Some(70000)
         )
       )
       .map { content =>

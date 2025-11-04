@@ -18,11 +18,14 @@ object AnthropicCreateChatCompletionWithOpenAIAdapterTokenCountExceeded
     UserMessage("What is the weather like in Norway?" * 100000)
   )
 
+  // should throw OpenAIScalaTokenCountExceededException
   override protected def run: Future[_] =
     service
       .createChatCompletion(
         messages = messages,
-        settings = CreateChatCompletionSettings(NonOpenAIModelId.claude_3_5_haiku_20241022)
+        settings = CreateChatCompletionSettings(
+          NonOpenAIModelId.claude_haiku_4_5_20251001
+        )
       )
       .map { content =>
         println(content.contentHead)

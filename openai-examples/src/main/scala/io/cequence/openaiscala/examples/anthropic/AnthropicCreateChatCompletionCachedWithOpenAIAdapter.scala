@@ -29,7 +29,8 @@ object AnthropicCreateChatCompletionCachedWithOpenAIAdapter
             // this is how we pass it through the adapter
         ).setUseAnthropicSystemMessagesCache(true)
       )
-      .map { content =>
-        println(content.contentHead)
+      .map { response =>
+        println(response.contentHead)
+        println(response.usage.getOrElse("N/A"))
       }
 }
