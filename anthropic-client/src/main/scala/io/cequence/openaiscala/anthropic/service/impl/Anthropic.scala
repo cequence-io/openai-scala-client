@@ -21,6 +21,12 @@ trait Anthropic
 
   protected val logger: Logger = Logger(LoggerFactory.getLogger(this.getClass))
 
+  protected val skillHeaders: Seq[(String, String)] = Seq(
+    ("anthropic-beta", "skills-2025-10-02"),
+//    ("anthropic-beta", "code-execution-2025-08-25"),
+//    ("anthropic-beta", "files-api-2025-04-14")
+  )
+
   protected def createBodyParamsForMessageCreation(
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings,
@@ -68,7 +74,14 @@ trait Anthropic
       Param.temperature -> settings.temperature,
       Param.top_p -> settings.top_p,
       Param.top_k -> settings.top_k,
-      Param.thinking -> settings.thinking.map(Json.toJson(_)(thinkingSettingsFormat))
+      Param.thinking -> settings.thinking.map(Json.toJson(_)(thinkingSettingsFormat)),
+      Param.container -> settings.container.map(Json.toJson(_)(containerFormat)),
+      Param.tools -> {
+        if (settings.tools.nonEmpty)
+          Some(Json.toJson(settings.tools)(Writes.seq(toolWrites)))
+        else
+          None
+      }
     )
   }
 

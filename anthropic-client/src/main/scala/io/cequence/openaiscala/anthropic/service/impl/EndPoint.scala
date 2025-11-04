@@ -6,9 +6,11 @@ sealed abstract class EndPoint(value: String = "") extends NamedEnumValue(value)
 
 object EndPoint {
   case object messages extends EndPoint
+  case object skills extends EndPoint
+  case object files extends EndPoint
 }
 
-sealed trait Param extends EnumValue
+sealed abstract class Param(value: String = "") extends NamedEnumValue(value)
 
 object Param {
 
@@ -23,6 +25,19 @@ object Param {
   case object top_p extends Param
   case object top_k extends Param
   case object thinking extends Param
+  case object container extends Param
+  case object tools extends Param
   // bedrock
   case object anthropic_version extends Param
+  // skills
+  case object page extends Param
+  case object limit extends Param
+  case object source extends Param
+  case object display_title extends Param
+  case object files extends Param("files[]")
+  // files
+  case object file extends Param
+  // files pagination
+  case object before_id extends Param
+  case object after_id extends Param
 }

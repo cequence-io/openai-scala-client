@@ -54,7 +54,7 @@ package object impl extends AnthropicServiceConsts {
     )
 
     val useSystemCache: Option[CacheControl] =
-      if (settings.useAnthropicSystemMessagesCache) Some(Ephemeral) else None
+      if (settings.useAnthropicSystemMessagesCache) Some(Ephemeral()) else None
 
     val messageStrings =
       messages.zipWithIndex.collect { case (SystemMessage(content, _), index) =>
@@ -103,7 +103,7 @@ package object impl extends AnthropicServiceConsts {
         case ((acc, userMessagesToCacheCount), message) =>
           message match {
             case Message.UserMessage(contentString, _) =>
-              val newCacheControl = if (userMessagesToCacheCount > 0) Some(Ephemeral) else None
+              val newCacheControl = if (userMessagesToCacheCount > 0) Some(Ephemeral()) else None
               (
                 acc :+ Message.UserMessage(contentString, newCacheControl),
                 userMessagesToCacheCount - newCacheControl.map(_ => 1).getOrElse(0)
@@ -114,7 +114,7 @@ package object impl extends AnthropicServiceConsts {
                 contentBlocks.foldLeft(
                   (Seq.empty[ContentBlockBase], userMessagesToCacheCount)
                 ) { case ((acc, cacheLeft), content) =>
-                  val cacheControl = if (cacheLeft > 0) Some(Ephemeral) else None
+                  val cacheControl = if (cacheLeft > 0) Some(Ephemeral()) else None
                   val newCacheLeft = cacheLeft - cacheControl.map(_ => 1).getOrElse(0)
                   val block = content.copy(cacheControl = cacheControl)
                   (acc :+ block, newCacheLeft)
