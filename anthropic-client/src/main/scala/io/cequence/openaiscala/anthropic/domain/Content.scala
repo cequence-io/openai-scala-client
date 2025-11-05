@@ -87,6 +87,13 @@ object Content {
       val `type`: String = "web_search_tool_result"
     }
 
+    case class WebFetchToolResultBlock(
+      content: WebFetchToolResultContent,
+      toolUseId: String
+    ) extends ContentBlock {
+      val `type`: String = "web_fetch_tool_result"
+    }
+
     case class McpToolUseBlock(
       id: String,
       name: String,
@@ -331,6 +338,64 @@ object WebSearchToolResultContent {
       max_uses_exceeded,
       too_many_requests,
       query_too_long
+    )
+  }
+}
+
+sealed trait WebFetchToolResultContent
+
+object WebFetchToolResultContent {
+
+  case class Success(
+    document: Document,
+    url: String,
+    retrievedAt: String
+  ) extends WebFetchToolResultContent
+
+  case class Error(
+    errorCode: WebFetchErrorCode
+  ) extends WebFetchToolResultContent
+      with HasType {
+    val `type`: String = "web_fetch_tool_result_error"
+  }
+
+  case class Document(
+    citations: Citations,
+    source: Source,
+    title: String
+  )
+
+  case class Citations(
+    enabled: Boolean
+  )
+
+  case class Source(
+    data: String,
+    mediaType: String,
+    `type`: String
+  )
+
+  sealed trait WebFetchErrorCode extends EnumValue
+
+  object WebFetchErrorCode {
+    case object invalid_tool_input extends WebFetchErrorCode
+    case object url_too_long extends WebFetchErrorCode
+    case object url_not_allowed extends WebFetchErrorCode
+    case object url_not_accessible extends WebFetchErrorCode
+    case object unsupported_content_type extends WebFetchErrorCode
+    case object too_many_requests extends WebFetchErrorCode
+    case object max_uses_exceeded extends WebFetchErrorCode
+    case object unavailable extends WebFetchErrorCode
+
+    def values: Seq[WebFetchErrorCode] = Seq(
+      invalid_tool_input,
+      url_too_long,
+      url_not_allowed,
+      url_not_accessible,
+      unsupported_content_type,
+      too_many_requests,
+      max_uses_exceeded,
+      unavailable
     )
   }
 }
