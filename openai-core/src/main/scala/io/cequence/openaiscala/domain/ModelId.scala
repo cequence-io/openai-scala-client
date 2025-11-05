@@ -135,6 +135,7 @@ object ModelId {
   val canary_whisper = "canary-whisper"
 
   val gpt_4o_mini_transcribe = "gpt-4o-mini-transcribe"
+  val gpt_4o_transcribe_diarize = "gpt-4o-transcribe-diarize"
   val gpt_4o_mini_audio_preview = "gpt-4o-mini-audio-preview"
   val gpt_4o_mini_vision_preview = "gpt-4o-mini-vision-preview"
   val gpt_4o_mini_voice_preview = "gpt-4o-mini-voice-preview"
@@ -142,6 +143,10 @@ object ModelId {
   val gpt_4o_realtime_preview = "gpt-4o-realtime-preview"
   val gpt_4o_realtime_2024_12_17 = "gpt-4o-realtime-2024-12-17"
   val gpt_4o_realtime_2024_10_01_preview = "gpt-4o-realtime-2024-10-01-preview"
+  val gpt_audio_mini = "gpt-audio-mini"
+  val gpt_audio_mini_2025_10_06 = "gpt-audio-mini-2025-10-06"
+  val gpt_realtime_mini = "gpt-realtime-mini"
+  val gpt_realtime_mini_2025_10_06 = "gpt-realtime-mini-2025-10-06"
   // 128K context (with training data upto April 2023)
   // includes supports for vision in addition to gpt-4-turbo capabilities
   val gpt_4_vision_preview = "gpt-4-vision-preview"
@@ -153,6 +158,11 @@ object ModelId {
   // Image gen
   val dall_e_3 = "dall-e-3"
   val dall_e_2 = "dall-e-2"
+  val gpt_image_1_mini = "gpt-image-1-mini"
+
+  // Video gen
+  val sora_2 = "sora-2"
+  val sora_2_pro = "sora-2-pro"
 
   // GPT-3.5 (ChatGPT)
 
@@ -205,6 +215,9 @@ object ModelId {
 
   // GPT-5
   val gpt_5 = "gpt-5"
+  val gpt_5_pro = "gpt-5-pro"
+  val gpt_5_pro_2025_10_06 = "gpt-5-pro-2025-10-06"
+
   // 400k context window, 128k max output tokens, Oct 01, 2024 knowledge cutoff
   val gpt_5_2025_08_07 = "gpt-5-2025-08-07"
 
@@ -217,6 +230,11 @@ object ModelId {
   val gpt_5_nano_2025_08_07 = "gpt-5-nano-2025-08-07"
 
   val gpt_5_chat_latest = "gpt-5-chat-latest"
+
+  val gpt_5_codex = "gpt-5-codex"
+
+  val gpt_5_search_api = "gpt-5-search-api"
+  val gpt_5_search_api_2025_10_14 = "gpt-5-search-api-2025-10-14"
 
   // GPT-4.5
 
