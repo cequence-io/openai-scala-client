@@ -1,13 +1,10 @@
 package io.cequence.openaiscala.examples.responsesapi
 
 import scala.concurrent.Future
-import io.cequence.openaiscala.domain.responsesapi.{Inputs, CreateModelResponseSettings}
+import io.cequence.openaiscala.domain.responsesapi.{CreateModelResponseSettings, Inputs}
 import io.cequence.openaiscala.examples.Example
 import io.cequence.openaiscala.domain.ModelId
-import io.cequence.openaiscala.domain.responsesapi.tools.{
-  ImageGenerationTool,
-  ImageGenerationBackground
-}
+import io.cequence.openaiscala.domain.responsesapi.tools.{ImageGenerationBackground, ImageGenerationTool, Tool}
 
 object CreateModelResponseWithImageGeneration extends Example {
 
@@ -16,9 +13,9 @@ object CreateModelResponseWithImageGeneration extends Example {
       .createModelResponse(
         Inputs.Text("Generate an image of a sunset over the ocean with a sailboat."),
         settings = CreateModelResponseSettings(
-          model = ModelId.gpt_5_nano,
+          model = ModelId.gpt_5_mini,
           tools = Seq(
-            ImageGenerationTool(
+            Tool.imageGeneration(
               background = Some(ImageGenerationBackground.auto),
               model = None,
               quality = Some("high"),
