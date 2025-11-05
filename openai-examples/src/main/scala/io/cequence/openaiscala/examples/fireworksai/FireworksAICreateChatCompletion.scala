@@ -25,7 +25,7 @@ object FireworksAICreateChatCompletion extends ExampleBase[OpenAIChatCompletionS
   )
 
 //  private val modelId = NonOpenAIModelId.deepseek_r1
-  private val modelId = NonOpenAIModelId.llama4_maverick_instruct_basic
+  private val modelId = NonOpenAIModelId.gpt_oss_20b
 
   override protected def run: Future[_] =
     service
@@ -34,7 +34,7 @@ object FireworksAICreateChatCompletion extends ExampleBase[OpenAIChatCompletionS
         settings = CreateChatCompletionSettings(
           model = fireworksModelPrefix + modelId,
           temperature = Some(0.1),
-          max_tokens = Some(2048),
+          max_tokens = Some(4000),
           top_p = Some(0.9),
           presence_penalty = Some(0),
           // this is how we can add extra (vendor-specific) parameters

@@ -56,7 +56,7 @@ object GoogleGeminiCreateChatCompletionJSONWithOpenAIAdapter
     required = Seq("countries")
   )
 
-  private val modelId = NonOpenAIModelId.gemini_2_5_pro_preview_03_25
+  private val modelId = NonOpenAIModelId.gemini_2_5_flash
 
   override protected def run: Future[_] =
     service
