@@ -20,9 +20,7 @@ case class FileSearchTool(
   maxNumResults: Option[Int] = None,
   rankingOptions: Option[FileSearchRankingOptions] = None
 ) extends Tool {
-  val `type`: String = "file_search"
-
-  override def typeString: String = `type`
+  override val `type`: String = "file_search"
 }
 
 sealed trait FileFilter

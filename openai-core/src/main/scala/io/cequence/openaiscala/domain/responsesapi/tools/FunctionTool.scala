@@ -20,7 +20,5 @@ case class FunctionTool(
   strict: Boolean,
   description: Option[String] = None
 ) extends Tool {
-  val `type`: String = "function"
-
-  override def typeString: String = `type`
+  override val `type`: String = "function"
 }

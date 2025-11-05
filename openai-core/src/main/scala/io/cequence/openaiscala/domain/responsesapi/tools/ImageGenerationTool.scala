@@ -46,9 +46,7 @@ case class ImageGenerationTool(
   quality: Option[String] = None,
   size: Option[String] = None
 ) extends Tool {
-  val `type`: String = "image_generation"
-
-  override def typeString: String = `type`
+  override val `type`: String = "image_generation"
 }
 
 /**

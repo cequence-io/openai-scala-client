@@ -21,10 +21,8 @@ case class WebSearchTool(
   filters: Option[WebSearchFilters] = None,
   searchContextSize: Option[String] = None,
   userLocation: Option[WebSearchUserLocation] = None,
-  `type`: WebSearchType = WebSearchType.WebSearch
-) extends Tool {
-  override def typeString: String = `type`.value
-}
+  override val `type`: WebSearchType = WebSearchType.WebSearch
+) extends Tool
 
 /**
  * Filters for web search.

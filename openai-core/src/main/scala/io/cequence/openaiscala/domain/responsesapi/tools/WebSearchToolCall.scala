@@ -36,12 +36,12 @@ object WebSearchAction {
    * A search action - Performs a web search query.
    *
    * @param query
-   *   The search query
+   *   The search query (optional)
    * @param sources
    *   The sources used in the search
    */
   final case class Search(
-    query: String,
+    query: Option[String] = None,
     sources: Seq[WebSearchSource] = Nil
   ) extends WebSearchAction {
     val `type`: String = "search"

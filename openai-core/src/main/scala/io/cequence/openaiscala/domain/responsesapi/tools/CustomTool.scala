@@ -17,9 +17,7 @@ case class CustomTool(
   description: Option[String] = None,
   format: Option[CustomToolFormat] = None
 ) extends Tool {
-  val `type`: String = "custom"
-
-  override def typeString: String = `type`
+  override val `type`: String = "custom"
 }
 
 /**

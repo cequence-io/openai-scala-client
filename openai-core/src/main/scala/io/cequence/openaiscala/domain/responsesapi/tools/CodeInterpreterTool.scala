@@ -10,9 +10,7 @@ package io.cequence.openaiscala.domain.responsesapi.tools
 case class CodeInterpreterTool(
   container: CodeInterpreterContainer
 ) extends Tool {
-  val `type`: String = "code_interpreter"
-
-  override def typeString: String = `type`
+  override val `type`: String = "code_interpreter"
 }
 
 /**

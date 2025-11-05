@@ -4,8 +4,9 @@ import java.{util => ju}
 import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.JsonUtil.{enumFormat, snakeEnumFormat}
 import io.cequence.openaiscala.domain.responsesapi.{InputMessageContent, ModelStatus}
-import io.cequence.openaiscala.JsonFormats.jsonSchemaFormat
+import io.cequence.openaiscala.JsonFormats.{formatWithType, jsonSchemaFormat}
 import io.cequence.openaiscala.domain.responsesapi.tools._
+import io.cequence.openaiscala.domain.responsesapi.tools.JsonFormats.toolFormat
 import io.cequence.openaiscala.domain.responsesapi.JsonFormats.modelStatusFormat
 import io.cequence.openaiscala.service.OpenAIChatCompletionExtra
 import play.api.libs.functional.syntax._
@@ -22,82 +23,6 @@ object JsonFormats {
 
   private implicit lazy val stringAnyMapFormat: Format[Map[String, Any]] =
     JsonUtil.StringAnyMapFormat
-
-  //////////////////
-  // Tool Choices //
-  //////////////////
-
-  implicit lazy val toolChoiceModeFormat: Format[ToolChoice.Mode] = {
-    enumFormat[ToolChoice.Mode](ToolChoice.Mode.values: _*)
-  }
-
-  private implicit lazy val toolChoiceAllowedToolsFormat: OFormat[ToolChoice.AllowedTools] =
-    Json.format[ToolChoice.AllowedTools]
-
-  implicit lazy val hostedToolTypeFormat: Format[ToolChoice.HostedToolType] =
-    enumFormat[ToolChoice.HostedToolType](ToolChoice.HostedToolType.values: _*)
-
-  private implicit lazy val hostedToolFormat: OFormat[ToolChoice.HostedTool] =
-    Json.format[ToolChoice.HostedTool]
-
-  private implicit lazy val toolChoiceFunctionToolFormat: OFormat[ToolChoice.FunctionTool] =
-    Json.format[ToolChoice.FunctionTool]
-
-  private implicit lazy val toolChoiceMCPToolFormat: OFormat[ToolChoice.MCPTool] =
-    Json.format[ToolChoice.MCPTool]
-
-  private implicit lazy val toolChoiceCustomToolFormat: OFormat[ToolChoice.CustomTool] =
-    Json.format[ToolChoice.CustomTool]
-
-  implicit lazy val toolChoiceFormat: Format[ToolChoice] = new Format[ToolChoice] {
-    def reads(json: JsValue): JsResult[ToolChoice] = {
-      json match {
-        case JsString(value) =>
-          value match {
-            case "none"     => JsSuccess(ToolChoice.Mode.None)
-            case "auto"     => JsSuccess(ToolChoice.Mode.Auto)
-            case "required" => JsSuccess(ToolChoice.Mode.Required)
-            case _          => JsError(s"Unknown ToolChoice string value: $value")
-          }
-        case obj: JsObject =>
-          (obj \ "type").validate[String].flatMap {
-            case "allowed_tools" => toolChoiceAllowedToolsFormat.reads(obj)
-            case "function"      => toolChoiceFunctionToolFormat.reads(obj)
-            case "mcp"           => toolChoiceMCPToolFormat.reads(obj)
-            case "custom"        => toolChoiceCustomToolFormat.reads(obj)
-            case t if ToolChoice.HostedToolType.values.map(_.toString).contains(t) =>
-              hostedToolFormat.reads(obj)
-            case other =>
-              JsError(s"Unsupported ToolChoice type: $other")
-          }
-        case _ => JsError("Expected string or object for ToolChoice")
-      }
-    }
-
-    def writes(toolChoice: ToolChoice): JsValue = toolChoice match {
-      case mode: ToolChoice.Mode =>
-        JsString(mode.toString)
-
-      case at: ToolChoice.AllowedTools =>
-        Json.toJsObject(at)(toolChoiceAllowedToolsFormat) ++
-          Json.obj("type" -> "allowed_tools")
-
-      case ft: ToolChoice.FunctionTool =>
-        Json.toJsObject(ft)(toolChoiceFunctionToolFormat) ++
-          Json.obj("type" -> "function")
-
-      case mt: ToolChoice.MCPTool =>
-        Json.toJsObject(mt)(toolChoiceMCPToolFormat) ++
-          Json.obj("type" -> "mcp")
-
-      case ct: ToolChoice.CustomTool =>
-        Json.toJsObject(ct)(toolChoiceCustomToolFormat) ++
-          Json.obj("type" -> "custom")
-
-      case ht: ToolChoice.HostedTool =>
-        Json.toJsObject(ht)(hostedToolFormat)
-    }
-  }
 
   ///////////
   // Tools //
@@ -355,37 +280,110 @@ object JsonFormats {
   private implicit lazy val customToolFormat: OFormat[CustomTool] =
     Json.format[CustomTool]
 
-  implicit lazy val toolFormat: Format[Tool] = new Format[Tool] {
-    def reads(json: JsValue): JsResult[Tool] = {
-      (json \ "type").validate[String].flatMap {
-        case "function"                      => functionToolFormat.reads(json)
-        case "file_search"                   => fileSearchToolFormat.reads(json)
-        case t if t.startsWith("web_search") => webSearchToolFormat.reads(json)
-        case "computer_use_preview"          => computerUseToolFormat.reads(json)
-        case "code_interpreter"              => codeInterpreterToolFormat.reads(json)
-        case "image_generation"              => imageGenerationToolFormat.reads(json)
-        case "local_shell"                   => localShellToolFormat.reads(json)
-        case "custom"                        => customToolFormat.reads(json)
-        case "mcp"                           => mcpServerToolFormat.reads(json)
+  private lazy val toolReads: Reads[Tool] = Reads { json =>
+    (json \ "type").validate[String].flatMap {
+      case "function"                      => functionToolFormat.reads(json)
+      case "file_search"                   => fileSearchToolFormat.reads(json)
+      case t if t.startsWith("web_search") => webSearchToolFormat.reads(json)
+      case "computer_use_preview"          => computerUseToolFormat.reads(json)
+      case "code_interpreter"              => codeInterpreterToolFormat.reads(json)
+      case "image_generation"              => imageGenerationToolFormat.reads(json)
+      case "local_shell"                   => localShellToolFormat.reads(json)
+      case "custom"                        => customToolFormat.reads(json)
+      case "mcp"                           => mcpServerToolFormat.reads(json)
 
-        case other => JsError(s"Unsupported tool type: $other")
+      case other => JsError(s"Unsupported tool type: $other")
+    }
+  }
+
+  private lazy val toolWrites: OWrites[Tool] = OWrites {
+    case t: FunctionTool        => functionToolFormat.writes(t)
+    case t: FileSearchTool      => fileSearchToolFormat.writes(t)
+    case t: WebSearchTool       => webSearchToolFormat.writes(t)
+    case t: ComputerUseTool     => computerUseToolFormat.writes(t)
+    case t: CodeInterpreterTool => codeInterpreterToolFormat.writes(t)
+    case t: ImageGenerationTool => imageGenerationToolFormat.writes(t)
+    case LocalShellTool         => localShellToolFormat.writes(LocalShellTool)
+    case t: CustomTool          => customToolFormat.writes(t)
+    case t: MCPTool             => mcpServerToolFormat.writes(t)
+  }
+
+  implicit lazy val toolFormat: OFormat[Tool] =
+    formatWithType(OFormat(toolReads, toolWrites))
+
+  //////////////////
+  // Tool Choices //
+  //////////////////
+
+  implicit lazy val toolChoiceModeFormat: Format[ToolChoice.Mode] = {
+    enumFormat[ToolChoice.Mode](ToolChoice.Mode.values: _*)
+  }
+
+  private implicit lazy val toolChoiceAllowedToolsFormat: OFormat[ToolChoice.AllowedTools] =
+    Json.format[ToolChoice.AllowedTools]
+
+  implicit lazy val hostedToolTypeFormat: Format[ToolChoice.HostedToolType] =
+    enumFormat[ToolChoice.HostedToolType](ToolChoice.HostedToolType.values: _*)
+
+  private implicit lazy val hostedToolFormat: OFormat[ToolChoice.HostedTool] =
+    Json.format[ToolChoice.HostedTool]
+
+  private implicit lazy val toolChoiceFunctionToolFormat: OFormat[ToolChoice.FunctionTool] =
+    Json.format[ToolChoice.FunctionTool]
+
+  private implicit lazy val toolChoiceMCPToolFormat: OFormat[ToolChoice.MCPTool] =
+    Json.format[ToolChoice.MCPTool]
+
+  private implicit lazy val toolChoiceCustomToolFormat: OFormat[ToolChoice.CustomTool] =
+    Json.format[ToolChoice.CustomTool]
+
+  implicit lazy val toolChoiceFormat: Format[ToolChoice] = new Format[ToolChoice] {
+    def reads(json: JsValue): JsResult[ToolChoice] = {
+      json match {
+        case JsString(value) =>
+          value match {
+            case "none"     => JsSuccess(ToolChoice.Mode.None)
+            case "auto"     => JsSuccess(ToolChoice.Mode.Auto)
+            case "required" => JsSuccess(ToolChoice.Mode.Required)
+            case _          => JsError(s"Unknown ToolChoice string value: $value")
+          }
+        case obj: JsObject =>
+          (obj \ "type").validate[String].flatMap {
+            case "allowed_tools" => toolChoiceAllowedToolsFormat.reads(obj)
+            case "function"      => toolChoiceFunctionToolFormat.reads(obj)
+            case "mcp"           => toolChoiceMCPToolFormat.reads(obj)
+            case "custom"        => toolChoiceCustomToolFormat.reads(obj)
+            case t if ToolChoice.HostedToolType.values.map(_.toString).contains(t) =>
+              hostedToolFormat.reads(obj)
+            case other =>
+              JsError(s"Unsupported ToolChoice type: $other")
+          }
+        case _ => JsError("Expected string or object for ToolChoice")
       }
     }
 
-    def writes(tool: Tool): JsValue = {
-      val jsObject: JsObject = tool match {
-        case t: FunctionTool        => functionToolFormat.writes(t)
-        case t: FileSearchTool      => fileSearchToolFormat.writes(t)
-        case t: WebSearchTool       => webSearchToolFormat.writes(t)
-        case t: ComputerUseTool     => computerUseToolFormat.writes(t)
-        case t: CodeInterpreterTool => codeInterpreterToolFormat.writes(t)
-        case t: ImageGenerationTool => imageGenerationToolFormat.writes(t)
-        case LocalShellTool         => localShellToolFormat.writes(LocalShellTool)
-        case t: CustomTool          => customToolFormat.writes(t)
-        case t: MCPTool             => mcpServerToolFormat.writes(t)
-      }
+    def writes(toolChoice: ToolChoice): JsValue = toolChoice match {
+      case mode: ToolChoice.Mode =>
+        JsString(mode.toString)
 
-      jsObject ++ Json.obj("type" -> tool.typeString)
+      case at: ToolChoice.AllowedTools =>
+        Json.toJsObject(at)(toolChoiceAllowedToolsFormat) ++
+          Json.obj("type" -> "allowed_tools")
+
+      case ft: ToolChoice.FunctionTool =>
+        Json.toJsObject(ft)(toolChoiceFunctionToolFormat) ++
+          Json.obj("type" -> "function")
+
+      case mt: ToolChoice.MCPTool =>
+        Json.toJsObject(mt)(toolChoiceMCPToolFormat) ++
+          Json.obj("type" -> "mcp")
+
+      case ct: ToolChoice.CustomTool =>
+        Json.toJsObject(ct)(toolChoiceCustomToolFormat) ++
+          Json.obj("type" -> "custom")
+
+      case ht: ToolChoice.HostedTool =>
+        Json.toJsObject(ht)(hostedToolFormat)
     }
   }
 
@@ -498,7 +496,7 @@ object JsonFormats {
   // Web search action formats
   private implicit lazy val webSearchActionSearchFormat: OFormat[WebSearchAction.Search] =
     (
-      (__ \ "query").format[String] and
+      (__ \ "query").formatNullable[String] and
         (__ \ "sources").formatWithDefault[Seq[WebSearchSource]](Seq.empty[WebSearchSource])
     )(
       WebSearchAction.Search.apply _,

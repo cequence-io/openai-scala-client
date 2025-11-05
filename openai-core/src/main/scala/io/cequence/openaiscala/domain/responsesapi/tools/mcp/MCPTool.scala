@@ -5,6 +5,7 @@ import io.cequence.wsclient.domain.EnumValue
 
 /**
  * Give the model access to additional tools via remote Model Context Protocol (MCP) servers.
+ * One of serverUrl or connectorId must be provided.
  *
  * @param serverLabel
  *   A label for this MCP server, used to identify it in tool calls.
@@ -26,17 +27,15 @@ import io.cequence.wsclient.domain.EnumValue
  */
 case class MCPTool(
   serverLabel: String,
-  allowedTools: Option[MCPAllowedTools] = None,
-  authorization: Option[String] = None,
+  serverUrl: Option[String] = None,
   connectorId: Option[String] = None,
+  authorization: Option[String] = None,
   headers: Option[Map[String, String]] = None,
+  allowedTools: Option[MCPAllowedTools] = None,
   requireApproval: Option[MCPRequireApproval] = None,
-  serverDescription: Option[String] = None,
-  serverUrl: Option[String] = None
+  serverDescription: Option[String] = None
 ) extends Tool {
-  val `type`: String = "mcp"
-
-  override def typeString: String = `type`
+  override val `type`: String = "mcp"
 }
 
 /**

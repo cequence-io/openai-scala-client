@@ -15,7 +15,5 @@ case class ComputerUseTool(
   displayWidth: Int,
   environment: String
 ) extends Tool {
-  val `type`: String = "computer_use_preview"
-
-  override def typeString: String = `type`
+  override val `type`: String = "computer_use_preview"
 }
