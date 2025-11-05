@@ -4,7 +4,7 @@ case class SourceContentBlockRaw(
   source: SourceBlockRaw,
   title: Option[String] = None,
   context: Option[String] = None,
-  citations: Option[CitationsFlagRaw] = None
+  citations: Option[CitationsFlag] = None
 )
 
 case class SourceBlockRaw(
@@ -15,7 +15,7 @@ case class SourceBlockRaw(
   fileId: Option[String] = None
 )
 
-case class CitationsFlagRaw(
+case class CitationsFlag(
   enabled: Boolean
 )
 

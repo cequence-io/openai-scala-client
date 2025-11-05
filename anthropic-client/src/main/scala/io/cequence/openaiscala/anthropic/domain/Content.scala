@@ -342,37 +342,36 @@ object WebSearchToolResultContent {
   }
 }
 
-sealed trait WebFetchToolResultContent
+sealed trait WebFetchToolResultContent extends HasType
 
 object WebFetchToolResultContent {
 
   case class Success(
-    document: Document,
+    content: Document,
     url: String,
     retrievedAt: String
-  ) extends WebFetchToolResultContent
+  ) extends WebFetchToolResultContent {
+    val `type`: String = "web_fetch_result"
+  }
 
   case class Error(
     errorCode: WebFetchErrorCode
-  ) extends WebFetchToolResultContent
-      with HasType {
+  ) extends WebFetchToolResultContent {
     val `type`: String = "web_fetch_tool_result_error"
   }
 
   case class Document(
-    citations: Citations,
+    citations: CitationsFlag,
     source: Source,
     title: String
-  )
-
-  case class Citations(
-    enabled: Boolean
-  )
+  ) extends HasType {
+    override val `type` = "document"
+  }
 
   case class Source(
     data: String,
     mediaType: String,
-    `type`: String
+    `type`: String // Allowed value: "text" and "base64"
   )
 
   sealed trait WebFetchErrorCode extends EnumValue

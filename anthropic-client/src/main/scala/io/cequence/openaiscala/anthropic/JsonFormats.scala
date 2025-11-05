@@ -16,6 +16,7 @@ import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{
   TextsContentBlock,
   ThinkingBlock,
   ToolUseBlock,
+  WebFetchToolResultBlock,
   WebSearchToolResultBlock
 }
 import io.cequence.openaiscala.anthropic.domain.Content.{
@@ -47,6 +48,7 @@ import io.cequence.openaiscala.anthropic.domain._
 import io.cequence.openaiscala.anthropic.domain.CodeExecutionToolResultContent.CodeExecutionErrorCode
 import io.cequence.openaiscala.anthropic.domain.BashCodeExecutionToolResultContent.BashCodeExecutionErrorCode
 import io.cequence.openaiscala.anthropic.domain.WebSearchToolResultContent.WebSearchErrorCode
+import io.cequence.openaiscala.anthropic.domain.WebFetchToolResultContent.WebFetchErrorCode
 import io.cequence.openaiscala.JsonFormats.jsonSchemaFormat
 import io.cequence.openaiscala.anthropic.domain.skills.{
   Container,
@@ -139,7 +141,7 @@ trait JsonFormats {
   // content block - raw - one to one with json
   implicit val textContentRawFormat: Format[TextContentRaw] = Json.format[TextContentRaw]
 
-  implicit val citationsFlagRawFormat: Format[CitationsFlagRaw] = Json.format[CitationsFlagRaw]
+  implicit val citationsFlagRawFormat: Format[CitationsFlag] = Json.format[CitationsFlag]
 
   implicit val sourceBlockRawFormat: Format[SourceBlockRaw] = {
     implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
@@ -265,6 +267,58 @@ trait JsonFormats {
   private val webSearchToolResultBlockFormat: OFormat[WebSearchToolResultBlock] = {
     implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
     Json.format[WebSearchToolResultBlock]
+  }
+
+  implicit lazy val webFetchErrorCodeFormat: Format[WebFetchToolResultContent.WebFetchErrorCode] =
+    JsonUtil.enumFormat[WebFetchToolResultContent.WebFetchErrorCode](
+      WebFetchToolResultContent.WebFetchErrorCode.values: _*
+    )
+
+  private implicit val webFetchSourceFormat: OFormat[WebFetchToolResultContent.Source] = {
+    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
+    Json.format[WebFetchToolResultContent.Source]
+  }
+
+  private implicit val webFetchDocumentFormat: OFormat[WebFetchToolResultContent.Document] = {
+    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
+    formatWithType(Json.format[WebFetchToolResultContent.Document])
+  }
+
+  private implicit val webFetchSuccessFormat: OFormat[WebFetchToolResultContent.Success] = {
+    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
+    formatWithType(Json.format[WebFetchToolResultContent.Success])
+  }
+
+  private implicit val webFetchErrorFormat: Format[WebFetchToolResultContent.Error] = {
+    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
+    formatWithType(Json.format[WebFetchToolResultContent.Error])
+  }
+
+  implicit lazy val webFetchToolResultContentReads: Reads[WebFetchToolResultContent] = {
+    case obj: JsObject =>
+      (obj \ "type").asOpt[String] match {
+        case Some("web_fetch_tool_result_error") =>
+          obj.validate[WebFetchToolResultContent.Error]
+        case _ =>
+          obj.validate[WebFetchToolResultContent.Success]
+      }
+    case _ =>
+      JsError("Expected object for web fetch tool result content")
+  }
+
+  implicit lazy val webFetchToolResultContentWrites: Writes[WebFetchToolResultContent] = {
+    case success: WebFetchToolResultContent.Success =>
+      Json.toJson(success)(webFetchSuccessFormat)
+    case error: WebFetchToolResultContent.Error =>
+      Json.toJson(error)(webFetchErrorFormat)
+  }
+
+  implicit lazy val webFetchToolResultContentFormat: Format[WebFetchToolResultContent] =
+    Format(webFetchToolResultContentReads, webFetchToolResultContentWrites)
+
+  private val webFetchToolResultBlockFormat: OFormat[WebFetchToolResultBlock] = {
+    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
+    Json.format[WebFetchToolResultBlock]
   }
 
   private implicit val toolResultContentFormat: OFormat[MCPToolResultItem] = {
@@ -533,6 +587,9 @@ trait JsonFormats {
       case "web_search_tool_result" =>
         json.validate[WebSearchToolResultBlock](webSearchToolResultBlockFormat)
 
+      case "web_fetch_tool_result" =>
+        json.validate[WebFetchToolResultBlock](webFetchToolResultBlockFormat)
+
       case "mcp_tool_use" =>
         json.validate[McpToolUseBlock](mcpToolUseBlockFormat)
 
@@ -613,6 +670,9 @@ trait JsonFormats {
     case x: WebSearchToolResultBlock =>
       Json.toJsObject(x)(webSearchToolResultBlockFormat)
 
+    case x: WebFetchToolResultBlock =>
+      Json.toJsObject(x)(webFetchToolResultBlockFormat)
+
     case x: McpToolUseBlock =>
       Json.toJsObject(x)(mcpToolUseBlockFormat)
 
@@ -641,7 +701,7 @@ trait JsonFormats {
           ),
           title = x.title,
           context = x.context,
-          citations = if (x.citations.getOrElse(false)) Some(CitationsFlagRaw(true)) else None
+          citations = if (x.citations.getOrElse(false)) Some(CitationsFlag(true)) else None
         )
       )(sourceContentBlockRawFormat)
 
@@ -658,7 +718,7 @@ trait JsonFormats {
           ),
           title = x.title,
           context = x.context,
-          citations = if (x.citations.getOrElse(false)) Some(CitationsFlagRaw(true)) else None
+          citations = if (x.citations.getOrElse(false)) Some(CitationsFlag(true)) else None
         )
       )(sourceContentBlockRawFormat)
 
@@ -671,7 +731,7 @@ trait JsonFormats {
           ),
           title = x.title,
           context = x.context,
-          citations = if (x.citations.getOrElse(false)) Some(CitationsFlagRaw(true)) else None
+          citations = if (x.citations.getOrElse(false)) Some(CitationsFlag(true)) else None
         )
       )(sourceContentBlockRawFormat)
   }

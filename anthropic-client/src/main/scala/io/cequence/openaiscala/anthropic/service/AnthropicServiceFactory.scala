@@ -37,7 +37,8 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
     "output-128k-2025-02-19",
     "files-api-2025-04-14",
     "code-execution-2025-08-25",
-    "mcp-client-2025-04-04"
+    "mcp-client-2025-04-04",
+    "web-fetch-2025-09-10"
   )
 
   /**
