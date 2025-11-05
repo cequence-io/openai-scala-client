@@ -256,6 +256,8 @@ object NonOpenAIModelId {
 
   // Other
   val moonshotai_kimi_k2_instruct = "moonshotai/kimi-k2-instruct" // Groq
+  // context 262,144
+  val moonshotai_kimi_k2_instruct_0905 = "moonshotai/kimi-k2-instruct-0905"
   val phi_3_vision_128k_instruct = "phi-3-vision-128k-instruct" // Fireworks AI
   val drbx_instruct = "dbrx-instruct" // Fireworks AI
   val dbrx_instruct_databricks_to_ai = "databricks/dbrx-instruct" // Together AI
@@ -304,7 +306,14 @@ object NonOpenAIModelId {
   // context 256,000
   val grok_4 = "grok-4"
   val grok_4_latest = "grok-4-latest"
+  // context 256,000
   val grok_4_0709 = "grok-4-0709"
+  // context 2,000,000
+  val grok_4_fast_reasoning = "grok-4-fast-reasoning"
+  // context 2,000,000
+  val grok_4_fast_non_reasoning = "grok-4-fast-non-reasoning"
+  // context 256,000
+  val grok_code_fast_1 = "grok-code-fast-1"
   // context 131,072
   val grok_3_beta = "grok-3-beta"
   val grok_3 = "grok-3"
@@ -365,6 +374,8 @@ object NonOpenAIModelId {
   val gpt_oss_120b = "gpt-oss-120b" // fireworks, cerabras
   val openai_gpt_oss_120b = "openai/gpt-oss-120b" // groq, Together AI, Novita
   val openai_gpt_oss_20b = "openai/gpt-oss-20b" // groq, Together AI, Novita
+  // context 131,072
+  val openai_gpt_oss_safeguard_20b = "openai/gpt-oss-safeguard-20b"
 
   // Sonar (Perplexity)
   // 128k context length

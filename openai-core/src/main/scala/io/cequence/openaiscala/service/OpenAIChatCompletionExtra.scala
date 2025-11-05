@@ -209,16 +209,17 @@ object OpenAIChatCompletionExtra {
       }
   }
 
+  // TODO: move to a config file
   private val defaultModelsSupportingJsonSchema = Seq(
     ModelId.gpt_5,
+    ModelId.gpt_5_pro,
+    ModelId.gpt_5_pro_2025_10_06,
     ModelId.gpt_5_2025_08_07,
     ModelId.gpt_5_mini,
     ModelId.gpt_5_mini_2025_08_07,
     ModelId.gpt_5_nano,
     ModelId.gpt_5_nano_2025_08_07,
     ModelId.gpt_5_chat_latest,
-    NonOpenAIModelId.openai_gpt_oss_120b,
-    NonOpenAIModelId.openai_gpt_oss_20b,
     ModelId.gpt_4_1,
     ModelId.gpt_4_1_2025_04_14,
     ModelId.gpt_4_1_mini,
@@ -243,6 +244,11 @@ object OpenAIChatCompletionExtra {
     ModelId.o1_2024_12_17,
     ModelId.o1_pro,
     ModelId.o1_pro_2025_03_19,
+    NonOpenAIModelId.openai_gpt_oss_120b,
+    NonOpenAIModelId.openai_gpt_oss_20b,
+    NonOpenAIModelId.openai_gpt_oss_safeguard_20b,
+    NonOpenAIModelId.moonshotai_kimi_k2_instruct,
+    NonOpenAIModelId.moonshotai_kimi_k2_instruct_0905,
     NonOpenAIModelId.gemini_2_5_pro,
     NonOpenAIModelId.gemini_2_5_pro_preview_06_05,
     NonOpenAIModelId.gemini_2_5_pro_preview_05_06,
@@ -287,8 +293,13 @@ object OpenAIChatCompletionExtra {
     NonOpenAIModelId.grok_3_mini_latest,
     NonOpenAIModelId.grok_3_mini_fast,
     NonOpenAIModelId.grok_3_mini_fast_beta,
-    NonOpenAIModelId.grok_3_mini_fast_latest
-    // NonOpenAIModelId.cerebras_llama_4_scout_17b_16e_instruct
+    NonOpenAIModelId.grok_3_mini_fast_latest,
+    NonOpenAIModelId.grok_4,
+    NonOpenAIModelId.grok_4_latest,
+    NonOpenAIModelId.grok_4_0709,
+    NonOpenAIModelId.grok_4_fast_reasoning,
+    NonOpenAIModelId.grok_4_fast_non_reasoning,
+    NonOpenAIModelId.grok_code_fast_1
   )
 
   def handleOutputJsonSchema(
