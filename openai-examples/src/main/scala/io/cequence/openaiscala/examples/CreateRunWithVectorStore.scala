@@ -15,6 +15,7 @@ import scala.concurrent.Future
 object CreateRunWithVectorStore extends Example {
 
   private val adapters = OpenAIServiceAdapters.forFullService
+
   override protected val service: OpenAIService =
     adapters.log(
       OpenAIServiceFactory(),
@@ -24,12 +25,6 @@ object CreateRunWithVectorStore extends Example {
 
   val userId = "123"
   val model = ModelId.gpt_3_5_turbo
-
-  private def scheduleFile(): File =
-    Paths.get("/Users/boris/proj/cequence/eBF programme 2024 - extracted.pdf").toFile
-
-  private def uploadFile: Future[FileInfo] =
-    service.uploadFile(scheduleFile(), purpose = FileUploadPurpose.batch)
 
   private def createVectorStore(file: FileInfo) = {
     service.createVectorStore(fileIds = Seq(file.id), name = Some("Conference Schedule"))
