@@ -269,7 +269,8 @@ trait JsonFormats {
     Json.format[WebSearchToolResultBlock]
   }
 
-  implicit lazy val webFetchErrorCodeFormat: Format[WebFetchToolResultContent.WebFetchErrorCode] =
+  implicit lazy val webFetchErrorCodeFormat
+    : Format[WebFetchToolResultContent.WebFetchErrorCode] =
     JsonUtil.enumFormat[WebFetchToolResultContent.WebFetchErrorCode](
       WebFetchToolResultContent.WebFetchErrorCode.values: _*
     )
