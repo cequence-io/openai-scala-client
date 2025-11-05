@@ -857,7 +857,7 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
       testCodec[ToolCall](
         WebSearchToolCall(
           action = WebSearchAction.Search(
-            query = "best pizza restaurants in New York",
+            query = Some("best pizza restaurants in New York"),
             sources = Seq(
               WebSearchSource("https://example.com"),
               WebSearchSource("https://example.org")
@@ -889,7 +889,7 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
       testCodec[ToolCall](
         WebSearchToolCall(
           action = WebSearchAction.Search(
-            query = "machine learning tutorials"
+            query = Some("machine learning tutorials")
           ),
           id = "call_def456",
           status = ModelStatus.InProgress
@@ -911,7 +911,7 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
       testDeserialization[ToolCall](
         WebSearchToolCall(
           action = WebSearchAction.Search(
-            query = "climate change"
+            query = Some("climate change")
           ),
           id = "call_ghi789",
           status = ModelStatus.Completed
@@ -2730,7 +2730,7 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
 
     "serialize and deserialize Input.ofWebSearchToolCall" in {
       val input = Input.ofWebSearchToolCall(
-        action = WebSearchAction.Search(query = "test query"),
+        action = WebSearchAction.Search(query = Some("test query")),
         id = "web_search_abc123",
         status = ModelStatus.InProgress
       )
@@ -2942,7 +2942,7 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
       )
 
       val webSearchToolCall = WebSearchToolCall(
-        action = WebSearchAction.Search(query = "weather forecast"),
+        action = WebSearchAction.Search(query = Some("weather forecast")),
         id = "web_search_abc123",
         status = ModelStatus.Completed
       )
