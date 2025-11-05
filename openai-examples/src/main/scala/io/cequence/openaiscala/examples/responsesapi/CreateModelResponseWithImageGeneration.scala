@@ -4,7 +4,11 @@ import scala.concurrent.Future
 import io.cequence.openaiscala.domain.responsesapi.{CreateModelResponseSettings, Inputs}
 import io.cequence.openaiscala.examples.Example
 import io.cequence.openaiscala.domain.ModelId
-import io.cequence.openaiscala.domain.responsesapi.tools.{ImageGenerationBackground, ImageGenerationTool, Tool}
+import io.cequence.openaiscala.domain.responsesapi.tools.{
+  ImageGenerationBackground,
+  ImageGenerationTool,
+  Tool
+}
 
 object CreateModelResponseWithImageGeneration extends Example {
 
