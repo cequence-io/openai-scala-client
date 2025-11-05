@@ -27,6 +27,8 @@ object Param {
   case object thinking extends Param
   case object container extends Param
   case object tools extends Param
+  case object tool_choice extends Param
+  case object mcp_servers extends Param
   // bedrock
   case object anthropic_version extends Param
   // skills

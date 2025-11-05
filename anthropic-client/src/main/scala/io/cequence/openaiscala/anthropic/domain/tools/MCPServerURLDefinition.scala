@@ -1,17 +1,6 @@
 package io.cequence.openaiscala.anthropic.domain.tools
 
-/**
- * Configuration for MCP tool filtering and enabling.
- *
- * @param allowedTools
- *   List of allowed tool names. If specified, only these tools will be available.
- * @param enabled
- *   Whether the tool configuration is enabled.
- */
-case class MCPToolConfiguration(
-  allowedTools: Seq[String] = Nil,
-  enabled: Option[Boolean] = None
-)
+import io.cequence.openaiscala.domain.HasType
 
 /**
  * MCP Server URL Definition for connecting to an MCP server via URL. Type is always "url".
@@ -30,6 +19,19 @@ case class MCPServerURLDefinition(
   url: String,
   authorizationToken: Option[String] = None,
   toolConfiguration: Option[MCPToolConfiguration] = None
-) extends Tool {
+) extends HasType {
   override val `type`: String = "url"
 }
+
+/**
+ * Configuration for MCP tool filtering and enabling.
+ *
+ * @param allowedTools
+ *   List of allowed tool names. If specified, only these tools will be available.
+ * @param enabled
+ *   Whether the tool configuration is enabled.
+ */
+case class MCPToolConfiguration(
+  allowedTools: Seq[String] = Nil,
+  enabled: Option[Boolean] = None
+)

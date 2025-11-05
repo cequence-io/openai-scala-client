@@ -74,11 +74,24 @@ trait Anthropic
       Param.temperature -> settings.temperature,
       Param.top_p -> settings.top_p,
       Param.top_k -> settings.top_k,
-      Param.thinking -> settings.thinking.map(Json.toJson(_)(thinkingSettingsFormat)),
-      Param.container -> settings.container.map(Json.toJson(_)(containerFormat)),
+      Param.thinking -> settings.thinking.map(
+        Json.toJson(_)(thinkingSettingsFormat)
+      ),
+      Param.container -> settings.container.map(
+        Json.toJson(_)(containerFormat)
+      ),
       Param.tools -> {
         if (settings.tools.nonEmpty)
           Some(Json.toJson(settings.tools)(Writes.seq(toolWrites)))
+        else
+          None
+      },
+      Param.tool_choice -> settings.tool_choice.map(
+        Json.toJson(_)(toolChoiceFormat)
+      ),
+      Param.mcp_servers -> {
+        if (settings.mcp_servers.nonEmpty)
+          Some(Json.toJson(settings.mcp_servers)(Writes.seq(mcpServerURLDefinitionWrites)))
         else
           None
       }

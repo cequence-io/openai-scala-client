@@ -131,19 +131,41 @@ object Content {
       val `type`: String = "text_editor_code_execution_tool_result"
     }
 
-    case class Citation(
-      `type`: String,
-      citedText: String,
-      documentIndex: Int,
-      documentTitle: Option[String],
-      startCharIndex: Option[Int],
-      endCharIndex: Option[Int],
-      startBlockIndex: Option[Int],
-      endBlockIndex: Option[Int],
-      startPageNumber: Option[Int],
-      endPageNumber: Option[Int],
-      fileId: Option[String]
-    )
+    sealed trait Citation extends HasType {
+      def citedText: String
+    }
+
+    object Citation {
+
+      /**
+       * Citation from a document.
+       */
+      case class DocumentCitation(
+        override val `type`: String,
+        citedText: String,
+        documentIndex: Int,
+        documentTitle: Option[String] = None,
+        startCharIndex: Option[Int] = None,
+        endCharIndex: Option[Int] = None,
+        startBlockIndex: Option[Int] = None,
+        endBlockIndex: Option[Int] = None,
+        startPageNumber: Option[Int] = None,
+        endPageNumber: Option[Int] = None,
+        fileId: Option[String] = None
+      ) extends Citation
+
+      /**
+       * Citation from a web search result.
+       */
+      case class WebSearchResultLocation(
+        citedText: String,
+        url: String,
+        title: String,
+        encryptedIndex: String
+      ) extends Citation {
+        override val `type`: String = "web_search_result_location"
+      }
+    }
 
     case class MediaBlock(
       `type`: String,
@@ -320,10 +342,10 @@ case class McpToolResultString(
 ) extends McpToolResultContent
 
 case class McpToolResultStructured(
-  results: Seq[ToolResultContent]
+  results: Seq[MCPToolResultItem] = Nil
 ) extends McpToolResultContent
 
-case class ToolResultContent(
+case class MCPToolResultItem(
   text: String,
   citations: Seq[ContentBlock.Citation] = Nil
 ) extends HasType {

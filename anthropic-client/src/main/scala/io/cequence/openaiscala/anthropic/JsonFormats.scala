@@ -74,6 +74,7 @@ import io.cequence.openaiscala.anthropic.domain.tools.{
   TextEditorTool,
   TextEditorToolType,
   Tool,
+  ToolChoice,
   UserLocation,
   WebFetchTool,
   WebSearchTool
@@ -152,7 +153,32 @@ trait JsonFormats {
 
   implicit lazy val citationFormat: Format[ContentBlock.Citation] = {
     implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
-    Json.format[ContentBlock.Citation]
+
+    // Format for DocumentCitation
+    implicit val documentCitationFormat: OFormat[Citation.DocumentCitation] =
+      formatWithType(Json.format[Citation.DocumentCitation])
+
+    // Format for WebSearchResultLocation
+    implicit val webSearchResultLocationFormat: OFormat[Citation.WebSearchResultLocation] =
+      formatWithType(Json.format[Citation.WebSearchResultLocation])
+
+    val reads: Reads[Citation] = Reads { json =>
+      (json \ "type").asOpt[String] match {
+        case Some("web_search_result_location") =>
+          json.validate[Citation.WebSearchResultLocation]
+        case _ =>
+          json.validate[Citation.DocumentCitation]
+      }
+    }
+
+    val writes: OWrites[Citation] = OWrites {
+      case c: Citation.DocumentCitation =>
+        Json.toJsObject(c)(documentCitationFormat)
+      case c: Citation.WebSearchResultLocation =>
+        Json.toJsObject(c)(webSearchResultLocationFormat)
+    }
+
+    OFormat(reads, writes)
   }
 
   private val textBlockReads: Reads[TextBlock] =
@@ -241,9 +267,9 @@ trait JsonFormats {
     Json.format[WebSearchToolResultBlock]
   }
 
-  private implicit val toolResultContentFormat: Format[ToolResultContent] = {
+  private implicit val toolResultContentFormat: OFormat[MCPToolResultItem] = {
     implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
-    formatWithType(Json.format[ToolResultContent])
+    formatWithType(Json.using[Json.WithDefaultValues].format[MCPToolResultItem])
   }
 
   private val mcpToolUseBlockFormat: OFormat[McpToolUseBlock] = {
@@ -254,7 +280,7 @@ trait JsonFormats {
   implicit lazy val mcpToolResultContentReads: Reads[McpToolResultContent] = {
     case JsString(str) => JsSuccess(McpToolResultString(str))
     case JsArray(items) =>
-      val validated = items.toList.map(_.validate[ToolResultContent])
+      val validated = items.toList.map(_.validate[MCPToolResultItem])
       val errors = validated.collect { case e: JsError => e }
       if (errors.nonEmpty) {
         errors.head
@@ -920,12 +946,63 @@ trait JsonFormats {
 
   private val webSearchToolFormat: OFormat[WebSearchTool] = {
     implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
-    Json.using[Json.WithDefaultValues].format[WebSearchTool]
+
+    val reads = Json.reads[WebSearchTool]
+    val writes = OWrites[WebSearchTool] { tool =>
+      var obj = Json.obj()
+
+      // Only include allowedDomains if non-empty
+      if (tool.allowedDomains.nonEmpty) {
+        obj = obj + ("allowed_domains" -> Json.toJson(tool.allowedDomains))
+      }
+
+      // Only include blockedDomains if non-empty
+      if (tool.blockedDomains.nonEmpty) {
+        obj = obj + ("blocked_domains" -> Json.toJson(tool.blockedDomains))
+      }
+
+      // Only include maxUses if defined
+      tool.maxUses.foreach(v => obj = obj + ("max_uses" -> JsNumber(v)))
+
+      // Only include userLocation if defined
+      tool.userLocation.foreach(v => obj = obj + ("user_location" -> Json.toJson(v)))
+
+      obj
+    }
+
+    OFormat(reads, writes)
   }
 
   private val webFetchToolFormat: OFormat[WebFetchTool] = {
     implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
-    Json.using[Json.WithDefaultValues].format[WebFetchTool]
+
+    val reads = Json.reads[WebFetchTool]
+    val writes = OWrites[WebFetchTool] { tool =>
+      var obj = Json.obj()
+
+      // Only include allowedDomains if non-empty
+      if (tool.allowedDomains.nonEmpty) {
+        obj = obj + ("allowed_domains" -> Json.toJson(tool.allowedDomains))
+      }
+
+      // Only include blockedDomains if non-empty
+      if (tool.blockedDomains.nonEmpty) {
+        obj = obj + ("blocked_domains" -> Json.toJson(tool.blockedDomains))
+      }
+
+      // Only include citations if defined
+      tool.citations.foreach(v => obj = obj + ("citations" -> Json.toJson(v)))
+
+      // Only include maxContentTokens if defined
+      tool.maxContentTokens.foreach(v => obj = obj + ("max_content_tokens" -> JsNumber(v)))
+
+      // Only include maxUses if defined
+      tool.maxUses.foreach(v => obj = obj + ("max_uses" -> JsNumber(v)))
+
+      obj
+    }
+
+    OFormat(reads, writes)
   }
 
   implicit lazy val mcpToolConfigurationFormat: Format[MCPToolConfiguration] = {
@@ -935,20 +1012,22 @@ trait JsonFormats {
 
   private val mcpServerURLDefinitionFormat: OFormat[MCPServerURLDefinition] = {
     implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
-    Json.format[MCPServerURLDefinition]
+    formatWithType(Json.format[MCPServerURLDefinition])
   }
+
+  implicit val mcpServerURLDefinitionWrites: OWrites[MCPServerURLDefinition] =
+    mcpServerURLDefinitionFormat
 
   implicit lazy val toolWrites: OWrites[Tool] = (tool: Tool) => {
     val jsonObject: JsObject = tool match {
-      case t: CustomTool             => Json.toJsObject(t)(customToolFormat)
-      case t: BashTool               => Json.toJsObject(t)(bashToolFormat)
-      case t: CodeExecutionTool      => Json.toJsObject(t)(codeExecutionToolFormat)
-      case t: ComputerUseTool        => Json.toJsObject(t)(computerUseToolFormat)
-      case t: MemoryTool             => Json.toJsObject(t)(memoryToolFormat)
-      case t: TextEditorTool         => Json.toJsObject(t)(textEditorToolFormat)
-      case t: WebSearchTool          => Json.toJsObject(t)(webSearchToolFormat)
-      case t: WebFetchTool           => Json.toJsObject(t)(webFetchToolFormat)
-      case t: MCPServerURLDefinition => Json.toJsObject(t)(mcpServerURLDefinitionFormat)
+      case t: CustomTool        => Json.toJsObject(t)(customToolFormat)
+      case t: BashTool          => Json.toJsObject(t)(bashToolFormat)
+      case t: CodeExecutionTool => Json.toJsObject(t)(codeExecutionToolFormat)
+      case t: ComputerUseTool   => Json.toJsObject(t)(computerUseToolFormat)
+      case t: MemoryTool        => Json.toJsObject(t)(memoryToolFormat)
+      case t: TextEditorTool    => Json.toJsObject(t)(textEditorToolFormat)
+      case t: WebSearchTool     => Json.toJsObject(t)(webSearchToolFormat)
+      case t: WebFetchTool      => Json.toJsObject(t)(webFetchToolFormat)
     }
 
     // Centrally add name and type fields for all tools
@@ -988,13 +1067,38 @@ trait JsonFormats {
       case (Some("web_fetch_20250910"), Some("web_fetch")) =>
         json.validate[WebFetchTool](webFetchToolFormat)
 
-      case (Some("url"), _) =>
-        json.validate[MCPServerURLDefinition](mcpServerURLDefinitionFormat)
-
       case _ =>
         JsError(s"Unknown tool type: $toolType with name: $toolName")
     }
   }
 
   implicit lazy val toolFormat: OFormat[Tool] = OFormat(toolReads, toolWrites)
+
+  // Tool Choice formats
+  implicit lazy val toolChoiceFormat: OFormat[ToolChoice] = {
+    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
+
+    val autoFormat: OFormat[ToolChoice.Auto] = Json.format[ToolChoice.Auto]
+    val anyFormat: OFormat[ToolChoice.Any] = Json.format[ToolChoice.Any]
+    val toolFormat: OFormat[ToolChoice.Tool] = Json.format[ToolChoice.Tool]
+
+    val reads: Reads[ToolChoice] = Reads { json =>
+      (json \ "type").validate[String].flatMap {
+        case "auto" => autoFormat.reads(json)
+        case "any"  => anyFormat.reads(json)
+        case "tool" => toolFormat.reads(json)
+        case "none" => JsSuccess(ToolChoice.None)
+        case other  => JsError(s"Unknown tool choice type: $other")
+      }
+    }
+
+    val writes: OWrites[ToolChoice] = OWrites {
+      case tc: ToolChoice.Auto => autoFormat.writes(tc)
+      case tc: ToolChoice.Any  => anyFormat.writes(tc)
+      case tc: ToolChoice.Tool => toolFormat.writes(tc)
+      case ToolChoice.None     => Json.obj()
+    }
+
+    formatWithType(OFormat(reads, writes))
+  }
 }

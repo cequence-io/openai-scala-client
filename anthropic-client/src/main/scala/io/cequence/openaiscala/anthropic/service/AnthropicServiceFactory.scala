@@ -36,7 +36,8 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
   private val anthropicBetaHeaders = Seq(
     "output-128k-2025-02-19",
     "files-api-2025-04-14",
-    "code-execution-2025-08-25"
+    "code-execution-2025-08-25",
+    "mcp-client-2025-04-04"
   )
 
   /**
