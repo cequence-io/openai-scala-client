@@ -1,7 +1,11 @@
 package io.cequence.openaiscala.anthropic.domain.settings
 
 import io.cequence.openaiscala.anthropic.domain.skills.Container
-import io.cequence.openaiscala.anthropic.domain.tools.{MCPServerURLDefinition, Tool, ToolChoice}
+import io.cequence.openaiscala.anthropic.domain.tools.{
+  MCPServerURLDefinition,
+  Tool,
+  ToolChoice
+}
 import io.cequence.wsclient.domain.EnumValue
 
 final case class AnthropicCreateMessageSettings(
