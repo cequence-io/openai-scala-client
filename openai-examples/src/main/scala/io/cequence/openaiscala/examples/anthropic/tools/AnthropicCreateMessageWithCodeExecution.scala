@@ -36,11 +36,12 @@ object AnthropicCreateMessageWithCodeExecution extends ExampleBase[AnthropicServ
       )
 
     } yield {
-      val lastBashCodeExecutionFiles = response.bashCodeExecutionToolFileIds.lastOption.getOrElse(
-        throw new RuntimeException(
-          "No successful bash code execution result found in the response."
+      val lastBashCodeExecutionFiles =
+        response.bashCodeExecutionToolFileIds.lastOption.getOrElse(
+          throw new RuntimeException(
+            "No successful bash code execution result found in the response."
+          )
         )
-      )
 
       // Display generated files that are accessible via File API
       if (lastBashCodeExecutionFiles.nonEmpty) {

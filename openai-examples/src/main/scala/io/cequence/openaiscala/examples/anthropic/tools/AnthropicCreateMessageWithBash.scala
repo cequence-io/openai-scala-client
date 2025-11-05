@@ -41,9 +41,13 @@ object AnthropicCreateMessageWithBash extends ExampleBase[AnthropicService] {
 
         assert(toolUseBlock.name == "bash")
 
-        (toolUseBlock.input \ "command").asOpt[String].getOrElse(
-          throw new RuntimeException("No command found in the tool use block input : " + toolUseBlock.input)
-        )
+        (toolUseBlock.input \ "command")
+          .asOpt[String]
+          .getOrElse(
+            throw new RuntimeException(
+              "No command found in the tool use block input : " + toolUseBlock.input
+            )
+          )
       }
 
       result = {

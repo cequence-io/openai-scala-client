@@ -40,7 +40,9 @@ object AnthropicCreateMessageWithMCPServer extends ExampleBase[AnthropicService]
   )
 
   private val messages2 = Seq(
-    UserMessage("Analyze this code for security vulnerabilities: def unsafe(input: String) = s\"SELECT * FROM users WHERE name = '$input'\"")
+    UserMessage(
+      "Analyze this code for security vulnerabilities: def unsafe(input: String) = s\"SELECT * FROM users WHERE name = '$input'\""
+    )
   )
 
   private val settings2 = AnthropicCreateMessageSettings(
