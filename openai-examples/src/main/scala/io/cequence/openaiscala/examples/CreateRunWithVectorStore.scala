@@ -8,8 +8,6 @@ import io.cequence.openaiscala.domain.settings.{CreateRunSettings, FileUploadPur
 import io.cequence.openaiscala.service.adapter.OpenAIServiceAdapters
 import io.cequence.openaiscala.service.{OpenAIService, OpenAIServiceFactory}
 
-import java.io.File
-import java.nio.file.Paths
 import scala.concurrent.Future
 
 object CreateRunWithVectorStore extends Example {

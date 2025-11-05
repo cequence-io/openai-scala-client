@@ -5,7 +5,7 @@ import io.cequence.openaiscala.domain.responsesapi.{CreateModelResponseSettings,
 import io.cequence.openaiscala.examples.Example
 import io.cequence.openaiscala.domain.ModelId
 import io.cequence.openaiscala.domain.responsesapi.OutputMessageContent.OutputText
-import io.cequence.openaiscala.domain.responsesapi.tools.{Tool, WebSearchTool}
+import io.cequence.openaiscala.domain.responsesapi.tools.Tool
 import io.cequence.openaiscala.domain.responsesapi.Annotation
 
 object CreateModelResponseWithWebSearch extends Example {

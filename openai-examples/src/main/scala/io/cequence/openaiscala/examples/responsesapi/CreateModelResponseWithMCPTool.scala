@@ -5,8 +5,7 @@ import io.cequence.openaiscala.domain.responsesapi.tools.Tool
 import io.cequence.openaiscala.domain.responsesapi.tools.mcp.{
   MCPApprovalRequest,
   MCPApprovalResponse,
-  MCPRequireApproval,
-  MCPTool
+  MCPRequireApproval
 }
 import io.cequence.openaiscala.domain.responsesapi.{CreateModelResponseSettings, Inputs}
 import io.cequence.openaiscala.examples.Example

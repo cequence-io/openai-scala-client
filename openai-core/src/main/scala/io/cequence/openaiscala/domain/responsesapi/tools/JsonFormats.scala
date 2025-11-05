@@ -185,7 +185,7 @@ object JsonFormats {
       }
 
       def writes(allowedTools: MCPAllowedTools): JsValue = allowedTools match {
-        case MCPAllowedTools.ToolNames(names) => JsArray(names.map(JsString))
+        case MCPAllowedTools.ToolNames(names) => JsArray(names.map(JsString(_)))
         case filter: MCPAllowedTools.Filter   => mcpAllowedToolsFilterFormat.writes(filter)
       }
     }
