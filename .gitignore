@@ -9,3 +9,5 @@ target
 /.bsp
 /.metals
 /.vscode
+**/build.properties
+**/metals.sbt
