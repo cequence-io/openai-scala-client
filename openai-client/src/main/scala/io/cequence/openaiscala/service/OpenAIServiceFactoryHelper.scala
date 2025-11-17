@@ -32,7 +32,7 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts {
     implicit ec: ExecutionContext,
     materializer: Materializer
   ): F =
-    apply(ConfigFactory.load(configFileName))
+    apply(loadDefaultConfig)
 
   def apply(
     config: Config

@@ -73,6 +73,10 @@ trait ChatCompletionBodyMaker {
   )
 
   private val gpt5Models = Set(
+    ModelId.gpt_5_1,
+    ModelId.gpt_5_1_2025_11_13,
+    ModelId.gpt_5_pro,
+    ModelId.gpt_5_pro_2025_10_06,
     ModelId.gpt_5,
     ModelId.gpt_5_2025_08_07,
     ModelId.gpt_5_mini,

@@ -363,6 +363,7 @@ object JsonFormats {
   )
 
   implicit val reasoningEffortFormat: Format[ReasoningEffort] = enumFormat[ReasoningEffort](
+    ReasoningEffort.none,
     ReasoningEffort.minimal,
     ReasoningEffort.low,
     ReasoningEffort.medium,
@@ -1245,13 +1246,13 @@ object JsonFormats {
           if ((json \ "enum").asOpt[Seq[String]].exists(_.isEmpty)) json - "enum" else json
 
         case c: JsonSchema.Number =>
-          Json.toJson(c).as[JsObject]
+          Json.toJsObject(c)
 
         case c: JsonSchema.Integer =>
-          Json.toJson(c).as[JsObject]
+          Json.toJsObject(c)
 
         case c: JsonSchema.Boolean =>
-          Json.toJson(c).as[JsObject]
+          Json.toJsObject(c)
 
         case _: JsonSchema.Null =>
           Json.obj()
