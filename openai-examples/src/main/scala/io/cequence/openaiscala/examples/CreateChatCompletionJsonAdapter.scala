@@ -28,7 +28,7 @@ object CreateChatCompletionJsonAdapter
       .createChatCompletionWithJSON[JsObject](
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = ModelId.gpt_5_mini,
+          model = ModelId.gpt_5_1,
           max_tokens = Some(20000),
           temperature = Some(0.5), // ignored
           reasoning_effort = Some(ReasoningEffort.medium),
