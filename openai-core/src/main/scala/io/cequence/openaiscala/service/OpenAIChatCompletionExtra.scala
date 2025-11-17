@@ -209,7 +209,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts {
 
   val defaultModelsSupportingJsonSchema = {
     val config = loadDefaultConfig()
-    import scala.jdk.CollectionConverters._
+    import scala.collection.JavaConverters._
     config.getStringList(s"$configPrefix.models-supporting-json-schema").asScala.toSeq
   }
 
