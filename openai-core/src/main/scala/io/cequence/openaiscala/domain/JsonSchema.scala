@@ -11,19 +11,22 @@ object JsonSchema {
 
   import java.lang.{String => JString}
 
+  @Deprecated
   type JsonSchemaOrMap = Either[JsonSchema, Map[JString, Any]]
 
   case class Object(
     properties: Seq[(JString, JsonSchema)],
-    required: Seq[JString] = Nil
+    required: Seq[JString] = Nil,
+    additionalProperties: Option[scala.Boolean] = None
   ) extends JsonSchema {
     override val `type` = JsonType.Object
   }
 
-  def Object(
+  def ObjectAsMap(
     properties: Map[JString, JsonSchema],
-    required: Seq[JString] = Nil
-  ): Object = Object(properties.toSeq, required)
+    required: Seq[JString] = Nil,
+    additionalProperties: Option[scala.Boolean] = None
+  ): Object = Object(properties.toSeq, required, additionalProperties)
 
   case class String(
     description: Option[JString] = None,
