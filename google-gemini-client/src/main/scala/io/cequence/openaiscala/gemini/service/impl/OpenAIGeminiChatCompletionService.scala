@@ -221,8 +221,15 @@ private[service] class OpenAIGeminiChatCompletionService(
       if (
         responseFormat == ChatCompletionResponseFormatType.json_schema && settings.jsonSchema.isDefined
       ) {
-        settings.jsonSchema.get.structure match {
+        val jsonSchemaDef = settings.jsonSchema.get
+
+        jsonSchemaDef.structure match {
           case Left(schema) =>
+            if (jsonSchemaDef.strict)
+              logger.warn(
+                "OpenAI's 'strict' mode is not supported by Gemini. The schema will be used without strict validation. Note: Gemini does not support 'additionalProperties'."
+              )
+
             Some(toGeminiJSONSchema(schema))
           case Right(_) =>
             logger.warn(
@@ -327,7 +334,13 @@ private[service] class OpenAIGeminiChatCompletionService(
         `type` = SchemaType.TYPE_UNSPECIFIED
       )
 
-    case JsonSchema.Object(properties, required) =>
+    case JsonSchema.Object(properties, required, additionalProperties) =>
+      // additional properties not supported
+      if (additionalProperties.nonEmpty && additionalProperties.get)
+        logger.warn(
+          "Gemini does not support 'additionalProperties' in JSON schema - this field will be ignored"
+        )
+
       val propertiesFinal =
         if (properties.nonEmpty)
           properties

@@ -10,6 +10,7 @@ import com.google.cloud.vertexai.api.{
   Schema,
   Type
 }
+import com.typesafe.scalalogging.Logger
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.{
   AssistantMessage,
@@ -33,6 +34,7 @@ import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
   CreateChatCompletionSettings
 }
+import org.slf4j.LoggerFactory
 
 import java.{util => ju}
 import scala.collection.convert.ImplicitConversions.`iterable asJava`
@@ -40,6 +42,10 @@ import scala.collection.convert.ImplicitConversions.`map AsJavaMap`
 import scala.collection.convert.ImplicitConversions.`list asScalaBuffer`
 
 package object impl {
+
+  private val logger: Logger = Logger(
+    LoggerFactory.getLogger("io.cequence.openaiscala.vertexai.service.impl")
+  )
 
   def toNonSystemVertexAI(messages: Seq[BaseMessage]): Seq[Content] =
     messages.collect {
@@ -186,10 +192,21 @@ package object impl {
       if (
         responseFormat == ChatCompletionResponseFormatType.json_schema && settings.jsonSchema.isDefined
       ) {
-        settings.jsonSchema.get.structure match {
+        val jsonSchemaDef = settings.jsonSchema.get
+
+        jsonSchemaDef.structure match {
           case Left(schema) =>
+            if (jsonSchemaDef.strict)
+              logger.warn(
+                "OpenAI's 'strict' mode is not supported by VertexAI. The schema will be used without strict validation. Note: VertexAI does not support 'additionalProperties'."
+              )
+
             Some(toVertexJSONSchema(schema))
+
           case Right(_) =>
+            logger.warn(
+              "Map-like legacy JSON schema format is not supported for VertexAI - only structured JsonSchema objects are supported"
+            )
             None
         }
       } else
@@ -229,7 +246,13 @@ package object impl {
       case JsonSchema.Null() =>
         builder.setType(Type.TYPE_UNSPECIFIED)
 
-      case JsonSchema.Object(properties, required) =>
+      case JsonSchema.Object(properties, required, additionalProperties) =>
+        // additional properties not supported
+        if (additionalProperties.nonEmpty && additionalProperties.get)
+          logger.warn(
+            "VertexAI does not support 'additionalProperties' in JSON schema - this field will be ignored"
+          )
+
         val b = builder.setType(Type.OBJECT)
         if (properties.nonEmpty) {
           val propsMap = properties.map { case (key, jsonSchema) =>

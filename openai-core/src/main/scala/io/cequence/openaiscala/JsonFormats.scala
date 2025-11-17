@@ -1258,12 +1258,17 @@ object JsonFormats {
           Json.obj()
 
         case c: JsonSchema.Object =>
-          Json.obj(
+          val baseObj = Json.obj(
             "properties" -> JsObject(
               c.properties.map { case (key, value) => (key, writesAux(value)) }
             ),
             "required" -> c.required
           )
+
+          c.additionalProperties match {
+            case Some(value) => baseObj + ("additionalProperties" -> toJson(value))
+            case None        => baseObj
+          }
 
         case c: JsonSchema.Array =>
           Json.obj(
@@ -1325,9 +1330,12 @@ object JsonFormats {
                 }
 
                 val required = (o \ "required").asOpt[Seq[String]].getOrElse(Nil)
+                val additionalProperties = (o \ "additionalProperties").asOpt[Boolean]
 
                 if (propertiesErrors.isEmpty)
-                  JsSuccess(JsonSchema.Object(properties, required))
+                  JsSuccess(
+                    JsonSchema.ObjectAsMap(properties, required, additionalProperties)
+                  )
                 else
                   JsError(propertiesErrors.reduce(_ ++ _))
               }

@@ -2,7 +2,7 @@ package io.cequence.openaiscala.anthropic.service.impl
 
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.anthropic.JsonFormats
-import io.cequence.openaiscala.anthropic.domain.{ChatRole, Content, Message}
+import io.cequence.openaiscala.anthropic.domain.{ChatRole, Content, Message, OutputFormat}
 import io.cequence.openaiscala.anthropic.domain.Message.{SystemMessage, SystemMessageContent}
 import io.cequence.openaiscala.anthropic.domain.response.ContentBlockDelta
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
@@ -11,6 +11,8 @@ import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithStreamEn
 import org.slf4j.LoggerFactory
 import play.api.libs.json.{JsString, JsValue, Json, Writes}
 import com.typesafe.scalalogging.Logger
+import io.cequence.openaiscala.anthropic.domain.OutputFormat.JsonSchemaFormat
+import io.cequence.openaiscala.domain.JsonSchema
 import io.cequence.wsclient.JsonUtil.JsonOps
 
 trait Anthropic
@@ -58,6 +60,28 @@ trait Anthropic
         Json.toJson(blocks)(Writes.seq(contentBlockBaseWrites))
     }
 
+    def setAdditionalPropertiesToFalseByDefault(schema: JsonSchema): JsonSchema =
+      schema match {
+        case obj: JsonSchema.Object =>
+          obj.copy(
+            properties = obj.properties.map { case (key, value) =>
+              key -> setAdditionalPropertiesToFalseByDefault(value)
+            },
+            additionalProperties = obj.additionalProperties.orElse(Some(false))
+          )
+        case arr: JsonSchema.Array =>
+          arr.copy(items = setAdditionalPropertiesToFalseByDefault(arr.items))
+        case other => other
+      }
+
+    val outputFormat: Option[OutputFormat] = settings.output_format.map {
+      case format: JsonSchemaFormat =>
+        // json schema set to additionalProperties to false on objects if None
+        format.copy(
+          schema = setAdditionalPropertiesToFalseByDefault(format.schema)
+        )
+    }
+
     jsonBodyParams(
       Param.messages -> Some(messageJsons),
       Param.model -> (if (ignoreModel) None else Some(settings.model)),
@@ -94,7 +118,10 @@ trait Anthropic
           Some(Json.toJson(settings.mcp_servers)(Writes.seq(mcpServerURLDefinitionWrites)))
         else
           None
-      }
+      },
+      Param.output_format -> outputFormat.map(
+        Json.toJson(_)(outputFormatFormat)
+      )
     )
   }
 

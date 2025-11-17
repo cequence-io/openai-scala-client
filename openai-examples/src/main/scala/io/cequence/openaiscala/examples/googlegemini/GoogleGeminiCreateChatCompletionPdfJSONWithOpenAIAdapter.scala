@@ -42,7 +42,7 @@ object GoogleGeminiCreateChatCompletionPdfJSONWithOpenAIAdapter
 
   private val jsonSchema =
     JsonSchema.Array(
-      items = JsonSchema.Object(
+      items = JsonSchema.ObjectAsMap(
         properties = Map(
           "itemName" -> JsonSchema.String(),
           "value" -> JsonSchema.String(),

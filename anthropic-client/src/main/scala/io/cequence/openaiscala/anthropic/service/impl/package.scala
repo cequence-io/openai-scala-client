@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.anthropic.service
 
+import com.typesafe.scalalogging.Logger
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.anthropic.domain.CacheControl.Ephemeral
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
@@ -15,7 +16,7 @@ import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicCreateMessageSettings,
   ThinkingSettings
 }
-import io.cequence.openaiscala.anthropic.domain.{CacheControl, Content, Message}
+import io.cequence.openaiscala.anthropic.domain.{CacheControl, Content, Message, OutputFormat}
 import io.cequence.openaiscala.domain.response.{
   ChatCompletionChoiceChunkInfo,
   ChatCompletionChoiceInfo,
@@ -25,7 +26,10 @@ import io.cequence.openaiscala.domain.response.{
   PromptTokensDetails,
   UsageInfo => OpenAIUsageInfo
 }
-import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
+import io.cequence.openaiscala.domain.settings.{
+  ChatCompletionResponseFormatType,
+  CreateChatCompletionSettings
+}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettingsOps.RichCreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{
   ChatRole,
@@ -39,10 +43,15 @@ import io.cequence.openaiscala.domain.{
   UserMessage => OpenAIUserMessage,
   UserSeqMessage => OpenAIUserSeqMessage
 }
+import org.slf4j.LoggerFactory
 
 import java.{util => ju}
 
 package object impl extends AnthropicServiceConsts {
+
+  private val logger: Logger = Logger(
+    LoggerFactory.getLogger("io.cequence.openaiscala.anthropic.service.impl")
+  )
 
   def toAnthropicSystemMessages(
     messages: Seq[OpenAIBaseMessage],
@@ -164,6 +173,33 @@ package object impl extends AnthropicServiceConsts {
   ): AnthropicCreateMessageSettings = {
     val thinkingBudget = settings.anthropicThinkingBudgetTokens
 
+    // handle json schema
+    val responseFormat =
+      settings.response_format_type.getOrElse(ChatCompletionResponseFormatType.text)
+
+    val jsonSchema =
+      if (
+        responseFormat == ChatCompletionResponseFormatType.json_schema && settings.jsonSchema.isDefined
+      ) {
+        val jsonSchemaDef = settings.jsonSchema.get
+
+        jsonSchemaDef.structure match {
+          case Left(schema) =>
+            if (jsonSchemaDef.strict)
+              logger.warn(
+                "OpenAI's 'strict' mode is not supported by Anthropic. The schema will be used without strict validation, and 'additionalProperties' will be set to false by default on all objects."
+              )
+
+            Some(schema)
+          case Right(_) =>
+            logger.warn(
+              "Map-like legacy JSON schema format is not supported for Anthropic - only structured JsonSchema objects are supported"
+            )
+            None
+        }
+      } else
+        None
+
     AnthropicCreateMessageSettings(
       model = settings.model,
       max_tokens = settings.max_tokens.getOrElse(DefaultSettings.CreateMessage.max_tokens),
@@ -172,7 +208,10 @@ package object impl extends AnthropicServiceConsts {
       temperature = settings.temperature,
       top_p = settings.top_p,
       top_k = None,
-      thinking = thinkingBudget.map(ThinkingSettings(_))
+      thinking = thinkingBudget.map(ThinkingSettings(_)),
+      output_format = jsonSchema.map { schema =>
+        OutputFormat.JsonSchemaFormat(schema)
+      }
     )
   }
 

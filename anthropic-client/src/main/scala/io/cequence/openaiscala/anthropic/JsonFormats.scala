@@ -45,6 +45,7 @@ import io.cequence.openaiscala.anthropic.domain.response.{
 }
 import io.cequence.openaiscala.anthropic.domain.settings.{ThinkingSettings, ThinkingType}
 import io.cequence.openaiscala.anthropic.domain._
+import io.cequence.openaiscala.anthropic.domain.OutputFormat
 import io.cequence.openaiscala.anthropic.domain.CodeExecutionToolResultContent.CodeExecutionErrorCode
 import io.cequence.openaiscala.anthropic.domain.BashCodeExecutionToolResultContent.BashCodeExecutionErrorCode
 import io.cequence.openaiscala.anthropic.domain.WebSearchToolResultContent.WebSearchErrorCode
@@ -82,6 +83,7 @@ import io.cequence.openaiscala.anthropic.domain.tools.{
   WebSearchTool
 }
 import io.cequence.openaiscala.JsonFormats.formatWithType
+import io.cequence.openaiscala.domain.JsonSchema
 import io.cequence.wsclient.JsonUtil
 import play.api.libs.functional.syntax._
 import play.api.libs.json.JsonNaming.SnakeCase
@@ -1158,6 +1160,33 @@ trait JsonFormats {
       case tc: ToolChoice.Any  => anyFormat.writes(tc)
       case tc: ToolChoice.Tool => toolFormat.writes(tc)
       case ToolChoice.None     => Json.obj()
+    }
+
+    formatWithType(OFormat(reads, writes))
+  }
+
+  // Output Format
+  implicit lazy val outputFormatFormat: OFormat[OutputFormat] = {
+    val jsonSchemaFormatReads: Reads[OutputFormat.JsonSchemaFormat] = (json: JsValue) =>
+      (json \ "schema").validate[JsonSchema].map { schema =>
+        OutputFormat.JsonSchemaFormat(schema)
+      }
+
+    val jsonSchemaFormatWrites: OWrites[OutputFormat.JsonSchemaFormat] = OWrites { format =>
+      Json.obj(
+        "schema" -> Json.toJson(format.schema)(jsonSchemaFormat)
+      )
+    }
+
+    val reads: Reads[OutputFormat] = Reads { json =>
+      (json \ "type").validate[String].flatMap {
+        case "json_schema" => jsonSchemaFormatReads.reads(json)
+        case other         => JsError(s"Unknown output format type: $other")
+      }
+    }
+
+    val writes: OWrites[OutputFormat] = OWrites { case format: OutputFormat.JsonSchemaFormat =>
+      jsonSchemaFormatWrites.writes(format)
     }
 
     formatWithType(OFormat(reads, writes))

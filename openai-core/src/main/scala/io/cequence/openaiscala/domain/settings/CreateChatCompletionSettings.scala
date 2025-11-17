@@ -67,7 +67,7 @@ case class CreateChatCompletionSettings(
   // resulting in a long-running and seemingly "stuck" request. Also note that the message content may be partially cut off
   // if finish_reason="length", which indicates the generation exceeded max_tokens or the conversation exceeded the max context length.
   // Defaults to text
-  response_format_type: Option[ChatCompletionResponseFormatType] = None, // new
+  response_format_type: Option[ChatCompletionResponseFormatType] = None,
 
   // This feature is in Beta. If specified, our system will make a best effort to sample deterministically,
   // such that repeated requests with the same seed and parameters should return the same result.

@@ -21,10 +21,10 @@ trait TestFixtures {
       structure = schema
     )
 
-  lazy protected val capitalsSchema1 = JsonSchema.Object(
+  lazy protected val capitalsSchema1 = JsonSchema.ObjectAsMap(
     properties = Map(
       "countries" -> JsonSchema.Array(
-        items = JsonSchema.Object(
+        items = JsonSchema.ObjectAsMap(
           properties = Map(
             "country" -> JsonSchema.String(
               description = Some("The name of the country")

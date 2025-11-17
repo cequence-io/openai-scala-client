@@ -107,7 +107,7 @@ trait JsonSchemaReflectionHelper {
     val properties = fieldSchemas.map { case (fieldName, schema, _) => (fieldName, schema) }
 
     JsonSchema.Object(
-      properties.toMap,
+      properties,
       required
     )
   }

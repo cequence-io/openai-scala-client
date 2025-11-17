@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.anthropic.domain.settings
 
+import io.cequence.openaiscala.anthropic.domain.OutputFormat
 import io.cequence.openaiscala.anthropic.domain.skills.Container
 import io.cequence.openaiscala.anthropic.domain.tools.{
   MCPServerURLDefinition,
@@ -62,7 +63,12 @@ final case class AnthropicCreateMessageSettings(
   tool_choice: Option[ToolChoice] = None,
 
   // MCP servers to be utilized in this request. Maximum length: 20
-  mcp_servers: Seq[MCPServerURLDefinition] = Nil
+  mcp_servers: Seq[MCPServerURLDefinition] = Nil,
+
+  // Defines the format for structured output from Claude.
+  // When specified, Claude will generate responses that conform to the provided JSON schema.
+  // Structured outputs are currently available as a public beta feature in the Claude API for Claude Sonnet 4.5 and Claude Opus 4.1.
+  output_format: Option[OutputFormat] = None
 )
 
 final case class ThinkingSettings(
