@@ -10,11 +10,7 @@ import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
   CreateChatCompletionSettings
 }
-import io.cequence.openaiscala.domain.{
-  BaseMessage,
-  ChatRole,
-  UserMessage
-}
+import io.cequence.openaiscala.domain.{BaseMessage, ChatRole, UserMessage}
 import io.cequence.openaiscala.JsonFormats.jsonSchemaFormat
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.{Format, JsObject, JsValue, Json}
