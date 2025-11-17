@@ -3475,7 +3475,7 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
           tools = Seq(
             FunctionTool(
               name = "get_current_weather",
-              parameters = JsonSchema.Object(
+              parameters = JsonSchema.ObjectAsMap(
                 properties = Map(
                   "location" -> JsonSchema.String(
                     description = Some("The city and state, e.g. San Francisco, CA")
