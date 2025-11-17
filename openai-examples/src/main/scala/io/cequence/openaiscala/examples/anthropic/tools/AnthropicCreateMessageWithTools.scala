@@ -20,7 +20,7 @@ object AnthropicCreateMessageWithTools extends ExampleBase[AnthropicService] {
   // Example 1: Custom tool (get_weather)
   private val weatherTool = Tool.custom(
     name = "get_weather",
-    inputSchema = JsonSchema.Object(
+    inputSchema = JsonSchema.ObjectAsMap(
       properties = Map(
         "location" -> JsonSchema.String(
           description = Some("The city and state, e.g. San Francisco, CA")
