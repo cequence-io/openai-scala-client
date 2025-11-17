@@ -13,8 +13,6 @@ import io.cequence.openaiscala.domain.settings.{
 import io.cequence.openaiscala.domain.{
   BaseMessage,
   ChatRole,
-  ModelId,
-  NonOpenAIModelId,
   UserMessage
 }
 import io.cequence.openaiscala.JsonFormats.jsonSchemaFormat
@@ -27,7 +25,7 @@ import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.JsonSchema.JsonSchemaOrMap
 import io.cequence.wsclient.JsonUtil
 
-object OpenAIChatCompletionExtra {
+object OpenAIChatCompletionExtra extends OpenAIServiceConsts {
 
   protected val logger: Logger =
     LoggerFactory.getLogger(this.getClass.getSimpleName.stripSuffix("$"))
@@ -209,98 +207,11 @@ object OpenAIChatCompletionExtra {
       }
   }
 
-  // TODO: move to a config file
-  private val defaultModelsSupportingJsonSchema = Seq(
-    ModelId.gpt_5,
-    ModelId.gpt_5_pro,
-    ModelId.gpt_5_pro_2025_10_06,
-    ModelId.gpt_5_2025_08_07,
-    ModelId.gpt_5_mini,
-    ModelId.gpt_5_mini_2025_08_07,
-    ModelId.gpt_5_nano,
-    ModelId.gpt_5_nano_2025_08_07,
-    ModelId.gpt_5_chat_latest,
-    ModelId.gpt_4_1,
-    ModelId.gpt_4_1_2025_04_14,
-    ModelId.gpt_4_1_mini,
-    ModelId.gpt_4_1_mini_2025_04_14,
-    ModelId.gpt_4_1_nano,
-    ModelId.gpt_4_1_nano_2025_04_14,
-    ModelId.gpt_4_5_preview,
-    ModelId.gpt_4_5_preview_2025_02_27,
-    ModelId.gpt_4o,
-    ModelId.gpt_4o_2024_08_06,
-    ModelId.gpt_4o_2024_11_20,
-    ModelId.o4_mini,
-    ModelId.o4_mini_2025_04_16,
-    ModelId.o3_pro,
-    ModelId.o3_pro_2025_06_10,
-    ModelId.o3,
-    ModelId.o3_2025_04_16,
-    ModelId.o3_mini,
-    ModelId.o3_mini_high,
-    ModelId.o3_mini_2025_01_31,
-    ModelId.o1,
-    ModelId.o1_2024_12_17,
-    ModelId.o1_pro,
-    ModelId.o1_pro_2025_03_19,
-    NonOpenAIModelId.openai_gpt_oss_120b,
-    NonOpenAIModelId.openai_gpt_oss_20b,
-    NonOpenAIModelId.openai_gpt_oss_safeguard_20b,
-    NonOpenAIModelId.moonshotai_kimi_k2_instruct,
-    NonOpenAIModelId.moonshotai_kimi_k2_instruct_0905,
-    NonOpenAIModelId.gemini_2_5_pro,
-    NonOpenAIModelId.gemini_2_5_pro_preview_06_05,
-    NonOpenAIModelId.gemini_2_5_pro_preview_05_06,
-    NonOpenAIModelId.gemini_2_5_pro_preview_03_25,
-    NonOpenAIModelId.gemini_2_5_pro_exp_03_25,
-    NonOpenAIModelId.gemini_2_5_flash,
-    NonOpenAIModelId.gemini_2_5_flash_preview_05_20,
-    NonOpenAIModelId.gemini_2_5_flash_preview_04_17,
-    NonOpenAIModelId.gemini_2_5_flash_preview_04_17_thinking,
-    NonOpenAIModelId.gemini_2_0_flash,
-    NonOpenAIModelId.gemini_2_0_flash_001,
-    NonOpenAIModelId.gemini_2_0_pro_exp_02_05,
-    NonOpenAIModelId.gemini_2_0_pro_exp,
-    NonOpenAIModelId.gemini_2_0_flash_001,
-    NonOpenAIModelId.gemini_2_0_flash,
-    NonOpenAIModelId.gemini_2_0_flash_exp,
-    NonOpenAIModelId.gemini_1_5_flash_8b_exp_0924,
-    NonOpenAIModelId.gemini_1_5_flash_8b_exp_0827,
-    NonOpenAIModelId.gemini_1_5_flash_8b_latest,
-    NonOpenAIModelId.gemini_1_5_flash_8b_001,
-    NonOpenAIModelId.gemini_1_5_flash_8b,
-    NonOpenAIModelId.gemini_1_5_flash_002,
-    NonOpenAIModelId.gemini_1_5_flash,
-    NonOpenAIModelId.gemini_1_5_flash_001,
-    NonOpenAIModelId.gemini_1_5_flash_latest,
-    NonOpenAIModelId.gemini_1_5_pro,
-    NonOpenAIModelId.gemini_1_5_pro_002,
-    NonOpenAIModelId.gemini_1_5_pro_001,
-    NonOpenAIModelId.gemini_1_5_pro_latest,
-    NonOpenAIModelId.gemini_exp_1206,
-    NonOpenAIModelId.grok_2,
-    NonOpenAIModelId.grok_2_1212,
-    NonOpenAIModelId.grok_2_latest,
-    NonOpenAIModelId.grok_3,
-    NonOpenAIModelId.grok_3_beta,
-    NonOpenAIModelId.grok_3_latest,
-    NonOpenAIModelId.grok_3_fast,
-    NonOpenAIModelId.grok_3_fast_beta,
-    NonOpenAIModelId.grok_3_fast_latest,
-    NonOpenAIModelId.grok_3_mini,
-    NonOpenAIModelId.grok_3_mini_beta,
-    NonOpenAIModelId.grok_3_mini_latest,
-    NonOpenAIModelId.grok_3_mini_fast,
-    NonOpenAIModelId.grok_3_mini_fast_beta,
-    NonOpenAIModelId.grok_3_mini_fast_latest,
-    NonOpenAIModelId.grok_4,
-    NonOpenAIModelId.grok_4_latest,
-    NonOpenAIModelId.grok_4_0709,
-    NonOpenAIModelId.grok_4_fast_reasoning,
-    NonOpenAIModelId.grok_4_fast_non_reasoning,
-    NonOpenAIModelId.grok_code_fast_1
-  )
+  val defaultModelsSupportingJsonSchema = {
+    val config = loadDefaultConfig()
+    import scala.jdk.CollectionConverters._
+    config.getStringList(s"$configPrefix.models-supporting-json-schema").asScala.toSeq
+  }
 
   def handleOutputJsonSchema(
     messages: Seq[BaseMessage],
