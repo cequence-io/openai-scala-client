@@ -17,6 +17,7 @@ import play.api.libs.json.{Format, JsObject, JsValue, Json}
 
 import scala.concurrent.{ExecutionContext, Future}
 import com.fasterxml.jackson.core.JsonProcessingException
+import com.typesafe.config.Config
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.JsonSchema.JsonSchemaOrMap
 import io.cequence.wsclient.JsonUtil
@@ -127,7 +128,8 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts {
       maxRetries: Option[Int] = Some(defaultMaxRetries),
       retryOnAnyError: Boolean = false,
       taskNameForLogging: Option[String] = None,
-      jsonSchemaModels: Seq[String] = defaultModelsSupportingJsonSchema,
+      jsonSchemaModels: Seq[String] = Nil,
+      config: Option[Config] = None,
       enforceJsonSchemaMode: Boolean = false,
       parseJson: String => JsValue = defaultParseJsonOrRepair
     )(
@@ -144,6 +146,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts {
           settings,
           taskNameForLoggingFinal,
           jsonSchemaModels,
+          config,
           enforceJsonSchemaMode
         )
       } else {
@@ -203,19 +206,42 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts {
       }
   }
 
-  val defaultModelsSupportingJsonSchema = {
-    val config = loadDefaultConfig()
+  private lazy val defaultConfig = loadDefaultConfig()
+
+  private def getJsonSchemaModels(
+    jsonSchemaModels: Seq[String],
+    config: Option[Config]
+  ): Seq[String] = {
     import scala.collection.JavaConverters._
-    config.getStringList(s"$configPrefix.models-supporting-json-schema").asScala.toSeq
+    val cfg = config.getOrElse(defaultConfig)
+    val configPath = s"$configPrefix.models-supporting-json-schema"
+    val configModels = if (cfg.hasPath(configPath)) {
+      cfg.getStringList(configPath).asScala.toSeq
+    } else {
+      Nil
+    }
+
+    if (jsonSchemaModels.isEmpty) {
+      configModels
+    } else if (config.isDefined) {
+      // Both explicit models and custom config provided - merge and deduplicate
+      (jsonSchemaModels ++ configModels).distinct
+    } else {
+      // Only explicit models provided
+      jsonSchemaModels
+    }
   }
 
   def handleOutputJsonSchema(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings,
     taskNameForLogging: String,
-    jsonSchemaModels: Seq[String] = defaultModelsSupportingJsonSchema,
+    jsonSchemaModels: Seq[String] = Nil,
+    config: Option[Config] = None,
     enforceJsonSchemaMode: Boolean = false
   ): (Seq[BaseMessage], CreateChatCompletionSettings) = {
+    val jsonSchemaModelsFinal = getJsonSchemaModels(jsonSchemaModels, config)
+
     val jsonSchemaDef = settings.jsonSchema.getOrElse(
       throw new IllegalArgumentException("JSON schema is not defined but expected.")
     )
@@ -226,7 +252,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts {
       // to be more robust we also match models with a suffix
       if (
         enforceJsonSchemaMode ||
-        jsonSchemaModels.exists(model =>
+        jsonSchemaModelsFinal.exists(model =>
           settings.model.equals(model) || settings.model.endsWith("-" + model)
         )
       ) {

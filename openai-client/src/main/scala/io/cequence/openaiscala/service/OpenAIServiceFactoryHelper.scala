@@ -2,6 +2,7 @@ package io.cequence.openaiscala.service
 
 import akka.stream.Materializer
 import com.typesafe.config.{Config, ConfigFactory}
+import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.wsclient.ConfigImplicits._
 import io.cequence.wsclient.domain.WsRequestContext
 import io.cequence.wsclient.service.ws.Timeouts
@@ -50,8 +51,17 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts {
       pooledConnectionIdleTimeout = intTimeoutAux("pooledConnectionIdleTimeout")
     )
 
+    val apiKey = config
+      .optionalString(s"$configPrefix.apiKey")
+      .getOrElse(
+        throw new OpenAIScalaClientException(
+          s"API key is not defined in the config at '$configPrefix.apiKey'. " +
+            "Please set the OPENAI_SCALA_CLIENT_API_KEY environment variable or provide an API key explicitly."
+        )
+      )
+
     apply(
-      apiKey = config.getString(s"$configPrefix.apiKey"),
+      apiKey = apiKey,
       orgId = config.optionalString(s"$configPrefix.orgId"),
       timeouts = timeouts.toOption
     )
