@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.service
 
-import com.typesafe.config.{Config, ConfigFactory}
 import io.cequence.openaiscala.domain.ModelId
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.responsesapi.{
@@ -14,13 +13,6 @@ import io.cequence.openaiscala.domain.responsesapi.{
 trait OpenAIServiceConsts {
 
   protected val defaultCoreUrl = "https://api.openai.com/v1/"
-
-  protected val configPrefix = "openai-scala-client"
-
-  protected val configFileName = "openai-scala-client.conf"
-
-  protected def loadDefaultConfig(): Config =
-    ConfigFactory.load(configFileName)
 
   object DefaultSettings {
 
