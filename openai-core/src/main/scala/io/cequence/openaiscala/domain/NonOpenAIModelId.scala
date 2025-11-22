@@ -202,6 +202,10 @@ object NonOpenAIModelId {
   val qwen2_72b_instruct = "Qwen/Qwen2-72B-Instruct" // Together AI
 
   // Google Gemini and Vertex AI
+
+  // Input token limit: 1048576; Output token limit: 65536
+  val gemini_3_pro = "gemini-3-pro"
+  val gemini_3_pro_preview = "gemini-3-pro-preview"
   val gemini_2_5_pro = "gemini-2.5-pro"
   val gemini_2_5_pro_preview_06_05 = "gemini-2.5-pro-preview-06-05"
   val gemini_2_5_pro_preview_05_06 = "gemini-2.5-pro-preview-05-06"
@@ -303,6 +307,10 @@ object NonOpenAIModelId {
   val solar_10_7b_instruct_v1_0 = "upstage/SOLAR-10.7B-Instruct-v1.0" // Together AI
 
   // Grok
+  // context 2,000,000
+  val grok_4_1_fast_reasoning = "grok-4-1-fast-reasoning"
+  // context 2,000,000
+  val grok_4_1_fast_non_reasoning = "grok-4-1-fast-non-reasoning"
   // context 256,000
   val grok_4 = "grok-4"
   val grok_4_latest = "grok-4-latest"
