@@ -23,12 +23,14 @@ import io.cequence.openaiscala.domain.response.{
   ChatCompletionChunkResponse,
   ChatCompletionResponse,
   ChunkMessageSpec,
+  CompletionTokenDetails,
   PromptTokensDetails,
   UsageInfo => OpenAIUsageInfo
 }
 import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
-  CreateChatCompletionSettings
+  CreateChatCompletionSettings,
+  ReasoningEffort
 }
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettingsOps.RichCreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{
@@ -43,11 +45,12 @@ import io.cequence.openaiscala.domain.{
   UserMessage => OpenAIUserMessage,
   UserSeqMessage => OpenAIUserSeqMessage
 }
+import io.cequence.openaiscala.service.HasOpenAIConfig
 import org.slf4j.LoggerFactory
 
 import java.{util => ju}
 
-package object impl extends AnthropicServiceConsts {
+package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
 
   private val logger: Logger = Logger(
     LoggerFactory.getLogger("io.cequence.openaiscala.anthropic.service.impl")
@@ -168,10 +171,61 @@ package object impl extends AnthropicServiceConsts {
     }
   }
 
+  /**
+   * Converts OpenAI's reasoning_effort to Anthropic's thinking budget using the configured
+   * mapping.
+   *
+   * @param reasoningEffort
+   *   The reasoning effort level from OpenAI settings
+   * @return
+   *   Thinking budget in tokens, or None if reasoning_effort is None or budget is 0
+   */
+  private def toThinkingBudget(
+    reasoningEffort: Option[ReasoningEffort]
+  ): Option[Int] = {
+    import io.cequence.wsclient.ConfigImplicits._
+
+    reasoningEffort.flatMap { effort =>
+      val effortKey = effort.toString.toLowerCase
+      val configPath =
+        s"$configPrefix.reasoning-effort-thinking-budget-mapping.$effortKey.anthropic"
+
+      clientConfig.optionalInt(configPath) match {
+        case Some(budget) =>
+          logger.debug(
+            s"Converting reasoning effort '$effortKey' to Anthropic thinking budget: $budget"
+          )
+
+          if (budget == 0) {
+            // budget = 0 means "don't enable extended thinking at all"
+            // Return None to omit the thinking block instead of sending budget_tokens=0
+            None
+          } else if (budget < 1024) {
+            // Anthropic minimum is 1024
+            logger.warn(
+              s"Thinking budget $budget is below Anthropic minimum of 1024. Clamping to 1024."
+            )
+            Some(1024)
+          } else {
+            Some(budget)
+          }
+
+        case None =>
+          logger.warn(
+            s"No thinking budget mapping found for reasoning effort '$effortKey' in config path: $configPath"
+          )
+          None
+      }
+    }
+  }
+
   def toAnthropicSettings(
     settings: CreateChatCompletionSettings
   ): AnthropicCreateMessageSettings = {
-    val thinkingBudget = settings.anthropicThinkingBudgetTokens
+    // Prioritize explicit thinking budget, fall back to reasoning_effort conversion
+    val thinkingBudget = settings.anthropicThinkingBudgetTokens.orElse(
+      toThinkingBudget(settings.reasoning_effort)
+    )
 
     // handle json schema
     val responseFormat =
@@ -200,12 +254,31 @@ package object impl extends AnthropicServiceConsts {
       } else
         None
 
+    // When thinking is enabled, temperature must be 1.0
+    val temperature = thinkingBudget match {
+      case Some(_) =>
+        // Thinking is enabled
+        settings.temperature match {
+          case Some(temp) if temp != 1.0 =>
+            logger.warn(
+              s"Temperature is set to $temp but thinking is enabled. Anthropic requires temperature=1 when using extended thinking. Overriding to 1.0."
+            )
+            Some(1.0)
+          case other =>
+            // No temperature set or already 1.0, keep as is
+            other
+        }
+      case None =>
+        // No thinking, use original temperature
+        settings.temperature
+    }
+
     AnthropicCreateMessageSettings(
       model = settings.model,
       max_tokens = settings.max_tokens.getOrElse(DefaultSettings.CreateMessage.max_tokens),
       metadata = Map.empty,
       stop_sequences = settings.stop,
-      temperature = settings.temperature,
+      temperature = temperature,
       top_p = settings.top_p,
       top_k = None,
       thinking = thinkingBudget.map(ThinkingSettings(_)),
@@ -215,7 +288,15 @@ package object impl extends AnthropicServiceConsts {
     )
   }
 
-  def toOpenAI(response: CreateMessageResponse): ChatCompletionResponse =
+  def toOpenAI(response: CreateMessageResponse): ChatCompletionResponse = {
+    // Extract thinking blocks and estimate token count
+    val thinkingText = response.thinkingText
+    val thinkingTokens = if (thinkingText.nonEmpty) {
+      Some(estimateTokenCount(thinkingText))
+    } else {
+      None
+    }
+
     ChatCompletionResponse(
       id = response.id,
       created = new ju.Date(),
@@ -229,9 +310,10 @@ package object impl extends AnthropicServiceConsts {
           logprobs = None
         )
       ),
-      usage = Some(toOpenAI(response.usage)),
+      usage = Some(toOpenAI(response.usage, thinkingTokens)),
       originalResponse = Some(response)
     )
+  }
 
   def toOpenAI(blockDelta: ContentBlockDelta): ChatCompletionChunkResponse =
     ChatCompletionChunkResponse(
@@ -258,7 +340,7 @@ package object impl extends AnthropicServiceConsts {
   def toOpenAIAssistantMessage(content: ContentBlocks): OpenAIAssistantMessage = {
     val textContents = content.blocks.collect { case ContentBlockBase(TextBlock(text, _), _) =>
       text
-    } // TODO
+    }
     // TODO: log if there is more than one text content
     if (textContents.isEmpty) {
       throw new IllegalArgumentException("No text content found in the response")
@@ -270,7 +352,10 @@ package object impl extends AnthropicServiceConsts {
   private def concatenateMessages(messageContent: Seq[String]): String =
     messageContent.mkString("\n")
 
-  def toOpenAI(usageInfo: UsageInfo): OpenAIUsageInfo = {
+  def toOpenAI(
+    usageInfo: UsageInfo,
+    thinkingTokens: Option[Int] = None
+  ): OpenAIUsageInfo = {
     val promptTokens =
       usageInfo.input_tokens +
         usageInfo.cache_creation_input_tokens.getOrElse(0) +
@@ -286,7 +371,23 @@ package object impl extends AnthropicServiceConsts {
           audio_tokens = None
         )
       ),
-      completion_tokens_details = None
+      completion_tokens_details = thinkingTokens.map { tokens =>
+        CompletionTokenDetails(
+          reasoning_tokens = tokens,
+          accepted_prediction_tokens = None,
+          rejected_prediction_tokens = None
+        )
+      }
     )
+  }
+
+  /**
+   * Estimates the number of tokens in a given text using a simple heuristic. This is an
+   * approximation: tokens ≈ characters / 4 (average for English text) For more accurate
+   * counting, a proper tokenizer should be used.
+   */
+  // TODO
+  private def estimateTokenCount(text: String): Int = {
+    math.max(1, text.length / 4)
   }
 }

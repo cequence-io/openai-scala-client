@@ -6,14 +6,15 @@ import io.cequence.openaiscala.gemini.domain.ChatRole.User
 import io.cequence.openaiscala.gemini.domain.Content
 import io.cequence.openaiscala.gemini.domain.settings.{
   GenerateContentSettings,
-  GenerationConfig
+  GenerationConfig,
+  ThinkingConfig
 }
 import io.cequence.openaiscala.gemini.service.{GeminiService, GeminiServiceFactory}
 
 import scala.concurrent.Future
 
 // requires `openai-scala-google-gemini-client` as a dependency and `GOOGLE_API_KEY` environment variable to be set
-object GoogleGeminiGenerateContent extends ExampleBase[GeminiService] {
+object GoogleGeminiGenerateContentWithThinking extends ExampleBase[GeminiService] {
 
   override protected val service: GeminiService = GeminiServiceFactory()
 
@@ -34,12 +35,18 @@ object GoogleGeminiGenerateContent extends ExampleBase[GeminiService] {
           generationConfig = Some(
             GenerationConfig(
               maxOutputTokens = Some(2000),
-              temperature = Some(0.2)
+              temperature = Some(0.2),
+              thinkingConfig = Some(
+                ThinkingConfig(
+                  thinkingBudget = Some(200)
+                )
+              )
             )
           )
         )
       )
       .map { response =>
         println(response.contentHeadText)
+        println(response.usageMetadata)
       }
 }

@@ -16,6 +16,8 @@
     <logger name="PlayWSStreamClientEngine" level="INFO"/>
 
     <logger name="OpenAIChatCompletionExtra" level="DEBUG"/>
+    <logger name="io.cequence.openaiscala.anthropic.service.impl" level="DEBUG"/>
+    <logger name="io.cequence.openaiscala.gemini.service.impl.OpenAIGeminiChatCompletionService" level="DEBUG"/>
 
     <!--
     <logger name="com.ning.http.client" level="INFO"/>
