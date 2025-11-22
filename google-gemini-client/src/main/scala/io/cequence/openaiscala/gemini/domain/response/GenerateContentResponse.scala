@@ -225,6 +225,8 @@ case class CitationSource(
  *   Total number of tokens across all the generated response candidates.
  * @param totalTokenCount
  *   Total token count for the generation request (prompt + response candidates).
+ * @param thoughtsTokenCount
+ *   Optional. Number of tokens used for thinking/reasoning when thinkingConfig is enabled.
  * @param promptTokensDetails
  *   Output only. List of modalities that were processed in the request input.
  * @param cacheTokensDetails
@@ -237,6 +239,7 @@ case class UsageMetadata(
   cachedContentTokenCount: Option[Int] = None,
   candidatesTokenCount: Option[Int] = None,
   totalTokenCount: Int,
+  thoughtsTokenCount: Option[Int] = None,
   promptTokensDetails: Seq[ModalityTokenCount] = Nil,
   cacheTokensDetails: Seq[ModalityTokenCount] = Nil,
   candidatesTokensDetails: Seq[ModalityTokenCount] = Nil

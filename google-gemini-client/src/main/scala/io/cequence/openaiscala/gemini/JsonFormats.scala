@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.gemini
 
+import com.typesafe.scalalogging.Logger
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.gemini.domain.Expiration.{ExpireTime, TTL}
 import io.cequence.openaiscala.gemini.domain.response._
@@ -11,10 +12,13 @@ import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.JsonUtil.enumFormat
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
+import org.slf4j.LoggerFactory
 
 object JsonFormats extends JsonFormats
 
 trait JsonFormats {
+
+  private val logger: Logger = Logger(LoggerFactory.getLogger(this.getClass))
 
   // Content and Parts
   implicit val chatRoleFormat: Format[ChatRole] = enumFormat(ChatRole.values: _*)
@@ -60,19 +64,32 @@ trait JsonFormats {
   }
 
   implicit val partReads: Reads[Part] = { (json: JsValue) =>
-    json.validate[JsObject].map { (jsonObject: JsObject) =>
-      assert(jsonObject.fields.size == 1)
-      val (prefixFieldName, prefixJson) = jsonObject.fields.head
+    json.validate[JsObject].flatMap { (jsonObject: JsObject) =>
+      // Filter out the thoughtSignature field if present (used for thinking blocks)
+      val fields = jsonObject.fields.filterNot(_._1 == "thoughtSignature")
 
-      PartPrefix.of(prefixFieldName) match {
-        case PartPrefix.text                => json.as[Part.Text]
-        case PartPrefix.inlineData          => prefixJson.as[Part.InlineData]
-        case PartPrefix.functionCall        => prefixJson.as[Part.FunctionCall]
-        case PartPrefix.functionResponse    => prefixJson.as[Part.FunctionResponse]
-        case PartPrefix.fileData            => prefixJson.as[Part.FileData]
-        case PartPrefix.executableCode      => prefixJson.as[Part.ExecutableCode]
-        case PartPrefix.codeExecutionResult => prefixJson.as[Part.CodeExecutionResult]
-        case _ => throw new OpenAIScalaClientException(s"Unknown part type: $prefixFieldName")
+      if (fields.isEmpty) {
+        JsError("Part object has no fields after filtering thoughtSignature")
+      } else {
+        // Warn if there are multiple fields (unexpected structure)
+        if (fields.size > 1) {
+          logger.warn(
+            s"Part object has ${fields.size} fields (expected 1): ${fields.map(_._1).mkString(", ")}. Using first field."
+          )
+        }
+
+        val (prefixFieldName, prefixJson) = fields.head
+
+        PartPrefix.of(prefixFieldName) match {
+          case PartPrefix.text                => json.validate[Part.Text]
+          case PartPrefix.inlineData          => prefixJson.validate[Part.InlineData]
+          case PartPrefix.functionCall        => prefixJson.validate[Part.FunctionCall]
+          case PartPrefix.functionResponse    => prefixJson.validate[Part.FunctionResponse]
+          case PartPrefix.fileData            => prefixJson.validate[Part.FileData]
+          case PartPrefix.executableCode      => prefixJson.validate[Part.ExecutableCode]
+          case PartPrefix.codeExecutionResult => prefixJson.validate[Part.CodeExecutionResult]
+          case _ => JsError(s"Unknown part type: $prefixFieldName")
+        }
       }
     }
   }
@@ -219,6 +236,10 @@ trait JsonFormats {
     Format(speechConfigReads, speechConfigWrites)
 
   implicit val modalityFormat: Format[Modality] = enumFormat(Modality.values: _*)
+  implicit val thinkingLevelFormat: Format[ThinkingLevel] = enumFormat(
+    ThinkingLevel.values: _*
+  )
+  implicit val thinkingConfigFormat: Format[ThinkingConfig] = Json.format[ThinkingConfig]
   implicit val generationConfigFormat: Format[GenerationConfig] = Json.format[GenerationConfig]
 
   // Grounding Attribution and Metadata

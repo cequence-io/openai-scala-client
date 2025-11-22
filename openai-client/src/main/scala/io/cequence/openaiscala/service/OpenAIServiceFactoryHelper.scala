@@ -9,7 +9,7 @@ import io.cequence.wsclient.service.ws.Timeouts
 
 import scala.concurrent.ExecutionContext
 
-trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts {
+trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts with HasOpenAIConfig {
 
   def apply(
     apiKey: String,
@@ -33,7 +33,7 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts {
     implicit ec: ExecutionContext,
     materializer: Materializer
   ): F =
-    apply(loadDefaultConfig)
+    apply(clientConfig)
 
   def apply(
     config: Config

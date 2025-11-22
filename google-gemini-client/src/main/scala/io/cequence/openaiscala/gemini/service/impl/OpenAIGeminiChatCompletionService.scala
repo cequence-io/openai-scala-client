@@ -10,15 +10,18 @@ import io.cequence.openaiscala.domain.response.{
   ChatCompletionChunkResponse,
   ChatCompletionResponse,
   ChunkMessageSpec,
+  CompletionTokenDetails,
   PromptTokensDetails,
   UsageInfo => OpenAIUsageInfo
 }
-import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
+import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, ReasoningEffort}
 import io.cequence.openaiscala.domain.{
   AssistantMessage,
   BaseMessage,
   DeveloperMessage,
   ImageURLContent,
+  JsonSchema,
+  NonOpenAIModelId,
   SystemMessage,
   TextContent,
   UserMessage,
@@ -31,18 +34,19 @@ import io.cequence.openaiscala.gemini.domain.response.{GenerateContentResponse, 
 import io.cequence.openaiscala.gemini.domain.settings.CreateChatCompletionSettingsOps._
 import io.cequence.openaiscala.gemini.domain.settings.{
   GenerateContentSettings,
-  GenerationConfig
+  GenerationConfig,
+  ThinkingConfig
 }
 import io.cequence.openaiscala.gemini.domain.{CachedContent, ChatRole, Content, Part}
 import io.cequence.openaiscala.gemini.service.GeminiService
 import io.cequence.openaiscala.service.{
+  HasOpenAIConfig,
   OpenAIChatCompletionService,
   OpenAIChatCompletionStreamedServiceExtra
 }
 
 import scala.concurrent.{ExecutionContext, Future}
 import io.cequence.openaiscala.domain.settings.ChatCompletionResponseFormatType
-import io.cequence.openaiscala.domain.JsonSchema
 import io.cequence.openaiscala.gemini.domain.Schema
 import com.typesafe.scalalogging.Logger
 import io.cequence.openaiscala.gemini.domain.SchemaType
@@ -55,7 +59,8 @@ private[service] class OpenAIGeminiChatCompletionService(
 )(
   implicit executionContext: ExecutionContext
 ) extends OpenAIChatCompletionService
-    with OpenAIChatCompletionStreamedServiceExtra {
+    with OpenAIChatCompletionStreamedServiceExtra
+    with HasOpenAIConfig {
 
   protected val logger: Logger = Logger(LoggerFactory.getLogger(this.getClass))
 
@@ -266,7 +271,11 @@ private[service] class OpenAIGeminiChatCompletionService(
           responseLogprobs = settings.logprobs,
           logprobs = settings.top_logprobs,
           enableEnhancedCivicAnswers = None,
-          speechConfig = None
+          speechConfig = None,
+          thinkingConfig = toThinkingConfig(
+            settings.model,
+            settings.reasoning_effort
+          )
         )
       ),
       cachedContent = None
@@ -292,13 +301,71 @@ private[service] class OpenAIGeminiChatCompletionService(
         logger.warn(s"OpenAI param '$fieldName' is not yet supported by Gemini. Skipping...")
       }
 
-    notSupported(_.reasoning_effort, "reasoning_effort")
+    // reasoning_effort is now supported via thinkingConfig conversion
     notSupported(_.service_tier, "service_tier")
     notSupported(_.parallel_tool_calls, "parallel_tool_calls")
     notSupportedCollection(_.metadata, "metadata")
     notSupportedCollection(_.logit_bias, "logit_bias")
     notSupported(_.user, "user")
     notSupported(_.store, "store")
+  }
+
+  /**
+   * Converts OpenAI's reasoning_effort to Gemini's ThinkingConfig using the configured
+   * mapping.
+   *
+   * @param reasoningEffort
+   *   The reasoning effort level from OpenAI settings
+   * @return
+   *   ThinkingConfig with appropriate thinkingBudget, or None if reasoning_effort is None
+   */
+  private def toThinkingConfig(
+    model: String,
+    reasoningEffort: Option[ReasoningEffort]
+  ): Option[ThinkingConfig] = {
+    import io.cequence.wsclient.ConfigImplicits._
+
+    reasoningEffort.flatMap { effort =>
+      val effortKey = effort.toString.toLowerCase
+      val configPath =
+        s"$configPrefix.reasoning-effort-thinking-budget-mapping.$effortKey.gemini"
+
+      clientConfig
+        .optionalInt(configPath)
+        .flatMap { budget =>
+          logger.debug(
+            s"Converting reasoning effort '$effortKey' to thinking budget: $budget"
+          )
+
+          // budget = 0 has different meanings:
+          // - For 2.5 Pro: 0 is out of range (min is 128), so we cannot turn it off completely, therefore
+          // setting it the minimal budget of 128
+          val budgetFinal =
+            if (
+              budget == 0 && (
+                model.startsWith(NonOpenAIModelId.gemini_3_pro) ||
+                  model.startsWith(NonOpenAIModelId.gemini_2_5_pro)
+              )
+            )
+              128
+            else
+              budget
+
+          Some(
+            ThinkingConfig(
+              includeThoughts = Some(false), // typically don't include thoughts in response
+              thinkingBudget = Some(budgetFinal),
+              thinkingLevel = None // let budget control the thinking depth
+            )
+          )
+        }
+        .orElse {
+          logger.warn(
+            s"No thinking budget mapping found for reasoning effort '$effortKey' in config path: $configPath"
+          )
+          None
+        }
+    }
   }
 
   private def toGeminiJSONSchema(
@@ -454,7 +521,14 @@ private[service] class OpenAIGeminiChatCompletionService(
           cached_tokens = usageMetadata.cachedContentTokenCount.getOrElse(0),
           audio_tokens = None
         )
-      )
+      ),
+      completion_tokens_details = usageMetadata.thoughtsTokenCount.map { thinkingTokens =>
+        CompletionTokenDetails(
+          reasoning_tokens = thinkingTokens,
+          accepted_prediction_tokens = None,
+          rejected_prediction_tokens = None
+        )
+      }
     )
 
   /**
