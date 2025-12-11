@@ -57,7 +57,9 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
         properties = Seq(
           "location" -> JsonSchema.String(Some("The city and state"))
         ),
-        required = Seq("location")
+        required = Seq("location"),
+        additionalProperties =
+          Some(false) // strict = true implies additionalProperties = false
       )
 
       testCodec[ToolChoice](
@@ -122,7 +124,9 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
         properties = Seq(
           "location" -> JsonSchema.String(Some("The city and state, e.g. San Francisco, CA"))
         ),
-        required = Seq("location")
+        required = Seq("location"),
+        additionalProperties =
+          Some(false) // strict = true implies additionalProperties = false
       )
 
       testCodec[Tool](
@@ -3560,7 +3564,9 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
                   "code" -> JsonSchema.String(Some("The code to execute")),
                   "language" -> JsonSchema.String(Some("Programming language"))
                 ),
-                required = Seq("code")
+                required = Seq("code"),
+                additionalProperties =
+                  Some(false) // strict = true implies additionalProperties = false
               ),
               strict = true,
               description = Some("Execute code in the specified language")
@@ -3601,7 +3607,8 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
           |        }
           |      },
           |      "required" : [ "code" ],
-          |      "type" : "object"
+          |      "type" : "object",
+          |      "additionalProperties" : false
           |    },
           |    "strict" : true,
           |    "description" : "Execute code in the specified language",
