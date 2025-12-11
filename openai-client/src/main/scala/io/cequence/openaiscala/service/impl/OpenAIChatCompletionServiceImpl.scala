@@ -72,9 +72,16 @@ trait ChatCompletionBodyMaker {
     ModelId.o4_mini_2025_04_16
   )
 
-  private val gpt5Models = Set(
+  private val gpt5_1And2Models = Seq(
+    ModelId.gpt_5_2,
+    ModelId.gpt_5_2_2025_12_11,
+    ModelId.gpt_5_2_pro,
+    ModelId.gpt_5_2_pro_2025_12_11,
     ModelId.gpt_5_1,
-    ModelId.gpt_5_1_2025_11_13,
+    ModelId.gpt_5_1_2025_11_13
+  )
+
+  private val gpt5Models = Set(
     ModelId.gpt_5_pro,
     ModelId.gpt_5_pro_2025_10_06,
     ModelId.gpt_5,
@@ -110,6 +117,8 @@ trait ChatCompletionBodyMaker {
         ChatCompletionSettingsConversions.o(settings)
       else if (gpt5Models.contains(settings.model))
         ChatCompletionSettingsConversions.gpt5(settings)
+      else if (gpt5_1And2Models.contains(settings.model))
+        ChatCompletionSettingsConversions.gpt5_1And2(settings)
       else
         settings
 
