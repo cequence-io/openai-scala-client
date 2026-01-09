@@ -43,7 +43,12 @@ import io.cequence.openaiscala.anthropic.domain.response.{
   CreateMessageResponse,
   DeltaBlock
 }
-import io.cequence.openaiscala.anthropic.domain.settings.{ThinkingSettings, ThinkingType}
+import io.cequence.openaiscala.anthropic.domain.settings.{
+  OutputConfig,
+  OutputEffort,
+  ThinkingSettings,
+  ThinkingType
+}
 import io.cequence.openaiscala.anthropic.domain._
 import io.cequence.openaiscala.anthropic.domain.OutputFormat
 import io.cequence.openaiscala.anthropic.domain.CodeExecutionToolResultContent.CodeExecutionErrorCode
@@ -896,6 +901,11 @@ trait JsonFormats {
     JsonUtil.enumFormat[ThinkingType](ThinkingType.values: _*)
   implicit lazy val thinkingSettingsFormat: Format[ThinkingSettings] =
     Json.format[ThinkingSettings]
+
+  implicit lazy val outputEffortFormat: Format[OutputEffort] =
+    JsonUtil.enumFormat[OutputEffort](OutputEffort.values: _*)
+  implicit lazy val outputConfigFormat: Format[OutputConfig] =
+    Json.format[OutputConfig]
 
   // Skills API formats
   implicit lazy val skillSourceFormat: Format[SkillSource] =

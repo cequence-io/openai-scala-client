@@ -524,7 +524,7 @@ private[service] class OpenAIGeminiChatCompletionService(
       ),
       completion_tokens_details = usageMetadata.thoughtsTokenCount.map { thinkingTokens =>
         CompletionTokenDetails(
-          reasoning_tokens = thinkingTokens,
+          reasoning_tokens = Some(thinkingTokens),
           accepted_prediction_tokens = None,
           rejected_prediction_tokens = None
         )

@@ -198,4 +198,5 @@ sealed trait ServiceTier extends EnumValue
 object ServiceTier {
   case object auto extends ServiceTier
   case object default extends ServiceTier
+  case object flex extends ServiceTier
 }

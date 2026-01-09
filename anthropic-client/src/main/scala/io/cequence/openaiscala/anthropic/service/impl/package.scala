@@ -373,7 +373,7 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
       ),
       completion_tokens_details = thinkingTokens.map { tokens =>
         CompletionTokenDetails(
-          reasoning_tokens = tokens,
+          reasoning_tokens = Some(tokens),
           accepted_prediction_tokens = None,
           rejected_prediction_tokens = None
         )

@@ -11,9 +11,9 @@ case class UsageInfo(
 )
 
 case class CompletionTokenDetails(
-  reasoning_tokens: Int,
-  accepted_prediction_tokens: Option[Int],
-  rejected_prediction_tokens: Option[Int]
+  reasoning_tokens: Option[Int] = None,
+  accepted_prediction_tokens: Option[Int] = None,
+  rejected_prediction_tokens: Option[Int] = None
 )
 
 case class PromptTokensDetails(

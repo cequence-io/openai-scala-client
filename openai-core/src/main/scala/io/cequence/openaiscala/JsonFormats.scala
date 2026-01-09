@@ -378,7 +378,8 @@ object JsonFormats {
 
   implicit val serviceTierFormat: Format[ServiceTier] = enumFormat[ServiceTier](
     ServiceTier.auto,
-    ServiceTier.default
+    ServiceTier.default,
+    ServiceTier.flex
   )
 
   implicit lazy val topLogprobInfoFormat: Format[TopLogprobInfo] = {
