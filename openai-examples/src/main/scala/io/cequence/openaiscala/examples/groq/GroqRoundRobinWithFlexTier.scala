@@ -50,7 +50,8 @@ object GroqRoundRobinWithFlexTier extends ExampleBase[OpenAIChatCompletionServic
       msg => logger.info(msg)
     )
 
-    implicit val retrySettings: RetrySettings = RetrySettings(maxRetries = 1).constantInterval(0.millis)
+    implicit val retrySettings: RetrySettings =
+      RetrySettings(maxRetries = 1).constantInterval(0.millis)
 
     adapters.retry(
       adapters.roundRobin(groqFlexService, groqStandardService),

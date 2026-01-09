@@ -15,7 +15,8 @@ import scala.concurrent.Future
 /**
  * Requires `GROQ_API_KEY` environment variable to be set.
  */
-object GroqCreateChatCompletionServiceTierFlex extends ExampleBase[OpenAIChatCompletionService] {
+object GroqCreateChatCompletionServiceTierFlex
+    extends ExampleBase[OpenAIChatCompletionService] {
 
   private val logger: Logger = Logger(LoggerFactory.getLogger(this.getClass))
 

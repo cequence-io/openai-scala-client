@@ -4,7 +4,11 @@ import io.cequence.openaiscala.domain.NonOpenAIModelId
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.gemini.domain.ChatRole.User
 import io.cequence.openaiscala.gemini.domain.{Content, ThinkingLevel}
-import io.cequence.openaiscala.gemini.domain.settings.{GenerateContentSettings, GenerationConfig, ThinkingConfig}
+import io.cequence.openaiscala.gemini.domain.settings.{
+  GenerateContentSettings,
+  GenerationConfig,
+  ThinkingConfig
+}
 import io.cequence.openaiscala.gemini.service.{GeminiService, GeminiServiceFactory}
 
 import scala.concurrent.Future
@@ -35,7 +39,7 @@ object GoogleGeminiGenerateContentWithThinkingLevel extends ExampleBase[GeminiSe
               thinkingConfig = Some(
                 ThinkingConfig(
                   thinkingLevel = Some(ThinkingLevel.MINIMAL)
-              )
+                )
               )
             )
           )

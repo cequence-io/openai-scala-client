@@ -26,7 +26,7 @@ object CreateModelResponseWithMCPTool extends Example {
   // Example 2: Semgrep MCP Tool
   private val semgrepMcpTool = Tool.mcp(
     serverLabel = "semgrep",
-    serverUrl = Some("https://mcp.semgrep.ai/mcp"),
+    serverUrl = Some("https://mcp.semgrep.ai/mcp"), // sse
     requireApproval = Some(MCPRequireApproval.Setting.Never)
   )
 
