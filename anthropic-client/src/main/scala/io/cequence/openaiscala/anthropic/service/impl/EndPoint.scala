@@ -30,6 +30,7 @@ object Param {
   case object tool_choice extends Param
   case object mcp_servers extends Param
   case object output_format extends Param
+  case object output_config extends Param
   // bedrock
   case object anthropic_version extends Param
   // skills

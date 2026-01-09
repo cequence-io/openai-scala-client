@@ -121,6 +121,9 @@ trait Anthropic
       },
       Param.output_format -> outputFormat.map(
         Json.toJson(_)(outputFormatFormat)
+      ),
+      Param.output_config -> settings.output_config.map(
+        Json.toJson(_)(outputConfigFormat)
       )
     )
   }

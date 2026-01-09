@@ -68,8 +68,27 @@ final case class AnthropicCreateMessageSettings(
   // Defines the format for structured output from Claude.
   // When specified, Claude will generate responses that conform to the provided JSON schema.
   // Structured outputs are currently available as a public beta feature in the Claude API for Claude Sonnet 4.5 and Claude Opus 4.1.
-  output_format: Option[OutputFormat] = None
+  output_format: Option[OutputFormat] = None,
+
+  // Configuration options for the model's output. Controls aspects like how much effort the model puts into its response.
+  output_config: Option[OutputConfig] = None
 )
+
+// Configuration options for the model's output.
+final case class OutputConfig(
+  // Controls how much effort the model puts into its response.
+  effort: Option[OutputEffort] = None
+)
+
+sealed trait OutputEffort extends EnumValue
+
+object OutputEffort {
+  case object low extends OutputEffort
+  case object medium extends OutputEffort
+  case object high extends OutputEffort
+
+  def values: Seq[OutputEffort] = Seq(low, medium, high)
+}
 
 final case class ThinkingSettings(
   // Determines how many tokens Claude can use for its internal reasoning process. Larger budgets can enable more thorough analysis for complex problems, improving response quality.
