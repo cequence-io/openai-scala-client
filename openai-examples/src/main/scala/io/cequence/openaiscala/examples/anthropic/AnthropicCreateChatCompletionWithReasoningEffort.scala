@@ -61,7 +61,7 @@ object AnthropicCreateChatCompletionWithReasoningEffort
         println(response1.contentHead)
         println(s"\nUsage: ${response1.usage}")
         response1.usage.flatMap(_.completion_tokens_details).foreach { details =>
-          println(s"  Reasoning tokens: ${details.reasoning_tokens}")
+          println(s"  Reasoning tokens: ${details.reasoning_tokens.getOrElse(0)}")
         }
       }
 
@@ -81,7 +81,7 @@ object AnthropicCreateChatCompletionWithReasoningEffort
         println(response2.contentHead)
         println(s"\nUsage: ${response2.usage}")
         response2.usage.flatMap(_.completion_tokens_details).foreach { details =>
-          println(s"  Reasoning tokens: ${details.reasoning_tokens}")
+          println(s"  Reasoning tokens: ${details.reasoning_tokens.getOrElse(0)}")
         }
       }
 
@@ -100,7 +100,7 @@ object AnthropicCreateChatCompletionWithReasoningEffort
         println(response3.contentHead)
         println(s"\nUsage: ${response3.usage}")
         response3.usage.flatMap(_.completion_tokens_details).foreach { details =>
-          println(s"  Reasoning tokens: ${details.reasoning_tokens}")
+          println(s"  Reasoning tokens: ${details.reasoning_tokens.getOrElse(0)}")
         }
       }
 
@@ -119,7 +119,7 @@ object AnthropicCreateChatCompletionWithReasoningEffort
         println(response4.contentHead)
         println(s"\nUsage: ${response4.usage}")
         response4.usage.flatMap(_.completion_tokens_details).foreach { details =>
-          println(s"  Reasoning tokens: ${details.reasoning_tokens}")
+          println(s"  Reasoning tokens: ${details.reasoning_tokens.getOrElse(0)}")
         }
       }
 
@@ -137,7 +137,7 @@ object AnthropicCreateChatCompletionWithReasoningEffort
       println(response5.contentHead)
       println(s"\nUsage: ${response5.usage}")
       response5.usage.flatMap(_.completion_tokens_details).foreach { details =>
-        println(s"  Reasoning tokens: ${details.reasoning_tokens}")
+        println(s"  Reasoning tokens: ${details.reasoning_tokens.getOrElse(0)}")
       }
     }
   }

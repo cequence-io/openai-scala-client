@@ -42,7 +42,7 @@ object CerebrasCreateChatCompletionJSON extends ExampleBase[OpenAIChatCompletion
     UserMessage("What is the weather like in Norway?")
   )
 
-  private val modelId = NonOpenAIModelId.cerebras_llama_4_scout_17b_16e_instruct
+  private val modelId = NonOpenAIModelId.gpt_oss_120b
 
   override protected def run: Future[_] =
     service
@@ -59,8 +59,7 @@ object CerebrasCreateChatCompletionJSON extends ExampleBase[OpenAIChatCompletion
               structure = jsonSchema
             )
           )
-        ),
-        enforceJsonSchemaMode = true
+        )
       )
       .map(json => println(Json.prettyPrint(json)))
 }

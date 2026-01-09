@@ -22,8 +22,8 @@ object CreateChatCompletionJson extends Example with TestFixtures with OpenAISer
       .createChatCompletion(
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = ModelId.gpt_4_5_preview,
-          max_tokens = Some(1000),
+          model = ModelId.gpt_5_2,
+          max_tokens = Some(10000),
           response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
           jsonSchema = Some(capitalsSchemaDef1)
         )
