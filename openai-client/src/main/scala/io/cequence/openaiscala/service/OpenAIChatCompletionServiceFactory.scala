@@ -26,7 +26,8 @@ object OpenAIChatCompletionServiceFactory
   )(
     implicit val ec: ExecutionContext,
     val materializer: Materializer
-  ) extends OpenAIChatCompletionServiceImpl {
+  ) extends OpenAIChatCompletionServiceImpl
+      with HandleOpenAIErrorCodes {
     // we use play ws client engine
     protected val engine: WSClientEngine = ProjectWSClientEngine(coreUrl, requestContext)
   }

@@ -19,8 +19,10 @@ object Retryable {
     case _: OpenAIScalaRateLimitException        => true
     case _: OpenAIScalaServerErrorException      => true
     case _: OpenAIScalaEngineOverloadedException => true
+    case _: OpenAIScalaCapacityExceededException => true
+
     // generic case
-    case _: OpenAIScalaClientException => true
+    case _: OpenAIScalaClientException => false
   }
 }
 
@@ -74,6 +76,13 @@ class OpenAIScalaServerErrorException(
 }
 
 class OpenAIScalaEngineOverloadedException(
+  message: String,
+  cause: Throwable
+) extends OpenAIScalaClientException(message, cause) {
+  def this(message: String) = this(message, null)
+}
+
+class OpenAIScalaCapacityExceededException(
   message: String,
   cause: Throwable
 ) extends OpenAIScalaClientException(message, cause) {

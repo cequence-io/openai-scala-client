@@ -19,6 +19,7 @@ trait HandleOpenAIErrorCodes extends WSClient {
     httpCode match {
       case 401 => throw new OpenAIScalaUnauthorizedException(errorMessage)
       case 429 => throw new OpenAIScalaRateLimitException(errorMessage)
+      case 498 => throw new OpenAIScalaCapacityExceededException(errorMessage)
       case 500 => throw new OpenAIScalaServerErrorException(errorMessage)
       case 503 => throw new OpenAIScalaEngineOverloadedException(errorMessage)
       case 400 =>
