@@ -206,6 +206,12 @@ object NonOpenAIModelId {
   val qwen1_5_7b_chat = "Qwen/Qwen1.5-7B-Chat" // Together AI
   val qwen2_72b_instruct = "Qwen/Qwen2-72B-Instruct" // Together AI
 
+  // Zhipu AI / GLM
+  val glm_4_6 = "glm-4.6"
+  val glm_4_7 = "glm-4.7"
+  val zhipu_glm_4_6 = "zhipu/glm-4.6"
+  val zhipu_glm_4_7 = "zhipu/glm-4.7"
+
   // Google Gemini and Vertex AI
 
   // Input token limit: 1048576; Output token limit: 65536
@@ -213,6 +219,7 @@ object NonOpenAIModelId {
   // Input token limit: 1048576; Output token limit: 65536
   val gemini_3_pro = "gemini-3-pro"
   val gemini_3_pro_preview = "gemini-3-pro-preview"
+  val gemini_3_pro_image_preview = "gemini-3-pro-image-preview"
   val gemini_2_5_pro = "gemini-2.5-pro"
   val gemini_2_5_pro_preview_06_05 = "gemini-2.5-pro-preview-06-05"
   val gemini_2_5_pro_preview_05_06 = "gemini-2.5-pro-preview-05-06"
@@ -220,6 +227,9 @@ object NonOpenAIModelId {
   val gemini_2_5_pro_exp_03_25 = "gemini-2.5-pro-exp-03-25"
 
   val gemini_2_5_flash = "gemini-2.5-flash"
+  val gemini_2_5_flash_lite = "gemini-2.5-flash-lite"
+  val gemini_2_5_flash_image = "gemini-2.5-flash-image"
+  val gemini_2_5_flash_live_api = "gemini-2.5-flash-live-api"
   val gemini_2_5_flash_preview_04_17_thinking = "gemini-2.5-flash-preview-04-17-thinking"
   val gemini_2_5_flash_preview_04_17 = "gemini-2.5-flash-preview-04-17"
   val gemini_2_5_flash_preview_05_20 = "gemini-2.5-flash-preview-05-20"
