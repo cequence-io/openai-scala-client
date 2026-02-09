@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import akka.stream.Materializer
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.wsclient.domain.WsRequestContext
-import io.cequence.wsclient.service.{WSClientEngine, WSClientEngineStreamExtra}
+import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtra}
 import io.cequence.wsclient.service.ws.stream.PlayWSStreamClientEngine
 import org.scalatest.PrivateMethodTester.{PrivateMethod, _}
 import play.api.libs.ws.ahc.cache.{CacheableHttpResponseStatus, CacheableResponse}
@@ -55,7 +55,7 @@ class AnthropicServiceClassImpl(
   implicit val ec: ExecutionContext,
   val materializer: Materializer
 ) extends AnthropicServiceImpl {
-  override protected val engine: WSClientEngine with WSClientEngineStreamExtra =
+  override protected val engine: WSClientEngine with WSClientOutputStreamExtra =
     PlayWSStreamClientEngine(coreUrl, requestContext)
 }
 
