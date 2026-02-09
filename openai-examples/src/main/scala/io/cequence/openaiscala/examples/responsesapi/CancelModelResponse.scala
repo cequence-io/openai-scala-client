@@ -12,7 +12,7 @@ object CancelModelResponse extends Example {
       response <- service.createModelResponse(
         Inputs.Text("Write a very long story about the history of artificial intelligence."),
         settings = CreateModelResponseSettings(
-          model = ModelId.gpt_4o,
+          model = ModelId.gpt_5_2,
           background = Some(true)
         )
       )

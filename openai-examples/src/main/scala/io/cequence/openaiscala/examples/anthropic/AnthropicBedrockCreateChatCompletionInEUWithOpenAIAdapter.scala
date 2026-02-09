@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.examples.anthropic
 
-import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
+import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, ReasoningEffort}
 import io.cequence.openaiscala.domain.{NonOpenAIModelId, SystemMessage, UserMessage}
 import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase}
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
@@ -25,7 +25,11 @@ object AnthropicBedrockCreateChatCompletionInEUWithOpenAIAdapter
     service
       .createChatCompletion(
         messages = messages,
-        settings = CreateChatCompletionSettings(modelId)
+        settings = CreateChatCompletionSettings(
+          modelId,
+          reasoning_effort = Some(ReasoningEffort.high),
+          max_tokens = Some(20000)
+        ),
       )
       .map { content =>
         println(content.contentHead)

@@ -32,7 +32,7 @@ object AnthropicCreateMessageStreamedWithThinking extends ExampleBase[AnthropicS
         settings = AnthropicCreateMessageSettings(
           model = modelId,
           max_tokens = 10000,
-          thinking = Some(ThinkingSettings(budget_tokens = 2000))
+          thinking = Some(ThinkingSettings.enabled(2000))
         )
       )
       .runWith(

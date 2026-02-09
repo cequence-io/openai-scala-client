@@ -30,6 +30,13 @@ object CreateModelResponseWithMCPTool extends Example {
     requireApproval = Some(MCPRequireApproval.Setting.Never)
   )
 
+  // Example 3: DeepSense CMS Coverage MCP Tool
+  private val cmsCoverageMcpTool = Tool.mcp(
+    serverLabel = "cms_coverage",
+    serverUrl = Some("https://mcp.deepsense.ai/cms_coverage/mcp"),
+    requireApproval = Some(MCPRequireApproval.Setting.Never)
+  )
+
   override def run: Future[Unit] = {
     for {
       // Example 1: Using DeepWiki MCP Server (with approval flow)
@@ -117,15 +124,39 @@ object CreateModelResponseWithMCPTool extends Example {
         )
       }
 
+      _ = {
+        response2.output.foreach { output =>
+          println(output)
+        }
+      }
+
+      // Example 3: Using DeepSense CMS Coverage MCP Server
+      response3 <- {
+        println("=" * 60)
+        println("Example 3: Using DeepSense CMS Coverage MCP Server")
+        println("=" * 60)
+
+        service.createModelResponse(
+          Inputs.Text(
+            "What are the recent National Coverage Determinations (NCDs) published in the last 30 days? Include any updates to oncology-related coverage policies."
+          ),
+          settings = CreateModelResponseSettings(
+            model = model,
+            tools = Seq(cmsCoverageMcpTool)
+          )
+        )
+      }
+
     } yield {
-      response2.output.foreach { output =>
+      response3.output.foreach { output =>
         println(output)
       }
 
       println("=" * 60)
       println("Example Summary:")
       println("  - Example 1 (DeepWiki): Demonstrated approval flow")
-      println("  - Example 2 (Semgrep): No approval required")
+      println("  - Example 2 (Semgrep): Code security analysis")
+      println("  - Example 3 (CMS Coverage): Medicare coverage policies (NCDs, LCDs)")
       println("=" * 60)
     }
   }
