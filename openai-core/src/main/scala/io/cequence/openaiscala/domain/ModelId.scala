@@ -213,6 +213,16 @@ object ModelId {
   val o1_pro = "o1-pro"
   val o1_pro_2025_03_19 = "o1-pro-2025-03-19"
 
+  // GPT-5.3
+  val gpt_5_3 = "gpt-5.3"
+  val gpt_5_3_2026_02_06 = "gpt-5.3-2026-02-06"
+  val gpt_5_3_pro = "gpt-5.3-pro"
+  val gpt_5_3_pro_2026_02_06 = "gpt-5.3-pro-2026-02-06"
+  val gpt_5_3_chat_latest = "gpt-5.3-chat-latest"
+  val gpt_5_3_codex = "gpt-5.3-codex"
+  val gpt_5_3_codex_mini = "gpt-5.3-codex-mini"
+  val gpt_5_3_codex_max = "gpt-5.3-codex-max"
+
   // GPT-5.2
   // 400k context window, 128k max output tokens, Aug 31, 2025 knowledge cutoff, Reasoning token support
   val gpt_5_2 = "gpt-5.2"

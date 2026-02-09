@@ -12,7 +12,8 @@ import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.{HandleOpenAIErrorCodes, OpenAIService}
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits._
-import io.cequence.wsclient.domain.RichResponse
+import io.cequence.wsclient.StreamResponseImplicits.{StreamSafeOps, StreamSafeRichOps}
+import io.cequence.wsclient.domain.{RichResponse, StreamedResponse}
 import play.api.libs.json.{JsObject, JsValue, Json, Reads}
 
 import java.io.File
@@ -382,7 +383,7 @@ private[service] trait OpenAIServiceImpl
         Param.response_format -> settings.response_format.map(_.toString),
         Param.stream_format -> settings.stream_format.map(_.toString)
       )
-    ).map(_.source)
+    ).map(_.asSafeSource)
 
   override def createAudioTranscription(
     file: File,
@@ -548,7 +549,7 @@ private[service] trait OpenAIServiceImpl
     execGETRich(
       endPoint = EndPoint.files,
       endPointParam = Some(s"${fileId}/content")
-    ).map(response => handleNotFoundAndError(response).map(_.source))
+    ).map(response => handleNotFoundAndError(response).map(_.asSafeSource))
 
   override def createVectorStore(
     fileIds: Seq[String],
