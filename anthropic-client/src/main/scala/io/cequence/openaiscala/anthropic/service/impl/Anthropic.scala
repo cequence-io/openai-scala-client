@@ -7,7 +7,7 @@ import io.cequence.openaiscala.anthropic.domain.Message.{SystemMessage, SystemMe
 import io.cequence.openaiscala.anthropic.domain.response.ContentBlockDelta
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.service.{AnthropicService, HandleAnthropicErrorCodes}
-import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithStreamEngine
+import io.cequence.wsclient.service.WSClientWithEngineStreamTypes.WSClientWithOutputStreamEngine
 import org.slf4j.LoggerFactory
 import play.api.libs.json.{JsString, JsValue, Json, Writes}
 import com.typesafe.scalalogging.Logger
@@ -17,7 +17,7 @@ import io.cequence.wsclient.JsonUtil.JsonOps
 
 trait Anthropic
     extends AnthropicService
-    with WSClientWithStreamEngine
+    with WSClientWithOutputStreamEngine
     with HandleAnthropicErrorCodes
     with JsonFormats {
 
@@ -33,7 +33,8 @@ trait Anthropic
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings,
     stream: Option[Boolean],
-    ignoreModel: Boolean = false
+    ignoreModel: Boolean = false,
+    ignoreOutputFormat: Boolean = false
   ): Seq[(Param, Option[JsValue])] = {
     assert(messages.nonEmpty, "At least one message expected.")
 
@@ -119,12 +120,15 @@ trait Anthropic
         else
           None
       },
-      Param.output_format -> outputFormat.map(
-        Json.toJson(_)(outputFormatFormat)
-      ),
+      Param.output_format -> (if (ignoreOutputFormat) None
+                              else
+                                outputFormat.map(
+                                  Json.toJson(_)(outputFormatFormat)
+                                )),
       Param.output_config -> settings.output_config.map(
         Json.toJson(_)(outputConfigFormat)
-      )
+      ),
+      Param.speed -> settings.speed.map(_.toString)
     )
   }
 

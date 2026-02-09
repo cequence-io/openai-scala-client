@@ -47,8 +47,22 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings
   ): Future[CreateMessageResponse] = {
+    // Bedrock does not support output_format (structured outputs) - skip it
+    if (settings.output_format.isDefined) {
+      logger.warn(
+        "Anthropic Bedrock does not support 'output_format' (structured outputs). " +
+          "The output_format parameter will be ignored. Consider using tool use with JSON schema " +
+          "or prompt engineering to get structured JSON responses."
+      )
+    }
     val coreBodyParams =
-      createBodyParamsForMessageCreation(messages, settings, stream = None, ignoreModel = true)
+      createBodyParamsForMessageCreation(
+        messages,
+        settings,
+        stream = None,
+        ignoreModel = true,
+        ignoreOutputFormat = true
+      )
     val bodyParams =
       coreBodyParams :+ (Param.anthropic_version -> Some(JsString(bedrockAnthropicVersion)))
 
@@ -77,8 +91,22 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings
   ): Source[ContentBlockDelta, NotUsed] = {
+    // Bedrock does not support output_format (structured outputs) - skip it
+    if (settings.output_format.isDefined) {
+      logger.warn(
+        "Anthropic Bedrock does not support 'output_format' (structured outputs). " +
+          "The output_format parameter will be ignored. Consider using tool use with JSON schema " +
+          "or prompt engineering to get structured JSON responses."
+      )
+    }
     val coreBodyParams =
-      createBodyParamsForMessageCreation(messages, settings, stream = None, ignoreModel = true)
+      createBodyParamsForMessageCreation(
+        messages,
+        settings,
+        stream = None,
+        ignoreModel = true,
+        ignoreOutputFormat = true
+      )
     val bodyParams =
       coreBodyParams :+ (Param.anthropic_version -> Some(JsString(bedrockAnthropicVersion)))
 
@@ -235,5 +263,6 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
 case class BedrockConnectionSettings(
   accessKey: String,
   secretKey: String,
-  region: String
+  region: String,
+  inferenceProfilePrefix: Option[String] = None
 )

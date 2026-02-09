@@ -13,6 +13,7 @@ import io.cequence.openaiscala.anthropic.domain.Message.{
   UserMessage,
   UserMessageContent
 }
+import io.cequence.openaiscala.anthropic.domain.tools.{MCPToolConfig, MCPToolset, Tool}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import play.api.libs.json.{Format, Json}
@@ -131,6 +132,79 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers with JsonFormats {
         val json =
           s"""{"role":"user","content":[$imageJson,{"text":"How are you?","type":"text"}]}"""
         testCodec[Message](userMessage, json)
+      }
+    }
+
+    // TEST MCP TOOLSET
+    "serialize and deserialize MCPToolset" should {
+
+      "serialize MCPToolConfig with all fields" in {
+        val config = MCPToolConfig(enabled = Some(true), deferLoading = Some(true))
+        val json = """{"enabled":true,"defer_loading":true}"""
+        testCodec[MCPToolConfig](config, json)
+      }
+
+      "serialize MCPToolConfig with only enabled" in {
+        val config = MCPToolConfig(enabled = Some(false))
+        val json = """{"enabled":false}"""
+        testCodec[MCPToolConfig](config, json)
+      }
+
+      "deserialize MCPToolConfig with defaults from empty JSON" in {
+        val json = """{}"""
+        val parsed = Json.parse(json).as[MCPToolConfig]
+        parsed shouldBe MCPToolConfig()
+        parsed.enabled shouldBe None
+        parsed.deferLoading shouldBe None
+      }
+
+      "serialize MCPToolset with only mcp_server_name (defaults)" in {
+        val toolset = MCPToolset(mcpServerName = "my-mcp")
+        val json = """{"mcp_server_name":"my-mcp","type":"mcp_toolset"}"""
+        testCodec[MCPToolset](toolset, json)
+      }
+
+      "serialize MCPToolset with default_config" in {
+        val toolset = MCPToolset(
+          mcpServerName = "google-calendar-mcp",
+          defaultConfig = Some(MCPToolConfig(deferLoading = Some(true)))
+        )
+        val json =
+          """{"mcp_server_name":"google-calendar-mcp","default_config":{"defer_loading":true},"type":"mcp_toolset"}"""
+        testCodec[MCPToolset](toolset, json)
+      }
+
+      "serialize MCPToolset with configs overrides" in {
+        val toolset = MCPToolset(
+          mcpServerName = "google-calendar-mcp",
+          defaultConfig = Some(MCPToolConfig(deferLoading = Some(true))),
+          configs = Map(
+            "search_events" -> MCPToolConfig(enabled = Some(false))
+          )
+        )
+        val json =
+          """{"mcp_server_name":"google-calendar-mcp","default_config":{"defer_loading":true},"configs":{"search_events":{"enabled":false}},"type":"mcp_toolset"}"""
+        testCodec[MCPToolset](toolset, json)
+      }
+
+      "deserialize MCPToolset with defaults from minimal JSON" in {
+        val json = """{"mcp_server_name":"my-mcp","type":"mcp_toolset"}"""
+        val parsed = Json.parse(json).as[MCPToolset]
+        parsed.mcpServerName shouldBe "my-mcp"
+        parsed.defaultConfig shouldBe None
+        parsed.configs shouldBe Map.empty
+        parsed.cacheControl shouldBe None
+      }
+
+      "serialize and deserialize MCPToolset as Tool" in {
+        val toolset: Tool = MCPToolset(mcpServerName = "my-mcp")
+        val jsValue = Json.toJson(toolset)
+        (jsValue \ "type").as[String] shouldBe "mcp_toolset"
+        (jsValue \ "mcp_server_name").as[String] shouldBe "my-mcp"
+
+        val parsed = jsValue.as[Tool]
+        parsed shouldBe a[MCPToolset]
+        parsed.asInstanceOf[MCPToolset].mcpServerName shouldBe "my-mcp"
       }
     }
 

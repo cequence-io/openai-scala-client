@@ -7,6 +7,7 @@ object CreateChatCompletionSettingsOps {
     private val AnthropicCachedUserMessagesCount = "cached_user_messages_count"
     private val AnthropicUseSystemMessagesCache = "use_system_messages_cache"
     private val AnthropicThinkingBudgetTokens = "thinking_budget_tokens"
+    private val AnthropicFastSpeed = "fast_speed"
 
     def setAnthropicCachedUserMessagesCount(count: Int): CreateChatCompletionSettings =
       settings.copy(
@@ -43,5 +44,13 @@ object CreateChatCompletionSettingsOps {
         case value: Int => Some(value)
         case value: Any => Try(value.toString.toInt).toOption
       }
+
+    def setAnthropicFastSpeed(fast: Boolean = true): CreateChatCompletionSettings =
+      settings.copy(
+        extra_params = settings.extra_params + (AnthropicFastSpeed -> fast)
+      )
+
+    def anthropicFastSpeed: Boolean =
+      settings.extra_params.get(AnthropicFastSpeed).map(_.toString).contains("true")
   }
 }

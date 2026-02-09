@@ -71,7 +71,13 @@ final case class AnthropicCreateMessageSettings(
   output_format: Option[OutputFormat] = None,
 
   // Configuration options for the model's output. Controls aspects like how much effort the model puts into its response.
-  output_config: Option[OutputConfig] = None
+  output_config: Option[OutputConfig] = None,
+
+  // Fast mode delivers significantly faster output token generation for Opus models.
+  // Fast mode is up to 2.5x as fast at premium pricing ($30/$150 per MTok).
+  // This is the same model running with faster inference (no change to intelligence or capabilities).
+  // Requires the beta header "fast-mode-2026-02-01".
+  speed: Option[Speed] = None
 )
 
 // Configuration options for the model's output.
@@ -82,30 +88,55 @@ final case class OutputConfig(
 
 sealed trait OutputEffort extends EnumValue
 
+// The effort parameter is supported by Claude Opus 4.6 and Claude Opus 4.5.
 object OutputEffort {
   case object low extends OutputEffort
   case object medium extends OutputEffort
   case object high extends OutputEffort
+  // Absolute maximum capability with no constraints on token spending.
+  // Opus 4.6 only - requests using max on other models will return an error.
+  case object max extends OutputEffort
 
-  def values: Seq[OutputEffort] = Seq(low, medium, high)
+  def values: Seq[OutputEffort] = Seq(low, medium, high, max)
 }
 
 final case class ThinkingSettings(
-  // Determines how many tokens Claude can use for its internal reasoning process. Larger budgets can enable more thorough analysis for complex problems, improving response quality.
-  // Must be ≥1024 and less than max_tokens.
-  // See extended thinking for details.
-  // Required range: x > 1024
-  budget_tokens: Int,
-
   // Type of thinking process.
-  // Available options: enabled
-  `type`: ThinkingType = ThinkingType.enabled
+  // Available options: enabled, adaptive
+  // For Opus 4.6+, use adaptive (recommended). Claude dynamically decides when and how much to think.
+  // Note: "enabled" and budget_tokens are deprecated on Opus 4.6 but remain functional.
+  `type`: ThinkingType = ThinkingType.enabled,
+
+  // Determines how many tokens Claude can use for its internal reasoning process.
+  // Larger budgets can enable more thorough analysis for complex problems.
+  // Must be ≥1024 and less than max_tokens.
+  // Only required for type=enabled. Not used with type=adaptive.
+  // Deprecated on Opus 4.6 - use adaptive thinking with effort parameter instead.
+  budget_tokens: Option[Int] = None
 )
+
+object ThinkingSettings {
+  // Convenience constructor for adaptive thinking (recommended for Opus 4.6+)
+  def adaptive: ThinkingSettings = ThinkingSettings(`type` = ThinkingType.adaptive)
+
+  // Convenience constructor for enabled thinking with budget (legacy)
+  def enabled(budgetTokens: Int): ThinkingSettings =
+    ThinkingSettings(`type` = ThinkingType.enabled, budget_tokens = Some(budgetTokens))
+}
 
 sealed trait ThinkingType extends EnumValue
 
 object ThinkingType {
   case object enabled extends ThinkingType
+  case object adaptive extends ThinkingType
 
-  def values: Seq[ThinkingType] = Seq(enabled)
+  def values: Seq[ThinkingType] = Seq(enabled, adaptive)
+}
+
+sealed trait Speed extends EnumValue
+
+object Speed {
+  case object fast extends Speed
+
+  def values: Seq[Speed] = Seq(fast)
 }

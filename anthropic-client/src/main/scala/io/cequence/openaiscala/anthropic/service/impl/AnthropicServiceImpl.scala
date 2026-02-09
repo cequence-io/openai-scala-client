@@ -24,6 +24,7 @@ import io.cequence.openaiscala.anthropic.domain.skills.{
   SkillVersion
 }
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
+import io.cequence.wsclient.StreamResponseImplicits.StreamSafeOps
 
 import java.io.File
 import scala.concurrent.Future
@@ -251,9 +252,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       EndPoint.files,
       Some(s"$fileId/content")
     ).map { response =>
-      handleNotFoundAndError(response).map(
-        _.source
-      )
+      handleNotFoundAndError(response).map(_.asSafeSource)
     }
   }
 

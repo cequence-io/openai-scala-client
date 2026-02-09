@@ -46,6 +46,7 @@ import io.cequence.openaiscala.anthropic.domain.response.{
 import io.cequence.openaiscala.anthropic.domain.settings.{
   OutputConfig,
   OutputEffort,
+  Speed,
   ThinkingSettings,
   ThinkingType
 }
@@ -77,7 +78,9 @@ import io.cequence.openaiscala.anthropic.domain.tools.{
   ComputerUseToolType,
   CustomTool,
   MCPServerURLDefinition,
+  MCPToolConfig,
   MCPToolConfiguration,
+  MCPToolset,
   MemoryTool,
   TextEditorTool,
   TextEditorToolType,
@@ -516,10 +519,28 @@ trait JsonFormats {
 
   private implicit val textEditorCodeExecutionReplaceResultFormat
     : OFormat[TextEditorCodeExecutionToolResultContent.ReplaceResult] = {
-    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
-    Json
-      .using[Json.WithDefaultValues]
-      .format[TextEditorCodeExecutionToolResultContent.ReplaceResult]
+    // Note: Json.using[Json.WithDefaultValues] does NOT respect JsonConfiguration(SnakeCase),
+    // so we use explicit snake_case paths with readWithDefault/readNullable
+    val reads: Reads[TextEditorCodeExecutionToolResultContent.ReplaceResult] = (
+      (__ \ "lines").readWithDefault[Seq[String]](Nil) and
+        (__ \ "new_lines").readNullable[Int] and
+        (__ \ "new_start").readNullable[Int] and
+        (__ \ "old_lines").readNullable[Int] and
+        (__ \ "old_start").readNullable[Int]
+    )(TextEditorCodeExecutionToolResultContent.ReplaceResult.apply _)
+
+    val writes: OWrites[TextEditorCodeExecutionToolResultContent.ReplaceResult] = OWrites {
+      r =>
+        var obj = Json.obj()
+        if (r.lines.nonEmpty) obj = obj + ("lines" -> Json.toJson(r.lines))
+        r.newLines.foreach(v => obj = obj + ("new_lines" -> JsNumber(v)))
+        r.newStart.foreach(v => obj = obj + ("new_start" -> JsNumber(v)))
+        r.oldLines.foreach(v => obj = obj + ("old_lines" -> JsNumber(v)))
+        r.oldStart.foreach(v => obj = obj + ("old_start" -> JsNumber(v)))
+        obj
+    }
+
+    OFormat(reads, writes)
   }
 
   implicit lazy val textEditorCodeExecutionToolResultContentReads
@@ -907,6 +928,9 @@ trait JsonFormats {
   implicit lazy val outputConfigFormat: Format[OutputConfig] =
     Json.format[OutputConfig]
 
+  implicit lazy val speedFormat: Format[Speed] =
+    JsonUtil.enumFormat[Speed](Speed.values: _*)
+
   // Skills API formats
   implicit lazy val skillSourceFormat: Format[SkillSource] =
     JsonUtil.enumFormat[SkillSource](SkillSource.values: _*)
@@ -1079,8 +1103,21 @@ trait JsonFormats {
   }
 
   implicit lazy val mcpToolConfigurationFormat: Format[MCPToolConfiguration] = {
-    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
-    Json.using[Json.WithDefaultValues].format[MCPToolConfiguration]
+    val reads: Reads[MCPToolConfiguration] = (
+      (__ \ "allowed_tools").readWithDefault[Seq[String]](Nil) and
+        (__ \ "enabled").readNullable[Boolean]
+    )(MCPToolConfiguration.apply _)
+
+    val writes: OWrites[MCPToolConfiguration] = OWrites { config =>
+      var obj = Json.obj()
+      if (config.allowedTools.nonEmpty) {
+        obj = obj + ("allowed_tools" -> Json.toJson(config.allowedTools))
+      }
+      config.enabled.foreach(e => obj = obj + ("enabled" -> JsBoolean(e)))
+      obj
+    }
+
+    Format(reads, writes)
   }
 
   private val mcpServerURLDefinitionFormat: OFormat[MCPServerURLDefinition] = {
@@ -1090,6 +1127,41 @@ trait JsonFormats {
 
   implicit val mcpServerURLDefinitionWrites: OWrites[MCPServerURLDefinition] =
     mcpServerURLDefinitionFormat
+
+  implicit lazy val mcpToolConfigFormat: OFormat[MCPToolConfig] = {
+    val reads: Reads[MCPToolConfig] = (
+      (__ \ "enabled").readNullable[Boolean] and
+        (__ \ "defer_loading").readNullable[Boolean]
+    )(MCPToolConfig.apply _)
+
+    val writes: OWrites[MCPToolConfig] = OWrites { config =>
+      var obj = Json.obj()
+      config.enabled.foreach(e => obj = obj + ("enabled" -> JsBoolean(e)))
+      config.deferLoading.foreach(d => obj = obj + ("defer_loading" -> JsBoolean(d)))
+      obj
+    }
+
+    OFormat(reads, writes)
+  }
+
+  implicit lazy val mcpToolsetFormat: OFormat[MCPToolset] = {
+    val reads: Reads[MCPToolset] = (
+      (__ \ "mcp_server_name").read[String] and
+        (__ \ "default_config").readNullable[MCPToolConfig] and
+        (__ \ "configs").readWithDefault[Map[String, MCPToolConfig]](Map.empty) and
+        (__ \ "cache_control").readNullable[CacheControl]
+    )(MCPToolset.apply _)
+
+    val writes: OWrites[MCPToolset] = OWrites { toolset =>
+      var obj = Json.obj("mcp_server_name" -> toolset.mcpServerName)
+      toolset.defaultConfig.foreach(c => obj = obj + ("default_config" -> Json.toJson(c)))
+      if (toolset.configs.nonEmpty) obj = obj + ("configs" -> Json.toJson(toolset.configs))
+      toolset.cacheControl.foreach(c => obj = obj + ("cache_control" -> Json.toJson(c)))
+      obj
+    }
+
+    formatWithType(OFormat(reads, writes))
+  }
 
   implicit lazy val toolWrites: OWrites[Tool] = (tool: Tool) => {
     val jsonObject: JsObject = tool match {
@@ -1101,6 +1173,7 @@ trait JsonFormats {
       case t: TextEditorTool    => Json.toJsObject(t)(textEditorToolFormat)
       case t: WebSearchTool     => Json.toJsObject(t)(webSearchToolFormat)
       case t: WebFetchTool      => Json.toJsObject(t)(webFetchToolFormat)
+      case t: MCPToolset        => Json.toJsObject(t)(mcpToolsetFormat)
     }
 
     // Centrally add name and type fields for all tools
@@ -1139,6 +1212,9 @@ trait JsonFormats {
 
       case (Some("web_fetch_20250910"), Some("web_fetch")) =>
         json.validate[WebFetchTool](webFetchToolFormat)
+
+      case (Some("mcp_toolset"), _) =>
+        json.validate[MCPToolset](mcpToolsetFormat)
 
       case _ =>
         JsError(s"Unknown tool type: $toolType with name: $toolName")

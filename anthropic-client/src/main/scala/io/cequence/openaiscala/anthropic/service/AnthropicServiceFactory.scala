@@ -1,22 +1,31 @@
 package io.cequence.openaiscala.anthropic.service
 
+import akka.NotUsed
 import akka.stream.Materializer
+import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.EnvHelper
+import io.cequence.openaiscala.anthropic.domain.Message
+import io.cequence.openaiscala.anthropic.domain.response.{
+  ContentBlockDelta,
+  CreateMessageResponse
+}
+import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.service.impl.{
   AnthropicBedrockServiceImpl,
   AnthropicServiceImpl,
   BedrockConnectionSettings,
+  EndPoint,
   OpenAIAnthropicChatCompletionService
 }
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
 import io.cequence.wsclient.domain.{RichResponse, WsRequestContext}
 import io.cequence.wsclient.service.ws.Timeouts
 import io.cequence.wsclient.service.ws.stream.PlayWSStreamClientEngine
-import io.cequence.wsclient.service.{WSClientEngine, WSClientEngineStreamExtra}
+import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtra}
 
 import java.net.UnknownHostException
 import java.util.concurrent.TimeoutException
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
  * Factory for creating instances of the [[AnthropicService]] and an OpenAI adapter for
@@ -39,7 +48,9 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
     "files-api-2025-04-14",
     "code-execution-2025-08-25",
     "mcp-client-2025-04-04",
-    "web-fetch-2025-09-10"
+    "web-fetch-2025-09-10",
+    "context-1m-2025-08-07",
+    "fast-mode-2026-02-01"
   )
 
   /**
@@ -70,13 +81,15 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
     accessKey: String = getEnvValue(EnvKeys.bedrockAccessKey),
     secretKey: String = getEnvValue(EnvKeys.bedrockSecretKey),
     region: String = getEnvValue(EnvKeys.bedrockRegion),
+    inferenceProfilePrefix: Option[String] = None,
     timeouts: Option[Timeouts] = None
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer
   ): OpenAIChatCompletionStreamedService =
     new OpenAIAnthropicChatCompletionService(
-      AnthropicServiceFactory.forBedrock(accessKey, secretKey, region, timeouts)
+      AnthropicServiceFactory
+        .forBedrock(accessKey, secretKey, region, inferenceProfilePrefix, timeouts)
     )
 
   /**
@@ -116,13 +129,14 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
     accessKey: String = getEnvValue(EnvKeys.bedrockAccessKey),
     secretKey: String = getEnvValue(EnvKeys.bedrockSecretKey),
     region: String = getEnvValue(EnvKeys.bedrockRegion),
+    inferenceProfilePrefix: Option[String] = None,
     timeouts: Option[Timeouts] = None
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer
   ): AnthropicService =
     new AnthropicBedrockServiceClassImpl(
-      BedrockConnectionSettings(accessKey, secretKey, region),
+      BedrockConnectionSettings(accessKey, secretKey, region, inferenceProfilePrefix),
       timeouts
     )
 
@@ -135,7 +149,7 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
     val materializer: Materializer
   ) extends AnthropicServiceImpl {
     // Play WS engine
-    override protected val engine: WSClientEngine with WSClientEngineStreamExtra =
+    override protected val engine: WSClientEngine with WSClientOutputStreamExtra =
       PlayWSStreamClientEngine(
         coreUrl,
         WsRequestContext(authHeaders = authHeaders, explTimeouts = explTimeouts),
@@ -152,12 +166,33 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
   ) extends AnthropicBedrockServiceImpl {
 
     // Play WS engine
-    override protected val engine: WSClientEngine with WSClientEngineStreamExtra =
+    override protected val engine: WSClientEngine with WSClientOutputStreamExtra =
       PlayWSStreamClientEngine(
         coreUrl = bedrockCoreUrl(connectionInfo.region),
         WsRequestContext(explTimeouts = explTimeouts),
         recoverErrors
       )
+
+    private def withInferenceProfile(
+      settings: AnthropicCreateMessageSettings
+    ): AnthropicCreateMessageSettings =
+      connectionInfo.inferenceProfilePrefix match {
+        case Some(prefix) if !settings.model.startsWith(prefix) =>
+          settings.copy(model = prefix + settings.model)
+        case _ => settings
+      }
+
+    override def createMessage(
+      messages: Seq[Message],
+      settings: AnthropicCreateMessageSettings
+    ): Future[CreateMessageResponse] =
+      super.createMessage(messages, withInferenceProfile(settings))
+
+    override def createMessageStreamed(
+      messages: Seq[Message],
+      settings: AnthropicCreateMessageSettings
+    ): Source[ContentBlockDelta, NotUsed] =
+      super.createMessageStreamed(messages, withInferenceProfile(settings))
   }
 
   private def recoverErrors: String => PartialFunction[Throwable, RichResponse] = {

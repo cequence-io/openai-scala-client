@@ -1,7 +1,16 @@
 package io.cequence.openaiscala.anthropic.service
 
 import com.typesafe.scalalogging.Logger
-import io.cequence.openaiscala.OpenAIScalaClientException
+import io.cequence.openaiscala.{
+  OpenAIScalaClientException,
+  OpenAIScalaClientTimeoutException,
+  OpenAIScalaClientUnknownHostException,
+  OpenAIScalaEngineOverloadedException,
+  OpenAIScalaRateLimitException,
+  OpenAIScalaServerErrorException,
+  OpenAIScalaTokenCountExceededException,
+  OpenAIScalaUnauthorizedException
+}
 import io.cequence.openaiscala.anthropic.domain.CacheControl.Ephemeral
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
 import io.cequence.openaiscala.anthropic.domain.Content.{ContentBlockBase, ContentBlocks}
@@ -14,6 +23,7 @@ import io.cequence.openaiscala.anthropic.domain.response.{
 }
 import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicCreateMessageSettings,
+  Speed,
   ThinkingSettings
 }
 import io.cequence.openaiscala.anthropic.domain.{CacheControl, Content, Message, OutputFormat}
@@ -25,6 +35,7 @@ import io.cequence.openaiscala.domain.response.{
   ChunkMessageSpec,
   CompletionTokenDetails,
   PromptTokensDetails,
+  TracedBlock,
   UsageInfo => OpenAIUsageInfo
 }
 import io.cequence.openaiscala.domain.settings.{
@@ -49,6 +60,7 @@ import io.cequence.openaiscala.service.HasOpenAIConfig
 import org.slf4j.LoggerFactory
 
 import java.{util => ju}
+import scala.concurrent.Future
 
 package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
 
@@ -281,10 +293,11 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
       temperature = temperature,
       top_p = settings.top_p,
       top_k = None,
-      thinking = thinkingBudget.map(ThinkingSettings(_)),
+      thinking = thinkingBudget.map(ThinkingSettings.enabled),
       output_format = jsonSchema.map { schema =>
         OutputFormat.JsonSchemaFormat(schema)
-      }
+      },
+      speed = if (settings.anthropicFastSpeed) Some(Speed.fast) else None
     )
   }
 
@@ -337,15 +350,22 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
       usage = None
     )
 
-  def toOpenAIAssistantMessage(content: ContentBlocks): OpenAIAssistantMessage = {
+  def toOpenAIAssistantMessage(
+    content: ContentBlocks,
+    lastTextBlockOnly: Boolean = true
+  ): OpenAIAssistantMessage = {
     val textContents = content.blocks.collect { case ContentBlockBase(TextBlock(text, _), _) =>
       text
     }
-    // TODO: log if there is more than one text content
+
     if (textContents.isEmpty) {
       throw new IllegalArgumentException("No text content found in the response")
     }
-    val singleTextContent = concatenateMessages(textContents)
+
+    val singleTextContent =
+      if (lastTextBlockOnly) textContents.last
+      else concatenateMessages(textContents)
+
     OpenAIAssistantMessage(singleTextContent, name = None)
   }
 
@@ -390,4 +410,78 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
   private def estimateTokenCount(text: String): Int = {
     math.max(1, text.length / 4)
   }
+
+  /**
+   * Repackages Anthropic exceptions as OpenAI exceptions for consistent error handling in
+   * adapter services.
+   */
+  def repackAsOpenAIException[T]: PartialFunction[Throwable, Future[T]] = {
+    case e: AnthropicScalaTokenCountExceededException =>
+      Future.failed(new OpenAIScalaTokenCountExceededException(e.getMessage, e))
+    case e: AnthropicScalaUnauthorizedException =>
+      Future.failed(new OpenAIScalaUnauthorizedException(e.getMessage, e))
+    case e: AnthropicScalaRateLimitException =>
+      Future.failed(new OpenAIScalaRateLimitException(e.getMessage, e))
+    case e: AnthropicScalaServerErrorException =>
+      Future.failed(new OpenAIScalaServerErrorException(e.getMessage, e))
+    case e: AnthropicScalaEngineOverloadedException =>
+      Future.failed(new OpenAIScalaEngineOverloadedException(e.getMessage, e))
+    case e: AnthropicScalaClientTimeoutException =>
+      Future.failed(new OpenAIScalaClientTimeoutException(e.getMessage, e))
+    case e: AnthropicScalaClientUnknownHostException =>
+      Future.failed(new OpenAIScalaClientUnknownHostException(e.getMessage, e))
+    case e: AnthropicScalaNotFoundException =>
+      Future.failed(new OpenAIScalaClientException(e.getMessage, e))
+    case e: AnthropicScalaClientException =>
+      Future.failed(new OpenAIScalaClientException(e.getMessage, e))
+  }
+
+  def toTracedBlocks(response: CreateMessageResponse): Seq[TracedBlock] =
+    response.blockContents.map { blockContent =>
+      import Content.ContentBlock._
+
+      def truncate(
+        s: String,
+        maxLen: Int = 50
+      ): String =
+        if (s.length <= maxLen) s else s.take(maxLen) + "..."
+
+      val (content, trace) = blockContent match {
+        case TextBlock(text, citations) =>
+          val citationInfo = if (citations.nonEmpty) s" [${citations.size} citations]" else ""
+          (Some(text), truncate(text) + citationInfo)
+        case ThinkingBlock(thinking, _) =>
+          (Some(thinking), truncate(thinking))
+        case RedactedThinkingBlock(data) =>
+          (Some(data), "[redacted]")
+        case ToolUseBlock(id, name, input) =>
+          (Some(input.toString), s"$name (id: $id)")
+        case ServerToolUseBlock(id, name, input) =>
+          (Some(input.toString), s"$name (id: $id)")
+        case WebSearchToolResultBlock(content, toolUseId) =>
+          (Some(content.toString), s"toolUseId: $toolUseId")
+        case WebFetchToolResultBlock(content, toolUseId) =>
+          (Some(content.toString), s"toolUseId: $toolUseId")
+        case McpToolUseBlock(id, name, serverName, input) =>
+          (Some(input.toString), s"$name @ $serverName (id: $id)")
+        case McpToolResultBlock(content, isError, toolUseId) =>
+          (Some(content.toString), s"toolUseId: $toolUseId${if (isError) " [error]" else ""}")
+        case ContainerUploadBlock(fileId) =>
+          (None, s"fileId: $fileId")
+        case CodeExecutionToolResultBlock(content, toolUseId) =>
+          (Some(content.toString), s"toolUseId: $toolUseId")
+        case BashCodeExecutionToolResultBlock(content, toolUseId) =>
+          (Some(content.toString), s"toolUseId: $toolUseId")
+        case TextEditorCodeExecutionToolResultBlock(content, toolUseId) =>
+          (Some(content.toString), s"toolUseId: $toolUseId")
+        case MediaBlock(_, _, mediaType, data, title, _, _) =>
+          (Some(data), s"$mediaType${title.map(t => s" ($t)").getOrElse("")}")
+        case TextsContentBlock(texts, title, _, _) =>
+          (Some(texts.mkString("\n")), title.getOrElse(s"${texts.size} text(s)"))
+        case FileDocumentContentBlock(fileId, title, _, _) =>
+          (None, title.getOrElse(s"fileId: $fileId"))
+      }
+
+      TracedBlock(blockContent.`type`.toString, text = content, summary = trace, blockContent)
+    }
 }

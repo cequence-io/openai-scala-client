@@ -31,8 +31,10 @@ object Param {
   case object mcp_servers extends Param
   case object output_format extends Param
   case object output_config extends Param
+  case object speed extends Param
   // bedrock
   case object anthropic_version extends Param
+  case object anthropic_beta extends Param
   // skills
   case object page extends Param
   case object limit extends Param

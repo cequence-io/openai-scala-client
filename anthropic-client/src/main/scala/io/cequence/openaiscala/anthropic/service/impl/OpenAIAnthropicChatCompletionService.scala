@@ -14,7 +14,6 @@ import io.cequence.openaiscala.service.{
   OpenAIChatCompletionStreamedServiceExtra
 }
 import io.cequence.openaiscala.anthropic.service._
-import io.cequence.openaiscala._
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -47,25 +46,7 @@ private[service] class OpenAIAnthropicChatCompletionService(
         toAnthropicSettings(settings)
       )
       .map(toOpenAI)
-  }.recoverWith {
-    case e: AnthropicScalaTokenCountExceededException =>
-      Future.failed(new OpenAIScalaTokenCountExceededException(e.getMessage, e))
-    case e: AnthropicScalaUnauthorizedException =>
-      Future.failed(new OpenAIScalaUnauthorizedException(e.getMessage, e))
-    case e: AnthropicScalaRateLimitException =>
-      Future.failed(new OpenAIScalaRateLimitException(e.getMessage, e))
-    case e: AnthropicScalaServerErrorException =>
-      Future.failed(new OpenAIScalaServerErrorException(e.getMessage, e))
-    case e: AnthropicScalaEngineOverloadedException =>
-      Future.failed(new OpenAIScalaEngineOverloadedException(e.getMessage, e))
-    case e: AnthropicScalaClientTimeoutException =>
-      Future.failed(new OpenAIScalaClientTimeoutException(e.getMessage, e))
-    case e: AnthropicScalaClientUnknownHostException =>
-      Future.failed(new OpenAIScalaClientUnknownHostException(e.getMessage, e))
-    case e: AnthropicScalaNotFoundException =>
-      Future.failed(new OpenAIScalaClientException(e.getMessage, e))
-    case e: AnthropicScalaClientException =>
-      Future.failed(new OpenAIScalaClientException(e.getMessage, e))
+      .recoverWith(repackAsOpenAIException)
   }
 
   /**
@@ -95,4 +76,13 @@ private[service] class OpenAIAnthropicChatCompletionService(
    * Closes the underlying ws client, and releases all its resources.
    */
   override def close(): Unit = underlying.close()
+}
+
+object OpenAIAnthropicChatCompletionService {
+  def apply(
+    underlying: AnthropicService
+  )(
+    implicit executionContext: ExecutionContext
+  ): OpenAIChatCompletionService with OpenAIChatCompletionStreamedServiceExtra =
+    new OpenAIAnthropicChatCompletionService(underlying)
 }

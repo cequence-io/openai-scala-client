@@ -211,6 +211,62 @@ object Tool {
       Some(MCPToolConfiguration(allowedTools = allowedTools, enabled = Some(true)))
     )
 
+  // MCP TOOLSET
+
+  /**
+   * Create an MCP Toolset for configuring tools from an MCP server.
+   *
+   * @param mcpServerName
+   *   Must match a server name defined in the mcp_servers array
+   */
+  def mcpToolset(mcpServerName: String): MCPToolset =
+    MCPToolset(mcpServerName)
+
+  /**
+   * Create an MCP Toolset with default configuration for all tools.
+   *
+   * @param mcpServerName
+   *   Must match a server name defined in the mcp_servers array
+   * @param defaultConfig
+   *   Default configuration applied to all tools
+   */
+  def mcpToolset(
+    mcpServerName: String,
+    defaultConfig: MCPToolConfig
+  ): MCPToolset =
+    MCPToolset(mcpServerName, defaultConfig = Some(defaultConfig))
+
+  /**
+   * Create an MCP Toolset with per-tool configuration overrides.
+   *
+   * @param mcpServerName
+   *   Must match a server name defined in the mcp_servers array
+   * @param configs
+   *   Per-tool configuration overrides (tool name -> config)
+   */
+  def mcpToolset(
+    mcpServerName: String,
+    configs: Map[String, MCPToolConfig]
+  ): MCPToolset =
+    MCPToolset(mcpServerName, configs = configs)
+
+  /**
+   * Create an MCP Toolset with default config and per-tool overrides.
+   *
+   * @param mcpServerName
+   *   Must match a server name defined in the mcp_servers array
+   * @param defaultConfig
+   *   Default configuration applied to all tools
+   * @param configs
+   *   Per-tool configuration overrides (tool name -> config)
+   */
+  def mcpToolset(
+    mcpServerName: String,
+    defaultConfig: MCPToolConfig,
+    configs: Map[String, MCPToolConfig]
+  ): MCPToolset =
+    MCPToolset(mcpServerName, defaultConfig = Some(defaultConfig), configs = configs)
+
   // USER LOCATION
 
   /**
