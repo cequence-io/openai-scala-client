@@ -148,7 +148,7 @@ case class GroundingSupport(
  *   Output only. The text corresponding to the segment from the response.
  */
 case class Segment(
-  partIndex: Int,
+  partIndex: Option[Int] = None,
   startIndex: Int,
   endIndex: Int,
   text: String

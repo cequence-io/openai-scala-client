@@ -17,6 +17,7 @@ import io.cequence.openaiscala.domain.response.{
 import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, ReasoningEffort}
 import io.cequence.openaiscala.domain.{
   AssistantMessage,
+  AssistantToolMessage,
   BaseMessage,
   DeveloperMessage,
   ImageURLContent,
@@ -24,6 +25,7 @@ import io.cequence.openaiscala.domain.{
   NonOpenAIModelId,
   SystemMessage,
   TextContent,
+  ToolMessage,
   UserMessage,
   UserSeqMessage,
   ChatRole => OpenAIChatRole
@@ -47,10 +49,13 @@ import io.cequence.openaiscala.service.{
 
 import scala.concurrent.{ExecutionContext, Future}
 import io.cequence.openaiscala.domain.settings.ChatCompletionResponseFormatType
+import io.cequence.openaiscala.domain.FunctionCallSpec
 import io.cequence.openaiscala.gemini.domain.Schema
+import io.cequence.wsclient.JsonUtil
 import com.typesafe.scalalogging.Logger
 import io.cequence.openaiscala.gemini.domain.SchemaType
 import org.slf4j.LoggerFactory
+import play.api.libs.json.{JsObject, Json}
 
 import scala.collection.immutable.Traversable
 
@@ -210,6 +215,41 @@ private[service] class OpenAIGeminiChatCompletionService(
       case AssistantMessage(content, _, _) =>
         Content(Seq(Part.Text(content)), Some(ChatRole.Model))
 
+      case AssistantToolMessage(content, _, toolCalls) =>
+        val parts = collection.mutable.ArrayBuffer.empty[Part]
+        content.foreach(text => parts += Part.Text(text))
+        toolCalls.foreach { case (id, spec) =>
+          spec match {
+            case FunctionCallSpec(name, arguments) =>
+              val args = parseJsonObjectToMap(arguments, s"function_call args for '$name'")
+              parts += Part.FunctionCall(
+                id = Some(id),
+                name = name,
+                args = args
+              )
+            case other =>
+              logger.warn(
+                s"Unsupported tool call spec for Gemini: ${other.getClass.getSimpleName}"
+              )
+          }
+        }
+        Content(parts.toSeq, Some(ChatRole.Model))
+
+      case ToolMessage(content, toolCallId, name) =>
+        val response = content
+          .map(parseJsonObjectToMap(_, s"function_response for '$name'"))
+          .getOrElse(Map.empty)
+        Content(
+          Seq(
+            Part.FunctionResponse(
+              id = Some(toolCallId),
+              name = name,
+              response = response
+            )
+          ),
+          Some(ChatRole.User)
+        )
+
       case _ => throw new OpenAIScalaClientException(s"Unsupported message type for Gemini.")
     }
 
@@ -250,8 +290,8 @@ private[service] class OpenAIGeminiChatCompletionService(
 
     GenerateContentSettings(
       model = settings.model,
-      tools = None, // TODO
-      toolConfig = None, // TODO
+      tools = settings.getGeminiTools,
+      toolConfig = settings.getGeminiToolConfig,
       safetySettings = None,
       systemInstruction = systemMessage.map(toGeminiContent),
       generationConfig = Some(
@@ -481,32 +521,57 @@ private[service] class OpenAIGeminiChatCompletionService(
 
   private def toOpenAIAssistantMessage(
     content: Content
-  ): AssistantMessage =
-    AssistantMessage(
-      content.parts.collect {
-        case Part.Text(text) => text
-        case _ =>
-          throw new OpenAIScalaClientException(
-            s"Unsupported assistant part type for Gemini. Implement me!"
-          )
-      }.mkString("\n")
-    )
+  ): AssistantMessage = {
+    val texts = content.parts.collect { case Part.Text(text) => text }
+    val hasToolCalls = content.parts.exists {
+      case _: Part.FunctionCall => true
+      case _                    => false
+    }
+
+    if (hasToolCalls)
+      logger.warn(
+        "Gemini response includes function calls; OpenAI adapter will expose only text content. " +
+          "Inspect originalResponse for tool call details."
+      )
+
+    AssistantMessage(texts.mkString("\n"))
+  }
 
   private def toOpenAIAssistantChunkMessage(
     content: Content
   ): ChunkMessageSpec = {
-    val texts = content.parts.collect {
-      case Part.Text(text) => text
-      case _ =>
-        throw new OpenAIScalaClientException(
-          s"Unsupported assistant part type for Gemini. Implement me!"
-        )
-    }
+    val texts = content.parts.collect { case Part.Text(text) => text }
 
     ChunkMessageSpec(
       Some(OpenAIChatRole.Assistant),
       if (texts.nonEmpty) Some(texts.mkString("\n")) else None
     )
+  }
+
+  private def parseJsonObjectToMap(
+    jsonString: String,
+    context: String
+  ): Map[String, Any] = {
+    if (jsonString.trim.isEmpty) {
+      Map.empty
+    } else {
+      try {
+        Json.parse(jsonString) match {
+          case obj: JsObject =>
+            JsonUtil.toValueMap(obj)
+          case other =>
+            logger.warn(s"Gemini $context is not a JSON object; wrapping as value.")
+            JsonUtil.toValueMap(Json.obj("value" -> other))
+        }
+      } catch {
+        case ex: Exception =>
+          logger.warn(
+            s"Failed to parse Gemini $context as JSON object; sending as raw string.",
+            ex
+          )
+          Map("raw" -> jsonString)
+      }
+    }
   }
 
   private def toOpenAIUsage(

@@ -16,9 +16,9 @@ import io.cequence.openaiscala.gemini.service.GeminiService
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
 import io.cequence.wsclient.domain.WsRequestContext
-import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithStreamEngine
+import io.cequence.wsclient.service.WSClientWithEngineStreamTypes.WSClientWithOutputStreamEngine
 import io.cequence.wsclient.service.ws.stream.PlayWSStreamClientEngine
-import io.cequence.wsclient.service.{WSClientEngine, WSClientEngineStreamExtra}
+import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtra}
 import play.api.libs.json._
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -31,12 +31,12 @@ private[service] class GeminiServiceImpl(
   override implicit val ec: ExecutionContext,
   implicit val materializer: Materializer
 ) extends GeminiService
-    with WSClientWithStreamEngine {
+    with WSClientWithOutputStreamEngine {
 
   override protected type PEP = EndPoint
   override protected type PT = Param
 
-  override protected val engine: WSClientEngine with WSClientEngineStreamExtra =
+  override protected val engine: WSClientEngine with WSClientOutputStreamExtra =
     PlayWSStreamClientEngine(
       coreUrl,
       WsRequestContext(

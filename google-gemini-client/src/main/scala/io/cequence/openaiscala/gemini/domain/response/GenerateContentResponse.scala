@@ -233,6 +233,10 @@ case class CitationSource(
  *   Output only. List of modalities of the cached content in the request input.
  * @param candidatesTokensDetails
  *   Output only. List of modalities that were returned in the response.
+ * @param toolUsePromptTokenCount
+ *   Optional. Number of tokens used for tool use in the prompt.
+ * @param toolUsePromptTokensDetails
+ *   Output only. List of modalities for tool use tokens in the prompt.
  */
 case class UsageMetadata(
   promptTokenCount: Int,
@@ -242,7 +246,9 @@ case class UsageMetadata(
   thoughtsTokenCount: Option[Int] = None,
   promptTokensDetails: Seq[ModalityTokenCount] = Nil,
   cacheTokensDetails: Seq[ModalityTokenCount] = Nil,
-  candidatesTokensDetails: Seq[ModalityTokenCount] = Nil
+  candidatesTokensDetails: Seq[ModalityTokenCount] = Nil,
+  toolUsePromptTokenCount: Option[Int] = None,
+  toolUsePromptTokensDetails: Seq[ModalityTokenCount] = Nil
 )
 
 /**
