@@ -59,7 +59,13 @@ private[service] class OpenAIVertexAIChatCompletionService(
   ): Source[ChatCompletionChunkResponse, NotUsed] = {
     val model = createModel(messages, settings)
 
-    val javaStream = model.generateContentStream(toNonSystemVertexAI(messages))
+    val javaStream = model.generateContentStream(
+      toNonSystemVertexAI(
+        messages.filter(message =>
+          message.role != ChatRole.System && message.role != ChatRole.Developer
+        )
+      )
+    )
     val scalaStream = StreamConverters.fromJavaStream(() => javaStream.stream())
 
     scalaStream.map { response =>
@@ -91,7 +97,17 @@ private[service] class OpenAIVertexAIChatCompletionService(
   ): GenerativeModel = {
     val config = toVertexAI(settings)
 
-    val modelAux = new GenerativeModel(settings.model, underlying).withGenerationConfig(config)
+    var modelAux = new GenerativeModel(settings.model, underlying).withGenerationConfig(config)
+
+    // Add tools if present
+    toVertexAITools(settings).foreach { tools =>
+      modelAux = modelAux.withTools(`seq AsJavaList`(tools))
+    }
+
+    // Add tool config if present
+    toVertexAIToolConfig(settings).foreach { toolConfig =>
+      modelAux = modelAux.withToolConfig(toolConfig)
+    }
 
     // TODO: system messages not support e.g. for gemini-1.0-pro-001
     toSystemVertexAI(messages)

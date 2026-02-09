@@ -17,7 +17,7 @@ object GoogleVertexAIRegionsCreateChatCompletionWithOpenAIAdapter
 
   protected val logger: Logger = Logger(LoggerFactory.getLogger(this.getClass))
 
-  private val model = NonOpenAIModelId.gemini_2_0_flash_exp
+  private val model = NonOpenAIModelId.gemini_2_5_flash
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant who makes jokes about Google."),

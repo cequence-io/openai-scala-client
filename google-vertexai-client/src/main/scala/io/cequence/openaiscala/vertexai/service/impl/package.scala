@@ -4,10 +4,14 @@ import com.google.cloud.vertexai.api.GenerateContentResponse.UsageMetadata
 import com.google.cloud.vertexai.api.{
   Content,
   FileData,
+  FunctionCallingConfig,
+  FunctionDeclaration => VertexFunctionDeclaration,
   GenerateContentResponse,
   GenerationConfig,
   Part,
   Schema,
+  Tool => VertexTool,
+  ToolConfig => VertexToolConfig,
   Type
 }
 import com.typesafe.scalalogging.Logger
@@ -34,6 +38,18 @@ import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
   CreateChatCompletionSettings
 }
+import io.cequence.openaiscala.vertexai.domain.{
+  FunctionDeclaration => VertexAIFunctionDeclaration,
+  Schema => VertexAISchema,
+  SchemaType => VertexAISchemaType,
+  Tool => VertexAITool
+}
+import io.cequence.openaiscala.vertexai.domain.settings.{
+  FunctionCallingMode,
+  ToolConfig,
+  CreateChatCompletionSettingsOps
+}
+import CreateChatCompletionSettingsOps._
 import org.slf4j.LoggerFactory
 
 import java.{util => ju}
@@ -106,10 +122,7 @@ package object impl {
           .addParts(0, Part.newBuilder().setText(content).build())
           .build()
 
-      case x: BaseMessage =>
-        throw new OpenAIScalaClientException(
-          s"Unsupported message type: ${x.getClass().getName()}"
-        )
+      // Skip system/developer messages - they are handled separately by toSystemVertexAI
     }
 
   def toSystemVertexAI(
@@ -300,15 +313,6 @@ package object impl {
       originalResponse = Some(response)
     )
 
-  def toOpenAIAssistantMessage(content: Content): AssistantMessage = {
-    val textContents = content.getPartsList.map { part =>
-      // TODO: check different types
-      part.getText
-    }
-
-    AssistantMessage(textContents.mkString("\n"), name = None)
-  }
-
   def toOpenAI(usageInfo: UsageMetadata): OpenAIUsageInfo = {
     OpenAIUsageInfo(
       prompt_tokens = usageInfo.getPromptTokenCount,
@@ -321,5 +325,147 @@ package object impl {
       //   )
       // )
     )
+  }
+
+  // Tool conversion functions
+
+  def toVertexAITools(
+    settings: CreateChatCompletionSettings
+  ): Option[Seq[VertexTool]] =
+    settings.getVertexAITools.map(_.map(toVertexAIToolInternal))
+
+  def toVertexAIToolConfig(
+    settings: CreateChatCompletionSettings
+  ): Option[VertexToolConfig] =
+    settings.getVertexAIToolConfig.map(toVertexAIToolConfigInternal)
+
+  private def toVertexAIToolInternal(tool: VertexAITool): VertexTool = {
+    val builder = VertexTool.newBuilder()
+
+    tool match {
+      case VertexAITool.FunctionDeclarations(functionDeclarations) =>
+        functionDeclarations.foreach { fd =>
+          builder.addFunctionDeclarations(toVertexFunctionDeclaration(fd))
+        }
+
+      case VertexAITool.GoogleSearch =>
+        builder.setGoogleSearch(
+          VertexTool.GoogleSearch.newBuilder().build()
+        )
+
+      case VertexAITool.CodeExecution =>
+        builder.setCodeExecution(
+          VertexTool.CodeExecution.newBuilder().build()
+        )
+    }
+
+    builder.build()
+  }
+
+  private def toVertexFunctionDeclaration(
+    fd: VertexAIFunctionDeclaration
+  ): VertexFunctionDeclaration = {
+    val builder =
+      VertexFunctionDeclaration.newBuilder().setName(fd.name).setDescription(fd.description)
+
+    fd.parameters.foreach { schema =>
+      builder.setParameters(toVertexSchema(schema))
+    }
+
+    builder.build()
+  }
+
+  private def toVertexSchema(schema: VertexAISchema): Schema = {
+    val builder = Schema.newBuilder()
+
+    builder.setType(schema.`type` match {
+      case VertexAISchemaType.TYPE_UNSPECIFIED => Type.TYPE_UNSPECIFIED
+      case VertexAISchemaType.STRING           => Type.STRING
+      case VertexAISchemaType.NUMBER           => Type.NUMBER
+      case VertexAISchemaType.INTEGER          => Type.INTEGER
+      case VertexAISchemaType.BOOLEAN          => Type.BOOLEAN
+      case VertexAISchemaType.ARRAY            => Type.ARRAY
+      case VertexAISchemaType.OBJECT           => Type.OBJECT
+    })
+
+    schema.format.foreach(builder.setFormat)
+    schema.description.foreach(builder.setDescription)
+    schema.nullable.foreach(builder.setNullable)
+    schema.`enum`.foreach(_.foreach(builder.addEnum))
+
+    schema.properties.foreach { props =>
+      val propsMap = props.map { case (key, s) =>
+        key -> toVertexSchema(s)
+      }.toMap
+      builder.putAllProperties(`map AsJavaMap`(propsMap))
+    }
+
+    schema.required.foreach { reqs =>
+      builder.addAllRequired(`iterable asJava`(reqs))
+    }
+
+    schema.items.foreach { items =>
+      builder.setItems(toVertexSchema(items))
+    }
+
+    builder.build()
+  }
+
+  private def toVertexAIToolConfigInternal(toolConfig: ToolConfig): VertexToolConfig = {
+    val builder = VertexToolConfig.newBuilder()
+
+    toolConfig match {
+      case ToolConfig.FunctionCallingConfig(mode, allowedFunctionNames) =>
+        val fcBuilder = FunctionCallingConfig.newBuilder()
+
+        mode.foreach {
+          case FunctionCallingMode.MODE_UNSPECIFIED =>
+            fcBuilder.setMode(FunctionCallingConfig.Mode.MODE_UNSPECIFIED)
+          case FunctionCallingMode.AUTO =>
+            fcBuilder.setMode(FunctionCallingConfig.Mode.AUTO)
+          case FunctionCallingMode.ANY =>
+            fcBuilder.setMode(FunctionCallingConfig.Mode.ANY)
+          case FunctionCallingMode.NONE =>
+            fcBuilder.setMode(FunctionCallingConfig.Mode.NONE)
+        }
+
+        allowedFunctionNames.foreach { names =>
+          fcBuilder.addAllAllowedFunctionNames(`iterable asJava`(names))
+        }
+
+        builder.setFunctionCallingConfig(fcBuilder.build())
+    }
+
+    builder.build()
+  }
+
+  def toOpenAIAssistantMessage(content: Content): AssistantMessage = {
+    val parts = content.getPartsList.toSeq
+
+    // Check if there are function calls
+    val functionCalls = parts.filter(_.hasFunctionCall)
+
+    if (functionCalls.nonEmpty) {
+      // Format function calls as part of the content
+      val functionCallsText = functionCalls.zipWithIndex.map { case (part, index) =>
+        val fc = part.getFunctionCall
+        val argsJson = com.google.protobuf.util.JsonFormat.printer().print(fc.getArgs)
+        s"[Function Call ${index + 1}] ${fc.getName}: $argsJson"
+      }.mkString("\n")
+
+      // Get any text content
+      val textContent =
+        parts.filter(p => p.hasText && p.getText.nonEmpty).map(_.getText).mkString("\n")
+
+      val fullContent =
+        if (textContent.nonEmpty) s"$textContent\n\n$functionCallsText"
+        else functionCallsText
+
+      AssistantMessage(fullContent, name = None)
+    } else {
+      // Just text content
+      val textContents = parts.filter(_.hasText).map(_.getText)
+      AssistantMessage(textContents.mkString("\n"), name = None)
+    }
   }
 }
