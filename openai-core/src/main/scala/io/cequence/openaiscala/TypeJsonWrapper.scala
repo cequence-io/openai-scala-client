@@ -1,16 +1,7 @@
 package io.cequence.openaiscala
 
 import io.cequence.openaiscala.domain.HasType
-import play.api.libs.json.{
-  Format,
-  JsError,
-  JsObject,
-  JsResult,
-  JsSuccess,
-  JsValue,
-  Json,
-  OFormat
-}
+import play.api.libs.json.{JsError, JsObject, JsResult, JsSuccess, JsValue, Json, OFormat}
 
 private class TypeJsonWrapper[T <: HasType](val format: OFormat[T]) extends OFormat[T] {
   override def reads(json: JsValue): JsResult[T] = {
