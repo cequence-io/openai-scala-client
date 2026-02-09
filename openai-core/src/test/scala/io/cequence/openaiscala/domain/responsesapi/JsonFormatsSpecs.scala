@@ -1659,7 +1659,16 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
           id = "mcp_call_def456",
           name = "risky_tool",
           serverLabel = "prod_server",
-          error = Some("Permission denied"),
+          error = Some(
+            MCPToolError(
+              `type` = "mcp_tool_execution_error",
+              content = Seq(
+                MCPToolErrorContent(
+                  text = "Permission denied"
+                )
+              )
+            )
+          ),
           status = Some(ModelStatus.Failed)
         ),
         """{
@@ -1667,7 +1676,13 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
           |  "id" : "mcp_call_def456",
           |  "name" : "risky_tool",
           |  "server_label" : "prod_server",
-          |  "error" : "Permission denied",
+          |  "error" : {
+          |    "type" : "mcp_tool_execution_error",
+          |    "content" : [ {
+          |      "text" : "Permission denied",
+          |      "type" : "text"
+          |    } ]
+          |  },
           |  "status" : "failed",
           |  "type" : "mcp_call"
           |}""".stripMargin,

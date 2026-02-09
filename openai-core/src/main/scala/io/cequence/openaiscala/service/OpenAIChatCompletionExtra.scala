@@ -159,7 +159,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
           retryOnAnyError,
           failureMessage = s"${taskNameForLoggingFinal.capitalize} failed."
         )
-        .map { response =>
+        .flatMap { response =>
           val content = response.contentHead
           val contentTrimmed = content.trim.stripPrefix("```json").stripSuffix("```").trim
           val contentJson = contentTrimmed.dropWhile(char => char != '{' && char != '[')
@@ -171,9 +171,12 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
 
           json
             .asOpt[T]
+            .map(Future.successful)
             .getOrElse(
-              throw new OpenAIScalaClientException(
-                s"Failed to parse JSON response into the expected type. Response: $contentJson"
+              Future.failed(
+                new OpenAIScalaClientException(
+                  s"Failed to parse JSON response into the expected type. Response: $contentJson"
+                )
               )
             )
         }

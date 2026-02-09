@@ -762,4 +762,24 @@ object JsonFormats {
 
   implicit lazy val mcpApprovalResponseFormat: OFormat[MCPApprovalResponse] =
     Json.format[MCPApprovalResponse]
+
+  // MCP tool error content format - custom writes to include type field
+  private implicit lazy val mcpToolErrorContentReads: Reads[MCPToolErrorContent] =
+    Json.reads[MCPToolErrorContent]
+
+  private implicit lazy val mcpToolErrorContentWrites: Writes[MCPToolErrorContent] =
+    (content: MCPToolErrorContent) => {
+      Json.obj(
+        "text" -> content.text,
+        "annotations" -> content.annotations,
+        "meta" -> content.meta,
+        "type" -> content.`type`
+      )
+    }
+
+  implicit lazy val mcpToolErrorContentFormat: Format[MCPToolErrorContent] =
+    Format(mcpToolErrorContentReads, mcpToolErrorContentWrites)
+
+  implicit lazy val mcpToolErrorFormat: OFormat[MCPToolError] =
+    Json.format[MCPToolError]
 }

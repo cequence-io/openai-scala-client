@@ -236,7 +236,7 @@ object Input {
     name: String,
     serverLabel: String,
     approvalRequestId: Option[String] = None,
-    error: Option[String] = None,
+    error: Option[MCPToolError] = None,
     output: Option[String] = None,
     status: Option[ModelStatus] = None
   ) = MCPToolCall(
