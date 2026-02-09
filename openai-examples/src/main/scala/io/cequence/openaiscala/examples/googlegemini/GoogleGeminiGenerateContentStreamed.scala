@@ -30,7 +30,7 @@ object GoogleGeminiGenerateContentStreamed extends ExampleBase[GeminiService] {
       .generateContentStreamed(
         contents,
         settings = GenerateContentSettings(
-          model = NonOpenAIModelId.gemini_2_0_flash_exp,
+          model = NonOpenAIModelId.gemini_2_5_flash,
           systemInstruction = Some(systemPrompt),
           generationConfig = Some(
             GenerationConfig(

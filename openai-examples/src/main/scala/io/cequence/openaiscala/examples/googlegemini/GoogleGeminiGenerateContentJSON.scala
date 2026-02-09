@@ -69,7 +69,7 @@ object GoogleGeminiGenerateContentJSON extends ExampleBase[GeminiService] {
       .generateContent(
         contents,
         settings = GenerateContentSettings(
-          model = NonOpenAIModelId.gemini_pro_experimental,
+          model = NonOpenAIModelId.gemini_2_5_flash,
           systemInstruction = Some(systemPrompt),
           generationConfig = Some(
             GenerationConfig(
