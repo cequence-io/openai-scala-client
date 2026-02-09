@@ -5,6 +5,7 @@ import play.api.libs.json.{JsError, JsObject, JsResult, JsSuccess, JsValue, Json
 
 private class TypeJsonWrapper[T <: HasType](val format: OFormat[T]) extends OFormat[T] {
   override def reads(json: JsValue): JsResult[T] = {
+
     // First read using the underlying format
     format.reads(json).flatMap { obj =>
       // Validate that the type field in JSON matches the object's type
