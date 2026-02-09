@@ -7,23 +7,29 @@ import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Random
 import scala.util.control.NonFatal
 
 object RetryHelpers {
+  private val random = new Random()
+
   private[openaiscala] def delay(
     n: Integer
   )(
     implicit retrySettings: RetrySettings
-  ): FiniteDuration =
-    FiniteDuration(
-      scala.math.round(
-        retrySettings.delayOffset.length + scala.math.pow(
-          retrySettings.delayBase,
-          n.doubleValue()
-        )
-      ),
-      retrySettings.delayOffset.unit
+  ): FiniteDuration = {
+    val baseDelay = scala.math.round(
+      retrySettings.delayOffset.length + scala.math.pow(
+        retrySettings.delayBase,
+        n.doubleValue()
+      )
     )
+    val jitter = retrySettings.jitterMs.map(max => random.nextInt(max)).getOrElse(0)
+    FiniteDuration(baseDelay, retrySettings.delayOffset.unit) + FiniteDuration(
+      jitter,
+      scala.concurrent.duration.MILLISECONDS
+    )
+  }
 
   private[openaiscala] def retry[T](
     fun: () => Future[T],
@@ -33,7 +39,8 @@ object RetryHelpers {
     isRetryable: Throwable => Boolean = {
       case Retryable(_) => true
       case _            => false
-    }
+    },
+    includeExceptionMessage: Boolean = false
   )(
     implicit ec: ExecutionContext,
     scheduler: Scheduler,
@@ -47,9 +54,14 @@ object RetryHelpers {
               val failureMessagePart =
                 failureMessage.map(message => message.stripSuffix(".") + ". ").getOrElse("")
 
+              val exceptionMessagePart = if (includeExceptionMessage) {
+                val msg = Option(e.getMessage).getOrElse("Unknown error")
+                s" Error: ${msg.stripSuffix(".")}."
+              } else ""
+
               log.foreach(
                 _(
-                  s"${failureMessagePart}Attempt ${attempt}. Retrying..."
+                  s"${failureMessagePart}Attempt ${attempt}.${exceptionMessagePart} Retrying..."
                 )
               )
 
@@ -70,7 +82,8 @@ object RetryHelpers {
   final case class RetrySettings(
     maxRetries: Int = 5,
     delayOffset: FiniteDuration = 2.seconds,
-    delayBase: Double = 2
+    delayBase: Double = 2,
+    jitterMs: Option[Int] = None
   ) {
     def constantInterval(interval: FiniteDuration): RetrySettings =
       copy(delayBase = 0).copy(delayOffset = interval)
@@ -96,7 +109,8 @@ trait RetryHelpers {
       isRetryable: Throwable => Boolean = {
         case Retryable(_) => true
         case _            => false
-      }
+      },
+      includeExceptionMessage: Boolean = false
     )(
       implicit retrySettings: RetrySettings,
       ec: ExecutionContext,
@@ -107,7 +121,8 @@ trait RetryHelpers {
         maxAttempts = retrySettings.maxRetries + 1,
         failureMessage,
         log,
-        isRetryable
+        isRetryable,
+        includeExceptionMessage
       )
     }
   }
@@ -122,7 +137,8 @@ trait RetryHelpers {
       isRetryable: Throwable => Boolean = {
         case Retryable(_) => true
         case _            => false
-      }
+      },
+      includeExceptionMessage: Boolean = false
     )(
       implicit retrySettings: RetrySettings,
       ec: ExecutionContext,
@@ -133,7 +149,8 @@ trait RetryHelpers {
         normalAndFailoverInputsAndMessages,
         failureMessage,
         log,
-        isRetryable
+        isRetryable,
+        includeExceptionMessage
       )
 
     private def retryOnFailureOrFailoverAux(
@@ -144,7 +161,8 @@ trait RetryHelpers {
       isRetryable: Throwable => Boolean = {
         case Retryable(_) => true
         case _            => false
-      }
+      },
+      includeExceptionMessage: Boolean = false
     )(
       implicit retrySettings: RetrySettings,
       ec: ExecutionContext,
@@ -176,7 +194,8 @@ trait RetryHelpers {
             .retryOnFailure(
               failureMessage.map(message => s"${inputLogMessage} - ${message}"),
               log,
-              isRetryable
+              isRetryable,
+              includeExceptionMessage
             )
             .recoverWith { case e: Throwable =>
               val errorMessage = failureMessage
@@ -195,7 +214,8 @@ trait RetryHelpers {
                 inputsAndMessagesToTryInOrder.tail,
                 failureMessage,
                 log,
-                isRetryable
+                isRetryable,
+                includeExceptionMessage
               )
             }
       }

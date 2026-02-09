@@ -11,7 +11,8 @@ import scala.concurrent.{ExecutionContext, Future}
 private class RetryServiceAdapter[+S <: CloseableService](
   underlying: S,
   log: Option[String => Unit] = None,
-  isRetryable: Throwable => Boolean
+  isRetryable: Throwable => Boolean,
+  includeExceptionMessage: Boolean = false
 )(
   implicit ec: ExecutionContext,
   retrySettings: RetrySettings,
@@ -27,7 +28,8 @@ private class RetryServiceAdapter[+S <: CloseableService](
     fun(underlying).retryOnFailure(
       Some(s"${getFunctionName().capitalize} call failed"),
       log,
-      isRetryable
+      isRetryable,
+      includeExceptionMessage
     )
 
   override def close(): Unit =
