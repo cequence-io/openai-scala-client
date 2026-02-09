@@ -29,7 +29,7 @@ object AnthropicBedrockCreateChatCompletionInEUWithOpenAIAdapter
           modelId,
           reasoning_effort = Some(ReasoningEffort.high),
           max_tokens = Some(20000)
-        ),
+        )
       )
       .map { content =>
         println(content.contentHead)

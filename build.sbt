@@ -85,10 +85,21 @@ lazy val count_tokens = (project in file("openai-count-tokens"))
     google_gemini_client
   )
 
+lazy val all = (project in file("openai-all"))
+  .settings(commonSettings *)
+  .dependsOn(
+    client_stream,
+    anthropic_client,
+    google_vertexai_client,
+    google_gemini_client,
+    perplexity_sonar_client,
+    count_tokens
+  )
+
 lazy val guice = (project in file("openai-guice"))
   .settings(commonSettings *)
   .dependsOn(client)
-  .aggregate(count_tokens)
+  .aggregate(count_tokens, all)
 
 lazy val examples = (project in file("openai-examples"))
   .settings(commonSettings *)

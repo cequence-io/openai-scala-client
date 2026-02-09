@@ -4,7 +4,10 @@ import io.cequence.openaiscala.domain.NonOpenAIModelId
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.gemini.domain.ChatRole.User
 import io.cequence.openaiscala.gemini.domain.{Content, Tool}
-import io.cequence.openaiscala.gemini.domain.settings.{GenerateContentSettings, GenerationConfig}
+import io.cequence.openaiscala.gemini.domain.settings.{
+  GenerateContentSettings,
+  GenerationConfig
+}
 import io.cequence.openaiscala.gemini.service.{GeminiService, GeminiServiceFactory}
 
 import scala.concurrent.Future
@@ -17,7 +20,8 @@ import scala.concurrent.Future
  * Requires `openai-scala-google-gemini-client` as a dependency and `GOOGLE_API_KEY`
  * environment variable to be set.
  */
-object GoogleGeminiCreateChatCompletionWithToolsGoogleSearch extends ExampleBase[GeminiService] {
+object GoogleGeminiCreateChatCompletionWithToolsGoogleSearch
+    extends ExampleBase[GeminiService] {
 
   override protected val service: GeminiService = GeminiServiceFactory()
 

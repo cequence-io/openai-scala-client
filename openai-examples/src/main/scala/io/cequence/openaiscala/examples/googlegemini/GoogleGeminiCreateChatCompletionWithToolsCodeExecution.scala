@@ -4,7 +4,10 @@ import io.cequence.openaiscala.domain.NonOpenAIModelId
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.gemini.domain.ChatRole.User
 import io.cequence.openaiscala.gemini.domain.{Content, Part, Tool}
-import io.cequence.openaiscala.gemini.domain.settings.{GenerateContentSettings, GenerationConfig}
+import io.cequence.openaiscala.gemini.domain.settings.{
+  GenerateContentSettings,
+  GenerationConfig
+}
 import io.cequence.openaiscala.gemini.service.{GeminiService, GeminiServiceFactory}
 
 import scala.concurrent.Future
@@ -12,13 +15,14 @@ import scala.concurrent.Future
 /**
  * Example showing code execution with Gemini.
  *
- * The model can generate and execute Python code to solve problems,
- * returning both the code and its execution result.
+ * The model can generate and execute Python code to solve problems, returning both the code
+ * and its execution result.
  *
  * Requires `openai-scala-google-gemini-client` as a dependency and `GOOGLE_API_KEY`
  * environment variable to be set.
  */
-object GoogleGeminiCreateChatCompletionWithToolsCodeExecution extends ExampleBase[GeminiService] {
+object GoogleGeminiCreateChatCompletionWithToolsCodeExecution
+    extends ExampleBase[GeminiService] {
 
   override protected val service: GeminiService = GeminiServiceFactory()
 

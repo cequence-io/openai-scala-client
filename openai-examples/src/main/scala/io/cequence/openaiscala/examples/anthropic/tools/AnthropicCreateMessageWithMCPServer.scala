@@ -3,7 +3,10 @@ package io.cequence.openaiscala.examples.anthropic.tools
 import io.cequence.openaiscala.anthropic.domain.Message.UserMessage
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
-import io.cequence.openaiscala.anthropic.domain.tools.{MCPServerURLDefinition, MCPToolConfiguration}
+import io.cequence.openaiscala.anthropic.domain.tools.{
+  MCPServerURLDefinition,
+  MCPToolConfiguration
+}
 import io.cequence.openaiscala.anthropic.service.{AnthropicService, AnthropicServiceFactory}
 import io.cequence.openaiscala.domain.NonOpenAIModelId
 import io.cequence.openaiscala.examples.ExampleBase
@@ -25,11 +28,14 @@ object AnthropicCreateMessageWithMCPServer extends ExampleBase[AnthropicService]
       MCPToolConfiguration(
         allowedTools = Nil,
         enabled = Some(true)
-    ))
+      )
+    )
   )
 
   private val messages1 = Seq(
-    UserMessage("What is the purpose of the 'given' keyword in Scala 3? Search in scala/scala repository.")
+    UserMessage(
+      "What is the purpose of the 'given' keyword in Scala 3? Search in scala/scala repository."
+    )
   )
 
   private val settings1 = AnthropicCreateMessageSettings(
@@ -63,7 +69,9 @@ object AnthropicCreateMessageWithMCPServer extends ExampleBase[AnthropicService]
   )
 
   private val messages3 = Seq(
-    UserMessage("What are the recent National Coverage Determinations (NCDs) published in the last 30 days? Include any updates to oncology-related coverage policies.")
+    UserMessage(
+      "What are the recent National Coverage Determinations (NCDs) published in the last 30 days? Include any updates to oncology-related coverage policies."
+    )
   )
 
   private val settings3 = AnthropicCreateMessageSettings(
@@ -80,37 +88,31 @@ object AnthropicCreateMessageWithMCPServer extends ExampleBase[AnthropicService]
     println("=" * 60)
     println(s"Example: $name")
     println("=" * 60)
-    
-    service.createMessage(messages, settings)
-      .map(Some(_))
-      .recover {
-        case e: Throwable =>
-          println("Error received:")
-          e.printStackTrace()
-          None
-      }
+
+    service.createMessage(messages, settings).map(Some(_)).recover { case e: Throwable =>
+      println("Error received:")
+      e.printStackTrace()
+      None
+    }
   }
 
   override protected def run: Future[_] =
-    runExample("Using DeepWiki MCP Server", messages1, settings1)
-      .flatMap { response1 =>
-        printResponse(response1)
-        runExample("Using Semgrep MCP Server", messages2, settings2)
-      }
-      .flatMap { response2 =>
-        printResponse(response2)
-        runExample("Using DeepSense CMS Coverage MCP Server", messages3, settings3)
-      }
-      .map { response3 =>
-        printResponse(response3)
+    runExample("Using DeepWiki MCP Server", messages1, settings1).flatMap { response1 =>
+      printResponse(response1)
+      runExample("Using Semgrep MCP Server", messages2, settings2)
+    }.flatMap { response2 =>
+      printResponse(response2)
+      runExample("Using DeepSense CMS Coverage MCP Server", messages3, settings3)
+    }.map { response3 =>
+      printResponse(response3)
 
-        println("=" * 60)
-        println("Available MCP servers:")
-        println("  - DeepWiki: Access to Wikipedia and other knowledge sources")
-        println("  - Semgrep: Code analysis and security vulnerability detection")
-        println("  - DeepSense CMS Coverage: Medicare coverage policies (NCDs, LCDs)")
-        println("=" * 60)
-      }
+      println("=" * 60)
+      println("Available MCP servers:")
+      println("  - DeepWiki: Access to Wikipedia and other knowledge sources")
+      println("  - Semgrep: Code analysis and security vulnerability detection")
+      println("  - DeepSense CMS Coverage: Medicare coverage policies (NCDs, LCDs)")
+      println("=" * 60)
+    }
 
   private def printResponse(response: Option[CreateMessageResponse]): Unit = {
     response.foreach { r =>
