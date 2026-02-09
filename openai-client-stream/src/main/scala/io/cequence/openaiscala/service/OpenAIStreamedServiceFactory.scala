@@ -4,7 +4,7 @@ import akka.stream.Materializer
 import io.cequence.openaiscala.service.impl.OpenAICoreServiceStreamedExtraImpl
 import io.cequence.wsclient.domain.WsRequestContext
 import io.cequence.wsclient.service.ws.stream.PlayWSStreamClientEngine
-import io.cequence.wsclient.service.{WSClientEngine, WSClientEngineStreamExtra}
+import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtra}
 
 import scala.concurrent.ExecutionContext
 
@@ -28,7 +28,7 @@ object OpenAIStreamedServiceFactory
     val materializer: Materializer
   ) extends OpenAICoreServiceStreamedExtraImpl {
     // Play WS engine
-    override protected val engine: WSClientEngine with WSClientEngineStreamExtra =
+    override protected val engine: WSClientEngine with WSClientOutputStreamExtra =
       PlayWSStreamClientEngine(coreUrl, requestContext)
   }
 }

@@ -9,7 +9,7 @@ import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.OpenAIChatCompletionStreamedServiceExtra
 import io.cequence.wsclient.JsonUtil.JsonOps
-import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithStreamEngine
+import io.cequence.wsclient.service.WSClientWithEngineStreamTypes.WSClientWithOutputStreamEngine
 import play.api.libs.json.JsValue
 
 /**
@@ -22,7 +22,7 @@ import play.api.libs.json.JsValue
 private[service] trait OpenAIChatCompletionServiceStreamedExtraImpl
     extends OpenAIChatCompletionStreamedServiceExtra
     with ChatCompletionBodyMaker
-    with WSClientWithStreamEngine {
+    with WSClientWithOutputStreamEngine {
 
   override protected type PEP = EndPoint
   override protected type PT = Param

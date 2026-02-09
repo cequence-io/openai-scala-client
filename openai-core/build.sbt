@@ -5,7 +5,7 @@ name := "openai-scala-core"
 description := "Core module of OpenAI Scala client"
 
 libraryDependencies ++= Seq(
-  "io.cequence" %% "ws-client-core" % wsClient,
+  "io.cequence" %% "ws-client-core-akka" % wsClient,
   // we ship our own version of json-repair (originally in Python)
   "io.cequence" %% "json-repair" % wsClient,
   // logging
