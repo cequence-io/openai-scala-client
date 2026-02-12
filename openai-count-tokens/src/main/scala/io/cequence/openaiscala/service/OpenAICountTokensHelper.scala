@@ -8,7 +8,29 @@ import io.cequence.openaiscala.domain._
 import play.api.libs.json.Json
 import com.knuddels.jtokkit.api.ModelType
 
-// based on: https://jtokkit.knuddels.de/docs/getting-started/recipes/chatml
+/**
+ * Helper trait for counting tokens in messages and texts using the jtokkit library.
+ *
+ * Based on: [[https://jtokkit.knuddels.de/docs/getting-started/recipes/chatml]]
+ *
+ * Supported chat models:
+ *   - gpt-4 (cl100k_base)
+ *   - gpt-4-32k (cl100k_base)
+ *   - gpt-4-turbo (cl100k_base)
+ *   - gpt-4o (o200k_base)
+ *   - gpt-4o-mini (o200k_base)
+ *   - gpt-3.5-turbo (cl100k_base)
+ *   - gpt-3.5-turbo-16k (cl100k_base)
+ *
+ * Supported embedding models:
+ *   - text-embedding-ada-002 (cl100k_base)
+ *   - text-embedding-3-small (cl100k_base)
+ *   - text-embedding-3-large (cl100k_base)
+ *
+ * Legacy models such as text-davinci are also supported.
+ *
+ * For newer models not listed above, use gpt-4o (o200k_base) as an estimate.
+ */
 trait OpenAICountTokensHelper {
 
   private lazy val registry = Encodings.newLazyEncodingRegistry()
