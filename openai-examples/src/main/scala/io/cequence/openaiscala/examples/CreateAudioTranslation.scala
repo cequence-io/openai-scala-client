@@ -11,7 +11,9 @@ import scala.concurrent.Future
 // translates to English
 object CreateAudioTranslation extends Example {
 
-  private val audioFile = getClass.getResource("/wolfgang.mp3").getFile
+  private val audioFile: String = Option(
+    getClass.getClassLoader.getResource("wolfgang.mp3")
+  ).map(_.getFile).getOrElse(throw new RuntimeException("Audio file not found"))
 
   override protected def run: Future[Unit] =
     service

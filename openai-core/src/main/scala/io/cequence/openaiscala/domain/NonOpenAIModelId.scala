@@ -5,6 +5,7 @@ object NonOpenAIModelId {
 
   // Anthropic
   val claude_opus_4_6 = "claude-opus-4-6"
+  val claude_sonnet_4_6 = "claude-sonnet-4-6"
   val claude_opus_4_5_20251101 = "claude-opus-4-5-20251101"
   val claude_opus_4_5 = "claude-opus-4-5"
   val claude_sonnet_4_5_20250929 = "claude-sonnet-4-5-20250929"
@@ -29,6 +30,7 @@ object NonOpenAIModelId {
 
   // Anthropic Bedrock
   val bedrock_claude_opus_4_6_v1 = "anthropic.claude-opus-4-6-v1"
+  val bedrock_claude_sonnet_4_6_v1 = "anthropic.claude-sonnet-4-6-v1"
   val bedrock_claude_opus_4_5_20251101_v1_0 = "anthropic.claude-opus-4-5-20251101-v1:0"
   val bedrock_claude_sonnet_4_5_20250929_v1_0 = "anthropic.claude-sonnet-4-5-20250929-v1:0"
   val bedrock_claude_haiku_4_5_20251001_v1_0 = "anthropic.claude-haiku-4-5-20251001-v1:0"
@@ -222,6 +224,8 @@ object NonOpenAIModelId {
   val gemini_3_pro = "gemini-3-pro"
   val gemini_3_pro_preview = "gemini-3-pro-preview"
   val gemini_3_pro_image_preview = "gemini-3-pro-image-preview"
+  val gemini_3_1_pro_preview = "gemini-3.1-pro-preview"
+  val gemini_3_1_pro_preview_customtools = "gemini-3.1-pro-preview-customtools"
   val gemini_2_5_pro = "gemini-2.5-pro"
   val gemini_2_5_pro_preview_06_05 = "gemini-2.5-pro-preview-06-05"
   val gemini_2_5_pro_preview_05_06 = "gemini-2.5-pro-preview-05-06"
