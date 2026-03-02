@@ -169,6 +169,22 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
             s"${taskNameForLoggingFinal.capitalize} finished in " + (new java.util.Date().getTime - start.getTime) + " ms."
           )
 
+          json match {
+            case obj: JsObject if obj.fields.isEmpty =>
+              val stopReason =
+                response.choices.headOption.flatMap(_.finish_reason).getOrElse("N/A")
+              val model = response.model
+              val usageInfo = response.usage.map { u =>
+                val reasoning =
+                  u.completion_tokens_details.flatMap(_.reasoning_tokens).getOrElse(0)
+                s"input: ${u.prompt_tokens}, output: ${u.completion_tokens.getOrElse(0)}, reasoning: $reasoning"
+              }.getOrElse("N/A")
+              logger.error(
+                s"${taskNameForLoggingFinal.capitalize} returned an empty JSON object. Stop reason: $stopReason, model: $model, usage: [$usageInfo]."
+              )
+            case _ =>
+          }
+
           json
             .asOpt[T]
             .map(Future.successful)
