@@ -21,7 +21,7 @@ object GoogleGeminiCreateChatCompletionWithOpenAIAdapter
     UserMessage("Explain AI to a 5-year-old.")
   )
 
-  private val modelId = NonOpenAIModelId.gemini_1_5_flash_001
+  private val modelId = NonOpenAIModelId.gemini_3_1_flash_lite_preview
 
   override protected def run: Future[_] =
     service

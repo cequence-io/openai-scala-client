@@ -3,6 +3,7 @@ package io.cequence.openaiscala.service.adapter
 import io.cequence.openaiscala.domain.{
   AssistantMessage,
   BaseMessage,
+  ChatCompletionErrorInterceptData,
   ChatCompletionInterceptData
 }
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
@@ -67,6 +68,19 @@ trait OpenAIServiceAdapters[S <: CloseableService] extends ServiceAdapters[S] {
   ): S =
     wrapAndDelegateChatCompletion(
       new ChatCompletionInterceptAdapter(intercept, adjustSettingsForCall)(service)
+    )
+
+  def chatCompletionErrorIntercept(
+    intercept: ChatCompletionErrorInterceptData => Future[Unit],
+    adjustSettingsForCall: CreateChatCompletionSettings => CreateChatCompletionSettings =
+      identity[CreateChatCompletionSettings]
+  )(
+    service: S with OpenAIChatCompletionService
+  )(
+    implicit ec: ExecutionContext
+  ): S =
+    wrapAndDelegateChatCompletion(
+      new ChatCompletionErrorInterceptAdapter(intercept, adjustSettingsForCall)(service)
     )
 
   def chatCompletionRouter(

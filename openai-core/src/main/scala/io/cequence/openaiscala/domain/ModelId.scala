@@ -213,6 +213,13 @@ object ModelId {
   val o1_pro = "o1-pro"
   val o1_pro_2025_03_19 = "o1-pro-2025-03-19"
 
+  // GPT-5.4
+  // 1,050,000 context window, 128k max output tokens, Aug 31, 2025 knowledge cutoff, Reasoning token support
+  val gpt_5_4 = "gpt-5.4"
+  val gpt_5_4_2026_03_05 = "gpt-5.4-2026-03-05"
+  val gpt_5_4_pro = "gpt-5.4-pro"
+  val gpt_5_4_pro_2026_03_05 = "gpt-5.4-pro-2026-03-05"
+
   // GPT-5.3
   val gpt_5_3 = "gpt-5.3"
   val gpt_5_3_2026_02_06 = "gpt-5.3-2026-02-06"

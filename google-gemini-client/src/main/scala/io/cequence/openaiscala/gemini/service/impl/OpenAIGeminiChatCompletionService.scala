@@ -83,7 +83,7 @@ private[service] class OpenAIGeminiChatCompletionService(
         settings
       )
     } yield toOpenAIResponse(response)
-  }
+  }.recoverWith(repackAsOpenAIException)
 
   override def createChatCompletionStreamed(
     messages: Seq[BaseMessage],
@@ -91,14 +91,16 @@ private[service] class OpenAIGeminiChatCompletionService(
   ): Source[ChatCompletionChunkResponse, NotUsed] = {
     val (userMessages, systemMessage) = splitMessage(messages)
 
-    val futureSource = handleCaching(systemMessage, userMessages, settings).map(settings =>
-      underlying
-        .generateContentStreamed(
-          userMessages.map(toGeminiContent),
-          settings
-        )
-        .map(toOpenAIChunkResponse)
-    )
+    val futureSource = handleCaching(systemMessage, userMessages, settings)
+      .map(settings =>
+        underlying
+          .generateContentStreamed(
+            userMessages.map(toGeminiContent),
+            settings
+          )
+          .map(toOpenAIChunkResponse)
+      )
+      .recoverWith(repackAsOpenAIException)
 
     // keep it like this because of the compatibility with older versions of Akka stream
     Source.fromFutureSource(futureSource).mapMaterializedValue(_ => NotUsed)
@@ -365,46 +367,62 @@ private[service] class OpenAIGeminiChatCompletionService(
   ): Option[ThinkingConfig] = {
     import io.cequence.wsclient.ConfigImplicits._
 
-    reasoningEffort.flatMap { effort =>
-      val effortKey = effort.toString.toLowerCase
-      val configPath =
-        s"$configPrefix.reasoning-effort-thinking-budget-mapping.$effortKey.gemini"
+    // thinking is NOT supported on Gemini 2.0, 1.5, and older models
+    val thinkingNotSupported =
+      model.startsWith("gemini-2.0") ||
+        model.startsWith("gemini-1.5") ||
+        model.startsWith("gemini-1.0")
 
-      clientConfig
-        .optionalInt(configPath)
-        .flatMap { budget =>
-          logger.debug(
-            s"Converting reasoning effort '$effortKey' to thinking budget: $budget"
-          )
+    if (thinkingNotSupported) {
+      reasoningEffort.foreach { effort =>
+        logger.warn(
+          s"Skipping thinking config for model '$model' - thinking is only supported on Gemini 2.5+ and 3.x models. Reasoning effort '${effort.toString.toLowerCase}' will be ignored."
+        )
+      }
+      None
+    } else {
+      reasoningEffort.flatMap { effort =>
+        val effortKey = effort.toString.toLowerCase
+        val configPath =
+          s"$configPrefix.reasoning-effort-thinking-budget-mapping.$effortKey.gemini"
 
-          // budget = 0 has different meanings:
-          // - For 2.5 Pro: 0 is out of range (min is 128), so we cannot turn it off completely, therefore
-          // setting it the minimal budget of 128
-          val budgetFinal =
-            if (
-              budget == 0 && (
-                model.startsWith(NonOpenAIModelId.gemini_3_pro) ||
-                  model.startsWith(NonOpenAIModelId.gemini_2_5_pro)
+        clientConfig
+          .optionalInt(configPath)
+          .flatMap { budget =>
+            logger.debug(
+              s"Converting reasoning effort '$effortKey' to thinking budget: $budget"
+            )
+
+            // budget = 0 has different meanings:
+            // - For 2.5 Pro: 0 is out of range (min is 128), so we cannot turn it off completely, therefore
+            // setting it the minimal budget of 128
+            val budgetFinal =
+              if (
+                budget == 0 && (
+                  model.startsWith(NonOpenAIModelId.gemini_3_1_pro_preview) ||
+                    model.startsWith(NonOpenAIModelId.gemini_3_pro) ||
+                    model.startsWith(NonOpenAIModelId.gemini_2_5_pro)
+                )
+              )
+                128
+              else
+                budget
+
+            Some(
+              ThinkingConfig(
+                includeThoughts = Some(false), // typically don't include thoughts in response
+                thinkingBudget = Some(budgetFinal),
+                thinkingLevel = None // let budget control the thinking depth
               )
             )
-              128
-            else
-              budget
-
-          Some(
-            ThinkingConfig(
-              includeThoughts = Some(false), // typically don't include thoughts in response
-              thinkingBudget = Some(budgetFinal),
-              thinkingLevel = None // let budget control the thinking depth
+          }
+          .orElse {
+            logger.warn(
+              s"No thinking budget mapping found for reasoning effort '$effortKey' in config path: $configPath"
             )
-          )
-        }
-        .orElse {
-          logger.warn(
-            s"No thinking budget mapping found for reasoning effort '$effortKey' in config path: $configPath"
-          )
-          None
-        }
+            None
+          }
+      }
     }
   }
 

@@ -130,6 +130,28 @@ object ChatCompletionSettingsConversions {
       warning = true
     )
 
+    val presencePenaltyZeroOnlyWithReasoning: FieldConversionDef = FieldConversionDef(
+      settings =>
+        settings.presence_penalty.isDefined && settings.presence_penalty.get != 0 &&
+          settings.reasoning_effort.exists(_ != ReasoningEffort.none),
+      _.copy(presence_penalty = Some(0d)),
+      Some(settings =>
+        s"${settings.model} model doesn't support presence penalty values other than the default of 0 when reasoning_effort is set, converting to 0."
+      ),
+      warning = true
+    )
+
+    val frequencyPenaltyZeroOnlyWithReasoning: FieldConversionDef = FieldConversionDef(
+      settings =>
+        settings.frequency_penalty.isDefined && settings.frequency_penalty.get != 0 &&
+          settings.reasoning_effort.exists(_ != ReasoningEffort.none),
+      _.copy(frequency_penalty = Some(0d)),
+      Some(settings =>
+        s"${settings.model} model doesn't support frequency penalty values other than the default of 0 when reasoning_effort is set, converting to 0."
+      ),
+      warning = true
+    )
+
     val parallelToolCallsUnsupported: FieldConversionDef = FieldConversionDef(
       settings => settings.parallel_tool_calls.isDefined,
       _.copy(parallel_tool_calls = None),
@@ -175,7 +197,18 @@ object ChatCompletionSettingsConversions {
   private val o1PreviewConversions =
     oBaseConversions :+ responseFormatTypeMustBeText
 
-  val gpt5_1And2: SettingsConversion = generic(
+  val gpt5: SettingsConversion = generic(
+    Seq(
+      maxTokensToMaxCompletionTokens,
+      temperatureOneOnly,
+      topPOneOnly,
+      presencePenaltyZeroOnly,
+      frequencyPenaltyZeroOnly,
+      logProbsUnsupported
+    )
+  )
+
+  val gpt5_1: SettingsConversion = generic(
     Seq(
       maxTokensToMaxCompletionTokens,
       temperatureOneOnlyWithReasoning,
@@ -186,13 +219,35 @@ object ChatCompletionSettingsConversions {
     )
   )
 
-  val gpt5: SettingsConversion = generic(
+  val gpt5_2: SettingsConversion = generic(
+    Seq(
+      maxTokensToMaxCompletionTokens,
+      temperatureOneOnlyWithReasoning,
+      topPOneOnlyWithReasoning,
+      logProbsUnsupportedWithReasoning,
+      presencePenaltyZeroOnly,
+      frequencyPenaltyZeroOnly
+    )
+  )
+
+  val gpt5_3: SettingsConversion = generic(
     Seq(
       maxTokensToMaxCompletionTokens,
       temperatureOneOnly,
       topPOneOnly,
       presencePenaltyZeroOnly,
       frequencyPenaltyZeroOnly,
+      logProbsUnsupported
+    )
+  )
+
+  val gpt5_4: SettingsConversion = generic(
+    Seq(
+      maxTokensToMaxCompletionTokens,
+      temperatureOneOnlyWithReasoning,
+      topPOneOnlyWithReasoning,
+      presencePenaltyZeroOnlyWithReasoning,
+      frequencyPenaltyZeroOnlyWithReasoning,
       logProbsUnsupported
     )
   )

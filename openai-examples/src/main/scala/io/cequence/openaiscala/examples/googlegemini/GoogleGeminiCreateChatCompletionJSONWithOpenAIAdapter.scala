@@ -25,6 +25,8 @@ object GoogleGeminiCreateChatCompletionJSONWithOpenAIAdapter
 
   private val timeout = 5 * 60 * 1000 // 5 minutes
 
+  private val modelId = NonOpenAIModelId.gemini_3_1_flash_lite_preview
+
   override val service: OpenAIChatCompletionService =
     GeminiServiceFactory.asOpenAI(
       timeouts = Some(
@@ -67,8 +69,6 @@ object GoogleGeminiCreateChatCompletionJSONWithOpenAIAdapter
     ),
     required = Seq("countries")
   )
-
-  private val modelId = NonOpenAIModelId.gemini_3_pro_preview
 
   override protected def run: Future[_] =
     service

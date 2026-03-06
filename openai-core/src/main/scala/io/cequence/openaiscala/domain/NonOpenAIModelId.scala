@@ -224,6 +224,7 @@ object NonOpenAIModelId {
   val gemini_3_pro = "gemini-3-pro"
   val gemini_3_pro_preview = "gemini-3-pro-preview"
   val gemini_3_pro_image_preview = "gemini-3-pro-image-preview"
+  val gemini_3_1_pro = "gemini-3.1-pro"
   val gemini_3_1_pro_preview = "gemini-3.1-pro-preview"
   val gemini_3_1_pro_preview_customtools = "gemini-3.1-pro-preview-customtools"
   val gemini_2_5_pro = "gemini-2.5-pro"
@@ -232,6 +233,7 @@ object NonOpenAIModelId {
   val gemini_2_5_pro_preview_03_25 = "gemini-2.5-pro-preview-03-25"
   val gemini_2_5_pro_exp_03_25 = "gemini-2.5-pro-exp-03-25"
 
+  val gemini_3_1_flash_lite_preview = "gemini-3.1-flash-lite-preview"
   val gemini_2_5_flash = "gemini-2.5-flash"
   val gemini_2_5_flash_lite = "gemini-2.5-flash-lite"
   val gemini_2_5_flash_image = "gemini-2.5-flash-image"

@@ -12,7 +12,7 @@ import io.cequence.openaiscala.gemini.domain.response.{
 }
 import io.cequence.openaiscala.gemini.domain.settings.GenerateContentSettings
 import io.cequence.openaiscala.gemini.domain.{CachedContent, Content, Expiration}
-import io.cequence.openaiscala.gemini.service.GeminiService
+import io.cequence.openaiscala.gemini.service.{GeminiService, HandleGeminiErrorCodes}
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
 import io.cequence.wsclient.domain.WsRequestContext
@@ -31,6 +31,7 @@ private[service] class GeminiServiceImpl(
   override implicit val ec: ExecutionContext,
   implicit val materializer: Materializer
 ) extends GeminiService
+    with HandleGeminiErrorCodes
     with WSClientWithOutputStreamEngine {
 
   override protected type PEP = EndPoint

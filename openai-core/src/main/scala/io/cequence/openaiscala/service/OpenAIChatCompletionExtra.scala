@@ -38,7 +38,8 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       failoverModels: Seq[String],
       maxRetries: Option[Int] = Some(defaultMaxRetries),
       retryOnAnyError: Boolean = false,
-      failureMessage: String
+      failureMessage: String,
+      filterModels: Option[Seq[String] => Future[Seq[String]]] = None
     )(
       implicit ec: ExecutionContext,
       scheduler: Scheduler
@@ -49,7 +50,8 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
         failoverModels.map(model => settings.copy(model = model)),
         maxRetries,
         retryOnAnyError,
-        failureMessage
+        failureMessage,
+        filterModels
       )
 
     def createChatCompletionWithFailoverSettings(
@@ -58,26 +60,49 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       failoverSettings: Seq[CreateChatCompletionSettings],
       maxRetries: Option[Int] = Some(defaultMaxRetries),
       retryOnAnyError: Boolean = false,
-      failureMessage: String
+      failureMessage: String,
+      filterModels: Option[Seq[String] => Future[Seq[String]]] = None
     )(
       implicit ec: ExecutionContext,
       scheduler: Scheduler
     ): Future[ChatCompletionResponse] = {
       val allSettingsInOrder = settings +: failoverSettings
 
-      implicit val retrySettings: RetrySettings =
-        RetrySettings(maxRetries = maxRetries.getOrElse(0))
+      for {
+        filteredSettings <- filterModels match {
+          case Some(filter) =>
+            val allModels = allSettingsInOrder.map(_.model)
+            filter(allModels).map { filteredModelNames =>
+              allSettingsInOrder.filter(s => filteredModelNames.contains(s.model))
+            }
+          case None =>
+            Future.successful(allSettingsInOrder)
+        }
 
-      (openAIChatCompletionService
-        .createChatCompletion(messages, _))
-        .retryOnFailureOrFailover(
-          // model is used only for logging
-          normalAndFailoverInputsAndMessages =
-            allSettingsInOrder.map(settings => (settings, settings.model)),
-          failureMessage = Some(failureMessage),
-          log = Some(logger.warn),
-          isRetryable = isRetryable(retryOnAnyError)
-        )
+        _ <- if (filteredSettings.isEmpty)
+          Future.failed(
+            new OpenAIScalaClientException(
+              "At least one model/settings must remain after filtering."
+            )
+          )
+        else Future.successful(())
+
+        response <- {
+          implicit val retrySettings: RetrySettings =
+            RetrySettings(maxRetries = maxRetries.getOrElse(0))
+
+          (openAIChatCompletionService
+            .createChatCompletion(messages, _))
+            .retryOnFailureOrFailover(
+              // model is used only for logging
+              normalAndFailoverInputsAndMessages =
+                filteredSettings.map(settings => (settings, settings.model)),
+              failureMessage = Some(failureMessage),
+              log = Some(logger.warn),
+              isRetryable = isRetryable(retryOnAnyError)
+            )
+        }
+      } yield response
     }
 
     /**
@@ -129,11 +154,52 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       taskNameForLogging: Option[String] = None,
       jsonSchemaModels: Seq[String] = Nil,
       enforceJsonSchemaMode: Boolean = false,
-      parseJson: String => JsValue = defaultParseJsonOrRepair
+      parseJson: String => JsValue = defaultParseJsonOrRepair,
+      filterModels: Option[Seq[String] => Future[Seq[String]]] = None
     )(
       implicit ec: ExecutionContext,
       scheduler: Scheduler
-    ): Future[T] = {
+    ): Future[T] =
+      createChatCompletionWithJSONFullResponse[T](
+        messages,
+        settings,
+        failoverModels,
+        maxRetries,
+        retryOnAnyError,
+        taskNameForLogging,
+        jsonSchemaModels,
+        enforceJsonSchemaMode,
+        parseJson,
+        filterModels
+      ).map(_._1)
+
+    /**
+     * Creates a chat completion that returns a JSON-parseable response, converts it to the
+     * specified type T, and also returns the full [[ChatCompletionResponse]].
+     *
+     * Same as [[createChatCompletionWithJSON]] but returns a tuple of `(T,
+     * ChatCompletionResponse)` so callers can inspect usage, finish reason, model, and other
+     * response metadata.
+     *
+     * @return
+     *   Future containing a tuple of the parsed response of type T and the raw
+     *   ChatCompletionResponse
+     */
+    def createChatCompletionWithJSONFullResponse[T: Format](
+      messages: Seq[BaseMessage],
+      settings: CreateChatCompletionSettings,
+      failoverModels: Seq[String] = Nil,
+      maxRetries: Option[Int] = Some(defaultMaxRetries),
+      retryOnAnyError: Boolean = false,
+      taskNameForLogging: Option[String] = None,
+      jsonSchemaModels: Seq[String] = Nil,
+      enforceJsonSchemaMode: Boolean = false,
+      parseJson: String => JsValue = defaultParseJsonOrRepair,
+      filterModels: Option[Seq[String] => Future[Seq[String]]] = None
+    )(
+      implicit ec: ExecutionContext,
+      scheduler: Scheduler
+    ): Future[(T, ChatCompletionResponse)] = {
       val start = new java.util.Date()
 
       val taskNameForLoggingFinal = taskNameForLogging.getOrElse("JSON-based chat-completion")
@@ -157,12 +223,11 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
           failoverModels,
           maxRetries,
           retryOnAnyError,
-          failureMessage = s"${taskNameForLoggingFinal.capitalize} failed."
+          failureMessage = s"${taskNameForLoggingFinal.capitalize} failed.",
+          filterModels
         )
         .flatMap { response =>
-          val content = response.contentHead
-          val contentTrimmed = content.trim.stripPrefix("```json").stripSuffix("```").trim
-          val contentJson = contentTrimmed.dropWhile(char => char != '{' && char != '[')
+          val contentJson = cleanupJsonContent(response.contentHead)
           val json = parseJson(contentJson)
 
           logger.debug(
@@ -187,7 +252,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
 
           json
             .asOpt[T]
-            .map(Future.successful)
+            .map(value => Future.successful((value, response)))
             .getOrElse(
               Future.failed(
                 new OpenAIScalaClientException(
@@ -196,19 +261,6 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
               )
             )
         }
-    }
-
-    private def defaultParseJsonOrRepair(
-      jsonString: String
-    ): JsValue = try {
-      Json.parse(jsonString)
-    } catch {
-      case e: JsonProcessingException =>
-        logger.error(
-          s"Failed to parse JSON response normally; attempting to repair it now. Error: ${e.getMessage()}."
-        )
-        val repairedJsonString = JsonRepair.repair(jsonString)
-        Json.parse(repairedJsonString)
     }
 
     private def isRetryable(
@@ -230,6 +282,24 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
     } else {
       Nil
     }
+  }
+
+  def cleanupJsonContent(content: String): String = {
+    val trimmed = content.trim.stripPrefix("```json").stripSuffix("```").trim
+    trimmed.dropWhile(char => char != '{' && char != '[')
+  }
+
+  def defaultParseJsonOrRepair(
+    jsonString: String
+  ): JsValue = try {
+    Json.parse(jsonString)
+  } catch {
+    case e: JsonProcessingException =>
+      logger.error(
+        s"Failed to parse JSON response normally; attempting to repair it now. Error: ${e.getMessage()}."
+      )
+      val repairedJsonString = JsonRepair.repair(jsonString)
+      Json.parse(repairedJsonString)
   }
 
   def handleOutputJsonSchema(
