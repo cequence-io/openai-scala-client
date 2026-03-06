@@ -6,8 +6,8 @@ val scala213 = "2.13.11"
 val scala3 = "3.2.2"
 
 ThisBuild / organization := "io.cequence"
-ThisBuild / scalaVersion := scala212
-ThisBuild / version := "1.3.0.RC.1"
+ThisBuild / scalaVersion := scala213
+ThisBuild / version := "1.3.0.RC.2"
 ThisBuild / isSnapshot := false
 
 lazy val commonSettings = Seq(

@@ -1,4 +1,4 @@
-# OpenAI Scala Client - Count tokens [![version](https://img.shields.io/badge/version-1.3.0.RC.1-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT)
+# OpenAI Scala Client - Count tokens [![version](https://img.shields.io/badge/version-1.3.0.RC.2-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT)
 
 This module provides ability for estimating the number of tokens an OpenAI chat completion request will use. 
 Note that the full project documentation can be found [here](../README.md).
@@ -12,7 +12,7 @@ The currently supported Scala versions are **2.12, 2.13**, and **3**.
 To pull the library you have to add the following dependency to your *build.sbt*
 
 ```
-"io.cequence" %% "openai-scala-count-tokens" % "1.3.0.RC.1"
+"io.cequence" %% "openai-scala-count-tokens" % "1.3.0.RC.2"
 ```
 
 or to *pom.xml* (if you use maven)
@@ -21,7 +21,7 @@ or to *pom.xml* (if you use maven)
 <dependency>
     <groupId>io.cequence</groupId>
     <artifactId>openai-scala-count-tokens_2.12</artifactId>
-    <version>1.3.0.RC.1</version>
+    <version>1.3.0.RC.2</version>
 </dependency>
 ```
 
@@ -33,7 +33,7 @@ import io.cequence.openaiscala.domain.{AssistantMessage, BaseMessage, FunctionSp
 
 class MyCompletionService extends OpenAICountTokensHelper {
   def exec = {
-    val model = ModelId.gpt_4_turbo_2024_04_09
+    val model = ModelId.gpt_4o
 
     // messages to be sent to OpenAI
     val messages: Seq[BaseMessage] = Seq(

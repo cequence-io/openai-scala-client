@@ -1,7 +1,7 @@
 # OpenAI Scala Client 🤖
-[![version](https://img.shields.io/badge/version-1.3.0.RC.1-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT) ![GitHub Stars](https://img.shields.io/github/stars/cequence-io/openai-scala-client?style=social) [![Twitter Follow](https://img.shields.io/twitter/follow/0xbnd?style=social)](https://twitter.com/0xbnd) ![GitHub CI](https://github.com/cequence-io/openai-scala-client/actions/workflows/continuous-integration.yml/badge.svg)
+[![version](https://img.shields.io/badge/version-1.3.0.RC.2-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT) ![GitHub Stars](https://img.shields.io/github/stars/cequence-io/openai-scala-client?style=social) [![Twitter Follow](https://img.shields.io/twitter/follow/0xbnd?style=social)](https://twitter.com/0xbnd) ![GitHub CI](https://github.com/cequence-io/openai-scala-client/actions/workflows/continuous-integration.yml/badge.svg)
 
-This is a no-nonsense async Scala client for OpenAI API supporting all the available endpoints and params **including streaming**, the newest **chat completion**, **responses API**, **assistants API**, **tools**, **vision**, and **voice routines** (as defined [here](https://platform.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala). The supported calls are: 
+This is a no-nonsense async Scala client for OpenAI API and multiple LLM providers supporting all the available endpoints and params **including streaming**, **chat completion**, **responses API**, **assistants API**, **tools** (including MCP), **graders**, **vision**, and **voice routines** (as defined [here](https://platform.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala) with adapters for Anthropic, Google Gemini/Vertex AI, Groq, Perplexity, and others. The supported calls are:
 
 * **Models**: [listModels](https://platform.openai.com/docs/api-reference/models/list), and [retrieveModel](https://platform.openai.com/docs/api-reference/models/retrieve)
 * **Completions**: [createCompletion](https://platform.openai.com/docs/api-reference/completions/create)
@@ -22,8 +22,8 @@ This is a no-nonsense async Scala client for OpenAI API supporting all the avail
 * **Vector Stores**: [createVectorStore](https://platform.openai.com/docs/api-reference/vector-stores/create), [listVectorStores](https://platform.openai.com/docs/api-reference/vector-stores/list), [retrieveVectorStore](https://platform.openai.com/docs/api-reference/vector-stores/retrieve), [modifyVectorStore](https://platform.openai.com/docs/api-reference/vector-stores/modify), and [deleteVectorStore](https://platform.openai.com/docs/api-reference/vector-stores/delete)
 * **Vector Store Files**: [createVectorStoreFile](https://platform.openai.com/docs/api-reference/vector-stores-files/createFile), [listVectorStoreFiles](https://platform.openai.com/docs/api-reference/vector-stores-files/listFiles), [retrieveVectorStoreFile](https://platform.openai.com/docs/api-reference/vector-stores-files/getFile), and [deleteVectorStoreFile](https://platform.openai.com/docs/api-reference/vector-stores-files/deleteFile)  
 * **Vector Store File Batches**: [createVectorStoreFileBatch](https://platform.openai.com/docs/api-reference/vector-stores-file-batches/createBatch), [retrieveVectorStoreFileBatch](https://platform.openai.com/docs/api-reference/vector-stores-file-batches/getBatch), [cancelVectorStoreFileBatch](https://platform.openai.com/docs/api-reference/vector-stores-file-batches/cancelBatch), and [listVectorStoreBatchFiles](https://platform.openai.com/docs/api-reference/vector-stores-file-batches/listBatchFiles)
-* **Responses** (🔥 **New**): [createModelResponse](https://platform.openai.com/docs/api-reference/responses/create), [getModelResponse](https://platform.openai.com/docs/api-reference/responses/get), [deleteModelResponse](https://platform.openai.com/docs/api-reference/responses/delete), and [listModelResponseInputItems](https://platform.openai.com/docs/api-reference/responses/input-items)
-
+* **Responses**: [createModelResponse](https://platform.openai.com/docs/api-reference/responses/create) (🔥 with tools support), [getModelResponse](https://platform.openai.com/docs/api-reference/responses/get), [deleteModelResponse](https://platform.openai.com/docs/api-reference/responses/delete), [cancelModelResponse](https://platform.openai.com/docs/api-reference/responses/cancel), [getModelResponseInputTokenCounts](https://platform.openai.com/docs/api-reference/responses/token-counts), and [listModelResponseInputItems](https://platform.openai.com/docs/api-reference/responses/input-items)
+* **Graders** (🔥 new): [runGrader](https://platform.openai.com/docs/api-reference/graders/run), and [validateGrader](https://platform.openai.com/docs/api-reference/graders/validate)
 
 Note that in order to be consistent with the OpenAI API naming, the service function names match exactly the API endpoint titles/descriptions in camelCase.
 Also, we aimed for the library to be self-contained with the fewest dependencies possible. Therefore, we implemented our own generic WS client (currently with Play WS backend, which can be swapped for other engines in the future). Additionally, if dependency injection is required, we use the `scala-guice` library.
@@ -36,26 +36,27 @@ Also, we aimed for the library to be self-contained with the fewest dependencies
 
 In addition to OpenAI, this library supports many other LLM providers. For providers that aren't natively compatible with the chat completion API, we've implemented adapters to streamline integration (see [examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples)).
 
-| Provider | JSON/Structured Output | Tools Support | Description |
-|----------|------------------------|---------------|-------------|
-| [OpenAI](https://platform.openai.com) | Full | Standard + Responses API | Full API support |
-| [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) | Full | Standard + Responses API | OpenAI on Azure|
-| [Anthropic](https://www.anthropic.com/api) | Implied |  | Claude models |
-| [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) | Varies |  | Open-source models |
-| [Cerebras](https://cerebras.ai/) | Only JSON object mode |  | Fast inference |
-| [Deepseek](https://deepseek.com/) | Only JSON object mode |  | Chinese provider |
-| [FastChat](https://github.com/lm-sys/FastChat) | Varies |  | Local LLMs |
-| [Fireworks AI](https://fireworks.ai/) | Only JSON object mode | | Cloud provider |
-| [Google Gemini](https://ai.google.dev/) (🔥 **New**) | Full | Yes | Google's models |
-| [Google Vertex AI](https://cloud.google.com/vertex-ai) | Full | Yes | Gemini models |
-| [Grok](https://x.ai/) | Full |  | x.AI models |
-| [Groq](https://wow.groq.com/) | Only JSON object mode | | Fast inference |
-| [Mistral](https://mistral.ai/) | Only JSON object mode |  | Open-source leader |
-| [Novita](https://novita.ai/) (🔥 **New**) | Only JSON object mode |  | Cloud provider |
-| [Octo AI](https://octo.ai/) | Only JSON object mode |  | Cloud provider (obsolete) |
-| [Ollama](https://ollama.com/) | Varies |  | Local LLMs |
-| [Perplexity Sonar](https://www.perplexity.ai/) (🔥 **New**) | Only implied |  | Search-based AI |
-| [TogetherAI](https://www.together.ai/) | Only JSON object mode |  | Cloud provider |
+| Provider | JSON/Structured Output | Tools Support                     | Description |
+|----------|------------------------|-----------------------------------|-------------|
+| [OpenAI](https://platform.openai.com) | Full                   | Standard + Responses API          | Full API support |
+| [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) | Full                   | Standard + Responses API          | OpenAI on Azure|
+| [Anthropic](https://www.anthropic.com/api) | Full (🔥 New)          | Yes, also MCP and Skills (🔥 New) | Claude models |
+| [Anthropic Bedrock](https://aws.amazon.com/bedrock/claude/) | No                      | Yes, also MCP (🔥 New)            | Claude on AWS |
+| [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) | Varies                 |                                   | Open-source models |
+| [Cerebras](https://cerebras.ai/) | Only JSON object mode  |                                   | Fast inference |
+| [Deepseek](https://deepseek.com/) | Only JSON object mode  |                                   | Chinese provider |
+| [FastChat](https://github.com/lm-sys/FastChat) | Varies                 |                                   | Local LLMs |
+| [Fireworks AI](https://fireworks.ai/) | Only JSON object mode  |                                   | Cloud provider |
+| [Google Gemini](https://ai.google.dev/) | Full                   | Yes (🔥 New)                      | Google's models |
+| [Google Vertex AI](https://cloud.google.com/vertex-ai) | Full                   | Yes                               | Gemini models |
+| [Grok](https://x.ai/) | Full                   |                                   | x.AI models |
+| [Groq](https://wow.groq.com/) | Only JSON object mode  |                                   | Fast inference |
+| [Mistral](https://mistral.ai/) | Only JSON object mode  |                                   | Open-source leader |
+| [Novita](https://novita.ai/) | Only JSON object mode  |                                   | Cloud provider |
+| [Octo AI](https://octo.ai/) | Only JSON object mode  |                                   | Cloud provider (obsolete) |
+| [Ollama](https://ollama.com/) | Varies                 |                                   | Local LLMs |
+| [Perplexity Sonar](https://www.perplexity.ai/) | Only implied           |                                   | Search-based AI |
+| [TogetherAI](https://www.together.ai/) | Only JSON object mode  |                                   | Cloud provider |
 
 ---
 
@@ -72,7 +73,7 @@ The currently supported Scala versions are **2.12, 2.13**, and **3**.
 To install the library, add the following dependency to your *build.sbt*
 
 ```
-"io.cequence" %% "openai-scala-client" % "1.3.0.RC.1"
+"io.cequence" %% "openai-scala-client" % "1.3.0.RC.2"
 ```
 
 or to *pom.xml* (if you use maven)
@@ -81,11 +82,17 @@ or to *pom.xml* (if you use maven)
 <dependency>
     <groupId>io.cequence</groupId>
     <artifactId>openai-scala-client_2.12</artifactId>
-    <version>1.3.0.RC.1</version>
+    <version>1.3.0.RC.2</version>
 </dependency>
 ```
 
-If you want streaming support, use `"io.cequence" %% "openai-scala-client-stream" % "1.3.0.RC.1"` instead.
+If you want streaming support, use `"io.cequence" %% "openai-scala-client-stream" % "1.3.0.RC.2"` instead.
+
+For a single dependency that includes all provider clients (Anthropic, Gemini, Vertex AI, Perplexity, token counting):
+
+```
+"io.cequence" %% "openai-scala-all" % "1.3.0.RC.2"
+```
 
 ## Config ⚙️
 
@@ -296,7 +303,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
 
 - Retrieve model
 ```scala
-  service.retrieveModel(ModelId.text_davinci_003).map(model =>
+  service.retrieveModel(ModelId.gpt_5_4).map(model =>
     println(model.getOrElse("N/A"))
   )
 ```
@@ -305,7 +312,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
 
 ```scala
   val createChatCompletionSettings = CreateChatCompletionSettings(
-    model = ModelId.gpt_4o
+    model = ModelId.gpt_5_4
   )
 
   val messages = Seq(
@@ -359,7 +366,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
     messages = messages,
     tools = tools,
     responseToolChoice = None, // means "auto"
-    settings = CreateChatCompletionSettings(ModelId.gpt_4o)
+    settings = CreateChatCompletionSettings(ModelId.gpt_5_4)
   ).map { response =>
     val chatFunCompletionMessage = response.choices.head.message
     val toolCalls = chatFunCompletionMessage.tool_calls.collect {
@@ -415,7 +422,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
     .createChatCompletion(
       messages = messages,
       settings = CreateChatCompletionSettings(
-        model = ModelId.o3_mini,
+        model = ModelId.gpt_5_2,
         max_tokens = Some(1000),
         response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
         jsonSchema = Some(jsonSchemaDef)
@@ -438,7 +445,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
     .createChatCompletionWithJSON[JsObject](
       messages = messages,
       settings = CreateChatCompletionSettings(
-        model = ModelId.o3_mini,
+        model = ModelId.gpt_5_2,
         max_tokens = Some(1000),
         response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
         jsonSchema = Some(jsonSchemaDef)
@@ -463,9 +470,9 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
     .createChatCompletionWithFailover(
       messages = messages,
       settings = CreateChatCompletionSettings(
-        model = ModelId.o3_mini
+        model = ModelId.gpt_5_2
       ),
-      failoverModels = Seq(ModelId.gpt_4_5_preview, ModelId.gpt_4o),
+      failoverModels = Seq(ModelId.gpt_5_1, ModelId.gpt_5),
       retryOnAnyError = true,
       failureMessage = "Weather assistant failed to provide a response."
     )
@@ -515,14 +522,14 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
     .createChatCompletionWithJSON[JsObject](
       messages = messages,
       settings = CreateChatCompletionSettings(
-        model = ModelId.o3_mini, // Primary model
+        model = ModelId.gpt_5_2, // Primary model
         max_tokens = Some(1000),
         response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
         jsonSchema = Some(jsonSchemaDef)
       ),
       failoverModels = Seq(
-        ModelId.gpt_4_5_preview,  // First fallback model
-        ModelId.gpt_4o            // Second fallback model
+        ModelId.gpt_5_1,  // First fallback model
+        ModelId.gpt_5     // Second fallback model
       ),
       maxRetries = Some(3),       // Maximum number of retries per model
       retryOnAnyError = true,     // Retry on any error, not just retryable ones
@@ -601,7 +608,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
     .createModelResponse(
       Inputs.Text("What are the attributes of an ancient brown dragon?"),
       settings = CreateModelResponseSettings(
-        model = ModelId.gpt_4o_2024_08_06,
+        model = ModelId.gpt_5_mini,
         tools = Seq(
           FileSearchTool(
             vectorStoreIds = Seq("vs_1234567890"),
@@ -635,7 +642,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
     .createModelResponse(
       Inputs.Text("What was a positive news story from today?"),
       settings = CreateModelResponseSettings(
-        model = ModelId.gpt_4o_2024_08_06,
+        model = ModelId.gpt_5_mini,
         tools = Seq(WebSearchTool())
       )
     )
@@ -662,7 +669,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
     .createModelResponse(
       Inputs.Text("What is the weather like in Boston today?"),
       settings = CreateModelResponseSettings(
-        model = ModelId.gpt_4o_2024_08_06,
+        model = ModelId.gpt_5_mini,
         tools = Seq(
           FunctionTool(
             name = "get_current_weather",
@@ -700,6 +707,74 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
       val toolsUsed = response.tools.map(_.typeString)
 
       println(s"${toolsUsed.size} tools used: ${toolsUsed.mkString(", ")}")
+    }
+```
+
+- **Responses API** - tool use (MCP)
+
+```scala
+  import io.cequence.openaiscala.domain.responsesapi.tools.Tool
+  import io.cequence.openaiscala.domain.responsesapi.tools.mcp.MCPRequireApproval
+
+  service
+    .createModelResponse(
+      Inputs.Text("Search for information about Scala programming language."),
+      settings = CreateModelResponseSettings(
+        model = ModelId.gpt_5_mini,
+        tools = Seq(
+          Tool.mcp(
+            serverLabel = "deepwiki",
+            serverUrl = Some("https://mcp.deepwiki.com/sse"),
+            requireApproval = Some(MCPRequireApproval.Setting.Never)
+          )
+        )
+      )
+    )
+    .map { response =>
+      println(response.outputText.getOrElse("N/A"))
+    }
+```
+
+- **Anthropic** - tool use (requires `openai-scala-anthropic-client` lib). Supports tools such as
+  `Tool.bash()`, `Tool.webSearch()`, `Tool.webFetch()`, `Tool.codeExecution()`, `Tool.computer()`,
+  `Tool.custom()`, and MCP servers via `MCPServerURLDefinition`.
+  See [examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/anthropic/tools).
+
+- **Graders API** - evaluate model outputs
+
+```scala
+  import io.cequence.openaiscala.domain.graders._
+
+  val grader = ScoreModelGrader(
+    input = Seq(
+      GraderModelInput(
+        content = GraderInputContent.TextString(
+          "Rate the helpfulness of the following response on a scale from 0 to 1:"
+        ),
+        role = ChatRole.System
+      ),
+      GraderModelInput(
+        content = GraderInputContent.InputText("{{item.question}}"),
+        role = ChatRole.User
+      ),
+      GraderModelInput(
+        content = GraderInputContent.OutputText("{{sample.output_json}}"),
+        role = ChatRole.Assistant
+      )
+    ),
+    model = ModelId.gpt_4o_mini_2024_07_18,
+    name = "helpfulness_scorer",
+    range = Seq(0.0, 1.0)
+  )
+
+  service
+    .runGrader(
+      grader = grader,
+      modelSample = """{"answer": "The capital of France is Paris."}""",
+      item = Map("question" -> "What is the capital of France?")
+    )
+    .map { result =>
+      println(s"Grader evaluation result: $result")
     }
 ```
 
@@ -838,7 +913,7 @@ class MyCompletionService @Inject() (
     for {
       completion <- service
         .createChatCompletion(
-          List(MessageSpec(ChatRole.User, prompt))
+          List(UserMessage(prompt))
         )
         .retryOnFailure
     } yield completion.choices.head.message.content
@@ -850,14 +925,11 @@ class MyCompletionService @Inject() (
 ```scala
   val adapters = OpenAIServiceAdapters.forFullService
 
-  // OctoAI
-  val octoMLService = OpenAIChatCompletionServiceFactory(
-    coreUrl = "https://text.octoai.run/v1/",
-    authHeaders = Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
-  )
-
   // Anthropic
   val anthropicService = AnthropicServiceFactory.asOpenAI()
+
+  // Groq
+  val groqService = OpenAIChatCompletionServiceFactory(ChatProviderSettings.groq)
 
   // OpenAI
   val openAIService = OpenAIServiceFactory()
@@ -866,11 +938,10 @@ class MyCompletionService @Inject() (
     adapters.chatCompletionRouter(
       // OpenAI service is default so no need to specify its models here
       serviceModels = Map(
-        octoMLService -> Seq(NonOpenAIModelId.mixtral_8x22b_instruct),
+        groqService -> Seq(NonOpenAIModelId.llama_3_3_70b_versatile),
         anthropicService -> Seq(
-          NonOpenAIModelId.claude_2_1,
-          NonOpenAIModelId.claude_3_opus_20240229,
-          NonOpenAIModelId.claude_3_haiku_20240307
+          NonOpenAIModelId.claude_sonnet_4_5,
+          NonOpenAIModelId.claude_haiku_4_5
         )
       ),
       openAIService
@@ -889,6 +960,40 @@ class MyCompletionService @Inject() (
       )
     )
 ```
+
+- **Intercept** success and error calls (stacked adapters)
+
+```scala
+  val adapters = OpenAIServiceAdapters.forFullService
+
+  val service = adapters.chatCompletionIntercept(data =>
+    Future {
+      println(
+        s"Chat completion succeeded in ${data.execTimeMs} ms " +
+          s"(model: ${data.settings.model}, " +
+          s"messages: ${data.messages.size}, " +
+          s"response tokens: ${data.response.usage.map(_.completion_tokens).getOrElse("N/A")})"
+      )
+    }
+  )(
+    adapters.chatCompletionErrorIntercept(data =>
+      Future {
+        println(
+          s"Chat completion FAILED after ${data.execTimeMs} ms " +
+            s"(model: ${data.settings.model}, " +
+            s"messages: ${data.messages.size}, " +
+            s"error: ${data.error.getMessage})"
+        )
+      }
+    )(
+      OpenAIServiceFactory()
+    )
+  )
+```
+
+- **Input/output transformation** - `chatCompletionInput()` and `chatCompletionOutput()` adapters
+  for transforming messages/settings on input or assistant messages on output.
+  See [examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/adapters).
 
 ## FAQ 🤔
 
