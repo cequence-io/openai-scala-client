@@ -79,13 +79,14 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
             Future.successful(allSettingsInOrder)
         }
 
-        _ <- if (filteredSettings.isEmpty)
-          Future.failed(
-            new OpenAIScalaClientException(
-              "At least one model/settings must remain after filtering."
+        _ <-
+          if (filteredSettings.isEmpty)
+            Future.failed(
+              new OpenAIScalaClientException(
+                "At least one model/settings must remain after filtering."
+              )
             )
-          )
-        else Future.successful(())
+          else Future.successful(())
 
         response <- {
           implicit val retrySettings: RetrySettings =
