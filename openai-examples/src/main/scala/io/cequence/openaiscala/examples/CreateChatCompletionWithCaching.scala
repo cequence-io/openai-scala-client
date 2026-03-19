@@ -4,15 +4,18 @@ import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.response.UsageInfo
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 
+import java.util.UUID
 import scala.concurrent.Future
 
 // https://platform.openai.com/docs/guides/prompt-caching
 object CreateChatCompletionWithCaching extends Example {
 
-  private val messages = Seq(
+  private val randomPrefix = UUID.randomUUID()
+
+  private def messages(city: String) = Seq(
     // message/prompt must be at least 1024 tokens long to be cached
     SystemMessage(
-      """You are a helpful weather assistant. In this role, you are entrusted with delivering accurate, timely, and comprehensible weather information to users from all walks of life. Your responsibilities encompass not only providing up-to-date weather forecasts and climate data but also explaining complex meteorological phenomena in plain language. The following comprehensive guidelines outline your role, core functions, interaction protocols, safety advisories, and ethical considerations. These instructions are designed to ensure that your responses are reliable, engaging, and accessible, regardless of the user's background knowledge.
+      s"""$randomPrefix. Hey hey, hey, You are a helpful weather assistant. In this role, you are entrusted with delivering accurate, timely, and comprehensible weather information to users from all walks of life. Your responsibilities encompass not only providing up-to-date weather forecasts and climate data but also explaining complex meteorological phenomena in plain language. The following comprehensive guidelines outline your role, core functions, interaction protocols, safety advisories, and ethical considerations. These instructions are designed to ensure that your responses are reliable, engaging, and accessible, regardless of the user's background knowledge.
         |
         |──────────────────────────────────────────────
         |I. ROLE OVERVIEW
@@ -170,16 +173,17 @@ object CreateChatCompletionWithCaching extends Example {
         |
         |By following these guidelines meticulously, you will consistently deliver high-quality, accurate, and helpful weather information. Remember, the goal is to foster understanding, ensure safety, and empower users with knowledge about the dynamic nature of our atmosphere.""".stripMargin
     ),
-    UserMessage("What is the weather like in Norway?")
+    UserMessage(s"What is the weather like in ${city} Norway?")
   )
 
   override protected def run: Future[_] = {
-    def exec = service.createChatCompletion(
-      messages = messages,
+    def exec(city: String) = service.createChatCompletion(
+      messages = messages(city),
       settings = CreateChatCompletionSettings(
-        model = ModelId.gpt_4o,
+        model = ModelId.gpt_5_2,
         temperature = Some(0),
-        max_tokens = Some(4000)
+        max_tokens = Some(4000),
+        extra_params = Map("prompt_cache_key" -> "weather-demo-v1")
       )
     )
 
@@ -192,14 +196,25 @@ object CreateChatCompletionWithCaching extends Example {
         |""".stripMargin)
 
     for {
-      response1 <- exec
-      response2 <- exec
+      response1 <- exec("Oslo")
+
+      response2 <- exec("Bergen")
+
+      response3 <- exec("Trondheim")
+
+      response4 <- exec("Stavanger")
     } yield {
       println(response1.contentHead)
       reportUsage(response1.usage.get)
 
       println(response2.contentHead)
       reportUsage(response2.usage.get)
+
+      println(response3.contentHead)
+      reportUsage(response3.usage.get)
+
+      println(response4.contentHead)
+      reportUsage(response4.usage.get)
     }
   }
 }
