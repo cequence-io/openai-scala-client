@@ -25,7 +25,8 @@ trait HandleOpenAIErrorCodes extends WSClient {
       case 400 =>
         if (
           message.contains("Please reduce your prompt; or completion length") ||
-          message.contains("Please reduce the length of the messages")
+          message.contains("Please reduce the length of the messages") ||
+          message.contains("maximum input length is")
         )
           throw new OpenAIScalaTokenCountExceededException(errorMessage)
         else
