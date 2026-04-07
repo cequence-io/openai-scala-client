@@ -185,6 +185,7 @@ inThisBuild(
     scalacOptions += "-Ywarn-unused",
 //    scalaVersion := scala3,
     semanticdbEnabled := true,
-    semanticdbVersion := scalafixSemanticdb.revision
+    semanticdbVersion := scalafixSemanticdb.revision,
+    scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value)
   )
 )
