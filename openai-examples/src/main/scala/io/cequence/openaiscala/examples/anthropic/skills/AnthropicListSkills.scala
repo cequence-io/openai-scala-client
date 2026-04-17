@@ -37,7 +37,7 @@ object AnthropicListSkills extends ExampleBase[AnthropicService] {
       println()
 
       anthropicSkills.data.foreach { skill =>
-        println(s"Skill:")
+        println("Skill:")
         println(s"  ID: ${skill.id}")
         println(s"  Display Title: ${skill.displayTitle.getOrElse("N/A")}")
         println(s"  Source: ${skill.source}")
@@ -64,7 +64,7 @@ object AnthropicListSkills extends ExampleBase[AnthropicService] {
       println()
 
       customSkills.data.foreach { skill =>
-        println(s"Skill:")
+        println("Skill:")
         println(s"  ID: ${skill.id}")
         println(s"  Display Title: ${skill.displayTitle.getOrElse("N/A")}")
         println(s"  Source: ${skill.source}")

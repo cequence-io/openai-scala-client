@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.domain.settings
 
+import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.wsclient.domain.EnumValue
 
 case class CreateChatCompletionSettings(
@@ -183,6 +184,18 @@ object ReasoningEffort {
   case object low extends ReasoningEffort
   case object medium extends ReasoningEffort
   case object high extends ReasoningEffort
+  case object xhigh extends ReasoningEffort
+
+  def values: Seq[ReasoningEffort] = Seq(none, minimal, low, medium, high, xhigh)
+
+  def fromString(value: String): ReasoningEffort =
+    values
+      .find(_.toString == value)
+      .getOrElse(
+        throw new OpenAIScalaClientException(
+          s"Unknown reasoning effort '$value'. Available values: ${values.mkString(", ")}"
+        )
+      )
 }
 
 sealed trait Verbosity extends EnumValue

@@ -205,7 +205,10 @@ object BaseMessage {
         Some(content)
       case AssistantMessage(content, _, _)             => Some(content)
       case AssistantWebSearchMessage(content, _, _, _) => Some(content)
+      case AssistantToolMessage(content, _, _)         => content
+      case AssistantFunMessage(content, _, _)          => content
+      case ToolMessage(content, _, _)                  => content
+      case FunMessage(content, _)                      => Some(content)
       case MessageSpec(_, content, _)                  => Some(content)
-      case _                                           => None
     }
 }

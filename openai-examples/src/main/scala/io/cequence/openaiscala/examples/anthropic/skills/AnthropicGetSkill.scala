@@ -16,7 +16,7 @@ object AnthropicGetSkill extends ExampleBase[AnthropicService] {
     service
       .getSkill(skillId)
       .map { skill =>
-        println(s"Skill Details:")
+        println("Skill Details:")
         println(s"  ID: ${skill.id}")
         println(s"  Type: ${skill.`type`}")
         println(s"  Display Title: ${skill.displayTitle.getOrElse("N/A")}")
@@ -28,9 +28,9 @@ object AnthropicGetSkill extends ExampleBase[AnthropicService] {
       .recover { case e: Exception =>
         println(s"Error retrieving skill: ${e.getMessage}")
         println(
-          s"Make sure to replace the skillId variable with a valid skill ID from your workspace."
+          "Make sure to replace the skillId variable with a valid skill ID from your workspace."
         )
-        println(s"Run AnthropicListSkills to get available skill IDs.")
+        println("Run AnthropicListSkills to get available skill IDs.")
       }
   }
 }

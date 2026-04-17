@@ -17,7 +17,8 @@ object JsonSchema {
   case class Object(
     properties: Seq[(JString, JsonSchema)],
     required: Seq[JString] = Nil,
-    additionalProperties: Option[scala.Boolean] = None
+    additionalProperties: Option[scala.Boolean] = None,
+    description: Option[JString] = None
   ) extends JsonSchema {
     override val `type` = JsonType.Object
   }
@@ -53,7 +54,8 @@ object JsonSchema {
     override val `type` = JsonType.Null
   }
   case class Array(
-    items: JsonSchema
+    items: JsonSchema,
+    description: Option[JString] = None
   ) extends JsonSchema {
     override val `type` = JsonType.Array
   }

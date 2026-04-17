@@ -572,7 +572,7 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
         AssistantTool.FunctionTool(
           name = "function-name",
           description = Some("function description"),
-          parameters = Map(),
+          parameters = JsonSchema.Object(Nil),
           strict = Some(true)
         ),
         """{
@@ -580,7 +580,11 @@ class JsonFormatsSpec extends AnyWordSpecLike with Matchers {
             |  "function" : {
             |    "name" : "function-name",
             |    "description" : "function description",
-            |    "parameters" : {},
+            |    "parameters" : {
+            |      "properties" : {},
+            |      "required" : [],
+            |      "type" : "object"
+            |    },
             |    "strict" : true
             |  }
             |}""".stripMargin,

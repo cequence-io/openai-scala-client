@@ -1,18 +1,16 @@
 package io.cequence.openaiscala.service.impl
 
 import io.cequence.openaiscala.JsonFormats._
-import io.cequence.openaiscala.domain.{BaseMessage, ModelId}
+import io.cequence.openaiscala.domain.{AssistantTool, BaseMessage, ChatCompletionTool, ModelId}
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.adapter.{
   ChatCompletionSettingsConversions,
   MessageConversions
 }
-import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIServiceConsts}
-import io.cequence.openaiscala.service.OpenAIChatCompletionExtra.toStrictSchema
+import io.cequence.openaiscala.service.OpenAIChatCompletionService
 import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.ResponseImplicits._
-import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithEngine
 import play.api.libs.json.{JsObject, JsValue, Json}
 
 import scala.concurrent.Future
@@ -39,6 +37,38 @@ private[service] trait OpenAIChatCompletionServiceImpl
     ).map(
       _.asSafeJson[ChatCompletionResponse]
     )
+
+  override def createChatToolCompletion(
+    messages: Seq[BaseMessage],
+    tools: Seq[ChatCompletionTool],
+    responseToolChoice: Option[String] = None,
+    settings: CreateChatCompletionSettings = DefaultSettings.CreateChatToolCompletion
+  ): Future[ChatToolCompletionResponse] = {
+    val coreParams =
+      createBodyParamsForChatCompletion(messages, settings, stream = false)
+
+    val toolJsons: Seq[Map[String, Object]] = tools.map {
+      case tool: AssistantTool.FunctionTool =>
+        Map("type" -> "function", "function" -> Json.toJson(tool))
+    }
+
+    val extraParams = JsonUtil.jsonBodyParams(
+      Param.tools -> Some(toolJsons),
+      Param.tool_choice -> responseToolChoice.map(name =>
+        Map(
+          "type" -> "function",
+          "function" -> Map("name" -> name)
+        )
+      )
+    )
+
+    execPOST(
+      EndPoint.chat_completions,
+      bodyParams = coreParams ++ extraParams
+    ).map(
+      _.asSafeJson[ChatToolCompletionResponse]
+    )
+  }
 
 }
 

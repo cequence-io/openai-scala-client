@@ -1,12 +1,18 @@
-package io.cequence.openaiscala.examples
+package io.cequence.openaiscala.examples.anthropic
 
-import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain._
+import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
+import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase}
+import io.cequence.openaiscala.service.OpenAIChatCompletionService
 
 import scala.concurrent.Future
 
-object CreateChatToolCompletion extends Example {
+// requires `openai-scala-anthropic-client` as a dependency and `ANTHROPIC_API_KEY` environment variable to be set
+object AnthropicCreateChatToolCompletionWithOpenAIAdapter
+    extends ExampleBase[OpenAIChatCompletionService] {
+
+  override val service: OpenAIChatCompletionService = ChatCompletionProvider.anthropic()
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),
@@ -37,9 +43,9 @@ object CreateChatToolCompletion extends Example {
       .createChatToolCompletion(
         messages = messages,
         tools = tools,
-        responseToolChoice = None, // means "auto"
+        responseToolChoice = None,
         settings = CreateChatCompletionSettings(
-          ModelId.gpt_5_4_mini,
+          NonOpenAIModelId.claude_haiku_4_5,
           parallel_tool_calls = Some(true)
         )
       )

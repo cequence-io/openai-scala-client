@@ -63,7 +63,7 @@ object FileFilter {
     case object In extends ComparisonOperator
     case object Nin extends ComparisonOperator
 
-    def values = Seq(
+    def values: Seq[ComparisonOperator] = Seq(
       Eq,
       Ne,
       Gt,
@@ -99,7 +99,7 @@ object FileFilter {
     case object And extends CompoundOperator
     case object Or extends CompoundOperator
 
-    def values = Seq(And, Or)
+    def values: Seq[CompoundOperator] = Seq(And, Or)
   }
 }
 

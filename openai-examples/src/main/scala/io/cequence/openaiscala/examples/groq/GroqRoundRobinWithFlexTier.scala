@@ -89,7 +89,7 @@ object GroqRoundRobinWithFlexTier extends ExampleBase[OpenAIChatCompletionServic
           max_tokens = Some(1000)
         )
       )
-      .map { response =>
+      .map { _ =>
         logger.info(s"$label: Completed\n")
       }
   }

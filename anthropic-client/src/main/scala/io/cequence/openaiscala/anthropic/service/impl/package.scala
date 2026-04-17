@@ -23,6 +23,8 @@ import io.cequence.openaiscala.anthropic.domain.response.{
 }
 import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicCreateMessageSettings,
+  OutputConfig,
+  OutputEffort,
   Speed,
   ThinkingSettings
 }
@@ -47,6 +49,7 @@ import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettingsOps.R
 import io.cequence.openaiscala.domain.{
   ChatRole,
   MessageSpec,
+  NonOpenAIModelId,
   SystemMessage,
   AssistantMessage => OpenAIAssistantMessage,
   BaseMessage => OpenAIBaseMessage,
@@ -231,13 +234,77 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
     }
   }
 
+  // Short ids are substrings of their Bedrock equivalents
+  // (e.g. "anthropic.claude-opus-4-7-v1" contains "claude-opus-4-7"),
+  // so a `contains` check covers both direct API and Bedrock model IDs.
+  private val outputEffortModels: Set[String] = Set(
+    NonOpenAIModelId.claude_opus_4_7,
+    NonOpenAIModelId.claude_opus_4_6,
+    NonOpenAIModelId.claude_sonnet_4_6
+  )
+
+  /**
+   * Models that support the adaptive thinking + output_config.effort parameter. For these we
+   * map OpenAI's reasoning_effort directly to Anthropic's OutputEffort and skip the legacy
+   * thinking.budget_tokens flow.
+   */
+  private def supportsOutputEffort(model: String): Boolean = {
+    val m = model.toLowerCase
+    outputEffortModels.exists(m.contains)
+  }
+
+  private def toOutputEffort(
+    reasoningEffort: Option[ReasoningEffort],
+    model: String
+  ): Option[OutputEffort] = reasoningEffort.flatMap {
+    case ReasoningEffort.none => None
+    case ReasoningEffort.minimal =>
+      logger.warn(
+        "Mapping reasoning_effort 'minimal' to Anthropic OutputEffort 'low' - Anthropic has no equivalent 'minimal' level, so the mapping is not one-to-one."
+      )
+      Some(OutputEffort.low)
+    case ReasoningEffort.low    => Some(OutputEffort.low)
+    case ReasoningEffort.medium => Some(OutputEffort.medium)
+    case ReasoningEffort.high   => Some(OutputEffort.high)
+    case ReasoningEffort.xhigh  =>
+      // OutputEffort.xhigh is Opus 4.7 only; downgrade to high on Opus 4.6 / Sonnet 4.6
+      // to avoid a remote 400 from Anthropic.
+      if (model.toLowerCase.contains(NonOpenAIModelId.claude_opus_4_7)) {
+        Some(OutputEffort.xhigh)
+      } else {
+        logger.warn(
+          s"reasoning_effort=xhigh is Opus 4.7 only; downgrading to 'high' for model '$model'."
+        )
+        Some(OutputEffort.high)
+      }
+  }
+
   def toAnthropicSettings(
     settings: CreateChatCompletionSettings
   ): AnthropicCreateMessageSettings = {
-    // Prioritize explicit thinking budget, fall back to reasoning_effort conversion
-    val thinkingBudget = settings.anthropicThinkingBudgetTokens.orElse(
-      toThinkingBudget(settings.reasoning_effort)
-    )
+    val useOutputEffort = supportsOutputEffort(settings.model)
+    val explicitBudget = settings.anthropicThinkingBudgetTokens
+
+    // Priority:
+    //   1. Explicit anthropicThinkingBudgetTokens -> legacy manual thinking
+    //      (preserves pre-existing behavior; user explicitly chose this mode).
+    //   2. Model supports output_config.effort and reasoning_effort is set ->
+    //      adaptive thinking + OutputEffort.
+    //   3. Otherwise -> legacy reasoning_effort -> thinking budget via config.
+    val (thinkingSettings, outputEffort): (Option[ThinkingSettings], Option[OutputEffort]) =
+      explicitBudget match {
+        case Some(budget) =>
+          (Some(ThinkingSettings.enabled(budget)), None)
+        case None if useOutputEffort =>
+          val effort = toOutputEffort(settings.reasoning_effort, settings.model)
+          (effort.map(_ => ThinkingSettings.adaptive), effort)
+        case None =>
+          val budget = toThinkingBudget(settings.reasoning_effort)
+          (budget.map(ThinkingSettings.enabled), None)
+      }
+
+    // Enabled if either adaptive thinking or legacy budget-based thinking is active.
+    val thinkingEnabled = thinkingSettings.isDefined
 
     // handle json schema
     val responseFormat =
@@ -267,9 +334,8 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
         None
 
     // When thinking is enabled, temperature must be 1.0
-    val temperature = thinkingBudget match {
-      case Some(_) =>
-        // Thinking is enabled
+    val temperature =
+      if (thinkingEnabled) {
         settings.temperature match {
           case Some(temp) if temp != 1.0 =>
             logger.warn(
@@ -280,10 +346,10 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
             // No temperature set or already 1.0, keep as is
             other
         }
-      case None =>
+      } else {
         // No thinking, use original temperature
         settings.temperature
-    }
+      }
 
     AnthropicCreateMessageSettings(
       model = settings.model,
@@ -293,7 +359,8 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
       temperature = temperature,
       top_p = settings.top_p,
       top_k = None,
-      thinking = thinkingBudget.map(ThinkingSettings.enabled),
+      thinking = thinkingSettings,
+      output_config = outputEffort.map(e => OutputConfig(effort = Some(e))),
       output_format = jsonSchema.map { schema =>
         OutputFormat.JsonSchemaFormat(schema)
       },

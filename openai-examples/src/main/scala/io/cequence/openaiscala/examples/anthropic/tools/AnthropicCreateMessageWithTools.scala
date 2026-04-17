@@ -79,7 +79,7 @@ object AnthropicCreateMessageWithTools extends ExampleBase[AnthropicService] {
     println()
 
     response.blockContents.foreach { blockContent =>
-      println(s"Content Block:")
+      println("Content Block:")
       println(s"  ${blockContent}")
       println()
     }

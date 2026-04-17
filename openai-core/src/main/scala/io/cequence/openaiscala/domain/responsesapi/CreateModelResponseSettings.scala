@@ -122,7 +122,7 @@ final case class CreateModelResponseSettings(
 
 object CreateModelResponseSettings {
 
-  def toAuxPart1(x: CreateModelResponseSettings) =
+  def toAuxPart1(x: CreateModelResponseSettings): CreateModelResponseSettingsAuxPart1 =
     CreateModelResponseSettingsAuxPart1(
       model = x.model,
       include = x.include,
@@ -138,7 +138,7 @@ object CreateModelResponseSettings {
       text = x.text
     )
 
-  def toAuxPart2(x: CreateModelResponseSettings) =
+  def toAuxPart2(x: CreateModelResponseSettings): CreateModelResponseSettingsAuxPart2 =
     CreateModelResponseSettingsAuxPart2(
       toolChoice = x.toolChoice,
       tools = x.tools,

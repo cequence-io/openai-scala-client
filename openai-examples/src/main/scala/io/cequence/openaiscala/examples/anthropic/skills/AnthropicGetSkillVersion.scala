@@ -14,7 +14,7 @@ object AnthropicGetSkillVersion extends ExampleBase[AnthropicService] {
   private val version = "1.."
 
   override protected def run: Future[_] = {
-    println(s"Retrieving skill version:")
+    println("Retrieving skill version:")
     println(s"  Skill ID: $skillId")
     println(s"  Version: $version")
     println()

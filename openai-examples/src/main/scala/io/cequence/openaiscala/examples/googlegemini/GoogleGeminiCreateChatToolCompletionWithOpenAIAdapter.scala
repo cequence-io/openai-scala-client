@@ -1,12 +1,22 @@
-package io.cequence.openaiscala.examples
+package io.cequence.openaiscala.examples.googlegemini
 
-import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain._
+import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
+import io.cequence.openaiscala.examples.ExampleBase
+import io.cequence.openaiscala.gemini.service.GeminiServiceFactory
+import io.cequence.openaiscala.service.OpenAIChatCompletionService
 
 import scala.concurrent.Future
 
-object CreateChatToolCompletion extends Example {
+/**
+ * Requires `openai-scala-google-gemini-client` as a dependency and `GOOGLE_API_KEY`
+ * environment variable to be set.
+ */
+object GoogleGeminiCreateChatToolCompletionWithOpenAIAdapter
+    extends ExampleBase[OpenAIChatCompletionService] {
+
+  override val service: OpenAIChatCompletionService = GeminiServiceFactory.asOpenAI()
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),
@@ -37,10 +47,10 @@ object CreateChatToolCompletion extends Example {
       .createChatToolCompletion(
         messages = messages,
         tools = tools,
-        responseToolChoice = None, // means "auto"
+        responseToolChoice = None,
         settings = CreateChatCompletionSettings(
-          ModelId.gpt_5_4_mini,
-          parallel_tool_calls = Some(true)
+          NonOpenAIModelId.gemini_2_5_flash,
+          parallel_tool_calls = Some(false)
         )
       )
       .map { response =>

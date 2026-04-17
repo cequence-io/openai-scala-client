@@ -92,7 +92,7 @@ private[service] class OpenAISonarChatCompletionService(
       case DeveloperMessage(content, _)    => Message.SystemMessage(content)
       case UserMessage(content, _)         => Message.UserMessage(content)
       case AssistantMessage(content, _, _) => Message.AssistantMessage(content)
-      case _ => throw new OpenAIScalaClientException(s"Unsupported message type for Sonar.")
+      case _ => throw new OpenAIScalaClientException("Unsupported message type for Sonar.")
     }
 
   private def toSonarSetting(settings: CreateChatCompletionSettings)

@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
-import io.cequence.wsclient.domain.{EnumValue, NamedEnumValue}
+import io.cequence.wsclient.domain.NamedEnumValue
 
 sealed abstract class EndPoint(value: String = "") extends NamedEnumValue(value)
 

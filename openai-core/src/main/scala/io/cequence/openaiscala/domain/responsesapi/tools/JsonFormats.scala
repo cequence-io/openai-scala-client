@@ -2,11 +2,10 @@ package io.cequence.openaiscala.domain.responsesapi.tools
 
 import java.{util => ju}
 import io.cequence.wsclient.JsonUtil
-import io.cequence.wsclient.JsonUtil.{enumFormat, snakeEnumFormat}
+import io.cequence.wsclient.JsonUtil.enumFormat
 import io.cequence.openaiscala.domain.responsesapi.{InputMessageContent, ModelStatus}
 import io.cequence.openaiscala.JsonFormats.{formatWithType, jsonSchemaFormat}
 import io.cequence.openaiscala.domain.responsesapi.tools._
-import io.cequence.openaiscala.domain.responsesapi.tools.JsonFormats.toolFormat
 import io.cequence.openaiscala.domain.responsesapi.JsonFormats.modelStatusFormat
 import io.cequence.openaiscala.service.OpenAIChatCompletionExtra
 import play.api.libs.functional.syntax._

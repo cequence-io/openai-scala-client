@@ -26,7 +26,7 @@ import io.cequence.openaiscala.anthropic.domain.skills.{
   SkillVersion
 }
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
-import play.api.libs.json.{JsString, JsValue, Json}
+import play.api.libs.json.{JsString, JsValue}
 
 import java.io.File
 import scala.concurrent.Future

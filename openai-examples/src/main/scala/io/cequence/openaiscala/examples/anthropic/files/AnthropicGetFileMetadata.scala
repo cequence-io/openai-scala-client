@@ -22,7 +22,7 @@ object AnthropicGetFileMetadata extends ExampleBase[AnthropicService] {
 
     service.getFileMetadata(fileId).map {
       case Some(metadata) =>
-        println(s"File metadata retrieved successfully!")
+        println("File metadata retrieved successfully!")
         println(s"  File ID: ${metadata.id}")
         println(s"  Filename: ${metadata.filename}")
         println(s"  MIME type: ${metadata.mimeType}")

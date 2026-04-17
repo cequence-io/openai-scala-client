@@ -9,7 +9,6 @@ import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.Message.{
   AssistantMessage,
   AssistantMessageContent,
-  SystemMessage,
   UserMessage,
   UserMessageContent
 }

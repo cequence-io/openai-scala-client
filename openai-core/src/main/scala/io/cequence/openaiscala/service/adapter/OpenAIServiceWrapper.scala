@@ -147,20 +147,6 @@ trait OpenAIServiceWrapper
     _.listRuns(threadId, pagination, order)
   )
 
-  override def createChatToolCompletion(
-    messages: Seq[BaseMessage],
-    tools: Seq[ChatCompletionTool],
-    responseToolChoice: Option[String],
-    settings: CreateChatCompletionSettings
-  ): Future[ChatToolCompletionResponse] = wrap(
-    _.createChatToolCompletion(
-      messages,
-      tools,
-      responseToolChoice,
-      settings
-    )
-  )
-
   override def createChatWebSearchCompletion(
     messages: Seq[BaseMessage],
     searchOptions: WebSearchOptions,
@@ -724,6 +710,15 @@ trait OpenAIChatCompletionServiceWrapper
     settings: CreateChatCompletionSettings
   ): Future[ChatCompletionResponse] = wrap(
     _.createChatCompletion(messages, settings)
+  )
+
+  override def createChatToolCompletion(
+    messages: Seq[BaseMessage],
+    tools: Seq[ChatCompletionTool],
+    responseToolChoice: Option[String],
+    settings: CreateChatCompletionSettings
+  ): Future[ChatToolCompletionResponse] = wrap(
+    _.createChatToolCompletion(messages, tools, responseToolChoice, settings)
   )
 
 }

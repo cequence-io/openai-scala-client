@@ -14,7 +14,6 @@ import io.cequence.openaiscala.anthropic.service.impl.{
   AnthropicBedrockServiceImpl,
   AnthropicServiceImpl,
   BedrockConnectionSettings,
-  EndPoint,
   OpenAIAnthropicChatCompletionService
 }
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService

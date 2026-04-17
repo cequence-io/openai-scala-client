@@ -259,7 +259,7 @@ package object impl {
       case JsonSchema.Null() =>
         builder.setType(Type.TYPE_UNSPECIFIED)
 
-      case JsonSchema.Object(properties, required, additionalProperties) =>
+      case JsonSchema.Object(properties, required, additionalProperties, description) =>
         // additional properties not supported
         if (additionalProperties.nonEmpty && additionalProperties.get)
           logger.warn(
@@ -267,6 +267,7 @@ package object impl {
           )
 
         val b = builder.setType(Type.OBJECT)
+        description.foreach(b.setDescription)
         if (properties.nonEmpty) {
           val propsMap = properties.map { case (key, jsonSchema) =>
             key -> toVertexJSONSchema(jsonSchema)
@@ -279,13 +280,14 @@ package object impl {
           b.addAllRequired(`iterable asJava`(required))
         }
 
-      case JsonSchema.Array(items) =>
+      case JsonSchema.Array(items, description) =>
         val b = builder.setType(Type.ARRAY)
+        description.foreach(b.setDescription)
         b.setItems(toVertexJSONSchema(items))
 
       case _ =>
         throw new OpenAIScalaClientException(
-          s"Unsupported JSON schema type for Google Vertex."
+          "Unsupported JSON schema type for Google Vertex."
         )
     }
 

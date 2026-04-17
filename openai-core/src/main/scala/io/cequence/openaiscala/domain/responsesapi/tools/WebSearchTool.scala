@@ -65,7 +65,7 @@ object WebSearchType {
   case object WebSearchPreview extends WebSearchType("web_search_preview")
   case object WebSearchPreview20250311 extends WebSearchType("web_search_preview_2025_03_11")
 
-  def values = Seq(
+  def values: Seq[WebSearchType] = Seq(
     WebSearch,
     WebSearch20250826,
     WebSearchPreview,

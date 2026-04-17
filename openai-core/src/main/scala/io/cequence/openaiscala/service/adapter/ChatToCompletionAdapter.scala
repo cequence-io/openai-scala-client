@@ -4,12 +4,14 @@ import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.{
   AssistantMessage,
   BaseMessage,
+  ChatCompletionTool,
   SystemMessage,
   UserMessage
 }
 import io.cequence.openaiscala.domain.response.{
   ChatCompletionChoiceInfo,
   ChatCompletionResponse,
+  ChatToolCompletionResponse,
   TextCompletionResponse
 }
 import io.cequence.openaiscala.domain.settings.{
@@ -53,6 +55,18 @@ private class ChatToCompletionAdapter[
         settings = toCompletionSettings(settings)
       )
       .map(toChatCompletionResponse)
+
+  override def createChatToolCompletion(
+    messages: Seq[BaseMessage],
+    tools: Seq[ChatCompletionTool],
+    responseToolChoice: Option[String],
+    settings: CreateChatCompletionSettings
+  ): Future[ChatToolCompletionResponse] =
+    Future.failed(
+      new OpenAIScalaClientException(
+        "createChatToolCompletion is not supported by the legacy completion API"
+      )
+    )
 
   private def toCompletionSettings(
     settings: CreateChatCompletionSettings

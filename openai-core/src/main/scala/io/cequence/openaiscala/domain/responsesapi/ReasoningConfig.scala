@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.domain.responsesapi
 
 import io.cequence.openaiscala.domain.settings.ReasoningEffort
-import io.cequence.wsclient.domain.EnumValue
 
 /**
  * Configuration options for reasoning models (o-series models only).

@@ -96,7 +96,7 @@ object MCPRequireApproval {
     case object Always extends Setting
     case object Never extends Setting
 
-    def values = Seq(Always, Never)
+    def values: Seq[Setting] = Seq(Always, Never)
   }
 
   /**

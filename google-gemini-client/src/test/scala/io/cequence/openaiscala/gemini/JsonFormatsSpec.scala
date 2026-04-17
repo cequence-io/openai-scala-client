@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.gemini
 
 import io.cequence.openaiscala.gemini.JsonFormats._
-import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.gemini.JsonFormatsSpec.JsonPrintMode
 import io.cequence.openaiscala.gemini.JsonFormatsSpec.JsonPrintMode.{Compact, Pretty}
 import io.cequence.openaiscala.gemini.domain.{ChatRole, Content}

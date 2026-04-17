@@ -3,7 +3,12 @@ package io.cequence.openaiscala.examples.anthropic
 import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.Message.{SystemMessage, UserMessage}
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse
-import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
+import io.cequence.openaiscala.anthropic.domain.settings.{
+  AnthropicCreateMessageSettings,
+  OutputConfig,
+  OutputEffort,
+  ThinkingSettings
+}
 import io.cequence.openaiscala.anthropic.service.{AnthropicService, AnthropicServiceFactory}
 import io.cequence.openaiscala.domain.NonOpenAIModelId
 import io.cequence.openaiscala.examples.ExampleBase
@@ -25,8 +30,10 @@ object AnthropicCreateMessage extends ExampleBase[AnthropicService] {
       .createMessage(
         messages,
         settings = AnthropicCreateMessageSettings(
-          model = NonOpenAIModelId.claude_opus_4_6,
-          max_tokens = 4096
+          model = NonOpenAIModelId.claude_opus_4_7,
+          max_tokens = 4096,
+          thinking = Some(ThinkingSettings.adaptive),
+          output_config = Some(OutputConfig(effort = Some(OutputEffort.xhigh)))
         )
       )
       .map(printMessageContent)

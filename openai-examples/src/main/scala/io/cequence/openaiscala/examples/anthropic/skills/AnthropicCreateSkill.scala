@@ -78,7 +78,7 @@ object AnthropicCreateSkill extends ExampleBase[AnthropicService] {
         files = files
       )
       .map { skill =>
-        println(s"Skill created successfully:")
+        println("Skill created successfully:")
         println(s"  ID: ${skill.id}")
         println(s"  Type: ${skill.`type`}")
         println(s"  Display Title: ${skill.displayTitle.getOrElse("N/A")}")

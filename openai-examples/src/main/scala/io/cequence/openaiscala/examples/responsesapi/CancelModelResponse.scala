@@ -26,7 +26,7 @@ object CancelModelResponse extends Example {
 
       cancelledResponse <- service.cancelModelResponse(response.id)
     } yield {
-      println(s"\nCancelled response:")
+      println("\nCancelled response:")
       println(s"ID: ${cancelledResponse.id}")
       println(s"Status: ${cancelledResponse.status}")
       println(s"Background: ${cancelledResponse.background}")

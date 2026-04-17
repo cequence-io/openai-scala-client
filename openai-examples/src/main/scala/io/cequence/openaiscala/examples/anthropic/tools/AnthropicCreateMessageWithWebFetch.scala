@@ -63,7 +63,7 @@ object AnthropicCreateMessageWithWebFetch extends ExampleBase[AnthropicService] 
               println(s"Document Title: ${document.title}")
               println(s"Citations Enabled: ${document.citations.enabled}")
               println()
-              println(s"Source:")
+              println("Source:")
               println(s"  Type: ${document.source.`type`}")
               println(s"  Media Type: ${document.source.mediaType}")
               println(

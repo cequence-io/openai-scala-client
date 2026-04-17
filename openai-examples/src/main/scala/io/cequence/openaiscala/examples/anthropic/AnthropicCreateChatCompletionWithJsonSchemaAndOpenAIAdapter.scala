@@ -36,11 +36,18 @@ object AnthropicCreateChatCompletionWithJsonSchemaAndOpenAIAdapter
             "temperature" -> JsonSchema.String(),
             "weather" -> JsonSchema.String()
           ),
-          required = Seq("city", "temperature", "weather")
-        )
+          required = Seq("city", "temperature", "weather"),
+          // Behavioral probe: if this Object description is honored, 'city' is ALL CAPS.
+          description =
+            Some("A single city's weather. The 'city' value MUST be in ALL UPPERCASE.")
+        ),
+        // Behavioral probe: if this Array description is honored, we get exactly 2 items.
+        description =
+          Some("The list MUST contain EXACTLY 2 city entries, no more and no less.")
       )
     ),
-    required = Seq("response")
+    required = Seq("response"),
+    description = Some("Top-level container for the weather response")
   )
 
   private val weatherSchemaDef = JsonSchemaDef(
@@ -60,7 +67,7 @@ object AnthropicCreateChatCompletionWithJsonSchemaAndOpenAIAdapter
       .createChatCompletionWithJSON[JsObject](
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = NonOpenAIModelId.claude_opus_4_6,
+          model = NonOpenAIModelId.claude_opus_4_7,
           max_tokens = Some(16000),
           response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
           jsonSchema = Some(weatherSchemaDef)

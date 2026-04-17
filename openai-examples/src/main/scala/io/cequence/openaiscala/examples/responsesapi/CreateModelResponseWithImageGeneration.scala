@@ -35,7 +35,7 @@ object CreateModelResponseWithImageGeneration extends Example {
 
         // Note: ImageGenerationToolCall is an Input type, not an Output type
         // It would typically appear in subsequent conversation turns or in the response's input items
-        println(s"\nImage generation tool was configured with:")
+        println("\nImage generation tool was configured with:")
         response.tools.collect { case tool: ImageGenerationTool =>
           println(s"  Background: ${tool.background.map(_.toString).getOrElse("default")}")
           println(s"  Model: ${tool.model.getOrElse("default")}")

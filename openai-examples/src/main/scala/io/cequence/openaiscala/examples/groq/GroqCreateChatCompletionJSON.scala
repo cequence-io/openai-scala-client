@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.examples.groq
 
 import io.cequence.openaiscala.domain._
-import io.cequence.openaiscala.domain.settings.GroqCreateChatCompletionSettingsOps._
 import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
   CreateChatCompletionSettings,

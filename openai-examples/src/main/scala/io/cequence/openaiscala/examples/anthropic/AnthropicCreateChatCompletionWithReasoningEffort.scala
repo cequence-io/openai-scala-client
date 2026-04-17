@@ -29,7 +29,7 @@ object AnthropicCreateChatCompletionWithReasoningEffort
     extends ExampleBase[OpenAIChatCompletionService] {
 
   private val settings = CreateChatCompletionSettings(
-    model = NonOpenAIModelId.claude_haiku_4_5_20251001,
+    model = NonOpenAIModelId.claude_opus_4_7,
     max_tokens = Some(10000),
     temperature = Some(0.2)
   )

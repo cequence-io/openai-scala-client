@@ -3,9 +3,8 @@ import io.cequence.openaiscala.domain
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain.response.Assistant
 import io.cequence.openaiscala.domain.settings.CreateRunSettings
-import io.cequence.openaiscala.domain.{ModelId, ThreadMessage}
+import io.cequence.openaiscala.domain.{JsonSchema, ModelId, ThreadMessage}
 
-import scala.collection.immutable.ListMap
 import scala.concurrent.Future
 
 object CreateRun extends Example {
@@ -18,7 +17,7 @@ object CreateRun extends Example {
         "You plan my week."
       ),
       tools = Seq(
-        FunctionTool("name", description = None, parameters = Map())
+        FunctionTool("name", description = None, parameters = JsonSchema.Object(Nil))
       ),
       toolResources = None
     )
@@ -50,13 +49,11 @@ object CreateRun extends Example {
             "weather_forecast_for_city",
             description =
               Some("returns the weather forecast for a given day in the given city"),
-            parameters = ListMap(
-              "type" -> "object",
-              "properties" -> ListMap(
-                "city" -> ListMap("type" -> "string", "description" -> "The city name"),
-                "date" -> ListMap(
-                  "type" -> "string",
-                  "description" -> "The date in format dd-mm-yyyy"
+            parameters = JsonSchema.Object(
+              properties = Seq(
+                "city" -> JsonSchema.String(description = Some("The city name")),
+                "date" -> JsonSchema.String(
+                  description = Some("The date in format dd-mm-yyyy")
                 )
               )
             )

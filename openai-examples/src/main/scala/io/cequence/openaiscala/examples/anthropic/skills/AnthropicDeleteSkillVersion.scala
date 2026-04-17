@@ -14,7 +14,7 @@ object AnthropicDeleteSkillVersion extends ExampleBase[AnthropicService] {
   private val version = "1..."
 
   override protected def run: Future[_] = {
-    println(s"Attempting to delete skill version:")
+    println("Attempting to delete skill version:")
     println(s"  Skill ID: $skillId")
     println(s"  Version: $version")
     println("WARNING: This will permanently delete the skill version!")
@@ -23,11 +23,11 @@ object AnthropicDeleteSkillVersion extends ExampleBase[AnthropicService] {
     service
       .deleteSkillVersion(skillId, version)
       .map { response =>
-        println(s"Skill version deleted successfully:")
+        println("Skill version deleted successfully:")
         println(s"  ID: ${response.id}")
         println(s"  Type: ${response.`type`}")
         println()
-        println(s"The skill version has been permanently removed.")
+        println("The skill version has been permanently removed.")
       }
       .recover { case e: Exception =>
         println(s"Error deleting skill version: ${e.getMessage}")

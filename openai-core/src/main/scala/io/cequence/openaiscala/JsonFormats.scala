@@ -147,12 +147,8 @@ object JsonFormats {
 
   implicit lazy val messageSpecFormat: Format[MessageSpec] = Json.format[MessageSpec]
 
-  implicit lazy val chatCompletionToolFormat: Format[FunctionTool] = {
-    // use just here for FunctionSpec
-    implicit lazy val stringAnyMapFormat: Format[Map[String, Any]] =
-      JsonUtil.StringAnyMapFormat
+  implicit lazy val chatCompletionToolFormat: Format[FunctionTool] =
     Json.format[FunctionTool]
-  }
 
   implicit lazy val messageAttachmentToolFormat: Format[MessageAttachmentTool] = {
     val typeDiscriminatorKey = "type"
@@ -176,14 +172,13 @@ object JsonFormats {
 
   implicit lazy val assistantToolFormat: Format[AssistantTool] = {
     val typeDiscriminatorKey = "type"
-    implicit val mapFormat = JsonUtil.StringAnyMapFormat
 
     lazy val assistantFunctionToolFormat: Format[AssistantTool.FunctionTool] = {
       val reads = Reads[AssistantTool.FunctionTool] { json =>
         for {
           name <- (json \ "name").validate[String]
           description <- (json \ "description").validateOpt[String]
-          parameters <- (json \ "parameters").validate[Map[String, Any]](mapFormat)
+          parameters <- (json \ "parameters").validate[JsonSchema]
           strict <- (json \ "strict").validateOpt[Boolean]
         } yield AssistantTool.FunctionTool(name, description, parameters, strict)
       }
@@ -362,13 +357,8 @@ object JsonFormats {
     ChatCompletionResponseFormatType.text
   )
 
-  implicit val reasoningEffortFormat: Format[ReasoningEffort] = enumFormat[ReasoningEffort](
-    ReasoningEffort.none,
-    ReasoningEffort.minimal,
-    ReasoningEffort.low,
-    ReasoningEffort.medium,
-    ReasoningEffort.high
-  )
+  implicit val reasoningEffortFormat: Format[ReasoningEffort] =
+    enumFormat[ReasoningEffort](ReasoningEffort.values: _*)
 
   implicit val verbosityFormat: Format[Verbosity] = enumFormat[Verbosity](
     Verbosity.low,
@@ -464,7 +454,33 @@ object JsonFormats {
   implicit lazy val chatToolCompletionChoiceInfoReads: Reads[ChatToolCompletionChoiceInfo] =
     Json.reads[ChatToolCompletionChoiceInfo]
   implicit lazy val chatToolCompletionResponseReads: Reads[ChatToolCompletionResponse] =
-    Json.reads[ChatToolCompletionResponse]
+    (
+      (__ \ "id").read[String] and
+        (__ \ "created").read[ju.Date] and
+        (__ \ "model").read[String] and
+        (__ \ "system_fingerprint").readNullable[String] and
+        (__ \ "choices").read[Seq[ChatToolCompletionChoiceInfo]] and
+        (__ \ "usage").readNullable[UsageInfo]
+    )(
+      // here we ignore originalResponse
+      (
+        id,
+        created,
+        model,
+        system_fingerprint,
+        choices,
+        usage
+      ) =>
+        ChatToolCompletionResponse(
+          id,
+          created,
+          model,
+          system_fingerprint,
+          choices,
+          usage,
+          None
+        )
+    )
 
   implicit lazy val chatWebSearchCompletionChoiceInfoFormat
     : Format[ChatWebSearchCompletionChoiceInfo] =
@@ -1266,15 +1282,25 @@ object JsonFormats {
             "required" -> c.required
           )
 
-          c.additionalProperties match {
+          val withAdditional = c.additionalProperties match {
             case Some(value) => baseObj + ("additionalProperties" -> toJson(value))
             case None        => baseObj
           }
 
+          c.description match {
+            case Some(desc) => withAdditional + ("description" -> toJson(desc))
+            case None       => withAdditional
+          }
+
         case c: JsonSchema.Array =>
-          Json.obj(
+          val baseObj = Json.obj(
             "items" -> writesAux(c.items)
           )
+
+          c.description match {
+            case Some(desc) => baseObj + ("description" -> toJson(desc))
+            case None       => baseObj
+          }
       }
 
       json ++ Json.obj("type" -> typeValueJson)
@@ -1332,10 +1358,16 @@ object JsonFormats {
 
                 val required = (o \ "required").asOpt[Seq[String]].getOrElse(Nil)
                 val additionalProperties = (o \ "additionalProperties").asOpt[Boolean]
+                val description = (o \ "description").asOpt[String]
 
                 if (propertiesErrors.isEmpty)
                   JsSuccess(
-                    JsonSchema.ObjectAsMap(properties, required, additionalProperties)
+                    JsonSchema.Object(
+                      properties.toSeq,
+                      required,
+                      additionalProperties,
+                      description
+                    )
                   )
                 else
                   JsError(propertiesErrors.reduce(_ ++ _))
@@ -1348,8 +1380,9 @@ object JsonFormats {
             (o \ "items")
               .asOpt[JsObject]
               .map { itemsJson =>
+                val description = (o \ "description").asOpt[String]
                 readsAux(itemsJson).map { items =>
-                  JsonSchema.Array(items)
+                  JsonSchema.Array(items, description)
                 }
               }
               .getOrElse(

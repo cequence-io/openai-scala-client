@@ -110,7 +110,7 @@ def grade(sample: dict, item: dict) -> float:
       service
         .validateGrader(grader)
         .map { validatedGrader =>
-          println(s"✓ Grader validated successfully:")
+          println("✓ Grader validated successfully:")
           println(s"  Type: ${validatedGrader.`type`}")
 
           validatedGrader match {

@@ -21,11 +21,11 @@ trait TestFixtures {
       structure = schema
     )
 
-  lazy protected val capitalsSchema1 = JsonSchema.ObjectAsMap(
-    properties = Map(
+  lazy protected val capitalsSchema1 = JsonSchema.Object(
+    properties = Seq(
       "countries" -> JsonSchema.Array(
-        items = JsonSchema.ObjectAsMap(
-          properties = Map(
+        items = JsonSchema.Object(
+          properties = Seq(
             "country" -> JsonSchema.String(
               description = Some("The name of the country")
             ),
@@ -33,11 +33,18 @@ trait TestFixtures {
               description = Some("The capital city of the country")
             )
           ),
-          required = Seq("country", "capital")
-        )
+          required = Seq("country", "capital"),
+          // Behavioral probe: if this Object description is honored, capital is ALL CAPS.
+          description =
+            Some("A single country record. The 'capital' value MUST be in ALL UPPERCASE.")
+        ),
+        // Behavioral probe: if this Array description is honored, we get exactly 2 items.
+        description =
+          Some("The list MUST contain EXACTLY 2 country entries, no more and no less.")
       )
     ),
-    required = Seq("countries")
+    required = Seq("countries"),
+    description = Some("Top-level container for the capitals response")
   )
 
   lazy protected val capitalsSchema2 = Map(

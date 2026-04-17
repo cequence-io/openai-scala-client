@@ -13,7 +13,7 @@ object StringCheckOperation {
   case object like extends StringCheckOperation
   case object ilike extends StringCheckOperation
 
-  def values = Seq(eq, ne, like, ilike)
+  def values: Seq[StringCheckOperation] = Seq(eq, ne, like, ilike)
 }
 
 /**

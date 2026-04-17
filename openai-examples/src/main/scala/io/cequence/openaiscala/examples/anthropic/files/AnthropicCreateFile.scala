@@ -37,7 +37,7 @@ object AnthropicCreateFile extends ExampleBase[AnthropicService] {
         } else {
           // Upload file with optional custom filename
           service.createFile(file, None).map { fileMetadata =>
-            println(s"File uploaded successfully!")
+            println("File uploaded successfully!")
             println(s"  File ID: ${fileMetadata.id}")
             println(s"  Filename: ${fileMetadata.filename}")
             println(s"  MIME type: ${fileMetadata.mimeType}")

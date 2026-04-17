@@ -1,7 +1,10 @@
 package io.cequence.openaiscala.service.adapter
 
-import io.cequence.openaiscala.domain.{AssistantMessage, BaseMessage}
-import io.cequence.openaiscala.domain.response.ChatCompletionResponse
+import io.cequence.openaiscala.domain.{AssistantMessage, BaseMessage, ChatCompletionTool}
+import io.cequence.openaiscala.domain.response.{
+  ChatCompletionResponse,
+  ChatToolCompletionResponse
+}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
 import io.cequence.wsclient.service.CloseableService
@@ -34,6 +37,32 @@ private class ChatCompletionOutputAdapter[S <: OpenAIChatCompletionService](
         choices =
           response.choices.map(choice => choice.copy(message = adaptMessage(choice.message)))
       )
+    }
+
+  override def createChatToolCompletion(
+    messages: Seq[BaseMessage],
+    tools: Seq[ChatCompletionTool],
+    responseToolChoice: Option[String],
+    settings: CreateChatCompletionSettings
+  ): Future[ChatToolCompletionResponse] =
+    underlying.createChatToolCompletion(messages, tools, responseToolChoice, settings).map {
+      response =>
+        response.copy(
+          choices = response.choices.map { choice =>
+            val message = choice.message
+            // Only adapt when content is present so tool-call-only replies (content = None)
+            // stay distinguishable from empty-text replies (content = Some("")).
+            message.content match {
+              case Some(content) =>
+                val adapted = adaptMessage(AssistantMessage(content, message.name))
+                choice.copy(message =
+                  message.copy(content = Some(adapted.content), name = adapted.name)
+                )
+              case None =>
+                choice
+            }
+          }
+        )
     }
 
   override def close(): Unit =

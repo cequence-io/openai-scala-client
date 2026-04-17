@@ -20,11 +20,11 @@ object AnthropicDeleteSkill extends ExampleBase[AnthropicService] {
     service
       .deleteSkill(skillId)
       .map { response =>
-        println(s"Skill deleted successfully:")
+        println("Skill deleted successfully:")
         println(s"  ID: ${response.id}")
         println(s"  Type: ${response.`type`}")
         println()
-        println(s"The skill has been permanently removed from your workspace.")
+        println("The skill has been permanently removed from your workspace.")
       }
       .recover { case e: Exception =>
         println(s"Error deleting skill: ${e.getMessage}")

@@ -1,7 +1,10 @@
 package io.cequence.openaiscala.service.adapter
 
-import io.cequence.openaiscala.domain.BaseMessage
-import io.cequence.openaiscala.domain.response.ChatCompletionResponse
+import io.cequence.openaiscala.domain.{BaseMessage, ChatCompletionTool}
+import io.cequence.openaiscala.domain.response.{
+  ChatCompletionResponse,
+  ChatToolCompletionResponse
+}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
 import io.cequence.openaiscala.service.adapter.ServiceWrapperTypes._
@@ -19,6 +22,14 @@ trait DelegatedChatCompletionCloseableServiceWrapper[+S <: CloseableService]
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
   ): Future[ChatCompletionResponse] = delegate.createChatCompletion(messages, settings)
+
+  override def createChatToolCompletion(
+    messages: Seq[BaseMessage],
+    tools: Seq[ChatCompletionTool],
+    responseToolChoice: Option[String],
+    settings: CreateChatCompletionSettings
+  ): Future[ChatToolCompletionResponse] =
+    delegate.createChatToolCompletion(messages, tools, responseToolChoice, settings)
 }
 
 object ServiceWrapperTypes {

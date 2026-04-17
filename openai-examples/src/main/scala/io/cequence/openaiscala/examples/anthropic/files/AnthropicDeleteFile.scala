@@ -26,7 +26,7 @@ object AnthropicDeleteFile extends ExampleBase[AnthropicService] {
     service
       .deleteFile(fileId)
       .map { response =>
-        println(s"File deleted successfully!")
+        println("File deleted successfully!")
         println(s"  Deleted file ID: ${response.id}")
         println(s"  Type: ${response.`type`}")
         println()

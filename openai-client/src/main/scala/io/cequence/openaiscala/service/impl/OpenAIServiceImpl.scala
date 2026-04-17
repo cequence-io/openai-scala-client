@@ -12,8 +12,8 @@ import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.{HandleOpenAIErrorCodes, OpenAIService}
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits._
-import io.cequence.wsclient.StreamResponseImplicits.{StreamSafeOps, StreamSafeRichOps}
-import io.cequence.wsclient.domain.{RichResponse, StreamedResponse}
+import io.cequence.wsclient.StreamResponseImplicits.StreamSafeOps
+import io.cequence.wsclient.domain.RichResponse
 import play.api.libs.json.{JsObject, JsValue, Json, Reads}
 
 import java.io.File
@@ -238,38 +238,6 @@ private[service] trait OpenAIServiceImpl
     )
 
     extraParams
-  }
-
-  override def createChatToolCompletion(
-    messages: Seq[BaseMessage],
-    tools: Seq[ChatCompletionTool],
-    responseToolChoice: Option[String] = None,
-    settings: CreateChatCompletionSettings = DefaultSettings.CreateChatFunCompletion
-  ): Future[ChatToolCompletionResponse] = {
-    val coreParams =
-      createBodyParamsForChatCompletion(messages, settings, stream = false)
-
-    val toolJsons: Seq[Map[String, Object]] = tools.map {
-      case tool: AssistantTool.FunctionTool =>
-        Map("type" -> "function", "function" -> Json.toJson(tool))
-    }
-
-    val extraParams = jsonBodyParams(
-      Param.tools -> Some(toolJsons),
-      Param.tool_choice -> responseToolChoice.map(name =>
-        Map(
-          "type" -> "function",
-          "function" -> Map("name" -> name)
-        )
-      ) // otherwise "auto" is used by default (if tools are present)
-    )
-
-    execPOST(
-      EndPoint.chat_completions,
-      bodyParams = coreParams ++ extraParams
-    ).map(
-      _.asSafeJson[ChatToolCompletionResponse]
-    )
   }
 
   override def createChatWebSearchCompletion(

@@ -92,7 +92,7 @@ object AnthropicCreateSkillVersion extends ExampleBase[AnthropicService] {
         files = files
       )
       .map { skillVersion =>
-        println(s"Skill version created successfully:")
+        println("Skill version created successfully:")
         println(s"  ID: ${skillVersion.id}")
         println(s"  Type: ${skillVersion.`type`}")
         println(s"  Skill ID: ${skillVersion.skillId}")

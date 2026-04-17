@@ -38,11 +38,11 @@ object CreateModelResponseWithReusablePrompt extends Example {
         println(s"Model: ${response.model}")
         println(s"Status: ${response.status}")
         println(s"\nPrompt used: ${response.prompt.map(_.id).getOrElse("N/A")}")
-        println(s"\nOutput:")
+        println("\nOutput:")
         println(response.outputText.getOrElse("N/A"))
 
         response.usage.foreach { usage =>
-          println(s"\nUsage:")
+          println("\nUsage:")
           println(s"  Input tokens: ${usage.inputTokens}")
           println(s"  Output tokens: ${usage.outputTokens}")
           println(s"  Total tokens: ${usage.totalTokens}")

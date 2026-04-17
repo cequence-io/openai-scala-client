@@ -4,6 +4,7 @@ import akka.testkit.TestKit
 import io.cequence.openaiscala.domain.{
   AssistantMessage,
   BaseMessage,
+  JsonSchema,
   ModelId,
   SystemMessage,
   UserMessage
@@ -18,7 +19,6 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
 import org.scalatest.BeforeAndAfterAll
 
-import scala.collection.immutable.ListMap
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
 
@@ -299,14 +299,14 @@ class OpenAICountTokensServiceSpec
 
   val weatherFunction = FunctionTool(
     name = "getWeather",
-    parameters = Map(
-      "type" -> "object",
-      "properties" -> ListMap(
-        "location" -> ListMap(
-          "type" -> "string",
-          "description" -> "The city to get the weather for"
+    parameters = JsonSchema.Object(
+      properties = Seq(
+        "location" -> JsonSchema.String(
+          description = Some("The city to get the weather for")
         ),
-        "unit" -> ListMap("type" -> "string", "enum" -> List("celsius", "fahrenheit"))
+        "unit" -> JsonSchema.String(
+          `enum` = Seq("celsius", "fahrenheit")
+        )
       )
     )
   )
@@ -322,16 +322,13 @@ class OpenAICountTokensServiceSpec
       private val function1 = FunctionTool(
         name = "function",
         description = Some("description"),
-        parameters = Map(
-          "type" -> "object",
-          "properties" -> ListMap(
-            "quality" -> ListMap(
-              "type" -> "object",
-              "properties" -> ListMap(
-                "pros" -> ListMap(
-                  "type" -> "array",
-                  "description" -> "Write 3 points why this text is well written",
-                  "items" -> ListMap("type" -> "string")
+        parameters = JsonSchema.Object(
+          properties = Seq(
+            "quality" -> JsonSchema.Object(
+              properties = Seq(
+                "pros" -> JsonSchema.Array(
+                  items = JsonSchema.String(),
+                  description = Some("Write 3 points why this text is well written")
                 )
               )
             )
@@ -348,12 +345,11 @@ class OpenAICountTokensServiceSpec
       private val function1 = FunctionTool(
         name = "function",
         description = Some("description"),
-        parameters = ListMap(
-          "type" -> "object",
-          "properties" -> ListMap(
-            "title" -> ListMap("type" -> "string", "description" -> "Write something")
+        parameters = JsonSchema.Object(
+          properties = Seq(
+            "title" -> JsonSchema.String(description = Some("Write something"))
           ),
-          "required" -> List("title")
+          required = Seq("title")
         )
       )
       val messages: Seq[BaseMessage] = Seq(UserMessage("text1\ntext2\ntext3\n"))
@@ -365,34 +361,27 @@ class OpenAICountTokensServiceSpec
       private val function1 = FunctionTool(
         name = "function",
         description = Some("description1"),
-        parameters = ListMap(
-          "type" -> "object",
-          "description" -> "description2",
-          "properties" -> ListMap(
-            "mainField" -> ListMap("type" -> "string", "description" -> "description3"),
-            "field number one" -> ListMap(
-              "type" -> "object",
-              "description" -> "description4",
-              "properties" -> ListMap(
-                "yesNoField" -> ListMap(
-                  "type" -> "string",
-                  "description" -> "description5",
-                  "enum" -> List("Yes", "No")
+        parameters = JsonSchema.Object(
+          properties = Seq(
+            "mainField" -> JsonSchema.String(description = Some("description3")),
+            "field number one" -> JsonSchema.Object(
+              properties = Seq(
+                "yesNoField" -> JsonSchema.String(
+                  description = Some("description5"),
+                  `enum` = Seq("Yes", "No")
                 ),
-                "howIsInteresting" -> ListMap(
-                  "type" -> "string",
-                  "description" -> "description6"
+                "howIsInteresting" -> JsonSchema.String(
+                  description = Some("description6")
                 ),
-                "scoreInteresting" -> ListMap(
-                  "type" -> "number",
-                  "description" -> "description7"
+                "scoreInteresting" -> JsonSchema.Number(
+                  description = Some("description7")
                 ),
-                "isInteresting" -> ListMap(
-                  "type" -> "string",
-                  "description" -> "description8",
-                  "enum" -> List("Yes", "No")
+                "isInteresting" -> JsonSchema.String(
+                  description = Some("description8"),
+                  `enum` = Seq("Yes", "No")
                 )
-              )
+              ),
+              description = Some("description4")
             )
           )
         )
@@ -405,35 +394,29 @@ class OpenAICountTokensServiceSpec
     "count tokens for a chat with function - two fields in object" in new TestCase {
       private val function1 = FunctionTool(
         name = "get_recipe",
-        parameters = ListMap(
-          "type" -> "object",
-          "required" -> List("ingredients", "instructions", "time_to_cook"),
-          "properties" -> ListMap(
-            "ingredients" -> ListMap(
-              "type" -> "array",
-              "items" -> ListMap(
-                "type" -> "object",
-                "required" -> List("name", "unit", "amount"),
-                "properties" -> ListMap(
-                  "name" -> ListMap("type" -> "string"),
-                  "unit" -> ListMap(
-                    "enum" -> List("grams", "ml", "cups", "pieces", "teaspoons"),
-                    "type" -> "string"
+        parameters = JsonSchema.Object(
+          properties = Seq(
+            "ingredients" -> JsonSchema.Array(
+              items = JsonSchema.Object(
+                properties = Seq(
+                  "name" -> JsonSchema.String(),
+                  "unit" -> JsonSchema.String(
+                    `enum` = Seq("grams", "ml", "cups", "pieces", "teaspoons")
                   ),
-                  "amount" -> ListMap("type" -> "number")
-                )
+                  "amount" -> JsonSchema.Number()
+                ),
+                required = Seq("name", "unit", "amount")
               )
             ),
-            "instructions" -> ListMap(
-              "type" -> "array",
-              "items" -> ListMap("type" -> "string"),
-              "description" -> "Steps to prepare the recipe (no numbering)"
+            "instructions" -> JsonSchema.Array(
+              items = JsonSchema.String(),
+              description = Some("Steps to prepare the recipe (no numbering)")
             ),
-            "time_to_cook" -> ListMap(
-              "type" -> "number",
-              "description" -> "Total time to prepare the recipe in minutes"
+            "time_to_cook" -> JsonSchema.Number(
+              description = Some("Total time to prepare the recipe in minutes")
             )
-          )
+          ),
+          required = Seq("ingredients", "instructions", "time_to_cook")
         )
       )
       val messages: Seq[BaseMessage] = Seq(UserMessage("hello"))
@@ -444,7 +427,7 @@ class OpenAICountTokensServiceSpec
     "count tokens for a chat with function - many messages" in new TestCase {
       private val function1 = FunctionTool(
         name = "do_stuff",
-        parameters = ListMap("type" -> "object", "properties" -> ListMap())
+        parameters = JsonSchema.Object(Nil)
       )
       val messages: Seq[BaseMessage] = Seq(
         SystemMessage("Hello:"),
@@ -458,7 +441,7 @@ class OpenAICountTokensServiceSpec
     "count tokens for a chat with function - empty properties in object" in new TestCase {
       private val function1 = FunctionTool(
         name = "do_stuff",
-        parameters = ListMap("type" -> "object", "properties" -> ListMap())
+        parameters = JsonSchema.Object(Nil)
       )
       val messages: Seq[BaseMessage] =
         Seq(
@@ -472,16 +455,12 @@ class OpenAICountTokensServiceSpec
       private val function1 = FunctionTool(
         name = "function",
         description = Some("description"),
-        parameters = Map(
-          "type" -> "object",
-          "properties" -> ListMap(
-            "quality" -> ListMap(
-              "type" -> "object",
-              "properties" -> ListMap(
-                "pros" -> ListMap(
-                  "type" -> "array",
-                  "description" -> "Write 3 points why this text is well written",
-                  "items" -> ListMap("type" -> "string")
+        parameters = JsonSchema.Object(
+          properties = Seq(
+            "quality" -> JsonSchema.Object(
+              properties = Seq(
+                "pros" -> JsonSchema.Array(
+                  items = JsonSchema.String()
                 )
               )
             )
@@ -502,16 +481,12 @@ class OpenAICountTokensServiceSpec
       private val function1 = FunctionTool(
         name = "function",
         description = Some("description"),
-        parameters = Map(
-          "type" -> "object",
-          "properties" -> ListMap(
-            "quality" -> ListMap(
-              "type" -> "object",
-              "properties" -> ListMap(
-                "pros" -> ListMap(
-                  "type" -> "array",
-                  "description" -> "Write 3 points why this text is well written",
-                  "items" -> ListMap("type" -> "string")
+        parameters = JsonSchema.Object(
+          properties = Seq(
+            "quality" -> JsonSchema.Object(
+              properties = Seq(
+                "pros" -> JsonSchema.Array(
+                  items = JsonSchema.String()
                 )
               )
             )
@@ -536,18 +511,13 @@ class OpenAICountTokensServiceSpec
       private val function1 = FunctionTool(
         name = "function",
         description = Some("description"),
-        parameters = Map(
-          "type" -> "object",
-          "properties" -> ListMap(
-            "quality" -> ListMap(
-              "type" -> "object",
-              "properties" -> ListMap(
-                "pros" -> ListMap(
-                  "type" -> "array",
-                  "description" -> "Select few connected categories",
-                  "items" -> ListMap(
-                    "type" -> "string",
-                    "enum" -> List(
+        parameters = JsonSchema.Object(
+          properties = Seq(
+            "quality" -> JsonSchema.Object(
+              properties = Seq(
+                "pros" -> JsonSchema.Array(
+                  items = JsonSchema.String(
+                    `enum` = Seq(
                       "Basketball",
                       "Football",
                       "Golf",
@@ -555,7 +525,8 @@ class OpenAICountTokensServiceSpec
                       "Baseball",
                       "Soccer"
                     )
-                  )
+                  ),
+                  description = Some("Select few connected categories")
                 )
               )
             )

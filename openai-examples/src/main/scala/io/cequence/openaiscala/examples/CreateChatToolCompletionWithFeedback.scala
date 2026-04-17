@@ -22,19 +22,16 @@ object CreateChatToolCompletionWithFeedback extends Example {
     FunctionTool(
       name = "get_current_weather",
       description = Some("Get the current weather in a given location"),
-      parameters = Map(
-        "type" -> "object",
-        "properties" -> Map(
-          "location" -> Map(
-            "type" -> "string",
-            "description" -> "The city and state, e.g. San Francisco, CA"
+      parameters = JsonSchema.Object(
+        properties = Seq(
+          "location" -> JsonSchema.String(
+            description = Some("The city and state, e.g. San Francisco, CA")
           ),
-          "unit" -> Map(
-            "type" -> "string",
-            "enum" -> Seq("celsius", "fahrenheit")
+          "unit" -> JsonSchema.String(
+            `enum` = Seq("celsius", "fahrenheit")
           )
         ),
-        "required" -> Seq("location")
+        required = Seq("location")
       )
     )
   )
@@ -48,7 +45,7 @@ object CreateChatToolCompletionWithFeedback extends Example {
         settings = CreateChatCompletionSettings(modelId)
       )
 
-      assistantToolMessage = assistantToolResponse.choices.head.message
+      assistantToolMessage = assistantToolResponse.assistantToolMessage
 
       toolCalls = assistantToolMessage.tool_calls
 

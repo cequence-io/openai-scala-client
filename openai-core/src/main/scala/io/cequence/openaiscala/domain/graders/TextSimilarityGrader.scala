@@ -20,7 +20,7 @@ object TextSimilarityEvaluationMetric {
   case object rouge_5 extends TextSimilarityEvaluationMetric
   case object rouge_l extends TextSimilarityEvaluationMetric
 
-  def values = Seq(
+  def values: Seq[TextSimilarityEvaluationMetric] = Seq(
     cosine,
     fuzzy_match,
     bleu,

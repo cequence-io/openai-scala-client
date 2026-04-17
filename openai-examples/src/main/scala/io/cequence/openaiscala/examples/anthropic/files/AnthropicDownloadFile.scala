@@ -47,7 +47,7 @@ object AnthropicDownloadFile extends ExampleBase[AnthropicService] {
           source
             .runWith(FileIO.toPath(outputPath))
             .map { ioResult =>
-              println(s"Download complete!")
+              println("Download complete!")
               println(s"  Bytes written: ${ioResult.count}")
               println(s"  Saved to: $outputPath")
               println()

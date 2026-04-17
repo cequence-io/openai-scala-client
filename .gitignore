@@ -11,3 +11,4 @@ target
 /.vscode
 **/build.properties
 **/metals.sbt
+*.log

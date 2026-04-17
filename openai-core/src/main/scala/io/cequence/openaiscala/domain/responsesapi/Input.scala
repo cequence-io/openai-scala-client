@@ -47,42 +47,42 @@ object Input {
   def ofInputTextMessage(
     content: String,
     role: ChatRole
-  ) = Message.InputText(content, role)
+  ): Message.InputText = Message.InputText(content, role)
 
   def ofInputSystemTextMessage(
     content: String
-  ) = Message.System(content)
+  ): Message.InputText = Message.System(content)
 
   def ofInputDeveloperTextMessage(
     content: String
-  ) = Message.Developer(content)
+  ): Message.InputText = Message.Developer(content)
 
   def ofInputUserTextMessage(
     content: String
-  ) = Message.User(content)
+  ): Message.InputText = Message.User(content)
 
   def ofInputAssistantTextMessage(
     content: String
-  ) = Message.Assistant(content)
+  ): Message.InputText = Message.Assistant(content)
 
   def ofInputMessage(
     content: Seq[InputMessageContent],
     role: ChatRole,
     status: Option[ModelStatus] = None
-  ) = Message.InputContent(content, role, status)
+  ): Message.InputContent = Message.InputContent(content, role, status)
 
   def ofOutputMessage(
     content: Seq[OutputMessageContent],
     id: String,
     status: ModelStatus
-  ) = Message.OutputContent(content, id, status)
+  ): Message.OutputContent = Message.OutputContent(content, id, status)
 
   def ofFileSearchToolCall(
     id: String,
     queries: Seq[String] = Nil,
     status: ModelStatus,
     results: Seq[FileSearchResult] = Nil
-  ) = FileSearchToolCall(id, queries, status, results)
+  ): FileSearchToolCall = FileSearchToolCall(id, queries, status, results)
 
   def ofComputerToolCall(
     action: ComputerToolAction,
@@ -90,7 +90,7 @@ object Input {
     id: String,
     pendingSafetyChecks: Seq[PendingSafetyCheck] = Nil,
     status: ModelStatus
-  ) = ComputerToolCall(
+  ): ComputerToolCall = ComputerToolCall(
     action,
     callId,
     id,
@@ -104,7 +104,7 @@ object Input {
     acknowledgedSafetyChecks: Seq[AcknowledgedSafetyCheck] = Nil,
     id: Option[String] = None,
     status: Option[ModelStatus] = None
-  ) = ComputerToolCallOutput(
+  ): ComputerToolCallOutput = ComputerToolCallOutput(
     callId,
     output,
     acknowledgedSafetyChecks,
@@ -116,7 +116,7 @@ object Input {
     action: WebSearchAction,
     id: String,
     status: ModelStatus
-  ) = WebSearchToolCall(action, id, status)
+  ): WebSearchToolCall = WebSearchToolCall(action, id, status)
 
   def ofFunctionToolCall(
     arguments: String,
@@ -124,7 +124,7 @@ object Input {
     name: String,
     id: Option[String] = None,
     status: Option[ModelStatus] = None
-  ) = FunctionToolCall(
+  ): FunctionToolCall = FunctionToolCall(
     arguments,
     callId,
     name,
@@ -137,7 +137,7 @@ object Input {
     output: FunctionToolOutput,
     id: Option[String] = None,
     status: Option[ModelStatus] = None
-  ) = FunctionToolCallOutput(
+  ): FunctionToolCallOutput = FunctionToolCallOutput(
     callId,
     output,
     id,
@@ -148,13 +148,13 @@ object Input {
     id: String,
     summary: Seq[SummaryText],
     status: Option[ModelStatus] = None
-  ) = Reasoning(id, summary, Nil, None, status)
+  ): Reasoning = Reasoning(id, summary, Nil, None, status)
 
   def ofImageGenerationToolCall(
     id: String,
     result: String,
     status: String
-  ) = ImageGenerationToolCall(
+  ): ImageGenerationToolCall = ImageGenerationToolCall(
     id,
     result,
     status
@@ -166,7 +166,7 @@ object Input {
     containerId: String,
     outputs: Seq[CodeInterpreterOutput],
     status: String
-  ) = CodeInterpreterToolCall(
+  ): CodeInterpreterToolCall = CodeInterpreterToolCall(
     id,
     code,
     containerId,
@@ -176,18 +176,18 @@ object Input {
 
   def ofCodeInterpreterOutputLogs(
     logs: String
-  ) = CodeInterpreterOutputLogs(logs)
+  ): CodeInterpreterOutputLogs = CodeInterpreterOutputLogs(logs)
 
   def ofCodeInterpreterOutputImage(
     url: String
-  ) = CodeInterpreterOutputImage(url)
+  ): CodeInterpreterOutputImage = CodeInterpreterOutputImage(url)
 
   def ofLocalShellToolCall(
     action: LocalShellAction,
     callId: String,
     id: String,
     status: String
-  ) = LocalShellToolCall(
+  ): LocalShellToolCall = LocalShellToolCall(
     action,
     callId,
     id,
@@ -200,7 +200,7 @@ object Input {
     timeoutMs: Option[Int] = None,
     user: Option[String] = None,
     workingDirectory: Option[String] = None
-  ) = LocalShellAction(
+  ): LocalShellAction = LocalShellAction(
     command,
     env,
     timeoutMs,
@@ -212,7 +212,7 @@ object Input {
     id: String,
     output: String,
     status: Option[String] = None
-  ) = LocalShellToolCallOutput(
+  ): LocalShellToolCallOutput = LocalShellToolCallOutput(
     id,
     output,
     status
@@ -223,7 +223,7 @@ object Input {
     serverLabel: String,
     tools: Seq[MCPToolRef],
     error: Option[String] = None
-  ) = MCPListTools(
+  ): MCPListTools = MCPListTools(
     id,
     serverLabel,
     tools,
@@ -239,7 +239,7 @@ object Input {
     error: Option[MCPToolError] = None,
     output: Option[String] = None,
     status: Option[ModelStatus] = None
-  ) = MCPToolCall(
+  ): MCPToolCall = MCPToolCall(
     arguments,
     id,
     name,
@@ -255,7 +255,7 @@ object Input {
     input: String,
     name: String,
     id: Option[String] = None
-  ) = CustomToolCall(
+  ): CustomToolCall = CustomToolCall(
     callId,
     input,
     name,
@@ -266,7 +266,7 @@ object Input {
     callId: String,
     output: FunctionToolOutput,
     id: Option[String] = None
-  ) = CustomToolCallOutput(
+  ): CustomToolCallOutput = CustomToolCallOutput(
     callId,
     output,
     id
@@ -274,5 +274,5 @@ object Input {
 
   def ofItemReference(
     id: String
-  ) = ItemReference(id)
+  ): ItemReference = ItemReference(id)
 }

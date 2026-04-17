@@ -32,7 +32,7 @@ object AnthropicListSkillVersions extends ExampleBase[AnthropicService] {
         println()
 
         response.data.foreach { version =>
-          println(s"Version:")
+          println("Version:")
           println(s"  ID: ${version.id}")
           println(s"  Skill ID: ${version.skillId}")
           println(s"  Name: ${version.name}")

@@ -1,12 +1,18 @@
-package io.cequence.openaiscala.examples
+package io.cequence.openaiscala.examples.googlevertexai
 
-import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain._
+import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
+import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase}
+import io.cequence.openaiscala.service.OpenAIChatCompletionService
 
 import scala.concurrent.Future
 
-object CreateChatToolCompletion extends Example {
+// requires `openai-scala-google-vertexai-client` as a dependency and `VERTEXAI_LOCATION` and `VERTEXAI_PROJECT_ID` environment variables to be set
+object GoogleVertexAICreateChatToolCompletionWithOpenAIAdapter
+    extends ExampleBase[OpenAIChatCompletionService] {
+
+  override val service: OpenAIChatCompletionService = ChatCompletionProvider.vertexAI
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),
@@ -37,10 +43,9 @@ object CreateChatToolCompletion extends Example {
       .createChatToolCompletion(
         messages = messages,
         tools = tools,
-        responseToolChoice = None, // means "auto"
+        responseToolChoice = None,
         settings = CreateChatCompletionSettings(
-          ModelId.gpt_5_4_mini,
-          parallel_tool_calls = Some(true)
+          NonOpenAIModelId.gemini_2_5_flash
         )
       )
       .map { response =>

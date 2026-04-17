@@ -33,7 +33,7 @@ object Message {
    *   Text
    * @return
    */
-  def System(content: String) = InputText(content, ChatRole.System)
+  def System(content: String): InputText = InputText(content, ChatRole.System)
 
   /**
    * Shortcut for creating a Developer input text message
@@ -42,7 +42,7 @@ object Message {
    *   Text
    * @return
    */
-  def Developer(content: String) = InputText(content, ChatRole.Developer)
+  def Developer(content: String): InputText = InputText(content, ChatRole.Developer)
 
   /**
    * Shortcut for creating a User input text message
@@ -51,7 +51,7 @@ object Message {
    *   Text
    * @return
    */
-  def User(content: String) = InputText(content, ChatRole.User)
+  def User(content: String): InputText = InputText(content, ChatRole.User)
 
   /**
    * Shortcut for creating an Assistant input text message
@@ -60,7 +60,7 @@ object Message {
    *   Text
    * @return
    */
-  def Assistant(content: String) = InputText(content, ChatRole.Assistant)
+  def Assistant(content: String): InputText = InputText(content, ChatRole.Assistant)
 
   /**
    * A message input to the model with a role indicating instruction following hierarchy.

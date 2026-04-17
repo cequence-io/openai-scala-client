@@ -19,6 +19,7 @@ import io.cequence.openaiscala.domain.{
   AssistantMessage,
   AssistantToolMessage,
   BaseMessage,
+  ChatCompletionTool,
   DeveloperMessage,
   ImageURLContent,
   JsonSchema,
@@ -30,14 +31,17 @@ import io.cequence.openaiscala.domain.{
   UserSeqMessage,
   ChatRole => OpenAIChatRole
 }
+import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.gemini.domain.ChatRole.User
 import io.cequence.openaiscala.gemini.domain.Part.{FileData, InlineData}
 import io.cequence.openaiscala.gemini.domain.response.{GenerateContentResponse, UsageMetadata}
 import io.cequence.openaiscala.gemini.domain.settings.CreateChatCompletionSettingsOps._
 import io.cequence.openaiscala.gemini.domain.settings.{
+  FunctionCallingMode,
   GenerateContentSettings,
   GenerationConfig,
-  ThinkingConfig
+  ThinkingConfig,
+  ToolConfig
 }
 import io.cequence.openaiscala.gemini.domain.{CachedContent, ChatRole, Content, Part}
 import io.cequence.openaiscala.gemini.service.GeminiService
@@ -50,6 +54,11 @@ import io.cequence.openaiscala.service.{
 import scala.concurrent.{ExecutionContext, Future}
 import io.cequence.openaiscala.domain.settings.ChatCompletionResponseFormatType
 import io.cequence.openaiscala.domain.FunctionCallSpec
+import io.cequence.openaiscala.domain.response.{
+  ChatToolCompletionChoiceInfo,
+  ChatToolCompletionResponse
+}
+import io.cequence.openaiscala.gemini.domain.{FunctionDeclaration, Tool => GeminiTool}
 import io.cequence.openaiscala.gemini.domain.Schema
 import io.cequence.wsclient.JsonUtil
 import com.typesafe.scalalogging.Logger
@@ -252,7 +261,7 @@ private[service] class OpenAIGeminiChatCompletionService(
           Some(ChatRole.User)
         )
 
-      case _ => throw new OpenAIScalaClientException(s"Unsupported message type for Gemini.")
+      case _ => throw new OpenAIScalaClientException("Unsupported message type for Gemini.")
     }
 
   private def toGeminiSettings(
@@ -459,7 +468,7 @@ private[service] class OpenAIGeminiChatCompletionService(
         `type` = SchemaType.TYPE_UNSPECIFIED
       )
 
-    case JsonSchema.Object(properties, required, additionalProperties) =>
+    case JsonSchema.Object(properties, required, additionalProperties, description) =>
       // additional properties not supported
       if (additionalProperties.nonEmpty && additionalProperties.get)
         logger.warn(
@@ -481,6 +490,7 @@ private[service] class OpenAIGeminiChatCompletionService(
 
       Schema(
         `type` = SchemaType.OBJECT,
+        description = description,
         properties = Some(
           propertiesFinal.map { case (key, jsonSchema) =>
             key -> toGeminiJSONSchema(jsonSchema)
@@ -489,14 +499,15 @@ private[service] class OpenAIGeminiChatCompletionService(
         required = Some(required)
       )
 
-    case JsonSchema.Array(items) =>
+    case JsonSchema.Array(items, description) =>
       Schema(
         `type` = SchemaType.ARRAY,
+        description = description,
         items = Some(toGeminiJSONSchema(items))
       )
 
     case _ =>
-      throw new OpenAIScalaClientException(s"Unsupported JSON schema type for Gemini.")
+      throw new OpenAIScalaClientException("Unsupported JSON schema type for Gemini.")
   }
 
   private def toOpenAIResponse(
@@ -613,6 +624,84 @@ private[service] class OpenAIGeminiChatCompletionService(
         )
       }
     )
+
+  override def createChatToolCompletion(
+    messages: Seq[BaseMessage],
+    tools: Seq[ChatCompletionTool],
+    responseToolChoice: Option[String] = None,
+    settings: CreateChatCompletionSettings = DefaultSettings.CreateChatToolCompletion
+  ): Future[ChatToolCompletionResponse] = {
+    val (userMessages, systemMessage) = splitMessage(messages)
+
+    val geminiFunctionDeclarations = tools.collect { case ft: FunctionTool =>
+      FunctionDeclaration(
+        name = ft.name,
+        description = ft.description.getOrElse(""),
+        parameters = Some(toGeminiJSONSchema(ft.parameters))
+      )
+    }
+
+    val geminiTools = Seq(GeminiTool.FunctionDeclarations(geminiFunctionDeclarations))
+
+    val toolConfig = responseToolChoice.map { name =>
+      ToolConfig.FunctionCallingConfig(
+        mode = Some(FunctionCallingMode.ANY),
+        allowedFunctionNames = Some(Seq(name))
+      )
+    }
+
+    (for {
+      baseSettings <- handleCaching(systemMessage, userMessages, settings)
+      geminiSettings = baseSettings.copy(
+        tools = Some(geminiTools),
+        toolConfig = toolConfig.orElse(settings.getGeminiToolConfig)
+      )
+      response <- underlying.generateContent(
+        userMessages.map(toGeminiContent),
+        geminiSettings
+      )
+    } yield toOpenAIToolResponse(response)).recoverWith(repackAsOpenAIException)
+  }
+
+  private def toOpenAIToolResponse(
+    response: GenerateContentResponse
+  ): ChatToolCompletionResponse = {
+    val choices = response.candidates.map { candidate =>
+      val toolCalls = candidate.content.parts.collect {
+        case Part.FunctionCall(id, name, args) =>
+          val callId = id.getOrElse(java.util.UUID.randomUUID().toString)
+          val argsJson = Json.toJson(args)(JsonUtil.StringAnyMapFormat).toString
+          (
+            callId,
+            FunctionCallSpec(name, argsJson): io.cequence.openaiscala.domain.ToolCallSpec
+          )
+      }
+
+      val texts = candidate.content.parts.collect { case Part.Text(text) => text }
+
+      val message = AssistantToolMessage(
+        content = if (texts.nonEmpty) Some(texts.mkString("\n")) else None,
+        name = None,
+        tool_calls = toolCalls
+      )
+
+      ChatToolCompletionChoiceInfo(
+        message = message,
+        index = candidate.index.getOrElse(0),
+        finish_reason = candidate.finishReason.map(_.toString)
+      )
+    }
+
+    ChatToolCompletionResponse(
+      id = "gemini",
+      created = new java.util.Date(),
+      model = response.modelVersion,
+      system_fingerprint = None,
+      choices = choices,
+      usage = Some(toOpenAIUsage(response.usageMetadata)),
+      originalResponse = Some(response)
+    )
+  }
 
   /**
    * Closes the underlying ws client, and releases all its resources.

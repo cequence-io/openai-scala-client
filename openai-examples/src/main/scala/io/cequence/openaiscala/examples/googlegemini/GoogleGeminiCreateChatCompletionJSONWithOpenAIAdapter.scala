@@ -63,11 +63,18 @@ object GoogleGeminiCreateChatCompletionJSONWithOpenAIAdapter
             "commonwealthMember",
             "populationMil",
             "ratioOfMenToWomen"
-          )
-        )
+          ),
+          // Behavioral probe: if this Object description is honored, 'capital' is ALL CAPS.
+          description =
+            Some("A single country record. The 'capital' value MUST be in ALL UPPERCASE.")
+        ),
+        // Behavioral probe: if this Array description is honored, we get exactly 2 items.
+        description =
+          Some("The list MUST contain EXACTLY 2 country entries, no more and no less.")
       )
     ),
-    required = Seq("countries")
+    required = Seq("countries"),
+    description = Some("Top-level container for the countries response")
   )
 
   override protected def run: Future[_] =

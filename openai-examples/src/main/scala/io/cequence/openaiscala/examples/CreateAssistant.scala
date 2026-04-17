@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.examples
 
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
-import io.cequence.openaiscala.domain.{AssistantToolResource, ModelId}
+import io.cequence.openaiscala.domain.{AssistantToolResource, JsonSchema, ModelId}
 
 import scala.concurrent.Future
 
@@ -15,7 +15,7 @@ object CreateAssistant extends Example {
           "You are a personal math tutor. When asked a question, write and run Python code to answer the question."
         ),
         tools = Seq(
-          FunctionTool("name", description = None, parameters = Map())
+          FunctionTool("name", description = None, parameters = JsonSchema.Object(Nil))
         ),
         toolResources = Some(AssistantToolResource())
       )

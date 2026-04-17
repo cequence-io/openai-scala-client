@@ -55,7 +55,6 @@ import io.cequence.openaiscala.anthropic.domain.OutputFormat
 import io.cequence.openaiscala.anthropic.domain.CodeExecutionToolResultContent.CodeExecutionErrorCode
 import io.cequence.openaiscala.anthropic.domain.BashCodeExecutionToolResultContent.BashCodeExecutionErrorCode
 import io.cequence.openaiscala.anthropic.domain.WebSearchToolResultContent.WebSearchErrorCode
-import io.cequence.openaiscala.anthropic.domain.WebFetchToolResultContent.WebFetchErrorCode
 import io.cequence.openaiscala.JsonFormats.jsonSchemaFormat
 import io.cequence.openaiscala.anthropic.domain.skills.{
   Container,

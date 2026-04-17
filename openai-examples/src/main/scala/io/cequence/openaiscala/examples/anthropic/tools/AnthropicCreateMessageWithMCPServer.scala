@@ -122,7 +122,7 @@ object AnthropicCreateMessageWithMCPServer extends ExampleBase[AnthropicService]
       println()
 
       r.blockContents.foreach { blockContent =>
-        println(s"Content Block:")
+        println("Content Block:")
         println(s"  ${blockContent}")
         println()
       }

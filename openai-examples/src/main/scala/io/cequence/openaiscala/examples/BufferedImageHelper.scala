@@ -17,7 +17,7 @@ trait BufferedImageHelper {
 
   protected def pdfBase64Source(
     file: java.io.File
-  ) =
+  ): String =
     Base64.getEncoder.encodeToString(Files.readAllBytes(file.toPath))
 
   protected def imageToBytes(

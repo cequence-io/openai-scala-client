@@ -13,7 +13,6 @@ import io.cequence.openaiscala.domain.responsesapi.tools.mcp._
 import io.cequence.openaiscala.domain.ChatRole
 import play.api.libs.json._
 import java.{util => ju}
-import scala.util.Properties
 
 object JsonFormatsSpecs {
   sealed trait JsonPrintMode

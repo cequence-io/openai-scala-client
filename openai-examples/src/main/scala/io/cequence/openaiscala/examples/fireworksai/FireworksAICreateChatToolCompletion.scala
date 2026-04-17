@@ -1,12 +1,21 @@
-package io.cequence.openaiscala.examples
+package io.cequence.openaiscala.examples.fireworksai
 
-import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain._
+import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
+import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase}
+import io.cequence.openaiscala.service.OpenAIChatCompletionService
 
 import scala.concurrent.Future
 
-object CreateChatToolCompletion extends Example {
+/**
+ * Requires `FIREWORKS_API_KEY` environment variable to be set.
+ */
+object FireworksAICreateChatToolCompletion extends ExampleBase[OpenAIChatCompletionService] {
+
+  override val service: OpenAIChatCompletionService = ChatCompletionProvider.fireworks
+
+  private val fireworksModelPrefix = "accounts/fireworks/models/"
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),
@@ -37,9 +46,9 @@ object CreateChatToolCompletion extends Example {
       .createChatToolCompletion(
         messages = messages,
         tools = tools,
-        responseToolChoice = None, // means "auto"
+        responseToolChoice = None,
         settings = CreateChatCompletionSettings(
-          ModelId.gpt_5_4_mini,
+          fireworksModelPrefix + "kimi-k2-instruct-0905",
           parallel_tool_calls = Some(true)
         )
       )

@@ -6,12 +6,10 @@ import io.cequence.wsclient.JsonUtil.{enumFormat, snakeEnumFormat}
 import io.cequence.openaiscala.domain.responsesapi.ModelStatus
 import io.cequence.openaiscala.JsonFormats.{jsonSchemaFormat, reasoningEffortFormat}
 import io.cequence.openaiscala.domain.responsesapi.{TruncationStrategy, ResponseFormat}
-import io.cequence.openaiscala.domain.ChatRole
 import io.cequence.openaiscala.domain.responsesapi.tools._
 import io.cequence.openaiscala.domain.responsesapi.InputMessageContent
 import io.cequence.openaiscala.domain.responsesapi.OutputMessageContent
 import io.cequence.openaiscala.domain.responsesapi.tools.JsonFormats.{
-  toolCallFormat,
   computerToolCallOutputFormat,
   functionToolCallOutputFormat,
   toolChoiceFormat,

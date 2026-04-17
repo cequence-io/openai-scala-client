@@ -1,12 +1,19 @@
-package io.cequence.openaiscala.examples
+package io.cequence.openaiscala.examples.groq
 
-import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain._
+import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
+import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase}
+import io.cequence.openaiscala.service.OpenAIChatCompletionService
 
 import scala.concurrent.Future
 
-object CreateChatToolCompletion extends Example {
+/**
+ * Requires `GROQ_API_KEY` environment variable to be set.
+ */
+object GroqCreateChatToolCompletion extends ExampleBase[OpenAIChatCompletionService] {
+
+  override val service: OpenAIChatCompletionService = ChatCompletionProvider.groq
 
   private val messages = Seq(
     SystemMessage("You are a helpful assistant."),
@@ -37,9 +44,9 @@ object CreateChatToolCompletion extends Example {
       .createChatToolCompletion(
         messages = messages,
         tools = tools,
-        responseToolChoice = None, // means "auto"
+        responseToolChoice = None,
         settings = CreateChatCompletionSettings(
-          ModelId.gpt_5_4_mini,
+          NonOpenAIModelId.moonshotai_kimi_k2_instruct_0905,
           parallel_tool_calls = Some(true)
         )
       )

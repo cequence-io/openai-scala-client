@@ -54,11 +54,42 @@ case class ChatToolCompletionResponse(
   model: String,
   system_fingerprint: Option[String],
   choices: Seq[ChatToolCompletionChoiceInfo],
-  usage: Option[UsageInfo]
+  usage: Option[UsageInfo],
+  originalResponse: Option[Any] = None
 ) extends BaseChatCompletionResponse[
       AssistantToolMessage,
       ChatToolCompletionChoiceInfo
-    ]
+    ] {
+
+  def assistantToolMessage: AssistantToolMessage = choices.headOption
+    .getOrElse(
+      throw new OpenAIScalaClientException(
+        s"No content in the chat completion response ${id}."
+      )
+    )
+    .message
+
+  def toChatCompletionResponse: ChatCompletionResponse =
+    ChatCompletionResponse(
+      id = id,
+      created = created,
+      model = model,
+      system_fingerprint = system_fingerprint,
+      choices = choices.map { choice =>
+        ChatCompletionChoiceInfo(
+          message = AssistantMessage(
+            content = choice.message.content.getOrElse(""),
+            name = choice.message.name
+          ),
+          index = choice.index,
+          finish_reason = choice.finish_reason,
+          logprobs = None
+        )
+      },
+      usage = usage,
+      originalResponse = None
+    )
+}
 
 case class ChatWebSearchCompletionResponse(
   id: String,
