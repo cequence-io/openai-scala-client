@@ -252,6 +252,18 @@ object ChatCompletionSettingsConversions {
     )
   )
 
+  // GPT-5.5 restricts all sampling params unconditionally unlike 5.4 which only restricts them when reasoning_effort is set.
+  val gpt5_5: SettingsConversion = generic(
+    Seq(
+      maxTokensToMaxCompletionTokens,
+      temperatureOneOnly,
+      topPOneOnly,
+      presencePenaltyZeroOnly,
+      frequencyPenaltyZeroOnly,
+      logProbsUnsupported
+    )
+  )
+
   val o: SettingsConversion = generic(oBaseConversions)
 
   val o1Preview: SettingsConversion = generic(o1PreviewConversions)

@@ -159,6 +159,8 @@ object ModelId {
   val dall_e_3 = "dall-e-3"
   val dall_e_2 = "dall-e-2"
   val gpt_image_1_mini = "gpt-image-1-mini"
+  val gpt_image_2 = "gpt-image-2"
+  val gpt_image_2_2026_04_21 = "gpt-image-2-2026-04-21"
 
   // Video gen
   val sora_2 = "sora-2"
@@ -212,6 +214,12 @@ object ModelId {
   // High-compute version of o1 for advanced reasoning
   val o1_pro = "o1-pro"
   val o1_pro_2025_03_19 = "o1-pro-2025-03-19"
+
+  // GPT-5.5
+  val gpt_5_5 = "gpt-5.5"
+  val gpt_5_5_2026_04_23 = "gpt-5.5-2026-04-23"
+  val gpt_5_5_pro = "gpt-5.5-pro"
+  val gpt_5_5_pro_2026_04_23 = "gpt-5.5-pro-2026-04-23"
 
   // GPT-5.4
   // 1,050,000 context window, 128k max output tokens, Aug 31, 2025 knowledge cutoff, Reasoning token support
