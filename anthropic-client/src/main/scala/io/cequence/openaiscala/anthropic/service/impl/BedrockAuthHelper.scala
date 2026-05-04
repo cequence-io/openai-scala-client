@@ -5,6 +5,18 @@ import java.nio.charset.StandardCharsets
 import scala.collection.mutable
 import io.cequence.wsclient.EncryptionUtil._
 
+/**
+ * AWS SigV4 request signer. Service-agnostic — pass the AWS service name (e.g. `bedrock`,
+ * `sts`) and region to compute the canonical request, derive the signing key, and emit the
+ * `Authorization: AWS4-HMAC-SHA256 ...` header.
+ *
+ * Optionally accepts an STS `sessionToken`; when supplied it's added as `X-Amz-Security-Token`
+ * BEFORE canonicalization, so it participates in the signed headers list (a SigV4 requirement
+ * when using temporary credentials).
+ *
+ * Reused by [[AnthropicBedrockServiceImpl]] (for Bedrock Invoke) and [[BedrockStsClient]] (for
+ * STS:GetSessionToken).
+ */
 trait BedrockAuthHelper {
 
   private val SignaturePrefix = "AWS4-HMAC-SHA256"
@@ -17,7 +29,8 @@ trait BedrockAuthHelper {
     accessKey: String,
     secretKey: String,
     region: String,
-    service: String
+    service: String,
+    sessionToken: Option[String] = None
   ): Map[String, String] = {
     // ISO 8601 format for date/time and a short date
     val now = java.time.Instant.now()
@@ -36,6 +49,10 @@ trait BedrockAuthHelper {
 
     // Add required headers
     newHeaders += ("X-Amz-Date" -> amzdate)
+
+    // STS session token must be part of the signed headers (AWS SigV4 requirement
+    // when using temporary credentials from IAM roles).
+    sessionToken.foreach(token => newHeaders += ("X-Amz-Security-Token" -> token))
 
     // Compute payload hash
     val payloadHash = sha256Hash(body)

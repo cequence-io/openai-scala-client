@@ -31,6 +31,19 @@ import play.api.libs.json.{JsString, JsValue}
 import java.io.File
 import scala.concurrent.Future
 
+/**
+ * Anthropic-on-Bedrock service implementation. Speaks the Anthropic Messages API over AWS
+ * Bedrock's `model/{modelId}/invoke` and `invoke-with-response-stream` endpoints.
+ *
+ * Auth is dispatched in [[createSignatureHeaders]] based on [[BedrockConnectionSettings]]:
+ *   - if `bearerToken` is set, SigV4 is bypassed and the token is sent as `Authorization:
+ *     Bearer <token>`;
+ *   - otherwise the request is SigV4-signed with `accessKey`/`secretKey`/`region`, plus
+ *     `X-Amz-Security-Token` when `sessionToken` is set.
+ *
+ * The Skills and Files APIs are not exposed by Bedrock and fail with
+ * `UnsupportedOperationException`.
+ */
 private[service] trait AnthropicBedrockServiceImpl extends Anthropic with BedrockAuthHelper {
 
   override protected type PEP = String
@@ -152,16 +165,24 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
   ): Seq[(String, String)] = {
     val connectionSettings = connectionInfo
 
-    addAuthHeaders(
-      method,
-      url,
-      headers.toMap,
-      PlayJsonUtil.wsClientStringify(body),
-      accessKey = connectionSettings.accessKey,
-      secretKey = connectionSettings.secretKey,
-      region = connectionSettings.region,
-      service = serviceName
-    ).toSeq
+    connectionSettings.bearerToken match {
+      case Some(token) =>
+        // Bedrock API key - skip SigV4 entirely.
+        headers :+ ("Authorization" -> s"Bearer $token")
+
+      case None =>
+        addAuthHeaders(
+          method,
+          url,
+          headers.toMap,
+          PlayJsonUtil.wsClientStringify(body),
+          accessKey = connectionSettings.accessKey,
+          secretKey = connectionSettings.secretKey,
+          region = connectionSettings.region,
+          service = serviceName,
+          sessionToken = connectionSettings.sessionToken
+        ).toSeq
+    }
   }
 
   // Skills API is not supported in Bedrock
@@ -260,9 +281,36 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
   def connectionInfo: BedrockConnectionSettings
 }
 
+/**
+ * Connection settings for Anthropic-on-Bedrock. Encodes one of three mutually-exclusive auth
+ * modes:
+ *
+ *   1. Static IAM user — accessKey + secretKey only (long-lived AKIA-prefixed creds). 2. STS
+ *      temporary credentials — accessKey + secretKey + sessionToken (the ASIA triple from `aws
+ *      sts get-session-token` / `assume-role` / IMDS). 3. Bearer token — bearerToken set;
+ *      SigV4 bypassed, accessKey/secretKey ignored.
+ *
+ * @param accessKey
+ *   AWS access key (AKIA for static, ASIA for STS). Ignored when bearerToken is set.
+ * @param secretKey
+ *   Secret matching accessKey. Ignored when bearerToken is set.
+ * @param region
+ *   AWS region for Bedrock (e.g. us-east-1, eu-central-1). Required in all modes.
+ * @param inferenceProfilePrefix
+ *   Optional cross-region inference profile prefix (e.g. "us." or "eu.") prepended to the
+ *   model id at request time when not already present.
+ * @param sessionToken
+ *   STS session token. When set, included as `X-Amz-Security-Token` in SigV4 signed headers.
+ *   Must come from the same STS triple as accessKey/secretKey.
+ * @param bearerToken
+ *   Bedrock API key. When set, SigV4 is skipped entirely and the token is sent as
+ *   `Authorization: Bearer <token>`. Mutually exclusive with the SigV4 fields.
+ */
 case class BedrockConnectionSettings(
   accessKey: String,
   secretKey: String,
   region: String,
-  inferenceProfilePrefix: Option[String] = None
+  inferenceProfilePrefix: Option[String] = None,
+  sessionToken: Option[String] = None,
+  bearerToken: Option[String] = None
 )
