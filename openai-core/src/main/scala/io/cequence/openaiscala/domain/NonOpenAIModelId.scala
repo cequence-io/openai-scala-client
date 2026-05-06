@@ -334,6 +334,15 @@ object NonOpenAIModelId {
   val solar_10_7b_instruct_v1_0 = "upstage/SOLAR-10.7B-Instruct-v1.0" // Together AI
 
   // Grok
+  val grok_4_3 = "grok-4.3"
+  val grok_4_20_0309_reasoning = "grok-4.20-0309-reasoning"
+  val grok_4_20_0309_non_reasoning = "grok-4.20-0309-non-reasoning"
+  val grok_4_20_multi_agent_0309 = "grok-4.20-multi-agent-0309"
+  // Grok image / video gen
+  val grok_imagine_image = "grok-imagine-image"
+  val grok_imagine_image_pro = "grok-imagine-image-pro"
+  val grok_imagine_image_quality = "grok-imagine-image-quality"
+  val grok_imagine_video = "grok-imagine-video"
   // context 2,000,000
   val grok_4_1_fast_reasoning = "grok-4-1-fast-reasoning"
   // context 2,000,000
