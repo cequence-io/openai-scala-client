@@ -18,8 +18,11 @@ object AnthropicBedrockCreateChatCompletionInEUWithOpenAIAdapter
     UserMessage("What is the weather like in Norway?")
   )
 
+  //  "eu." + NonOpenAIModelId.bedrock_claude_opus_4_7
+  //  "eu." + NonOpenAIModelId.bedrock_claude_opus_4_6_v1
+
   private val modelId =
-    "eu." + NonOpenAIModelId.bedrock_claude_sonnet_4_5_20250929_v1_0
+    "eu." + NonOpenAIModelId.bedrock_claude_sonnet_4_6
 
   override protected def run: Future[_] =
     service

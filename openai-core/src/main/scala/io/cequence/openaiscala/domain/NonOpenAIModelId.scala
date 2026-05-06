@@ -30,9 +30,9 @@ object NonOpenAIModelId {
   val claude_instant_1_2 = "claude-instant-1.2"
 
   // Anthropic Bedrock
-  val bedrock_claude_opus_4_7_v1 = "anthropic.claude-opus-4-7-v1"
+  val bedrock_claude_opus_4_7 = "anthropic.claude-opus-4-7"
   val bedrock_claude_opus_4_6_v1 = "anthropic.claude-opus-4-6-v1"
-  val bedrock_claude_sonnet_4_6_v1 = "anthropic.claude-sonnet-4-6-v1"
+  val bedrock_claude_sonnet_4_6 = "anthropic.claude-sonnet-4-6"
   val bedrock_claude_opus_4_5_20251101_v1_0 = "anthropic.claude-opus-4-5-20251101-v1:0"
   val bedrock_claude_sonnet_4_5_20250929_v1_0 = "anthropic.claude-sonnet-4-5-20250929-v1:0"
   val bedrock_claude_haiku_4_5_20251001_v1_0 = "anthropic.claude-haiku-4-5-20251001-v1:0"
