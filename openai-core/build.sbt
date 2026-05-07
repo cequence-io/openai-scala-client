@@ -9,6 +9,6 @@ libraryDependencies ++= Seq(
   // we ship our own version of json-repair (originally in Python)
   "io.cequence" %% "json-repair" % wsClient,
   // logging
-  "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.9.6",
   "ch.qos.logback" % "logback-classic" % "1.4.14" // requires JDK11, in order to use JDK8 switch to 1.3.5
 )
