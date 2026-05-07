@@ -22,3 +22,7 @@ jobs:
           # PAT (classic, with `repo` scope) — the default GITHUB_TOKEN cannot trigger
           # CI on the PRs it opens, so Scala Steward must use a separate token.
           github-token: ${{ secrets.SCALA_STEWARD_TOKEN }}
+          # Explicit author identity (the PAT account has email privacy on, so Steward
+          # cannot derive an author email from the GitHub API).
+          author-email: scala-steward@cequence.io
+          author-name: Scala Steward
