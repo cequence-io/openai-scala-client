@@ -45,7 +45,8 @@ case class PrebuiltVoiceConfig(voiceName: String)
  * @param thinkingLevel
  *   Controls the maximum depth of the model's internal reasoning process before it produces a
  *   response. Valid for Gemini 3 or later models; using it on earlier models results in an
- *   error. Defaults vary by model (e.g. Pro: HIGH, 3.5 Flash: MEDIUM, 3.1 Flash-Lite: MINIMAL).
+ *   error. Defaults vary by model (e.g. Pro: HIGH, 3.5 Flash: MEDIUM, 3.1 Flash-Lite:
+ *   MINIMAL).
  */
 case class ThinkingConfig(
   includeThoughts: Option[Boolean] = None,
