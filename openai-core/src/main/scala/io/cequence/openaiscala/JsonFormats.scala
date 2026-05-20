@@ -91,6 +91,13 @@ object JsonFormats {
 
     case c: ImageURLContent =>
       Json.obj("type" -> "image_url", "image_url" -> Json.obj("url" -> c.url))
+
+    case c: FileContent =>
+      val fileObj =
+        c.fileId.fold(Json.obj())(v => Json.obj("file_id" -> v)) ++
+          c.fileData.fold(Json.obj())(v => Json.obj("file_data" -> v)) ++
+          c.filename.fold(Json.obj())(v => Json.obj("filename" -> v))
+      Json.obj("type" -> "file", "file" -> fileObj)
   }
 
   implicit lazy val contentReads: Reads[Content] = Reads[Content] { (json: JsValue) =>
@@ -98,6 +105,15 @@ object JsonFormats {
       case "text" => (json \ "text").validate[String].map(TextContent.apply)
       case "image_url" =>
         (json \ "image_url" \ "url").validate[String].map(ImageURLContent.apply)
+      case "file" =>
+        val file = json \ "file"
+        JsSuccess(
+          FileContent(
+            fileId = (file \ "file_id").asOpt[String],
+            fileData = (file \ "file_data").asOpt[String],
+            filename = (file \ "filename").asOpt[String]
+          )
+        )
       case _ => JsError("Invalid type")
     }
   }

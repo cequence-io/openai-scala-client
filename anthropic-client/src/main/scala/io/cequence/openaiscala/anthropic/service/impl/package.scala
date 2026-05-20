@@ -54,6 +54,7 @@ import io.cequence.openaiscala.domain.{
   AssistantMessage => OpenAIAssistantMessage,
   BaseMessage => OpenAIBaseMessage,
   Content => OpenAIContent,
+  FileContent => OpenAIFileContent,
   ImageURLContent => OpenAIImageContent,
   TextContent => OpenAITextContent,
   UserMessage => OpenAIUserMessage,
@@ -182,6 +183,34 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
           throw new IllegalArgumentException(
             "Image content only supported by providing image data directly."
           )
+        }
+
+      case OpenAIFileContent(fileIdOpt, fileDataOpt, filenameOpt) =>
+        (fileIdOpt, fileDataOpt) match {
+          case (Some(fileId), _) =>
+            ContentBlockBase(
+              Content.ContentBlock.FileDocumentContentBlock(fileId, title = filenameOpt)
+            )
+
+          case (_, Some(fileData)) if fileData.startsWith("data:") =>
+            val mediaTypeEncodingAndData = fileData.drop(5)
+            val mediaType = mediaTypeEncodingAndData.takeWhile(_ != ';')
+            val encodingAndData = mediaTypeEncodingAndData.drop(mediaType.length + 1)
+            val encoding = encodingAndData.takeWhile(_ != ',')
+            val data = encodingAndData.drop(encoding.length + 1)
+            val isImage = mediaType.startsWith("image/")
+            val `type` = if (isImage) "image" else "document"
+            // Anthropic only accepts `title` on document blocks; image blocks reject it.
+            val title = if (isImage) None else filenameOpt
+            ContentBlockBase(
+              Content.ContentBlock.MediaBlock(`type`, encoding, mediaType, data, title = title)
+            )
+
+          case _ =>
+            throw new IllegalArgumentException(
+              "FileContent for Anthropic requires either fileId or fileData as a data URL " +
+                "(e.g. data:application/pdf;base64,... or data:image/jpeg;base64,...)."
+            )
         }
     }
   }

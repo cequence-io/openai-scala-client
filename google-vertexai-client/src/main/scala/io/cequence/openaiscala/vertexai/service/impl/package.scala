@@ -2,8 +2,8 @@ package io.cequence.openaiscala.vertexai.service
 
 import com.google.cloud.vertexai.api.GenerateContentResponse.UsageMetadata
 import com.google.cloud.vertexai.api.{
+  Blob,
   Content,
-  FileData,
   FunctionCallingConfig,
   FunctionDeclaration => VertexFunctionDeclaration,
   GenerateContentResponse,
@@ -14,6 +14,7 @@ import com.google.cloud.vertexai.api.{
   ToolConfig => VertexToolConfig,
   Type
 }
+import com.google.protobuf.ByteString
 import com.typesafe.scalalogging.Logger
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.{
@@ -21,6 +22,7 @@ import io.cequence.openaiscala.domain.{
   BaseMessage,
   ChatRole,
   DeveloperMessage,
+  FileContent,
   ImageURLContent,
   JsonSchema,
   MessageSpec,
@@ -82,14 +84,23 @@ package object impl {
               val mediaTypeEncodingAndData = url.drop(5)
               val mediaType = mediaTypeEncodingAndData.takeWhile(_ != ';')
               val encodingAndData = mediaTypeEncodingAndData.drop(mediaType.length + 1)
-              val encoding = mediaType.takeWhile(_ != ',')
+              val encoding = encodingAndData.takeWhile(_ != ',')
               val data = encodingAndData.drop(encoding.length + 1)
 
-              // TODO: try this
+              if (encoding != "base64") {
+                throw new IllegalArgumentException(
+                  s"ImageURLContent for Vertex AI: only base64-encoded data URLs are supported, got '$encoding'."
+                )
+              }
+
               Part
                 .newBuilder()
-                .setFileData(
-                  FileData.newBuilder().setMimeType(mediaType).setFileUri(data).build()
+                .setInlineData(
+                  Blob
+                    .newBuilder()
+                    .setMimeType(mediaType)
+                    .setData(ByteString.copyFrom(ju.Base64.getDecoder.decode(data)))
+                    .build()
                 )
                 .build()
             } else {
@@ -97,6 +108,36 @@ package object impl {
                 "Image content only supported by providing image data directly. Must start with 'data:'."
               )
             }
+
+          case FileContent(_, Some(fileData), _) if fileData.startsWith("data:") =>
+            val mediaTypeEncodingAndData = fileData.drop(5)
+            val mediaType = mediaTypeEncodingAndData.takeWhile(_ != ';')
+            val encodingAndData = mediaTypeEncodingAndData.drop(mediaType.length + 1)
+            val encoding = encodingAndData.takeWhile(_ != ',')
+            val data = encodingAndData.drop(encoding.length + 1)
+
+            if (encoding != "base64") {
+              throw new IllegalArgumentException(
+                s"FileContent for Vertex AI: only base64-encoded data URLs are supported, got '$encoding'."
+              )
+            }
+
+            Part
+              .newBuilder()
+              .setInlineData(
+                Blob
+                  .newBuilder()
+                  .setMimeType(mediaType)
+                  .setData(ByteString.copyFrom(ju.Base64.getDecoder.decode(data)))
+                  .build()
+              )
+              .build()
+
+          case _: FileContent =>
+            throw new IllegalArgumentException(
+              "FileContent for Vertex AI: only base64 fileData as a data URL is supported " +
+                "(e.g. data:application/pdf;base64,...). OpenAI file_id is not portable."
+            )
         }
 
         val contentBuilder = Content.newBuilder().setRole("USER")

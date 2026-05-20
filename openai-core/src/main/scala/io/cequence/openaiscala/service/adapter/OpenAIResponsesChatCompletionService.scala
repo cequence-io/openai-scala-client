@@ -12,6 +12,7 @@ import io.cequence.openaiscala.domain.response.{
   UsageInfo => ChatUsageInfo
 }
 import io.cequence.openaiscala.domain.responsesapi._
+import io.cequence.openaiscala.domain.responsesapi.OutputMessageContent.{OutputText, Refusal}
 import io.cequence.openaiscala.domain.responsesapi.tools.{
   FunctionToolCall,
   FunctionToolCallOutput,
@@ -98,13 +99,22 @@ private[service] class OpenAIResponsesChatCompletionService(
 
       case UserSeqMessage(contents, _) =>
         val inputContents = contents.map {
-          case TextContent(t)       => InputMessageContent.Text(t)
-          case ImageURLContent(url) => InputMessageContent.Image(imageUrl = Some(url))
+          case TextContent(t) => InputMessageContent.Text(t)
+          case ImageURLContent(url) =>
+            InputMessageContent.Image(imageUrl = Some(url))
+          case FileContent(fileId, fileData, filename) =>
+            InputMessageContent.File(
+              fileData = fileData,
+              fileId = fileId,
+              fileUrl = None,
+              filename = filename
+            )
         }
         Seq(Message.InputContent(inputContents, ChatRole.User))
 
       case AssistantMessage(content, _, _) =>
-        Seq(Message.InputText(content, ChatRole.Assistant))
+        if (content.nonEmpty) Seq(Message.InputText(content, ChatRole.Assistant))
+        else Seq.empty
 
       case AssistantToolMessage(contentOpt, _, toolCalls) =>
         val contentItems = contentOpt
@@ -224,8 +234,10 @@ private[service] class OpenAIResponsesChatCompletionService(
   private def toOpenAIChatCompletionResponse(
     response: Response
   ): ChatCompletionResponse = {
-    val content = response.outputText.getOrElse("")
-    val finishReason = toFinishReason(response.status)
+    warnUnrepresentableOutputs(response)
+
+    val (textOpt, refusalOpt) = extractTextAndRefusal(response)
+    val finishReason = toFinishReason(response, refusalOpt.isDefined && textOpt.isEmpty)
 
     ChatCompletionResponse(
       id = response.id,
@@ -234,7 +246,10 @@ private[service] class OpenAIResponsesChatCompletionService(
       system_fingerprint = None,
       choices = Seq(
         ChatCompletionChoiceInfo(
-          message = AssistantMessage(content),
+          message = AssistantMessage(
+            content = textOpt.getOrElse(""),
+            refusal = refusalOpt
+          ),
           index = 0,
           finish_reason = finishReason,
           logprobs = None
@@ -248,12 +263,15 @@ private[service] class OpenAIResponsesChatCompletionService(
   private def toOpenAIToolCompletionResponse(
     response: Response
   ): ChatToolCompletionResponse = {
+    warnUnrepresentableOutputs(response)
+
     val functionCalls = response.outputFunctionCalls
     val toolCalls: Seq[(String, ToolCallSpec)] = functionCalls.map { fc =>
       (fc.callId, FunctionCallSpec(fc.name, fc.arguments))
     }
-    val content = response.outputText
-    val finishReason = toFinishReason(response.status)
+    val (textOpt, refusalOpt) = extractTextAndRefusal(response)
+    val refusalOnly = refusalOpt.isDefined && textOpt.isEmpty && toolCalls.isEmpty
+    val finishReason = toFinishReason(response, refusalOnly)
 
     ChatToolCompletionResponse(
       id = response.id,
@@ -263,7 +281,7 @@ private[service] class OpenAIResponsesChatCompletionService(
       choices = Seq(
         ChatToolCompletionChoiceInfo(
           message = AssistantToolMessage(
-            content = content,
+            content = textOpt,
             name = None,
             tool_calls = toolCalls
           ),
@@ -271,14 +289,55 @@ private[service] class OpenAIResponsesChatCompletionService(
           finish_reason = finishReason
         )
       ),
-      usage = response.usage.map(toUsageInfo)
+      usage = response.usage.map(toUsageInfo),
+      originalResponse = Some(response)
     )
   }
 
-  private def toFinishReason(status: ModelStatus): Option[String] = status match {
-    case ModelStatus.Completed  => Some("stop")
-    case ModelStatus.Incomplete => Some("length")
-    case _                      => None
+  private def extractTextAndRefusal(
+    response: Response
+  ): (Option[String], Option[String]) = {
+    val texts = response.outputMessageContents.collect { case e: OutputText => e.text }
+    val refusals = response.outputMessageContents.collect { case r: Refusal => r.refusal }
+    val textOpt = if (texts.isEmpty) None else Some(texts.mkString("\n"))
+    val refusalOpt = if (refusals.isEmpty) None else Some(refusals.mkString("\n"))
+    (textOpt, refusalOpt)
+  }
+
+  private def warnUnrepresentableOutputs(response: Response): Unit = {
+    val unrepresented = response.output.collect {
+      case _: Message.OutputContent => None
+      case _: FunctionToolCall      => None
+      case other                    => Some(other.`type`)
+    }.flatten
+
+    if (unrepresented.nonEmpty) {
+      logger.warn(
+        "Responses API adapter: dropping output items not representable in a chat completion: " +
+          unrepresented.distinct.mkString(", ") +
+          " (full data preserved in ChatCompletionResponse.originalResponse)"
+      )
+    }
+  }
+
+  private def toFinishReason(
+    response: Response,
+    refusalOnly: Boolean
+  ): Option[String] = {
+    if (refusalOnly) Some("content_filter")
+    else
+      response.status match {
+        case ModelStatus.Completed => Some("stop")
+        case ModelStatus.Incomplete =>
+          response.incompleteDetails.map(_.reason) match {
+            case Some("content_filter")    => Some("content_filter")
+            case Some("max_output_tokens") => Some("length")
+            case _                         => Some("length")
+          }
+        case ModelStatus.Failed    => Some("error")
+        case ModelStatus.Cancelled => Some("stop")
+        case _                     => None
+      }
   }
 
   private def toUsageInfo(usage: UsageInfo): ChatUsageInfo =

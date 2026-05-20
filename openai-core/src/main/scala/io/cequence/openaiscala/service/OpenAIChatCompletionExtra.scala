@@ -10,7 +10,13 @@ import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
   CreateChatCompletionSettings
 }
-import io.cequence.openaiscala.domain.{BaseMessage, ChatRole, UserMessage}
+import io.cequence.openaiscala.domain.{
+  BaseMessage,
+  ChatRole,
+  TextContent,
+  UserMessage,
+  UserSeqMessage
+}
 import io.cequence.openaiscala.JsonFormats.jsonSchemaFormat
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.{Format, JsObject, JsValue, Json}
@@ -100,7 +106,8 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
                 filteredSettings.map(settings => (settings, settings.model)),
               failureMessage = Some(failureMessage),
               log = Some(logger.warn),
-              isRetryable = isRetryable(retryOnAnyError)
+              isRetryable = isRetryable(retryOnAnyError),
+              includeExceptionMessage = true
             )
         }
       } yield response
@@ -373,10 +380,20 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
             x.copy(
               content = x.content + outputJSONFormatAppendix
             )
+          case x: UserSeqMessage =>
+            // Append the schema as a new TextContent block so VLM messages
+            // (UserSeqMessage with FileContent / ImageURLContent attached) still work.
+            x.copy(
+              content = x.content :+ TextContent(outputJSONFormatAppendix)
+            )
           case _ => throw new IllegalArgumentException("Invalid message type")
         }
 
-        logger.debug(s"Appended a JSON schema to a message:\n${newUserMessage.content}")
+        logger.debug(s"Appended a JSON schema to a message:\n${newUserMessage match {
+            case m: UserMessage    => m.content
+            case m: UserSeqMessage => m.content.toString
+            case other             => other.toString
+          }}")
 
         messages.dropRight(1) :+ newUserMessage
       } else {
