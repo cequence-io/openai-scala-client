@@ -21,6 +21,7 @@ import io.cequence.openaiscala.domain.{
   BaseMessage,
   ChatCompletionTool,
   DeveloperMessage,
+  FileContent,
   ImageURLContent,
   JsonSchema,
   NonOpenAIModelId,
@@ -43,7 +44,13 @@ import io.cequence.openaiscala.gemini.domain.settings.{
   ThinkingConfig,
   ToolConfig
 }
-import io.cequence.openaiscala.gemini.domain.{CachedContent, ChatRole, Content, Part}
+import io.cequence.openaiscala.gemini.domain.{
+  CachedContent,
+  ChatRole,
+  Content,
+  Part,
+  ThinkingLevel
+}
 import io.cequence.openaiscala.gemini.service.GeminiService
 import io.cequence.openaiscala.service.{
   HasOpenAIConfig,
@@ -219,6 +226,27 @@ private[service] class OpenAIGeminiChatCompletionService(
                 mimeType = None,
                 fileUri = url
               )
+
+          case FileContent(_, Some(fileData), _) if fileData.startsWith("data:") =>
+            val mediaTypeEncodingAndData = fileData.drop(5)
+            val mediaType = mediaTypeEncodingAndData.takeWhile(_ != ';')
+            val encodingAndData = mediaTypeEncodingAndData.drop(mediaType.length + 1)
+            val encoding = encodingAndData.takeWhile(_ != ',')
+            val data = encodingAndData.drop(encoding.length + 1)
+
+            if (encoding != "base64") {
+              throw new IllegalArgumentException(
+                s"FileContent for Gemini: only base64-encoded data URLs are supported, got '$encoding'."
+              )
+            }
+
+            InlineData(mimeType = mediaType, data = data)
+
+          case _: FileContent =>
+            throw new IllegalArgumentException(
+              "FileContent for Gemini: only base64 fileData as a data URL is supported " +
+                "(e.g. data:application/pdf;base64,...). OpenAI file_id is not portable."
+            )
         }
 
         Content(parts, Some(ChatRole.User))
@@ -362,77 +390,97 @@ private[service] class OpenAIGeminiChatCompletionService(
   }
 
   /**
-   * Converts OpenAI's reasoning_effort to Gemini's ThinkingConfig using the configured
-   * mapping.
+   * Converts OpenAI's reasoning_effort to Gemini's ThinkingConfig.
    *
-   * @param reasoningEffort
-   *   The reasoning effort level from OpenAI settings
+   * Gemini 3.x models use `thinkingLevel` (MINIMAL/LOW/MEDIUM/HIGH); MINIMAL is only valid on
+   * Flash variants, not Pro. Gemini 2.5 uses `thinkingBudget` (token count) from config.
+   * Setting both fields on Gemini 3 can return an error, so only one is populated.
+   *
    * @return
-   *   ThinkingConfig with appropriate thinkingBudget, or None if reasoning_effort is None
+   *   ThinkingConfig, or None if reasoning_effort is None or model doesn't support thinking
    */
   private def toThinkingConfig(
     model: String,
     reasoningEffort: Option[ReasoningEffort]
+  ): Option[ThinkingConfig] = reasoningEffort.flatMap { effort =>
+    if (isGemini3(model))
+      toThinkingLevelConfig(model, effort)
+    else if (model.startsWith("gemini-2.5"))
+      toThinkingBudgetConfig(model, effort)
+    else {
+      logger.warn(
+        s"Skipping thinking config for model '$model' - thinking is only supported on Gemini 2.5+ and 3.x models. Reasoning effort '${effort.toString.toLowerCase}' will be ignored."
+      )
+      None
+    }
+  }
+
+  private def isGemini3(model: String): Boolean =
+    model.startsWith("gemini-3-") || model.startsWith("gemini-3.")
+
+  // Gemini 3 Pro does NOT support MINIMAL (min level is LOW). All Flash variants do.
+  private def isGemini3Pro(model: String): Boolean =
+    isGemini3(model) && model.contains("-pro") && !model.contains("image")
+
+  private def toThinkingLevelConfig(
+    model: String,
+    effort: ReasoningEffort
+  ): Option[ThinkingConfig] = {
+    val pro = isGemini3Pro(model)
+    val level: ThinkingLevel = effort match {
+      case ReasoningEffort.none | ReasoningEffort.minimal =>
+        if (pro) ThinkingLevel.LOW else ThinkingLevel.MINIMAL
+      case ReasoningEffort.low                          => ThinkingLevel.LOW
+      case ReasoningEffort.medium                       => ThinkingLevel.MEDIUM
+      case ReasoningEffort.high | ReasoningEffort.xhigh => ThinkingLevel.HIGH
+    }
+
+    logger.debug(
+      s"Converting reasoning effort '${effort.toString.toLowerCase}' to Gemini thinking level: $level (model: $model)"
+    )
+
+    Some(
+      ThinkingConfig(
+        includeThoughts = Some(false),
+        thinkingBudget = None, // mutually exclusive with thinkingLevel on Gemini 3
+        thinkingLevel = Some(level)
+      )
+    )
+  }
+
+  private def toThinkingBudgetConfig(
+    model: String,
+    effort: ReasoningEffort
   ): Option[ThinkingConfig] = {
     import io.cequence.wsclient.ConfigImplicits._
+    val effortKey = effort.toString.toLowerCase
+    val configPath =
+      s"$configPrefix.reasoning-effort-thinking-budget-mapping.$effortKey.gemini"
 
-    // thinking is NOT supported on Gemini 2.0, 1.5, and older models
-    val thinkingNotSupported =
-      model.startsWith("gemini-2.0") ||
-        model.startsWith("gemini-1.5") ||
-        model.startsWith("gemini-1.0")
+    clientConfig
+      .optionalInt(configPath)
+      .map { budget =>
+        logger.debug(
+          s"Converting reasoning effort '$effortKey' to thinking budget: $budget"
+        )
 
-    if (thinkingNotSupported) {
-      reasoningEffort.foreach { effort =>
-        logger.warn(
-          s"Skipping thinking config for model '$model' - thinking is only supported on Gemini 2.5+ and 3.x models. Reasoning effort '${effort.toString.toLowerCase}' will be ignored."
+        // budget = 0 is out of range for 2.5 Pro (min 128), so clamp to the minimum.
+        val budgetFinal =
+          if (budget == 0 && model.startsWith(NonOpenAIModelId.gemini_2_5_pro)) 128
+          else budget
+
+        ThinkingConfig(
+          includeThoughts = Some(false),
+          thinkingBudget = Some(budgetFinal),
+          thinkingLevel = None
         )
       }
-      None
-    } else {
-      reasoningEffort.flatMap { effort =>
-        val effortKey = effort.toString.toLowerCase
-        val configPath =
-          s"$configPrefix.reasoning-effort-thinking-budget-mapping.$effortKey.gemini"
-
-        clientConfig
-          .optionalInt(configPath)
-          .flatMap { budget =>
-            logger.debug(
-              s"Converting reasoning effort '$effortKey' to thinking budget: $budget"
-            )
-
-            // budget = 0 has different meanings:
-            // - For 2.5 Pro: 0 is out of range (min is 128), so we cannot turn it off completely, therefore
-            // setting it the minimal budget of 128
-            val budgetFinal =
-              if (
-                budget == 0 && (
-                  model.startsWith(NonOpenAIModelId.gemini_3_1_pro_preview) ||
-                    model.startsWith(NonOpenAIModelId.gemini_3_pro) ||
-                    model.startsWith(NonOpenAIModelId.gemini_2_5_pro)
-                )
-              )
-                128
-              else
-                budget
-
-            Some(
-              ThinkingConfig(
-                includeThoughts = Some(false), // typically don't include thoughts in response
-                thinkingBudget = Some(budgetFinal),
-                thinkingLevel = None // let budget control the thinking depth
-              )
-            )
-          }
-          .orElse {
-            logger.warn(
-              s"No thinking budget mapping found for reasoning effort '$effortKey' in config path: $configPath"
-            )
-            None
-          }
+      .orElse {
+        logger.warn(
+          s"No thinking budget mapping found for reasoning effort '$effortKey' in config path: $configPath"
+        )
+        None
       }
-    }
   }
 
   private def toGeminiJSONSchema(

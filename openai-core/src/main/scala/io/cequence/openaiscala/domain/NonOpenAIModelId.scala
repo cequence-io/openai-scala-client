@@ -220,21 +220,23 @@ object NonOpenAIModelId {
 
   // Google Gemini and Vertex AI
 
+  val gemini_3_1_pro = "gemini-3.1-pro"
+  val gemini_3_1_pro_preview = "gemini-3.1-pro-preview"
+  val gemini_3_1_pro_preview_customtools = "gemini-3.1-pro-preview-customtools"
   // Input token limit: 1048576; Output token limit: 65536
   val gemini_3_flash_preview = "gemini-3-flash-preview"
   // Input token limit: 1048576; Output token limit: 65536
   val gemini_3_pro = "gemini-3-pro"
   val gemini_3_pro_preview = "gemini-3-pro-preview"
   val gemini_3_pro_image_preview = "gemini-3-pro-image-preview"
-  val gemini_3_1_pro = "gemini-3.1-pro"
-  val gemini_3_1_pro_preview = "gemini-3.1-pro-preview"
-  val gemini_3_1_pro_preview_customtools = "gemini-3.1-pro-preview-customtools"
   val gemini_2_5_pro = "gemini-2.5-pro"
   val gemini_2_5_pro_preview_06_05 = "gemini-2.5-pro-preview-06-05"
   val gemini_2_5_pro_preview_05_06 = "gemini-2.5-pro-preview-05-06"
   val gemini_2_5_pro_preview_03_25 = "gemini-2.5-pro-preview-03-25"
   val gemini_2_5_pro_exp_03_25 = "gemini-2.5-pro-exp-03-25"
 
+  val gemini_3_5_flash = "gemini-3.5-flash"
+  val gemini_3_1_flash_lite = "gemini-3.1-flash-lite"
   val gemini_3_1_flash_lite_preview = "gemini-3.1-flash-lite-preview"
   val gemini_2_5_flash = "gemini-2.5-flash"
   val gemini_2_5_flash_lite = "gemini-2.5-flash-lite"
@@ -285,10 +287,26 @@ object NonOpenAIModelId {
   val gemini_experimental = "gemini-experimental"
   val text_embedding_004 = "text-embedding-004"
 
-  // Other
+  // Minimax
+
+  // MiniMax M2.x - MoE 230B total / 10B active, coding & agentic
+  // Fireworks AI uses short form (full path: accounts/fireworks/models/minimax-m2*)
+  val minimax_m2 = "minimax-m2" // Fireworks AI
+  val minimax_m2p1 = "minimax-m2p1" // Fireworks AI
+  val minimax_m2p5 = "minimax-m2p5" // Fireworks AI
+  val minimax_m2p7 = "minimax-m2p7" // Fireworks AI
+  val minimaxai_minimax_m2 = "MiniMaxAI/MiniMax-M2" // Together AI
+  val minimaxai_minimax_m2_1 = "MiniMaxAI/MiniMax-M2.1" // Together AI
+  val minimaxai_minimax_m2_5 = "MiniMaxAI/MiniMax-M2.5" // Together AI
+  val minimaxai_minimax_m2_7 = "MiniMaxAI/MiniMax-M2.7" // Together AI
+  val sambanova_minimax_m2 = "MiniMax-M2" // SambaNova
+  val sambanova_minimax_m2_5 = "MiniMax-M2.5" // SambaNova
+  val sambanova_minimax_m2_7 = "MiniMax-M2.7" // SambaNova
   val moonshotai_kimi_k2_instruct = "moonshotai/kimi-k2-instruct" // Groq
   // context 262,144
   val moonshotai_kimi_k2_instruct_0905 = "moonshotai/kimi-k2-instruct-0905"
+
+  // Other
   val phi_3_vision_128k_instruct = "phi-3-vision-128k-instruct" // Fireworks AI
   val drbx_instruct = "dbrx-instruct" // Fireworks AI
   val dbrx_instruct_databricks_to_ai = "databricks/dbrx-instruct" // Together AI

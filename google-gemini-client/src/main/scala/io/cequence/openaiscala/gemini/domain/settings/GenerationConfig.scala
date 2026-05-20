@@ -33,17 +33,19 @@ object SpeechConfig {
 case class PrebuiltVoiceConfig(voiceName: String)
 
 /**
- * Config for thinking features.
+ * Config for thinking features. On Gemini 3.x set `thinkingLevel`; on Gemini 2.5 set
+ * `thinkingBudget`. Setting both on Gemini 3 can return an error.
  *
  * @param includeThoughts
  *   Indicates whether to include thoughts in the response. If true, thoughts are returned only
- *   when available. Value between 128 and 32768.
+ *   when available.
  * @param thinkingBudget
- *   The number of thought tokens that the model should generate.
+ *   The number of thought tokens that the model should generate. Used by Gemini 2.5 models;
+ *   accepted for backwards compatibility on Gemini 3 but may yield unexpected performance.
  * @param thinkingLevel
  *   Controls the maximum depth of the model's internal reasoning process before it produces a
- *   response. If not specified, the default is HIGH. Recommended for Gemini 3 or later models.
- *   Use with earlier models results in an error.
+ *   response. Valid for Gemini 3 or later models; using it on earlier models results in an
+ *   error. Defaults vary by model (e.g. Pro: HIGH, 3.5 Flash: MEDIUM, 3.1 Flash-Lite: MINIMAL).
  */
 case class ThinkingConfig(
   includeThoughts: Option[Boolean] = None,

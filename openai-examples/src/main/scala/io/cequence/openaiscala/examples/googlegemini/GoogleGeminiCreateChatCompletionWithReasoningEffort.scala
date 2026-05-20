@@ -27,7 +27,7 @@ object GoogleGeminiCreateChatCompletionWithReasoningEffort
     extends ExampleBase[OpenAIChatCompletionService] {
 
   private val settings = CreateChatCompletionSettings(
-    model = NonOpenAIModelId.gemini_3_1_flash_lite_preview,
+    model = NonOpenAIModelId.gemini_3_5_flash,
     max_tokens = Some(10000),
     temperature = Some(0.2)
   )
