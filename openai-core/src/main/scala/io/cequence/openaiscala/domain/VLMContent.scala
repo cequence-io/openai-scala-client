@@ -37,7 +37,7 @@ object VLMContent {
     "gif" -> "image/gif"
   )
 
-  private def extension(fileName: String): String = {
+  private def extensionOf(fileName: String): String = {
     val dot = fileName.lastIndexOf('.')
     if (dot < 0) "" else fileName.substring(dot + 1).toLowerCase
   }
@@ -52,7 +52,7 @@ object VLMContent {
     bytes: Array[Byte],
     fileName: String
   ): Content =
-    extension(fileName) match {
+    extensionOf(fileName) match {
       case "pdf" =>
         FileContent(
           fileData = Some(dataUrl("application/pdf", bytes)),
@@ -62,7 +62,7 @@ object VLMContent {
         ImageURLContent(dataUrl(ImageMimeByExt(ext), bytes))
       case other =>
         throw new IllegalArgumentException(
-          s"Unsupported VLM input extension '.$other' (file: $fileName)"
+          s"Unsupported VLM input extensionOf '.$other' (file: $fileName)"
         )
     }
 
