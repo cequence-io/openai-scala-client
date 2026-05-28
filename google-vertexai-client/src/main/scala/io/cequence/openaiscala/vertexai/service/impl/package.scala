@@ -191,6 +191,14 @@ package object impl {
     } else None
   }
 
+  // TODO: wire `settings.reasoning_effort` to a ThinkingConfig. The proto-based
+  // GenerationConfig.Builder (com.google.cloud.vertexai.api) only exposes
+  // setThinkingBudget; for thinkingLevel (MINIMAL/LOW/MEDIUM/HIGH) on Gemini 3.x
+  // we need to switch this path to the unified `com.google.genai` SDK
+  // (com.google.genai.types.ThinkingConfig.thinkingLevel(...)). google-genai is
+  // already on the classpath as a transitive of google-cloud-vertexai 1.52.0.
+  // Mirror the model-family branching from OpenAIGeminiChatCompletionService
+  // (Gemini 3.x -> thinkingLevel, Gemini 2.5 -> thinkingBudget).
   def toVertexAI(
     settings: CreateChatCompletionSettings
   ): GenerationConfig = {

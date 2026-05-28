@@ -53,7 +53,7 @@ object GoogleVertexAICreateChatCompletionJSONWithOpenAIAdapter
     required = Seq("countries")
   )
 
-  private val modelId = NonOpenAIModelId.gemini_2_0_flash
+  private val modelId = NonOpenAIModelId.gemini_2_5_flash
 
   override protected def run: Future[_] =
     service
