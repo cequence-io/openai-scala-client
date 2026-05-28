@@ -44,35 +44,42 @@ object VLMContent {
 
   private def dataUrl(
     mime: String,
-    bytes: Array[Byte]
-  ): String =
-    s"data:$mime;base64,${java.util.Base64.getEncoder.encodeToString(bytes)}"
+    contentBase64: String
+  ): String = s"data:$mime;base64,$contentBase64"
 
   private def contentOf(
-    bytes: Array[Byte],
+    contentBase64: String,
     fileName: String
   ): Content =
     extensionOf(fileName) match {
       case "pdf" =>
         FileContent(
-          fileData = Some(dataUrl("application/pdf", bytes)),
+          fileData = Some(dataUrl("application/pdf", contentBase64)),
           filename = Some(fileName)
         )
       case ext if ImageMimeByExt.contains(ext) =>
-        ImageURLContent(dataUrl(ImageMimeByExt(ext), bytes))
+        ImageURLContent(dataUrl(ImageMimeByExt(ext), contentBase64))
       case other =>
         throw new IllegalArgumentException(
-          s"Unsupported VLM input extensionOf '.$other' (file: $fileName)"
+          s"Unsupported VLM input extension '.$other' (file: $fileName)"
         )
     }
 
   /**
-   * Returns the labeled pair `[file: NAME]` + file content. Always use this — never the raw
-   * content alone — so the model sees a uniform shape across providers.
+   * Returns the labeled pair `[file: NAME]` + file content for a file whose payload is already
+   * base64-encoded. Always use this — never the raw content alone — so the model sees a
+   * uniform shape across providers.
    */
+  def of(
+    contentBase64: String,
+    fileName: String
+  ): Seq[Content] =
+    Seq(TextContent(s"[file: $fileName]"), contentOf(contentBase64, fileName))
+
+  /** Convenience overload for callers that have raw bytes (e.g., read from disk). */
   def of(
     bytes: Array[Byte],
     fileName: String
   ): Seq[Content] =
-    Seq(TextContent(s"[file: $fileName]"), contentOf(bytes, fileName))
+    of(java.util.Base64.getEncoder.encodeToString(bytes), fileName)
 }
