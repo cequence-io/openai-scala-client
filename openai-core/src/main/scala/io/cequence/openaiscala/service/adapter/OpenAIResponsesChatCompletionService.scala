@@ -17,10 +17,15 @@ import io.cequence.openaiscala.domain.responsesapi.tools.{
   FunctionToolCall,
   FunctionToolCallOutput,
   FunctionToolOutput,
+  Tool,
   ToolChoice,
   FunctionTool => ResponsesFunctionTool
 }
-import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIResponsesService}
+import io.cequence.openaiscala.service.{
+  OpenAIChatCompletionExtra,
+  OpenAIChatCompletionService,
+  OpenAIResponsesService
+}
 import io.cequence.wsclient.service.CloseableService
 import org.slf4j.LoggerFactory
 
@@ -30,7 +35,8 @@ private[service] class OpenAIResponsesChatCompletionService(
   underlying: OpenAIResponsesService with CloseableService
 )(
   implicit ec: ExecutionContext
-) extends OpenAIChatCompletionService {
+) extends OpenAIChatCompletionService
+    with OpenAIResponsesChatCompletionMappingExt {
 
   private val logger = LoggerFactory.getLogger(getClass)
 
@@ -77,7 +83,7 @@ private[service] class OpenAIResponsesChatCompletionService(
       .map(toOpenAIToolCompletionResponse)
   }
 
-  private def convertMessages(
+  override def convertMessages(
     messages: Seq[BaseMessage]
   ): (Option[String], Seq[Input]) = {
     val (instructionMessages, nonSystemMessages) = messages.partition {
@@ -152,10 +158,10 @@ private[service] class OpenAIResponsesChatCompletionService(
     (instructions, items)
   }
 
-  private def toResponsesSettings(
+  override def toResponsesSettings(
     settings: CreateChatCompletionSettings,
     instructions: Option[String],
-    tools: Seq[ResponsesFunctionTool],
+    tools: Seq[Tool],
     toolChoice: Option[ToolChoice]
   ): CreateModelResponseSettings = {
     if (settings.stop.nonEmpty)
@@ -193,9 +199,15 @@ private[service] class OpenAIResponsesChatCompletionService(
         settings.jsonSchema.map { schemaDef =>
           schemaDef.structure match {
             case Left(schema) =>
+              val newSchema =
+                if (schemaDef.strict)
+                  OpenAIChatCompletionExtra.toStrictSchema(schema)
+                else
+                  schema
+
               TextResponseConfig(
                 ResponseFormat.JsonSchemaSpec(
-                  schema = schema,
+                  schema = newSchema,
                   name = Some(schemaDef.name),
                   strict = Some(schemaDef.strict)
                 )
@@ -231,7 +243,9 @@ private[service] class OpenAIResponsesChatCompletionService(
     )
   }
 
-  private def toOpenAIChatCompletionResponse(
+  // ---- OpenAIResponsesChatCompletionMappingExt impl ----
+
+  override def toOpenAIChatCompletionResponse(
     response: Response
   ): ChatCompletionResponse = {
     warnUnrepresentableOutputs(response)
@@ -369,6 +383,6 @@ object OpenAIResponsesChatCompletionService {
     underlying: OpenAIResponsesService with CloseableService
   )(
     implicit ec: ExecutionContext
-  ): OpenAIChatCompletionService =
+  ): OpenAIChatCompletionService with OpenAIResponsesChatCompletionMappingExt =
     new OpenAIResponsesChatCompletionService(underlying)
 }
