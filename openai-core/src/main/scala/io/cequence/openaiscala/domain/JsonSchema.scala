@@ -59,6 +59,37 @@ object JsonSchema {
   ) extends JsonSchema {
     override val `type` = JsonType.Array
   }
+
+  /**
+   * Walks the schema and sets `additionalProperties = Some(false)` on every nested [[Object]].
+   * Used to satisfy OpenAI-style strict structured-output guarantees and providers that
+   * require closed objects.
+   *
+   * @param overrideExisting
+   *   when `false` (default), only sets `false` on objects that don't already specify
+   *   `additionalProperties` (user values are preserved); when `true`, overrides existing
+   *   values - use this for OpenAI strict mode, which requires `additionalProperties: false`
+   *   on every object regardless of what the caller put there.
+   */
+  def setAdditionalPropertiesToFalse(
+    schema: JsonSchema,
+    overrideExisting: scala.Boolean = false
+  ): JsonSchema =
+    schema match {
+      case obj: Object =>
+        val newAdditional =
+          if (overrideExisting) Some(false)
+          else obj.additionalProperties.orElse(Some(false))
+        obj.copy(
+          properties = obj.properties.map { case (key, value) =>
+            key -> setAdditionalPropertiesToFalse(value, overrideExisting)
+          },
+          additionalProperties = newAdditional
+        )
+      case arr: Array =>
+        arr.copy(items = setAdditionalPropertiesToFalse(arr.items, overrideExisting))
+      case other => other
+    }
 }
 
 object JsonType {

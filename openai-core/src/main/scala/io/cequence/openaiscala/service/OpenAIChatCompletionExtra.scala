@@ -24,6 +24,7 @@ import play.api.libs.json.{Format, JsObject, JsValue, Json}
 import scala.concurrent.{ExecutionContext, Future}
 import com.fasterxml.jackson.core.JsonProcessingException
 import io.cequence.openaiscala.OpenAIScalaClientException
+import io.cequence.openaiscala.domain.JsonSchema
 import io.cequence.openaiscala.domain.JsonSchema.JsonSchemaOrMap
 import io.cequence.wsclient.JsonUtil
 
@@ -451,4 +452,12 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
 
     addFlagAux(schemaMap)
   }
+
+  /**
+   * Typed variant of [[toStrictSchema]]: forces `additionalProperties = Some(false)` on every
+   * nested [[JsonSchema.Object]] (overrides any caller-supplied value, as OpenAI strict mode
+   * requires).
+   */
+  def toStrictSchema(jsonSchema: JsonSchema): JsonSchema =
+    JsonSchema.setAdditionalPropertiesToFalse(jsonSchema, overrideExisting = true)
 }

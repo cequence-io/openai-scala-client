@@ -61,25 +61,10 @@ trait Anthropic
         Json.toJson(blocks)(Writes.seq(contentBlockBaseWrites))
     }
 
-    def setAdditionalPropertiesToFalseByDefault(schema: JsonSchema): JsonSchema =
-      schema match {
-        case obj: JsonSchema.Object =>
-          obj.copy(
-            properties = obj.properties.map { case (key, value) =>
-              key -> setAdditionalPropertiesToFalseByDefault(value)
-            },
-            additionalProperties = obj.additionalProperties.orElse(Some(false))
-          )
-        case arr: JsonSchema.Array =>
-          arr.copy(items = setAdditionalPropertiesToFalseByDefault(arr.items))
-        case other => other
-      }
-
     val outputFormat: Option[OutputFormat] = settings.output_format.map {
       case format: JsonSchemaFormat =>
-        // json schema set to additionalProperties to false on objects if None
         format.copy(
-          schema = setAdditionalPropertiesToFalseByDefault(format.schema)
+          schema = JsonSchema.setAdditionalPropertiesToFalse(format.schema)
         )
     }
 
