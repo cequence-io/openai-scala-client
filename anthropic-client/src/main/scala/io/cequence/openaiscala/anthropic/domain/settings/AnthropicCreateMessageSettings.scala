@@ -83,7 +83,12 @@ final case class AnthropicCreateMessageSettings(
 // Configuration options for the model's output.
 final case class OutputConfig(
   // Controls how much effort the model puts into its response.
-  effort: Option[OutputEffort] = None
+  effort: Option[OutputEffort] = None,
+
+  // Bedrock-only: structured-output format. AWS Bedrock exposes structured outputs
+  // via `output_config.format` (rather than the top-level `output_format` used by the
+  // direct Anthropic API). On Bedrock, populate this from `output_format`.
+  format: Option[OutputFormat] = None
 )
 
 sealed trait OutputEffort extends EnumValue

@@ -15,7 +15,12 @@ import io.cequence.openaiscala.anthropic.domain.response.{
   ContentBlockDelta,
   CreateMessageResponse
 }
-import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
+import io.cequence.openaiscala.anthropic.domain.OutputFormat
+import io.cequence.openaiscala.anthropic.domain.settings.{
+  AnthropicCreateMessageSettings,
+  OutputConfig
+}
+import io.cequence.openaiscala.domain.JsonSchema
 import io.cequence.openaiscala.anthropic.domain.skills.{
   DeleteSkillResponse,
   DeleteSkillVersionResponse,
@@ -60,18 +65,11 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings
   ): Future[CreateMessageResponse] = {
-    // Bedrock does not support output_format (structured outputs) - skip it
-    if (settings.output_format.isDefined) {
-      logger.warn(
-        "Anthropic Bedrock does not support 'output_format' (structured outputs). " +
-          "The output_format parameter will be ignored. Consider using tool use with JSON schema " +
-          "or prompt engineering to get structured JSON responses."
-      )
-    }
+    val bedrockSettings = relocateOutputFormatToOutputConfig(settings)
     val coreBodyParams =
       createBodyParamsForMessageCreation(
         messages,
-        settings,
+        bedrockSettings,
         stream = None,
         ignoreModel = true,
         ignoreOutputFormat = true
@@ -104,18 +102,11 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings
   ): Source[ContentBlockDelta, NotUsed] = {
-    // Bedrock does not support output_format (structured outputs) - skip it
-    if (settings.output_format.isDefined) {
-      logger.warn(
-        "Anthropic Bedrock does not support 'output_format' (structured outputs). " +
-          "The output_format parameter will be ignored. Consider using tool use with JSON schema " +
-          "or prompt engineering to get structured JSON responses."
-      )
-    }
+    val bedrockSettings = relocateOutputFormatToOutputConfig(settings)
     val coreBodyParams =
       createBodyParamsForMessageCreation(
         messages,
-        settings,
+        bedrockSettings,
         stream = None,
         ignoreModel = true,
         ignoreOutputFormat = true
@@ -156,6 +147,28 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
       .map(serializeStreamedJson)
       .collect { case Some(delta) => delta }
   }
+
+  // Bedrock structured outputs live under `output_config.format` (not the top-level
+  // `output_format` field used by the direct Anthropic API). Move the JSON schema across
+  // and apply the standard additionalProperties=false default.
+  private def relocateOutputFormatToOutputConfig(
+    settings: AnthropicCreateMessageSettings
+  ): AnthropicCreateMessageSettings =
+    settings.output_format match {
+      case Some(OutputFormat.JsonSchemaFormat(schema)) =>
+        val cleaned = OutputFormat.JsonSchemaFormat(
+          JsonSchema.setAdditionalPropertiesToFalse(schema)
+        )
+        val mergedOutputConfig = settings.output_config match {
+          case Some(cfg) => cfg.copy(format = Some(cleaned))
+          case None      => OutputConfig(format = Some(cleaned))
+        }
+        settings.copy(
+          output_format = None,
+          output_config = Some(mergedOutputConfig)
+        )
+      case None => settings
+    }
 
   protected def createSignatureHeaders(
     method: String,
