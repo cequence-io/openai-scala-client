@@ -267,6 +267,7 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
   // (e.g. "anthropic.claude-opus-4-7-v1" contains "claude-opus-4-7"),
   // so a `contains` check covers both direct API and Bedrock model IDs.
   private val outputEffortModels: Set[String] = Set(
+    NonOpenAIModelId.claude_opus_4_8,
     NonOpenAIModelId.claude_opus_4_7,
     NonOpenAIModelId.claude_opus_4_6,
     NonOpenAIModelId.claude_sonnet_4_6
@@ -296,13 +297,18 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
     case ReasoningEffort.medium => Some(OutputEffort.medium)
     case ReasoningEffort.high   => Some(OutputEffort.high)
     case ReasoningEffort.xhigh  =>
-      // OutputEffort.xhigh is Opus 4.7 only; downgrade to high on Opus 4.6 / Sonnet 4.6
-      // to avoid a remote 400 from Anthropic.
-      if (model.toLowerCase.contains(NonOpenAIModelId.claude_opus_4_7)) {
+      // OutputEffort.xhigh is supported only on Opus 4.7+ (Opus 4.7, Opus 4.8); downgrade to
+      // high on Opus 4.6 / Sonnet 4.6 to avoid a remote 400 from Anthropic.
+      val m = model.toLowerCase
+      if (
+        m.contains(NonOpenAIModelId.claude_opus_4_8) || m.contains(
+          NonOpenAIModelId.claude_opus_4_7
+        )
+      ) {
         Some(OutputEffort.xhigh)
       } else {
         logger.warn(
-          s"reasoning_effort=xhigh is Opus 4.7 only; downgrading to 'high' for model '$model'."
+          s"reasoning_effort=xhigh is Opus 4.7+ only; downgrading to 'high' for model '$model'."
         )
         Some(OutputEffort.high)
       }

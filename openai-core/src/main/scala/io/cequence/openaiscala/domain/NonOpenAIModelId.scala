@@ -4,6 +4,7 @@ package io.cequence.openaiscala.domain
 object NonOpenAIModelId {
 
   // Anthropic
+  val claude_opus_4_8 = "claude-opus-4-8"
   val claude_opus_4_7 = "claude-opus-4-7"
   val claude_opus_4_6 = "claude-opus-4-6"
   val claude_sonnet_4_6 = "claude-sonnet-4-6"
@@ -30,6 +31,7 @@ object NonOpenAIModelId {
   val claude_instant_1_2 = "claude-instant-1.2"
 
   // Anthropic Bedrock
+  val bedrock_claude_opus_4_8 = "anthropic.claude-opus-4-8"
   val bedrock_claude_opus_4_7 = "anthropic.claude-opus-4-7"
   val bedrock_claude_opus_4_6_v1 = "anthropic.claude-opus-4-6-v1"
   val bedrock_claude_sonnet_4_6 = "anthropic.claude-sonnet-4-6"
