@@ -231,7 +231,10 @@ private[service] class OpenAIResponsesChatCompletionService(
       metadata = if (settings.metadata.nonEmpty) Some(settings.metadata) else None,
       parallelToolCalls = settings.parallel_tool_calls,
       reasoning = reasoning,
-      store = settings.store,
+      // The chat-completion adapter is stateless (full history is sent each call), so default to
+      // not persisting responses server-side (avoids the provider's default 30-day retention),
+      // while still honoring an explicit `store` if the caller opts in.
+      store = settings.store.orElse(Some(false)),
       temperature = settings.temperature,
       text = text,
       toolChoice = toolChoice,
