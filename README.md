@@ -42,6 +42,7 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 | [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) | Full                   | Standard + Responses API          | OpenAI on Azure|
 | [Anthropic](https://www.anthropic.com/api) | Full (🔥 New)          | Yes, also MCP and Skills (🔥 New) | Claude models |
 | [Anthropic Bedrock](https://aws.amazon.com/bedrock/claude/) | No                      | Yes, also MCP (🔥 New)            | Claude on AWS |
+| [OpenAI Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-mantle.html) | Full (🔥 New)          | Standard + Responses API          | GPT-5.x & gpt-oss on AWS (`bedrock-mantle`) |
 | [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) | Varies                 |                                   | Open-source models |
 | [Cerebras](https://cerebras.ai/) | Only JSON object mode  |                                   | Fast inference |
 | [Deepseek](https://deepseek.com/) | Only JSON object mode  |                                   | Chinese provider |
@@ -141,6 +142,18 @@ Then you can obtain a service in one of the following ways.
     apiVersion = "2023-05-15",           // newest version
     apiKey = "your_api_key"
   )
+```
+
+- For **Amazon Bedrock** via the [`bedrock-mantle`](https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-mantle.html) endpoint, which exposes the OpenAI **Responses API** (and Chat Completions for the gpt-oss family) with simple bearer-token auth — no AWS SigV4 signing. Requires a Bedrock API key (`AWS_BEARER_TOKEN_BEDROCK`) and region (`AWS_BEDROCK_REGION`).
+
+```scala
+  // OpenAI provider models (e.g. "openai.gpt-5.5") are served from the `openai/v1` base path
+  val service = OpenAIServiceFactory.forBedrockMantle(isOpenAIModel = true)
+  service.createModelResponse(Inputs.Text("What is the capital of France?"),
+    settings = CreateModelResponseSettings(model = NonOpenAIModelId.bedrock_openai_gpt_5_5))
+
+  // other models (e.g. "openai.gpt-oss-120b") use the standard `v1` base path
+  val service = OpenAIServiceFactory.forBedrockMantle()
 ```
 
 - Minimal `OpenAICoreService` supporting `listModels`, `createCompletion`, `createChatCompletion`, and `createEmbeddings` calls - provided e.g. by [FastChat](https://github.com/lm-sys/FastChat) service running on the port 8000
