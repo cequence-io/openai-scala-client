@@ -14,8 +14,10 @@ import io.cequence.openaiscala.domain.{
   SystemMessage,
   UserMessage
 }
+import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
 import io.cequence.openaiscala.service.adapter.OpenAIResponsesChatCompletionService
 import io.cequence.openaiscala.service.{OpenAIChatCompletionExtra, OpenAIServiceFactory}
+import play.api.libs.json.{JsObject, Json}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -53,6 +55,7 @@ object BedrockMantleJsonSchemaSmokeTest {
     implicit val system: ActorSystem = ActorSystem()
     implicit val materializer: Materializer = Materializer(system)
     implicit val ec: scala.concurrent.ExecutionContext = system.dispatcher
+    implicit val scheduler: akka.actor.Scheduler = system.scheduler
 
     // ---- 1. network-free config-routing check ----
     println("=== config routing (models-supporting-json-schema) ===")
@@ -99,6 +102,33 @@ object BedrockMantleJsonSchemaSmokeTest {
         4.minutes
       )
       println(s"Response: ${response.contentHead}")
+
+      // ---- 3. live gpt-5.5 via the JSON helper THROUGH the Responses adapter ----
+      // Exercises the third path: createChatCompletionWithJSON runs handleOutputJsonSchema
+      // (consulting the config) and, because "openai.gpt-5.5" is now listed, selects native
+      // json_schema mode before delegating to the adapter -> Responses API.
+      println("\n=== live gpt-5.5 via createChatCompletionWithJSON (helper -> adapter) ===")
+      val json = Await.result(
+        chatService.createChatCompletionWithJSON[JsObject](
+          messages = Seq(
+            SystemMessage("You return structured data."),
+            UserMessage("Give the capital and population of Norway.")
+          ),
+          settings = CreateChatCompletionSettings(
+            model = NonOpenAIModelId.bedrock_openai_gpt_5_5,
+            reasoning_effort = Some(ReasoningEffort.low),
+            response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
+            jsonSchema = Some(countrySchema)
+          )
+        ),
+        4.minutes
+      )
+      println(s"Parsed JSON: ${Json.stringify(json)}")
+      require(
+        json.keys.contains("capital") && json.keys.contains("population"),
+        s"helper->adapter result missing expected keys: $json"
+      )
+      println("OK: helper -> Responses adapter native json_schema path works.")
     } finally {
       chatService.close()
       Await.result(system.terminate(), 10.seconds)
