@@ -152,6 +152,56 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts with HasOpenAICo
     )
   }
 
+  /**
+   * Create an OpenAI Service backed by the Amazon Bedrock `bedrock-mantle` endpoint, which
+   * exposes the OpenAI Responses API for models such as `openai.gpt-5.5`, `openai.gpt-5.4`,
+   * and the `openai.gpt-oss-*` family.
+   *
+   * Authentication uses a Bedrock (long-term) API key passed as a bearer token, exactly like
+   * the OpenAI SDK configured via `OPENAI_BASE_URL` / `OPENAI_API_KEY`. No AWS SigV4 signing
+   * is required (unlike the Anthropic Bedrock `bedrock-runtime` path).
+   *
+   * Note that not all endpoints of the full OpenAI service are available on `bedrock-mantle` -
+   * primarily the Responses API (`createModelResponse`) and the Models API (`listModels`). See
+   * <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-mantle.html">the
+   * bedrock-mantle documentation</a> for details.
+   *
+   * @param apiKey
+   *   Bedrock API key (sent as a bearer token). Defaults to the `AWS_BEARER_TOKEN_BEDROCK` env
+   *   var.
+   * @param region
+   *   AWS region, e.g. "us-east-2". Defaults to the `AWS_BEDROCK_REGION` env var.
+   * @param isOpenAIModel
+   *   The OpenAI provider models (e.g. `openai.gpt-5.5`) are an exception and are served from
+   *   the `openai/v1` base path; set this to `true` for them. All other models (e.g. the
+   *   gpt-oss family) use the standard `v1` base path, so leave the default `false`.
+   */
+  def forBedrockMantle(
+    apiKey: String = getEnvOrThrow(bedrockMantleBearerTokenEnvKey),
+    region: String = getEnvOrThrow(bedrockMantleRegionEnvKey),
+    isOpenAIModel: Boolean = false,
+    timeouts: Option[Timeouts] = None
+  )(
+    implicit ec: ExecutionContext,
+    materializer: Materializer
+  ): F = {
+    val basePath =
+      if (isOpenAIModel) openAIBedrockMantleBasePath else defaultBedrockMantleBasePath
+    val authHeaders = Seq(("Authorization", s"Bearer $apiKey"))
+    customInstance(
+      bedrockMantleCoreUrl(region, basePath),
+      WsRequestContext(timeouts, authHeaders, Nil)
+    )
+  }
+
+  private def getEnvOrThrow(envKey: String): String =
+    Option(System.getenv(envKey)).getOrElse(
+      throw new OpenAIScalaClientException(
+        s"Environment variable '$envKey' is not set. " +
+          "Please set it or provide the value explicitly."
+      )
+    )
+
   def customInstance(
     coreUrl: String,
     requestContext: WsRequestContext = WsRequestContext()

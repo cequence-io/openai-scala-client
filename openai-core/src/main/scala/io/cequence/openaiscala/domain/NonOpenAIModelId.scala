@@ -47,6 +47,12 @@ object NonOpenAIModelId {
   val bedrock_claude_3_sonnet_20240229_v1_0 = "anthropic.claude-3-sonnet-20240229-v1:0"
   val bedrock_claude_3_haiku_20240307_v1_0 = "anthropic.claude-3-haiku-20240307-v1:0"
 
+  // OpenAI (Bedrock - bedrock-mantle endpoint, OpenAI Responses API)
+  val bedrock_openai_gpt_5_5 = "openai.gpt-5.5"
+  val bedrock_openai_gpt_5_4 = "openai.gpt-5.4"
+  val bedrock_openai_gpt_oss_120b = "openai.gpt-oss-120b"
+  val bedrock_openai_gpt_oss_20b = "openai.gpt-oss-20b"
+
   // Nova (Bedrock)
   val amazon_nova_pro_v1_0 = "amazon.nova-pro-v1:0"
   val amazon_nova_lite_v1_0 = "amazon.nova-lite-v1:0"

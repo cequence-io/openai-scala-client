@@ -14,6 +14,21 @@ trait OpenAIServiceConsts {
 
   protected val defaultCoreUrl = "https://api.openai.com/v1/"
 
+  // Amazon Bedrock `bedrock-mantle` endpoint (OpenAI Responses API)
+  protected val bedrockMantleBearerTokenEnvKey = "AWS_BEARER_TOKEN_BEDROCK"
+  protected val bedrockMantleRegionEnvKey = "AWS_BEDROCK_REGION"
+
+  // `bedrock-mantle` serves models from the standard `v1` base path. The OpenAI provider models
+  // (e.g. `openai.gpt-5.5`) are an exception - they are served from the `openai/v1` base path.
+  protected val defaultBedrockMantleBasePath = "v1"
+  protected val openAIBedrockMantleBasePath = "openai/v1"
+
+  protected def bedrockMantleCoreUrl(
+    region: String,
+    basePath: String = defaultBedrockMantleBasePath
+  ): String =
+    s"https://bedrock-mantle.$region.api.aws/$basePath/"
+
   object DefaultSettings {
 
     val CreateJsonCompletion = CreateCompletionSettings(
@@ -38,7 +53,7 @@ trait OpenAIServiceConsts {
     )
 
     val CreateChatCompletion = CreateChatCompletionSettings(
-      model = ModelId.o3_mini,
+      model = ModelId.gpt_5_4_mini,
       max_tokens = Some(4000)
     )
 
@@ -48,12 +63,12 @@ trait OpenAIServiceConsts {
     )
 
     val CreateChatFunCompletion = CreateChatCompletionSettings(
-      model = ModelId.gpt_5_mini,
+      model = ModelId.gpt_5_4_mini,
       max_tokens = Some(4000)
     )
 
     val CreateChatToolCompletion = CreateChatCompletionSettings(
-      model = ModelId.gpt_5_mini,
+      model = ModelId.gpt_5_4_mini,
       max_tokens = Some(4000)
     )
 
@@ -96,11 +111,11 @@ trait OpenAIServiceConsts {
     val CreateModeration = CreateModerationSettings()
 
     val CreateModelResponse = CreateModelResponseSettings(
-      model = ModelId.gpt_5_mini
+      model = ModelId.gpt_5_4_mini
     )
 
     val CreateModelResponseInputTokensCount = GetInputTokensCountSettings(
-      model = Some(ModelId.gpt_5_mini)
+      model = Some(ModelId.gpt_5_4_mini)
     )
   }
 }
