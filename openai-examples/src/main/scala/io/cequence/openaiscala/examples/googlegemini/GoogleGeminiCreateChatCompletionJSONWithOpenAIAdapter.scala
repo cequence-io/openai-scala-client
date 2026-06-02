@@ -18,6 +18,18 @@ import scala.concurrent.Future
 
 /**
  * Requires `GOOGLE_API_KEY` environment variable to be set.
+ *
+ * '''Gemini `response_schema` size limit (3.x)''': Gemini 3.x flash models reject requests
+ * whose serialized `response_schema` exceeds roughly 40 KB of JSON with a generic `400
+ * INVALID_ARGUMENT` ("Request contains an invalid argument.") — no field-level detail. The
+ * cutoff was measured empirically at ~44 KB (first/last 35-element slices of a large entity
+ * batch failed; 32–34-element slices passed). The limit is on the schema bytes, independent of
+ * `strict` mode or which JSON Schema constructs are used.
+ *
+ * If you generate the schema dynamically (e.g. one entity per property) and approach this
+ * threshold, batch your work so each request's schema stays under ~40 KB. For an entity-
+ * extraction workload sized like ours: `batch_size = 40` -> ~44 KB schema -> 400; dropping to
+ * `batch_size = 30` -> ~37 KB schema -> succeeds.
  */
 object GoogleGeminiCreateChatCompletionJSONWithOpenAIAdapter
     extends ExampleBase[OpenAIChatCompletionService]
