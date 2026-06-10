@@ -41,7 +41,7 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 | [OpenAI](https://platform.openai.com) | Full                   | Standard + Responses API          | Full API support |
 | [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) | Full                   | Standard + Responses API          | OpenAI on Azure|
 | [Anthropic](https://www.anthropic.com/api) | Full (🔥 New)          | Yes, also MCP and Skills (🔥 New) | Claude models |
-| [Anthropic Bedrock](https://aws.amazon.com/bedrock/claude/) | No                      | Yes, also MCP (🔥 New)            | Claude on AWS |
+| [Anthropic Bedrock](https://aws.amazon.com/bedrock/claude/) | Full (🔥 New)          | Yes, also MCP (🔥 New)            | Claude on AWS |
 | [OpenAI Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-mantle.html) | Full (🔥 New)          | Standard + Responses API          | GPT-5.x & gpt-oss on AWS (`bedrock-mantle`) |
 | [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) | Varies                 |                                   | Open-source models |
 | [Cerebras](https://cerebras.ai/) | Only JSON object mode  |                                   | Fast inference |
@@ -953,7 +953,8 @@ class MyCompletionService @Inject() (
       serviceModels = Map(
         groqService -> Seq(NonOpenAIModelId.llama_3_3_70b_versatile),
         anthropicService -> Seq(
-          NonOpenAIModelId.claude_sonnet_4_5,
+          NonOpenAIModelId.claude_fable_5,
+          NonOpenAIModelId.claude_sonnet_4_6,
           NonOpenAIModelId.claude_haiku_4_5
         )
       ),
