@@ -267,11 +267,26 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
   // (e.g. "anthropic.claude-opus-4-7-v1" contains "claude-opus-4-7"),
   // so a `contains` check covers both direct API and Bedrock model IDs.
   private val outputEffortModels: Set[String] = Set(
+    NonOpenAIModelId.claude_fable_5,
     NonOpenAIModelId.claude_opus_4_8,
     NonOpenAIModelId.claude_opus_4_7,
     NonOpenAIModelId.claude_opus_4_6,
     NonOpenAIModelId.claude_sonnet_4_6
   )
+
+  // Models where extended thinking with budget_tokens and the sampling params
+  // (temperature, top_p, top_k) are fully removed - sending them returns a 400.
+  // Adaptive thinking is the only thinking mode.
+  private val adaptiveOnlyThinkingModels: Set[String] = Set(
+    NonOpenAIModelId.claude_fable_5,
+    NonOpenAIModelId.claude_opus_4_8,
+    NonOpenAIModelId.claude_opus_4_7
+  )
+
+  private def isAdaptiveOnlyThinkingModel(model: String): Boolean = {
+    val m = model.toLowerCase
+    adaptiveOnlyThinkingModels.exists(m.contains)
+  }
 
   /**
    * Models that support the adaptive thinking + output_config.effort parameter. For these we
@@ -297,13 +312,13 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
     case ReasoningEffort.medium => Some(OutputEffort.medium)
     case ReasoningEffort.high   => Some(OutputEffort.high)
     case ReasoningEffort.xhigh  =>
-      // OutputEffort.xhigh is supported only on Opus 4.7+ (Opus 4.7, Opus 4.8); downgrade to
-      // high on Opus 4.6 / Sonnet 4.6 to avoid a remote 400 from Anthropic.
+      // OutputEffort.xhigh is supported only on Opus 4.7+ (Opus 4.7, Opus 4.8) and Fable 5;
+      // downgrade to high on Opus 4.6 / Sonnet 4.6 to avoid a remote 400 from Anthropic.
       val m = model.toLowerCase
       if (
-        m.contains(NonOpenAIModelId.claude_opus_4_8) || m.contains(
-          NonOpenAIModelId.claude_opus_4_7
-        )
+        m.contains(NonOpenAIModelId.claude_fable_5) ||
+        m.contains(NonOpenAIModelId.claude_opus_4_8) ||
+        m.contains(NonOpenAIModelId.claude_opus_4_7)
       ) {
         Some(OutputEffort.xhigh)
       } else {
@@ -318,16 +333,25 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
     settings: CreateChatCompletionSettings
   ): AnthropicCreateMessageSettings = {
     val useOutputEffort = supportsOutputEffort(settings.model)
+    val adaptiveOnly = isAdaptiveOnlyThinkingModel(settings.model)
     val explicitBudget = settings.anthropicThinkingBudgetTokens
 
     // Priority:
     //   1. Explicit anthropicThinkingBudgetTokens -> legacy manual thinking
     //      (preserves pre-existing behavior; user explicitly chose this mode).
+    //      Exception: on adaptive-only models (Fable 5, Opus 4.8/4.7) budget_tokens
+    //      returns a 400, so we switch to adaptive thinking instead.
     //   2. Model supports output_config.effort and reasoning_effort is set ->
     //      adaptive thinking + OutputEffort.
     //   3. Otherwise -> legacy reasoning_effort -> thinking budget via config.
     val (thinkingSettings, outputEffort): (Option[ThinkingSettings], Option[OutputEffort]) =
       explicitBudget match {
+        case Some(budget) if adaptiveOnly =>
+          logger.warn(
+            s"Model '${settings.model}' does not support thinking budget_tokens (returns 400). " +
+              s"Ignoring anthropicThinkingBudgetTokens=$budget and using adaptive thinking instead."
+          )
+          (Some(ThinkingSettings.adaptive), None)
         case Some(budget) =>
           (Some(ThinkingSettings.enabled(budget)), None)
         case None if useOutputEffort =>
@@ -368,9 +392,17 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
       } else
         None
 
-    // When thinking is enabled, temperature must be 1.0
+    // Adaptive-only models (Fable 5, Opus 4.8/4.7) reject temperature/top_p/top_k with a 400
+    // - drop them entirely. Otherwise, when thinking is enabled, temperature must be 1.0.
     val temperature =
-      if (thinkingEnabled) {
+      if (adaptiveOnly) {
+        settings.temperature.foreach { temp =>
+          logger.warn(
+            s"Model '${settings.model}' does not support the temperature parameter (returns 400). Dropping temperature=$temp."
+          )
+        }
+        None
+      } else if (thinkingEnabled) {
         settings.temperature match {
           case Some(temp) if temp != 1.0 =>
             logger.warn(
@@ -386,13 +418,24 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
         settings.temperature
       }
 
+    val topP =
+      if (adaptiveOnly) {
+        settings.top_p.foreach { p =>
+          logger.warn(
+            s"Model '${settings.model}' does not support the top_p parameter (returns 400). Dropping top_p=$p."
+          )
+        }
+        None
+      } else
+        settings.top_p
+
     AnthropicCreateMessageSettings(
       model = settings.model,
       max_tokens = settings.max_tokens.getOrElse(DefaultSettings.CreateMessage.max_tokens),
       metadata = Map.empty,
       stop_sequences = settings.stop,
       temperature = temperature,
-      top_p = settings.top_p,
+      top_p = topP,
       top_k = None,
       thinking = thinkingSettings,
       output_config = outputEffort.map(e => OutputConfig(effort = Some(e))),
