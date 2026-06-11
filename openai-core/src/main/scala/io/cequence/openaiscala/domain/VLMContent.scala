@@ -20,9 +20,9 @@ package io.cequence.openaiscala.domain
  * with one system-prompt clause:
  *
  * {{{
- *   "Each attached file is preceded by a label of the form '[file: NAME]'. When referring "
- *   "to a file in your answer, use exactly the NAME from its label. Do not invent or alter "
- *   "filenames."
+ *   "Each attached file is preceded by a label of the form '[file: NAME]' (or "
+ *   "'[file #INDEX: NAME]' when indexed). When referring to a file in your answer, use "
+ *   "exactly the NAME from its label. Do not invent or alter filenames."
  * }}}
  *
  * That convention works uniformly across all major providers.
@@ -69,17 +69,47 @@ object VLMContent {
    * Returns the labeled pair `[file: NAME]` + file content for a file whose payload is already
    * base64-encoded. Always use this — never the raw content alone — so the model sees a
    * uniform shape across providers.
+   *
+   * @param fileIndex
+   *   optional index included in the label (`[file #INDEX: NAME]`) — useful to disambiguate
+   *   multiple attachments with the same (or no meaningful) filename.
    */
   def of(
     contentBase64: String,
-    fileName: String
-  ): Seq[Content] =
-    Seq(TextContent(s"[file: $fileName]"), contentOf(contentBase64, fileName))
+    fileName: String,
+    fileIndex: Option[Int] = None
+  ): Seq[Content] = {
+    val label = fileIndex match {
+      case Some(index) => s"[file #$index: $fileName]"
+      case None        => s"[file: $fileName]"
+    }
 
-  /** Convenience overload for callers that have raw bytes (e.g., read from disk). */
+    Seq(
+      TextContent(label),
+      contentOf(contentBase64, fileName)
+    )
+  }
+
+  /**
+   * Convenience overload for callers that have raw bytes (e.g., read from disk).
+   *
+   * Note: Scala allows default arguments on only one overloaded alternative, so `fileIndex`
+   * has no default here - use the two-arg overload below when there is no index.
+   */
+  def of(
+    bytes: Array[Byte],
+    fileName: String,
+    fileIndex: Option[Int]
+  ): Seq[Content] =
+    of(
+      java.util.Base64.getEncoder.encodeToString(bytes),
+      fileName,
+      fileIndex
+    )
+
   def of(
     bytes: Array[Byte],
     fileName: String
   ): Seq[Content] =
-    of(java.util.Base64.getEncoder.encodeToString(bytes), fileName)
+    of(bytes, fileName, fileIndex = None)
 }
