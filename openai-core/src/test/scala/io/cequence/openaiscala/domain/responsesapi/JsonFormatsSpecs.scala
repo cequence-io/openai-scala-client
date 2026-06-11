@@ -1689,6 +1689,38 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
       )
     }
 
+    "deserialize MCPToolCall with a protocol error (code + message, no content)" in {
+      testDeserialization[MCPToolCall](
+        MCPToolCall(
+          arguments = """{"action": "list"}""",
+          id = "mcp_call_jkl012",
+          name = "remote_tool",
+          serverLabel = "prod_server",
+          error = Some(
+            MCPToolError(
+              `type` = "mcp_protocol_error",
+              code = Some(-32000),
+              message = Some("Connection closed")
+            )
+          ),
+          status = Some(ModelStatus.Failed)
+        ),
+        """{
+          |  "arguments" : "{\"action\": \"list\"}",
+          |  "id" : "mcp_call_jkl012",
+          |  "name" : "remote_tool",
+          |  "server_label" : "prod_server",
+          |  "error" : {
+          |    "type" : "mcp_protocol_error",
+          |    "code" : -32000,
+          |    "message" : "Connection closed"
+          |  },
+          |  "status" : "failed",
+          |  "type" : "mcp_call"
+          |}""".stripMargin
+      )
+    }
+
     "serialize and deserialize MCPToolCall minimal" in {
       testCodec[MCPToolCall](
         MCPToolCall(

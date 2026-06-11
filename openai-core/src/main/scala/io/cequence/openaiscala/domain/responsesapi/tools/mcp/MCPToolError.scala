@@ -21,12 +21,22 @@ final case class MCPToolErrorContent(
 /**
  * Error information from an MCP tool call execution.
  *
+ * Two shapes occur in practice:
+ *   - `mcp_tool_execution_error` - carries `content` (the error detail items).
+ *   - `mcp_protocol_error` - carries `code` + `message` and NO `content`.
+ *
  * @param `type`
- *   The type of error (e.g., "mcp_tool_execution_error").
+ *   The type of error (e.g., "mcp_tool_execution_error" or "mcp_protocol_error").
  * @param content
- *   Sequence of error content items containing the error details.
+ *   Sequence of error content items containing the error details (empty for protocol errors).
+ * @param code
+ *   Numeric error code (present for protocol errors, e.g. -32000).
+ * @param message
+ *   Error message (present for protocol errors).
  */
 final case class MCPToolError(
   `type`: String,
-  content: Seq[MCPToolErrorContent]
+  content: Seq[MCPToolErrorContent] = Nil,
+  code: Option[Int] = None,
+  message: Option[String] = None
 )

@@ -779,6 +779,8 @@ object JsonFormats {
   implicit lazy val mcpToolErrorContentFormat: Format[MCPToolErrorContent] =
     Format(mcpToolErrorContentReads, mcpToolErrorContentWrites)
 
+  // WithDefaultValues so a missing `content` (mcp_protocol_error shape, which carries
+  // `code`/`message` instead) falls back to Nil rather than failing to parse.
   implicit lazy val mcpToolErrorFormat: OFormat[MCPToolError] =
-    Json.format[MCPToolError]
+    Json.using[Json.WithDefaultValues].format[MCPToolError]
 }
