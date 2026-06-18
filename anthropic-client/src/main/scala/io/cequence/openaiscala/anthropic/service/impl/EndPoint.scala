@@ -11,6 +11,7 @@ object EndPoint {
   // managed agents
   case object agents extends EndPoint
   case object environments extends EndPoint
+  case object sessions extends EndPoint
 }
 
 sealed abstract class Param(value: String = "") extends NamedEnumValue(value)
@@ -65,4 +66,17 @@ object Param {
   case object reclaim_older_than_ms extends Param
   case object desired_ttl_seconds extends Param
   case object expected_last_heartbeat extends Param
+  // sessions
+  case object agent extends Param
+  case object environment_id extends Param
+  case object title extends Param
+  case object resources extends Param
+  case object vault_ids extends Param
+  case object events extends Param
+  case object agent_id extends Param
+  case object agent_version extends Param
+  case object deployment_id extends Param
+  case object memory_store_id extends Param
+  case object order extends Param
+  case object statuses extends Param
 }

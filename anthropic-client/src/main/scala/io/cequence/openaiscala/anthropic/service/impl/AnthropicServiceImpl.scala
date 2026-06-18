@@ -19,6 +19,13 @@ import io.cequence.openaiscala.anthropic.domain.managedagents.{
   EnvironmentDeleteResponse,
   PagedResponse,
   SelfHostedWork,
+  Session,
+  SessionDeleteResponse,
+  SessionEvent,
+  SessionEventEnvelope,
+  SessionResource,
+  SessionStatus,
+  SessionThread,
   WorkHeartbeatResponse,
   WorkQueueStats
 }
@@ -26,8 +33,10 @@ import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicCreateAgentSettings,
   AnthropicCreateEnvironmentSettings,
   AnthropicCreateMessageSettings,
+  AnthropicCreateSessionSettings,
   AnthropicUpdateAgentSettings,
-  AnthropicUpdateEnvironmentSettings
+  AnthropicUpdateEnvironmentSettings,
+  AnthropicUpdateSessionSettings
 }
 import io.cequence.openaiscala.anthropic.domain.skills.{
   DeleteSkillResponse,
@@ -40,7 +49,7 @@ import io.cequence.openaiscala.anthropic.domain.skills.{
 }
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
 import io.cequence.wsclient.StreamResponseImplicits.StreamSafeOps
-import play.api.libs.json.{JsNull, JsNumber, JsObject, JsString, JsValue, Json}
+import play.api.libs.json.{JsArray, JsNull, JsNumber, JsObject, JsString, JsValue, Json}
 
 import java.io.File
 import scala.concurrent.Future
@@ -604,4 +613,226 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       Some(s"$environmentId/work/stats"),
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[WorkQueueStats])
+
+  // ============================================================================
+  // Managed Agents — sessions
+  // ============================================================================
+
+  override def createSession(
+    settings: AnthropicCreateSessionSettings
+  ): Future[Session] = {
+    // agent: bare string id, or {type:agent, id, version} when a version is pinned.
+    val agentJson: JsValue = settings.agentVersion match {
+      case Some(v) => Json.obj("type" -> "agent", "id" -> settings.agentId, "version" -> v)
+      case None    => JsString(settings.agentId)
+    }
+
+    val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
+      Param.agent -> Some(agentJson),
+      Param.environment_id -> Some(JsString(settings.environmentId)),
+      Param.title -> settings.title.map(JsString),
+      Param.metadata -> (if (settings.metadata.nonEmpty) Some(Json.toJson(settings.metadata))
+                         else None),
+      Param.resources -> optSeq(settings.resources),
+      Param.vault_ids -> (if (settings.vaultIds.nonEmpty) Some(Json.toJson(settings.vaultIds))
+                          else None)
+    )
+
+    execPOST(
+      EndPoint.sessions,
+      bodyParams = bodyParams,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Session])
+  }
+
+  override def listSessions(
+    agentId: Option[String],
+    agentVersion: Option[Int],
+    deploymentId: Option[String],
+    memoryStoreId: Option[String],
+    statuses: Seq[SessionStatus],
+    createdAtGte: Option[String],
+    createdAtLte: Option[String],
+    order: Option[String],
+    includeArchived: Option[Boolean],
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[Session]] = {
+    val queryParams = Seq(
+      Param.agent_id -> agentId,
+      Param.agent_version -> agentVersion.map(_.toString),
+      Param.deployment_id -> deploymentId,
+      Param.memory_store_id -> memoryStoreId,
+      Param.created_at_gte -> createdAtGte,
+      Param.created_at_lte -> createdAtLte,
+      Param.order -> order,
+      Param.include_archived -> includeArchived.map(_.toString),
+      Param.limit -> limit.map(_.toString),
+      Param.page -> page
+    ) ++ statuses.map(s => Param.statuses -> Some(s.toString))
+
+    execGET(
+      EndPoint.sessions,
+      params = queryParams,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[PagedResponse[Session]])
+  }
+
+  override def getSession(sessionId: String): Future[Session] =
+    execGET(
+      EndPoint.sessions,
+      Some(sessionId),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Session])
+
+  override def updateSession(
+    sessionId: String,
+    settings: AnthropicUpdateSessionSettings
+  ): Future[Session] = {
+    val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
+      Param.title -> settings.title.map(JsString),
+      Param.metadata -> settings.metadata.map(metadataPatchJson)
+    )
+
+    execPOST(
+      EndPoint.sessions,
+      Some(sessionId),
+      bodyParams = bodyParams,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Session])
+  }
+
+  override def deleteSession(sessionId: String): Future[SessionDeleteResponse] =
+    execDELETE(
+      EndPoint.sessions,
+      Some(sessionId),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[SessionDeleteResponse])
+
+  override def archiveSession(sessionId: String): Future[Session] =
+    execPOST(
+      EndPoint.sessions,
+      Some(s"$sessionId/archive"),
+      bodyParams = Nil,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Session])
+
+  // -- Events --
+
+  override def sendSessionEvents(
+    sessionId: String,
+    events: Seq[SessionEvent]
+  ): Future[Unit] = {
+    val body = Json.obj("events" -> JsArray(events.map(Json.toJson(_))))
+    execPOSTBody(
+      EndPoint.sessions,
+      Some(s"$sessionId/events"),
+      body = body,
+      extraHeaders = managedAgentsHeaders
+    ).map(_ => ())
+  }
+
+  override def listSessionEvents(
+    sessionId: String,
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[SessionEventEnvelope]] =
+    execGET(
+      EndPoint.sessions,
+      Some(s"$sessionId/events"),
+      params = Seq(Param.limit -> limit.map(_.toString), Param.page -> page),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[PagedResponse[SessionEventEnvelope]])
+
+  override def streamSessionEvents(
+    sessionId: String
+  ): Source[SessionEventEnvelope, NotUsed] =
+    engine
+      .execJsonStream(
+        EndPoint.sessions.toString(),
+        "GET",
+        endPointParam = Some(s"$sessionId/events/stream"),
+        extraHeaders = managedAgentsHeaders
+      )
+      .map(_.asOpt[SessionEventEnvelope])
+      .collect { case Some(e) => e }
+
+  // -- Resources --
+
+  override def addSessionResource(
+    sessionId: String,
+    resource: SessionResource
+  ): Future[SessionResource] =
+    execPOSTBody(
+      EndPoint.sessions,
+      Some(s"$sessionId/resources"),
+      body = Json.toJson(resource),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[SessionResource])
+
+  override def listSessionResources(
+    sessionId: String
+  ): Future[PagedResponse[SessionResource]] =
+    execGET(
+      EndPoint.sessions,
+      Some(s"$sessionId/resources"),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[PagedResponse[SessionResource]])
+
+  override def getSessionResource(
+    sessionId: String,
+    resourceId: String
+  ): Future[SessionResource] =
+    execGET(
+      EndPoint.sessions,
+      Some(s"$sessionId/resources/$resourceId"),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[SessionResource])
+
+  override def deleteSessionResource(
+    sessionId: String,
+    resourceId: String
+  ): Future[Unit] =
+    execDELETE(
+      EndPoint.sessions,
+      Some(s"$sessionId/resources/$resourceId"),
+      extraHeaders = managedAgentsHeaders
+    ).map(_ => ())
+
+  // -- Threads --
+
+  override def listSessionThreads(
+    sessionId: String,
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[SessionThread]] =
+    execGET(
+      EndPoint.sessions,
+      Some(s"$sessionId/threads"),
+      params = Seq(Param.limit -> limit.map(_.toString), Param.page -> page),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[PagedResponse[SessionThread]])
+
+  override def getSessionThread(
+    sessionId: String,
+    threadId: String
+  ): Future[SessionThread] =
+    execGET(
+      EndPoint.sessions,
+      Some(s"$sessionId/threads/$threadId"),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[SessionThread])
+
+  override def listSessionThreadEvents(
+    sessionId: String,
+    threadId: String,
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[SessionEventEnvelope]] =
+    execGET(
+      EndPoint.sessions,
+      Some(s"$sessionId/threads/$threadId/events"),
+      params = Seq(Param.limit -> limit.map(_.toString), Param.page -> page),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[PagedResponse[SessionEventEnvelope]])
 }

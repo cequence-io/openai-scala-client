@@ -105,7 +105,18 @@ import io.cequence.openaiscala.anthropic.domain.managedagents.{
   PagedResponse,
   PermissionPolicy,
   SelfHostedWork,
+  Session,
+  SessionDeleteResponse,
+  SessionEvent,
+  SessionEventEnvelope,
+  SessionResource,
+  SessionStatus,
+  SessionThread,
+  SessionThreadStatus,
   SessionWorkData,
+  Checkout,
+  MemoryStoreAccess,
+  OutcomeRubric,
   WorkHeartbeatResponse,
   WorkQueueStats,
   WorkState
@@ -1691,5 +1702,237 @@ trait JsonFormats {
       obj
     }
     Format(reads, writes)
+  }
+
+  // ============================================================================
+  // Managed Agents — sessions
+  // ============================================================================
+
+  implicit lazy val sessionStatusFormat: Format[SessionStatus] =
+    JsonUtil.enumFormat[SessionStatus](SessionStatus.values: _*)
+
+  implicit lazy val memoryStoreAccessFormat: Format[MemoryStoreAccess] =
+    JsonUtil.enumFormat[MemoryStoreAccess](MemoryStoreAccess.values: _*)
+
+  implicit lazy val sessionThreadStatusFormat: Format[SessionThreadStatus] =
+    JsonUtil.enumFormat[SessionThreadStatus](SessionThreadStatus.values: _*)
+
+  implicit lazy val checkoutFormat: Format[Checkout] = {
+    val reads: Reads[Checkout] = Reads { json =>
+      (json \ "type").validate[String].flatMap {
+        case "branch" => (json \ "name").validate[String].map(Checkout.Branch(_))
+        case "commit" => (json \ "sha").validate[String].map(Checkout.Commit(_))
+        case other    => JsError(s"Unknown checkout type: $other")
+      }
+    }
+    val writes: OWrites[Checkout] = OWrites {
+      case b: Checkout.Branch => Json.obj("type" -> b.`type`, "name" -> b.name)
+      case c: Checkout.Commit => Json.obj("type" -> c.`type`, "sha" -> c.sha)
+    }
+    Format(reads, writes)
+  }
+
+  implicit lazy val sessionResourceFormat: Format[SessionResource] = {
+    val reads: Reads[SessionResource] = Reads { json =>
+      (json \ "type").validate[String].flatMap {
+        case "file" =>
+          for {
+            fileId <- (json \ "file_id").validate[String]
+            mountPath <- (json \ "mount_path").validateOpt[String]
+            id <- (json \ "id").validateOpt[String]
+            createdAt <- (json \ "created_at").validateOpt[String]
+            updatedAt <- (json \ "updated_at").validateOpt[String]
+          } yield SessionResource.File(fileId, mountPath, id, createdAt, updatedAt)
+        case "github_repository" =>
+          for {
+            url <- (json \ "url").validate[String]
+            token <- (json \ "authorization_token").validateOpt[String]
+            checkout <- (json \ "checkout").validateOpt[Checkout]
+            mountPath <- (json \ "mount_path").validateOpt[String]
+            id <- (json \ "id").validateOpt[String]
+            createdAt <- (json \ "created_at").validateOpt[String]
+            updatedAt <- (json \ "updated_at").validateOpt[String]
+          } yield SessionResource.GithubRepository(
+            url,
+            token,
+            checkout,
+            mountPath,
+            id,
+            createdAt,
+            updatedAt
+          )
+        case "memory_store" =>
+          for {
+            storeId <- (json \ "memory_store_id").validate[String]
+            access <- (json \ "access").validateOpt[MemoryStoreAccess]
+            instructions <- (json \ "instructions").validateOpt[String]
+            name <- (json \ "name").validateOpt[String]
+            description <- (json \ "description").validateOpt[String]
+            mountPath <- (json \ "mount_path").validateOpt[String]
+          } yield SessionResource.MemoryStore(
+            storeId,
+            access,
+            instructions,
+            name,
+            description,
+            mountPath
+          )
+        case other => JsError(s"Unknown session resource type: $other")
+      }
+    }
+    val writes: OWrites[SessionResource] = OWrites {
+      case r: SessionResource.File =>
+        var obj = Json.obj("type" -> r.`type`, "file_id" -> r.fileId)
+        r.mountPath.foreach(p => obj = obj + ("mount_path" -> JsString(p)))
+        r.id.foreach(i => obj = obj + ("id" -> JsString(i)))
+        r.createdAt.foreach(t => obj = obj + ("created_at" -> JsString(t)))
+        r.updatedAt.foreach(t => obj = obj + ("updated_at" -> JsString(t)))
+        obj
+      case r: SessionResource.GithubRepository =>
+        var obj = Json.obj("type" -> r.`type`, "url" -> r.url)
+        r.authorizationToken.foreach(t => obj = obj + ("authorization_token" -> JsString(t)))
+        r.checkout.foreach(c => obj = obj + ("checkout" -> Json.toJson(c)))
+        r.mountPath.foreach(p => obj = obj + ("mount_path" -> JsString(p)))
+        r.id.foreach(i => obj = obj + ("id" -> JsString(i)))
+        r.createdAt.foreach(t => obj = obj + ("created_at" -> JsString(t)))
+        r.updatedAt.foreach(t => obj = obj + ("updated_at" -> JsString(t)))
+        obj
+      case r: SessionResource.MemoryStore =>
+        var obj = Json.obj("type" -> r.`type`, "memory_store_id" -> r.memoryStoreId)
+        r.access.foreach(a => obj = obj + ("access" -> Json.toJson(a)))
+        r.instructions.foreach(i => obj = obj + ("instructions" -> JsString(i)))
+        r.name.foreach(n => obj = obj + ("name" -> JsString(n)))
+        r.description.foreach(d => obj = obj + ("description" -> JsString(d)))
+        r.mountPath.foreach(p => obj = obj + ("mount_path" -> JsString(p)))
+        obj
+    }
+    Format(reads, writes)
+  }
+
+  implicit lazy val sessionFormat: Format[Session] = {
+    val reads: Reads[Session] = (
+      (__ \ "id").read[String] and
+        (__ \ "status").read[SessionStatus] and
+        (__ \ "agent").read[Agent] and
+        (__ \ "environment_id").read[String] and
+        (__ \ "title").readNullable[String] and
+        (__ \ "metadata").readWithDefault[Map[String, String]](Map.empty) and
+        (__ \ "resources").readWithDefault[Seq[SessionResource]](Nil) and
+        (__ \ "vault_ids").readWithDefault[Seq[String]](Nil) and
+        (__ \ "deployment_id").readNullable[String] and
+        (__ \ "created_at").readNullable[String] and
+        (__ \ "updated_at").readNullable[String] and
+        (__ \ "archived_at").readNullable[String]
+    )(Session.apply _)
+
+    val writes: OWrites[Session] = OWrites { s =>
+      var obj = Json.obj(
+        "type" -> s.`type`,
+        "id" -> s.id,
+        "status" -> Json.toJson(s.status),
+        "agent" -> Json.toJson(s.agent),
+        "environment_id" -> s.environmentId
+      )
+      s.title.foreach(t => obj = obj + ("title" -> JsString(t)))
+      if (s.metadata.nonEmpty) obj = obj + ("metadata" -> Json.toJson(s.metadata))
+      if (s.resources.nonEmpty) obj = obj + ("resources" -> Json.toJson(s.resources))
+      if (s.vaultIds.nonEmpty) obj = obj + ("vault_ids" -> Json.toJson(s.vaultIds))
+      s.deploymentId.foreach(d => obj = obj + ("deployment_id" -> JsString(d)))
+      s.createdAt.foreach(t => obj = obj + ("created_at" -> JsString(t)))
+      s.updatedAt.foreach(t => obj = obj + ("updated_at" -> JsString(t)))
+      s.archivedAt.foreach(t => obj = obj + ("archived_at" -> JsString(t)))
+      obj
+    }
+    Format(reads, writes)
+  }
+
+  implicit lazy val sessionDeleteResponseFormat: Format[SessionDeleteResponse] = {
+    val reads: Reads[SessionDeleteResponse] =
+      (__ \ "id").read[String].map(SessionDeleteResponse(_))
+    val writes: OWrites[SessionDeleteResponse] =
+      OWrites(r => Json.obj("id" -> r.id, "type" -> r.`type`))
+    Format(reads, writes)
+  }
+
+  implicit lazy val sessionThreadFormat: Format[SessionThread] = {
+    val reads: Reads[SessionThread] = (
+      (__ \ "id").read[String] and
+        (__ \ "status").read[SessionThreadStatus] and
+        (__ \ "session_id").readNullable[String] and
+        (__ \ "agent_id").readNullable[String] and
+        (__ \ "parent_thread_id").readNullable[String] and
+        (__ \ "created_at").readNullable[String] and
+        (__ \ "updated_at").readNullable[String] and
+        (__ \ "archived_at").readNullable[String]
+    )(SessionThread.apply _)
+    val writes: OWrites[SessionThread] = OWrites { t =>
+      var obj = Json.obj("type" -> t.`type`, "id" -> t.id, "status" -> Json.toJson(t.status))
+      t.sessionId.foreach(v => obj = obj + ("session_id" -> JsString(v)))
+      t.agentId.foreach(v => obj = obj + ("agent_id" -> JsString(v)))
+      t.parentThreadId.foreach(v => obj = obj + ("parent_thread_id" -> JsString(v)))
+      t.createdAt.foreach(v => obj = obj + ("created_at" -> JsString(v)))
+      t.updatedAt.foreach(v => obj = obj + ("updated_at" -> JsString(v)))
+      t.archivedAt.foreach(v => obj = obj + ("archived_at" -> JsString(v)))
+      obj
+    }
+    Format(reads, writes)
+  }
+
+  // Received events keep the raw payload; only the common envelope fields are typed.
+  implicit lazy val sessionEventEnvelopeFormat: Format[SessionEventEnvelope] = {
+    val reads: Reads[SessionEventEnvelope] = Reads {
+      case obj: JsObject =>
+        JsSuccess(
+          SessionEventEnvelope(
+            `type` = (obj \ "type").asOpt[String].getOrElse(""),
+            id = (obj \ "id").asOpt[String],
+            processedAt = (obj \ "processed_at").asOpt[String],
+            raw = obj
+          )
+        )
+      case other => JsError(s"Expected a session event object, got: $other")
+    }
+    val writes: OWrites[SessionEventEnvelope] = OWrites(_.raw)
+    Format(reads, writes)
+  }
+
+  implicit lazy val outcomeRubricWrites: OWrites[OutcomeRubric] = OWrites {
+    case r: OutcomeRubric.Text => Json.obj("type" -> r.`type`, "content" -> r.content)
+    case r: OutcomeRubric.File => Json.obj("type" -> r.`type`, "file_id" -> r.fileId)
+  }
+
+  // Send-events serializer.
+  implicit lazy val sessionEventWrites: OWrites[SessionEvent] = OWrites {
+    case e: SessionEvent.UserMessage =>
+      Json.obj(
+        "type" -> e.`type`,
+        "content" -> Json.arr(Json.obj("type" -> "text", "text" -> e.text))
+      )
+    case SessionEvent.UserInterrupt =>
+      Json.obj("type" -> SessionEvent.UserInterrupt.`type`)
+    case e: SessionEvent.UserToolConfirmation =>
+      var obj = Json.obj(
+        "type" -> e.`type`,
+        "tool_use_id" -> e.toolUseId,
+        "result" -> (if (e.allow) "allow" else "deny")
+      )
+      e.denyMessage.foreach(m => obj = obj + ("deny_message" -> JsString(m)))
+      obj
+    case e: SessionEvent.UserCustomToolResult =>
+      var obj = Json.obj(
+        "type" -> e.`type`,
+        "custom_tool_use_id" -> e.customToolUseId,
+        "content" -> Json.arr(Json.obj("type" -> "text", "text" -> e.text))
+      )
+      e.isError.foreach(b => obj = obj + ("is_error" -> JsBoolean(b)))
+      obj
+    case e: SessionEvent.UserDefineOutcome =>
+      var obj = Json.obj(
+        "type" -> e.`type`,
+        "description" -> e.description,
+        "rubric" -> Json.toJson(e.rubric)
+      )
+      e.maxIterations.foreach(n => obj = obj + ("max_iterations" -> JsNumber(n)))
+      obj
   }
 }

@@ -32,7 +32,8 @@ trait AnthropicService
     extends CloseableService
     with AnthropicServiceConsts
     with AnthropicManagedAgentService
-    with AnthropicEnvironmentService {
+    with AnthropicEnvironmentService
+    with AnthropicSessionService {
 
   /**
    * Creates a message.

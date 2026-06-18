@@ -254,6 +254,111 @@ class ManagedAgentsJsonFormatsSpec extends AnyWordSpecLike with Matchers with Js
           """"workers_polling":3,"oldest_queued_at":"t"}"""
       )
     }
+
+    // --- Sessions ---
+
+    "serialize the five send-event shapes" in {
+      Json.toJson(SessionEvent.UserMessage("hi"): SessionEvent) shouldBe Json.parse(
+        """{"type":"user.message","content":[{"type":"text","text":"hi"}]}"""
+      )
+      Json.toJson(SessionEvent.UserInterrupt: SessionEvent) shouldBe Json.parse(
+        """{"type":"user.interrupt"}"""
+      )
+      Json.toJson(
+        SessionEvent.UserToolConfirmation(
+          "sevt_1",
+          allow = false,
+          denyMessage = Some("no")
+        ): SessionEvent
+      ) shouldBe Json.parse(
+        """{"type":"user.tool_confirmation","tool_use_id":"sevt_1","result":"deny","deny_message":"no"}"""
+      )
+      Json.toJson(
+        SessionEvent
+          .UserCustomToolResult("sevt_2", "done", isError = Some(false)): SessionEvent
+      ) shouldBe Json.parse(
+        """{"type":"user.custom_tool_result","custom_tool_use_id":"sevt_2",""" +
+          """"content":[{"type":"text","text":"done"}],"is_error":false}"""
+      )
+      Json.toJson(
+        SessionEvent.UserDefineOutcome(
+          "build it",
+          OutcomeRubric.Text("must compile"),
+          maxIterations = Some(5)
+        ): SessionEvent
+      ) shouldBe Json.parse(
+        """{"type":"user.define_outcome","description":"build it",""" +
+          """"rubric":{"type":"text","content":"must compile"},"max_iterations":5}"""
+      )
+    }
+
+    "serialize/deserialize session resources (file, github, memory_store)" in {
+      testCodec[SessionResource](
+        SessionResource.File(fileId = "file_1", mountPath = Some("/workspace/d.csv")),
+        """{"type":"file","file_id":"file_1","mount_path":"/workspace/d.csv"}"""
+      )
+      testCodec[SessionResource](
+        SessionResource.GithubRepository(
+          url = "https://github.com/o/r",
+          authorizationToken = Some("ghp_x"),
+          checkout = Some(Checkout.Branch("main"))
+        ),
+        """{"type":"github_repository","url":"https://github.com/o/r",""" +
+          """"authorization_token":"ghp_x","checkout":{"type":"branch","name":"main"}}"""
+      )
+      testCodec[SessionResource](
+        SessionResource.MemoryStore(
+          memoryStoreId = "memstore_1",
+          access = Some(MemoryStoreAccess.read_only),
+          instructions = Some("check first")
+        ),
+        """{"type":"memory_store","memory_store_id":"memstore_1",""" +
+          """"access":"read_only","instructions":"check first"}"""
+      )
+    }
+
+    "deserialize a session event envelope keeping the raw payload" in {
+      val json =
+        """{"type":"agent.message","id":"sevt_9","processed_at":"2026-06-18T00:00:00Z",""" +
+          """"content":[{"type":"text","text":"hello"}]}"""
+      val ev = Json.parse(json).as[SessionEventEnvelope]
+      ev.`type` shouldBe "agent.message"
+      ev.id shouldBe Some("sevt_9")
+      ev.processedAt shouldBe Some("2026-06-18T00:00:00Z")
+      (ev.raw \ "content" \ 0 \ "text").as[String] shouldBe "hello"
+    }
+
+    "deserialize a full Session response" in {
+      val json =
+        """{
+          |  "id": "sesn_1", "type": "session", "status": "idle",
+          |  "environment_id": "env_1",
+          |  "agent": { "type": "agent", "id": "agent_1", "name": "a", "version": 1,
+          |    "model": { "id": "claude-fable-5", "speed": "standard" } },
+          |  "title": "t",
+          |  "resources": [ { "id": "res_1", "type": "file", "file_id": "file_1",
+          |    "mount_path": "/workspace/d.csv" } ],
+          |  "vault_ids": ["vlt_1"],
+          |  "created_at": "2026-06-18T00:00:00Z"
+          |}""".stripMargin
+      val s = Json.parse(json).as[Session]
+      s.id shouldBe "sesn_1"
+      s.status shouldBe SessionStatus.idle
+      s.agent.id shouldBe "agent_1"
+      s.resources.collect { case f: SessionResource.File => f.fileId } shouldBe Seq("file_1")
+      s.vaultIds shouldBe Seq("vlt_1")
+      Json.parse(Json.toJson(s).toString()).as[Session] shouldBe s
+    }
+
+    "deserialize a session thread" in {
+      val json =
+        """{"type":"thread","id":"thread_1","status":"running","session_id":"sesn_1",""" +
+          """"agent_id":"agent_1"}"""
+      val t = Json.parse(json).as[SessionThread]
+      t.id shouldBe "thread_1"
+      t.status shouldBe SessionThreadStatus.running
+      Json.parse(Json.toJson(t).toString()).as[SessionThread] shouldBe t
+    }
   }
 
   private def testCodec[A](

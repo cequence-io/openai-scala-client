@@ -22,6 +22,13 @@ import io.cequence.openaiscala.anthropic.domain.managedagents.{
   EnvironmentDeleteResponse,
   PagedResponse,
   SelfHostedWork,
+  Session,
+  SessionDeleteResponse,
+  SessionEvent,
+  SessionEventEnvelope,
+  SessionResource,
+  SessionStatus,
+  SessionThread,
   WorkHeartbeatResponse,
   WorkQueueStats
 }
@@ -29,8 +36,10 @@ import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicCreateAgentSettings,
   AnthropicCreateEnvironmentSettings,
   AnthropicCreateMessageSettings,
+  AnthropicCreateSessionSettings,
   AnthropicUpdateAgentSettings,
   AnthropicUpdateEnvironmentSettings,
+  AnthropicUpdateSessionSettings,
   OutputConfig
 }
 import io.cequence.openaiscala.domain.JsonSchema
@@ -414,6 +423,93 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
 
   override def getWorkQueueStats(environmentId: String): Future[WorkQueueStats] =
     managedAgentsUnsupported
+
+  override def createSession(
+    settings: AnthropicCreateSessionSettings
+  ): Future[Session] = managedAgentsUnsupported
+
+  override def listSessions(
+    agentId: Option[String],
+    agentVersion: Option[Int],
+    deploymentId: Option[String],
+    memoryStoreId: Option[String],
+    statuses: Seq[SessionStatus],
+    createdAtGte: Option[String],
+    createdAtLte: Option[String],
+    order: Option[String],
+    includeArchived: Option[Boolean],
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[Session]] = managedAgentsUnsupported
+
+  override def getSession(sessionId: String): Future[Session] = managedAgentsUnsupported
+
+  override def updateSession(
+    sessionId: String,
+    settings: AnthropicUpdateSessionSettings
+  ): Future[Session] = managedAgentsUnsupported
+
+  override def deleteSession(sessionId: String): Future[SessionDeleteResponse] =
+    managedAgentsUnsupported
+
+  override def archiveSession(sessionId: String): Future[Session] = managedAgentsUnsupported
+
+  override def sendSessionEvents(
+    sessionId: String,
+    events: Seq[SessionEvent]
+  ): Future[Unit] = managedAgentsUnsupported
+
+  override def listSessionEvents(
+    sessionId: String,
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[SessionEventEnvelope]] = managedAgentsUnsupported
+
+  override def streamSessionEvents(
+    sessionId: String
+  ): Source[SessionEventEnvelope, NotUsed] =
+    Source.failed(
+      new UnsupportedOperationException(
+        "Managed Agents API is not supported in Anthropic Bedrock"
+      )
+    )
+
+  override def addSessionResource(
+    sessionId: String,
+    resource: SessionResource
+  ): Future[SessionResource] = managedAgentsUnsupported
+
+  override def listSessionResources(
+    sessionId: String
+  ): Future[PagedResponse[SessionResource]] = managedAgentsUnsupported
+
+  override def getSessionResource(
+    sessionId: String,
+    resourceId: String
+  ): Future[SessionResource] = managedAgentsUnsupported
+
+  override def deleteSessionResource(
+    sessionId: String,
+    resourceId: String
+  ): Future[Unit] = managedAgentsUnsupported
+
+  override def listSessionThreads(
+    sessionId: String,
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[SessionThread]] = managedAgentsUnsupported
+
+  override def getSessionThread(
+    sessionId: String,
+    threadId: String
+  ): Future[SessionThread] = managedAgentsUnsupported
+
+  override def listSessionThreadEvents(
+    sessionId: String,
+    threadId: String,
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[SessionEventEnvelope]] = managedAgentsUnsupported
 
   def connectionInfo: BedrockConnectionSettings
 }
