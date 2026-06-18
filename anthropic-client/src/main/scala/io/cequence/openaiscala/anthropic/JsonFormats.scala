@@ -125,6 +125,11 @@ import io.cequence.openaiscala.anthropic.domain.managedagents.{
   DeploymentStatus,
   Schedule,
   Vault,
+  Credential,
+  CredentialAuth,
+  CredentialNetworking,
+  McpOAuthRefresh,
+  TokenEndpointAuth,
   WorkHeartbeatResponse,
   WorkQueueStats,
   WorkState
@@ -2111,6 +2116,81 @@ trait JsonFormats {
       v.archivedAt.foreach(t => obj = obj + ("archived_at" -> JsString(t)))
       obj
     }
+    Format(reads, writes)
+  }
+
+  // ============================================================================
+  // Managed Agents — credentials (create-side auth is write-only)
+  // ============================================================================
+
+  implicit lazy val tokenEndpointAuthWrites: OWrites[TokenEndpointAuth] = OWrites {
+    case TokenEndpointAuth.None_ => Json.obj("type" -> "none")
+    case a: TokenEndpointAuth.ClientSecretBasic =>
+      Json.obj("type" -> "client_secret_basic", "client_secret" -> a.clientSecret)
+    case a: TokenEndpointAuth.ClientSecretPost =>
+      Json.obj("type" -> "client_secret_post", "client_secret" -> a.clientSecret)
+  }
+
+  implicit lazy val mcpOAuthRefreshWrites: OWrites[McpOAuthRefresh] = OWrites { r =>
+    var obj = Json.obj(
+      "client_id" -> r.clientId,
+      "refresh_token" -> r.refreshToken,
+      "token_endpoint" -> r.tokenEndpoint,
+      "token_endpoint_auth" -> Json.toJson(r.tokenEndpointAuth)
+    )
+    r.scope.foreach(s => obj = obj + ("scope" -> JsString(s)))
+    obj
+  }
+
+  implicit lazy val credentialNetworkingWrites: OWrites[CredentialNetworking] = OWrites {
+    case CredentialNetworking.Unrestricted => Json.obj("type" -> "unrestricted")
+    case n: CredentialNetworking.Limited =>
+      var obj = Json.obj("type" -> "limited")
+      if (n.allowedHosts.nonEmpty) obj = obj + ("allowed_hosts" -> Json.toJson(n.allowedHosts))
+      obj
+  }
+
+  implicit lazy val credentialAuthWrites: OWrites[CredentialAuth] = OWrites {
+    case a: CredentialAuth.McpOAuth =>
+      var obj = Json.obj(
+        "type" -> a.`type`,
+        "access_token" -> a.accessToken,
+        "mcp_server_url" -> a.mcpServerUrl
+      )
+      a.expiresAt.foreach(t => obj = obj + ("expires_at" -> JsString(t)))
+      a.refresh.foreach(r => obj = obj + ("refresh" -> Json.toJson(r)))
+      obj
+    case a: CredentialAuth.StaticBearer =>
+      Json.obj("type" -> a.`type`, "token" -> a.token, "mcp_server_url" -> a.mcpServerUrl)
+    case a: CredentialAuth.EnvironmentVariable =>
+      Json.obj(
+        "type" -> a.`type`,
+        "secret_name" -> a.secretName,
+        "secret_value" -> a.secretValue,
+        "networking" -> Json.toJson(a.networking)
+      )
+  }
+
+  // Credential responses omit secrets; type the discriminator + common fields, keep raw.
+  implicit lazy val credentialFormat: Format[Credential] = {
+    val reads: Reads[Credential] = Reads {
+      case obj: JsObject =>
+        JsSuccess(
+          Credential(
+            id = (obj \ "id").asOpt[String].getOrElse(""),
+            authType = (obj \ "auth" \ "type").asOpt[String].getOrElse(""),
+            displayName = (obj \ "display_name").asOpt[String],
+            mcpServerUrl = (obj \ "auth" \ "mcp_server_url").asOpt[String],
+            expiresAt = (obj \ "auth" \ "expires_at").asOpt[String],
+            createdAt = (obj \ "created_at").asOpt[String],
+            updatedAt = (obj \ "updated_at").asOpt[String],
+            archivedAt = (obj \ "archived_at").asOpt[String],
+            raw = obj
+          )
+        )
+      case other => JsError(s"Expected a credential object, got: $other")
+    }
+    val writes: OWrites[Credential] = OWrites(_.raw)
     Format(reads, writes)
   }
 

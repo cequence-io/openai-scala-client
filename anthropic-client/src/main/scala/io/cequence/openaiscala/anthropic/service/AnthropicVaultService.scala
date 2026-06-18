@@ -1,10 +1,17 @@
 package io.cequence.openaiscala.anthropic.service
 
-import io.cequence.openaiscala.anthropic.domain.managedagents.{PagedResponse, Vault}
+import io.cequence.openaiscala.anthropic.domain.managedagents.{
+  Credential,
+  PagedResponse,
+  Vault
+}
 import io.cequence.openaiscala.anthropic.domain.settings.{
+  AnthropicCreateCredentialSettings,
   AnthropicCreateVaultSettings,
+  AnthropicUpdateCredentialSettings,
   AnthropicUpdateVaultSettings
 }
+import play.api.libs.json.JsObject
 
 import scala.concurrent.Future
 
@@ -42,4 +49,56 @@ trait AnthropicVaultService {
 
   /** Archives a vault (`POST /v1/vaults/{id}/archive`). */
   def archiveVault(vaultId: String): Future[Vault]
+
+  // -- Credentials (vault sub-resource) --
+
+  /** Creates a credential (`POST /v1/vaults/{vaultId}/credentials`). */
+  def createCredential(
+    vaultId: String,
+    settings: AnthropicCreateCredentialSettings
+  ): Future[Credential]
+
+  /** Lists credentials in a vault (`GET /v1/vaults/{vaultId}/credentials`). */
+  def listCredentials(
+    vaultId: String,
+    limit: Option[Int] = None,
+    page: Option[String] = None
+  ): Future[PagedResponse[Credential]]
+
+  /** Retrieves a credential (`GET /v1/vaults/{vaultId}/credentials/{credentialId}`). */
+  def getCredential(
+    vaultId: String,
+    credentialId: String
+  ): Future[Credential]
+
+  /** Updates a credential (`POST /v1/vaults/{vaultId}/credentials/{credentialId}`). */
+  def updateCredential(
+    vaultId: String,
+    credentialId: String,
+    settings: AnthropicUpdateCredentialSettings
+  ): Future[Credential]
+
+  /** Deletes a credential (`DELETE /v1/vaults/{vaultId}/credentials/{credentialId}`). */
+  def deleteCredential(
+    vaultId: String,
+    credentialId: String
+  ): Future[Unit]
+
+  /**
+   * Archives a credential (`POST /v1/vaults/{vaultId}/credentials/{credentialId}/archive`).
+   */
+  def archiveCredential(
+    vaultId: String,
+    credentialId: String
+  ): Future[Credential]
+
+  /**
+   * Validates an MCP OAuth credential (`POST
+   * /v1/vaults/{vaultId}/credentials/{credentialId}/mcp_oauth_validate`). The probe result
+   * schema is detailed and unpublished, so the raw JSON response is returned.
+   */
+  def mcpOAuthValidateCredential(
+    vaultId: String,
+    credentialId: String
+  ): Future[JsObject]
 }

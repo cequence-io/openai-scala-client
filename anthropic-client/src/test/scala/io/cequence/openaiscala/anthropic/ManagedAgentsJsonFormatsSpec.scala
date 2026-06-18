@@ -434,6 +434,56 @@ class ManagedAgentsJsonFormatsSpec extends AnyWordSpecLike with Matchers with Js
         """{"type":"vault","id":"vlt_1","display_name":"My vault","metadata":{"env":"prod"}}"""
       )
     }
+
+    // --- Credentials (write-only auth) ---
+
+    "serialize credential auth variants (write-only)" in {
+      Json.toJson(
+        CredentialAuth.StaticBearer("tok", "https://mcp.example/sse"): CredentialAuth
+      ) shouldBe Json.parse(
+        """{"type":"static_bearer","token":"tok","mcp_server_url":"https://mcp.example/sse"}"""
+      )
+      Json.toJson(
+        CredentialAuth.McpOAuth(
+          accessToken = "at",
+          mcpServerUrl = "https://mcp.example/sse",
+          refresh = Some(
+            McpOAuthRefresh(
+              clientId = "cid",
+              refreshToken = "rt",
+              tokenEndpoint = "https://auth.example/token",
+              tokenEndpointAuth = TokenEndpointAuth.ClientSecretBasic("sec")
+            )
+          )
+        ): CredentialAuth
+      ) shouldBe Json.parse(
+        """{"type":"mcp_oauth","access_token":"at","mcp_server_url":"https://mcp.example/sse",""" +
+          """"refresh":{"client_id":"cid","refresh_token":"rt",""" +
+          """"token_endpoint":"https://auth.example/token",""" +
+          """"token_endpoint_auth":{"type":"client_secret_basic","client_secret":"sec"}}}"""
+      )
+      Json.toJson(
+        CredentialAuth.EnvironmentVariable(
+          secretName = "API_KEY",
+          secretValue = "xyz",
+          networking = CredentialNetworking.Limited(Seq("api.example.com"))
+        ): CredentialAuth
+      ) shouldBe Json.parse(
+        """{"type":"environment_variable","secret_name":"API_KEY","secret_value":"xyz",""" +
+          """"networking":{"type":"limited","allowed_hosts":["api.example.com"]}}"""
+      )
+    }
+
+    "deserialize a credential response (secrets omitted)" in {
+      val json =
+        """{"id":"cred_1","display_name":"My cred","created_at":"2026-06-18T00:00:00Z",""" +
+          """"auth":{"type":"static_bearer","mcp_server_url":"https://mcp.example/sse"}}"""
+      val c = Json.parse(json).as[Credential]
+      c.id shouldBe "cred_1"
+      c.authType shouldBe "static_bearer"
+      c.mcpServerUrl shouldBe Some("https://mcp.example/sse")
+      c.displayName shouldBe Some("My cred")
+    }
   }
 
   private def testCodec[A](

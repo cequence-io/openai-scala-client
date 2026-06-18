@@ -28,18 +28,21 @@ import io.cequence.openaiscala.anthropic.domain.managedagents.{
   SessionResource,
   SessionStatus,
   SessionThread,
+  Credential,
   Vault,
   WorkHeartbeatResponse,
   WorkQueueStats
 }
 import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicCreateAgentSettings,
+  AnthropicCreateCredentialSettings,
   AnthropicCreateDeploymentSettings,
   AnthropicCreateEnvironmentSettings,
   AnthropicCreateMessageSettings,
   AnthropicCreateSessionSettings,
   AnthropicCreateVaultSettings,
   AnthropicUpdateAgentSettings,
+  AnthropicUpdateCredentialSettings,
   AnthropicUpdateDeploymentSettings,
   AnthropicUpdateEnvironmentSettings,
   AnthropicUpdateSessionSettings,
@@ -1055,4 +1058,93 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       bodyParams = Nil,
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[Vault])
+
+  // -- Credentials --
+
+  override def createCredential(
+    vaultId: String,
+    settings: AnthropicCreateCredentialSettings
+  ): Future[Credential] = {
+    val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
+      Param.auth -> Some(Json.toJson(settings.auth)),
+      Param.display_name -> settings.displayName.map(JsString)
+    )
+    execPOST(
+      EndPoint.vaults,
+      Some(s"$vaultId/credentials"),
+      bodyParams = bodyParams,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Credential])
+  }
+
+  override def listCredentials(
+    vaultId: String,
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[Credential]] =
+    execGET(
+      EndPoint.vaults,
+      Some(s"$vaultId/credentials"),
+      params = Seq(Param.limit -> limit.map(_.toString), Param.page -> page),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[PagedResponse[Credential]])
+
+  override def getCredential(
+    vaultId: String,
+    credentialId: String
+  ): Future[Credential] =
+    execGET(
+      EndPoint.vaults,
+      Some(s"$vaultId/credentials/$credentialId"),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Credential])
+
+  override def updateCredential(
+    vaultId: String,
+    credentialId: String,
+    settings: AnthropicUpdateCredentialSettings
+  ): Future[Credential] = {
+    val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
+      Param.auth -> settings.auth.map(Json.toJson(_)),
+      Param.display_name -> settings.displayName.map(JsString)
+    )
+    execPOST(
+      EndPoint.vaults,
+      Some(s"$vaultId/credentials/$credentialId"),
+      bodyParams = bodyParams,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Credential])
+  }
+
+  override def deleteCredential(
+    vaultId: String,
+    credentialId: String
+  ): Future[Unit] =
+    execDELETE(
+      EndPoint.vaults,
+      Some(s"$vaultId/credentials/$credentialId"),
+      extraHeaders = managedAgentsHeaders
+    ).map(_ => ())
+
+  override def archiveCredential(
+    vaultId: String,
+    credentialId: String
+  ): Future[Credential] =
+    execPOST(
+      EndPoint.vaults,
+      Some(s"$vaultId/credentials/$credentialId/archive"),
+      bodyParams = Nil,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Credential])
+
+  override def mcpOAuthValidateCredential(
+    vaultId: String,
+    credentialId: String
+  ): Future[JsObject] =
+    execPOST(
+      EndPoint.vaults,
+      Some(s"$vaultId/credentials/$credentialId/mcp_oauth_validate"),
+      bodyParams = Nil,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[JsObject])
 }

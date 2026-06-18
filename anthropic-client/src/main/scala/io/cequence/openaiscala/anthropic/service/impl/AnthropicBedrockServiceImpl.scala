@@ -31,18 +31,21 @@ import io.cequence.openaiscala.anthropic.domain.managedagents.{
   SessionResource,
   SessionStatus,
   SessionThread,
+  Credential,
   Vault,
   WorkHeartbeatResponse,
   WorkQueueStats
 }
 import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicCreateAgentSettings,
+  AnthropicCreateCredentialSettings,
   AnthropicCreateDeploymentSettings,
   AnthropicCreateEnvironmentSettings,
   AnthropicCreateMessageSettings,
   AnthropicCreateSessionSettings,
   AnthropicCreateVaultSettings,
   AnthropicUpdateAgentSettings,
+  AnthropicUpdateCredentialSettings,
   AnthropicUpdateDeploymentSettings,
   AnthropicUpdateEnvironmentSettings,
   AnthropicUpdateSessionSettings,
@@ -60,7 +63,7 @@ import io.cequence.openaiscala.anthropic.domain.skills.{
   SkillVersion
 }
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
-import play.api.libs.json.{JsString, JsValue}
+import play.api.libs.json.{JsObject, JsString, JsValue}
 
 import java.io.File
 import scala.concurrent.Future
@@ -577,6 +580,43 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
   override def deleteVault(vaultId: String): Future[Unit] = managedAgentsUnsupported
 
   override def archiveVault(vaultId: String): Future[Vault] = managedAgentsUnsupported
+
+  override def createCredential(
+    vaultId: String,
+    settings: AnthropicCreateCredentialSettings
+  ): Future[Credential] = managedAgentsUnsupported
+
+  override def listCredentials(
+    vaultId: String,
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[Credential]] = managedAgentsUnsupported
+
+  override def getCredential(
+    vaultId: String,
+    credentialId: String
+  ): Future[Credential] = managedAgentsUnsupported
+
+  override def updateCredential(
+    vaultId: String,
+    credentialId: String,
+    settings: AnthropicUpdateCredentialSettings
+  ): Future[Credential] = managedAgentsUnsupported
+
+  override def deleteCredential(
+    vaultId: String,
+    credentialId: String
+  ): Future[Unit] = managedAgentsUnsupported
+
+  override def archiveCredential(
+    vaultId: String,
+    credentialId: String
+  ): Future[Credential] = managedAgentsUnsupported
+
+  override def mcpOAuthValidateCredential(
+    vaultId: String,
+    credentialId: String
+  ): Future[JsObject] = managedAgentsUnsupported
 
   def connectionInfo: BedrockConnectionSettings
 }
