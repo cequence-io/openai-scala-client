@@ -29,7 +29,13 @@ import scala.concurrent.Future
  */
 trait AnthropicSessionService {
 
-  /** Creates a session (`POST /v1/sessions`). Blocks until resources are mounted. */
+  /**
+   * Creates a session (`POST /v1/sessions`). Blocks until resources are mounted.
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/sessions">Anthropic Sessions
+   *   API</a>
+   */
   def createSession(settings: AnthropicCreateSessionSettings): Future[Session]
 
   /**
@@ -37,6 +43,9 @@ trait AnthropicSessionService {
    *
    * @param statuses
    *   Filter by session status.
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/sessions">Anthropic Sessions
+   *   API</a>
    */
   def listSessions(
     agentId: Option[String] = None,
@@ -52,30 +61,66 @@ trait AnthropicSessionService {
     page: Option[String] = None
   ): Future[PagedResponse[Session]]
 
-  /** Retrieves a session (`GET /v1/sessions/{id}`). */
+  /**
+   * Retrieves a session (`GET /v1/sessions/{id}`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/sessions">Anthropic Sessions
+   *   API</a>
+   */
   def getSession(sessionId: String): Future[Session]
 
-  /** Updates a session's title/metadata (`POST /v1/sessions/{id}`). */
+  /**
+   * Updates a session's title/metadata (`POST /v1/sessions/{id}`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/sessions">Anthropic Sessions
+   *   API</a>
+   */
   def updateSession(
     sessionId: String,
     settings: AnthropicUpdateSessionSettings
   ): Future[Session]
 
-  /** Deletes a session (`DELETE /v1/sessions/{id}`). */
+  /**
+   * Deletes a session (`DELETE /v1/sessions/{id}`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/sessions">Anthropic Sessions
+   *   API</a>
+   */
   def deleteSession(sessionId: String): Future[SessionDeleteResponse]
 
-  /** Archives a session (`POST /v1/sessions/{id}/archive`). */
+  /**
+   * Archives a session (`POST /v1/sessions/{id}/archive`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/sessions">Anthropic Sessions
+   *   API</a>
+   */
   def archiveSession(sessionId: String): Future[Session]
 
   // -- Events --
 
-  /** Sends one or more events to a session (`POST /v1/sessions/{id}/events`). */
+  /**
+   * Sends one or more events to a session (`POST /v1/sessions/{id}/events`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/sessions/events">Anthropic Session
+   *   Events API</a>
+   */
   def sendSessionEvents(
     sessionId: String,
     events: Seq[SessionEvent]
   ): Future[Unit]
 
-  /** Lists a session's events (`GET /v1/sessions/{id}/events`). */
+  /**
+   * Lists a session's events (`GET /v1/sessions/{id}/events`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/sessions/events">Anthropic Session
+   *   Events API</a>
+   */
   def listSessionEvents(
     sessionId: String,
     limit: Option[Int] = None,
@@ -85,25 +130,47 @@ trait AnthropicSessionService {
   /**
    * Streams a session's events via SSE (`GET /v1/sessions/{id}/events/stream`). Open the
    * stream before sending the kickoff event so no early events are missed.
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/sessions/events">Anthropic Session
+   *   Events API</a>
    */
   def streamSessionEvents(sessionId: String): Source[SessionEventEnvelope, NotUsed]
 
   // -- Resources --
 
-  /** Attaches a resource to a session (`POST /v1/sessions/{id}/resources`). */
+  /**
+   * Attaches a resource to a session (`POST /v1/sessions/{id}/resources`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/sessions/resources">Anthropic
+   *   Session Resources API</a>
+   */
   def addSessionResource(
     sessionId: String,
     resource: SessionResource
   ): Future[SessionResource]
 
-  /** Lists a session's resources (`GET /v1/sessions/{id}/resources`). */
+  /**
+   * Lists a session's resources (`GET /v1/sessions/{id}/resources`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/sessions/resources">Anthropic
+   *   Session Resources API</a>
+   */
   def listSessionResources(
     sessionId: String,
     limit: Option[Int] = None,
     page: Option[String] = None
   ): Future[PagedResponse[SessionResource]]
 
-  /** Retrieves a session resource (`GET /v1/sessions/{id}/resources/{resourceId}`). */
+  /**
+   * Retrieves a session resource (`GET /v1/sessions/{id}/resources/{resourceId}`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/sessions/resources">Anthropic
+   *   Session Resources API</a>
+   */
   def getSessionResource(
     sessionId: String,
     resourceId: String
@@ -112,6 +179,10 @@ trait AnthropicSessionService {
   /**
    * Updates a session resource (`POST /v1/sessions/{id}/resources/{resourceId}`). Currently
    * the only mutable field is the refreshed GitHub `authorization_token`.
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/sessions/resources">Anthropic
+   *   Session Resources API</a>
    */
   def updateSessionResource(
     sessionId: String,
@@ -119,7 +190,13 @@ trait AnthropicSessionService {
     authorizationToken: String
   ): Future[SessionResource]
 
-  /** Removes a session resource (`DELETE /v1/sessions/{id}/resources/{resourceId}`). */
+  /**
+   * Removes a session resource (`DELETE /v1/sessions/{id}/resources/{resourceId}`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/sessions/resources">Anthropic
+   *   Session Resources API</a>
+   */
   def deleteSessionResource(
     sessionId: String,
     resourceId: String
@@ -127,20 +204,38 @@ trait AnthropicSessionService {
 
   // -- Threads (multiagent) --
 
-  /** Lists a session's subagent threads (`GET /v1/sessions/{id}/threads`). */
+  /**
+   * Lists a session's subagent threads (`GET /v1/sessions/{id}/threads`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/sessions/threads">Anthropic
+   *   Session Threads API</a>
+   */
   def listSessionThreads(
     sessionId: String,
     limit: Option[Int] = None,
     page: Option[String] = None
   ): Future[PagedResponse[SessionThread]]
 
-  /** Retrieves a thread (`GET /v1/sessions/{id}/threads/{threadId}`). */
+  /**
+   * Retrieves a thread (`GET /v1/sessions/{id}/threads/{threadId}`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/sessions/threads">Anthropic
+   *   Session Threads API</a>
+   */
   def getSessionThread(
     sessionId: String,
     threadId: String
   ): Future[SessionThread]
 
-  /** Archives a thread (`POST /v1/sessions/{id}/threads/{threadId}/archive`). */
+  /**
+   * Archives a thread (`POST /v1/sessions/{id}/threads/{threadId}/archive`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/sessions/threads">Anthropic
+   *   Session Threads API</a>
+   */
   def archiveSessionThread(
     sessionId: String,
     threadId: String

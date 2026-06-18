@@ -27,29 +27,65 @@ import scala.concurrent.Future
  */
 trait AnthropicMemoryStoreService {
 
-  /** Creates a memory store (`POST /v1/memory_stores`). */
+  /**
+   * Creates a memory store (`POST /v1/memory_stores`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/memory_stores">Anthropic Memory
+   *   Stores API</a>
+   */
   def createMemoryStore(settings: AnthropicCreateMemoryStoreSettings): Future[MemoryStore]
 
-  /** Lists memory stores (`GET /v1/memory_stores`). */
+  /**
+   * Lists memory stores (`GET /v1/memory_stores`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/memory_stores">Anthropic Memory
+   *   Stores API</a>
+   */
   def listMemoryStores(
     includeArchived: Option[Boolean] = None,
     limit: Option[Int] = None,
     page: Option[String] = None
   ): Future[PagedResponse[MemoryStore]]
 
-  /** Retrieves a memory store (`GET /v1/memory_stores/{id}`). */
+  /**
+   * Retrieves a memory store (`GET /v1/memory_stores/{id}`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/memory_stores">Anthropic Memory
+   *   Stores API</a>
+   */
   def getMemoryStore(memoryStoreId: String): Future[MemoryStore]
 
-  /** Updates a memory store (`POST /v1/memory_stores/{id}`). */
+  /**
+   * Updates a memory store (`POST /v1/memory_stores/{id}`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/memory_stores">Anthropic Memory
+   *   Stores API</a>
+   */
   def updateMemoryStore(
     memoryStoreId: String,
     settings: AnthropicUpdateMemoryStoreSettings
   ): Future[MemoryStore]
 
-  /** Deletes a memory store (`DELETE /v1/memory_stores/{id}`). */
+  /**
+   * Deletes a memory store (`DELETE /v1/memory_stores/{id}`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/memory_stores">Anthropic Memory
+   *   Stores API</a>
+   */
   def deleteMemoryStore(memoryStoreId: String): Future[Unit]
 
-  /** Archives a memory store (`POST /v1/memory_stores/{id}/archive`). */
+  /**
+   * Archives a memory store (`POST /v1/memory_stores/{id}/archive`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/memory_stores">Anthropic Memory
+   *   Stores API</a>
+   */
   def archiveMemoryStore(memoryStoreId: String): Future[MemoryStore]
 
   // -- Memories --
@@ -57,6 +93,10 @@ trait AnthropicMemoryStoreService {
   /**
    * Creates a memory at `path` (`POST /v1/memory_stores/{id}/memories`). Fails with a 409
    * conflict if the path is already occupied.
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/memory_stores/memories">Anthropic
+   *   Memories API</a>
    */
   def createMemory(
     memoryStoreId: String,
@@ -64,7 +104,13 @@ trait AnthropicMemoryStoreService {
     content: String
   ): Future[Memory]
 
-  /** Lists memories (`GET /v1/memory_stores/{id}/memories`). */
+  /**
+   * Lists memories (`GET /v1/memory_stores/{id}/memories`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/memory_stores/memories">Anthropic
+   *   Memories API</a>
+   */
   def listMemories(
     memoryStoreId: String,
     pathPrefix: Option[String] = None,
@@ -76,7 +122,13 @@ trait AnthropicMemoryStoreService {
     page: Option[String] = None
   ): Future[PagedResponse[MemoryEntry]]
 
-  /** Retrieves a memory by id (`GET /v1/memory_stores/{id}/memories/{memoryId}`). */
+  /**
+   * Retrieves a memory by id (`GET /v1/memory_stores/{id}/memories/{memoryId}`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/memory_stores/memories">Anthropic
+   *   Memories API</a>
+   */
   def getMemory(
     memoryStoreId: String,
     memoryId: String,
@@ -89,6 +141,9 @@ trait AnthropicMemoryStoreService {
    *
    * @param expectedContentSha256
    *   Optimistic-concurrency precondition; on mismatch the call fails with a 409.
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/memory_stores/memories">Anthropic
+   *   Memories API</a>
    */
   def updateMemory(
     memoryStoreId: String,
@@ -103,6 +158,9 @@ trait AnthropicMemoryStoreService {
    *
    * @param expectedContentSha256
    *   Optimistic-concurrency precondition; on mismatch the call fails with a 409.
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/memory_stores/memories">Anthropic
+   *   Memories API</a>
    */
   def deleteMemory(
     memoryStoreId: String,
@@ -112,7 +170,14 @@ trait AnthropicMemoryStoreService {
 
   // -- Memory versions --
 
-  /** Lists memory versions (`GET /v1/memory_stores/{id}/memory_versions`), newest first. */
+  /**
+   * Lists memory versions (`GET /v1/memory_stores/{id}/memory_versions`), newest first.
+   *
+   * @see
+   *   <a
+   *   href="https://platform.claude.com/docs/en/api/beta/memory_stores/memory_versions">Anthropic
+   *   Memory Versions API</a>
+   */
   def listMemoryVersions(
     memoryStoreId: String,
     memoryId: Option[String] = None,
@@ -121,7 +186,14 @@ trait AnthropicMemoryStoreService {
     page: Option[String] = None
   ): Future[PagedResponse[MemoryVersion]]
 
-  /** Retrieves a memory version (`GET /v1/memory_stores/{id}/memory_versions/{versionId}`). */
+  /**
+   * Retrieves a memory version (`GET /v1/memory_stores/{id}/memory_versions/{versionId}`).
+   *
+   * @see
+   *   <a
+   *   href="https://platform.claude.com/docs/en/api/beta/memory_stores/memory_versions">Anthropic
+   *   Memory Versions API</a>
+   */
   def getMemoryVersion(
     memoryStoreId: String,
     memoryVersionId: String
@@ -130,6 +202,11 @@ trait AnthropicMemoryStoreService {
   /**
    * Redacts a memory version's content while preserving the audit row (`POST
    * /v1/memory_stores/{id}/memory_versions/{versionId}/redact`).
+   *
+   * @see
+   *   <a
+   *   href="https://platform.claude.com/docs/en/api/beta/memory_stores/memory_versions">Anthropic
+   *   Memory Versions API</a>
    */
   def redactMemoryVersion(
     memoryStoreId: String,

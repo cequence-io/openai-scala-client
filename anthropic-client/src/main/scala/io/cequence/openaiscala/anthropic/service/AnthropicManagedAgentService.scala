@@ -27,6 +27,8 @@ trait AnthropicManagedAgentService {
    *   Agent configuration (name and model are required).
    * @return
    *   the created agent (version 1)
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/agents">Anthropic Agents API</a>
    */
   def createAgent(
     settings: AnthropicCreateAgentSettings
@@ -45,6 +47,8 @@ trait AnthropicManagedAgentService {
    *   Only agents created at or before this RFC 3339 timestamp.
    * @param includeArchived
    *   Whether to include archived agents (default false).
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/agents">Anthropic Agents API</a>
    */
   def listAgents(
     limit: Option[Int] = None,
@@ -61,6 +65,8 @@ trait AnthropicManagedAgentService {
    *   Agent id.
    * @param version
    *   Specific version to fetch; latest if omitted.
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/agents">Anthropic Agents API</a>
    */
   def getAgent(
     agentId: String,
@@ -74,6 +80,8 @@ trait AnthropicManagedAgentService {
    *   Agent id.
    * @param settings
    *   Fields to change; `version` is the current version (optimistic lock).
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/agents">Anthropic Agents API</a>
    */
   def updateAgent(
     agentId: String,
@@ -86,6 +94,8 @@ trait AnthropicManagedAgentService {
    *
    * @param agentId
    *   Agent id.
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/agents">Anthropic Agents API</a>
    */
   def archiveAgent(agentId: String): Future[Agent]
 
@@ -98,6 +108,8 @@ trait AnthropicManagedAgentService {
    *   Max results per page (default 20, max 100).
    * @param page
    *   Pagination cursor from a previous response's `nextPage`.
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/agents">Anthropic Agents API</a>
    */
   def listAgentVersions(
     agentId: String,

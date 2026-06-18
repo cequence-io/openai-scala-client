@@ -26,7 +26,13 @@ import scala.concurrent.Future
  */
 trait AnthropicEnvironmentService {
 
-  /** Creates an environment (`POST /v1/environments`). */
+  /**
+   * Creates an environment (`POST /v1/environments`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/environments">Anthropic
+   *   Environments API</a>
+   */
   def createEnvironment(
     settings: AnthropicCreateEnvironmentSettings
   ): Future[Environment]
@@ -40,6 +46,9 @@ trait AnthropicEnvironmentService {
    *   Max results per page.
    * @param page
    *   Pagination cursor from a previous response's `nextPage`.
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/environments">Anthropic
+   *   Environments API</a>
    */
   def listEnvironments(
     includeArchived: Option[Boolean] = None,
@@ -47,21 +56,43 @@ trait AnthropicEnvironmentService {
     page: Option[String] = None
   ): Future[PagedResponse[Environment]]
 
-  /** Retrieves an environment (`GET /v1/environments/{id}`). */
+  /**
+   * Retrieves an environment (`GET /v1/environments/{id}`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/environments">Anthropic
+   *   Environments API</a>
+   */
   def getEnvironment(environmentId: String): Future[Environment]
 
-  /** Updates an environment (`POST /v1/environments/{id}`). */
+  /**
+   * Updates an environment (`POST /v1/environments/{id}`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/environments">Anthropic
+   *   Environments API</a>
+   */
   def updateEnvironment(
     environmentId: String,
     settings: AnthropicUpdateEnvironmentSettings
   ): Future[Environment]
 
-  /** Deletes an environment (`DELETE /v1/environments/{id}`). */
+  /**
+   * Deletes an environment (`DELETE /v1/environments/{id}`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/environments">Anthropic
+   *   Environments API</a>
+   */
   def deleteEnvironment(environmentId: String): Future[EnvironmentDeleteResponse]
 
   /**
    * Archives an environment (`POST /v1/environments/{id}/archive`). Archived environments
    * cannot back new sessions. Permanent — there is no unarchive.
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/environments">Anthropic
+   *   Environments API</a>
    */
   def archiveEnvironment(environmentId: String): Future[Environment]
 
@@ -69,14 +100,26 @@ trait AnthropicEnvironmentService {
   // These endpoints are normally driven automatically by the SDK/CLI environment worker; they
   // are exposed here for completeness and advanced/self-hosted orchestration.
 
-  /** Lists work items in an environment (`GET /v1/environments/{id}/work`). */
+  /**
+   * Lists work items in an environment (`GET /v1/environments/{id}/work`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/environments/work">Anthropic
+   *   Environment Work API</a>
+   */
   def listWork(
     environmentId: String,
     limit: Option[Int] = None,
     page: Option[String] = None
   ): Future[PagedResponse[SelfHostedWork]]
 
-  /** Retrieves a work item (`GET /v1/environments/{id}/work/{workId}`). */
+  /**
+   * Retrieves a work item (`GET /v1/environments/{id}/work/{workId}`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/environments/work">Anthropic
+   *   Environment Work API</a>
+   */
   def getWork(
     environmentId: String,
     workId: String
@@ -91,6 +134,9 @@ trait AnthropicEnvironmentService {
    *   Reclaim unacknowledged work older than this (default 5000ms).
    * @param workerId
    *   Worker identifier, sent as the `Anthropic-Worker-ID` header for queue metrics.
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/environments/work">Anthropic
+   *   Environment Work API</a>
    */
   def pollWork(
     environmentId: String,
@@ -99,13 +145,25 @@ trait AnthropicEnvironmentService {
     workerId: Option[String] = None
   ): Future[SelfHostedWork]
 
-  /** Acknowledges a work item (`POST /v1/environments/{id}/work/{workId}/ack`). */
+  /**
+   * Acknowledges a work item (`POST /v1/environments/{id}/work/{workId}/ack`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/environments/work">Anthropic
+   *   Environment Work API</a>
+   */
   def acknowledgeWork(
     environmentId: String,
     workId: String
   ): Future[SelfHostedWork]
 
-  /** Records a heartbeat (`POST /v1/environments/{id}/work/{workId}/heartbeat`). */
+  /**
+   * Records a heartbeat (`POST /v1/environments/{id}/work/{workId}/heartbeat`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/environments/work">Anthropic
+   *   Environment Work API</a>
+   */
   def recordWorkHeartbeat(
     environmentId: String,
     workId: String,
@@ -118,6 +176,9 @@ trait AnthropicEnvironmentService {
    *
    * @param force
    *   Stop even if the worker has not acknowledged; defaults to the server's behavior.
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/environments/work">Anthropic
+   *   Environment Work API</a>
    */
   def stopWork(
     environmentId: String,
@@ -128,6 +189,10 @@ trait AnthropicEnvironmentService {
   /**
    * Updates a work item's metadata with merge semantics (`POST
    * /v1/environments/{id}/work/{workId}`). A `None` value deletes the key.
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/environments/work">Anthropic
+   *   Environment Work API</a>
    */
   def updateWork(
     environmentId: String,
@@ -135,6 +200,12 @@ trait AnthropicEnvironmentService {
     metadata: Map[String, Option[String]]
   ): Future[SelfHostedWork]
 
-  /** Work-queue statistics (`GET /v1/environments/{id}/work/stats`). */
+  /**
+   * Work-queue statistics (`GET /v1/environments/{id}/work/stats`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/environments/work">Anthropic
+   *   Environment Work API</a>
+   */
   def getWorkQueueStats(environmentId: String): Future[WorkQueueStats]
 }

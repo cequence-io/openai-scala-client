@@ -23,10 +23,22 @@ import scala.concurrent.Future
  */
 trait AnthropicDeploymentService {
 
-  /** Creates a deployment (`POST /v1/deployments`). */
+  /**
+   * Creates a deployment (`POST /v1/deployments`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/deployments">Anthropic Deployments
+   *   API</a>
+   */
   def createDeployment(settings: AnthropicCreateDeploymentSettings): Future[Deployment]
 
-  /** Lists deployments (`GET /v1/deployments`). */
+  /**
+   * Lists deployments (`GET /v1/deployments`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/deployments">Anthropic Deployments
+   *   API</a>
+   */
   def listDeployments(
     agentId: Option[String] = None,
     status: Option[String] = None,
@@ -37,10 +49,22 @@ trait AnthropicDeploymentService {
     page: Option[String] = None
   ): Future[PagedResponse[Deployment]]
 
-  /** Retrieves a deployment (`GET /v1/deployments/{id}`). */
+  /**
+   * Retrieves a deployment (`GET /v1/deployments/{id}`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/deployments">Anthropic Deployments
+   *   API</a>
+   */
   def getDeployment(deploymentId: String): Future[Deployment]
 
-  /** Updates a deployment (`POST /v1/deployments/{id}`). */
+  /**
+   * Updates a deployment (`POST /v1/deployments/{id}`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/deployments">Anthropic Deployments
+   *   API</a>
+   */
   def updateDeployment(
     deploymentId: String,
     settings: AnthropicUpdateDeploymentSettings
@@ -48,19 +72,47 @@ trait AnthropicDeploymentService {
 
   /**
    * Archives a deployment (`POST /v1/deployments/{id}/archive`); its status becomes `paused`.
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/deployments">Anthropic Deployments
+   *   API</a>
    */
   def archiveDeployment(deploymentId: String): Future[Deployment]
 
-  /** Pauses a deployment (`POST /v1/deployments/{id}/pause`). */
+  /**
+   * Pauses a deployment (`POST /v1/deployments/{id}/pause`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/deployments">Anthropic Deployments
+   *   API</a>
+   */
   def pauseDeployment(deploymentId: String): Future[Deployment]
 
-  /** Resumes a paused deployment (`POST /v1/deployments/{id}/unpause`). */
+  /**
+   * Resumes a paused deployment (`POST /v1/deployments/{id}/unpause`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/deployments">Anthropic Deployments
+   *   API</a>
+   */
   def unpauseDeployment(deploymentId: String): Future[Deployment]
 
-  /** Triggers an immediate run of a deployment (`POST /v1/deployments/{id}/run`). */
+  /**
+   * Triggers an immediate run of a deployment (`POST /v1/deployments/{id}/run`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/deployments">Anthropic Deployments
+   *   API</a>
+   */
   def runDeployment(deploymentId: String): Future[DeploymentRun]
 
-  /** Lists a deployment's runs (`GET /v1/deployment_runs?deployment_id=...`). */
+  /**
+   * Lists a deployment's runs (`GET /v1/deployment_runs?deployment_id=...`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/deployments">Anthropic Deployments
+   *   API</a>
+   */
   def listDeploymentRuns(
     deploymentId: String,
     limit: Option[Int] = None,

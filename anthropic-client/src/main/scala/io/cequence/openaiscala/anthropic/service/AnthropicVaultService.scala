@@ -25,40 +25,82 @@ import scala.concurrent.Future
  */
 trait AnthropicVaultService {
 
-  /** Creates a vault (`POST /v1/vaults`). */
+  /**
+   * Creates a vault (`POST /v1/vaults`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/vaults">Anthropic Vaults API</a>
+   */
   def createVault(settings: AnthropicCreateVaultSettings): Future[Vault]
 
-  /** Lists vaults (`GET /v1/vaults`). */
+  /**
+   * Lists vaults (`GET /v1/vaults`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/vaults">Anthropic Vaults API</a>
+   */
   def listVaults(
     includeArchived: Option[Boolean] = None,
     limit: Option[Int] = None,
     page: Option[String] = None
   ): Future[PagedResponse[Vault]]
 
-  /** Retrieves a vault (`GET /v1/vaults/{id}`). */
+  /**
+   * Retrieves a vault (`GET /v1/vaults/{id}`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/vaults">Anthropic Vaults API</a>
+   */
   def getVault(vaultId: String): Future[Vault]
 
-  /** Updates a vault (`POST /v1/vaults/{id}`). */
+  /**
+   * Updates a vault (`POST /v1/vaults/{id}`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/vaults">Anthropic Vaults API</a>
+   */
   def updateVault(
     vaultId: String,
     settings: AnthropicUpdateVaultSettings
   ): Future[Vault]
 
-  /** Deletes a vault (`DELETE /v1/vaults/{id}`). */
+  /**
+   * Deletes a vault (`DELETE /v1/vaults/{id}`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/vaults">Anthropic Vaults API</a>
+   */
   def deleteVault(vaultId: String): Future[Unit]
 
-  /** Archives a vault (`POST /v1/vaults/{id}/archive`). */
+  /**
+   * Archives a vault (`POST /v1/vaults/{id}/archive`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/vaults">Anthropic Vaults API</a>
+   */
   def archiveVault(vaultId: String): Future[Vault]
 
   // -- Credentials (vault sub-resource) --
 
-  /** Creates a credential (`POST /v1/vaults/{vaultId}/credentials`). */
+  /**
+   * Creates a credential (`POST /v1/vaults/{vaultId}/credentials`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/vaults/credentials">Anthropic
+   *   Credentials API</a>
+   */
   def createCredential(
     vaultId: String,
     settings: AnthropicCreateCredentialSettings
   ): Future[Credential]
 
-  /** Lists credentials in a vault (`GET /v1/vaults/{vaultId}/credentials`). */
+  /**
+   * Lists credentials in a vault (`GET /v1/vaults/{vaultId}/credentials`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/vaults/credentials">Anthropic
+   *   Credentials API</a>
+   */
   def listCredentials(
     vaultId: String,
     includeArchived: Option[Boolean] = None,
@@ -66,20 +108,38 @@ trait AnthropicVaultService {
     page: Option[String] = None
   ): Future[PagedResponse[Credential]]
 
-  /** Retrieves a credential (`GET /v1/vaults/{vaultId}/credentials/{credentialId}`). */
+  /**
+   * Retrieves a credential (`GET /v1/vaults/{vaultId}/credentials/{credentialId}`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/vaults/credentials">Anthropic
+   *   Credentials API</a>
+   */
   def getCredential(
     vaultId: String,
     credentialId: String
   ): Future[Credential]
 
-  /** Updates a credential (`POST /v1/vaults/{vaultId}/credentials/{credentialId}`). */
+  /**
+   * Updates a credential (`POST /v1/vaults/{vaultId}/credentials/{credentialId}`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/vaults/credentials">Anthropic
+   *   Credentials API</a>
+   */
   def updateCredential(
     vaultId: String,
     credentialId: String,
     settings: AnthropicUpdateCredentialSettings
   ): Future[Credential]
 
-  /** Deletes a credential (`DELETE /v1/vaults/{vaultId}/credentials/{credentialId}`). */
+  /**
+   * Deletes a credential (`DELETE /v1/vaults/{vaultId}/credentials/{credentialId}`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/vaults/credentials">Anthropic
+   *   Credentials API</a>
+   */
   def deleteCredential(
     vaultId: String,
     credentialId: String
@@ -87,6 +147,10 @@ trait AnthropicVaultService {
 
   /**
    * Archives a credential (`POST /v1/vaults/{vaultId}/credentials/{credentialId}/archive`).
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/vaults/credentials">Anthropic
+   *   Credentials API</a>
    */
   def archiveCredential(
     vaultId: String,
@@ -97,6 +161,10 @@ trait AnthropicVaultService {
    * Validates an MCP OAuth credential (`POST
    * /v1/vaults/{vaultId}/credentials/{credentialId}/mcp_oauth_validate`). The probe result
    * schema is detailed and unpublished, so the raw JSON response is returned.
+   *
+   * @see
+   *   <a href="https://platform.claude.com/docs/en/api/beta/vaults/credentials">Anthropic
+   *   Credentials API</a>
    */
   def mcpOAuthValidateCredential(
     vaultId: String,
