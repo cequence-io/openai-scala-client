@@ -82,7 +82,8 @@ object Param {
   case object deployment_id extends Param
   case object memory_store_id extends Param
   case object order extends Param
-  case object statuses extends Param
+  // array query param — the API expects the bracketed name `statuses[]`
+  case object statuses extends Param("statuses[]")
   // deployments
   case object initial_events extends Param
   case object schedule extends Param

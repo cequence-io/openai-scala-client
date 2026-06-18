@@ -382,10 +382,6 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     agentId: String,
     settings: AnthropicUpdateAgentSettings
   ): Future[Agent] = {
-    val metadataJson = settings.metadata.map { m =>
-      JsObject(m.map { case (k, v) => k -> v.map(JsString(_)).getOrElse(JsNull) })
-    }
-
     val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
       Param.version -> Some(JsNumber(settings.version)),
       Param.name -> settings.name.map(JsString),
@@ -395,7 +391,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       Param.tools -> settings.tools.map(Json.toJson(_)),
       Param.mcp_servers -> settings.mcpServers.map(Json.toJson(_)),
       Param.skills -> settings.skills.map(Json.toJson(_)),
-      Param.metadata -> metadataJson,
+      Param.metadata -> settings.metadata.map(metadataPatchJson),
       Param.multiagent -> settings.multiagent.map(Json.toJson(_))
     )
 
