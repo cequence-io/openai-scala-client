@@ -29,12 +29,19 @@ package io.cequence.openaiscala.domain
  */
 object VLMContent {
 
+  // Note: provider support for image formats varies. JPEG / PNG / GIF / WebP are accepted by
+  // all major providers. BMP and TIFF are NOT universally supported (e.g. OpenAI and Anthropic
+  // reject them) — they are included here so callers targeting providers that do accept them
+  // (or that transcode upstream) can pass them through; convert to PNG/JPEG for portability.
   private val ImageMimeByExt: Map[String, String] = Map(
     "jpg" -> "image/jpeg",
     "jpeg" -> "image/jpeg",
     "png" -> "image/png",
     "webp" -> "image/webp",
-    "gif" -> "image/gif"
+    "gif" -> "image/gif",
+    "bmp" -> "image/bmp",
+    "tif" -> "image/tiff",
+    "tiff" -> "image/tiff"
   )
 
   private def extensionOf(fileName: String): String = {
