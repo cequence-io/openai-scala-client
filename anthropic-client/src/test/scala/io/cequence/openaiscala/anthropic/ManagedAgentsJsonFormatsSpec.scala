@@ -1,9 +1,12 @@
 package io.cequence.openaiscala.anthropic
 
 import io.cequence.openaiscala.anthropic.domain.managedagents._
-import io.cequence.openaiscala.anthropic.domain.settings.Speed
+import io.cequence.openaiscala.anthropic.domain.settings.{
+  AnthropicUpdateSessionSettings,
+  Speed
+}
 import io.cequence.openaiscala.anthropic.domain.skills.{SkillParams, SkillSource}
-import io.cequence.openaiscala.anthropic.domain.tools.CustomTool
+import io.cequence.openaiscala.anthropic.domain.tools.{CustomTool, MCPServerURLDefinition}
 import io.cequence.openaiscala.domain.JsonSchema
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
@@ -350,14 +353,45 @@ class ManagedAgentsJsonFormatsSpec extends AnyWordSpecLike with Matchers with Js
       Json.parse(Json.toJson(s).toString()).as[Session] shouldBe s
     }
 
-    "deserialize a session thread" in {
+    "deserialize a session thread with nested agent, stats and usage" in {
       val json =
-        """{"type":"thread","id":"thread_1","status":"running","session_id":"sesn_1",""" +
-          """"agent_id":"agent_1"}"""
+        """{"type":"session_thread","id":"thread_1","status":"running",""" +
+          """"session_id":"sesn_1","parent_thread_id":"thread_0",""" +
+          """"agent":{"type":"agent","id":"agent_1","version":1,"name":"A",""" +
+          """"model":{"id":"claude-opus-4-6"}},""" +
+          """"stats":{"active_seconds":1.5,"duration_seconds":3.0,"startup_seconds":0.5},""" +
+          """"usage":{"cache_creation":{"ephemeral_1h_input_tokens":10,""" +
+          """"ephemeral_5m_input_tokens":5},"cache_read_input_tokens":7,""" +
+          """"input_tokens":100,"output_tokens":42}}"""
       val t = Json.parse(json).as[SessionThread]
       t.id shouldBe "thread_1"
+      t.`type` shouldBe "session_thread"
       t.status shouldBe SessionThreadStatus.running
+      t.agent.map(_.id) shouldBe Some("agent_1")
+      t.parentThreadId shouldBe Some("thread_0")
+      t.stats.flatMap(_.activeSeconds) shouldBe Some(1.5)
+      t.usage.flatMap(_.outputTokens) shouldBe Some(42)
+      t.usage.flatMap(_.cacheCreation).flatMap(_.ephemeral1hInputTokens) shouldBe Some(10)
       Json.parse(Json.toJson(t).toString()).as[SessionThread] shouldBe t
+    }
+
+    "serialize a session-update agent override" in {
+      val settings = AnthropicUpdateSessionSettings(
+        title = Some("t"),
+        agent = Some(
+          SessionAgentOverride(
+            mcpServers = Some(
+              Seq(
+                MCPServerURLDefinition(name = "srv", url = "https://mcp.example.com/sse")
+              )
+            )
+          )
+        ),
+        vaultIds = Some(Seq("vlt_1", "vlt_2"))
+      )
+      val json = Json.toJson(settings.agent.get)
+      (json \ "mcp_servers" \ 0 \ "url").as[String] shouldBe "https://mcp.example.com/sse"
+      (json \ "mcp_servers" \ 0 \ "type").as[String] shouldBe "url"
     }
 
     // --- Deployments ---

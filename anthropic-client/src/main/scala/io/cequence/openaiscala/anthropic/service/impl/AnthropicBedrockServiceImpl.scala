@@ -498,12 +498,20 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
   ): Future[SessionResource] = managedAgentsUnsupported
 
   override def listSessionResources(
-    sessionId: String
+    sessionId: String,
+    limit: Option[Int],
+    page: Option[String]
   ): Future[PagedResponse[SessionResource]] = managedAgentsUnsupported
 
   override def getSessionResource(
     sessionId: String,
     resourceId: String
+  ): Future[SessionResource] = managedAgentsUnsupported
+
+  override def updateSessionResource(
+    sessionId: String,
+    resourceId: String,
+    authorizationToken: String
   ): Future[SessionResource] = managedAgentsUnsupported
 
   override def deleteSessionResource(
@@ -522,12 +530,10 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
     threadId: String
   ): Future[SessionThread] = managedAgentsUnsupported
 
-  override def listSessionThreadEvents(
+  override def archiveSessionThread(
     sessionId: String,
-    threadId: String,
-    limit: Option[Int],
-    page: Option[String]
-  ): Future[PagedResponse[SessionEventEnvelope]] = managedAgentsUnsupported
+    threadId: String
+  ): Future[SessionThread] = managedAgentsUnsupported
 
   override def createDeployment(
     settings: AnthropicCreateDeploymentSettings

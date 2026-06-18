@@ -705,7 +705,9 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   ): Future[Session] = {
     val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
       Param.title -> settings.title.map(JsString),
-      Param.metadata -> settings.metadata.map(metadataPatchJson)
+      Param.metadata -> settings.metadata.map(metadataPatchJson),
+      Param.agent -> settings.agent.map(Json.toJson(_)),
+      Param.vault_ids -> settings.vaultIds.map(Json.toJson(_))
     )
 
     execPOST(
@@ -785,11 +787,14 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     ).map(_.asSafeJson[SessionResource])
 
   override def listSessionResources(
-    sessionId: String
+    sessionId: String,
+    limit: Option[Int],
+    page: Option[String]
   ): Future[PagedResponse[SessionResource]] =
     execGET(
       EndPoint.sessions,
       Some(s"$sessionId/resources"),
+      params = Seq(Param.limit -> limit.map(_.toString), Param.page -> page),
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[PagedResponse[SessionResource]])
 
@@ -800,6 +805,18 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     execGET(
       EndPoint.sessions,
       Some(s"$sessionId/resources/$resourceId"),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[SessionResource])
+
+  override def updateSessionResource(
+    sessionId: String,
+    resourceId: String,
+    authorizationToken: String
+  ): Future[SessionResource] =
+    execPOSTBody(
+      EndPoint.sessions,
+      Some(s"$sessionId/resources/$resourceId"),
+      body = Json.obj("authorization_token" -> authorizationToken),
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[SessionResource])
 
@@ -837,18 +854,16 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[SessionThread])
 
-  override def listSessionThreadEvents(
+  override def archiveSessionThread(
     sessionId: String,
-    threadId: String,
-    limit: Option[Int],
-    page: Option[String]
-  ): Future[PagedResponse[SessionEventEnvelope]] =
-    execGET(
+    threadId: String
+  ): Future[SessionThread] =
+    execPOST(
       EndPoint.sessions,
-      Some(s"$sessionId/threads/$threadId/events"),
-      params = Seq(Param.limit -> limit.map(_.toString), Param.page -> page),
+      Some(s"$sessionId/threads/$threadId/archive"),
+      bodyParams = Nil,
       extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[PagedResponse[SessionEventEnvelope]])
+    ).map(_.asSafeJson[SessionThread])
 
   // ============================================================================
   // Managed Agents — deployments

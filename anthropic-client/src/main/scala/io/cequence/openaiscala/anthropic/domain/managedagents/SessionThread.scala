@@ -15,6 +15,27 @@ object SessionThreadStatus {
     Seq(rescheduling, running, idle, terminated)
 }
 
+/** Wall-clock timing breakdown for a session thread. */
+final case class SessionThreadStats(
+  activeSeconds: Option[Double] = None,
+  durationSeconds: Option[Double] = None,
+  startupSeconds: Option[Double] = None
+)
+
+/** Ephemeral cache-creation token breakdown. */
+final case class ManagedAgentsCacheCreation(
+  ephemeral1hInputTokens: Option[Int] = None,
+  ephemeral5mInputTokens: Option[Int] = None
+)
+
+/** Token usage accumulated by a session thread. */
+final case class SessionThreadUsage(
+  cacheCreation: Option[ManagedAgentsCacheCreation] = None,
+  cacheReadInputTokens: Option[Int] = None,
+  inputTokens: Option[Int] = None,
+  outputTokens: Option[Int] = None
+)
+
 /**
  * A per-subagent thread within a multiagent session — a context-isolated event stream with its
  * own conversation history.
@@ -26,11 +47,13 @@ final case class SessionThread(
   id: String,
   status: SessionThreadStatus,
   sessionId: Option[String] = None,
-  agentId: Option[String] = None,
+  agent: Option[Agent] = None,
   parentThreadId: Option[String] = None,
+  stats: Option[SessionThreadStats] = None,
+  usage: Option[SessionThreadUsage] = None,
   createdAt: Option[String] = None,
   updatedAt: Option[String] = None,
   archivedAt: Option[String] = None
 ) {
-  val `type`: String = "thread"
+  val `type`: String = "session_thread"
 }

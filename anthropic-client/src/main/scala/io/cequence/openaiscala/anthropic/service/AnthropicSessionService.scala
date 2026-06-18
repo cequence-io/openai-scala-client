@@ -97,12 +97,26 @@ trait AnthropicSessionService {
   ): Future[SessionResource]
 
   /** Lists a session's resources (`GET /v1/sessions/{id}/resources`). */
-  def listSessionResources(sessionId: String): Future[PagedResponse[SessionResource]]
+  def listSessionResources(
+    sessionId: String,
+    limit: Option[Int] = None,
+    page: Option[String] = None
+  ): Future[PagedResponse[SessionResource]]
 
   /** Retrieves a session resource (`GET /v1/sessions/{id}/resources/{resourceId}`). */
   def getSessionResource(
     sessionId: String,
     resourceId: String
+  ): Future[SessionResource]
+
+  /**
+   * Updates a session resource (`POST /v1/sessions/{id}/resources/{resourceId}`). Currently
+   * the only mutable field is the refreshed GitHub `authorization_token`.
+   */
+  def updateSessionResource(
+    sessionId: String,
+    resourceId: String,
+    authorizationToken: String
   ): Future[SessionResource]
 
   /** Removes a session resource (`DELETE /v1/sessions/{id}/resources/{resourceId}`). */
@@ -126,11 +140,9 @@ trait AnthropicSessionService {
     threadId: String
   ): Future[SessionThread]
 
-  /** Lists a thread's events (`GET /v1/sessions/{id}/threads/{threadId}/events`). */
-  def listSessionThreadEvents(
+  /** Archives a thread (`POST /v1/sessions/{id}/threads/{threadId}/archive`). */
+  def archiveSessionThread(
     sessionId: String,
-    threadId: String,
-    limit: Option[Int] = None,
-    page: Option[String] = None
-  ): Future[PagedResponse[SessionEventEnvelope]]
+    threadId: String
+  ): Future[SessionThread]
 }

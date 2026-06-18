@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.anthropic.domain.managedagents
 
+import io.cequence.openaiscala.anthropic.domain.tools.MCPServerURLDefinition
 import io.cequence.wsclient.domain.EnumValue
 
 /** Lifecycle status of a session. */
@@ -82,6 +83,16 @@ object SessionResource {
 final case class SessionDeleteResponse(id: String) {
   val `type`: String = "session_deleted"
 }
+
+/**
+ * Session-local agent overrides applied when updating an idle session (`POST
+ * /v1/sessions/{id}`). Only `tools` and `mcp_servers` may be overridden; `None` leaves the
+ * field untouched.
+ */
+final case class SessionAgentOverride(
+  tools: Option[Seq[AgentTool]] = None,
+  mcpServers: Option[Seq[MCPServerURLDefinition]] = None
+)
 
 /**
  * A stateful interaction with a Managed Agent inside an environment.

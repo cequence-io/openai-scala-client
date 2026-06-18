@@ -106,13 +106,17 @@ import io.cequence.openaiscala.anthropic.domain.managedagents.{
   PermissionPolicy,
   SelfHostedWork,
   Session,
+  SessionAgentOverride,
   SessionDeleteResponse,
   SessionEvent,
   SessionEventEnvelope,
   SessionResource,
   SessionStatus,
   SessionThread,
+  SessionThreadStats,
   SessionThreadStatus,
+  SessionThreadUsage,
+  ManagedAgentsCacheCreation,
   SessionWorkData,
   Checkout,
   MemoryStoreAccess,
@@ -1873,13 +1877,67 @@ trait JsonFormats {
     Format(reads, writes)
   }
 
+  implicit lazy val sessionAgentOverrideWrites: OWrites[SessionAgentOverride] = OWrites { o =>
+    var obj = Json.obj()
+    o.tools.foreach(t => obj = obj + ("tools" -> Json.toJson(t)))
+    o.mcpServers.foreach(m =>
+      obj = obj + ("mcp_servers" -> Json.toJson(m)(Writes.seq(mcpServerURLDefinitionWrites)))
+    )
+    obj
+  }
+
+  implicit lazy val sessionThreadStatsFormat: Format[SessionThreadStats] = {
+    implicit val cfg: JsonConfiguration = JsonConfiguration(SnakeCase)
+    Json.format[SessionThreadStats]
+  }
+
+  implicit lazy val managedAgentsCacheCreationFormat: Format[ManagedAgentsCacheCreation] = {
+    val reads: Reads[ManagedAgentsCacheCreation] = (
+      (__ \ "ephemeral_1h_input_tokens").readNullable[Int] and
+        (__ \ "ephemeral_5m_input_tokens").readNullable[Int]
+    )(ManagedAgentsCacheCreation.apply _)
+    val writes: OWrites[ManagedAgentsCacheCreation] = OWrites { c =>
+      var obj = Json.obj()
+      c.ephemeral1hInputTokens.foreach(v =>
+        obj = obj + ("ephemeral_1h_input_tokens" -> JsNumber(v))
+      )
+      c.ephemeral5mInputTokens.foreach(v =>
+        obj = obj + ("ephemeral_5m_input_tokens" -> JsNumber(v))
+      )
+      obj
+    }
+    Format(reads, writes)
+  }
+
+  implicit lazy val sessionThreadUsageFormat: Format[SessionThreadUsage] = {
+    val reads: Reads[SessionThreadUsage] = (
+      (__ \ "cache_creation").readNullable[ManagedAgentsCacheCreation] and
+        (__ \ "cache_read_input_tokens").readNullable[Int] and
+        (__ \ "input_tokens").readNullable[Int] and
+        (__ \ "output_tokens").readNullable[Int]
+    )(SessionThreadUsage.apply _)
+    val writes: OWrites[SessionThreadUsage] = OWrites { u =>
+      var obj = Json.obj()
+      u.cacheCreation.foreach(v => obj = obj + ("cache_creation" -> Json.toJson(v)))
+      u.cacheReadInputTokens.foreach(v =>
+        obj = obj + ("cache_read_input_tokens" -> JsNumber(v))
+      )
+      u.inputTokens.foreach(v => obj = obj + ("input_tokens" -> JsNumber(v)))
+      u.outputTokens.foreach(v => obj = obj + ("output_tokens" -> JsNumber(v)))
+      obj
+    }
+    Format(reads, writes)
+  }
+
   implicit lazy val sessionThreadFormat: Format[SessionThread] = {
     val reads: Reads[SessionThread] = (
       (__ \ "id").read[String] and
         (__ \ "status").read[SessionThreadStatus] and
         (__ \ "session_id").readNullable[String] and
-        (__ \ "agent_id").readNullable[String] and
+        (__ \ "agent").readNullable[Agent] and
         (__ \ "parent_thread_id").readNullable[String] and
+        (__ \ "stats").readNullable[SessionThreadStats] and
+        (__ \ "usage").readNullable[SessionThreadUsage] and
         (__ \ "created_at").readNullable[String] and
         (__ \ "updated_at").readNullable[String] and
         (__ \ "archived_at").readNullable[String]
@@ -1887,8 +1945,10 @@ trait JsonFormats {
     val writes: OWrites[SessionThread] = OWrites { t =>
       var obj = Json.obj("type" -> t.`type`, "id" -> t.id, "status" -> Json.toJson(t.status))
       t.sessionId.foreach(v => obj = obj + ("session_id" -> JsString(v)))
-      t.agentId.foreach(v => obj = obj + ("agent_id" -> JsString(v)))
+      t.agent.foreach(v => obj = obj + ("agent" -> Json.toJson(v)))
       t.parentThreadId.foreach(v => obj = obj + ("parent_thread_id" -> JsString(v)))
+      t.stats.foreach(v => obj = obj + ("stats" -> Json.toJson(v)))
+      t.usage.foreach(v => obj = obj + ("usage" -> Json.toJson(v)))
       t.createdAt.foreach(v => obj = obj + ("created_at" -> JsString(v)))
       t.updatedAt.foreach(v => obj = obj + ("updated_at" -> JsString(v)))
       t.archivedAt.foreach(v => obj = obj + ("archived_at" -> JsString(v)))
