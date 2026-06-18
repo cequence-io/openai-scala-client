@@ -94,8 +94,14 @@ import io.cequence.openaiscala.anthropic.domain.managedagents.{
   AgentModelConfig,
   AgentTool,
   AgentToolConfig,
+  Environment,
+  EnvironmentConfig,
+  EnvironmentDeleteResponse,
+  EnvironmentScope,
   Multiagent,
   MultiagentMember,
+  Networking,
+  Packages,
   PagedResponse,
   PermissionPolicy
 }
@@ -1472,6 +1478,125 @@ trait JsonFormats {
       p.nextPage.foreach(np => obj = obj + ("next_page" -> JsString(np)))
       obj
     }
+    Format(reads, writes)
+  }
+
+  // ============================================================================
+  // Managed Agents — environments
+  // ============================================================================
+
+  implicit lazy val environmentScopeFormat: Format[EnvironmentScope] =
+    JsonUtil.enumFormat[EnvironmentScope](EnvironmentScope.values: _*)
+
+  implicit lazy val networkingFormat: Format[Networking] = {
+    val reads: Reads[Networking] = Reads { json =>
+      (json \ "type").validate[String].flatMap {
+        case "unrestricted" => JsSuccess(Networking.Unrestricted)
+        case "limited" =>
+          for {
+            allowMcp <- (json \ "allow_mcp_servers").validateOpt[Boolean]
+            allowPkg <- (json \ "allow_package_managers").validateOpt[Boolean]
+            hosts <- (json \ "allowed_hosts").validateOpt[Seq[String]].map(_.getOrElse(Nil))
+          } yield Networking.Limited(allowMcp, allowPkg, hosts)
+        case other => JsError(s"Unknown networking type: $other")
+      }
+    }
+    val writes: OWrites[Networking] = OWrites {
+      case Networking.Unrestricted => Json.obj("type" -> "unrestricted")
+      case l: Networking.Limited =>
+        var obj = Json.obj("type" -> "limited")
+        l.allowMcpServers.foreach(b => obj = obj + ("allow_mcp_servers" -> JsBoolean(b)))
+        l.allowPackageManagers.foreach(b =>
+          obj = obj + ("allow_package_managers" -> JsBoolean(b))
+        )
+        if (l.allowedHosts.nonEmpty)
+          obj = obj + ("allowed_hosts" -> Json.toJson(l.allowedHosts))
+        obj
+    }
+    Format(reads, writes)
+  }
+
+  implicit lazy val packagesFormat: Format[Packages] = {
+    val reads: Reads[Packages] = (
+      (__ \ "apt").readWithDefault[Seq[String]](Nil) and
+        (__ \ "cargo").readWithDefault[Seq[String]](Nil) and
+        (__ \ "gem").readWithDefault[Seq[String]](Nil) and
+        (__ \ "go").readWithDefault[Seq[String]](Nil) and
+        (__ \ "npm").readWithDefault[Seq[String]](Nil) and
+        (__ \ "pip").readWithDefault[Seq[String]](Nil)
+    )(Packages.apply _)
+    val writes: OWrites[Packages] = OWrites { p =>
+      var obj = Json.obj("type" -> "packages")
+      if (p.apt.nonEmpty) obj = obj + ("apt" -> Json.toJson(p.apt))
+      if (p.cargo.nonEmpty) obj = obj + ("cargo" -> Json.toJson(p.cargo))
+      if (p.gem.nonEmpty) obj = obj + ("gem" -> Json.toJson(p.gem))
+      if (p.go.nonEmpty) obj = obj + ("go" -> Json.toJson(p.go))
+      if (p.npm.nonEmpty) obj = obj + ("npm" -> Json.toJson(p.npm))
+      if (p.pip.nonEmpty) obj = obj + ("pip" -> Json.toJson(p.pip))
+      obj
+    }
+    Format(reads, writes)
+  }
+
+  implicit lazy val environmentConfigFormat: Format[EnvironmentConfig] = {
+    val reads: Reads[EnvironmentConfig] = Reads { json =>
+      (json \ "type").validate[String].flatMap {
+        case "cloud" =>
+          for {
+            networking <- (json \ "networking").validateOpt[Networking]
+            packages <- (json \ "packages").validateOpt[Packages]
+          } yield EnvironmentConfig.Cloud(networking, packages)
+        case "self_hosted" => JsSuccess(EnvironmentConfig.SelfHosted)
+        case other         => JsError(s"Unknown environment config type: $other")
+      }
+    }
+    val writes: OWrites[EnvironmentConfig] = OWrites {
+      case c: EnvironmentConfig.Cloud =>
+        var obj = Json.obj("type" -> "cloud")
+        c.networking.foreach(n => obj = obj + ("networking" -> Json.toJson(n)))
+        c.packages.foreach(p => obj = obj + ("packages" -> Json.toJson(p)))
+        obj
+      case EnvironmentConfig.SelfHosted => Json.obj("type" -> "self_hosted")
+    }
+    Format(reads, writes)
+  }
+
+  implicit lazy val environmentFormat: Format[Environment] = {
+    val reads: Reads[Environment] = (
+      (__ \ "id").read[String] and
+        (__ \ "name").read[String] and
+        (__ \ "config").read[EnvironmentConfig] and
+        (__ \ "description").readNullable[String] and
+        (__ \ "metadata").readWithDefault[Map[String, String]](Map.empty) and
+        (__ \ "scope").readNullable[EnvironmentScope] and
+        (__ \ "created_at").readNullable[String] and
+        (__ \ "updated_at").readNullable[String] and
+        (__ \ "archived_at").readNullable[String]
+    )(Environment.apply _)
+
+    val writes: OWrites[Environment] = OWrites { e =>
+      var obj = Json.obj(
+        "type" -> e.`type`,
+        "id" -> e.id,
+        "name" -> e.name,
+        "config" -> Json.toJson(e.config)
+      )
+      e.description.foreach(d => obj = obj + ("description" -> JsString(d)))
+      if (e.metadata.nonEmpty) obj = obj + ("metadata" -> Json.toJson(e.metadata))
+      e.scope.foreach(s => obj = obj + ("scope" -> Json.toJson(s)))
+      e.createdAt.foreach(t => obj = obj + ("created_at" -> JsString(t)))
+      e.updatedAt.foreach(t => obj = obj + ("updated_at" -> JsString(t)))
+      e.archivedAt.foreach(t => obj = obj + ("archived_at" -> JsString(t)))
+      obj
+    }
+    Format(reads, writes)
+  }
+
+  implicit lazy val environmentDeleteResponseFormat: Format[EnvironmentDeleteResponse] = {
+    val reads: Reads[EnvironmentDeleteResponse] =
+      (__ \ "id").read[String].map(EnvironmentDeleteResponse(_))
+    val writes: OWrites[EnvironmentDeleteResponse] =
+      OWrites(r => Json.obj("id" -> r.id, "type" -> r.`type`))
     Format(reads, writes)
   }
 }

@@ -10,6 +10,7 @@ object EndPoint {
   case object files extends EndPoint
   // managed agents
   case object agents extends EndPoint
+  case object environments extends EndPoint
 }
 
 sealed abstract class Param(value: String = "") extends NamedEnumValue(value)
@@ -57,4 +58,6 @@ object Param {
   case object include_archived extends Param
   case object created_at_gte extends Param("created_at[gte]")
   case object created_at_lte extends Param("created_at[lte]")
+  case object config extends Param
+  case object scope extends Param
 }

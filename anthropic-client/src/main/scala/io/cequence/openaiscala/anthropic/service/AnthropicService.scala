@@ -31,7 +31,8 @@ import scala.concurrent.Future
 trait AnthropicService
     extends CloseableService
     with AnthropicServiceConsts
-    with AnthropicManagedAgentService {
+    with AnthropicManagedAgentService
+    with AnthropicEnvironmentService {
 
   /**
    * Creates a message.

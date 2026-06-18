@@ -147,6 +147,78 @@ class ManagedAgentsJsonFormatsSpec extends AnyWordSpecLike with Matchers with Js
       page.data.map(_.id) shouldBe Seq("a1")
       page.nextPage shouldBe Some("pg_2")
     }
+
+    // --- Environments ---
+
+    "serialize/deserialize networking (unrestricted and limited)" in {
+      testCodec[Networking](Networking.Unrestricted, """{"type":"unrestricted"}""")
+      testCodec[Networking](
+        Networking.Limited(
+          allowMcpServers = Some(false),
+          allowPackageManagers = Some(true),
+          allowedHosts = Seq("api.example.com")
+        ),
+        """{"type":"limited","allow_mcp_servers":false,""" +
+          """"allow_package_managers":true,"allowed_hosts":["api.example.com"]}"""
+      )
+    }
+
+    "serialize/deserialize a cloud environment config with packages" in {
+      testCodec[EnvironmentConfig](
+        EnvironmentConfig.Cloud(
+          networking = Some(Networking.Unrestricted),
+          packages = Some(Packages(pip = Seq("pandas", "numpy")))
+        ),
+        """{"type":"cloud","networking":{"type":"unrestricted"},""" +
+          """"packages":{"type":"packages","pip":["pandas","numpy"]}}"""
+      )
+    }
+
+    "serialize/deserialize a self-hosted environment config" in {
+      testCodec[EnvironmentConfig](EnvironmentConfig.SelfHosted, """{"type":"self_hosted"}""")
+    }
+
+    "serialize/deserialize the environment delete response" in {
+      testCodec[EnvironmentDeleteResponse](
+        EnvironmentDeleteResponse("env_1"),
+        """{"id":"env_1","type":"environment_deleted"}"""
+      )
+    }
+
+    "deserialize a full Environment response" in {
+      val json =
+        """{
+          |  "id": "env_011CZkZ9X2dpNyB7HsEFoRfW",
+          |  "archived_at": null,
+          |  "config": {
+          |    "networking": { "type": "limited", "allow_mcp_servers": false,
+          |      "allow_package_managers": true, "allowed_hosts": ["api.example.com"] },
+          |    "packages": { "type": "packages", "pip": ["pandas", "numpy"] },
+          |    "type": "cloud"
+          |  },
+          |  "created_at": "2026-03-15T10:00:00Z",
+          |  "description": "Python data-analysis env.",
+          |  "metadata": { "team": "ds" },
+          |  "name": "python-data-analysis",
+          |  "type": "environment",
+          |  "updated_at": "2026-03-15T10:00:00Z",
+          |  "scope": "organization"
+          |}""".stripMargin
+
+      val env = Json.parse(json).as[Environment]
+      env.id shouldBe "env_011CZkZ9X2dpNyB7HsEFoRfW"
+      env.name shouldBe "python-data-analysis"
+      env.scope shouldBe Some(EnvironmentScope.organization)
+      env.archivedAt shouldBe None
+      env.config match {
+        case EnvironmentConfig.Cloud(Some(n: Networking.Limited), Some(p)) =>
+          n.allowPackageManagers shouldBe Some(true)
+          n.allowedHosts shouldBe Seq("api.example.com")
+          p.pip shouldBe Seq("pandas", "numpy")
+        case other => fail(s"Unexpected config: $other")
+      }
+      Json.parse(Json.toJson(env).toString()).as[Environment] shouldBe env
+    }
   }
 
   private def testCodec[A](

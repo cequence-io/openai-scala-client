@@ -16,11 +16,18 @@ import io.cequence.openaiscala.anthropic.domain.response.{
   CreateMessageResponse
 }
 import io.cequence.openaiscala.anthropic.domain.OutputFormat
-import io.cequence.openaiscala.anthropic.domain.managedagents.{Agent, PagedResponse}
+import io.cequence.openaiscala.anthropic.domain.managedagents.{
+  Agent,
+  Environment,
+  EnvironmentDeleteResponse,
+  PagedResponse
+}
 import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicCreateAgentSettings,
+  AnthropicCreateEnvironmentSettings,
   AnthropicCreateMessageSettings,
   AnthropicUpdateAgentSettings,
+  AnthropicUpdateEnvironmentSettings,
   OutputConfig
 }
 import io.cequence.openaiscala.domain.JsonSchema
@@ -332,6 +339,31 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
     limit: Option[Int],
     page: Option[String]
   ): Future[PagedResponse[Agent]] = managedAgentsUnsupported
+
+  override def createEnvironment(
+    settings: AnthropicCreateEnvironmentSettings
+  ): Future[Environment] = managedAgentsUnsupported
+
+  override def listEnvironments(
+    includeArchived: Option[Boolean],
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[Environment]] = managedAgentsUnsupported
+
+  override def getEnvironment(environmentId: String): Future[Environment] =
+    managedAgentsUnsupported
+
+  override def updateEnvironment(
+    environmentId: String,
+    settings: AnthropicUpdateEnvironmentSettings
+  ): Future[Environment] = managedAgentsUnsupported
+
+  override def deleteEnvironment(
+    environmentId: String
+  ): Future[EnvironmentDeleteResponse] = managedAgentsUnsupported
+
+  override def archiveEnvironment(environmentId: String): Future[Environment] =
+    managedAgentsUnsupported
 
   def connectionInfo: BedrockConnectionSettings
 }

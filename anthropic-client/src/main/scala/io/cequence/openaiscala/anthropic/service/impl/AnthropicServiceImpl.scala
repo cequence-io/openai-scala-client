@@ -13,11 +13,18 @@ import io.cequence.openaiscala.anthropic.domain.response.{
   ContentBlockDelta,
   CreateMessageResponse
 }
-import io.cequence.openaiscala.anthropic.domain.managedagents.{Agent, PagedResponse}
+import io.cequence.openaiscala.anthropic.domain.managedagents.{
+  Agent,
+  Environment,
+  EnvironmentDeleteResponse,
+  PagedResponse
+}
 import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicCreateAgentSettings,
+  AnthropicCreateEnvironmentSettings,
   AnthropicCreateMessageSettings,
-  AnthropicUpdateAgentSettings
+  AnthropicUpdateAgentSettings,
+  AnthropicUpdateEnvironmentSettings
 }
 import io.cequence.openaiscala.anthropic.domain.skills.{
   DeleteSkillResponse,
@@ -404,4 +411,93 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     implicit writes: play.api.libs.json.Writes[T]
   ): Option[JsValue] =
     if (items.nonEmpty) Some(Json.toJson(items)) else None
+
+  // metadata patch: a None value clears the key (sent as JSON null).
+  private def metadataPatchJson(metadata: Map[String, Option[String]]): JsObject =
+    JsObject(metadata.map { case (k, v) => k -> v.map(JsString(_)).getOrElse(JsNull) })
+
+  // ============================================================================
+  // Managed Agents — environments
+  // ============================================================================
+
+  override def createEnvironment(
+    settings: AnthropicCreateEnvironmentSettings
+  ): Future[Environment] = {
+    val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
+      Param.name -> Some(JsString(settings.name)),
+      Param.config -> settings.config.map(Json.toJson(_)),
+      Param.description -> settings.description.map(JsString),
+      Param.metadata -> (if (settings.metadata.nonEmpty) Some(Json.toJson(settings.metadata))
+                         else None),
+      Param.scope -> settings.scope.map(Json.toJson(_))
+    )
+
+    execPOST(
+      EndPoint.environments,
+      bodyParams = bodyParams,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Environment])
+  }
+
+  override def listEnvironments(
+    includeArchived: Option[Boolean],
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[Environment]] = {
+    val queryParams = Seq(
+      Param.include_archived -> includeArchived.map(_.toString),
+      Param.limit -> limit.map(_.toString),
+      Param.page -> page
+    )
+
+    execGET(
+      EndPoint.environments,
+      params = queryParams,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[PagedResponse[Environment]])
+  }
+
+  override def getEnvironment(environmentId: String): Future[Environment] =
+    execGET(
+      EndPoint.environments,
+      Some(environmentId),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Environment])
+
+  override def updateEnvironment(
+    environmentId: String,
+    settings: AnthropicUpdateEnvironmentSettings
+  ): Future[Environment] = {
+    val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
+      Param.config -> settings.config.map(Json.toJson(_)),
+      Param.name -> settings.name.map(JsString),
+      Param.description -> settings.description.map(JsString),
+      Param.metadata -> settings.metadata.map(metadataPatchJson),
+      Param.scope -> settings.scope.map(Json.toJson(_))
+    )
+
+    execPOST(
+      EndPoint.environments,
+      Some(environmentId),
+      bodyParams = bodyParams,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Environment])
+  }
+
+  override def deleteEnvironment(
+    environmentId: String
+  ): Future[EnvironmentDeleteResponse] =
+    execDELETE(
+      EndPoint.environments,
+      Some(environmentId),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[EnvironmentDeleteResponse])
+
+  override def archiveEnvironment(environmentId: String): Future[Environment] =
+    execPOST(
+      EndPoint.environments,
+      Some(s"$environmentId/archive"),
+      bodyParams = Nil,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Environment])
 }
