@@ -130,6 +130,12 @@ import io.cequence.openaiscala.anthropic.domain.managedagents.{
   CredentialNetworking,
   McpOAuthRefresh,
   TokenEndpointAuth,
+  Memory,
+  MemoryEntry,
+  MemoryStore,
+  MemoryVersion,
+  MemoryVersionOperation,
+  MemoryView,
   WorkHeartbeatResponse,
   WorkQueueStats,
   WorkState
@@ -2169,6 +2175,117 @@ trait JsonFormats {
         "secret_value" -> a.secretValue,
         "networking" -> Json.toJson(a.networking)
       )
+  }
+
+  // ============================================================================
+  // Managed Agents — memory stores
+  // ============================================================================
+
+  implicit lazy val memoryViewFormat: Format[MemoryView] =
+    JsonUtil.enumFormat[MemoryView](MemoryView.values: _*)
+
+  implicit lazy val memoryVersionOperationFormat: Format[MemoryVersionOperation] =
+    JsonUtil.enumFormat[MemoryVersionOperation](MemoryVersionOperation.values: _*)
+
+  implicit lazy val memoryStoreFormat: Format[MemoryStore] = {
+    val reads: Reads[MemoryStore] = (
+      (__ \ "id").read[String] and
+        (__ \ "name").read[String] and
+        (__ \ "description").readNullable[String] and
+        (__ \ "metadata").readWithDefault[Map[String, String]](Map.empty) and
+        (__ \ "created_at").readNullable[String] and
+        (__ \ "updated_at").readNullable[String] and
+        (__ \ "archived_at").readNullable[String]
+    )(MemoryStore.apply _)
+    val writes: OWrites[MemoryStore] = OWrites { s =>
+      var obj = Json.obj("type" -> s.`type`, "id" -> s.id, "name" -> s.name)
+      s.description.foreach(d => obj = obj + ("description" -> JsString(d)))
+      if (s.metadata.nonEmpty) obj = obj + ("metadata" -> Json.toJson(s.metadata))
+      s.createdAt.foreach(t => obj = obj + ("created_at" -> JsString(t)))
+      s.updatedAt.foreach(t => obj = obj + ("updated_at" -> JsString(t)))
+      s.archivedAt.foreach(t => obj = obj + ("archived_at" -> JsString(t)))
+      obj
+    }
+    Format(reads, writes)
+  }
+
+  implicit lazy val memoryFormat: Format[Memory] = {
+    val reads: Reads[Memory] = (
+      (__ \ "id").read[String] and
+        (__ \ "path").read[String] and
+        (__ \ "content_sha256").read[String] and
+        (__ \ "content_size_bytes").read[Long] and
+        (__ \ "memory_store_id").read[String] and
+        (__ \ "memory_version_id").read[String] and
+        (__ \ "content").readNullable[String] and
+        (__ \ "created_at").readNullable[String] and
+        (__ \ "updated_at").readNullable[String]
+    )(Memory.apply _)
+    val writes: OWrites[Memory] = OWrites { m =>
+      var obj = Json.obj(
+        "type" -> m.`type`,
+        "id" -> m.id,
+        "path" -> m.path,
+        "content_sha256" -> m.contentSha256,
+        "content_size_bytes" -> m.contentSizeBytes,
+        "memory_store_id" -> m.memoryStoreId,
+        "memory_version_id" -> m.memoryVersionId
+      )
+      m.content.foreach(c => obj = obj + ("content" -> JsString(c)))
+      m.createdAt.foreach(t => obj = obj + ("created_at" -> JsString(t)))
+      m.updatedAt.foreach(t => obj = obj + ("updated_at" -> JsString(t)))
+      obj
+    }
+    Format(reads, writes)
+  }
+
+  implicit lazy val memoryEntryFormat: Format[MemoryEntry] = {
+    val reads: Reads[MemoryEntry] = Reads { json =>
+      (json \ "type").validate[String].flatMap {
+        case "memory"        => json.validate[Memory].map(MemoryEntry.Item(_))
+        case "memory_prefix" => (json \ "path").validate[String].map(MemoryEntry.Prefix(_))
+        case other           => JsError(s"Unknown memory entry type: $other")
+      }
+    }
+    val writes: OWrites[MemoryEntry] = OWrites {
+      case MemoryEntry.Item(m)   => Json.toJson(m).as[JsObject]
+      case p: MemoryEntry.Prefix => Json.obj("type" -> p.`type`, "path" -> p.path)
+    }
+    Format(reads, writes)
+  }
+
+  implicit lazy val memoryVersionFormat: Format[MemoryVersion] = {
+    val reads: Reads[MemoryVersion] = (
+      (__ \ "id").read[String] and
+        (__ \ "memory_id").read[String] and
+        (__ \ "memory_store_id").read[String] and
+        (__ \ "operation").read[MemoryVersionOperation] and
+        (__ \ "path").readNullable[String] and
+        (__ \ "content_sha256").readNullable[String] and
+        (__ \ "content_size_bytes").readNullable[Long] and
+        (__ \ "content").readNullable[String] and
+        (__ \ "created_by" \ "type").readNullable[String] and
+        (__ \ "created_at").readNullable[String] and
+        (__ \ "redacted_at").readNullable[String]
+    )(MemoryVersion.apply _)
+    val writes: OWrites[MemoryVersion] = OWrites { v =>
+      var obj = Json.obj(
+        "type" -> v.`type`,
+        "id" -> v.id,
+        "memory_id" -> v.memoryId,
+        "memory_store_id" -> v.memoryStoreId,
+        "operation" -> Json.toJson(v.operation)
+      )
+      v.path.foreach(p => obj = obj + ("path" -> JsString(p)))
+      v.contentSha256.foreach(s => obj = obj + ("content_sha256" -> JsString(s)))
+      v.contentSizeBytes.foreach(s => obj = obj + ("content_size_bytes" -> JsNumber(s)))
+      v.content.foreach(c => obj = obj + ("content" -> JsString(c)))
+      v.createdByType.foreach(t => obj = obj + ("created_by" -> Json.obj("type" -> t)))
+      v.createdAt.foreach(t => obj = obj + ("created_at" -> JsString(t)))
+      v.redactedAt.foreach(t => obj = obj + ("redacted_at" -> JsString(t)))
+      obj
+    }
+    Format(reads, writes)
   }
 
   // Credential responses omit secrets; type the discriminator + common fields, keep raw.

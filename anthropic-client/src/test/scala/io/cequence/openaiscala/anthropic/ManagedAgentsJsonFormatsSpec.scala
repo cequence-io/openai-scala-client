@@ -484,6 +484,47 @@ class ManagedAgentsJsonFormatsSpec extends AnyWordSpecLike with Matchers with Js
       c.mcpServerUrl shouldBe Some("https://mcp.example/sse")
       c.displayName shouldBe Some("My cred")
     }
+
+    // --- Memory stores ---
+
+    "serialize/deserialize a memory store" in {
+      testCodec[MemoryStore](
+        MemoryStore(id = "memstore_1", name = "prefs", description = Some("user prefs")),
+        """{"type":"memory_store","id":"memstore_1","name":"prefs","description":"user prefs"}"""
+      )
+    }
+
+    "deserialize a memory (basic view → content null)" in {
+      val json =
+        """{"type":"memory","id":"mem_1","path":"/notes.md","content_sha256":"abc",""" +
+          """"content_size_bytes":12,"memory_store_id":"memstore_1",""" +
+          """"memory_version_id":"memver_1","content":null}"""
+      val m = Json.parse(json).as[Memory]
+      m.id shouldBe "mem_1"
+      m.path shouldBe "/notes.md"
+      m.contentSizeBytes shouldBe 12L
+      m.content shouldBe None
+    }
+
+    "deserialize a memory-list entry union (memory and prefix)" in {
+      val memJson =
+        """{"type":"memory","id":"mem_1","path":"/a.md","content_sha256":"x",""" +
+          """"content_size_bytes":1,"memory_store_id":"ms_1","memory_version_id":"mv_1"}"""
+      Json.parse(memJson).as[MemoryEntry] shouldBe a[MemoryEntry.Item]
+      Json.parse("""{"type":"memory_prefix","path":"/dir/"}""").as[MemoryEntry] shouldBe
+        MemoryEntry.Prefix("/dir/")
+    }
+
+    "deserialize a memory version (incl. redacted nulls)" in {
+      val json =
+        """{"type":"memory_version","id":"memver_1","memory_id":"mem_1",""" +
+          """"memory_store_id":"memstore_1","operation":"modified",""" +
+          """"created_by":{"type":"api_actor"},"redacted_at":null,"content":null}"""
+      val v = Json.parse(json).as[MemoryVersion]
+      v.operation shouldBe MemoryVersionOperation.modified
+      v.createdByType shouldBe Some("api_actor")
+      v.content shouldBe None
+    }
   }
 
   private def testCodec[A](

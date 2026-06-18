@@ -32,6 +32,12 @@ import io.cequence.openaiscala.anthropic.domain.managedagents.{
   SessionStatus,
   SessionThread,
   Credential,
+  Memory,
+  MemoryEntry,
+  MemoryStore,
+  MemoryVersion,
+  MemoryVersionOperation,
+  MemoryView,
   Vault,
   WorkHeartbeatResponse,
   WorkQueueStats
@@ -41,6 +47,7 @@ import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicCreateCredentialSettings,
   AnthropicCreateDeploymentSettings,
   AnthropicCreateEnvironmentSettings,
+  AnthropicCreateMemoryStoreSettings,
   AnthropicCreateMessageSettings,
   AnthropicCreateSessionSettings,
   AnthropicCreateVaultSettings,
@@ -48,6 +55,7 @@ import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicUpdateCredentialSettings,
   AnthropicUpdateDeploymentSettings,
   AnthropicUpdateEnvironmentSettings,
+  AnthropicUpdateMemoryStoreSettings,
   AnthropicUpdateSessionSettings,
   AnthropicUpdateVaultSettings,
   OutputConfig
@@ -617,6 +625,84 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
     vaultId: String,
     credentialId: String
   ): Future[JsObject] = managedAgentsUnsupported
+
+  override def createMemoryStore(
+    settings: AnthropicCreateMemoryStoreSettings
+  ): Future[MemoryStore] = managedAgentsUnsupported
+
+  override def listMemoryStores(
+    includeArchived: Option[Boolean],
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[MemoryStore]] = managedAgentsUnsupported
+
+  override def getMemoryStore(memoryStoreId: String): Future[MemoryStore] =
+    managedAgentsUnsupported
+
+  override def updateMemoryStore(
+    memoryStoreId: String,
+    settings: AnthropicUpdateMemoryStoreSettings
+  ): Future[MemoryStore] = managedAgentsUnsupported
+
+  override def deleteMemoryStore(memoryStoreId: String): Future[Unit] =
+    managedAgentsUnsupported
+
+  override def archiveMemoryStore(memoryStoreId: String): Future[MemoryStore] =
+    managedAgentsUnsupported
+
+  override def createMemory(
+    memoryStoreId: String,
+    path: String,
+    content: String
+  ): Future[Memory] = managedAgentsUnsupported
+
+  override def listMemories(
+    memoryStoreId: String,
+    pathPrefix: Option[String],
+    depth: Option[Int],
+    view: Option[MemoryView],
+    orderBy: Option[String],
+    order: Option[String],
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[MemoryEntry]] = managedAgentsUnsupported
+
+  override def getMemory(
+    memoryStoreId: String,
+    memoryId: String,
+    view: Option[MemoryView]
+  ): Future[Memory] = managedAgentsUnsupported
+
+  override def updateMemory(
+    memoryStoreId: String,
+    memoryId: String,
+    content: Option[String],
+    path: Option[String],
+    expectedContentSha256: Option[String]
+  ): Future[Memory] = managedAgentsUnsupported
+
+  override def deleteMemory(
+    memoryStoreId: String,
+    memoryId: String
+  ): Future[Unit] = managedAgentsUnsupported
+
+  override def listMemoryVersions(
+    memoryStoreId: String,
+    memoryId: Option[String],
+    operation: Option[MemoryVersionOperation],
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[MemoryVersion]] = managedAgentsUnsupported
+
+  override def getMemoryVersion(
+    memoryStoreId: String,
+    memoryVersionId: String
+  ): Future[MemoryVersion] = managedAgentsUnsupported
+
+  override def redactMemoryVersion(
+    memoryStoreId: String,
+    memoryVersionId: String
+  ): Future[MemoryVersion] = managedAgentsUnsupported
 
   def connectionInfo: BedrockConnectionSettings
 }

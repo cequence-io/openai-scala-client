@@ -29,6 +29,12 @@ import io.cequence.openaiscala.anthropic.domain.managedagents.{
   SessionStatus,
   SessionThread,
   Credential,
+  Memory,
+  MemoryEntry,
+  MemoryStore,
+  MemoryVersion,
+  MemoryVersionOperation,
+  MemoryView,
   Vault,
   WorkHeartbeatResponse,
   WorkQueueStats
@@ -38,6 +44,7 @@ import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicCreateCredentialSettings,
   AnthropicCreateDeploymentSettings,
   AnthropicCreateEnvironmentSettings,
+  AnthropicCreateMemoryStoreSettings,
   AnthropicCreateMessageSettings,
   AnthropicCreateSessionSettings,
   AnthropicCreateVaultSettings,
@@ -45,6 +52,7 @@ import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicUpdateCredentialSettings,
   AnthropicUpdateDeploymentSettings,
   AnthropicUpdateEnvironmentSettings,
+  AnthropicUpdateMemoryStoreSettings,
   AnthropicUpdateSessionSettings,
   AnthropicUpdateVaultSettings
 }
@@ -1147,4 +1155,206 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       bodyParams = Nil,
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[JsObject])
+
+  // ============================================================================
+  // Managed Agents — memory stores
+  // ============================================================================
+
+  override def createMemoryStore(
+    settings: AnthropicCreateMemoryStoreSettings
+  ): Future[MemoryStore] = {
+    val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
+      Param.name -> Some(JsString(settings.name)),
+      Param.description -> settings.description.map(JsString),
+      Param.metadata -> (if (settings.metadata.nonEmpty) Some(Json.toJson(settings.metadata))
+                         else None)
+    )
+    execPOST(
+      EndPoint.memory_stores,
+      bodyParams = bodyParams,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[MemoryStore])
+  }
+
+  override def listMemoryStores(
+    includeArchived: Option[Boolean],
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[MemoryStore]] =
+    execGET(
+      EndPoint.memory_stores,
+      params = Seq(
+        Param.include_archived -> includeArchived.map(_.toString),
+        Param.limit -> limit.map(_.toString),
+        Param.page -> page
+      ),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[PagedResponse[MemoryStore]])
+
+  override def getMemoryStore(memoryStoreId: String): Future[MemoryStore] =
+    execGET(
+      EndPoint.memory_stores,
+      Some(memoryStoreId),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[MemoryStore])
+
+  override def updateMemoryStore(
+    memoryStoreId: String,
+    settings: AnthropicUpdateMemoryStoreSettings
+  ): Future[MemoryStore] = {
+    val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
+      Param.name -> settings.name.map(JsString),
+      Param.description -> settings.description.map(JsString),
+      Param.metadata -> settings.metadata.map(metadataPatchJson)
+    )
+    execPOST(
+      EndPoint.memory_stores,
+      Some(memoryStoreId),
+      bodyParams = bodyParams,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[MemoryStore])
+  }
+
+  override def deleteMemoryStore(memoryStoreId: String): Future[Unit] =
+    execDELETE(
+      EndPoint.memory_stores,
+      Some(memoryStoreId),
+      extraHeaders = managedAgentsHeaders
+    ).map(_ => ())
+
+  override def archiveMemoryStore(memoryStoreId: String): Future[MemoryStore] =
+    execPOST(
+      EndPoint.memory_stores,
+      Some(s"$memoryStoreId/archive"),
+      bodyParams = Nil,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[MemoryStore])
+
+  // -- Memories --
+
+  override def createMemory(
+    memoryStoreId: String,
+    path: String,
+    content: String
+  ): Future[Memory] =
+    execPOST(
+      EndPoint.memory_stores,
+      Some(s"$memoryStoreId/memories"),
+      bodyParams = Seq(
+        Param.path -> Some(JsString(path)),
+        Param.content -> Some(JsString(content))
+      ),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Memory])
+
+  override def listMemories(
+    memoryStoreId: String,
+    pathPrefix: Option[String],
+    depth: Option[Int],
+    view: Option[MemoryView],
+    orderBy: Option[String],
+    order: Option[String],
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[MemoryEntry]] =
+    execGET(
+      EndPoint.memory_stores,
+      Some(s"$memoryStoreId/memories"),
+      params = Seq(
+        Param.path_prefix -> pathPrefix,
+        Param.depth -> depth.map(_.toString),
+        Param.view -> view.map(_.toString),
+        Param.order_by -> orderBy,
+        Param.order -> order,
+        Param.limit -> limit.map(_.toString),
+        Param.page -> page
+      ),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[PagedResponse[MemoryEntry]])
+
+  override def getMemory(
+    memoryStoreId: String,
+    memoryId: String,
+    view: Option[MemoryView]
+  ): Future[Memory] =
+    execGET(
+      EndPoint.memory_stores,
+      Some(s"$memoryStoreId/memories/$memoryId"),
+      params = Seq(Param.view -> view.map(_.toString)),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Memory])
+
+  override def updateMemory(
+    memoryStoreId: String,
+    memoryId: String,
+    content: Option[String],
+    path: Option[String],
+    expectedContentSha256: Option[String]
+  ): Future[Memory] = {
+    val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
+      Param.content -> content.map(JsString),
+      Param.path -> path.map(JsString),
+      Param.precondition -> expectedContentSha256.map(sha =>
+        Json.obj("type" -> "content_sha256", "content_sha256" -> sha)
+      )
+    )
+    execPOST(
+      EndPoint.memory_stores,
+      Some(s"$memoryStoreId/memories/$memoryId"),
+      bodyParams = bodyParams,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Memory])
+  }
+
+  override def deleteMemory(
+    memoryStoreId: String,
+    memoryId: String
+  ): Future[Unit] =
+    execDELETE(
+      EndPoint.memory_stores,
+      Some(s"$memoryStoreId/memories/$memoryId"),
+      extraHeaders = managedAgentsHeaders
+    ).map(_ => ())
+
+  // -- Memory versions --
+
+  override def listMemoryVersions(
+    memoryStoreId: String,
+    memoryId: Option[String],
+    operation: Option[MemoryVersionOperation],
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[MemoryVersion]] =
+    execGET(
+      EndPoint.memory_stores,
+      Some(s"$memoryStoreId/memory_versions"),
+      params = Seq(
+        Param.memory_id -> memoryId,
+        Param.operation -> operation.map(_.toString),
+        Param.limit -> limit.map(_.toString),
+        Param.page -> page
+      ),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[PagedResponse[MemoryVersion]])
+
+  override def getMemoryVersion(
+    memoryStoreId: String,
+    memoryVersionId: String
+  ): Future[MemoryVersion] =
+    execGET(
+      EndPoint.memory_stores,
+      Some(s"$memoryStoreId/memory_versions/$memoryVersionId"),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[MemoryVersion])
+
+  override def redactMemoryVersion(
+    memoryStoreId: String,
+    memoryVersionId: String
+  ): Future[MemoryVersion] =
+    execPOST(
+      EndPoint.memory_stores,
+      Some(s"$memoryStoreId/memory_versions/$memoryVersionId/redact"),
+      bodyParams = Nil,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[MemoryVersion])
 }
