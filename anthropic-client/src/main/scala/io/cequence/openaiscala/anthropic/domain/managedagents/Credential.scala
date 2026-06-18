@@ -29,7 +29,19 @@ final case class McpOAuthRefresh(
   refreshToken: String,
   tokenEndpoint: String,
   tokenEndpointAuth: TokenEndpointAuth,
+  resource: Option[String] = None,
   scope: Option[String] = None
+)
+
+/**
+ * OAuth refresh-token configuration patch (update side). Only the listed fields are mutable;
+ * `client_id`, `token_endpoint`, and `resource` are immutable and omitted. The token-endpoint
+ * auth on update only allows the `client_secret_basic`/`client_secret_post` variants.
+ */
+final case class McpOAuthRefreshUpdate(
+  refreshToken: Option[String] = None,
+  scope: Option[String] = None,
+  tokenEndpointAuth: Option[TokenEndpointAuth] = None
 )
 
 /** Network access policy for an environment-variable credential. */
@@ -81,6 +93,49 @@ object CredentialAuth {
 }
 
 /**
+ * Credential auth material on the update side. Immutable identifiers (`mcp_server_url`,
+ * `secret_name`, `client_id`, `token_endpoint`) cannot be changed and are therefore omitted;
+ * every remaining field is optional (a patch). Secrets are write-only.
+ */
+sealed trait CredentialAuthUpdate
+
+object CredentialAuthUpdate {
+
+  final case class McpOAuth(
+    accessToken: Option[String] = None,
+    expiresAt: Option[String] = None,
+    refresh: Option[McpOAuthRefreshUpdate] = None
+  ) extends CredentialAuthUpdate {
+    val `type`: String = "mcp_oauth"
+  }
+
+  final case class StaticBearer(
+    token: Option[String] = None
+  ) extends CredentialAuthUpdate {
+    val `type`: String = "static_bearer"
+  }
+
+  final case class EnvironmentVariable(
+    networking: Option[CredentialNetworking] = None,
+    secretValue: Option[String] = None
+  ) extends CredentialAuthUpdate {
+    val `type`: String = "environment_variable"
+  }
+}
+
+/**
+ * Non-secret OAuth refresh configuration as returned in a credential response. The
+ * `refresh_token` itself is write-only and never echoed.
+ */
+final case class CredentialRefreshResponse(
+  clientId: String,
+  tokenEndpoint: String,
+  tokenEndpointAuthType: String,
+  resource: Option[String] = None,
+  scope: Option[String] = None
+)
+
+/**
  * A credential stored in a vault. Responses omit all secret material; the auth discriminator
  * and non-secret fields are typed, and the full payload is retained in [[raw]].
  *
@@ -94,6 +149,8 @@ final case class Credential(
   displayName: Option[String] = None,
   mcpServerUrl: Option[String] = None,
   expiresAt: Option[String] = None,
+  refresh: Option[CredentialRefreshResponse] = None,
+  metadata: Map[String, String] = Map.empty,
   createdAt: Option[String] = None,
   updatedAt: Option[String] = None,
   archivedAt: Option[String] = None,

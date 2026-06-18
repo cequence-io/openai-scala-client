@@ -429,7 +429,8 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
 
   override def stopWork(
     environmentId: String,
-    workId: String
+    workId: String,
+    force: Option[Boolean]
   ): Future[SelfHostedWork] =
     managedAgentsUnsupported
 
@@ -602,6 +603,7 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
 
   override def listCredentials(
     vaultId: String,
+    includeArchived: Option[Boolean],
     limit: Option[Int],
     page: Option[String]
   ): Future[PagedResponse[Credential]] = managedAgentsUnsupported
@@ -689,7 +691,8 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
 
   override def deleteMemory(
     memoryStoreId: String,
-    memoryId: String
+    memoryId: String,
+    expectedContentSha256: Option[String]
   ): Future[Unit] = managedAgentsUnsupported
 
   override def listMemoryVersions(

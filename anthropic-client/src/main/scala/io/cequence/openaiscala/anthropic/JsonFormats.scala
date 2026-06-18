@@ -131,10 +131,14 @@ import io.cequence.openaiscala.anthropic.domain.managedagents.{
   Vault,
   Credential,
   CredentialAuth,
+  CredentialAuthUpdate,
   CredentialNetworking,
+  CredentialRefreshResponse,
   McpOAuthRefresh,
+  McpOAuthRefreshUpdate,
   TokenEndpointAuth,
   Memory,
+  MemoryActor,
   MemoryEntry,
   MemoryStore,
   MemoryVersion,
@@ -2204,8 +2208,18 @@ trait JsonFormats {
       "token_endpoint" -> r.tokenEndpoint,
       "token_endpoint_auth" -> Json.toJson(r.tokenEndpointAuth)
     )
+    r.resource.foreach(s => obj = obj + ("resource" -> JsString(s)))
     r.scope.foreach(s => obj = obj + ("scope" -> JsString(s)))
     obj
+  }
+
+  implicit lazy val mcpOAuthRefreshUpdateWrites: OWrites[McpOAuthRefreshUpdate] = OWrites {
+    r =>
+      var obj = Json.obj()
+      r.refreshToken.foreach(t => obj = obj + ("refresh_token" -> JsString(t)))
+      r.scope.foreach(s => obj = obj + ("scope" -> JsString(s)))
+      r.tokenEndpointAuth.foreach(a => obj = obj + ("token_endpoint_auth" -> Json.toJson(a)))
+      obj
   }
 
   implicit lazy val credentialNetworkingWrites: OWrites[CredentialNetworking] = OWrites {
@@ -2235,6 +2249,24 @@ trait JsonFormats {
         "secret_value" -> a.secretValue,
         "networking" -> Json.toJson(a.networking)
       )
+  }
+
+  implicit lazy val credentialAuthUpdateWrites: OWrites[CredentialAuthUpdate] = OWrites {
+    case a: CredentialAuthUpdate.McpOAuth =>
+      var obj = Json.obj("type" -> a.`type`)
+      a.accessToken.foreach(t => obj = obj + ("access_token" -> JsString(t)))
+      a.expiresAt.foreach(t => obj = obj + ("expires_at" -> JsString(t)))
+      a.refresh.foreach(r => obj = obj + ("refresh" -> Json.toJson(r)))
+      obj
+    case a: CredentialAuthUpdate.StaticBearer =>
+      var obj = Json.obj("type" -> a.`type`)
+      a.token.foreach(t => obj = obj + ("token" -> JsString(t)))
+      obj
+    case a: CredentialAuthUpdate.EnvironmentVariable =>
+      var obj = Json.obj("type" -> a.`type`)
+      a.networking.foreach(n => obj = obj + ("networking" -> Json.toJson(n)))
+      a.secretValue.foreach(v => obj = obj + ("secret_value" -> JsString(v)))
+      obj
   }
 
   // ============================================================================
@@ -2314,6 +2346,20 @@ trait JsonFormats {
     Format(reads, writes)
   }
 
+  // An actor object: type the discriminator, keep all identity fields in raw.
+  implicit lazy val memoryActorFormat: Format[MemoryActor] = {
+    val reads: Reads[MemoryActor] = Reads {
+      case obj: JsObject =>
+        JsSuccess(MemoryActor((obj \ "type").asOpt[String].getOrElse(""), obj))
+      case other => JsError(s"Expected a memory actor object, got: $other")
+    }
+    val writes: OWrites[MemoryActor] = OWrites { a =>
+      // ensure the discriminator is present even if raw was built by hand
+      if ((a.raw \ "type").isDefined) a.raw else a.raw + ("type" -> JsString(a.`type`))
+    }
+    Format(reads, writes)
+  }
+
   implicit lazy val memoryVersionFormat: Format[MemoryVersion] = {
     val reads: Reads[MemoryVersion] = (
       (__ \ "id").read[String] and
@@ -2324,8 +2370,9 @@ trait JsonFormats {
         (__ \ "content_sha256").readNullable[String] and
         (__ \ "content_size_bytes").readNullable[Long] and
         (__ \ "content").readNullable[String] and
-        (__ \ "created_by" \ "type").readNullable[String] and
+        (__ \ "created_by").readNullable[MemoryActor] and
         (__ \ "created_at").readNullable[String] and
+        (__ \ "redacted_by").readNullable[MemoryActor] and
         (__ \ "redacted_at").readNullable[String]
     )(MemoryVersion.apply _)
     val writes: OWrites[MemoryVersion] = OWrites { v =>
@@ -2340,8 +2387,9 @@ trait JsonFormats {
       v.contentSha256.foreach(s => obj = obj + ("content_sha256" -> JsString(s)))
       v.contentSizeBytes.foreach(s => obj = obj + ("content_size_bytes" -> JsNumber(s)))
       v.content.foreach(c => obj = obj + ("content" -> JsString(c)))
-      v.createdByType.foreach(t => obj = obj + ("created_by" -> Json.obj("type" -> t)))
+      v.createdBy.foreach(a => obj = obj + ("created_by" -> Json.toJson(a)))
       v.createdAt.foreach(t => obj = obj + ("created_at" -> JsString(t)))
+      v.redactedBy.foreach(a => obj = obj + ("redacted_by" -> Json.toJson(a)))
       v.redactedAt.foreach(t => obj = obj + ("redacted_at" -> JsString(t)))
       obj
     }
@@ -2352,6 +2400,17 @@ trait JsonFormats {
   implicit lazy val credentialFormat: Format[Credential] = {
     val reads: Reads[Credential] = Reads {
       case obj: JsObject =>
+        val refreshJson = obj \ "auth" \ "refresh"
+        val refresh = refreshJson.asOpt[JsObject].map { r =>
+          CredentialRefreshResponse(
+            clientId = (r \ "client_id").asOpt[String].getOrElse(""),
+            tokenEndpoint = (r \ "token_endpoint").asOpt[String].getOrElse(""),
+            tokenEndpointAuthType =
+              (r \ "token_endpoint_auth" \ "type").asOpt[String].getOrElse(""),
+            resource = (r \ "resource").asOpt[String],
+            scope = (r \ "scope").asOpt[String]
+          )
+        }
         JsSuccess(
           Credential(
             id = (obj \ "id").asOpt[String].getOrElse(""),
@@ -2359,6 +2418,8 @@ trait JsonFormats {
             displayName = (obj \ "display_name").asOpt[String],
             mcpServerUrl = (obj \ "auth" \ "mcp_server_url").asOpt[String],
             expiresAt = (obj \ "auth" \ "expires_at").asOpt[String],
+            refresh = refresh,
+            metadata = (obj \ "metadata").asOpt[Map[String, String]].getOrElse(Map.empty),
             createdAt = (obj \ "created_at").asOpt[String],
             updatedAt = (obj \ "updated_at").asOpt[String],
             archivedAt = (obj \ "archived_at").asOpt[String],

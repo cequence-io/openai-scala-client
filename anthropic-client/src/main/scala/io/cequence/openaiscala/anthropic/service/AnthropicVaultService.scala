@@ -61,6 +61,7 @@ trait AnthropicVaultService {
   /** Lists credentials in a vault (`GET /v1/vaults/{vaultId}/credentials`). */
   def listCredentials(
     vaultId: String,
+    includeArchived: Option[Boolean] = None,
     limit: Option[Int] = None,
     page: Option[String] = None
   ): Future[PagedResponse[Credential]]

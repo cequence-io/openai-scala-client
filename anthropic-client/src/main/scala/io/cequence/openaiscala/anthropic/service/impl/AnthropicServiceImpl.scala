@@ -67,7 +67,16 @@ import io.cequence.openaiscala.anthropic.domain.skills.{
 }
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
 import io.cequence.wsclient.StreamResponseImplicits.StreamSafeOps
-import play.api.libs.json.{JsArray, JsNull, JsNumber, JsObject, JsString, JsValue, Json}
+import play.api.libs.json.{
+  JsArray,
+  JsBoolean,
+  JsNull,
+  JsNumber,
+  JsObject,
+  JsString,
+  JsValue,
+  Json
+}
 
 import java.io.File
 import scala.concurrent.Future
@@ -600,12 +609,13 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
   override def stopWork(
     environmentId: String,
-    workId: String
+    workId: String,
+    force: Option[Boolean]
   ): Future[SelfHostedWork] =
     execPOST(
       EndPoint.environments,
       Some(s"$environmentId/work/$workId/stop"),
-      bodyParams = Nil,
+      bodyParams = Seq(Param.force -> force.map(JsBoolean(_))),
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[SelfHostedWork])
 
@@ -1086,7 +1096,9 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   ): Future[Credential] = {
     val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
       Param.auth -> Some(Json.toJson(settings.auth)),
-      Param.display_name -> settings.displayName.map(JsString)
+      Param.display_name -> settings.displayName.map(JsString),
+      Param.metadata -> (if (settings.metadata.nonEmpty) Some(Json.toJson(settings.metadata))
+                         else None)
     )
     execPOST(
       EndPoint.vaults,
@@ -1098,13 +1110,18 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
   override def listCredentials(
     vaultId: String,
+    includeArchived: Option[Boolean],
     limit: Option[Int],
     page: Option[String]
   ): Future[PagedResponse[Credential]] =
     execGET(
       EndPoint.vaults,
       Some(s"$vaultId/credentials"),
-      params = Seq(Param.limit -> limit.map(_.toString), Param.page -> page),
+      params = Seq(
+        Param.include_archived -> includeArchived.map(_.toString),
+        Param.limit -> limit.map(_.toString),
+        Param.page -> page
+      ),
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[PagedResponse[Credential]])
 
@@ -1125,7 +1142,8 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   ): Future[Credential] = {
     val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
       Param.auth -> settings.auth.map(Json.toJson(_)),
-      Param.display_name -> settings.displayName.map(JsString)
+      Param.display_name -> settings.displayName.map(JsString),
+      Param.metadata -> settings.metadata.map(metadataPatchJson)
     )
     execPOST(
       EndPoint.vaults,
@@ -1319,11 +1337,13 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
   override def deleteMemory(
     memoryStoreId: String,
-    memoryId: String
+    memoryId: String,
+    expectedContentSha256: Option[String]
   ): Future[Unit] =
     execDELETE(
       EndPoint.memory_stores,
       Some(s"$memoryStoreId/memories/$memoryId"),
+      params = Seq(Param.expected_content_sha256 -> expectedContentSha256),
       extraHeaders = managedAgentsHeaders
     ).map(_ => ())
 

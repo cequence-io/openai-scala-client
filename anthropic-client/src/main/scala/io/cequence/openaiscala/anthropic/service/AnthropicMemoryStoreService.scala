@@ -98,10 +98,16 @@ trait AnthropicMemoryStoreService {
     expectedContentSha256: Option[String] = None
   ): Future[Memory]
 
-  /** Deletes a memory (`DELETE /v1/memory_stores/{id}/memories/{memoryId}`). */
+  /**
+   * Deletes a memory (`DELETE /v1/memory_stores/{id}/memories/{memoryId}`).
+   *
+   * @param expectedContentSha256
+   *   Optimistic-concurrency precondition; on mismatch the call fails with a 409.
+   */
   def deleteMemory(
     memoryStoreId: String,
-    memoryId: String
+    memoryId: String,
+    expectedContentSha256: Option[String] = None
   ): Future[Unit]
 
   // -- Memory versions --

@@ -70,6 +70,7 @@ object Param {
   case object reclaim_older_than_ms extends Param
   case object desired_ttl_seconds extends Param
   case object expected_last_heartbeat extends Param
+  case object force extends Param
   // sessions
   case object agent extends Param
   case object environment_id extends Param
@@ -101,4 +102,5 @@ object Param {
   case object order_by extends Param
   case object memory_id extends Param
   case object operation extends Param
+  case object expected_content_sha256 extends Param
 }

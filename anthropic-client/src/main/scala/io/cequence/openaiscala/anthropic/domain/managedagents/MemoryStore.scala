@@ -1,6 +1,7 @@
 package io.cequence.openaiscala.anthropic.domain.managedagents
 
 import io.cequence.wsclient.domain.EnumValue
+import play.api.libs.json.JsObject
 
 /** Whether memory list/read returns content (`full`) or metadata only (`basic`). */
 sealed trait MemoryView extends EnumValue
@@ -74,8 +75,19 @@ object MemoryEntry {
 }
 
 /**
+ * The actor that created or redacted a memory version. The discriminating `type` (e.g.
+ * `api_key`, `agent`, `session`) is typed; every other identity field (`api_key_id`,
+ * `agent_id`, `session_id`, …) is preserved verbatim in [[raw]].
+ */
+final case class MemoryActor(
+  `type`: String,
+  raw: JsObject = JsObject.empty
+)
+
+/**
  * One immutable, attributed row in a memory's append-only history. A redacted version returns
- * `content`/`path`/`contentSha256`/`contentSizeBytes` as `None` — branch on [[redactedAt]].
+ * `content`/`path`/`contentSha256`/`contentSizeBytes` as `None` — branch on [[redactedAt]];
+ * [[redactedBy]] then carries the redacting actor.
  */
 final case class MemoryVersion(
   id: String,
@@ -86,9 +98,13 @@ final case class MemoryVersion(
   contentSha256: Option[String] = None,
   contentSizeBytes: Option[Long] = None,
   content: Option[String] = None,
-  createdByType: Option[String] = None,
+  createdBy: Option[MemoryActor] = None,
   createdAt: Option[String] = None,
+  redactedBy: Option[MemoryActor] = None,
   redactedAt: Option[String] = None
 ) {
   val `type`: String = "memory_version"
+
+  /** Convenience accessor for the creating actor's discriminator type. */
+  def createdByType: Option[String] = createdBy.map(_.`type`)
 }

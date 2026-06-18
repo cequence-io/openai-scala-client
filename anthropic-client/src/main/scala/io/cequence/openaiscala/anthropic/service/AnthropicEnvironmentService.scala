@@ -113,10 +113,16 @@ trait AnthropicEnvironmentService {
     expectedLastHeartbeat: Option[String] = None
   ): Future[WorkHeartbeatResponse]
 
-  /** Stops a work item (`POST /v1/environments/{id}/work/{workId}/stop`). */
+  /**
+   * Stops a work item (`POST /v1/environments/{id}/work/{workId}/stop`).
+   *
+   * @param force
+   *   Stop even if the worker has not acknowledged; defaults to the server's behavior.
+   */
   def stopWork(
     environmentId: String,
-    workId: String
+    workId: String,
+    force: Option[Boolean] = None
   ): Future[SelfHostedWork]
 
   /**

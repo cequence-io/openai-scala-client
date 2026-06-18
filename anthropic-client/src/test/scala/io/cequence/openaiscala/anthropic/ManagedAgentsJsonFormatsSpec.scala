@@ -508,15 +508,70 @@ class ManagedAgentsJsonFormatsSpec extends AnyWordSpecLike with Matchers with Js
       )
     }
 
-    "deserialize a credential response (secrets omitted)" in {
+    "serialize credential update-auth variants (mutable fields only)" in {
+      Json.toJson(
+        CredentialAuthUpdate.StaticBearer(token = Some("tok2")): CredentialAuthUpdate
+      ) shouldBe Json.parse("""{"type":"static_bearer","token":"tok2"}""")
+
+      Json.toJson(
+        CredentialAuthUpdate.McpOAuth(
+          accessToken = Some("at2"),
+          refresh = Some(
+            McpOAuthRefreshUpdate(
+              refreshToken = Some("rt2"),
+              tokenEndpointAuth = Some(TokenEndpointAuth.ClientSecretPost("sec2"))
+            )
+          )
+        ): CredentialAuthUpdate
+      ) shouldBe Json.parse(
+        """{"type":"mcp_oauth","access_token":"at2","refresh":{"refresh_token":"rt2",""" +
+          """"token_endpoint_auth":{"type":"client_secret_post","client_secret":"sec2"}}}"""
+      )
+
+      Json.toJson(
+        CredentialAuthUpdate.EnvironmentVariable(
+          networking = Some(CredentialNetworking.Unrestricted),
+          secretValue = Some("v2")
+        ): CredentialAuthUpdate
+      ) shouldBe Json.parse(
+        """{"type":"environment_variable","networking":{"type":"unrestricted"},""" +
+          """"secret_value":"v2"}"""
+      )
+    }
+
+    "serialize an mcp_oauth refresh with the resource indicator" in {
+      Json.toJson(
+        McpOAuthRefresh(
+          clientId = "cid",
+          refreshToken = "rt",
+          tokenEndpoint = "https://auth.example/token",
+          tokenEndpointAuth = TokenEndpointAuth.None_,
+          resource = Some("https://mcp.example/")
+        )
+      ) shouldBe Json.parse(
+        """{"client_id":"cid","refresh_token":"rt",""" +
+          """"token_endpoint":"https://auth.example/token",""" +
+          """"token_endpoint_auth":{"type":"none"},"resource":"https://mcp.example/"}"""
+      )
+    }
+
+    "deserialize a credential response (secrets omitted, refresh + metadata typed)" in {
       val json =
         """{"id":"cred_1","display_name":"My cred","created_at":"2026-06-18T00:00:00Z",""" +
-          """"auth":{"type":"static_bearer","mcp_server_url":"https://mcp.example/sse"}}"""
+          """"metadata":{"env":"prod"},""" +
+          """"auth":{"type":"mcp_oauth","mcp_server_url":"https://mcp.example/sse",""" +
+          """"expires_at":"2026-07-01T00:00:00Z","refresh":{"client_id":"cid",""" +
+          """"token_endpoint":"https://auth.example/token",""" +
+          """"token_endpoint_auth":{"type":"client_secret_basic"},""" +
+          """"resource":"https://mcp.example/","scope":"read"}}}"""
       val c = Json.parse(json).as[Credential]
       c.id shouldBe "cred_1"
-      c.authType shouldBe "static_bearer"
+      c.authType shouldBe "mcp_oauth"
       c.mcpServerUrl shouldBe Some("https://mcp.example/sse")
-      c.displayName shouldBe Some("My cred")
+      c.metadata shouldBe Map("env" -> "prod")
+      c.refresh.map(_.clientId) shouldBe Some("cid")
+      c.refresh.flatMap(_.resource) shouldBe Some("https://mcp.example/")
+      c.refresh.map(_.tokenEndpointAuthType) shouldBe Some("client_secret_basic")
     }
 
     // --- Memory stores ---
@@ -549,15 +604,21 @@ class ManagedAgentsJsonFormatsSpec extends AnyWordSpecLike with Matchers with Js
         MemoryEntry.Prefix("/dir/")
     }
 
-    "deserialize a memory version (incl. redacted nulls)" in {
+    "deserialize a memory version preserving the full actor + redacted_by" in {
       val json =
         """{"type":"memory_version","id":"memver_1","memory_id":"mem_1",""" +
           """"memory_store_id":"memstore_1","operation":"modified",""" +
-          """"created_by":{"type":"api_actor"},"redacted_at":null,"content":null}"""
+          """"created_by":{"type":"api_key","api_key_id":"apikey_1"},""" +
+          """"redacted_by":{"type":"agent","agent_id":"agent_1"},""" +
+          """"redacted_at":"2026-06-18T00:00:00Z","content":null}"""
       val v = Json.parse(json).as[MemoryVersion]
       v.operation shouldBe MemoryVersionOperation.modified
-      v.createdByType shouldBe Some("api_actor")
+      v.createdByType shouldBe Some("api_key")
+      (v.createdBy.get.raw \ "api_key_id").as[String] shouldBe "apikey_1"
+      v.redactedBy.map(_.`type`) shouldBe Some("agent")
+      (v.redactedBy.get.raw \ "agent_id").as[String] shouldBe "agent_1"
       v.content shouldBe None
+      Json.parse(Json.toJson(v).toString()).as[MemoryVersion] shouldBe v
     }
   }
 
