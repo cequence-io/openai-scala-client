@@ -121,6 +121,7 @@ import io.cequence.openaiscala.anthropic.domain.managedagents.{
   Deployment,
   DeploymentInitialEvent,
   DeploymentPausedReason,
+  DeploymentRun,
   DeploymentStatus,
   Schedule,
   WorkHeartbeatResponse,
@@ -2085,6 +2086,26 @@ trait JsonFormats {
       d.archivedAt.foreach(t => obj = obj + ("archived_at" -> JsString(t)))
       obj
     }
+    Format(reads, writes)
+  }
+
+  // Deployment-run schema is unpublished; type common fields, keep the raw payload.
+  implicit lazy val deploymentRunFormat: Format[DeploymentRun] = {
+    val reads: Reads[DeploymentRun] = Reads {
+      case obj: JsObject =>
+        JsSuccess(
+          DeploymentRun(
+            id = (obj \ "id").asOpt[String],
+            deploymentId = (obj \ "deployment_id").asOpt[String],
+            sessionId = (obj \ "session_id").asOpt[String],
+            status = (obj \ "status").asOpt[String],
+            createdAt = (obj \ "created_at").asOpt[String],
+            raw = obj
+          )
+        )
+      case other => JsError(s"Expected a deployment run object, got: $other")
+    }
+    val writes: OWrites[DeploymentRun] = OWrites(_.raw)
     Format(reads, writes)
   }
 }

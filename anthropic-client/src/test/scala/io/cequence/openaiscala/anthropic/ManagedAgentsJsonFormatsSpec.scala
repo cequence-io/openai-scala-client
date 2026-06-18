@@ -413,6 +413,18 @@ class ManagedAgentsJsonFormatsSpec extends AnyWordSpecLike with Matchers with Js
       d.initialEvents shouldBe Seq(DeploymentInitialEvent.UserMessage("go"))
       Json.parse(Json.toJson(d).toString()).as[Deployment] shouldBe d
     }
+
+    "deserialize a deployment run keeping the raw payload" in {
+      val json =
+        """{"id":"deplrun_1","deployment_id":"deploy_1","session_id":"sesn_1",""" +
+          """"status":"running","created_at":"2026-06-18T00:00:00Z","extra":42}"""
+      val r = Json.parse(json).as[DeploymentRun]
+      r.id shouldBe Some("deplrun_1")
+      r.deploymentId shouldBe Some("deploy_1")
+      r.sessionId shouldBe Some("sesn_1")
+      r.status shouldBe Some("running")
+      (r.raw \ "extra").as[Int] shouldBe 42
+    }
   }
 
   private def testCodec[A](

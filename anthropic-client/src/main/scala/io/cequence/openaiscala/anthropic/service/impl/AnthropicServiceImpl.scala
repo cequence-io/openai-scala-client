@@ -16,6 +16,7 @@ import io.cequence.openaiscala.anthropic.domain.response.{
 import io.cequence.openaiscala.anthropic.domain.managedagents.{
   Agent,
   Deployment,
+  DeploymentRun,
   Environment,
   EnvironmentDeleteResponse,
   PagedResponse,
@@ -942,4 +943,43 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       bodyParams = Nil,
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[Deployment])
+
+  override def pauseDeployment(deploymentId: String): Future[Deployment] =
+    execPOST(
+      EndPoint.deployments,
+      Some(s"$deploymentId/pause"),
+      bodyParams = Nil,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Deployment])
+
+  override def unpauseDeployment(deploymentId: String): Future[Deployment] =
+    execPOST(
+      EndPoint.deployments,
+      Some(s"$deploymentId/unpause"),
+      bodyParams = Nil,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Deployment])
+
+  override def runDeployment(deploymentId: String): Future[DeploymentRun] =
+    execPOST(
+      EndPoint.deployments,
+      Some(s"$deploymentId/run"),
+      bodyParams = Nil,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[DeploymentRun])
+
+  override def listDeploymentRuns(
+    deploymentId: String,
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[DeploymentRun]] =
+    execGET(
+      EndPoint.deployment_runs,
+      params = Seq(
+        Param.deployment_id -> Some(deploymentId),
+        Param.limit -> limit.map(_.toString),
+        Param.page -> page
+      ),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[PagedResponse[DeploymentRun]])
 }

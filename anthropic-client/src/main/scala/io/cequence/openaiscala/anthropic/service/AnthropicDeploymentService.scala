@@ -1,6 +1,10 @@
 package io.cequence.openaiscala.anthropic.service
 
-import io.cequence.openaiscala.anthropic.domain.managedagents.{Deployment, PagedResponse}
+import io.cequence.openaiscala.anthropic.domain.managedagents.{
+  Deployment,
+  DeploymentRun,
+  PagedResponse
+}
 import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicCreateDeploymentSettings,
   AnthropicUpdateDeploymentSettings
@@ -46,4 +50,20 @@ trait AnthropicDeploymentService {
    * Archives a deployment (`POST /v1/deployments/{id}/archive`); its status becomes `paused`.
    */
   def archiveDeployment(deploymentId: String): Future[Deployment]
+
+  /** Pauses a deployment (`POST /v1/deployments/{id}/pause`). */
+  def pauseDeployment(deploymentId: String): Future[Deployment]
+
+  /** Resumes a paused deployment (`POST /v1/deployments/{id}/unpause`). */
+  def unpauseDeployment(deploymentId: String): Future[Deployment]
+
+  /** Triggers an immediate run of a deployment (`POST /v1/deployments/{id}/run`). */
+  def runDeployment(deploymentId: String): Future[DeploymentRun]
+
+  /** Lists a deployment's runs (`GET /v1/deployment_runs?deployment_id=...`). */
+  def listDeploymentRuns(
+    deploymentId: String,
+    limit: Option[Int] = None,
+    page: Option[String] = None
+  ): Future[PagedResponse[DeploymentRun]]
 }

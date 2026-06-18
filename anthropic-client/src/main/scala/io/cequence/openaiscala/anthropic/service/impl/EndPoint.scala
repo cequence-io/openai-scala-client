@@ -13,6 +13,7 @@ object EndPoint {
   case object environments extends EndPoint
   case object sessions extends EndPoint
   case object deployments extends EndPoint
+  case object deployment_runs extends EndPoint
 }
 
 sealed abstract class Param(value: String = "") extends NamedEnumValue(value)

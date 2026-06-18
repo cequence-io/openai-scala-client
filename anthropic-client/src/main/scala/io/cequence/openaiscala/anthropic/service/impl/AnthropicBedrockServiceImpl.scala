@@ -19,6 +19,7 @@ import io.cequence.openaiscala.anthropic.domain.OutputFormat
 import io.cequence.openaiscala.anthropic.domain.managedagents.{
   Agent,
   Deployment,
+  DeploymentRun,
   Environment,
   EnvironmentDeleteResponse,
   PagedResponse,
@@ -538,6 +539,21 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
 
   override def archiveDeployment(deploymentId: String): Future[Deployment] =
     managedAgentsUnsupported
+
+  override def pauseDeployment(deploymentId: String): Future[Deployment] =
+    managedAgentsUnsupported
+
+  override def unpauseDeployment(deploymentId: String): Future[Deployment] =
+    managedAgentsUnsupported
+
+  override def runDeployment(deploymentId: String): Future[DeploymentRun] =
+    managedAgentsUnsupported
+
+  override def listDeploymentRuns(
+    deploymentId: String,
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[DeploymentRun]] = managedAgentsUnsupported
 
   def connectionInfo: BedrockConnectionSettings
 }
