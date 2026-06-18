@@ -13,7 +13,12 @@ import io.cequence.openaiscala.anthropic.domain.response.{
   ContentBlockDelta,
   CreateMessageResponse
 }
-import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
+import io.cequence.openaiscala.anthropic.domain.managedagents.{Agent, PagedResponse}
+import io.cequence.openaiscala.anthropic.domain.settings.{
+  AnthropicCreateAgentSettings,
+  AnthropicCreateMessageSettings,
+  AnthropicUpdateAgentSettings
+}
 import io.cequence.openaiscala.anthropic.domain.skills.{
   DeleteSkillResponse,
   DeleteSkillVersionResponse,
@@ -25,6 +30,7 @@ import io.cequence.openaiscala.anthropic.domain.skills.{
 }
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
 import io.cequence.wsclient.StreamResponseImplicits.StreamSafeOps
+import play.api.libs.json.{JsNull, JsNumber, JsObject, JsString, JsValue, Json}
 
 import java.io.File
 import scala.concurrent.Future
@@ -44,8 +50,9 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     execPOST(
       EndPoint.messages,
       bodyParams = bodyParams,
-      // add skill headers if container (with skills) is passed
-      extraHeaders = if (settings.container.isDefined) skillHeaders else Nil
+      // message-feature betas + skill headers if a container (with skills) is passed
+      extraHeaders =
+        messageBetaHeaders ++ (if (settings.container.isDefined) skillHeaders else Nil)
     ).map(
       _.asSafeJson[CreateMessageResponse]
     )
@@ -63,7 +70,8 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       .execJsonStream(
         EndPoint.messages.toString(),
         "POST",
-        bodyParams = stringParams
+        bodyParams = stringParams,
+        extraHeaders = messageBetaHeaders
       )
       .map(serializeStreamedJson)
       .collect { case Some(delta) => delta }
@@ -207,7 +215,8 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
     execPOSTMultipart(
       EndPoint.files,
-      fileParams = fileParams
+      fileParams = fileParams,
+      extraHeaders = fileBetaHeaders
     ).map(
       _.asSafeJson[FileMetadata]
     )
@@ -226,7 +235,8 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
     execGET(
       EndPoint.files,
-      params = queryParams
+      params = queryParams,
+      extraHeaders = fileBetaHeaders
     ).map(
       _.asSafeJson[FileListResponse]
     )
@@ -237,7 +247,8 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   ): Future[Option[FileMetadata]] = {
     execGETRich(
       EndPoint.files,
-      Some(fileId)
+      Some(fileId),
+      extraHeaders = fileBetaHeaders
     ).map { response =>
       handleNotFoundAndError(response).map(
         _.asSafeJson[FileMetadata]
@@ -250,7 +261,8 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   ): Future[Option[Source[ByteString, _]]] = {
     execGETRich(
       EndPoint.files,
-      Some(s"$fileId/content")
+      Some(s"$fileId/content"),
+      extraHeaders = fileBetaHeaders
     ).map { response =>
       handleNotFoundAndError(response).map(_.asSafeSource)
     }
@@ -261,9 +273,135 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   ): Future[FileDeleteResponse] = {
     execDELETE(
       EndPoint.files,
-      Some(fileId)
+      Some(fileId),
+      extraHeaders = fileBetaHeaders
     ).map(
       _.asSafeJson[FileDeleteResponse]
     )
   }
+
+  // ============================================================================
+  // Managed Agents — agents
+  // ============================================================================
+
+  override def createAgent(
+    settings: AnthropicCreateAgentSettings
+  ): Future[Agent] = {
+    val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
+      Param.name -> Some(JsString(settings.name)),
+      Param.model -> Some(Json.toJson(settings.model)),
+      Param.description -> settings.description.map(JsString),
+      Param.system -> settings.system.map(JsString),
+      Param.tools -> optSeq(settings.tools),
+      Param.mcp_servers -> optSeq(settings.mcpServers),
+      Param.skills -> optSeq(settings.skills),
+      Param.metadata -> (if (settings.metadata.nonEmpty) Some(Json.toJson(settings.metadata))
+                         else None),
+      Param.multiagent -> settings.multiagent.map(Json.toJson(_))
+    )
+
+    execPOST(
+      EndPoint.agents,
+      bodyParams = bodyParams,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Agent])
+  }
+
+  override def listAgents(
+    limit: Option[Int],
+    page: Option[String],
+    createdAtGte: Option[String],
+    createdAtLte: Option[String],
+    includeArchived: Option[Boolean]
+  ): Future[PagedResponse[Agent]] = {
+    val queryParams = Seq(
+      Param.limit -> limit.map(_.toString),
+      Param.page -> page,
+      Param.created_at_gte -> createdAtGte,
+      Param.created_at_lte -> createdAtLte,
+      Param.include_archived -> includeArchived.map(_.toString)
+    )
+
+    execGET(
+      EndPoint.agents,
+      params = queryParams,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[PagedResponse[Agent]])
+  }
+
+  override def getAgent(
+    agentId: String,
+    version: Option[Int]
+  ): Future[Agent] = {
+    execGET(
+      EndPoint.agents,
+      Some(agentId),
+      params = Seq(Param.version -> version.map(_.toString)),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Agent])
+  }
+
+  override def updateAgent(
+    agentId: String,
+    settings: AnthropicUpdateAgentSettings
+  ): Future[Agent] = {
+    val metadataJson = settings.metadata.map { m =>
+      JsObject(m.map { case (k, v) => k -> v.map(JsString(_)).getOrElse(JsNull) })
+    }
+
+    val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
+      Param.version -> Some(JsNumber(settings.version)),
+      Param.name -> settings.name.map(JsString),
+      Param.description -> settings.description.map(JsString),
+      Param.system -> settings.system.map(JsString),
+      Param.model -> settings.model.map(Json.toJson(_)),
+      Param.tools -> settings.tools.map(Json.toJson(_)),
+      Param.mcp_servers -> settings.mcpServers.map(Json.toJson(_)),
+      Param.skills -> settings.skills.map(Json.toJson(_)),
+      Param.metadata -> metadataJson,
+      Param.multiagent -> settings.multiagent.map(Json.toJson(_))
+    )
+
+    execPOST(
+      EndPoint.agents,
+      Some(agentId),
+      bodyParams = bodyParams,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Agent])
+  }
+
+  override def archiveAgent(agentId: String): Future[Agent] = {
+    execPOST(
+      EndPoint.agents,
+      Some(s"$agentId/archive"),
+      bodyParams = Nil,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Agent])
+  }
+
+  override def listAgentVersions(
+    agentId: String,
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[Agent]] = {
+    val queryParams = Seq(
+      Param.limit -> limit.map(_.toString),
+      Param.page -> page
+    )
+
+    execGET(
+      EndPoint.agents,
+      Some(s"$agentId/versions"),
+      params = queryParams,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[PagedResponse[Agent]])
+  }
+
+  // Serialize a sequence as a JSON array body param only when non-empty.
+  private def optSeq[T](
+    items: Seq[T]
+  )(
+    implicit writes: play.api.libs.json.Writes[T]
+  ): Option[JsValue] =
+    if (items.nonEmpty) Some(Json.toJson(items)) else None
 }

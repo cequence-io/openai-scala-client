@@ -148,5 +148,8 @@ sealed trait Speed extends EnumValue
 object Speed {
   case object fast extends Speed
 
-  def values: Seq[Speed] = Seq(fast)
+  // Default inference speed; used by Managed Agents model config (model.speed).
+  case object standard extends Speed
+
+  def values: Seq[Speed] = Seq(fast, standard)
 }

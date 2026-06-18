@@ -101,17 +101,6 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
     val bedrockBearerToken = "AWS_BEARER_TOKEN_BEDROCK"
   }
 
-  private val anthropicBetaHeaders = Seq(
-    "structured-outputs-2025-11-13",
-    "output-128k-2025-02-19",
-    "files-api-2025-04-14",
-    "code-execution-2025-08-25",
-    "mcp-client-2025-04-04",
-    "web-fetch-2025-09-10",
-    "context-1m-2025-08-07", // deprecated (April 30, 2026)
-    "fast-mode-2026-02-01"
-  )
-
   /**
    * Create a new instance of the [[OpenAIChatCompletionService]] wrapping the AnthropicService
    *
@@ -254,16 +243,16 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
     implicit ec: ExecutionContext,
     materializer: Materializer
   ): AnthropicService = {
-    val authHeaders = anthropicBetaHeaders.map { betaHeader =>
-      ("anthropic-beta", betaHeader)
-    } ++ Seq(
+    // Only auth headers ride on every request. Feature beta headers are sent per-operation
+    // (see Anthropic.messageBetaHeaders / fileBetaHeaders / skillHeaders / managedAgentsHeaders),
+    // because the managed-agents control-plane endpoints reject any beta value other than their
+    // own and would 400 on always-on message betas.
+    val authHeaders = Seq(
       ("x-api-key", s"$apiKey"),
       ("anthropic-version", apiVersion)
-      // TODO: revisit these
-    ) ++ (if (withPdf) Seq(("anthropic-beta", "pdfs-2024-09-25")) else Seq.empty) ++
-      (if (withCache) Seq(("anthropic-beta", "prompt-caching-2024-07-31")) else Seq.empty)
+    )
 
-    new AnthropicServiceClassImpl(defaultCoreUrl, authHeaders, timeouts)
+    new AnthropicServiceClassImpl(defaultCoreUrl, authHeaders, timeouts, withPdf, withCache)
   }
 
   /**
@@ -400,11 +389,17 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
   private class AnthropicServiceClassImpl(
     coreUrl: String,
     authHeaders: Seq[(String, String)],
-    explTimeouts: Option[Timeouts] = None
+    explTimeouts: Option[Timeouts] = None,
+    pdfEnabled: Boolean = false,
+    cacheEnabled: Boolean = false
   )(
     implicit val ec: ExecutionContext,
     val materializer: Materializer
   ) extends AnthropicServiceImpl {
+
+    override protected def withPdf: Boolean = pdfEnabled
+    override protected def withCache: Boolean = cacheEnabled
+
     // Play WS engine
     override protected val engine: WSClientEngine with WSClientOutputStreamExtra =
       PlayWSStreamClientEngine(

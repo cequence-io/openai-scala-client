@@ -8,6 +8,8 @@ object EndPoint {
   case object messages extends EndPoint
   case object skills extends EndPoint
   case object files extends EndPoint
+  // managed agents
+  case object agents extends EndPoint
 }
 
 sealed abstract class Param(value: String = "") extends NamedEnumValue(value)
@@ -46,4 +48,13 @@ object Param {
   // files pagination
   case object before_id extends Param
   case object after_id extends Param
+  // managed agents
+  case object name extends Param
+  case object description extends Param
+  case object version extends Param
+  case object skills extends Param
+  case object multiagent extends Param
+  case object include_archived extends Param
+  case object created_at_gte extends Param("created_at[gte]")
+  case object created_at_lte extends Param("created_at[lte]")
 }

@@ -29,6 +29,40 @@ trait Anthropic
 //    ("anthropic-beta", "files-api-2025-04-14")
   )
 
+  // Managed Agents control-plane endpoints (agents, environments, sessions, deployments,
+  // vaults, memory stores) require this beta header. These endpoints reject ANY other
+  // anthropic-beta value, which is why feature betas are sent per-operation rather than globally.
+  protected val managedAgentsHeaders: Seq[(String, String)] = Seq(
+    ("anthropic-beta", "managed-agents-2026-04-01")
+  )
+
+  // Whether PDF / prompt-caching betas should be added to message calls (set by the factory).
+  protected def withPdf: Boolean = false
+  protected def withCache: Boolean = false
+
+  // Beta features for message creation. Sent per-call (not as always-on auth headers) so the
+  // managed-agents endpoints, which reject these values, are unaffected.
+  protected def messageBetaHeaders: Seq[(String, String)] = {
+    val base = Seq(
+      "structured-outputs-2025-11-13",
+      "output-128k-2025-02-19",
+      "files-api-2025-04-14",
+      "code-execution-2025-08-25",
+      "mcp-client-2025-04-04",
+      "web-fetch-2025-09-10",
+      "context-1m-2025-08-07", // deprecated (April 30, 2026)
+      "fast-mode-2026-02-01"
+    )
+    val pdf = if (withPdf) Seq("pdfs-2024-09-25") else Nil
+    val cache = if (withCache) Seq("prompt-caching-2024-07-31") else Nil
+    (base ++ pdf ++ cache).map(("anthropic-beta", _))
+  }
+
+  // Files API beta header, sent on file operations.
+  protected val fileBetaHeaders: Seq[(String, String)] = Seq(
+    ("anthropic-beta", "files-api-2025-04-14")
+  )
+
   protected def createBodyParamsForMessageCreation(
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings,

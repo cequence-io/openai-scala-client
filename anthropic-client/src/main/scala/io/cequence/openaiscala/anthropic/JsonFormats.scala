@@ -89,6 +89,16 @@ import io.cequence.openaiscala.anthropic.domain.tools.{
   WebFetchTool,
   WebSearchTool
 }
+import io.cequence.openaiscala.anthropic.domain.managedagents.{
+  Agent,
+  AgentModelConfig,
+  AgentTool,
+  AgentToolConfig,
+  Multiagent,
+  MultiagentMember,
+  PagedResponse,
+  PermissionPolicy
+}
 import io.cequence.openaiscala.JsonFormats.formatWithType
 import io.cequence.openaiscala.domain.JsonSchema
 import io.cequence.wsclient.JsonUtil
@@ -1275,5 +1285,193 @@ trait JsonFormats {
     }
 
     formatWithType(OFormat(reads, writes))
+  }
+
+  // ============================================================================
+  // Managed Agents — shared types (Agents block)
+  // ============================================================================
+
+  // Serialized as an object with a `type` discriminator, e.g. {"type":"always_allow"}.
+  implicit lazy val permissionPolicyFormat: Format[PermissionPolicy] = {
+    val reads: Reads[PermissionPolicy] = (__ \ "type").read[String].flatMap { t =>
+      Reads { _ =>
+        PermissionPolicy.values
+          .find(_.toString == t)
+          .map(JsSuccess(_))
+          .getOrElse(JsError(s"Unknown permission policy type: $t"))
+      }
+    }
+    val writes: OWrites[PermissionPolicy] =
+      OWrites(pp => Json.obj("type" -> pp.toString))
+    OFormat(reads, writes)
+  }
+
+  implicit lazy val agentToolConfigFormat: OFormat[AgentToolConfig] = {
+    val reads: Reads[AgentToolConfig] = (
+      (__ \ "name").readNullable[String] and
+        (__ \ "enabled").readNullable[Boolean] and
+        (__ \ "permission_policy").readNullable[PermissionPolicy]
+    )(AgentToolConfig.apply _)
+
+    val writes: OWrites[AgentToolConfig] = OWrites { c =>
+      var obj = Json.obj()
+      c.name.foreach(n => obj = obj + ("name" -> JsString(n)))
+      c.enabled.foreach(e => obj = obj + ("enabled" -> JsBoolean(e)))
+      c.permissionPolicy.foreach(p => obj = obj + ("permission_policy" -> Json.toJson(p)))
+      obj
+    }
+    OFormat(reads, writes)
+  }
+
+  implicit lazy val agentToolFormat: Format[AgentTool] = {
+    val reads: Reads[AgentTool] = Reads { json =>
+      (json \ "type").validate[String].flatMap {
+        case "agent_toolset_20260401" =>
+          for {
+            configs <- (json \ "configs")
+              .validateOpt[Seq[AgentToolConfig]]
+              .map(_.getOrElse(Nil))
+            defaultConfig <- (json \ "default_config").validateOpt[AgentToolConfig]
+          } yield AgentTool.Toolset(configs, defaultConfig)
+        case "mcp_toolset" =>
+          for {
+            serverName <- (json \ "mcp_server_name").validate[String]
+            configs <- (json \ "configs")
+              .validateOpt[Seq[AgentToolConfig]]
+              .map(_.getOrElse(Nil))
+            defaultConfig <- (json \ "default_config").validateOpt[AgentToolConfig]
+          } yield AgentTool.McpToolset(serverName, configs, defaultConfig)
+        case "custom" =>
+          json.validate[CustomTool](customToolFormat).map(AgentTool.Custom.apply)
+        case other => JsError(s"Unknown agent tool type: $other")
+      }
+    }
+
+    val writes: OWrites[AgentTool] = OWrites {
+      case t: AgentTool.Toolset =>
+        var obj = Json.obj("type" -> t.`type`)
+        if (t.configs.nonEmpty) obj = obj + ("configs" -> Json.toJson(t.configs))
+        t.defaultConfig.foreach(c => obj = obj + ("default_config" -> Json.toJson(c)))
+        obj
+      case t: AgentTool.McpToolset =>
+        var obj = Json.obj("type" -> t.`type`, "mcp_server_name" -> t.mcpServerName)
+        if (t.configs.nonEmpty) obj = obj + ("configs" -> Json.toJson(t.configs))
+        t.defaultConfig.foreach(c => obj = obj + ("default_config" -> Json.toJson(c)))
+        obj
+      case t: AgentTool.Custom =>
+        Json.toJsObject(t.tool)(customToolFormat) + ("type" -> JsString(t.`type`))
+    }
+    OFormat(reads, writes)
+  }
+
+  // Request accepts a bare string or {id, speed}; response always returns the object.
+  implicit lazy val agentModelConfigFormat: Format[AgentModelConfig] = {
+    val reads: Reads[AgentModelConfig] = Reads {
+      case JsString(id) => JsSuccess(AgentModelConfig(id, None))
+      case json: JsObject =>
+        for {
+          id <- (json \ "id").validate[String]
+          speed <- (json \ "speed").validateOpt[Speed]
+        } yield AgentModelConfig(id, speed)
+      case other => JsError(s"Expected model id string or object, got: $other")
+    }
+    val writes: Writes[AgentModelConfig] = Writes { c =>
+      c.speed match {
+        case Some(speed) => Json.obj("id" -> c.id, "speed" -> Json.toJson(speed))
+        case None        => JsString(c.id)
+      }
+    }
+    Format(reads, writes)
+  }
+
+  implicit lazy val multiagentMemberFormat: Format[MultiagentMember] = {
+    val reads: Reads[MultiagentMember] = Reads { json =>
+      (json \ "type").validate[String].flatMap {
+        case "agent" =>
+          for {
+            id <- (json \ "id").validate[String]
+            version <- (json \ "version").validateOpt[Int]
+          } yield MultiagentMember.AgentRef(id, version)
+        case "self" => JsSuccess(MultiagentMember.SelfRef)
+        case other  => JsError(s"Unknown multiagent member type: $other")
+      }
+    }
+    val writes: OWrites[MultiagentMember] = OWrites {
+      case m: MultiagentMember.AgentRef =>
+        var obj = Json.obj("type" -> "agent", "id" -> m.id)
+        m.version.foreach(v => obj = obj + ("version" -> JsNumber(v)))
+        obj
+      case MultiagentMember.SelfRef => Json.obj("type" -> "self")
+    }
+    Format(reads, writes)
+  }
+
+  implicit lazy val multiagentFormat: Format[Multiagent] = {
+    val reads: Reads[Multiagent] =
+      (__ \ "agents").read[Seq[MultiagentMember]].map(Multiagent(_))
+    val writes: OWrites[Multiagent] =
+      OWrites(m => Json.obj("type" -> m.`type`, "agents" -> Json.toJson(m.agents)))
+    Format(reads, writes)
+  }
+
+  implicit lazy val agentFormat: Format[Agent] = {
+    val reads: Reads[Agent] = (
+      (__ \ "id").read[String] and
+        (__ \ "name").read[String] and
+        (__ \ "model").read[AgentModelConfig] and
+        (__ \ "version").read[Int] and
+        (__ \ "description").readNullable[String] and
+        (__ \ "system").readNullable[String] and
+        (__ \ "tools").readWithDefault[Seq[AgentTool]](Nil) and
+        (__ \ "mcp_servers").readWithDefault[Seq[MCPServerURLDefinition]](Nil)(
+          Reads.seq(mcpServerURLDefinitionFormat)
+        ) and
+        (__ \ "skills").readWithDefault[Seq[SkillParams]](Nil) and
+        (__ \ "metadata").readWithDefault[Map[String, String]](Map.empty) and
+        (__ \ "multiagent").readNullable[Multiagent] and
+        (__ \ "created_at").readNullable[String] and
+        (__ \ "updated_at").readNullable[String] and
+        (__ \ "archived_at").readNullable[String]
+    )(Agent.apply _)
+
+    val writes: OWrites[Agent] = OWrites { a =>
+      var obj = Json.obj(
+        "type" -> a.`type`,
+        "id" -> a.id,
+        "name" -> a.name,
+        "model" -> Json.toJson(a.model),
+        "version" -> a.version
+      )
+      a.description.foreach(d => obj = obj + ("description" -> JsString(d)))
+      a.system.foreach(s => obj = obj + ("system" -> JsString(s)))
+      if (a.tools.nonEmpty) obj = obj + ("tools" -> Json.toJson(a.tools))
+      if (a.mcpServers.nonEmpty)
+        obj = obj + ("mcp_servers" -> Json.toJson(a.mcpServers)(
+          Writes.seq(mcpServerURLDefinitionWrites)
+        ))
+      if (a.skills.nonEmpty) obj = obj + ("skills" -> Json.toJson(a.skills))
+      if (a.metadata.nonEmpty) obj = obj + ("metadata" -> Json.toJson(a.metadata))
+      a.multiagent.foreach(m => obj = obj + ("multiagent" -> Json.toJson(m)))
+      a.createdAt.foreach(t => obj = obj + ("created_at" -> JsString(t)))
+      a.updatedAt.foreach(t => obj = obj + ("updated_at" -> JsString(t)))
+      a.archivedAt.foreach(t => obj = obj + ("archived_at" -> JsString(t)))
+      obj
+    }
+    Format(reads, writes)
+  }
+
+  implicit def pagedResponseFormat[T](
+    implicit itemFormat: Format[T]
+  ): Format[PagedResponse[T]] = {
+    val reads: Reads[PagedResponse[T]] = (
+      (__ \ "data").readWithDefault[Seq[T]](Nil)(Reads.seq(itemFormat)) and
+        (__ \ "next_page").readNullable[String]
+    )(PagedResponse.apply[T] _)
+    val writes: OWrites[PagedResponse[T]] = OWrites { p =>
+      var obj = Json.obj("data" -> Json.toJson(p.data)(Writes.seq(itemFormat)))
+      p.nextPage.foreach(np => obj = obj + ("next_page" -> JsString(np)))
+      obj
+    }
+    Format(reads, writes)
   }
 }

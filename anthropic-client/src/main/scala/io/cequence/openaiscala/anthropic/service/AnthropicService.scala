@@ -28,7 +28,10 @@ import io.cequence.wsclient.service.CloseableService
 import java.io.File
 import scala.concurrent.Future
 
-trait AnthropicService extends CloseableService with AnthropicServiceConsts {
+trait AnthropicService
+    extends CloseableService
+    with AnthropicServiceConsts
+    with AnthropicManagedAgentService {
 
   /**
    * Creates a message.

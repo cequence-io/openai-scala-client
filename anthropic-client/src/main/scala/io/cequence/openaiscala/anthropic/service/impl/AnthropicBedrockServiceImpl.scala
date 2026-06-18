@@ -16,8 +16,11 @@ import io.cequence.openaiscala.anthropic.domain.response.{
   CreateMessageResponse
 }
 import io.cequence.openaiscala.anthropic.domain.OutputFormat
+import io.cequence.openaiscala.anthropic.domain.managedagents.{Agent, PagedResponse}
 import io.cequence.openaiscala.anthropic.domain.settings.{
+  AnthropicCreateAgentSettings,
   AnthropicCreateMessageSettings,
+  AnthropicUpdateAgentSettings,
   OutputConfig
 }
 import io.cequence.openaiscala.domain.JsonSchema
@@ -290,6 +293,45 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
     Future.failed(
       new UnsupportedOperationException("Files API is not supported in Anthropic Bedrock")
     )
+
+  // Managed Agents — not available on Bedrock
+
+  private def managedAgentsUnsupported[T]: Future[T] =
+    Future.failed(
+      new UnsupportedOperationException(
+        "Managed Agents API is not supported in Anthropic Bedrock"
+      )
+    )
+
+  override def createAgent(
+    settings: AnthropicCreateAgentSettings
+  ): Future[Agent] = managedAgentsUnsupported
+
+  override def listAgents(
+    limit: Option[Int],
+    page: Option[String],
+    createdAtGte: Option[String],
+    createdAtLte: Option[String],
+    includeArchived: Option[Boolean]
+  ): Future[PagedResponse[Agent]] = managedAgentsUnsupported
+
+  override def getAgent(
+    agentId: String,
+    version: Option[Int]
+  ): Future[Agent] = managedAgentsUnsupported
+
+  override def updateAgent(
+    agentId: String,
+    settings: AnthropicUpdateAgentSettings
+  ): Future[Agent] = managedAgentsUnsupported
+
+  override def archiveAgent(agentId: String): Future[Agent] = managedAgentsUnsupported
+
+  override def listAgentVersions(
+    agentId: String,
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[Agent]] = managedAgentsUnsupported
 
   def connectionInfo: BedrockConnectionSettings
 }
