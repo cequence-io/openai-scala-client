@@ -12,6 +12,7 @@ object EndPoint {
   case object agents extends EndPoint
   case object environments extends EndPoint
   case object sessions extends EndPoint
+  case object deployments extends EndPoint
 }
 
 sealed abstract class Param(value: String = "") extends NamedEnumValue(value)
@@ -79,4 +80,8 @@ object Param {
   case object memory_store_id extends Param
   case object order extends Param
   case object statuses extends Param
+  // deployments
+  case object initial_events extends Param
+  case object schedule extends Param
+  case object status extends Param
 }

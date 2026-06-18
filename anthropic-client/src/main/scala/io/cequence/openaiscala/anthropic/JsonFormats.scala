@@ -117,6 +117,12 @@ import io.cequence.openaiscala.anthropic.domain.managedagents.{
   Checkout,
   MemoryStoreAccess,
   OutcomeRubric,
+  AgentReference,
+  Deployment,
+  DeploymentInitialEvent,
+  DeploymentPausedReason,
+  DeploymentStatus,
+  Schedule,
   WorkHeartbeatResponse,
   WorkQueueStats,
   WorkState
@@ -1896,6 +1902,14 @@ trait JsonFormats {
     Format(reads, writes)
   }
 
+  lazy val outcomeRubricReads: Reads[OutcomeRubric] = Reads { json =>
+    (json \ "type").validate[String].flatMap {
+      case "text" => (json \ "content").validate[String].map(OutcomeRubric.Text(_))
+      case "file" => (json \ "file_id").validate[String].map(OutcomeRubric.File(_))
+      case other  => JsError(s"Unknown outcome rubric type: $other")
+    }
+  }
+
   implicit lazy val outcomeRubricWrites: OWrites[OutcomeRubric] = OWrites {
     case r: OutcomeRubric.Text => Json.obj("type" -> r.`type`, "content" -> r.content)
     case r: OutcomeRubric.File => Json.obj("type" -> r.`type`, "file_id" -> r.fileId)
@@ -1934,5 +1948,143 @@ trait JsonFormats {
       )
       e.maxIterations.foreach(n => obj = obj + ("max_iterations" -> JsNumber(n)))
       obj
+  }
+
+  // ============================================================================
+  // Managed Agents — deployments
+  // ============================================================================
+
+  implicit lazy val deploymentStatusFormat: Format[DeploymentStatus] =
+    JsonUtil.enumFormat[DeploymentStatus](DeploymentStatus.values: _*)
+
+  implicit lazy val agentReferenceFormat: Format[AgentReference] = {
+    val reads: Reads[AgentReference] = (
+      (__ \ "id").read[String] and
+        (__ \ "version").readNullable[Int]
+    )(AgentReference.apply _)
+    val writes: OWrites[AgentReference] = OWrites { r =>
+      var obj = Json.obj("type" -> r.`type`, "id" -> r.id)
+      r.version.foreach(v => obj = obj + ("version" -> JsNumber(v)))
+      obj
+    }
+    Format(reads, writes)
+  }
+
+  implicit lazy val deploymentPausedReasonFormat: Format[DeploymentPausedReason] = {
+    val reads: Reads[DeploymentPausedReason] = Reads { json =>
+      (json \ "type").validate[String].flatMap {
+        case "manual" => JsSuccess(DeploymentPausedReason.Manual)
+        case "error" =>
+          (json \ "error" \ "type").validate[String].map(DeploymentPausedReason.Error(_))
+        case other => JsError(s"Unknown paused reason type: $other")
+      }
+    }
+    val writes: OWrites[DeploymentPausedReason] = OWrites {
+      case DeploymentPausedReason.Manual => Json.obj("type" -> "manual")
+      case e: DeploymentPausedReason.Error =>
+        Json.obj("type" -> "error", "error" -> Json.obj("type" -> e.errorType))
+    }
+    Format(reads, writes)
+  }
+
+  implicit lazy val scheduleFormat: Format[Schedule] = {
+    val reads: Reads[Schedule] = (
+      (__ \ "expression").read[String] and
+        (__ \ "timezone").read[String] and
+        (__ \ "last_run_at").readNullable[String] and
+        (__ \ "upcoming_runs_at").readWithDefault[Seq[String]](Nil)
+    )(Schedule.apply _)
+    val writes: OWrites[Schedule] = OWrites { s =>
+      var obj =
+        Json.obj("type" -> s.`type`, "expression" -> s.expression, "timezone" -> s.timezone)
+      s.lastRunAt.foreach(t => obj = obj + ("last_run_at" -> JsString(t)))
+      if (s.upcomingRunsAt.nonEmpty)
+        obj = obj + ("upcoming_runs_at" -> Json.toJson(s.upcomingRunsAt))
+      obj
+    }
+    Format(reads, writes)
+  }
+
+  implicit lazy val deploymentInitialEventFormat: Format[DeploymentInitialEvent] = {
+    val reads: Reads[DeploymentInitialEvent] = Reads { json =>
+      def textOf: JsResult[String] =
+        (json \ "content" \ 0 \ "text").validate[String]
+      (json \ "type").validate[String].flatMap {
+        case "user.message"   => textOf.map(DeploymentInitialEvent.UserMessage(_))
+        case "system.message" => textOf.map(DeploymentInitialEvent.SystemMessage(_))
+        case "user.define_outcome" =>
+          for {
+            description <- (json \ "description").validate[String]
+            rubric <- (json \ "rubric").validate[OutcomeRubric](outcomeRubricReads)
+            maxIter <- (json \ "max_iterations").validateOpt[Int]
+          } yield DeploymentInitialEvent.UserDefineOutcome(description, rubric, maxIter)
+        case other => JsError(s"Unknown deployment initial event type: $other")
+      }
+    }
+    val writes: OWrites[DeploymentInitialEvent] = OWrites {
+      case e: DeploymentInitialEvent.UserMessage =>
+        Json.obj(
+          "type" -> e.`type`,
+          "content" -> Json.arr(Json.obj("type" -> "text", "text" -> e.text))
+        )
+      case e: DeploymentInitialEvent.SystemMessage =>
+        Json.obj(
+          "type" -> e.`type`,
+          "content" -> Json.arr(Json.obj("type" -> "text", "text" -> e.text))
+        )
+      case e: DeploymentInitialEvent.UserDefineOutcome =>
+        var obj = Json.obj(
+          "type" -> e.`type`,
+          "description" -> e.description,
+          "rubric" -> Json.toJson(e.rubric)
+        )
+        e.maxIterations.foreach(n => obj = obj + ("max_iterations" -> JsNumber(n)))
+        obj
+    }
+    Format(reads, writes)
+  }
+
+  implicit lazy val deploymentFormat: Format[Deployment] = {
+    val reads: Reads[Deployment] = (
+      (__ \ "id").read[String] and
+        (__ \ "name").read[String] and
+        (__ \ "agent").read[AgentReference] and
+        (__ \ "environment_id").read[String] and
+        (__ \ "status").read[DeploymentStatus] and
+        (__ \ "initial_events").readWithDefault[Seq[DeploymentInitialEvent]](Nil) and
+        (__ \ "description").readNullable[String] and
+        (__ \ "metadata").readWithDefault[Map[String, String]](Map.empty) and
+        (__ \ "resources").readWithDefault[Seq[SessionResource]](Nil) and
+        (__ \ "schedule").readNullable[Schedule] and
+        (__ \ "paused_reason").readNullable[DeploymentPausedReason] and
+        (__ \ "vault_ids").readWithDefault[Seq[String]](Nil) and
+        (__ \ "created_at").readNullable[String] and
+        (__ \ "updated_at").readNullable[String] and
+        (__ \ "archived_at").readNullable[String]
+    )(Deployment.apply _)
+
+    val writes: OWrites[Deployment] = OWrites { d =>
+      var obj = Json.obj(
+        "type" -> d.`type`,
+        "id" -> d.id,
+        "name" -> d.name,
+        "agent" -> Json.toJson(d.agent),
+        "environment_id" -> d.environmentId,
+        "status" -> Json.toJson(d.status)
+      )
+      if (d.initialEvents.nonEmpty)
+        obj = obj + ("initial_events" -> Json.toJson(d.initialEvents))
+      d.description.foreach(v => obj = obj + ("description" -> JsString(v)))
+      if (d.metadata.nonEmpty) obj = obj + ("metadata" -> Json.toJson(d.metadata))
+      if (d.resources.nonEmpty) obj = obj + ("resources" -> Json.toJson(d.resources))
+      d.schedule.foreach(s => obj = obj + ("schedule" -> Json.toJson(s)))
+      d.pausedReason.foreach(p => obj = obj + ("paused_reason" -> Json.toJson(p)))
+      if (d.vaultIds.nonEmpty) obj = obj + ("vault_ids" -> Json.toJson(d.vaultIds))
+      d.createdAt.foreach(t => obj = obj + ("created_at" -> JsString(t)))
+      d.updatedAt.foreach(t => obj = obj + ("updated_at" -> JsString(t)))
+      d.archivedAt.foreach(t => obj = obj + ("archived_at" -> JsString(t)))
+      obj
+    }
+    Format(reads, writes)
   }
 }

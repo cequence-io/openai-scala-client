@@ -15,6 +15,7 @@ import io.cequence.openaiscala.anthropic.domain.response.{
 }
 import io.cequence.openaiscala.anthropic.domain.managedagents.{
   Agent,
+  Deployment,
   Environment,
   EnvironmentDeleteResponse,
   PagedResponse,
@@ -31,10 +32,12 @@ import io.cequence.openaiscala.anthropic.domain.managedagents.{
 }
 import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicCreateAgentSettings,
+  AnthropicCreateDeploymentSettings,
   AnthropicCreateEnvironmentSettings,
   AnthropicCreateMessageSettings,
   AnthropicCreateSessionSettings,
   AnthropicUpdateAgentSettings,
+  AnthropicUpdateDeploymentSettings,
   AnthropicUpdateEnvironmentSettings,
   AnthropicUpdateSessionSettings
 }
@@ -835,4 +838,108 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       params = Seq(Param.limit -> limit.map(_.toString), Param.page -> page),
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[PagedResponse[SessionEventEnvelope]])
+
+  // ============================================================================
+  // Managed Agents — deployments
+  // ============================================================================
+
+  // agent: bare string id, or {type:agent, id, version} when a version is pinned.
+  private def agentRefJson(
+    agentId: String,
+    agentVersion: Option[Int]
+  ): JsValue =
+    agentVersion match {
+      case Some(v) => Json.obj("type" -> "agent", "id" -> agentId, "version" -> v)
+      case None    => JsString(agentId)
+    }
+
+  override def createDeployment(
+    settings: AnthropicCreateDeploymentSettings
+  ): Future[Deployment] = {
+    val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
+      Param.agent -> Some(agentRefJson(settings.agentId, settings.agentVersion)),
+      Param.environment_id -> Some(JsString(settings.environmentId)),
+      Param.name -> Some(JsString(settings.name)),
+      Param.initial_events -> Some(Json.toJson(settings.initialEvents)),
+      Param.description -> settings.description.map(JsString),
+      Param.metadata -> (if (settings.metadata.nonEmpty) Some(Json.toJson(settings.metadata))
+                         else None),
+      Param.resources -> optSeq(settings.resources),
+      Param.schedule -> settings.schedule.map(Json.toJson(_)),
+      Param.vault_ids -> (if (settings.vaultIds.nonEmpty) Some(Json.toJson(settings.vaultIds))
+                          else None)
+    )
+
+    execPOST(
+      EndPoint.deployments,
+      bodyParams = bodyParams,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Deployment])
+  }
+
+  override def listDeployments(
+    agentId: Option[String],
+    status: Option[String],
+    createdAtGte: Option[String],
+    createdAtLte: Option[String],
+    includeArchived: Option[Boolean],
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[Deployment]] = {
+    val queryParams = Seq(
+      Param.agent_id -> agentId,
+      Param.status -> status,
+      Param.created_at_gte -> createdAtGte,
+      Param.created_at_lte -> createdAtLte,
+      Param.include_archived -> includeArchived.map(_.toString),
+      Param.limit -> limit.map(_.toString),
+      Param.page -> page
+    )
+
+    execGET(
+      EndPoint.deployments,
+      params = queryParams,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[PagedResponse[Deployment]])
+  }
+
+  override def getDeployment(deploymentId: String): Future[Deployment] =
+    execGET(
+      EndPoint.deployments,
+      Some(deploymentId),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Deployment])
+
+  override def updateDeployment(
+    deploymentId: String,
+    settings: AnthropicUpdateDeploymentSettings
+  ): Future[Deployment] = {
+    val agentJson = settings.agentId.map(agentRefJson(_, settings.agentVersion))
+    val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
+      Param.agent -> agentJson,
+      Param.environment_id -> settings.environmentId.map(JsString),
+      Param.name -> settings.name.map(JsString),
+      Param.description -> settings.description.map(JsString),
+      Param.initial_events -> settings.initialEvents.map(Json.toJson(_)),
+      Param.metadata -> settings.metadata.map(metadataPatchJson),
+      Param.resources -> settings.resources.map(Json.toJson(_)),
+      Param.schedule -> settings.schedule.map(Json.toJson(_)),
+      Param.vault_ids -> settings.vaultIds.map(Json.toJson(_))
+    )
+
+    execPOST(
+      EndPoint.deployments,
+      Some(deploymentId),
+      bodyParams = bodyParams,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Deployment])
+  }
+
+  override def archiveDeployment(deploymentId: String): Future[Deployment] =
+    execPOST(
+      EndPoint.deployments,
+      Some(s"$deploymentId/archive"),
+      bodyParams = Nil,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Deployment])
 }

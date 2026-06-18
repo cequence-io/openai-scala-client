@@ -18,6 +18,7 @@ import io.cequence.openaiscala.anthropic.domain.response.{
 import io.cequence.openaiscala.anthropic.domain.OutputFormat
 import io.cequence.openaiscala.anthropic.domain.managedagents.{
   Agent,
+  Deployment,
   Environment,
   EnvironmentDeleteResponse,
   PagedResponse,
@@ -34,10 +35,12 @@ import io.cequence.openaiscala.anthropic.domain.managedagents.{
 }
 import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicCreateAgentSettings,
+  AnthropicCreateDeploymentSettings,
   AnthropicCreateEnvironmentSettings,
   AnthropicCreateMessageSettings,
   AnthropicCreateSessionSettings,
   AnthropicUpdateAgentSettings,
+  AnthropicUpdateDeploymentSettings,
   AnthropicUpdateEnvironmentSettings,
   AnthropicUpdateSessionSettings,
   OutputConfig
@@ -510,6 +513,31 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
     limit: Option[Int],
     page: Option[String]
   ): Future[PagedResponse[SessionEventEnvelope]] = managedAgentsUnsupported
+
+  override def createDeployment(
+    settings: AnthropicCreateDeploymentSettings
+  ): Future[Deployment] = managedAgentsUnsupported
+
+  override def listDeployments(
+    agentId: Option[String],
+    status: Option[String],
+    createdAtGte: Option[String],
+    createdAtLte: Option[String],
+    includeArchived: Option[Boolean],
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[Deployment]] = managedAgentsUnsupported
+
+  override def getDeployment(deploymentId: String): Future[Deployment] =
+    managedAgentsUnsupported
+
+  override def updateDeployment(
+    deploymentId: String,
+    settings: AnthropicUpdateDeploymentSettings
+  ): Future[Deployment] = managedAgentsUnsupported
+
+  override def archiveDeployment(deploymentId: String): Future[Deployment] =
+    managedAgentsUnsupported
 
   def connectionInfo: BedrockConnectionSettings
 }

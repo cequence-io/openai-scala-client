@@ -359,6 +359,60 @@ class ManagedAgentsJsonFormatsSpec extends AnyWordSpecLike with Matchers with Js
       t.status shouldBe SessionThreadStatus.running
       Json.parse(Json.toJson(t).toString()).as[SessionThread] shouldBe t
     }
+
+    // --- Deployments ---
+
+    "serialize/deserialize an agent reference" in {
+      testCodec[AgentReference](
+        AgentReference("agent_1", Some(3)),
+        """{"type":"agent","id":"agent_1","version":3}"""
+      )
+    }
+
+    "serialize/deserialize a cron schedule" in {
+      testCodec[Schedule](
+        Schedule(expression = "0 9 * * 1", timezone = "America/New_York"),
+        """{"type":"cron","expression":"0 9 * * 1","timezone":"America/New_York"}"""
+      )
+    }
+
+    "serialize/deserialize deployment initial events" in {
+      testCodec[DeploymentInitialEvent](
+        DeploymentInitialEvent.UserMessage("run the report"),
+        """{"type":"user.message","content":[{"type":"text","text":"run the report"}]}"""
+      )
+      testCodec[DeploymentInitialEvent](
+        DeploymentInitialEvent
+          .UserDefineOutcome("ship it", OutcomeRubric.File("file_1"), Some(3)),
+        """{"type":"user.define_outcome","description":"ship it",""" +
+          """"rubric":{"type":"file","file_id":"file_1"},"max_iterations":3}"""
+      )
+    }
+
+    "deserialize a full Deployment response" in {
+      val json =
+        """{
+          |  "id": "deploy_1", "type": "deployment", "name": "nightly",
+          |  "agent": { "type": "agent", "id": "agent_1", "version": 2 },
+          |  "environment_id": "env_1", "status": "paused",
+          |  "initial_events": [ { "type": "user.message",
+          |    "content": [ { "type": "text", "text": "go" } ] } ],
+          |  "schedule": { "type": "cron", "expression": "0 0 * * *", "timezone": "UTC",
+          |    "upcoming_runs_at": ["2026-06-19T00:00:00Z"] },
+          |  "paused_reason": { "type": "error", "error": { "type": "vault_not_found_error" } },
+          |  "vault_ids": ["vlt_1"],
+          |  "created_at": "2026-06-18T00:00:00Z"
+          |}""".stripMargin
+      val d = Json.parse(json).as[Deployment]
+      d.id shouldBe "deploy_1"
+      d.agent shouldBe AgentReference("agent_1", Some(2))
+      d.status shouldBe DeploymentStatus.paused
+      d.schedule.map(_.expression) shouldBe Some("0 0 * * *")
+      d.schedule.map(_.upcomingRunsAt) shouldBe Some(Seq("2026-06-19T00:00:00Z"))
+      d.pausedReason shouldBe Some(DeploymentPausedReason.Error("vault_not_found_error"))
+      d.initialEvents shouldBe Seq(DeploymentInitialEvent.UserMessage("go"))
+      Json.parse(Json.toJson(d).toString()).as[Deployment] shouldBe d
+    }
   }
 
   private def testCodec[A](

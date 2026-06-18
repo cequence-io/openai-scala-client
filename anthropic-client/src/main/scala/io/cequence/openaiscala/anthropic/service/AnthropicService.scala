@@ -33,7 +33,8 @@ trait AnthropicService
     with AnthropicServiceConsts
     with AnthropicManagedAgentService
     with AnthropicEnvironmentService
-    with AnthropicSessionService {
+    with AnthropicSessionService
+    with AnthropicDeploymentService {
 
   /**
    * Creates a message.
