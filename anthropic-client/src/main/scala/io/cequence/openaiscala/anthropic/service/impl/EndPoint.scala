@@ -14,6 +14,7 @@ object EndPoint {
   case object sessions extends EndPoint
   case object deployments extends EndPoint
   case object deployment_runs extends EndPoint
+  case object vaults extends EndPoint
 }
 
 sealed abstract class Param(value: String = "") extends NamedEnumValue(value)
@@ -85,4 +86,7 @@ object Param {
   case object initial_events extends Param
   case object schedule extends Param
   case object status extends Param
+  // vaults / credentials
+  case object display_name extends Param
+  case object auth extends Param
 }

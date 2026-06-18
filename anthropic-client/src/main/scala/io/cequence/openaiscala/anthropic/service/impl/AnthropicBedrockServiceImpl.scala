@@ -31,6 +31,7 @@ import io.cequence.openaiscala.anthropic.domain.managedagents.{
   SessionResource,
   SessionStatus,
   SessionThread,
+  Vault,
   WorkHeartbeatResponse,
   WorkQueueStats
 }
@@ -40,10 +41,12 @@ import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicCreateEnvironmentSettings,
   AnthropicCreateMessageSettings,
   AnthropicCreateSessionSettings,
+  AnthropicCreateVaultSettings,
   AnthropicUpdateAgentSettings,
   AnthropicUpdateDeploymentSettings,
   AnthropicUpdateEnvironmentSettings,
   AnthropicUpdateSessionSettings,
+  AnthropicUpdateVaultSettings,
   OutputConfig
 }
 import io.cequence.openaiscala.domain.JsonSchema
@@ -554,6 +557,26 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
     limit: Option[Int],
     page: Option[String]
   ): Future[PagedResponse[DeploymentRun]] = managedAgentsUnsupported
+
+  override def createVault(settings: AnthropicCreateVaultSettings): Future[Vault] =
+    managedAgentsUnsupported
+
+  override def listVaults(
+    includeArchived: Option[Boolean],
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[Vault]] = managedAgentsUnsupported
+
+  override def getVault(vaultId: String): Future[Vault] = managedAgentsUnsupported
+
+  override def updateVault(
+    vaultId: String,
+    settings: AnthropicUpdateVaultSettings
+  ): Future[Vault] = managedAgentsUnsupported
+
+  override def deleteVault(vaultId: String): Future[Unit] = managedAgentsUnsupported
+
+  override def archiveVault(vaultId: String): Future[Vault] = managedAgentsUnsupported
 
   def connectionInfo: BedrockConnectionSettings
 }

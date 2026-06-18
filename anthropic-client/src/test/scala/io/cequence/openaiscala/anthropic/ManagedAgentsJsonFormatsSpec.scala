@@ -425,6 +425,15 @@ class ManagedAgentsJsonFormatsSpec extends AnyWordSpecLike with Matchers with Js
       r.status shouldBe Some("running")
       (r.raw \ "extra").as[Int] shouldBe 42
     }
+
+    // --- Vaults ---
+
+    "serialize/deserialize a vault" in {
+      testCodec[Vault](
+        Vault(id = "vlt_1", displayName = "My vault", metadata = Map("env" -> "prod")),
+        """{"type":"vault","id":"vlt_1","display_name":"My vault","metadata":{"env":"prod"}}"""
+      )
+    }
   }
 
   private def testCodec[A](

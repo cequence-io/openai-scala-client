@@ -28,6 +28,7 @@ import io.cequence.openaiscala.anthropic.domain.managedagents.{
   SessionResource,
   SessionStatus,
   SessionThread,
+  Vault,
   WorkHeartbeatResponse,
   WorkQueueStats
 }
@@ -37,10 +38,12 @@ import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicCreateEnvironmentSettings,
   AnthropicCreateMessageSettings,
   AnthropicCreateSessionSettings,
+  AnthropicCreateVaultSettings,
   AnthropicUpdateAgentSettings,
   AnthropicUpdateDeploymentSettings,
   AnthropicUpdateEnvironmentSettings,
-  AnthropicUpdateSessionSettings
+  AnthropicUpdateSessionSettings,
+  AnthropicUpdateVaultSettings
 }
 import io.cequence.openaiscala.anthropic.domain.skills.{
   DeleteSkillResponse,
@@ -982,4 +985,74 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       ),
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[PagedResponse[DeploymentRun]])
+
+  // ============================================================================
+  // Managed Agents — vaults
+  // ============================================================================
+
+  override def createVault(settings: AnthropicCreateVaultSettings): Future[Vault] = {
+    val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
+      Param.display_name -> Some(JsString(settings.displayName)),
+      Param.metadata -> (if (settings.metadata.nonEmpty) Some(Json.toJson(settings.metadata))
+                         else None)
+    )
+    execPOST(
+      EndPoint.vaults,
+      bodyParams = bodyParams,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Vault])
+  }
+
+  override def listVaults(
+    includeArchived: Option[Boolean],
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[Vault]] =
+    execGET(
+      EndPoint.vaults,
+      params = Seq(
+        Param.include_archived -> includeArchived.map(_.toString),
+        Param.limit -> limit.map(_.toString),
+        Param.page -> page
+      ),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[PagedResponse[Vault]])
+
+  override def getVault(vaultId: String): Future[Vault] =
+    execGET(
+      EndPoint.vaults,
+      Some(vaultId),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Vault])
+
+  override def updateVault(
+    vaultId: String,
+    settings: AnthropicUpdateVaultSettings
+  ): Future[Vault] = {
+    val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
+      Param.display_name -> settings.displayName.map(JsString),
+      Param.metadata -> settings.metadata.map(metadataPatchJson)
+    )
+    execPOST(
+      EndPoint.vaults,
+      Some(vaultId),
+      bodyParams = bodyParams,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Vault])
+  }
+
+  override def deleteVault(vaultId: String): Future[Unit] =
+    execDELETE(
+      EndPoint.vaults,
+      Some(vaultId),
+      extraHeaders = managedAgentsHeaders
+    ).map(_ => ())
+
+  override def archiveVault(vaultId: String): Future[Vault] =
+    execPOST(
+      EndPoint.vaults,
+      Some(s"$vaultId/archive"),
+      bodyParams = Nil,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[Vault])
 }

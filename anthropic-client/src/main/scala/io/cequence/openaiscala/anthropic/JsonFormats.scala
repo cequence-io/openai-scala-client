@@ -124,6 +124,7 @@ import io.cequence.openaiscala.anthropic.domain.managedagents.{
   DeploymentRun,
   DeploymentStatus,
   Schedule,
+  Vault,
   WorkHeartbeatResponse,
   WorkQueueStats,
   WorkState
@@ -2084,6 +2085,30 @@ trait JsonFormats {
       d.createdAt.foreach(t => obj = obj + ("created_at" -> JsString(t)))
       d.updatedAt.foreach(t => obj = obj + ("updated_at" -> JsString(t)))
       d.archivedAt.foreach(t => obj = obj + ("archived_at" -> JsString(t)))
+      obj
+    }
+    Format(reads, writes)
+  }
+
+  // ============================================================================
+  // Managed Agents — vaults
+  // ============================================================================
+
+  implicit lazy val vaultFormat: Format[Vault] = {
+    val reads: Reads[Vault] = (
+      (__ \ "id").read[String] and
+        (__ \ "display_name").read[String] and
+        (__ \ "metadata").readWithDefault[Map[String, String]](Map.empty) and
+        (__ \ "created_at").readNullable[String] and
+        (__ \ "updated_at").readNullable[String] and
+        (__ \ "archived_at").readNullable[String]
+    )(Vault.apply _)
+    val writes: OWrites[Vault] = OWrites { v =>
+      var obj = Json.obj("type" -> v.`type`, "id" -> v.id, "display_name" -> v.displayName)
+      if (v.metadata.nonEmpty) obj = obj + ("metadata" -> Json.toJson(v.metadata))
+      v.createdAt.foreach(t => obj = obj + ("created_at" -> JsString(t)))
+      v.updatedAt.foreach(t => obj = obj + ("updated_at" -> JsString(t)))
+      v.archivedAt.foreach(t => obj = obj + ("archived_at" -> JsString(t)))
       obj
     }
     Format(reads, writes)
