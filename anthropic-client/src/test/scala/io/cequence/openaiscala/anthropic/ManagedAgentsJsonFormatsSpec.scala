@@ -219,6 +219,41 @@ class ManagedAgentsJsonFormatsSpec extends AnyWordSpecLike with Matchers with Js
       }
       Json.parse(Json.toJson(env).toString()).as[Environment] shouldBe env
     }
+
+    // --- Environment work (self-hosted) ---
+
+    "deserialize a self-hosted work item" in {
+      val json =
+        """{"type":"work","id":"work_1","data":{"id":"sesn_1","type":"session"},""" +
+          """"environment_id":"env_1","state":"active","metadata":{"k":"v"}}"""
+      val work = Json.parse(json).as[SelfHostedWork]
+      work.id shouldBe "work_1"
+      work.data.id shouldBe "sesn_1"
+      work.state shouldBe WorkState.active
+      work.metadata shouldBe Map("k" -> "v")
+      Json.parse(Json.toJson(work).toString()).as[SelfHostedWork] shouldBe work
+    }
+
+    "serialize/deserialize a work heartbeat response" in {
+      testCodec[WorkHeartbeatResponse](
+        WorkHeartbeatResponse(
+          lastHeartbeat = "2026-06-18T00:00:00Z",
+          leaseExtended = true,
+          state = WorkState.active,
+          ttlSeconds = 30
+        ),
+        """{"type":"work_heartbeat","last_heartbeat":"2026-06-18T00:00:00Z",""" +
+          """"lease_extended":true,"state":"active","ttl_seconds":30}"""
+      )
+    }
+
+    "serialize/deserialize work-queue stats" in {
+      testCodec[WorkQueueStats](
+        WorkQueueStats(depth = 2, pending = 1, workersPolling = 3, oldestQueuedAt = Some("t")),
+        """{"type":"work_queue_stats","depth":2,"pending":1,""" +
+          """"workers_polling":3,"oldest_queued_at":"t"}"""
+      )
+    }
   }
 
   private def testCodec[A](

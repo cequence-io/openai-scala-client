@@ -20,7 +20,10 @@ import io.cequence.openaiscala.anthropic.domain.managedagents.{
   Agent,
   Environment,
   EnvironmentDeleteResponse,
-  PagedResponse
+  PagedResponse,
+  SelfHostedWork,
+  WorkHeartbeatResponse,
+  WorkQueueStats
 }
 import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicCreateAgentSettings,
@@ -363,6 +366,53 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
   ): Future[EnvironmentDeleteResponse] = managedAgentsUnsupported
 
   override def archiveEnvironment(environmentId: String): Future[Environment] =
+    managedAgentsUnsupported
+
+  override def listWork(
+    environmentId: String,
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[SelfHostedWork]] = managedAgentsUnsupported
+
+  override def getWork(
+    environmentId: String,
+    workId: String
+  ): Future[SelfHostedWork] =
+    managedAgentsUnsupported
+
+  override def pollWork(
+    environmentId: String,
+    blockMs: Option[Int],
+    reclaimOlderThanMs: Option[Int],
+    workerId: Option[String]
+  ): Future[SelfHostedWork] = managedAgentsUnsupported
+
+  override def acknowledgeWork(
+    environmentId: String,
+    workId: String
+  ): Future[SelfHostedWork] =
+    managedAgentsUnsupported
+
+  override def recordWorkHeartbeat(
+    environmentId: String,
+    workId: String,
+    desiredTtlSeconds: Option[Int],
+    expectedLastHeartbeat: Option[String]
+  ): Future[WorkHeartbeatResponse] = managedAgentsUnsupported
+
+  override def stopWork(
+    environmentId: String,
+    workId: String
+  ): Future[SelfHostedWork] =
+    managedAgentsUnsupported
+
+  override def updateWork(
+    environmentId: String,
+    workId: String,
+    metadata: Map[String, Option[String]]
+  ): Future[SelfHostedWork] = managedAgentsUnsupported
+
+  override def getWorkQueueStats(environmentId: String): Future[WorkQueueStats] =
     managedAgentsUnsupported
 
   def connectionInfo: BedrockConnectionSettings

@@ -3,7 +3,10 @@ package io.cequence.openaiscala.anthropic.service
 import io.cequence.openaiscala.anthropic.domain.managedagents.{
   Environment,
   EnvironmentDeleteResponse,
-  PagedResponse
+  PagedResponse,
+  SelfHostedWork,
+  WorkHeartbeatResponse,
+  WorkQueueStats
 }
 import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicCreateEnvironmentSettings,
@@ -61,4 +64,71 @@ trait AnthropicEnvironmentService {
    * cannot back new sessions. Permanent — there is no unarchive.
    */
   def archiveEnvironment(environmentId: String): Future[Environment]
+
+  // -- Self-hosted work queue --
+  // These endpoints are normally driven automatically by the SDK/CLI environment worker; they
+  // are exposed here for completeness and advanced/self-hosted orchestration.
+
+  /** Lists work items in an environment (`GET /v1/environments/{id}/work`). */
+  def listWork(
+    environmentId: String,
+    limit: Option[Int] = None,
+    page: Option[String] = None
+  ): Future[PagedResponse[SelfHostedWork]]
+
+  /** Retrieves a work item (`GET /v1/environments/{id}/work/{workId}`). */
+  def getWork(
+    environmentId: String,
+    workId: String
+  ): Future[SelfHostedWork]
+
+  /**
+   * Long-polls for a work item (`GET /v1/environments/{id}/work/poll`).
+   *
+   * @param blockMs
+   *   How long (1-999 ms) to wait for work; non-blocking if omitted.
+   * @param reclaimOlderThanMs
+   *   Reclaim unacknowledged work older than this (default 5000ms).
+   * @param workerId
+   *   Worker identifier, sent as the `Anthropic-Worker-ID` header for queue metrics.
+   */
+  def pollWork(
+    environmentId: String,
+    blockMs: Option[Int] = None,
+    reclaimOlderThanMs: Option[Int] = None,
+    workerId: Option[String] = None
+  ): Future[SelfHostedWork]
+
+  /** Acknowledges a work item (`POST /v1/environments/{id}/work/{workId}/ack`). */
+  def acknowledgeWork(
+    environmentId: String,
+    workId: String
+  ): Future[SelfHostedWork]
+
+  /** Records a heartbeat (`POST /v1/environments/{id}/work/{workId}/heartbeat`). */
+  def recordWorkHeartbeat(
+    environmentId: String,
+    workId: String,
+    desiredTtlSeconds: Option[Int] = None,
+    expectedLastHeartbeat: Option[String] = None
+  ): Future[WorkHeartbeatResponse]
+
+  /** Stops a work item (`POST /v1/environments/{id}/work/{workId}/stop`). */
+  def stopWork(
+    environmentId: String,
+    workId: String
+  ): Future[SelfHostedWork]
+
+  /**
+   * Updates a work item's metadata with merge semantics (`POST
+   * /v1/environments/{id}/work/{workId}`). A `None` value deletes the key.
+   */
+  def updateWork(
+    environmentId: String,
+    workId: String,
+    metadata: Map[String, Option[String]]
+  ): Future[SelfHostedWork]
+
+  /** Work-queue statistics (`GET /v1/environments/{id}/work/stats`). */
+  def getWorkQueueStats(environmentId: String): Future[WorkQueueStats]
 }

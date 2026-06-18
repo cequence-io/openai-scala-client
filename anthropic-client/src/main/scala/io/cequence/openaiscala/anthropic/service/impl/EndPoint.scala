@@ -60,4 +60,9 @@ object Param {
   case object created_at_lte extends Param("created_at[lte]")
   case object config extends Param
   case object scope extends Param
+  // environment work (self-hosted)
+  case object block_ms extends Param
+  case object reclaim_older_than_ms extends Param
+  case object desired_ttl_seconds extends Param
+  case object expected_last_heartbeat extends Param
 }

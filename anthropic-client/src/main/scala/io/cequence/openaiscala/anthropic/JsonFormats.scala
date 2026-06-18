@@ -103,7 +103,12 @@ import io.cequence.openaiscala.anthropic.domain.managedagents.{
   Networking,
   Packages,
   PagedResponse,
-  PermissionPolicy
+  PermissionPolicy,
+  SelfHostedWork,
+  SessionWorkData,
+  WorkHeartbeatResponse,
+  WorkQueueStats,
+  WorkState
 }
 import io.cequence.openaiscala.JsonFormats.formatWithType
 import io.cequence.openaiscala.domain.JsonSchema
@@ -1597,6 +1602,94 @@ trait JsonFormats {
       (__ \ "id").read[String].map(EnvironmentDeleteResponse(_))
     val writes: OWrites[EnvironmentDeleteResponse] =
       OWrites(r => Json.obj("id" -> r.id, "type" -> r.`type`))
+    Format(reads, writes)
+  }
+
+  // ============================================================================
+  // Managed Agents — environment work (self-hosted worker queue)
+  // ============================================================================
+
+  implicit lazy val workStateFormat: Format[WorkState] =
+    JsonUtil.enumFormat[WorkState](WorkState.values: _*)
+
+  implicit lazy val sessionWorkDataFormat: Format[SessionWorkData] = {
+    val reads: Reads[SessionWorkData] = (__ \ "id").read[String].map(SessionWorkData(_))
+    val writes: OWrites[SessionWorkData] =
+      OWrites(d => Json.obj("id" -> d.id, "type" -> d.`type`))
+    Format(reads, writes)
+  }
+
+  implicit lazy val selfHostedWorkFormat: Format[SelfHostedWork] = {
+    val reads: Reads[SelfHostedWork] = (
+      (__ \ "id").read[String] and
+        (__ \ "data").read[SessionWorkData] and
+        (__ \ "environment_id").read[String] and
+        (__ \ "state").read[WorkState] and
+        (__ \ "acknowledged_at").readNullable[String] and
+        (__ \ "created_at").readNullable[String] and
+        (__ \ "latest_heartbeat_at").readNullable[String] and
+        (__ \ "metadata").readWithDefault[Map[String, String]](Map.empty) and
+        (__ \ "started_at").readNullable[String] and
+        (__ \ "stop_requested_at").readNullable[String] and
+        (__ \ "stopped_at").readNullable[String]
+    )(SelfHostedWork.apply _)
+
+    val writes: OWrites[SelfHostedWork] = OWrites { w =>
+      var obj = Json.obj(
+        "type" -> w.`type`,
+        "id" -> w.id,
+        "data" -> Json.toJson(w.data),
+        "environment_id" -> w.environmentId,
+        "state" -> Json.toJson(w.state)
+      )
+      w.acknowledgedAt.foreach(t => obj = obj + ("acknowledged_at" -> JsString(t)))
+      w.createdAt.foreach(t => obj = obj + ("created_at" -> JsString(t)))
+      w.latestHeartbeatAt.foreach(t => obj = obj + ("latest_heartbeat_at" -> JsString(t)))
+      if (w.metadata.nonEmpty) obj = obj + ("metadata" -> Json.toJson(w.metadata))
+      w.startedAt.foreach(t => obj = obj + ("started_at" -> JsString(t)))
+      w.stopRequestedAt.foreach(t => obj = obj + ("stop_requested_at" -> JsString(t)))
+      w.stoppedAt.foreach(t => obj = obj + ("stopped_at" -> JsString(t)))
+      obj
+    }
+    Format(reads, writes)
+  }
+
+  implicit lazy val workHeartbeatResponseFormat: Format[WorkHeartbeatResponse] = {
+    val reads: Reads[WorkHeartbeatResponse] = (
+      (__ \ "last_heartbeat").read[String] and
+        (__ \ "lease_extended").read[Boolean] and
+        (__ \ "state").read[WorkState] and
+        (__ \ "ttl_seconds").read[Int]
+    )(WorkHeartbeatResponse.apply _)
+    val writes: OWrites[WorkHeartbeatResponse] = OWrites { h =>
+      Json.obj(
+        "type" -> h.`type`,
+        "last_heartbeat" -> h.lastHeartbeat,
+        "lease_extended" -> h.leaseExtended,
+        "state" -> Json.toJson(h.state),
+        "ttl_seconds" -> h.ttlSeconds
+      )
+    }
+    Format(reads, writes)
+  }
+
+  implicit lazy val workQueueStatsFormat: Format[WorkQueueStats] = {
+    val reads: Reads[WorkQueueStats] = (
+      (__ \ "depth").read[Int] and
+        (__ \ "pending").read[Int] and
+        (__ \ "workers_polling").read[Int] and
+        (__ \ "oldest_queued_at").readNullable[String]
+    )(WorkQueueStats.apply _)
+    val writes: OWrites[WorkQueueStats] = OWrites { s =>
+      var obj = Json.obj(
+        "type" -> s.`type`,
+        "depth" -> s.depth,
+        "pending" -> s.pending,
+        "workers_polling" -> s.workersPolling
+      )
+      s.oldestQueuedAt.foreach(t => obj = obj + ("oldest_queued_at" -> JsString(t)))
+      obj
+    }
     Format(reads, writes)
   }
 }

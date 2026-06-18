@@ -17,7 +17,10 @@ import io.cequence.openaiscala.anthropic.domain.managedagents.{
   Agent,
   Environment,
   EnvironmentDeleteResponse,
-  PagedResponse
+  PagedResponse,
+  SelfHostedWork,
+  WorkHeartbeatResponse,
+  WorkQueueStats
 }
 import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicCreateAgentSettings,
@@ -500,4 +503,105 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       bodyParams = Nil,
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[Environment])
+
+  // -- Self-hosted work queue --
+
+  override def listWork(
+    environmentId: String,
+    limit: Option[Int],
+    page: Option[String]
+  ): Future[PagedResponse[SelfHostedWork]] =
+    execGET(
+      EndPoint.environments,
+      Some(s"$environmentId/work"),
+      params = Seq(Param.limit -> limit.map(_.toString), Param.page -> page),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[PagedResponse[SelfHostedWork]])
+
+  override def getWork(
+    environmentId: String,
+    workId: String
+  ): Future[SelfHostedWork] =
+    execGET(
+      EndPoint.environments,
+      Some(s"$environmentId/work/$workId"),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[SelfHostedWork])
+
+  override def pollWork(
+    environmentId: String,
+    blockMs: Option[Int],
+    reclaimOlderThanMs: Option[Int],
+    workerId: Option[String]
+  ): Future[SelfHostedWork] = {
+    val headers =
+      managedAgentsHeaders ++ workerId.map(id => ("Anthropic-Worker-ID", id)).toSeq
+    execGET(
+      EndPoint.environments,
+      Some(s"$environmentId/work/poll"),
+      params = Seq(
+        Param.block_ms -> blockMs.map(_.toString),
+        Param.reclaim_older_than_ms -> reclaimOlderThanMs.map(_.toString)
+      ),
+      extraHeaders = headers
+    ).map(_.asSafeJson[SelfHostedWork])
+  }
+
+  override def acknowledgeWork(
+    environmentId: String,
+    workId: String
+  ): Future[SelfHostedWork] =
+    execPOST(
+      EndPoint.environments,
+      Some(s"$environmentId/work/$workId/ack"),
+      bodyParams = Nil,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[SelfHostedWork])
+
+  override def recordWorkHeartbeat(
+    environmentId: String,
+    workId: String,
+    desiredTtlSeconds: Option[Int],
+    expectedLastHeartbeat: Option[String]
+  ): Future[WorkHeartbeatResponse] =
+    execPOST(
+      EndPoint.environments,
+      Some(s"$environmentId/work/$workId/heartbeat"),
+      params = Seq(
+        Param.desired_ttl_seconds -> desiredTtlSeconds.map(_.toString),
+        Param.expected_last_heartbeat -> expectedLastHeartbeat
+      ),
+      bodyParams = Nil,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[WorkHeartbeatResponse])
+
+  override def stopWork(
+    environmentId: String,
+    workId: String
+  ): Future[SelfHostedWork] =
+    execPOST(
+      EndPoint.environments,
+      Some(s"$environmentId/work/$workId/stop"),
+      bodyParams = Nil,
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[SelfHostedWork])
+
+  override def updateWork(
+    environmentId: String,
+    workId: String,
+    metadata: Map[String, Option[String]]
+  ): Future[SelfHostedWork] =
+    execPOST(
+      EndPoint.environments,
+      Some(s"$environmentId/work/$workId"),
+      bodyParams = Seq(Param.metadata -> Some(metadataPatchJson(metadata))),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[SelfHostedWork])
+
+  override def getWorkQueueStats(environmentId: String): Future[WorkQueueStats] =
+    execGET(
+      EndPoint.environments,
+      Some(s"$environmentId/work/stats"),
+      extraHeaders = managedAgentsHeaders
+    ).map(_.asSafeJson[WorkQueueStats])
 }
