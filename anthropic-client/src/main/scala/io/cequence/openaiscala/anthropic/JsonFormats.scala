@@ -107,9 +107,12 @@ import io.cequence.openaiscala.anthropic.domain.managedagents.{
   SelfHostedWork,
   Session,
   SessionAgentOverride,
+  SessionContentBlock,
   SessionDeleteResponse,
+  SessionDocumentSource,
   SessionEvent,
   SessionEventEnvelope,
+  SessionImageSource,
   SessionResource,
   SessionStatus,
   SessionThread,
@@ -1992,15 +1995,58 @@ trait JsonFormats {
     case r: OutcomeRubric.File => Json.obj("type" -> r.`type`, "file_id" -> r.fileId)
   }
 
+  implicit lazy val sessionImageSourceWrites: OWrites[SessionImageSource] = OWrites {
+    case s: SessionImageSource.Base64 =>
+      Json.obj("type" -> s.`type`, "media_type" -> s.mediaType, "data" -> s.data)
+    case s: SessionImageSource.Url =>
+      Json.obj("type" -> s.`type`, "url" -> s.url)
+    case s: SessionImageSource.FileRef =>
+      Json.obj("type" -> s.`type`, "file_id" -> s.fileId)
+  }
+
+  implicit lazy val sessionDocumentSourceWrites: OWrites[SessionDocumentSource] = OWrites {
+    case s: SessionDocumentSource.Base64 =>
+      Json.obj("type" -> s.`type`, "media_type" -> s.mediaType, "data" -> s.data)
+    case s: SessionDocumentSource.PlainText =>
+      Json.obj("type" -> s.`type`, "media_type" -> s.mediaType, "data" -> s.data)
+    case s: SessionDocumentSource.Url =>
+      Json.obj("type" -> s.`type`, "url" -> s.url)
+    case s: SessionDocumentSource.FileRef =>
+      Json.obj("type" -> s.`type`, "file_id" -> s.fileId)
+  }
+
+  implicit lazy val sessionContentBlockWrites: OWrites[SessionContentBlock] = OWrites {
+    case b: SessionContentBlock.Text =>
+      Json.obj("type" -> b.`type`, "text" -> b.text)
+    case b: SessionContentBlock.Image =>
+      Json.obj("type" -> b.`type`, "source" -> Json.toJson(b.source))
+    case b: SessionContentBlock.Document =>
+      var obj = Json.obj("type" -> b.`type`, "source" -> Json.toJson(b.source))
+      b.title.foreach(t => obj = obj + ("title" -> JsString(t)))
+      b.context.foreach(c => obj = obj + ("context" -> JsString(c)))
+      obj
+    case b: SessionContentBlock.SearchResult =>
+      var obj = Json.obj(
+        "type" -> b.`type`,
+        "title" -> b.title,
+        "source" -> b.source,
+        "content" -> Json.toJson[Seq[SessionContentBlock]](b.content)
+      )
+      b.citationsEnabled.foreach(en => obj = obj + ("citations" -> Json.obj("enabled" -> en)))
+      obj
+  }
+
   // Send-events serializer.
   implicit lazy val sessionEventWrites: OWrites[SessionEvent] = OWrites {
     case e: SessionEvent.UserMessage =>
       Json.obj(
         "type" -> e.`type`,
-        "content" -> Json.arr(Json.obj("type" -> "text", "text" -> e.text))
+        "content" -> Json.toJson(e.content)
       )
-    case SessionEvent.UserInterrupt =>
-      Json.obj("type" -> SessionEvent.UserInterrupt.`type`)
+    case e: SessionEvent.UserInterrupt =>
+      var obj = Json.obj("type" -> e.`type`)
+      e.sessionThreadId.foreach(id => obj = obj + ("session_thread_id" -> JsString(id)))
+      obj
     case e: SessionEvent.UserToolConfirmation =>
       var obj = Json.obj(
         "type" -> e.`type`,
@@ -2008,14 +2054,25 @@ trait JsonFormats {
         "result" -> (if (e.allow) "allow" else "deny")
       )
       e.denyMessage.foreach(m => obj = obj + ("deny_message" -> JsString(m)))
+      e.sessionThreadId.foreach(id => obj = obj + ("session_thread_id" -> JsString(id)))
+      obj
+    case e: SessionEvent.UserToolResult =>
+      var obj = Json.obj(
+        "type" -> e.`type`,
+        "tool_use_id" -> e.toolUseId,
+        "content" -> Json.toJson(e.content)
+      )
+      e.isError.foreach(b => obj = obj + ("is_error" -> JsBoolean(b)))
+      e.sessionThreadId.foreach(id => obj = obj + ("session_thread_id" -> JsString(id)))
       obj
     case e: SessionEvent.UserCustomToolResult =>
       var obj = Json.obj(
         "type" -> e.`type`,
         "custom_tool_use_id" -> e.customToolUseId,
-        "content" -> Json.arr(Json.obj("type" -> "text", "text" -> e.text))
+        "content" -> Json.toJson(e.content)
       )
       e.isError.foreach(b => obj = obj + ("is_error" -> JsBoolean(b)))
+      e.sessionThreadId.foreach(id => obj = obj + ("session_thread_id" -> JsString(id)))
       obj
     case e: SessionEvent.UserDefineOutcome =>
       var obj = Json.obj(
@@ -2025,6 +2082,11 @@ trait JsonFormats {
       )
       e.maxIterations.foreach(n => obj = obj + ("max_iterations" -> JsNumber(n)))
       obj
+    case e: SessionEvent.SystemMessage =>
+      Json.obj(
+        "type" -> e.`type`,
+        "content" -> Json.toJson[Seq[SessionContentBlock]](e.content)
+      )
   }
 
   // ============================================================================

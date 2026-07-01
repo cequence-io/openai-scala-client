@@ -260,11 +260,11 @@ class ManagedAgentsJsonFormatsSpec extends AnyWordSpecLike with Matchers with Js
 
     // --- Sessions ---
 
-    "serialize the five send-event shapes" in {
-      Json.toJson(SessionEvent.UserMessage("hi"): SessionEvent) shouldBe Json.parse(
+    "serialize the seven send-event shapes" in {
+      Json.toJson(SessionEvent.UserMessage.text("hi"): SessionEvent) shouldBe Json.parse(
         """{"type":"user.message","content":[{"type":"text","text":"hi"}]}"""
       )
-      Json.toJson(SessionEvent.UserInterrupt: SessionEvent) shouldBe Json.parse(
+      Json.toJson(SessionEvent.UserInterrupt(): SessionEvent) shouldBe Json.parse(
         """{"type":"user.interrupt"}"""
       )
       Json.toJson(
@@ -277,8 +277,17 @@ class ManagedAgentsJsonFormatsSpec extends AnyWordSpecLike with Matchers with Js
         """{"type":"user.tool_confirmation","tool_use_id":"sevt_1","result":"deny","deny_message":"no"}"""
       )
       Json.toJson(
-        SessionEvent
-          .UserCustomToolResult("sevt_2", "done", isError = Some(false)): SessionEvent
+        SessionEvent.UserToolResult(
+          "sevt_3",
+          content = Seq(SessionContentBlock.Text("ok"))
+        ): SessionEvent
+      ) shouldBe Json.parse(
+        """{"type":"user.tool_result","tool_use_id":"sevt_3",""" +
+          """"content":[{"type":"text","text":"ok"}]}"""
+      )
+      Json.toJson(
+        SessionEvent.UserCustomToolResult
+          .text("sevt_2", "done", isError = Some(false)): SessionEvent
       ) shouldBe Json.parse(
         """{"type":"user.custom_tool_result","custom_tool_use_id":"sevt_2",""" +
           """"content":[{"type":"text","text":"done"}],"is_error":false}"""
@@ -293,6 +302,10 @@ class ManagedAgentsJsonFormatsSpec extends AnyWordSpecLike with Matchers with Js
         """{"type":"user.define_outcome","description":"build it",""" +
           """"rubric":{"type":"text","content":"must compile"},"max_iterations":5}"""
       )
+      Json.toJson(SessionEvent.SystemMessage.text("be terse"): SessionEvent) shouldBe Json
+        .parse(
+          """{"type":"system.message","content":[{"type":"text","text":"be terse"}]}"""
+        )
     }
 
     "serialize/deserialize session resources (file, github, memory_store)" in {
