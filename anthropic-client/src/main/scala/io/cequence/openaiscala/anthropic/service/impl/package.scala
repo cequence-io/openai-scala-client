@@ -271,6 +271,7 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
     NonOpenAIModelId.claude_opus_4_8,
     NonOpenAIModelId.claude_opus_4_7,
     NonOpenAIModelId.claude_opus_4_6,
+    NonOpenAIModelId.claude_sonnet_5,
     NonOpenAIModelId.claude_sonnet_4_6
   )
 
@@ -280,7 +281,8 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
   private val adaptiveOnlyThinkingModels: Set[String] = Set(
     NonOpenAIModelId.claude_fable_5,
     NonOpenAIModelId.claude_opus_4_8,
-    NonOpenAIModelId.claude_opus_4_7
+    NonOpenAIModelId.claude_opus_4_7,
+    NonOpenAIModelId.claude_sonnet_5
   )
 
   private def isAdaptiveOnlyThinkingModel(model: String): Boolean = {
@@ -312,13 +314,14 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
     case ReasoningEffort.medium => Some(OutputEffort.medium)
     case ReasoningEffort.high   => Some(OutputEffort.high)
     case ReasoningEffort.xhigh  =>
-      // OutputEffort.xhigh is supported only on Opus 4.7+ (Opus 4.7, Opus 4.8) and Fable 5;
-      // downgrade to high on Opus 4.6 / Sonnet 4.6 to avoid a remote 400 from Anthropic.
+      // OutputEffort.xhigh is supported only on Opus 4.7+ (Opus 4.7, Opus 4.8), Fable 5, and
+      // Sonnet 5; downgrade to high on Opus 4.6 / Sonnet 4.6 to avoid a remote 400 from Anthropic.
       val m = model.toLowerCase
       if (
         m.contains(NonOpenAIModelId.claude_fable_5) ||
         m.contains(NonOpenAIModelId.claude_opus_4_8) ||
-        m.contains(NonOpenAIModelId.claude_opus_4_7)
+        m.contains(NonOpenAIModelId.claude_opus_4_7) ||
+        m.contains(NonOpenAIModelId.claude_sonnet_5)
       ) {
         Some(OutputEffort.xhigh)
       } else {
