@@ -16,7 +16,7 @@ trait AnthropicServiceConsts {
   object DefaultSettings {
 
     val CreateMessage = AnthropicCreateMessageSettings(
-      model = NonOpenAIModelId.claude_2_1,
+      model = NonOpenAIModelId.claude_haiku_4_5,
       max_tokens = 2048
     )
   }
