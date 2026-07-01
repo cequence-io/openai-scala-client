@@ -215,6 +215,11 @@ object ModelId {
   val o1_pro = "o1-pro"
   val o1_pro_2025_03_19 = "o1-pro-2025-03-19"
 
+  // GPT-5.6 (preview announced 2026-06-26; Sol/Terra/Luna capability tiers replace pro/mini/nano)
+  val gpt_5_6_sol = "gpt-5.6-sol"
+  val gpt_5_6_terra = "gpt-5.6-terra"
+  val gpt_5_6_luna = "gpt-5.6-luna"
+
   // GPT-5.5
   val gpt_5_5 = "gpt-5.5"
   val gpt_5_5_2026_04_23 = "gpt-5.5-2026-04-23"

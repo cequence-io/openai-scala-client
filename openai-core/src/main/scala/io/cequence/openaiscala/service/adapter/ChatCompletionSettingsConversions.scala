@@ -264,6 +264,20 @@ object ChatCompletionSettingsConversions {
     )
   )
 
+  // GPT-5.6 (Sol/Terra/Luna) is reasoning-first; restrict all sampling params unconditionally like 5.5.
+  // NOTE: not confirmed against 5.6-specific docs (limited preview); mirrors the GPT-5 reasoning family + 5.5.
+  // TODO: confirm on the live API; if a non-reasoning variant accepts temperature, use gpt5_4's *WithReasoning.
+  val gpt5_6: SettingsConversion = generic(
+    Seq(
+      maxTokensToMaxCompletionTokens,
+      temperatureOneOnly,
+      topPOneOnly,
+      presencePenaltyZeroOnly,
+      frequencyPenaltyZeroOnly,
+      logProbsUnsupported
+    )
+  )
+
   val o: SettingsConversion = generic(oBaseConversions)
 
   val o1Preview: SettingsConversion = generic(o1PreviewConversions)
