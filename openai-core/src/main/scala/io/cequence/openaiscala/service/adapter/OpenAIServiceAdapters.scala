@@ -112,8 +112,8 @@ trait OpenAIServiceAdapters[S <: CloseableService] extends ServiceAdapters[S] {
       new ChatCompletionErrorInterceptAdapter(intercept, adjustSettingsForCall)(service)
     )
 
-  def chatCompletionRouter(
-    serviceModels: Map[OpenAIChatCompletionService, Seq[String]],
+  def chatCompletionRouter[T <: OpenAIChatCompletionService](
+    serviceModels: Map[T, Seq[String]],
     service: S with OpenAIChatCompletionService
   ): S = {
     val chatCompletionService =
@@ -123,8 +123,8 @@ trait OpenAIServiceAdapters[S <: CloseableService] extends ServiceAdapters[S] {
     )
   }
 
-  def chatCompletionRouterMapped(
-    serviceModels: Map[OpenAIChatCompletionService, Seq[MappedModel]],
+  def chatCompletionRouterMapped[T <: OpenAIChatCompletionService](
+    serviceModels: Map[T, Seq[MappedModel]],
     service: S with OpenAIChatCompletionService
   ): S = {
     val chatCompletionService =
@@ -143,8 +143,8 @@ trait OpenAIServiceAdapters[S <: CloseableService] extends ServiceAdapters[S] {
    * `OpenAIService` whose chat completion and batch are routed but whose files/assistants/...
    * still delegate to `service`.
    */
-  def chatCompletionBatchRouter(
-    serviceModels: Map[OpenAIChatCompletionServiceRouter.BatchChatService, Seq[String]],
+  def chatCompletionBatchRouter[T <: OpenAIChatCompletionServiceRouter.BatchChatService](
+    serviceModels: Map[T, Seq[String]],
     service: S with OpenAIChatCompletionService with OpenAIChatCompletionBatchService
   ): S with OpenAIChatCompletionBatchService = {
     val batchChatService =
@@ -154,12 +154,45 @@ trait OpenAIServiceAdapters[S <: CloseableService] extends ServiceAdapters[S] {
     )
   }
 
-  def chatCompletionBatchRouterMapped(
-    serviceModels: Map[OpenAIChatCompletionServiceRouter.BatchChatService, Seq[MappedModel]],
+  def chatCompletionBatchRouterMapped[T <: OpenAIChatCompletionServiceRouter.BatchChatService](
+    serviceModels: Map[T, Seq[MappedModel]],
     service: S with OpenAIChatCompletionService with OpenAIChatCompletionBatchService
   ): S with OpenAIChatCompletionBatchService = {
     val batchChatService =
       OpenAIChatCompletionServiceRouter.applyWithBatchMapped(serviceModels, service)
+    wrapAndDelegateChatCompletionBatch(
+      new ChatCompletionBatchServiceAdapter[S](batchChatService, service)
+    )
+  }
+
+  /**
+   * Mixed-capability sibling of [[chatCompletionBatchRouter]] for maps that combine
+   * batch-capable and plain (non-batch) chat-completion services under a single key type -
+   * e.g. OpenAI/Anthropic/Gemini (batch-capable) mixed with Groq/Grok/Mistral/... (chat-only)
+   * in one `Map[OpenAIChatCompletionService, Seq[String]]`. Chat completion routes to
+   * '''all''' registered services by model, exactly like [[chatCompletionRouter]]. Batch calls
+   * route to a registered service only if it is actually batch-capable; a model mapped to a
+   * non-batch service fails fast with a helpful error instead of silently falling back to the
+   * default or crashing with an erasure-related `IncompatibleClassChangeError` - see
+   * [[OpenAIChatCompletionServiceRouter.applyWithBatchMixed]].
+   */
+  def chatCompletionBatchRouterMixed[T <: OpenAIChatCompletionService](
+    serviceModels: Map[T, Seq[String]],
+    service: S with OpenAIChatCompletionService with OpenAIChatCompletionBatchService
+  ): S with OpenAIChatCompletionBatchService = {
+    val batchChatService =
+      OpenAIChatCompletionServiceRouter.applyWithBatchMixed(serviceModels, service)
+    wrapAndDelegateChatCompletionBatch(
+      new ChatCompletionBatchServiceAdapter[S](batchChatService, service)
+    )
+  }
+
+  def chatCompletionBatchRouterMixedMapped[T <: OpenAIChatCompletionService](
+    serviceModels: Map[T, Seq[MappedModel]],
+    service: S with OpenAIChatCompletionService with OpenAIChatCompletionBatchService
+  ): S with OpenAIChatCompletionBatchService = {
+    val batchChatService =
+      OpenAIChatCompletionServiceRouter.applyWithBatchMixedMapped(serviceModels, service)
     wrapAndDelegateChatCompletionBatch(
       new ChatCompletionBatchServiceAdapter[S](batchChatService, service)
     )

@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.service.adapter
 
+import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.{
   BaseMessage,
   ChatCompletionBatchInfo,
@@ -35,34 +36,72 @@ object OpenAIChatCompletionServiceRouter {
   // default is closed by the wrapping adapter when the router is built via
   // OpenAIServiceAdapters.chatCompletionRouter/chatCompletionBatchRouter, and is the caller's
   // responsibility when the router is constructed directly (as here).
-  def apply(
-    serviceModels: Map[OpenAIChatCompletionService, Seq[String]],
+  // T is bounded (rather than the map keyed directly on OpenAIChatCompletionService) so that
+  // callers holding a Map[SomeSubtype, ...] don't have to upcast the keys themselves - Map is
+  // invariant in its key type, so Map[T, X] is not a Map[OpenAIChatCompletionService, X] even
+  // when T <: OpenAIChatCompletionService. We widen once internally instead.
+  def apply[T <: OpenAIChatCompletionService](
+    serviceModels: Map[T, Seq[String]],
     defaultService: OpenAIChatCompletionService
   ): OpenAIChatCompletionService =
-    new OpenAIChatCompletionServiceRouter(toMappedModels(serviceModels), defaultService)
+    new OpenAIChatCompletionServiceRouter(
+      toMappedModels(widenToChat(serviceModels)),
+      defaultService
+    )
 
-  def applyMapped(
-    serviceModels: Map[OpenAIChatCompletionService, Seq[MappedModel]],
+  def applyMapped[T <: OpenAIChatCompletionService](
+    serviceModels: Map[T, Seq[MappedModel]],
     defaultService: OpenAIChatCompletionService
   ): OpenAIChatCompletionService =
-    new OpenAIChatCompletionServiceRouter(serviceModels, defaultService)
+    new OpenAIChatCompletionServiceRouter(widenToChat(serviceModels), defaultService)
 
   /**
    * Batch-aware router: routes chat completion '''and''' the provider-agnostic batch endpoints
    * by model. The registered services and the default must all be batch-capable, so the
-   * returned service is too - see [[BatchChatService]].
+   * returned service is too - see [[BatchChatService]]. All registered services need to be
+   * batch-capable up front; for a map mixing batch-capable and plain chat-completion services,
+   * use [[applyWithBatchMixed]]/[[applyWithBatchMixedMapped]] instead.
    */
-  def applyWithBatch(
-    serviceModels: Map[BatchChatService, Seq[String]],
+  def applyWithBatch[T <: BatchChatService](
+    serviceModels: Map[T, Seq[String]],
     defaultService: BatchChatService
   ): BatchChatService =
-    new OpenAIChatCompletionBatchServiceRouter(toMappedModels(serviceModels), defaultService)
+    new OpenAIChatCompletionBatchServiceRouter(
+      toMappedModels(widenToBatch(serviceModels)),
+      defaultService
+    )
 
-  def applyWithBatchMapped(
-    serviceModels: Map[BatchChatService, Seq[MappedModel]],
+  def applyWithBatchMapped[T <: BatchChatService](
+    serviceModels: Map[T, Seq[MappedModel]],
     defaultService: BatchChatService
   ): BatchChatService =
-    new OpenAIChatCompletionBatchServiceRouter(serviceModels, defaultService)
+    new OpenAIChatCompletionBatchServiceRouter(widenToBatch(serviceModels), defaultService)
+
+  /**
+   * Mixed-capability variant of [[applyWithBatch]] for maps that combine batch-capable and
+   * plain (non-batch) chat-completion services under a single key type. Chat completion routes
+   * to '''all''' registered services by model, exactly like [[apply]]. Batch calls route to a
+   * registered service only if it is actually batch-capable (checked at runtime, since the
+   * static key type does not guarantee it); a model mapped to a non-batch service fails fast
+   * with a helpful [[io.cequence.openaiscala.OpenAIScalaClientException]] instead of blindly
+   * falling back to the default (which would silently send a foreign model id to the wrong
+   * provider) or crashing with an erasure-related `IncompatibleClassChangeError`. The default
+   * service is statically batch-capable, so batch calls that fall through to it need no check.
+   */
+  def applyWithBatchMixed[T <: OpenAIChatCompletionService](
+    serviceModels: Map[T, Seq[String]],
+    defaultService: BatchChatService
+  ): BatchChatService =
+    new OpenAIChatCompletionMixedBatchServiceRouter(
+      toMappedModels(widenToChat(serviceModels)),
+      defaultService
+    )
+
+  def applyWithBatchMixedMapped[T <: OpenAIChatCompletionService](
+    serviceModels: Map[T, Seq[MappedModel]],
+    defaultService: BatchChatService
+  ): BatchChatService =
+    new OpenAIChatCompletionMixedBatchServiceRouter(widenToChat(serviceModels), defaultService)
 
   private def toMappedModels[S](
     serviceModels: Map[S, Seq[String]]
@@ -70,6 +109,16 @@ object OpenAIChatCompletionServiceRouter {
     serviceModels.map { case (service, models) =>
       service -> models.map(model => MappedModel(model, model))
     }
+
+  private def widenToChat[T <: OpenAIChatCompletionService, V](
+    serviceModels: Map[T, V]
+  ): Map[OpenAIChatCompletionService, V] =
+    serviceModels.map { case (service, v) => (service: OpenAIChatCompletionService) -> v }
+
+  private def widenToBatch[T <: BatchChatService, V](
+    serviceModels: Map[T, V]
+  ): Map[BatchChatService, V] =
+    serviceModels.map { case (service, v) => (service: BatchChatService) -> v }
 
   private abstract class RouterBase[S <: OpenAIChatCompletionService](
     serviceModels: Map[S, Seq[MappedModel]],
@@ -194,6 +243,101 @@ object OpenAIChatCompletionServiceRouter {
 
         case None =>
           default.deleteChatCompletionBatch(batchId, model)
+      }
+  }
+
+  // mixed-capability variant of OpenAIChatCompletionBatchServiceRouter above: the map key type
+  // is only OpenAIChatCompletionService (not BatchChatService), so a registered service is not
+  // guaranteed to be batch-capable and each batch call is runtime-checked via pattern matching
+  // instead - see applyWithBatchMixed/applyWithBatchMixedMapped scaladoc for the rationale.
+  private final class OpenAIChatCompletionMixedBatchServiceRouter(
+    serviceModels: Map[OpenAIChatCompletionService, Seq[MappedModel]],
+    defaultBatchService: BatchChatService
+  ) extends RouterBase[OpenAIChatCompletionService](serviceModels, defaultBatchService)
+      with OpenAIChatCompletionBatchService {
+
+    private def notBatchCapable(model: String): Future[Nothing] =
+      Future.failed(
+        new OpenAIScalaClientException(
+          "Chat-completion batch is not supported by the service registered for model " +
+            s"'$model' - register a batch-capable service for it, or wrap it with " +
+            "OpenAIServiceAdapters.chatCompletionBatchEmulated."
+        )
+      )
+
+    override def createChatCompletionBatch(
+      requests: Seq[ChatCompletionBatchRequest],
+      settings: CreateChatCompletionSettings
+    ): Future[ChatCompletionBatchInfo] =
+      modelServiceMap.get(settings.model) match {
+        case Some((modelService: OpenAIChatCompletionBatchService, modelToUse)) =>
+          modelService.createChatCompletionBatch(requests, settings.copy(model = modelToUse))
+
+        case Some(_) =>
+          notBatchCapable(settings.model)
+
+        case None =>
+          defaultBatchService.createChatCompletionBatch(requests, settings)
+      }
+
+    override def getChatCompletionBatch(
+      batchId: String,
+      model: String
+    ): Future[ChatCompletionBatchInfo] =
+      modelServiceMap.get(model) match {
+        case Some((modelService: OpenAIChatCompletionBatchService, modelToUse)) =>
+          modelService.getChatCompletionBatch(batchId, modelToUse)
+
+        case Some(_) =>
+          notBatchCapable(model)
+
+        case None =>
+          defaultBatchService.getChatCompletionBatch(batchId, model)
+      }
+
+    override def retrieveChatCompletionBatchResults(
+      batchId: String,
+      model: String
+    ): Future[Seq[ChatCompletionBatchResultItem]] =
+      modelServiceMap.get(model) match {
+        case Some((modelService: OpenAIChatCompletionBatchService, modelToUse)) =>
+          modelService.retrieveChatCompletionBatchResults(batchId, modelToUse)
+
+        case Some(_) =>
+          notBatchCapable(model)
+
+        case None =>
+          defaultBatchService.retrieveChatCompletionBatchResults(batchId, model)
+      }
+
+    override def cancelChatCompletionBatch(
+      batchId: String,
+      model: String
+    ): Future[ChatCompletionBatchInfo] =
+      modelServiceMap.get(model) match {
+        case Some((modelService: OpenAIChatCompletionBatchService, modelToUse)) =>
+          modelService.cancelChatCompletionBatch(batchId, modelToUse)
+
+        case Some(_) =>
+          notBatchCapable(model)
+
+        case None =>
+          defaultBatchService.cancelChatCompletionBatch(batchId, model)
+      }
+
+    override def deleteChatCompletionBatch(
+      batchId: String,
+      model: String
+    ): Future[Unit] =
+      modelServiceMap.get(model) match {
+        case Some((modelService: OpenAIChatCompletionBatchService, modelToUse)) =>
+          modelService.deleteChatCompletionBatch(batchId, modelToUse)
+
+        case Some(_) =>
+          notBatchCapable(model)
+
+        case None =>
+          defaultBatchService.deleteChatCompletionBatch(batchId, model)
       }
   }
 }

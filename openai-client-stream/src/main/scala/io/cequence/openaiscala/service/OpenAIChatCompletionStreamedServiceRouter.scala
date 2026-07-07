@@ -9,21 +9,32 @@ import io.cequence.openaiscala.service.adapter.MappedModel
 
 // TODO: use wrappers/adapters instead
 object OpenAIChatCompletionStreamedServiceRouter {
-  def apply(
-    serviceModels: Map[OpenAIChatCompletionStreamedServiceExtra, Seq[String]],
+
+  // T is bounded (rather than the map keyed directly on OpenAIChatCompletionStreamedServiceExtra)
+  // so that callers holding a Map[SomeSubtype, ...] don't have to upcast the keys themselves -
+  // Map is invariant in its key type. We widen once internally instead.
+  def apply[T <: OpenAIChatCompletionStreamedServiceExtra](
+    serviceModels: Map[T, Seq[String]],
     defaultService: OpenAIChatCompletionStreamedServiceExtra
   ): OpenAIChatCompletionStreamedServiceExtra =
     new OpenAIChatCompletionStreamedServiceRouter(
       serviceModels.map { case (service, models) =>
-        service -> models.map(model => MappedModel(model, model))
+        (service: OpenAIChatCompletionStreamedServiceExtra) ->
+          models.map(model => MappedModel(model, model))
       },
       defaultService
     )
-  def applyMapped(
-    serviceModels: Map[OpenAIChatCompletionStreamedServiceExtra, Seq[MappedModel]],
+
+  def applyMapped[T <: OpenAIChatCompletionStreamedServiceExtra](
+    serviceModels: Map[T, Seq[MappedModel]],
     defaultService: OpenAIChatCompletionStreamedServiceExtra
   ): OpenAIChatCompletionStreamedServiceExtra =
-    new OpenAIChatCompletionStreamedServiceRouter(serviceModels, defaultService)
+    new OpenAIChatCompletionStreamedServiceRouter(
+      serviceModels.map { case (service, models) =>
+        (service: OpenAIChatCompletionStreamedServiceExtra) -> models
+      },
+      defaultService
+    )
 
   final private class OpenAIChatCompletionStreamedServiceRouter(
     serviceModels: Map[OpenAIChatCompletionStreamedServiceExtra, Seq[MappedModel]],
