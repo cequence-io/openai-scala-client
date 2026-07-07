@@ -25,7 +25,7 @@ trait ResponseStringMarshaller {
        |-filename: ${fileInfo.filename}
        |-bytes: ${fileInfo.bytes}
        |-created at: ${fileInfo.created_at.toString}
-       |-status: ${fileInfo.status}
+       |-status: ${fileInfo.status.getOrElse("N/A")}
        |-status_details: ${fileInfo.status_details.getOrElse("N/A")}
        |-purpose: ${fileInfo.purpose}
      """.stripMargin

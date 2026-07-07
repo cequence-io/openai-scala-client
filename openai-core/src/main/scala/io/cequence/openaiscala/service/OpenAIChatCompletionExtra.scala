@@ -12,6 +12,10 @@ import io.cequence.openaiscala.domain.settings.{
 }
 import io.cequence.openaiscala.domain.{
   BaseMessage,
+  ChatCompletionBatchInfo,
+  ChatCompletionBatchRequest,
+  ChatCompletionBatchResultItem,
+  ChatCompletionBatchStatus,
   ChatRole,
   TextContent,
   UserMessage,
@@ -21,6 +25,7 @@ import io.cequence.openaiscala.JsonFormats.jsonSchemaFormat
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.{Format, JsObject, JsValue, Json}
 
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future}
 import com.fasterxml.jackson.core.JsonProcessingException
 import io.cequence.openaiscala.OpenAIScalaClientException
@@ -283,6 +288,113 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
         case Retryable(_) => true
         case _            => false
       }
+  }
+
+  implicit class OpenAIChatCompletionBatchImplicits(
+    openAIChatCompletionService: OpenAIChatCompletionService
+      with OpenAIChatCompletionBatchService
+  ) {
+
+    /**
+     * Convenience for small/interactive batches: runs the whole chat-completion batch flow in
+     * one call - submits the requests via
+     * [[OpenAIChatCompletionBatchService.createChatCompletionBatch]], polls
+     * [[OpenAIChatCompletionBatchService.getChatCompletionBatch]] until the batch is done, and
+     * returns the results. Works with every service/adapter implementing the batch endpoints
+     * (OpenAI, Anthropic, Gemini, Vertex AI).
+     *
+     * '''For large production batches (thousands of requests), prefer the split flow''' -
+     * batches take up to 24h and blocking a process on them is fragile. Submit with
+     * `createChatCompletionBatch` (returns a durable, provider-scoped batch id), persist the
+     * id, and later - typically from a different process - check `getChatCompletionBatch(id)`
+     * and fetch `retrieveChatCompletionBatchResults(id)` once done. All four providers resolve
+     * the id statelessly, so nothing but the id needs to survive between submission and
+     * retrieval.
+     *
+     * @param requests
+     *   Requests to batch, each with a unique `customId` and its messages.
+     * @param settings
+     *   Chat-completion settings (model, ...) shared by all requests in the batch.
+     * @param pollingInterval
+     *   How often to poll the batch status (default 30 seconds).
+     * @param timeout
+     *   Optional max wait; on expiry the future fails (the batch keeps processing - its id is
+     *   included in the error message so it can be picked up later).
+     * @param deleteBatchAfterUse
+     *   Whether to delete the batch - including all the files it created or staged - once the
+     *   results are retrieved (default false). On OpenAI the batch's input/output/error files
+     *   are deleted; the batch object itself remains listed (no delete endpoint).
+     * @return
+     *   the batch results - one item per request, each carrying either a response or an error
+     */
+    def createChatCompletionBatchAndWaitForResults(
+      requests: Seq[ChatCompletionBatchRequest],
+      settings: CreateChatCompletionSettings,
+      pollingInterval: FiniteDuration = 30.seconds,
+      timeout: Option[FiniteDuration] = None,
+      deleteBatchAfterUse: Boolean = false
+    )(
+      implicit ec: ExecutionContext,
+      scheduler: Scheduler
+    ): Future[Seq[ChatCompletionBatchResultItem]] = {
+      val deadline = timeout.map(t => System.currentTimeMillis() + t.toMillis)
+      val model = settings.model
+
+      def pollUntilDone(batchId: String): Future[ChatCompletionBatchInfo] =
+        openAIChatCompletionService.getChatCompletionBatch(batchId, model).flatMap { info =>
+          if (info.isDone)
+            Future.successful(info)
+          else if (deadline.exists(System.currentTimeMillis() > _))
+            Future.failed(
+              new OpenAIScalaClientException(
+                s"Chat-completion batch '$batchId' did not finish within the requested timeout of ${timeout.get}. " +
+                  "The batch keeps processing - poll getChatCompletionBatch with this id to pick it up later."
+              )
+            )
+          else {
+            logger.debug(
+              s"Chat-completion batch '$batchId' still in progress (${info.providerStatus}) - polling again in $pollingInterval."
+            )
+            akka.pattern.after(pollingInterval, scheduler)(pollUntilDone(batchId))
+          }
+        }
+
+      def cleanup(batchId: String): Future[Unit] =
+        if (deleteBatchAfterUse)
+          openAIChatCompletionService.deleteChatCompletionBatch(batchId, model).recover {
+            case e =>
+              logger.warn(
+                s"Failed to delete the chat-completion batch '$batchId': ${e.getMessage}"
+              )
+          }
+        else
+          Future.successful(())
+
+      for {
+        batch <- openAIChatCompletionService.createChatCompletionBatch(requests, settings)
+
+        _ = logger.debug(
+          s"Chat-completion batch '${batch.id}' with ${requests.size} request(s) submitted."
+        )
+
+        finishedBatch <- pollUntilDone(batch.id)
+
+        results <- finishedBatch.status match {
+          case ChatCompletionBatchStatus.Completed | ChatCompletionBatchStatus.Cancelled =>
+            // cancelled batches may still contain partial results
+            openAIChatCompletionService
+              .retrieveChatCompletionBatchResults(batch.id, model)
+              .transformWith(result => cleanup(batch.id).transform(_ => result))
+
+          case failedStatus =>
+            Future.failed(
+              new OpenAIScalaClientException(
+                s"Chat-completion batch '${batch.id}' finished with the status '$failedStatus' (provider status: '${finishedBatch.providerStatus}')."
+              )
+            )
+        }
+      } yield results
+    }
   }
 
   private def getJsonSchemaModelsFromConfig(): Seq[String] = {

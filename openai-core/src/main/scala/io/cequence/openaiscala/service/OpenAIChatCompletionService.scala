@@ -12,7 +12,7 @@ import io.cequence.wsclient.service.CloseableService
 import scala.concurrent.Future
 
 /**
- * Service that offers <b>ONLY</b> OpenAI chat completion endpoint. Note that this trais is
+ * Service that offers <b>ONLY</b> OpenAI chat completion endpoint. Note that this trait is
  * usable also for OpenAI-API-compatible services such as FastChat, Ollama, or OctoML.
  *
  * @since March
@@ -64,5 +64,4 @@ trait OpenAIChatCompletionService extends OpenAIServiceConsts with CloseableServ
     Future.failed(
       new OpenAIScalaClientException("createChatToolCompletion is not supported")
     )
-
 }

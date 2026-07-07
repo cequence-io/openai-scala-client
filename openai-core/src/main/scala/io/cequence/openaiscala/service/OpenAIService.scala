@@ -52,7 +52,8 @@ import scala.concurrent.Future
 trait OpenAIService
     extends OpenAICoreService
     with OpenAIResponsesService
-    with OpenAIGraderService {
+    with OpenAIGraderService
+    with OpenAIChatCompletionBatchService {
 
   /**
    * Retrieves a model instance, providing basic information about the model such as the owner

@@ -36,28 +36,28 @@ Also, we aimed for the library to be self-contained with the fewest dependencies
 
 In addition to OpenAI, this library supports many other LLM providers. For providers that aren't natively compatible with the chat completion API, we've implemented adapters to streamline integration (see [examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples)).
 
-| Provider | JSON/Structured Output | Tools Support                     | Description |
-|----------|------------------------|-----------------------------------|-------------|
-| [OpenAI](https://platform.openai.com) | Full                   | Standard + Responses API          | Full API support |
-| [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) | Full                   | Standard + Responses API          | OpenAI on Azure|
-| [Anthropic](https://www.anthropic.com/api) | Full (🔥 New)          | Yes, also MCP and Skills (🔥 New) | Claude models |
-| [Anthropic Bedrock](https://aws.amazon.com/bedrock/claude/) | Full (🔥 New)          | Yes, also MCP (🔥 New)            | Claude on AWS |
-| [OpenAI Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-mantle.html) | Full (🔥 New)          | Standard + Responses API          | GPT-5.x & gpt-oss on AWS (`bedrock-mantle`) |
-| [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) | Varies                 |                                   | Open-source models |
-| [Cerebras](https://cerebras.ai/) | Only JSON object mode  |                                   | Fast inference |
-| [Deepseek](https://deepseek.com/) | Only JSON object mode  |                                   | Chinese provider |
-| [FastChat](https://github.com/lm-sys/FastChat) | Varies                 |                                   | Local LLMs |
-| [Fireworks AI](https://fireworks.ai/) | Only JSON object mode  |                                   | Cloud provider |
-| [Google Gemini](https://ai.google.dev/) | Full                   | Yes (🔥 New)                      | Google's models |
-| [Google Vertex AI](https://cloud.google.com/vertex-ai) | Full                   | Yes                               | Gemini models |
-| [Grok](https://x.ai/) | Full                   |                                   | x.AI models |
-| [Groq](https://wow.groq.com/) | Only JSON object mode  |                                   | Fast inference |
-| [Mistral](https://mistral.ai/) | Only JSON object mode  |                                   | Open-source leader |
-| [Novita](https://novita.ai/) | Only JSON object mode  |                                   | Cloud provider |
-| [Octo AI](https://octo.ai/) | Only JSON object mode  |                                   | Cloud provider (obsolete) |
-| [Ollama](https://ollama.com/) | Varies                 |                                   | Local LLMs |
-| [Perplexity Sonar](https://www.perplexity.ai/) | Only implied           |                                   | Search-based AI |
-| [TogetherAI](https://www.together.ai/) | Only JSON object mode  |                                   | Cloud provider |
+| Provider | JSON/Structured Output | Tools Support                     | Batch (🔥 New)          | Description |
+|----------|------------------------|-----------------------------------|-------------------------|-------------|
+| [OpenAI](https://platform.openai.com) | Full                   | Standard + Responses API          | Yes                     | Full API support |
+| [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) | Full                   | Standard + Responses API          | Yes                     | OpenAI on Azure|
+| [Anthropic](https://www.anthropic.com/api) | Full (🔥 New)          | Yes, also MCP and Skills (🔥 New) | Yes                     | Claude models |
+| [Anthropic Bedrock](https://aws.amazon.com/bedrock/claude/) | Full (🔥 New)          | Yes, also MCP (🔥 New)            | Yes (no prompt caching) | Claude on AWS |
+| [OpenAI Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-mantle.html) | Full (🔥 New)          | Standard + Responses API          |                         | GPT-5.x & gpt-oss on AWS (`bedrock-mantle`) |
+| [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) | Varies                 |                                   |                         | Open-source models |
+| [Cerebras](https://cerebras.ai/) | Only JSON object mode  |                                   |                         | Fast inference |
+| [Deepseek](https://deepseek.com/) | Only JSON object mode  |                                   |                         | Chinese provider |
+| [FastChat](https://github.com/lm-sys/FastChat) | Varies                 |                                   |                         | Local LLMs |
+| [Fireworks AI](https://fireworks.ai/) | Only JSON object mode  |                                   |                         | Cloud provider |
+| [Google Gemini](https://ai.google.dev/) | Full                   | Yes (🔥 New)                      | Yes                     | Google's models |
+| [Google Vertex AI](https://cloud.google.com/vertex-ai) | Full                   | Yes                               | Yes                     | Gemini models |
+| [Grok](https://x.ai/) | Full                   |                                   |                         | x.AI models |
+| [Groq](https://wow.groq.com/) | Only JSON object mode  |                                   | Yes                     | Fast inference |
+| [Mistral](https://mistral.ai/) | Only JSON object mode  |                                   |                         | Open-source leader |
+| [Novita](https://novita.ai/) | Only JSON object mode  |                                   |                         | Cloud provider |
+| [Octo AI](https://octo.ai/) | Only JSON object mode  |                                   |                         | Cloud provider (obsolete) |
+| [Ollama](https://ollama.com/) | Varies                 |                                   |                         | Local LLMs |
+| [Perplexity Sonar](https://www.perplexity.ai/) | Only implied           |                                   |                         | Search-based AI |
+| [TogetherAI](https://www.together.ai/) | Only JSON object mode  |                                   |                         | Cloud provider |
 
 ---
 
@@ -960,6 +960,91 @@ class MyCompletionService @Inject() (
       ),
       openAIService
     )
+```
+
+- **Batch processing** (🔥 New) - provider-agnostic, ~50% of standard cost, async (typically a 24h turnaround target).
+  Available on the full OpenAI service and on the Anthropic, Anthropic Bedrock, Gemini, and Vertex AI adapters
+  (see the **Batch** column in the provider table above). It is an **opt-in capability**
+  ([`OpenAIChatCompletionBatchService`](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIChatCompletionBatchService.scala)),
+  deliberately **not** part of the base `OpenAIChatCompletionService`, so a batch caller holds a
+  `OpenAIChatCompletionService with OpenAIChatCompletionBatchService` reference - which is exactly what the
+  provider factories return. Do **not** down-annotate to plain `OpenAIChatCompletionService` or you lose batch.
+
+  The simplest usage - submit, poll, and retrieve in one call via the
+  `createChatCompletionBatchAndWaitForResults` helper (import `OpenAIChatCompletionExtra._`):
+
+```scala
+  import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
+
+  // any batch-capable service; here the Anthropic Message Batches adapter
+  val service = AnthropicServiceFactory.asOpenAI()
+
+  val requests = Seq(
+    ChatCompletionBatchRequest("norway", Seq(UserMessage("Capital of Norway? One word."))),
+    ChatCompletionBatchRequest("sweden", Seq(UserMessage("Capital of Sweden? One word.")))
+  )
+
+  val results: Future[Seq[ChatCompletionBatchResultItem]] =
+    service.createChatCompletionBatchAndWaitForResults(
+      requests,
+      CreateChatCompletionSettings(NonOpenAIModelId.claude_haiku_4_5),
+      pollingInterval = 10.seconds,
+      deleteBatchAfterUse = true
+    )
+```
+
+  For large production batches (thousands of requests, up-to-24h turnaround) prefer the **split flow** - submit,
+  persist the returned `(model, batchId)`, and later (a different process/day) poll and retrieve by passing that pair
+  back in. The `model` is required alongside the id because a batch id alone is an opaque, provider-specific string,
+  not a routing key:
+
+```scala
+  val batch    = service.createChatCompletionBatch(requests, settings)              // returns a durable batch id
+  // ... persist (settings.model, batch.id), rebuild the service later ...
+  val info     = service.getChatCompletionBatch(batchId, model)                     // poll until info.isDone
+  val results  = service.retrieveChatCompletionBatchResults(batchId, model)         // match items by customId
+  service.deleteChatCompletionBatch(batchId, model)                                 // clean up staged files
+```
+
+- **Batch router** (🔥 New) - the batch-aware sibling of `chatCompletionRouter`, routing the batch endpoints across
+  providers by model. Every registered service (and the default) must be batch-capable, and it respects the adapter's
+  service type: `forFullService.chatCompletionBatchRouter(...)` returns an `OpenAIService` whose chat completion and
+  batch are routed by model while files/assistants/etc. still delegate to the default service. Ideal for a central
+  batch registry - submit through the router, persist `(model, batchId)`, and rebuild the identical router later to
+  poll. See [ChatCompletionBatchRegistryPollingDemo](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/ChatCompletionBatchRegistryPollingDemo.scala).
+
+```scala
+  val geminiService = GeminiServiceFactory.asOpenAI()       // batch-capable
+  val anthropicService = AnthropicServiceFactory.asOpenAI() // batch-capable (default)
+
+  val router = OpenAIServiceAdapters.forChatCompletionService.chatCompletionBatchRouter(
+    serviceModels = Map(geminiService -> Seq(NonOpenAIModelId.gemini_2_5_flash)),
+    anthropicService
+  )
+
+  // routed by settings.model on submit, and by the explicit `model` arg on status/results/cancel/delete
+  val batch   = router.createChatCompletionBatch(requests, CreateChatCompletionSettings(NonOpenAIModelId.gemini_2_5_flash))
+  val results = router.retrieveChatCompletionBatchResults(batch.id, NonOpenAIModelId.gemini_2_5_flash)
+```
+
+  To register a provider that has **no native batch support** in a batch router, wrap it with
+  `chatCompletionBatchEmulated` - a fallback adapter that satisfies the batch interface by running the requests as
+  ordinary synchronous chat completions, logging a warning that native batch is unavailable (no batch discount, no
+  async processing, results held in memory). This lets a single router mix natively-batching providers with fallback
+  ones:
+
+```scala
+  // Perplexity Sonar has no batch API - emulate it so it can join the router as a fallback
+  val sonarService = SonarServiceFactory.asOpenAI()
+  val sonarBatch   = OpenAIServiceAdapters.chatCompletionBatchEmulated(sonarService) // warns + runs sync on batch calls
+
+  val router = OpenAIServiceAdapters.forChatCompletionService.chatCompletionBatchRouter(
+    serviceModels = Map(
+      geminiService -> Seq(NonOpenAIModelId.gemini_2_5_flash), // native batch
+      sonarBatch    -> Seq(NonOpenAIModelId.sonar)             // emulated fallback
+    ),
+    anthropicService
+  )
 ```
 
 - **Chat-to-completion** adapter

@@ -31,6 +31,7 @@ import scala.concurrent.Future
 trait AnthropicService
     extends CloseableService
     with AnthropicServiceConsts
+    with AnthropicMessageBatchService
     with AnthropicManagedAgentService
     with AnthropicEnvironmentService
     with AnthropicSessionService

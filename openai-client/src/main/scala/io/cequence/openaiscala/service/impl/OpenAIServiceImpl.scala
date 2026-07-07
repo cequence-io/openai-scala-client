@@ -20,7 +20,7 @@ import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import scala.concurrent.Future
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 /**
  * Private impl. of [[OpenAIService]].
@@ -434,35 +434,11 @@ private[service] trait OpenAIServiceImpl
       _.asSafeJson[FileInfo]
     )
 
-  private def readFile(file: File): Seq[String] = {
-    val source = scala.io.Source.fromFile(file)
-    val content = Try(source.mkString.split("\n"))
-    content match {
-      case Success(value) =>
-        source.close()
-        value
-      case Failure(exception) =>
-        source.close()
-        throw new OpenAIScalaClientException(
-          s"Error reading file ${file.getName}: ${exception.getMessage}"
-        )
-    }
-  }
-
   override def uploadBatchFile(
     file: File,
     displayFileName: Option[String]
-  ): Future[FileInfo] = {
-    readFile(file)
-    // TODO
-    // parse the fileContent as Seq[BatchRow] solely for the purpose of validating its structure, OpenAIScalaClientException is thrown if the parsing fails
-
-//    fileRows.map { row =>
-//      Json.parse(row).asSafeArray[BatchRow]
-//    }
-
+  ): Future[FileInfo] =
     uploadFile(file, displayFileName, FileUploadPurpose.batch)
-  }
 
   override def buildAndUploadBatchFile(
     model: String,
@@ -1117,6 +1093,171 @@ private[service] trait OpenAIServiceImpl
     ).map { response =>
       readAttribute(response.json, "data").asSafeArray[Batch]
     }
+  }
+
+  // -- Batch processing (provider-agnostic) --
+
+  override def createChatCompletionBatch(
+    requests: Seq[ChatCompletionBatchRequest],
+    settings: CreateChatCompletionSettings
+  ): Future[ChatCompletionBatchInfo] = {
+    require(requests.nonEmpty, "At least one batch request expected.")
+
+    // one full chat-completion request body per JSONL line
+    val lines = requests.map { request =>
+      val body = JsObject(
+        createBodyParamsForChatCompletion(request.messages, settings, stream = false).collect {
+          case (param, Some(value)) => param.toString -> value
+        }
+      )
+
+      Json
+        .obj(
+          "custom_id" -> request.customId,
+          "method" -> "POST",
+          "url" -> BatchEndpoint.`/v1/chat/completions`.toString,
+          "body" -> body
+        )
+        .toString()
+    }
+
+    val tempPath = Files.createTempFile("openai-chat-completion-batch-", ".jsonl")
+    Files.write(tempPath, lines.mkString("\n").getBytes(StandardCharsets.UTF_8))
+
+    val result = for {
+      fileInfo <- uploadBatchFile(tempPath.toFile)
+
+      batch <- createBatch(fileInfo.id, BatchEndpoint.`/v1/chat/completions`)
+    } yield toBatchInfo(batch)
+
+    result.andThen { case _ => Try(Files.deleteIfExists(tempPath)) }
+  }
+
+  override def getChatCompletionBatch(
+    batchId: String,
+    model: String
+  ): Future[ChatCompletionBatchInfo] =
+    retrieveBatch(batchId).map(batch => toBatchInfo(getBatchOrFail(batchId, batch)))
+
+  override def retrieveChatCompletionBatchResults(
+    batchId: String,
+    model: String
+  ): Future[Seq[ChatCompletionBatchResultItem]] =
+    for {
+      batch <- retrieveBatch(batchId).map(getBatchOrFail(batchId, _))
+
+      _ <-
+        if (batch.isRunning)
+          Future.failed(
+            new OpenAIScalaClientException(
+              s"Chat-completion batch '$batchId' is still running ('${batch.status}') - results are not available yet."
+            )
+          )
+        else
+          Future.successful(())
+
+      // successfully executed requests land in the output file, failed ones in the error file
+      outputLines <- readBatchResultFile(batch.output_file_id)
+
+      errorLines <- readBatchResultFile(batch.error_file_id)
+    } yield (outputLines ++ errorLines).map(toBatchResultItem)
+
+  override def cancelChatCompletionBatch(
+    batchId: String,
+    model: String
+  ): Future[ChatCompletionBatchInfo] =
+    cancelBatch(batchId).map(batch => toBatchInfo(getBatchOrFail(batchId, batch)))
+
+  override def deleteChatCompletionBatch(
+    batchId: String,
+    model: String
+  ): Future[Unit] =
+    for {
+      batch <- retrieveBatch(batchId).map(getBatchOrFail(batchId, _))
+
+      _ <-
+        if (batch.isRunning)
+          Future.failed(
+            new OpenAIScalaClientException(
+              s"Batch '$batchId' is still running ('${batch.status}') - cancel it before deleting its files."
+            )
+          )
+        else
+          Future.successful(())
+
+      // the OpenAI Batch API has no delete endpoint for the batch object itself -
+      // we delete all the files it references instead (input, output, and error file)
+      fileIds = Seq(batch.input_file_id) ++ batch.output_file_id ++ batch.error_file_id
+      _ <- Future.traverse(fileIds)(deleteFile)
+    } yield ()
+
+  private def getBatchOrFail(
+    batchId: String,
+    batch: Option[Batch]
+  ): Batch =
+    batch.getOrElse(
+      throw new OpenAIScalaClientException(s"Batch '$batchId' not found.")
+    )
+
+  private def toBatchInfo(batch: Batch): ChatCompletionBatchInfo = {
+    val status = batch.status match {
+      case "completed" => ChatCompletionBatchStatus.Completed
+      case "failed"    => ChatCompletionBatchStatus.Failed
+      case "expired"   => ChatCompletionBatchStatus.Expired
+      case "cancelled" => ChatCompletionBatchStatus.Cancelled
+      // validating, in_progress, finalizing, cancelling
+      case _ => ChatCompletionBatchStatus.InProgress
+    }
+
+    ChatCompletionBatchInfo(batch.id, status, batch.status)
+  }
+
+  private def readBatchResultFile(fileId: Option[String]): Future[Seq[JsValue]] =
+    fileId
+      .map(
+        retrieveFileContent(_).map(
+          _.toSeq.flatMap(_.split("\n").toSeq.map(_.trim).filter(_.nonEmpty).map(Json.parse))
+        )
+      )
+      .getOrElse(Future.successful(Nil))
+
+  private def toBatchResultItem(json: JsValue): ChatCompletionBatchResultItem = {
+    val customId = (json \ "custom_id").as[String]
+
+    val error = (json \ "error").toOption
+      .filterNot(_ == play.api.libs.json.JsNull)
+      .map { error =>
+        ChatCompletionBatchError(
+          message = (error \ "message").asOpt[String].getOrElse(error.toString()),
+          code = (error \ "code").asOpt[String]
+        )
+      }
+      .orElse(
+        // failed requests carry an error body instead of a chat completion
+        (json \ "response" \ "body" \ "error").toOption.map { error =>
+          ChatCompletionBatchError(
+            message = (error \ "message").asOpt[String].getOrElse(error.toString()),
+            code = (error \ "code").asOpt[String]
+          )
+        }
+      )
+
+    val result = error
+      .map(Left(_))
+      .getOrElse(
+        (json \ "response" \ "body")
+          .asOpt[ChatCompletionResponse]
+          .map(Right(_))
+          .getOrElse(
+            Left(
+              ChatCompletionBatchError(
+                s"Cannot parse a chat completion response from the batch result line: $json"
+              )
+            )
+          )
+      )
+
+    ChatCompletionBatchResultItem(customId, result)
   }
 
   private def asSafeJsonIfFound[T: Reads](response: Future[RichResponse]): Future[Option[T]] =

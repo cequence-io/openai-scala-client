@@ -41,6 +41,11 @@ private class OpenAIServiceExtWrapperImpl(
 ) extends OpenAIServiceWrapper
     with DelegatedChatCompletionCloseableServiceWrapper[OpenAIService]
 
+private class OpenAIServiceBatchExtWrapperImpl(
+  val delegate: ChatCompletionBatchCloseableServiceWrapper[OpenAIService]
+) extends OpenAIServiceWrapper
+    with DelegatedChatCompletionBatchCloseableServiceWrapper[OpenAIService]
+
 trait OpenAIServiceWrapper
     extends DelegatedCloseableServiceWrapper[OpenAIService, CloseableServiceWrapper[
       OpenAIService
@@ -652,6 +657,45 @@ trait OpenAIServiceWrapper
   override def validateGrader(grader: Grader): Future[Grader] = wrap(
     _.validateGrader(grader)
   )
+
+  ////////////////////////////////
+  // Chat-completion batch (full service carries it via OpenAIChatCompletionBatchService)
+  ////////////////////////////////
+
+  override def createChatCompletionBatch(
+    requests: Seq[ChatCompletionBatchRequest],
+    settings: CreateChatCompletionSettings
+  ): Future[ChatCompletionBatchInfo] = wrap(
+    _.createChatCompletionBatch(requests, settings)
+  )
+
+  override def getChatCompletionBatch(
+    batchId: String,
+    model: String
+  ): Future[ChatCompletionBatchInfo] = wrap(
+    _.getChatCompletionBatch(batchId, model)
+  )
+
+  override def retrieveChatCompletionBatchResults(
+    batchId: String,
+    model: String
+  ): Future[Seq[ChatCompletionBatchResultItem]] = wrap(
+    _.retrieveChatCompletionBatchResults(batchId, model)
+  )
+
+  override def cancelChatCompletionBatch(
+    batchId: String,
+    model: String
+  ): Future[ChatCompletionBatchInfo] = wrap(
+    _.cancelChatCompletionBatch(batchId, model)
+  )
+
+  override def deleteChatCompletionBatch(
+    batchId: String,
+    model: String
+  ): Future[Unit] = wrap(
+    _.deleteChatCompletionBatch(batchId, model)
+  )
 }
 
 private class OpenAICoreServiceWrapperImpl(
@@ -662,6 +706,11 @@ private class OpenAICoreServiceExtWrapperImpl(
   val delegate: ChatCompletionCloseableServiceWrapper[OpenAICoreService]
 ) extends OpenAICoreServiceWrapper
     with DelegatedChatCompletionCloseableServiceWrapper[OpenAICoreService]
+
+private class OpenAICoreServiceBatchExtWrapperImpl(
+  val delegate: ChatCompletionBatchCloseableServiceWrapper[OpenAICoreService]
+) extends OpenAICoreServiceWrapper
+    with DelegatedChatCompletionBatchCloseableServiceWrapper[OpenAICoreService]
 
 trait OpenAICoreServiceWrapper
     extends DelegatedCloseableServiceWrapper[OpenAICoreService, CloseableServiceWrapper[
@@ -698,6 +747,11 @@ private class OpenAIChatCompletionServiceExtWrapperImpl(
 ) extends OpenAIChatCompletionServiceWrapper
     with DelegatedChatCompletionCloseableServiceWrapper[OpenAIChatCompletionService]
 
+private class OpenAIChatCompletionServiceBatchExtWrapperImpl(
+  val delegate: ChatCompletionBatchCloseableServiceWrapper[OpenAIChatCompletionService]
+) extends OpenAIChatCompletionServiceWrapper
+    with DelegatedChatCompletionBatchCloseableServiceWrapper[OpenAIChatCompletionService]
+
 trait OpenAIChatCompletionServiceWrapper
     extends DelegatedCloseableServiceWrapper[
       OpenAIChatCompletionService,
@@ -720,5 +774,4 @@ trait OpenAIChatCompletionServiceWrapper
   ): Future[ChatToolCompletionResponse] = wrap(
     _.createChatToolCompletion(messages, tools, responseToolChoice, settings)
   )
-
 }

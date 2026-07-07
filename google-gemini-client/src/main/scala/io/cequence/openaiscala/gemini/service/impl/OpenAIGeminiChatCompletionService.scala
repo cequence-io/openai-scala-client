@@ -19,6 +19,11 @@ import io.cequence.openaiscala.domain.{
   AssistantMessage,
   AssistantToolMessage,
   BaseMessage,
+  ChatCompletionBatchError,
+  ChatCompletionBatchInfo,
+  ChatCompletionBatchRequest,
+  ChatCompletionBatchResultItem,
+  ChatCompletionBatchStatus,
   ChatCompletionTool,
   DeveloperMessage,
   FileContent,
@@ -44,16 +49,25 @@ import io.cequence.openaiscala.gemini.domain.settings.{
   ThinkingConfig,
   ToolConfig
 }
+import io.cequence.openaiscala.gemini.JsonFormats.{
+  batchRpcErrorReads,
+  generateContentResponseFormat
+}
 import io.cequence.openaiscala.gemini.domain.{
+  BatchRequestItem,
+  BatchRpcError,
+  BatchState,
   CachedContent,
   ChatRole,
   Content,
+  GenerateContentBatch,
   Part,
   ThinkingLevel
 }
 import io.cequence.openaiscala.gemini.service.GeminiService
 import io.cequence.openaiscala.service.{
   HasOpenAIConfig,
+  OpenAIChatCompletionBatchService,
   OpenAIChatCompletionService,
   OpenAIChatCompletionStreamedServiceExtra
 }
@@ -81,6 +95,7 @@ private[service] class OpenAIGeminiChatCompletionService(
   implicit executionContext: ExecutionContext
 ) extends OpenAIChatCompletionService
     with OpenAIChatCompletionStreamedServiceExtra
+    with OpenAIChatCompletionBatchService
     with HasOpenAIConfig {
 
   protected val logger: Logger = Logger(LoggerFactory.getLogger(this.getClass))
@@ -179,6 +194,183 @@ private[service] class OpenAIGeminiChatCompletionService(
         )
       )
       .map(_.name.get)
+  }
+
+  // -- Batch processing (provider-agnostic) --
+
+  override def createChatCompletionBatch(
+    requests: Seq[ChatCompletionBatchRequest],
+    settings: CreateChatCompletionSettings
+  ): Future[ChatCompletionBatchInfo] = {
+    // each inlined batch request is a full generateContent request and supports its own
+    // systemInstruction (see BatchRequestItem), so - unlike a shared, batch-wide one - a
+    // request's own system message no longer has to match every other request's
+    val representativeSystemMessage =
+      requests.headOption.flatMap(request => splitMessage(request.messages)._2)
+
+    // handleCaching resolves the explicit-caching route, which is the one that works with
+    // batches (implicit caching does not apply to Batch Mode): a cached-content reference
+    // (setSystemCacheName) - or a cache freshly created from the system message
+    // (enableCacheSystemMessage), taken from the first request - replaces the per-request
+    // system message for every item. This mirrors handleCaching's own branch selection, so
+    // that it agrees below on whether caching actually kicks in.
+    val cachingActive =
+      settings.getSystemCacheName.isDefined ||
+        (settings.isCacheSystemMessageEnabled && representativeSystemMessage.isDefined)
+
+    val items = requests.map { request =>
+      val (userMessages, systemMessage) = splitMessage(request.messages)
+      BatchRequestItem(
+        key = request.customId,
+        contents = userMessages.map(toGeminiContent),
+        // while a cache is in use, the cached (or freshly cached) system message replaces
+        // the per-request one for every item, exactly as before - so no per-item override
+        // in that case; otherwise each item carries its own system message, if any
+        systemInstruction = if (cachingActive) None else systemMessage.map(toGeminiContent)
+      )
+    }
+
+    (for {
+      // outside of caching, no batch-wide systemInstruction is passed on - each item now
+      // carries its own (see above), so one request's system prompt can no longer leak into
+      // another's
+      geminiSettings <- handleCaching(
+        if (cachingActive) representativeSystemMessage else None,
+        Nil,
+        settings
+      )
+
+      batch <- underlying.createBatchGenerateContent(
+        displayName = "openai-scala-client chat-completion batch",
+        requests = items,
+        settings = geminiSettings
+      )
+    } yield toBatchInfo(batch)).recoverWith(repackAsOpenAIException)
+  }
+
+  override def getChatCompletionBatch(
+    batchId: String,
+    model: String
+  ): Future[ChatCompletionBatchInfo] =
+    underlying.getBatch(batchId).map(toBatchInfo).recoverWith(repackAsOpenAIException)
+
+  override def retrieveChatCompletionBatchResults(
+    batchId: String,
+    model: String
+  ): Future[Seq[ChatCompletionBatchResultItem]] =
+    underlying
+      .getBatch(batchId)
+      .flatMap { batch =>
+        val output = batch.output.getOrElse(
+          throw new OpenAIScalaClientException(
+            s"Batch '$batchId' has no output (state: ${batch.state.map(_.toString).getOrElse("unknown")})."
+          )
+        )
+
+        output.responsesFile match {
+          // file-based batches (large payloads) produce a downloadable results file
+          case Some(fileName) =>
+            underlying.downloadFile(fileName).map { content =>
+              content
+                .split("\n")
+                .toSeq
+                .map(_.trim)
+                .filter(_.nonEmpty)
+                .map(Json.parse)
+                .zipWithIndex
+                .map { case (json, index) =>
+                  toBatchResultItem(
+                    key = (json \ "key")
+                      .asOpt[String]
+                      .orElse((json \ "metadata" \ "key").asOpt[String]),
+                    response = (json \ "response").asOpt[GenerateContentResponse],
+                    error = (json \ "error").asOpt[BatchRpcError],
+                    index = index
+                  )
+                }
+            }
+
+          case None =>
+            Future.successful(
+              output.inlinedResponses.zipWithIndex.map { case (inlined, index) =>
+                toBatchResultItem(inlined.key, inlined.response, inlined.error, index)
+              }
+            )
+        }
+      }
+      .recoverWith(repackAsOpenAIException)
+
+  private def toBatchResultItem(
+    key: Option[String],
+    response: Option[GenerateContentResponse],
+    error: Option[BatchRpcError],
+    index: Int
+  ): ChatCompletionBatchResultItem = {
+    val customId = key.getOrElse(index.toString)
+
+    val result = (response, error) match {
+      case (Some(response), None) =>
+        Right(toOpenAIResponse(response))
+      case (_, Some(error)) =>
+        Left(
+          ChatCompletionBatchError(
+            error.message.getOrElse(s"Request failed: $error"),
+            error.code.map(_.toString)
+          )
+        )
+      case _ =>
+        Left(
+          ChatCompletionBatchError("The batch response carries no response and no error.")
+        )
+    }
+
+    ChatCompletionBatchResultItem(customId, result)
+  }
+
+  override def cancelChatCompletionBatch(
+    batchId: String,
+    model: String
+  ): Future[ChatCompletionBatchInfo] =
+    (for {
+      _ <- underlying.cancelBatch(batchId)
+      batch <- underlying.getBatch(batchId)
+    } yield toBatchInfo(batch)).recoverWith(repackAsOpenAIException)
+
+  override def deleteChatCompletionBatch(
+    batchId: String,
+    model: String
+  ): Future[Unit] =
+    (for {
+      batch <- underlying.getBatch(batchId)
+
+      // file-based batches leave a staged input file and a generated results file behind -
+      // clean both up (best-effort) along with the batch
+      batchFiles = batch.inputFileName.toSeq ++ batch.output.flatMap(_.responsesFile)
+
+      _ <- Future.traverse(batchFiles) { fileName =>
+        underlying.deleteFile(fileName).recover { case e =>
+          logger.warn(s"Failed to delete the batch file '$fileName': ${e.getMessage}")
+        }
+      }
+
+      _ <- underlying.deleteBatch(batchId)
+    } yield ()).recoverWith(repackAsOpenAIException)
+
+  private def toBatchInfo(batch: GenerateContentBatch): ChatCompletionBatchInfo = {
+    val status = batch.state match {
+      case Some(BatchState.BATCH_STATE_SUCCEEDED) => ChatCompletionBatchStatus.Completed
+      case Some(BatchState.BATCH_STATE_FAILED)    => ChatCompletionBatchStatus.Failed
+      case Some(BatchState.BATCH_STATE_CANCELLED) => ChatCompletionBatchStatus.Cancelled
+      case Some(BatchState.BATCH_STATE_EXPIRED)   => ChatCompletionBatchStatus.Expired
+      // pending, running, unspecified, or absent
+      case _ => ChatCompletionBatchStatus.InProgress
+    }
+
+    ChatCompletionBatchInfo(
+      batch.name,
+      status,
+      batch.state.map(_.toString).getOrElse("unknown")
+    )
   }
 
   private def splitMessage(messages: Seq[BaseMessage])

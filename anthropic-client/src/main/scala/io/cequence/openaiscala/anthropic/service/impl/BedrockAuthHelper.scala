@@ -77,6 +77,16 @@ trait BedrockAuthHelper {
     newHeaders.toMap
   }
 
+  // RFC 3986 percent-encoding as required by SigV4 canonicalization - URLEncoder alone emits
+  // form-encoding ('+' for space, bare '*', '%7E' for '~') which AWS re-canonicalizes
+  // differently, breaking the signature.
+  protected def rfc3986Encode(value: String): String =
+    URLEncoder
+      .encode(value, "UTF-8")
+      .replace("+", "%20")
+      .replace("*", "%2A")
+      .replace("%7E", "~")
+
   private def createStringToSign(
     canonicalRequest: String,
     datestamp: String,
@@ -128,6 +138,11 @@ trait BedrockAuthHelper {
     normalizedPath.replace(":", "%3A") // TODO: expand this to handle more special characters
   }
 
+  // `getQuery` returns the query string exactly as written in the URL - already percent-encoded,
+  // since every caller here builds it via `URLEncoder.encode(...)` before constructing the URL
+  // (java.net.URL does not decode). Re-encoding it here would double-encode it (e.g. "%2F"
+  // becoming "%252F"), producing a canonical request that no longer matches what is actually
+  // sent on the wire - so this only sorts the already-encoded pairs, it does not re-encode them.
   private def canonicalQueryString(url: String): String = {
     val parsedUrl = new URL(url)
     val query = parsedUrl.getQuery
@@ -138,14 +153,10 @@ trait BedrockAuthHelper {
         .split("&")
         .toList
         .map { param =>
-          val Array(key, value) = param.split("=", 2) match {
-            case Array(k, v) => Array(k, v)
-            case Array(k)    => Array(k, "")
+          param.split("=", 2) match {
+            case Array(k, v) => (k, v)
+            case Array(k)    => (k, "")
           }
-          (
-            URLEncoder.encode(key, "UTF-8").replace("+", "%20"),
-            URLEncoder.encode(value, "UTF-8").replace("+", "%20")
-          )
         }
         .sortBy(_._1)
 

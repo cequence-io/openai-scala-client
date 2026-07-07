@@ -1,13 +1,18 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
 import akka.NotUsed
-import akka.stream.scaladsl.Source
+import akka.stream.scaladsl.{Framing, Source}
 import akka.util.ByteString
 import io.cequence.openaiscala.anthropic.domain.{
   FileDeleteResponse,
   FileListResponse,
   FileMetadata,
-  Message
+  ListMessageBatchesResponse,
+  Message,
+  MessageBatch,
+  MessageBatchDeleteResponse,
+  MessageBatchIndividualResponse,
+  MessageBatchRequest
 }
 import io.cequence.openaiscala.anthropic.domain.response.{
   ContentBlockDelta,
@@ -65,6 +70,7 @@ import io.cequence.openaiscala.anthropic.domain.skills.{
   SkillSource,
   SkillVersion
 }
+import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
 import io.cequence.wsclient.StreamResponseImplicits.StreamSafeOps
 import play.api.libs.json.{
@@ -122,6 +128,109 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       .map(serializeStreamedJson)
       .collect { case Some(delta) => delta }
   }
+
+  // ============================================================================
+  // Message batches
+  // ============================================================================
+
+  // Generous frame cap - one result line carries an entire message response.
+  private val batchResultMaxFrameLength = 20 * 1024 * 1024
+
+  override def createMessageBatch(
+    requests: Seq[MessageBatchRequest]
+  ): Future[MessageBatch] = {
+    require(requests.nonEmpty, "At least one batch request expected.")
+
+    val requestJsons = requests.map { request =>
+      val params = JsObject(
+        createBodyParamsForMessageCreation(
+          request.messages,
+          request.settings,
+          stream = None
+        ).collect { case (param, Some(value)) => param.toString -> value }
+      )
+
+      Json.obj("custom_id" -> request.customId, "params" -> params)
+    }
+
+    execPOSTBody(
+      EndPoint.messageBatches,
+      body = Json.obj("requests" -> JsArray(requestJsons)),
+      // beta features used inside the batched requests are enabled at the batch level
+      extraHeaders = messageBetaHeaders
+    ).map(_.asSafeJson[MessageBatch])
+  }
+
+  override def getMessageBatch(batchId: String): Future[MessageBatch] =
+    execGET(
+      EndPoint.messageBatches,
+      Some(batchId)
+    ).map(_.asSafeJson[MessageBatch])
+
+  override def listMessageBatches(
+    limit: Option[Int],
+    beforeId: Option[String],
+    afterId: Option[String]
+  ): Future[ListMessageBatchesResponse] =
+    execGET(
+      EndPoint.messageBatches,
+      params = Seq(
+        Param.limit -> limit.map(_.toString),
+        Param.before_id -> beforeId,
+        Param.after_id -> afterId
+      )
+    ).map(_.asSafeJson[ListMessageBatchesResponse])
+
+  override def streamMessageBatchResults(
+    batchId: String
+  ): Source[MessageBatchIndividualResponse, NotUsed] =
+    engine
+      .execRawStream(
+        EndPoint.messageBatches.toString(),
+        "GET",
+        endPointParam = Some(s"$batchId/results"),
+        params = Nil,
+        bodyParams = Nil,
+        extraHeaders = Nil
+      )
+      .via(
+        Framing.delimiter(
+          ByteString("\n"),
+          batchResultMaxFrameLength,
+          allowTruncation = true
+        )
+      )
+      .map(_.utf8String.trim)
+      .filter(_.nonEmpty)
+      .map(line => Json.parse(line).asSafe[MessageBatchIndividualResponse])
+
+  override def retrieveMessageBatchResults(
+    batchId: String
+  ): Future[Seq[MessageBatchIndividualResponse]] =
+    execGET(
+      EndPoint.messageBatches,
+      Some(s"$batchId/results")
+    ).map(
+      _.string
+        .split("\n")
+        .toSeq
+        .map(_.trim)
+        .filter(_.nonEmpty)
+        .map(line => Json.parse(line).asSafe[MessageBatchIndividualResponse])
+    )
+
+  override def cancelMessageBatch(batchId: String): Future[MessageBatch] =
+    execPOST(
+      EndPoint.messageBatches,
+      Some(s"$batchId/cancel"),
+      bodyParams = Nil
+    ).map(_.asSafeJson[MessageBatch])
+
+  override def deleteMessageBatch(batchId: String): Future[MessageBatchDeleteResponse] =
+    execDELETE(
+      EndPoint.messageBatches,
+      Some(batchId)
+    ).map(_.asSafeJson[MessageBatchDeleteResponse])
 
   override def createSkill(
     displayTitle: Option[String],
@@ -770,16 +879,41 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[PagedResponse[SessionEventEnvelope]])
 
+  // Generous SSE frame cap - a single agent.message event can carry a long response.
+  private val sessionEventMaxFrameLength = 5 * 1024 * 1024
+
   override def streamSessionEvents(
     sessionId: String
   ): Source[SessionEventEnvelope, NotUsed] =
     engine
-      .execJsonStream(
+      // Raw SSE parsing instead of execJsonStream: the managed-agents stream sends frames
+      // without a `data:` line - an initial ": connected." comment and periodic heartbeats -
+      // which the generic JSON stream would reject as malformed JSON.
+      .execRawStream(
         EndPoint.sessions.toString(),
         "GET",
         endPointParam = Some(s"$sessionId/events/stream"),
+        params = Nil,
+        bodyParams = Nil,
         extraHeaders = managedAgentsHeaders
       )
+      .via(
+        Framing.delimiter(
+          ByteString("\n\n"),
+          sessionEventMaxFrameLength,
+          allowTruncation = true
+        )
+      )
+      .mapConcat { frameBytes =>
+        // An SSE frame consists of `event:`/`id:` lines, comment lines (starting with ':'),
+        // and one or more `data:` lines (joined with a newline per the SSE spec).
+        val dataLines = frameBytes.utf8String.split("\n").toList.collect {
+          case line if line.startsWith("data:") => line.drop("data:".length).trim
+        }
+
+        if (dataLines.isEmpty) Nil
+        else List(Json.parse(dataLines.mkString("\n")))
+      }
       .map(_.asOpt[SessionEventEnvelope])
       .collect { case Some(e) => e }
 

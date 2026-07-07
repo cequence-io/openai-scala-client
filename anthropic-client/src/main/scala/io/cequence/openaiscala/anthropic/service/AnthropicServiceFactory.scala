@@ -10,13 +10,18 @@ import io.cequence.openaiscala.anthropic.domain.response.{
   CreateMessageResponse
 }
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
+import io.cequence.openaiscala.anthropic.domain.managedagents.AgentTool
 import io.cequence.openaiscala.anthropic.service.impl.{
+  AnthropicBedrockBatchInferenceServiceImpl,
   AnthropicBedrockServiceImpl,
   AnthropicServiceImpl,
   BedrockConnectionSettings,
   BedrockStsClient,
-  OpenAIAnthropicChatCompletionService
+  OpenAIAnthropicBedrockChatCompletionService,
+  OpenAIAnthropicChatCompletionService,
+  OpenAIAnthropicManagedAgentChatCompletionService
 }
+import io.cequence.openaiscala.service.OpenAIChatCompletionBatchService
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
 import io.cequence.wsclient.domain.{RichResponse, WsRequestContext}
 import io.cequence.wsclient.service.ws.Timeouts
@@ -120,9 +125,61 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer
-  ): OpenAIChatCompletionStreamedService =
+  ): OpenAIChatCompletionStreamedService with OpenAIChatCompletionBatchService =
     new OpenAIAnthropicChatCompletionService(
       AnthropicServiceFactory(apiKey, timeouts, withPdf = false, withCache)
+    )
+
+  /**
+   * Create a new instance of the [[OpenAIChatCompletionService]] backed by the Anthropic
+   * Managed Agents API (agents + sessions), so managed agents can be plugged into standard
+   * OpenAI-style workflows (routers, retries, load balancing, ...).
+   *
+   * Each chat-completion call runs one managed-agent session turn. When `agentId` is empty,
+   * agents are created lazily - one per (model, system prompt) combination - and cached;
+   * `settings.model` selects the agent's model. When `environmentId` is empty, a cloud
+   * environment named `openai-scala-client-chat-adapter` is looked up or created and reused.
+   *
+   * Requires the `managed-agents-2026-04-01` beta on the API key; not available on Bedrock.
+   * See
+   * [[io.cequence.openaiscala.anthropic.service.impl.OpenAIAnthropicManagedAgentChatCompletionService]]
+   * for the exact semantics and limitations.
+   *
+   * @param agentId
+   *   Use this pre-created agent for all sessions (its configured model applies and
+   *   `settings.model` is ignored); when empty, agents are created and cached on the fly.
+   * @param environmentId
+   *   Run sessions in this environment; when empty, a shared adapter environment is looked up
+   *   or created.
+   * @param apiKey
+   *   The API key to use for authentication (if not specified the ANTHROPIC_API_KEY env.
+   *   variable will be used)
+   * @param timeouts
+   *   The explicit timeouts to use for the service (optional). Note that a managed-agent turn
+   *   can take minutes - configure a generous read timeout.
+   * @param agentTools
+   *   Tools granted to lazily-created agents (ignored when `agentId` is set). Defaults to the
+   *   full built-in toolset (bash, file ops, web search, ...).
+   * @param deleteSessionsAfterUse
+   *   Whether to delete each session once its turn finishes (default true).
+   */
+  def managedAgentAsOpenAI(
+    agentId: Option[String] = None,
+    environmentId: Option[String] = None,
+    apiKey: String = getEnvValue(EnvKeys.anthropicAPIKey),
+    timeouts: Option[Timeouts] = None,
+    agentTools: Seq[AgentTool] = Seq(AgentTool.Toolset()),
+    deleteSessionsAfterUse: Boolean = true
+  )(
+    implicit ec: ExecutionContext,
+    materializer: Materializer
+  ): OpenAIChatCompletionStreamedService =
+    new OpenAIAnthropicManagedAgentChatCompletionService(
+      AnthropicServiceFactory(apiKey, timeouts),
+      agentId,
+      environmentId,
+      agentTools,
+      deleteSessionsAfterUse
     )
 
   // -----------------------------------------------------------------------------
@@ -171,6 +228,9 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
    *   Optional STS session token. When provided (typically because `accessKey` is ASIA-
    *   prefixed), it rides as `X-Amz-Security-Token` in SigV4 signed headers. Defaults to the
    *   AWS_SESSION_TOKEN env var if set, otherwise None.
+   *
+   * Note: the returned service has no Bedrock batch support wired in - batch calls fail with a
+   * message pointing to [[bedrockAsOpenAIWithBatchSupport]].
    */
   def bedrockAsOpenAI(
     accessKey: String = getEnvValue(EnvKeys.bedrockAccessKey),
@@ -182,16 +242,100 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer
-  ): OpenAIChatCompletionStreamedService =
-    new OpenAIAnthropicChatCompletionService(
-      AnthropicServiceFactory.forBedrock(
-        accessKey,
-        secretKey,
-        region,
-        inferenceProfilePrefix,
-        timeouts,
-        sessionToken
+  ): OpenAIChatCompletionStreamedService = {
+    val connectionInfo = BedrockConnectionSettings(
+      accessKey,
+      secretKey,
+      region,
+      inferenceProfilePrefix,
+      sessionToken = sessionToken
+    )
+
+    new OpenAIAnthropicBedrockChatCompletionService(
+      new AnthropicBedrockServiceClassImpl(connectionInfo, timeouts),
+      connectionInfo,
+      batchSupport = None
+    )
+  }
+
+  /**
+   * OpenAI adapter for Anthropic Bedrock with SigV4-signed auth, additionally wired for
+   * Bedrock's own batch inference API (`model-invocation-job`) - distinct from Anthropic's
+   * direct Message Batches API, which Bedrock does not expose. Requests are staged as a JSONL
+   * file in S3 and results are read back from there; see [[AnthropicBedrockBatchSupport]].
+   *
+   * @param s3Bucket
+   *   S3 bucket used for staging batch inputs and outputs.
+   * @param roleArn
+   *   ARN of an IAM service role trusted by `bedrock.amazonaws.com`, with permissions to read
+   *   and write `s3Bucket`. See <a
+   *   href="https://docs.aws.amazon.com/bedrock/latest/userguide/batch-iam-sr.html">Create a
+   *   service role for batch inference</a>.
+   * @param s3Region
+   *   Region of `s3Bucket`. Defaults to `region`.
+   * @see
+   *   [[bedrockAsOpenAI]] for the auth parameter semantics.
+   */
+  def bedrockAsOpenAIWithBatchSupport(
+    s3Bucket: String,
+    roleArn: String,
+    accessKey: String = getEnvValue(EnvKeys.bedrockAccessKey),
+    secretKey: String = getEnvValue(EnvKeys.bedrockSecretKey),
+    region: String = getEnvValue(EnvKeys.bedrockRegion),
+    s3Region: Option[String] = None,
+    s3PathPrefix: String = "openai-scala-client-batches",
+    inferenceProfilePrefix: Option[String] = None,
+    timeouts: Option[Timeouts] = None,
+    sessionToken: Option[String] = Option(System.getenv(EnvKeys.bedrockSessionToken))
+  )(
+    implicit ec: ExecutionContext,
+    materializer: Materializer
+  ): OpenAIChatCompletionStreamedService with OpenAIChatCompletionBatchService = {
+    val connectionInfo = BedrockConnectionSettings(
+      accessKey,
+      secretKey,
+      region,
+      inferenceProfilePrefix,
+      sessionToken = sessionToken
+    )
+
+    new OpenAIAnthropicBedrockChatCompletionService(
+      new AnthropicBedrockServiceClassImpl(connectionInfo, timeouts),
+      connectionInfo,
+      batchSupport = Some(
+        AnthropicBedrockBatchSupport(
+          batchService =
+            bedrockBatchInference(accessKey, secretKey, region, timeouts, sessionToken),
+          s3Bucket = s3Bucket,
+          roleArn = roleArn,
+          s3Region = s3Region,
+          s3PathPrefix = s3PathPrefix
+        )
       )
+    )
+  }
+
+  /**
+   * Create a new instance of the [[AnthropicBedrockBatchInferenceService]] - a SigV4-signed
+   * REST client for Bedrock's own batch inference API (`model-invocation-job`), processed at
+   * 50% of standard cost.
+   *
+   * @param region
+   *   AWS region for Bedrock. Defaults to AWS_BEDROCK_REGION env var.
+   */
+  def bedrockBatchInference(
+    accessKey: String = getEnvValue(EnvKeys.bedrockAccessKey),
+    secretKey: String = getEnvValue(EnvKeys.bedrockSecretKey),
+    region: String = getEnvValue(EnvKeys.bedrockRegion),
+    timeouts: Option[Timeouts] = None,
+    sessionToken: Option[String] = Option(System.getenv(EnvKeys.bedrockSessionToken))
+  )(
+    implicit ec: ExecutionContext,
+    materializer: Materializer
+  ): AnthropicBedrockBatchInferenceService =
+    new AnthropicBedrockBatchInferenceServiceImpl(
+      BedrockConnectionSettings(accessKey, secretKey, region, sessionToken = sessionToken),
+      timeouts
     )
 
   /**
@@ -203,6 +347,9 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
    *   Bedrock API key. Defaults to AWS_BEARER_TOKEN_BEDROCK env var.
    * @param region
    *   AWS region for Bedrock. Defaults to AWS_BEDROCK_REGION env var.
+   *
+   * Note: the returned service has no Bedrock batch support wired in - batch calls fail with a
+   * message pointing to [[bedrockAsOpenAIWithBatchSupport]].
    */
   def bedrockAsOpenAIWithBearerToken(
     bearerToken: String = getEnvValue(EnvKeys.bedrockBearerToken),
@@ -212,15 +359,21 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer
-  ): OpenAIChatCompletionStreamedService =
-    new OpenAIAnthropicChatCompletionService(
-      AnthropicServiceFactory.forBedrockWithBearerToken(
-        bearerToken,
-        region,
-        inferenceProfilePrefix,
-        timeouts
-      )
+  ): OpenAIChatCompletionStreamedService = {
+    val connectionInfo = BedrockConnectionSettings(
+      accessKey = "",
+      secretKey = "",
+      region = region,
+      inferenceProfilePrefix = inferenceProfilePrefix,
+      bearerToken = Some(bearerToken)
     )
+
+    new OpenAIAnthropicBedrockChatCompletionService(
+      new AnthropicBedrockServiceClassImpl(connectionInfo, timeouts),
+      connectionInfo,
+      batchSupport = None
+    )
+  }
 
   /**
    * Create a new instance of the [[AnthropicService]]
@@ -329,6 +482,9 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
    * OpenAI adapter for Anthropic Bedrock that mints temporary STS credentials in-process from
    * a long-lived IAM user access/secret pair. See [[forBedrockWithSessionToken]] for parameter
    * semantics and lifetime caveats.
+   *
+   * Note: the returned service has no Bedrock batch support wired in - batch calls fail with a
+   * message pointing to [[bedrockAsOpenAIWithBatchSupport]].
    */
   def bedrockAsOpenAIWithSessionToken(
     accessKey: String = getEnvValue(EnvKeys.bedrockAccessKey),
@@ -340,17 +496,22 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer
-  ): OpenAIChatCompletionStreamedService =
-    new OpenAIAnthropicChatCompletionService(
-      AnthropicServiceFactory.forBedrockWithSessionToken(
-        accessKey,
-        secretKey,
-        region,
-        durationSeconds,
-        inferenceProfilePrefix,
-        timeouts
-      )
+  ): OpenAIChatCompletionStreamedService = {
+    val sts = BedrockStsClient.getSessionToken(accessKey, secretKey, durationSeconds)
+    val connectionInfo = BedrockConnectionSettings(
+      accessKey = sts.accessKeyId,
+      secretKey = sts.secretAccessKey,
+      region = region,
+      inferenceProfilePrefix = inferenceProfilePrefix,
+      sessionToken = Some(sts.sessionToken)
     )
+
+    new OpenAIAnthropicBedrockChatCompletionService(
+      new AnthropicBedrockServiceClassImpl(connectionInfo, timeouts),
+      connectionInfo,
+      batchSupport = None
+    )
+  }
 
   /**
    * [[AnthropicService]] for Bedrock using a Bedrock API key (bearer token). SigV4 signing is

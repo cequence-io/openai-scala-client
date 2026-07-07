@@ -6,7 +6,7 @@ import io.cequence.openaiscala.gemini.service.impl.{
   GeminiServiceImpl,
   OpenAIGeminiChatCompletionService
 }
-import io.cequence.openaiscala.service.ChatProviderSettings
+import io.cequence.openaiscala.service.{ChatProviderSettings, OpenAIChatCompletionBatchService}
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
 
 import scala.concurrent.ExecutionContext
@@ -46,7 +46,7 @@ object GeminiServiceFactory extends GeminiServiceConsts with EnvHelper {
   )(
     implicit ec: ExecutionContext,
     materializer: Materializer
-  ): OpenAIChatCompletionStreamedService =
+  ): OpenAIChatCompletionStreamedService with OpenAIChatCompletionBatchService =
     new OpenAIGeminiChatCompletionService(
       new GeminiServiceImpl(apiKey, timeouts)
     )

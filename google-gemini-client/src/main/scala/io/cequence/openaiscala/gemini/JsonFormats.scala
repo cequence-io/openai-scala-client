@@ -486,4 +486,119 @@ trait JsonFormats {
 
   implicit val listCachedContentsResponseFormat: Format[ListCachedContentsResponse] =
     Json.using[Json.WithDefaultValues].format[ListCachedContentsResponse]
+
+  // batches
+
+  implicit lazy val batchStateFormat: Format[BatchState] = enumFormat(BatchState.values: _*)
+
+  // proto-JSON serializes int64 as a string - tolerate both shapes
+  private lazy val longFromStringOrNumberReads: Reads[Long] = Reads {
+    case JsNumber(n) => JsSuccess(n.toLong)
+    case JsString(s) =>
+      try JsSuccess(s.toLong)
+      catch {
+        case _: NumberFormatException => JsError(s"Cannot parse a long from '$s'.")
+      }
+    case other => JsError(s"Expected a number or a numeric string, got: $other")
+  }
+
+  implicit lazy val batchStatsReads: Reads[BatchStats] = Reads { json =>
+    def longAt(field: String): Option[Long] =
+      (json \ field).asOpt(longFromStringOrNumberReads)
+
+    JsSuccess(
+      BatchStats(
+        requestCount = longAt("requestCount"),
+        successfulRequestCount = longAt("successfulRequestCount"),
+        failedRequestCount = longAt("failedRequestCount"),
+        pendingRequestCount = longAt("pendingRequestCount")
+      )
+    )
+  }
+
+  implicit lazy val batchRpcErrorReads: Reads[BatchRpcError] =
+    Json.using[Json.WithDefaultValues].reads[BatchRpcError]
+
+  implicit lazy val batchInlinedResponseReads: Reads[BatchInlinedResponse] = Reads { json =>
+    JsSuccess(
+      BatchInlinedResponse(
+        key = (json \ "metadata" \ "key").asOpt[String],
+        response = (json \ "response").asOpt[GenerateContentResponse],
+        error = (json \ "error").asOpt[BatchRpcError]
+      )
+    )
+  }
+
+  implicit lazy val batchOutputReads: Reads[BatchOutput] = Reads { json =>
+    // inlined responses ride in an `InlinedResponses` wrapper; tolerate a flat array too
+    val inlinedResponses = (json \ "inlinedResponses" \ "inlinedResponses")
+      .asOpt[Seq[BatchInlinedResponse]]
+      .orElse((json \ "inlinedResponses").asOpt[Seq[BatchInlinedResponse]])
+      .getOrElse(Nil)
+
+    JsSuccess(
+      BatchOutput(
+        responsesFile = (json \ "responsesFile").asOpt[String],
+        inlinedResponses = inlinedResponses
+      )
+    )
+  }
+
+  implicit lazy val geminiFileReads: Reads[GeminiFile] = Reads { json =>
+    (json \ "name").validate[String].map { name =>
+      GeminiFile(
+        name = name,
+        displayName = (json \ "displayName").asOpt[String],
+        mimeType = (json \ "mimeType").asOpt[String],
+        sizeBytes = (json \ "sizeBytes").asOpt(longFromStringOrNumberReads),
+        state = (json \ "state").asOpt[String],
+        uri = (json \ "uri").asOpt[String],
+        createTime = (json \ "createTime").asOpt[String],
+        expirationTime = (json \ "expirationTime").asOpt[String]
+      )
+    }
+  }
+
+  implicit lazy val generateContentBatchReads: Reads[GenerateContentBatch] = Reads { json =>
+    (json \ "name").validate[String].map { name =>
+      GenerateContentBatch(
+        name = name,
+        displayName = (json \ "displayName").asOpt[String],
+        model = (json \ "model").asOpt[String],
+        state = (json \ "state").asOpt[BatchState],
+        createTime = (json \ "createTime").asOpt[String],
+        updateTime = (json \ "updateTime").asOpt[String],
+        endTime = (json \ "endTime").asOpt[String],
+        priority = (json \ "priority").asOpt(longFromStringOrNumberReads),
+        batchStats = (json \ "batchStats").asOpt[BatchStats],
+        output = (json \ "output").asOpt[BatchOutput],
+        inputFileName = (json \ "inputConfig" \ "fileName").asOpt[String]
+      )
+    }
+  }
+
+  /**
+   * Overrides a single field of an already-assembled `generateContent` request body with a
+   * per-request value, or leaves the body untouched when there is nothing to override.
+   *
+   * Used for Batch Mode: each inlined request body is built from the batch-wide settings
+   * (tools, generationConfig, etc.), but a [[BatchRequestItem]] may carry its own
+   * `systemInstruction`, which must win over the batch-wide one for that request only - so one
+   * request's system prompt never silently leaks into another's.
+   *
+   * @param requestBody
+   *   the request body as built from the batch-wide settings
+   * @param fieldName
+   *   the request body field to override, e.g. the Gemini `system_instruction` param name
+   * @param value
+   *   the per-request override; when `None`, `requestBody` is returned unchanged
+   */
+  def withOverriddenContentField(
+    requestBody: JsObject,
+    fieldName: String,
+    value: Option[Content]
+  ): JsObject =
+    value.fold(requestBody) { content =>
+      (requestBody - fieldName) ++ Json.obj(fieldName -> Json.toJson(content))
+    }
 }

@@ -152,6 +152,16 @@ import io.cequence.openaiscala.anthropic.domain.managedagents.{
   WorkState
 }
 import io.cequence.openaiscala.JsonFormats.formatWithType
+import io.cequence.openaiscala.anthropic.domain.{
+  ListMessageBatchesResponse,
+  MessageBatch,
+  MessageBatchDeleteResponse,
+  MessageBatchError,
+  MessageBatchIndividualResponse,
+  MessageBatchProcessingStatus,
+  MessageBatchRequestCounts,
+  MessageBatchResult
+}
 import io.cequence.openaiscala.domain.JsonSchema
 import io.cequence.wsclient.JsonUtil
 import play.api.libs.functional.syntax._
@@ -2512,5 +2522,58 @@ trait JsonFormats {
     }
     val writes: OWrites[DeploymentRun] = OWrites(_.raw)
     Format(reads, writes)
+  }
+
+  // message batches
+
+  implicit lazy val messageBatchProcessingStatusFormat: Format[MessageBatchProcessingStatus] =
+    JsonUtil.enumFormat[MessageBatchProcessingStatus](MessageBatchProcessingStatus.values: _*)
+
+  implicit lazy val messageBatchRequestCountsFormat: Format[MessageBatchRequestCounts] =
+    Json.format[MessageBatchRequestCounts]
+
+  implicit lazy val messageBatchFormat: Format[MessageBatch] = {
+    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
+    formatWithType(Json.format[MessageBatch])
+  }
+
+  implicit lazy val listMessageBatchesResponseFormat: Format[ListMessageBatchesResponse] = {
+    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
+    Json.format[ListMessageBatchesResponse]
+  }
+
+  implicit lazy val messageBatchDeleteResponseFormat: Format[MessageBatchDeleteResponse] = {
+    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
+    formatWithType(Json.format[MessageBatchDeleteResponse])
+  }
+
+  implicit lazy val messageBatchResultReads: Reads[MessageBatchResult] = Reads { json =>
+    (json \ "type").validate[String].flatMap {
+      case "succeeded" =>
+        (json \ "message")
+          .validate[CreateMessageResponse]
+          .map(MessageBatchResult.Succeeded(_): MessageBatchResult)
+
+      case "errored" =>
+        for {
+          errorType <- (json \ "error" \ "error" \ "type").validate[String]
+          errorMessage <- (json \ "error" \ "error" \ "message").validate[String]
+        } yield MessageBatchResult.Errored(
+          MessageBatchError(errorType, errorMessage),
+          requestId = (json \ "error" \ "request_id").asOpt[String]
+        )
+
+      case "canceled" => JsSuccess(MessageBatchResult.Canceled)
+      case "expired"  => JsSuccess(MessageBatchResult.Expired)
+      case other      => JsError(s"Unknown message batch result type: $other")
+    }
+  }
+
+  implicit lazy val messageBatchIndividualResponseReads
+    : Reads[MessageBatchIndividualResponse] = Reads { json =>
+    for {
+      customId <- (json \ "custom_id").validate[String]
+      result <- (json \ "result").validate[MessageBatchResult]
+    } yield MessageBatchIndividualResponse(customId, result)
   }
 }

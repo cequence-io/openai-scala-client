@@ -9,7 +9,12 @@ import io.cequence.openaiscala.anthropic.domain.{
   FileDeleteResponse,
   FileListResponse,
   FileMetadata,
-  Message
+  ListMessageBatchesResponse,
+  Message,
+  MessageBatch,
+  MessageBatchDeleteResponse,
+  MessageBatchIndividualResponse,
+  MessageBatchRequest
 }
 import io.cequence.openaiscala.anthropic.domain.response.{
   ContentBlockDelta,
@@ -330,6 +335,48 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
     Future.failed(
       new UnsupportedOperationException("Files API is not supported in Anthropic Bedrock")
     )
+
+  // Message Batches — not available on Bedrock (use Bedrock's own batch inference instead)
+
+  private def messageBatchesUnsupported[T]: Future[T] =
+    Future.failed(
+      new UnsupportedOperationException(
+        "Message Batches API is not supported in Anthropic Bedrock"
+      )
+    )
+
+  override def createMessageBatch(
+    requests: Seq[MessageBatchRequest]
+  ): Future[MessageBatch] = messageBatchesUnsupported
+
+  override def getMessageBatch(batchId: String): Future[MessageBatch] =
+    messageBatchesUnsupported
+
+  override def listMessageBatches(
+    limit: Option[Int],
+    beforeId: Option[String],
+    afterId: Option[String]
+  ): Future[ListMessageBatchesResponse] = messageBatchesUnsupported
+
+  override def streamMessageBatchResults(
+    batchId: String
+  ): Source[MessageBatchIndividualResponse, NotUsed] =
+    Source.failed(
+      new UnsupportedOperationException(
+        "Message Batches API is not supported in Anthropic Bedrock"
+      )
+    )
+
+  override def retrieveMessageBatchResults(
+    batchId: String
+  ): Future[Seq[MessageBatchIndividualResponse]] = messageBatchesUnsupported
+
+  override def cancelMessageBatch(batchId: String): Future[MessageBatch] =
+    messageBatchesUnsupported
+
+  override def deleteMessageBatch(
+    batchId: String
+  ): Future[MessageBatchDeleteResponse] = messageBatchesUnsupported
 
   // Managed Agents — not available on Bedrock
 

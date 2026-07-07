@@ -6,6 +6,7 @@ sealed abstract class EndPoint(value: String = "") extends NamedEnumValue(value)
 
 object EndPoint {
   case object messages extends EndPoint
+  case object messageBatches extends EndPoint("messages/batches")
   case object skills extends EndPoint
   case object files extends EndPoint
   // managed agents

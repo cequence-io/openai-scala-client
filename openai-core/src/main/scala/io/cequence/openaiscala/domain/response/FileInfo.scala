@@ -11,7 +11,9 @@ case class FileInfo(
   // The intended purpose of the file.
   // Supported values are fine-tune, fine-tune-results, assistants, and assistants_output.
   purpose: String,
-  status: String, // uploaded, processed, pending, error, deleting or deleted
+  // uploaded, processed, pending, error, deleting or deleted - optional since some
+  // OpenAI-compatible providers (e.g. Groq) omit this field on their file objects
+  status: Option[String],
   status_details: Option[String],
   statistics: Option[FileStatistics] // provided by Azure
 )

@@ -9,16 +9,29 @@ object EndPoint {
       extends EndPoint(s"models/${stripModelsPrefix(model)}:generateContent")
   case class streamGenerateContent(model: String)
       extends EndPoint(s"models/${stripModelsPrefix(model)}:streamGenerateContent")
+  case class batchGenerateContent(model: String)
+      extends EndPoint(s"models/${stripModelsPrefix(model)}:batchGenerateContent")
   case object models extends EndPoint
+  case object batches extends EndPoint
+  case class batches(name: String) extends EndPoint(s"batches/${stripBatchesPrefix(name)}")
+  case class cancelBatch(name: String)
+      extends EndPoint(s"batches/${stripBatchesPrefix(name)}:cancel")
   case object cachedContents extends EndPoint
   case class cachedContents(name: String)
       extends EndPoint(s"cachedContents/${stripCachedContentsPrefix(name)}")
+  case class files(name: String) extends EndPoint(s"files/${stripFilesPrefix(name)}")
 
   private def stripCachedContentsPrefix(name: String): String =
     name.stripPrefix("cachedContents/")
 
   private def stripModelsPrefix(name: String): String =
     name.stripPrefix("models/")
+
+  private def stripBatchesPrefix(name: String): String =
+    name.stripPrefix("batches/")
+
+  private def stripFilesPrefix(name: String): String =
+    name.stripPrefix("files/")
 }
 
 sealed trait Param extends EnumValue

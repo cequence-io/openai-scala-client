@@ -8,10 +8,21 @@ import io.cequence.openaiscala.anthropic.domain.tools.{
   CustomTool,
   ToolChoice => AnthropicToolChoice
 }
+import io.cequence.openaiscala.anthropic.domain.{
+  MessageBatch,
+  MessageBatchProcessingStatus,
+  MessageBatchRequest,
+  MessageBatchResult
+}
 import io.cequence.openaiscala.anthropic.service.AnthropicService
 import io.cequence.openaiscala.domain.{
   AssistantToolMessage,
   BaseMessage,
+  ChatCompletionBatchError,
+  ChatCompletionBatchInfo,
+  ChatCompletionBatchRequest,
+  ChatCompletionBatchResultItem,
+  ChatCompletionBatchStatus,
   ChatCompletionTool,
   FunctionCallSpec
 }
@@ -24,6 +35,7 @@ import io.cequence.openaiscala.domain.response.{
 }
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.service.{
+  OpenAIChatCompletionBatchService,
   OpenAIChatCompletionService,
   OpenAIChatCompletionStreamedServiceExtra
 }
@@ -36,7 +48,8 @@ private[service] class OpenAIAnthropicChatCompletionService(
 )(
   implicit executionContext: ExecutionContext
 ) extends OpenAIChatCompletionService
-    with OpenAIChatCompletionStreamedServiceExtra {
+    with OpenAIChatCompletionStreamedServiceExtra
+    with OpenAIChatCompletionBatchService {
 
   /**
    * Creates a model response for the given chat conversation.
@@ -122,6 +135,98 @@ private[service] class OpenAIAnthropicChatCompletionService(
       )
       .map(toOpenAIToolResponse)
       .recoverWith(repackAsOpenAIException)
+  }
+
+  // -- Batch processing (provider-agnostic) --
+
+  override def createChatCompletionBatch(
+    requests: Seq[ChatCompletionBatchRequest],
+    settings: CreateChatCompletionSettings
+  ): Future[ChatCompletionBatchInfo] = {
+    val anthropicSettings = toAnthropicSettings(settings)
+
+    val anthropicRequests = requests.map { request =>
+      MessageBatchRequest(
+        customId = request.customId,
+        messages = toAnthropicSystemMessages(request.messages.filter(_.isSystem), settings) ++
+          toAnthropicMessages(request.messages.filter(!_.isSystem), settings),
+        settings = anthropicSettings
+      )
+    }
+
+    underlying
+      .createMessageBatch(anthropicRequests)
+      .map(toBatchInfo)
+      .recoverWith(repackAsOpenAIException)
+  }
+
+  override def getChatCompletionBatch(
+    batchId: String,
+    model: String
+  ): Future[ChatCompletionBatchInfo] =
+    underlying.getMessageBatch(batchId).map(toBatchInfo).recoverWith(repackAsOpenAIException)
+
+  override def retrieveChatCompletionBatchResults(
+    batchId: String,
+    model: String
+  ): Future[Seq[ChatCompletionBatchResultItem]] =
+    underlying
+      .retrieveMessageBatchResults(batchId)
+      .map(_.map { item =>
+        val result = item.result match {
+          case MessageBatchResult.Succeeded(message) =>
+            Right(toOpenAI(message))
+
+          case MessageBatchResult.Errored(error, _) =>
+            Left(ChatCompletionBatchError(error.message, Some(error.`type`)))
+
+          case MessageBatchResult.Canceled =>
+            Left(
+              ChatCompletionBatchError(
+                "The request was canceled before it could be processed.",
+                Some("canceled")
+              )
+            )
+
+          case MessageBatchResult.Expired =>
+            Left(
+              ChatCompletionBatchError(
+                "The batch expired before the request could be processed.",
+                Some("expired")
+              )
+            )
+        }
+
+        ChatCompletionBatchResultItem(item.customId, result)
+      })
+      .recoverWith(repackAsOpenAIException)
+
+  override def cancelChatCompletionBatch(
+    batchId: String,
+    model: String
+  ): Future[ChatCompletionBatchInfo] =
+    underlying
+      .cancelMessageBatch(batchId)
+      .map(toBatchInfo)
+      .recoverWith(repackAsOpenAIException)
+
+  override def deleteChatCompletionBatch(
+    batchId: String,
+    model: String
+  ): Future[Unit] =
+    underlying.deleteMessageBatch(batchId).map(_ => ()).recoverWith(repackAsOpenAIException)
+
+  private def toBatchInfo(batch: MessageBatch): ChatCompletionBatchInfo = {
+    val status = batch.processingStatus match {
+      case MessageBatchProcessingStatus.ended =>
+        // canceled batches also end as `ended`; per-request outcomes ride on the results
+        ChatCompletionBatchStatus.Completed
+      case _ =>
+        // in_progress, canceling
+        ChatCompletionBatchStatus.InProgress
+    }
+
+    ChatCompletionBatchInfo(batch.id, status, batch.processingStatus.toString)
   }
 
   private def toOpenAIToolResponse(
