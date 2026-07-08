@@ -75,6 +75,24 @@ trait OpenAIServiceAdapters[S <: CloseableService] extends ServiceAdapters[S] {
       new ChatCompletionInputAdapter(adaptMessages, adaptSettings)(service)
     )
 
+  /**
+   * Batch-preserving sibling of [[chatCompletionInput]] for batch-capable services (e.g. the
+   * Anthropic/Gemini `asOpenAI` adapters): the plain variant's wrapper exposes only the chat
+   * endpoints, so batch capability would be lost - a runtime `isInstanceOf` check (as done by
+   * the mixed batch router) no longer sees [[OpenAIChatCompletionBatchService]]. This variant
+   * keeps the batch endpoints, applying `adaptMessages`/`adaptSettings` on batch submission as
+   * well - see [[ChatCompletionInputBatchAdapter]].
+   */
+  def chatCompletionInputWithBatch(
+    adaptMessages: Seq[BaseMessage] => Seq[BaseMessage],
+    adaptSettings: CreateChatCompletionSettings => CreateChatCompletionSettings
+  )(
+    service: S with OpenAIChatCompletionService with OpenAIChatCompletionBatchService
+  ): S with OpenAIChatCompletionBatchService =
+    wrapAndDelegateChatCompletionBatch(
+      new ChatCompletionInputBatchAdapter(adaptMessages, adaptSettings)(service)
+    )
+
   def chatCompletionOutput(
     adaptMessage: AssistantMessage => AssistantMessage
   )(

@@ -166,6 +166,18 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts with HasOpenAICo
    * <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-mantle.html">the
    * bedrock-mantle documentation</a> for details.
    *
+   * '''No Batch API support''' (verified July 2026): `/batches` does not exist on either base
+   * path (404), and the Files API - although served - rejects `purpose=batch` ("Only
+   * 'fine-tune' is currently supported"). Hence `createBatch` and the
+   * `createChatCompletionBatch*` methods compile but fail at runtime (the batch input-file
+   * upload is the first step to blow up). To use this service where an
+   * [[io.cequence.openaiscala.service.OpenAIChatCompletionBatchService]] is expected, wrap it
+   * with `OpenAIServiceAdapters.chatCompletionBatchEmulated` (parallel synchronous calls - no
+   * batch discount), or route batch traffic to a natively-batching provider via
+   * `chatCompletionBatchRouterMixed`. Beware that `openai.gpt-5.5` additionally rejects
+   * `/chat/completions` altogether (Responses API only), so wrap the service in
+   * `OpenAIResponsesChatCompletionService` before emulating batches for it.
+   *
    * @param apiKey
    *   Bedrock API key (sent as a bearer token). Defaults to the `AWS_BEARER_TOKEN_BEDROCK` env
    *   var.

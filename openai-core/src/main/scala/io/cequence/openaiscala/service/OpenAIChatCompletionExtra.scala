@@ -12,10 +12,12 @@ import io.cequence.openaiscala.domain.settings.{
 }
 import io.cequence.openaiscala.domain.{
   BaseMessage,
+  ChatCompletionBatchError,
   ChatCompletionBatchInfo,
   ChatCompletionBatchRequest,
   ChatCompletionBatchResultItem,
   ChatCompletionBatchStatus,
+  ChatCompletionBatchTypedResultItem,
   ChatRole,
   TextContent,
   UserMessage,
@@ -241,41 +243,17 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
           filterModels
         )
         .flatMap { response =>
-          val contentJson = cleanupJsonContent(response.contentHead)
-          val json = parseJson(contentJson)
+          val outcome = parseJsonResponse[T](response, taskNameForLoggingFinal, parseJson)
 
           logger.debug(
             s"${taskNameForLoggingFinal.capitalize} finished in " + (new java.util.Date().getTime - start.getTime) + " ms."
           )
 
-          // logging only block
-          json match {
-            case obj: JsObject if obj.fields.isEmpty =>
-              val stopReason =
-                response.choices.headOption.flatMap(_.finish_reason).getOrElse("N/A")
-              val model = response.model
-              val usageInfo = response.usage.map { u =>
-                val reasoning =
-                  u.completion_tokens_details.flatMap(_.reasoning_tokens).getOrElse(0)
-                s"input: ${u.prompt_tokens}, output: ${u.completion_tokens.getOrElse(0)}, reasoning: $reasoning"
-              }.getOrElse("N/A")
-
-              logger.error(
-                s"${taskNameForLoggingFinal.capitalize} returned an empty JSON object. Stop reason: $stopReason, model: $model, usage: [$usageInfo]."
-              )
-            case _ =>
+          outcome match {
+            case Right(result) => Future.successful(result)
+            case Left(errorMessage) =>
+              Future.failed(new OpenAIScalaClientException(errorMessage))
           }
-
-          json
-            .asOpt[T]
-            .map(value => Future.successful((value, response)))
-            .getOrElse(
-              Future.failed(
-                new OpenAIScalaClientException(
-                  s"Failed to parse JSON response into the expected type. Response: $contentJson"
-                )
-              )
-            )
         }
     }
 
@@ -395,6 +373,135 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
         }
       } yield results
     }
+
+    /**
+     * Typed sibling of [[createChatCompletionBatchAndWaitForResults]] - the batch counterpart
+     * of `createChatCompletionWithJSONFullResponse`: runs the whole batch flow and JSON-parses
+     * each response into `T`, returning one typed item per request '''in request order'''
+     * (provider batch results are unordered - re-association by `customId` happens here).
+     *
+     * JSON schema handling mirrors the synchronous path: when `settings.jsonSchema` is
+     * defined, [[handleOutputJsonSchema]] is applied to '''each''' request's messages (the
+     * prompt-appendix fallback for non-json-schema models is per-message) and once to the
+     * shared settings (that half depends only on the model, so it is identical across
+     * requests).
+     *
+     * Per-item outcomes never fail the whole future: a provider-side error passes through as
+     * `Left`, an unparseable response maps to `Left(code = "response_parse_error")`, and a
+     * request whose `customId` is absent from the results maps to `Left(code =
+     * "missing_result")`. The future itself fails only for batch-level errors (submit failure,
+     * terminal `Failed`/`Expired` status, or `timeout` - the timeout error message carries the
+     * batch id so it can be picked up later).
+     *
+     * @param requests
+     *   Requests to batch, each with a unique `customId` and its messages.
+     * @param settings
+     *   Chat-completion settings (model, jsonSchema, ...) shared by all requests.
+     */
+    def createChatCompletionBatchWithJSON[T: Format](
+      requests: Seq[ChatCompletionBatchRequest],
+      settings: CreateChatCompletionSettings,
+      pollingInterval: FiniteDuration = 30.seconds,
+      timeout: Option[FiniteDuration] = None,
+      deleteBatchAfterUse: Boolean = false,
+      taskNameForLogging: Option[String] = None,
+      jsonSchemaModels: Seq[String] = Nil,
+      enforceJsonSchemaMode: Boolean = false,
+      parseJson: String => JsValue = defaultParseJsonOrRepair
+    )(
+      implicit ec: ExecutionContext,
+      scheduler: Scheduler
+    ): Future[Seq[ChatCompletionBatchTypedResultItem[T]]] = {
+      require(
+        requests.map(_.customId).distinct.size == requests.size,
+        "Batch request custom ids must be unique."
+      )
+
+      val taskNameForLoggingFinal =
+        taskNameForLogging.getOrElse("JSON-based chat-completion batch")
+
+      def parseItem(
+        customId: String,
+        response: ChatCompletionResponse
+      ): ChatCompletionBatchTypedResultItem[T] = {
+        val outcome =
+          try {
+            parseJsonResponse[T](
+              response,
+              taskNameForLoggingFinal,
+              parseJson,
+              itemLabelForLogging = Some(customId)
+            ).left.map(errorMessage =>
+              ChatCompletionBatchError(errorMessage, code = Some("response_parse_error"))
+            )
+          } catch {
+            case e: Exception =>
+              Left(
+                ChatCompletionBatchError(
+                  s"Failed to parse the response as JSON: ${e.getMessage}",
+                  code = Some("response_parse_error")
+                )
+              )
+          }
+
+        ChatCompletionBatchTypedResultItem(customId, outcome)
+      }
+
+      if (requests.isEmpty)
+        Future.successful(Nil)
+      else {
+        // mirror the sync JSON path: adapt each request's messages and the shared settings
+        val (requestsFinal, settingsFinal) = if (settings.jsonSchema.isDefined) {
+          val adapted = requests.map { request =>
+            val (newMessages, newSettings) = handleOutputJsonSchema(
+              request.messages,
+              settings,
+              taskNameForLoggingFinal,
+              jsonSchemaModels,
+              enforceJsonSchemaMode
+            )
+            (request.copy(messages = newMessages), newSettings)
+          }
+          // the settings transformation depends only on the model, hence identical for all
+          (adapted.map(_._1), adapted.head._2)
+        } else {
+          (requests, settings)
+        }
+
+        createChatCompletionBatchAndWaitForResults(
+          requestsFinal,
+          settingsFinal,
+          pollingInterval,
+          timeout,
+          deleteBatchAfterUse
+        ).map { items =>
+          val itemsByCustomId = items.map(item => item.customId -> item).toMap
+
+          // emit results in request order; a request with no result gets a typed error
+          requests.map { request =>
+            itemsByCustomId.get(request.customId) match {
+              case Some(item) =>
+                item.result match {
+                  case Right(response) => parseItem(request.customId, response)
+                  case Left(error) =>
+                    ChatCompletionBatchTypedResultItem[T](request.customId, Left(error))
+                }
+
+              case None =>
+                ChatCompletionBatchTypedResultItem[T](
+                  request.customId,
+                  Left(
+                    ChatCompletionBatchError(
+                      s"No result returned for the custom id '${request.customId}'.",
+                      code = Some("missing_result")
+                    )
+                  )
+                )
+            }
+          }
+        }
+      }
+    }
   }
 
   private def getJsonSchemaModelsFromConfig(): Seq[String] = {
@@ -405,6 +512,48 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
     } else {
       Nil
     }
+  }
+
+  /**
+   * Shared JSON tail of the typed sync
+   * ([[OpenAIChatCompletionImplicits.createChatCompletionWithJSONFullResponse]]) and batch
+   * ([[OpenAIChatCompletionBatchImplicits.createChatCompletionBatchWithJSON]]) paths: cleans
+   * up the response content, parses it, logs an empty-object diagnostic (incl. usage), and
+   * converts it to `T`. Exceptions thrown by `parseJson` propagate to the caller - the sync
+   * path lets them fail the future, the batch path maps them to a per-item error.
+   */
+  private def parseJsonResponse[T: Format](
+    response: ChatCompletionResponse,
+    taskNameForLogging: String,
+    parseJson: String => JsValue,
+    itemLabelForLogging: Option[String] = None
+  ): Either[String, (T, ChatCompletionResponse)] = {
+    val contentJson = cleanupJsonContent(response.contentHead)
+    val json = parseJson(contentJson)
+
+    // logging only block
+    json match {
+      case obj: JsObject if obj.fields.isEmpty =>
+        val stopReason = response.choices.headOption.flatMap(_.finish_reason).getOrElse("N/A")
+        val usageInfo = response.usage.map { u =>
+          val reasoning = u.completion_tokens_details.flatMap(_.reasoning_tokens).getOrElse(0)
+          s"input: ${u.prompt_tokens}, output: ${u.completion_tokens.getOrElse(0)}, reasoning: $reasoning"
+        }.getOrElse("N/A")
+        val itemPart =
+          itemLabelForLogging.map(label => s" for the request '$label'").getOrElse("")
+
+        logger.error(
+          s"${taskNameForLogging.capitalize} returned an empty JSON object$itemPart. Stop reason: $stopReason, model: ${response.model}, usage: [$usageInfo]."
+        )
+      case _ =>
+    }
+
+    json
+      .asOpt[T]
+      .map(value => Right((value, response)))
+      .getOrElse(
+        Left(s"Failed to parse JSON response into the expected type. Response: $contentJson")
+      )
   }
 
   def cleanupJsonContent(content: String): String = {
