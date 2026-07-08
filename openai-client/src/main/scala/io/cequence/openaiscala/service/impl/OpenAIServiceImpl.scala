@@ -1103,11 +1103,14 @@ private[service] trait OpenAIServiceImpl
   ): Future[ChatCompletionBatchInfo] = {
     require(requests.nonEmpty, "At least one batch request expected.")
 
-    // one full chat-completion request body per JSONL line
+    // one full chat-completion request body per JSONL line - route through the shared
+    // `toJsBodyObject` so the blank-named `extra_params` param is spread into the body (exactly
+    // as the synchronous chat-completion path does) instead of being written as a literal " "
+    // key, which OpenAI's Batch API rejects with `unknown_parameter: Unknown parameter: ' '`.
     val lines = requests.map { request =>
-      val body = JsObject(
-        createBodyParamsForChatCompletion(request.messages, settings, stream = false).collect {
-          case (param, Some(value)) => param.toString -> value
+      val body = toJsBodyObject(
+        createBodyParamsForChatCompletion(request.messages, settings, stream = false).map {
+          case (param, value) => param.toString -> value
         }
       )
 
