@@ -30,7 +30,7 @@ import play.api.libs.json.{Format, JsObject, JsValue, Json}
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future}
 import com.fasterxml.jackson.core.JsonProcessingException
-import io.cequence.openaiscala.OpenAIScalaClientException
+import io.cequence.openaiscala.{OpenAIScalaBatchTimeoutException, OpenAIScalaClientException}
 import io.cequence.openaiscala.domain.JsonSchema
 import io.cequence.openaiscala.domain.JsonSchema.JsonSchemaOrMap
 import io.cequence.wsclient.JsonUtil
@@ -324,7 +324,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
             Future.successful(info)
           else if (deadline.exists(System.currentTimeMillis() > _))
             Future.failed(
-              new OpenAIScalaClientException(
+              new OpenAIScalaBatchTimeoutException(
                 s"Chat-completion batch '$batchId' did not finish within the requested timeout of ${timeout.get}. " +
                   "The batch keeps processing - poll getChatCompletionBatch with this id to pick it up later."
               )
@@ -393,10 +393,19 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
      * terminal `Failed`/`Expired` status, or `timeout` - the timeout error message carries the
      * batch id so it can be picked up later).
      *
+     * Failover mirrors the sync path's `failoverModels`: on a terminal batch-level failure the
+     * whole batch is resubmitted with the next model (json-schema handling recomputed per
+     * model). A wait timeout ([[io.cequence.openaiscala.OpenAIScalaBatchTimeoutException]])
+     * deliberately does NOT fail over - the batch keeps processing server-side, so
+     * resubmitting the work elsewhere would double it.
+     *
      * @param requests
      *   Requests to batch, each with a unique `customId` and its messages.
      * @param settings
      *   Chat-completion settings (model, jsonSchema, ...) shared by all requests.
+     * @param failoverModels
+     *   Models to resubmit the whole batch with (in order) after a terminal batch-level
+     *   failure of the previous one.
      */
     def createChatCompletionBatchWithJSON[T: Format](
       requests: Seq[ChatCompletionBatchRequest],
@@ -404,6 +413,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       pollingInterval: FiniteDuration = 30.seconds,
       timeout: Option[FiniteDuration] = None,
       deleteBatchAfterUse: Boolean = false,
+      failoverModels: Seq[String] = Nil,
       taskNameForLogging: Option[String] = None,
       jsonSchemaModels: Seq[String] = Nil,
       enforceJsonSchemaMode: Boolean = false,
@@ -451,29 +461,57 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
         Future.successful(Nil)
       else {
         // mirror the sync JSON path: adapt each request's messages and the shared settings
-        val (requestsFinal, settingsFinal) = if (settings.jsonSchema.isDefined) {
-          val adapted = requests.map { request =>
-            val (newMessages, newSettings) = handleOutputJsonSchema(
-              request.messages,
-              settings,
-              taskNameForLoggingFinal,
-              jsonSchemaModels,
-              enforceJsonSchemaMode
-            )
-            (request.copy(messages = newMessages), newSettings)
+        // (recomputed per candidate model - json-schema mode is model-dependent)
+        def adaptForSettings(
+          currentSettings: CreateChatCompletionSettings
+        ): (Seq[ChatCompletionBatchRequest], CreateChatCompletionSettings) =
+          if (currentSettings.jsonSchema.isDefined) {
+            val adapted = requests.map { request =>
+              val (newMessages, newSettings) = handleOutputJsonSchema(
+                request.messages,
+                currentSettings,
+                taskNameForLoggingFinal,
+                jsonSchemaModels,
+                enforceJsonSchemaMode
+              )
+              (request.copy(messages = newMessages), newSettings)
+            }
+            // the settings transformation depends only on the model, hence identical for all
+            (adapted.map(_._1), adapted.head._2)
+          } else {
+            (requests, currentSettings)
           }
-          // the settings transformation depends only on the model, hence identical for all
-          (adapted.map(_._1), adapted.head._2)
-        } else {
-          (requests, settings)
+
+        // submit with the primary model; on a terminal batch-level failure (submit error,
+        // Failed/Expired status) fail over to the next model. A wait TIMEOUT deliberately
+        // does NOT fail over - the batch keeps processing server-side, so resubmitting the
+        // work elsewhere would double it.
+        def attempt(
+          allSettingsInOrder: Seq[CreateChatCompletionSettings]
+        ): Future[Seq[ChatCompletionBatchResultItem]] = {
+          val currentSettings = allSettingsInOrder.head
+          val (requestsFinal, settingsFinal) = adaptForSettings(currentSettings)
+
+          createChatCompletionBatchAndWaitForResults(
+            requestsFinal,
+            settingsFinal,
+            pollingInterval,
+            timeout,
+            deleteBatchAfterUse
+          ).recoverWith {
+            case e: OpenAIScalaBatchTimeoutException =>
+              Future.failed(e)
+
+            case e if allSettingsInOrder.tail.nonEmpty =>
+              logger.warn(
+                s"${taskNameForLoggingFinal.capitalize} batch failed for the model '${currentSettings.model}' - failing over to '${allSettingsInOrder.tail.head.model}'. Cause: ${e.getMessage}"
+              )
+              attempt(allSettingsInOrder.tail)
+          }
         }
 
-        createChatCompletionBatchAndWaitForResults(
-          requestsFinal,
-          settingsFinal,
-          pollingInterval,
-          timeout,
-          deleteBatchAfterUse
+        attempt(
+          settings +: failoverModels.map(model => settings.copy(model = model))
         ).map { items =>
           val itemsByCustomId = items.map(item => item.customId -> item).toMap
 

@@ -33,6 +33,19 @@ class OpenAIScalaClientException(
   def this(message: String) = this(message, null)
 }
 
+/**
+ * A chat-completion batch did not finish within the caller-requested wait deadline. The batch
+ * keeps processing server-side (its id is in the message), so this is deliberately NOT
+ * [[Retryable]] and NOT a subtype of [[OpenAIScalaClientTimeoutException]] - resubmitting the
+ * work elsewhere would double it.
+ */
+class OpenAIScalaBatchTimeoutException(
+  message: String,
+  cause: Throwable
+) extends OpenAIScalaClientException(message, cause) {
+  def this(message: String) = this(message, null)
+}
+
 class OpenAIScalaClientTimeoutException(
   message: String,
   cause: Throwable

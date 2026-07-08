@@ -100,7 +100,8 @@ class OpenAIChatCompletionBatchWithJSONSpec
     transformResults: Seq[ChatCompletionBatchResultItem] => Seq[
       ChatCompletionBatchResultItem
     ] = identity,
-    failSubmit: Boolean = false
+    failSubmit: Boolean = false,
+    failSubmitForModels: Set[String] = Set.empty
   ) extends OpenAIChatCompletionService
       with OpenAIChatCompletionBatchService {
 
@@ -121,8 +122,8 @@ class OpenAIChatCompletionBatchWithJSONSpec
       requests: Seq[ChatCompletionBatchRequest],
       settings: CreateChatCompletionSettings
     ): Future[ChatCompletionBatchInfo] =
-      if (failSubmit)
-        Future.failed(new IllegalStateException("submit refused"))
+      if (failSubmit || failSubmitForModels.contains(settings.model))
+        Future.failed(new IllegalStateException(s"submit refused for '${settings.model}'"))
       else {
         submitCount.incrementAndGet()
         submittedRequests ++= requests
@@ -341,6 +342,51 @@ class OpenAIChatCompletionBatchWithJSONSpec
 
       results shouldBe Nil
       service.submitCount.get shouldBe 0
+    }
+
+    "fail over to the next model on a terminal batch-level failure" in {
+      val service = new FakeBatchService(
+        contentFor = (
+          customId,
+          _
+        ) => cityJson(customId),
+        failSubmitForModels = Set("m1")
+      )
+
+      val results = service
+        .createChatCompletionBatchWithJSON[Answer](
+          Seq(req("a"), req("b")),
+          CreateChatCompletionSettings("m1"),
+          failoverModels = Seq("m2")
+        )
+        .futureValue
+
+      results.flatMap(_.valueOption) shouldBe Seq(
+        Answer("city-of-a"),
+        Answer("city-of-b")
+      )
+      service.submittedSettings.map(_.model) shouldBe Some("m2")
+    }
+
+    "fail without failover models when the batch fails terminally" in {
+      val service = new FakeBatchService(
+        contentFor = (
+          customId,
+          _
+        ) => cityJson(customId),
+        failSubmitForModels = Set("m1", "m2")
+      )
+
+      val error = service
+        .createChatCompletionBatchWithJSON[Answer](
+          Seq(req("a")),
+          CreateChatCompletionSettings("m1"),
+          failoverModels = Seq("m2")
+        )
+        .failed
+        .futureValue
+
+      error.getMessage should include("submit refused for 'm2'")
     }
 
     "reject duplicate custom ids" in {
