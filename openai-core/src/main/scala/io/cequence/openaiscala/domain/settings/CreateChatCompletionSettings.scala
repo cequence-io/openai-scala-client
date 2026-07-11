@@ -185,8 +185,11 @@ object ReasoningEffort {
   case object medium extends ReasoningEffort
   case object high extends ReasoningEffort
   case object xhigh extends ReasoningEffort
+  // Highest reasoning effort; GPT-5.6 (Sol/Terra/Luna) supports it via the Responses API only
+  // (Chat Completions rejects it). Reserve for the hardest quality-first workloads.
+  case object max extends ReasoningEffort
 
-  def values: Seq[ReasoningEffort] = Seq(none, minimal, low, medium, high, xhigh)
+  def values: Seq[ReasoningEffort] = Seq(none, minimal, low, medium, high, xhigh, max)
 
   def fromString(value: String): ReasoningEffort =
     values

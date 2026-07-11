@@ -170,6 +170,26 @@ object ChatCompletionSettingsConversions {
       warning = true
     )
 
+    // 'max' is Responses-API-only on GPT-5.6; the chat completions API rejects it with a 400,
+    // so downgrade to the highest chat-completions-supported effort.
+    val reasoningEffortMaxToXHigh: FieldConversionDef = FieldConversionDef(
+      settings => settings.reasoning_effort.contains(ReasoningEffort.max),
+      _.copy(reasoning_effort = Some(ReasoningEffort.xhigh)),
+      Some(settings =>
+        s"${settings.model} model doesn't support reasoning_effort 'max' on the chat completions API (Responses API only), downgrading to 'xhigh'."
+      ),
+      warning = true
+    )
+
+    val reasoningEffortMinimalToLow: FieldConversionDef = FieldConversionDef(
+      settings => settings.reasoning_effort.contains(ReasoningEffort.minimal),
+      _.copy(reasoning_effort = Some(ReasoningEffort.low)),
+      Some(settings =>
+        s"${settings.model} model doesn't support reasoning_effort 'minimal', converting to 'low'."
+      ),
+      warning = true
+    )
+
     val responseFormatTypeMustBeText: FieldConversionDef = FieldConversionDef(
       settings =>
         settings.response_format_type.isDefined && settings.response_format_type.get != ChatCompletionResponseFormatType.text,
@@ -265,8 +285,10 @@ object ChatCompletionSettingsConversions {
   )
 
   // GPT-5.6 (Sol/Terra/Luna) is reasoning-first; restrict all sampling params unconditionally like 5.5.
-  // NOTE: not confirmed against 5.6-specific docs (limited preview); mirrors the GPT-5 reasoning family + 5.5.
-  // TODO: confirm on the live API; if a non-reasoning variant accepts temperature, use gpt5_4's *WithReasoning.
+  // Verified against the live API 2026-07-11: temperature/top_p/presence_penalty/frequency_penalty/logprobs
+  // all return 400 for every tier, and max_tokens must be sent as max_completion_tokens.
+  // reasoning_effort on chat completions supports none/low/medium/high/xhigh only - 'max' is
+  // Responses-API-only and 'minimal' is rejected by both APIs, so downgrade both here.
   val gpt5_6: SettingsConversion = generic(
     Seq(
       maxTokensToMaxCompletionTokens,
@@ -274,7 +296,9 @@ object ChatCompletionSettingsConversions {
       topPOneOnly,
       presencePenaltyZeroOnly,
       frequencyPenaltyZeroOnly,
-      logProbsUnsupported
+      logProbsUnsupported,
+      reasoningEffortMaxToXHigh,
+      reasoningEffortMinimalToLow
     )
   )
 

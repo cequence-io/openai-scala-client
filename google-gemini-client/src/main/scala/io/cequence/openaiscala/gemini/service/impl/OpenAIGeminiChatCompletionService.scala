@@ -622,9 +622,10 @@ private[service] class OpenAIGeminiChatCompletionService(
     val level: ThinkingLevel = effort match {
       case ReasoningEffort.none | ReasoningEffort.minimal =>
         if (pro) ThinkingLevel.LOW else ThinkingLevel.MINIMAL
-      case ReasoningEffort.low                          => ThinkingLevel.LOW
-      case ReasoningEffort.medium                       => ThinkingLevel.MEDIUM
-      case ReasoningEffort.high | ReasoningEffort.xhigh => ThinkingLevel.HIGH
+      case ReasoningEffort.low    => ThinkingLevel.LOW
+      case ReasoningEffort.medium => ThinkingLevel.MEDIUM
+      case ReasoningEffort.high | ReasoningEffort.xhigh | ReasoningEffort.max =>
+        ThinkingLevel.HIGH
     }
 
     logger.debug(
@@ -657,9 +658,18 @@ private[service] class OpenAIGeminiChatCompletionService(
         )
 
         // budget = 0 is out of range for 2.5 Pro (min 128), so clamp to the minimum.
+        // Conversely, 2.5 Flash / Flash-Lite cap thinkingBudget at 24576 (Pro allows up to
+        // 32768), so clamp the 'max' effort mapping (32768) down on non-Pro models.
+        val nonProMaxBudget = 24576
+        val isPro = model.startsWith(NonOpenAIModelId.gemini_2_5_pro)
         val budgetFinal =
-          if (budget == 0 && model.startsWith(NonOpenAIModelId.gemini_2_5_pro)) 128
-          else budget
+          if (budget == 0 && isPro) 128
+          else if (!isPro && budget > nonProMaxBudget) {
+            logger.warn(
+              s"Thinking budget $budget exceeds the maximum of $nonProMaxBudget for model '$model'. Clamping to $nonProMaxBudget."
+            )
+            nonProMaxBudget
+          } else budget
 
         ThinkingConfig(
           includeThoughts = Some(false),

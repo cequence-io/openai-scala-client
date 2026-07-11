@@ -12,3 +12,4 @@ target
 **/build.properties
 **/metals.sbt
 *.log
+/TODO.md

@@ -29,7 +29,8 @@ object AnthropicOpus48ReasoningEffortMapping extends ExampleBase[OpenAIChatCompl
     ReasoningEffort.low,
     ReasoningEffort.medium,
     ReasoningEffort.high,
-    ReasoningEffort.xhigh
+    ReasoningEffort.xhigh,
+    ReasoningEffort.max
   )
 
   private def report(model: String): Unit = {
@@ -53,6 +54,10 @@ object AnthropicOpus48ReasoningEffortMapping extends ExampleBase[OpenAIChatCompl
   override protected def run: Future[_] = Future {
     report(NonOpenAIModelId.claude_opus_4_8)
     report(NonOpenAIModelId.bedrock_claude_opus_4_8)
+
+    // Opus 4.6 rejects xhigh (downgraded to high) but accepts max (live-verified 2026-07-11),
+    // so xhigh and max map differently here
+    report(NonOpenAIModelId.claude_opus_4_6)
 
     // sanity: an older non-output-effort model still uses the legacy thinking-budget path
     report(NonOpenAIModelId.claude_3_7_sonnet_latest)

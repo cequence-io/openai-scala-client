@@ -215,7 +215,10 @@ object ModelId {
   val o1_pro = "o1-pro"
   val o1_pro_2025_03_19 = "o1-pro-2025-03-19"
 
-  // GPT-5.6 (preview announced 2026-06-26; Sol/Terra/Luna capability tiers replace pro/mini/nano)
+  // GPT-5.6 (GA; created 2026-06-23). Sol/Terra/Luna reasoning tiers replace pro/mini/nano.
+  // Reasoning-first: sampling params rejected. reasoning_effort on chat completions supports
+  // none/low/medium/high/xhigh; 'max' is Responses-API-only (chat completions rejects it) and
+  // 'minimal' is rejected by both APIs. Verified against the live API 2026-07-11.
   val gpt_5_6_sol = "gpt-5.6-sol"
   val gpt_5_6_terra = "gpt-5.6-terra"
   val gpt_5_6_luna = "gpt-5.6-luna"

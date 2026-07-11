@@ -275,6 +275,15 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
     NonOpenAIModelId.claude_sonnet_4_6
   )
 
+  // Models that accept output_config.effort = xhigh - narrower than outputEffortModels:
+  // Opus 4.6 / Sonnet 4.6 reject xhigh though they do accept max (live-verified 2026-07-11).
+  private val xhighOutputEffortModels: Set[String] = Set(
+    NonOpenAIModelId.claude_fable_5,
+    NonOpenAIModelId.claude_opus_4_8,
+    NonOpenAIModelId.claude_opus_4_7,
+    NonOpenAIModelId.claude_sonnet_5
+  )
+
   // Models where extended thinking with budget_tokens and the sampling params
   // (temperature, top_p, top_k) are fully removed - sending them returns a 400.
   // Adaptive thinking is the only thinking mode.
@@ -317,12 +326,7 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
       // OutputEffort.xhigh is supported only on Opus 4.7+ (Opus 4.7, Opus 4.8), Fable 5, and
       // Sonnet 5; downgrade to high on Opus 4.6 / Sonnet 4.6 to avoid a remote 400 from Anthropic.
       val m = model.toLowerCase
-      if (
-        m.contains(NonOpenAIModelId.claude_fable_5) ||
-        m.contains(NonOpenAIModelId.claude_opus_4_8) ||
-        m.contains(NonOpenAIModelId.claude_opus_4_7) ||
-        m.contains(NonOpenAIModelId.claude_sonnet_5)
-      ) {
+      if (xhighOutputEffortModels.exists(m.contains)) {
         Some(OutputEffort.xhigh)
       } else {
         logger.warn(
@@ -330,6 +334,11 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
         )
         Some(OutputEffort.high)
       }
+    case ReasoningEffort.max =>
+      // OutputEffort.max is supported by every output-effort model - including Opus 4.6 and
+      // Sonnet 4.6, which reject xhigh (live-verified 2026-07-11) - and toOutputEffort is only
+      // reached when supportsOutputEffort(model) holds, so no model gate is needed here.
+      Some(OutputEffort.max)
   }
 
   def toAnthropicSettings(
