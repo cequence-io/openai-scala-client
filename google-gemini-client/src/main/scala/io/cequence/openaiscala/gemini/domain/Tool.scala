@@ -34,6 +34,17 @@ object Tool {
   case object GoogleSearch extends Tool {
     override val prefix: ToolPrefix = ToolPrefix.googleSearch
   }
+
+  /**
+   * Remote MCP servers the Gemini backend connects to directly and whose tools it can invoke
+   * server-side (no client-side tool loop needed). Only streamable-HTTP transport is
+   * supported. Note: custom HTTP headers (e.g. auth) can be passed via the transport.
+   */
+  case class McpServers(
+    mcpServers: Seq[McpServer]
+  ) extends Tool {
+    override val prefix: ToolPrefix = ToolPrefix.mcpServers
+  }
 }
 
 sealed trait ToolPrefix extends EnumValue
@@ -43,12 +54,14 @@ object ToolPrefix {
   case object googleSearchRetrieval extends ToolPrefix
   case object codeExecution extends ToolPrefix
   case object googleSearch extends ToolPrefix
+  case object mcpServers extends ToolPrefix
 
   def values: Seq[ToolPrefix] = Seq(
     functionDeclarations,
     googleSearchRetrieval,
     codeExecution,
-    googleSearch
+    googleSearch,
+    mcpServers
   )
 
   def of(value: String): ToolPrefix = values.find(_.toString() == value).getOrElse {
@@ -81,6 +94,42 @@ case class FunctionDeclaration(
   description: String,
   parameters: Option[Schema] = None,
   response: Option[Schema] = None
+)
+
+/**
+ * A remote MCP server made available to the model - the Gemini backend connects to it and
+ * invokes its tools server-side.
+ *
+ * @param name
+ *   The name of the MCP server.
+ * @param streamableHttpTransport
+ *   Streamable HTTP transport configuration (the only transport currently supported).
+ */
+case class McpServer(
+  name: String,
+  streamableHttpTransport: StreamableHttpTransport
+)
+
+/**
+ * Streamable HTTP transport configuration for a remote MCP server.
+ *
+ * @param url
+ *   Required. The URL of the MCP server.
+ * @param headers
+ *   Optional. Custom HTTP headers to send to the MCP server (e.g. x-api-key for auth).
+ * @param timeout
+ *   Optional. Request timeout as a Duration string (e.g. "30s").
+ * @param sseReadTimeout
+ *   Optional. SSE read timeout as a Duration string (e.g. "120s").
+ * @param terminateOnClose
+ *   Optional. Whether to terminate the MCP session when the connection closes.
+ */
+case class StreamableHttpTransport(
+  url: String,
+  headers: Option[Map[String, String]] = None,
+  timeout: Option[String] = None,
+  sseReadTimeout: Option[String] = None,
+  terminateOnClose: Option[Boolean] = None
 )
 
 /**

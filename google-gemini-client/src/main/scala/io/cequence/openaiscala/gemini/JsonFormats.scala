@@ -53,43 +53,71 @@ trait JsonFormats {
     }
 
     part match {
-      case p: Part.Text                => Json.toJson(p) // no prefix
-      case p: Part.InlineData          => toJsonWithPrefix(p)
-      case p: Part.FunctionCall        => toJsonWithPrefix(p)
+      case p: Part.Text => Json.toJson(p) // no prefix (thought/thoughtSignature ride along)
+      case p: Part.InlineData   => toJsonWithPrefix(p)
+      case p: Part.FunctionCall =>
+        // thoughtSignature lives on the ENCLOSING part object on the wire, not inside
+        // functionCall - move it out (and echo it back in multi-turn requests, as Gemini 3
+        // requires)
+        val inner = Json.toJson(p).as[JsObject] - "thoughtSignature"
+        Json.obj(prefix -> inner) ++
+          p.thoughtSignature.fold(Json.obj())(sig => Json.obj("thoughtSignature" -> sig))
       case p: Part.FunctionResponse    => toJsonWithPrefix(p)
       case p: Part.FileData            => toJsonWithPrefix(p)
       case p: Part.ExecutableCode      => toJsonWithPrefix(p)
       case p: Part.CodeExecutionResult => toJsonWithPrefix(p)
+      // written back to the wire verbatim
+      case p: Part.Unknown => p.data
     }
   }
 
   implicit val partReads: Reads[Part] = { (json: JsValue) =>
     json.validate[JsObject].flatMap { (jsonObject: JsObject) =>
-      // Filter out the thoughtSignature field if present (used for thinking blocks)
-      val fields = jsonObject.fields.filterNot(_._1 == "thoughtSignature")
+      // A part object carries EXACTLY ONE type-discriminating field (text, functionCall, ...)
+      // plus optional auxiliary fields (thought, thoughtSignature, videoMetadata, ...). Find
+      // the discriminator by KNOWN prefix - field order and auxiliary fields must not matter.
+      val knownPrefixFields = jsonObject.fields.collect {
+        case (name, value) if PartPrefix.values.exists(_.toString == name) =>
+          (PartPrefix.of(name), value)
+      }
 
-      if (fields.isEmpty) {
-        JsError("Part object has no fields after filtering thoughtSignature")
-      } else {
-        // Warn if there are multiple fields (unexpected structure)
-        if (fields.size > 1) {
+      if (knownPrefixFields.size > 1)
+        logger.warn(
+          s"Part object has ${knownPrefixFields.size} type-discriminating fields (expected 1): " +
+            s"${knownPrefixFields.map(_._1).mkString(", ")}. Using the first one."
+        )
+
+      knownPrefixFields.headOption match {
+        case Some((PartPrefix.text, _)) =>
+          // thought/thoughtSignature ride on the same (enclosing) object as text
+          json.validate[Part.Text]
+        case Some((PartPrefix.inlineData, prefixJson)) =>
+          prefixJson.validate[Part.InlineData]
+        case Some((PartPrefix.functionCall, prefixJson)) =>
+          // thoughtSignature lives on the ENCLOSING part object - attach it to the call
+          prefixJson
+            .validate[Part.FunctionCall]
+            .map(fc =>
+              (jsonObject \ "thoughtSignature")
+                .asOpt[String]
+                .fold(fc)(sig => fc.copy(thoughtSignature = Some(sig)))
+            )
+        case Some((PartPrefix.functionResponse, prefixJson)) =>
+          prefixJson.validate[Part.FunctionResponse]
+        case Some((PartPrefix.fileData, prefixJson)) =>
+          prefixJson.validate[Part.FileData]
+        case Some((PartPrefix.executableCode, prefixJson)) =>
+          prefixJson.validate[Part.ExecutableCode]
+        case Some((PartPrefix.codeExecutionResult, prefixJson)) =>
+          prefixJson.validate[Part.CodeExecutionResult]
+        case Some((PartPrefix.unknown, _)) | None =>
+          // forward compatibility: a part type this client does not (yet) model must not
+          // fail the whole response - carry it verbatim
           logger.warn(
-            s"Part object has ${fields.size} fields (expected 1): ${fields.map(_._1).mkString(", ")}. Using first field."
+            s"Unrecognized Gemini part type (fields: ${jsonObject.keys.mkString(", ")}) - " +
+              "returning it as Part.Unknown."
           )
-        }
-
-        val (prefixFieldName, prefixJson) = fields.head
-
-        PartPrefix.of(prefixFieldName) match {
-          case PartPrefix.text                => json.validate[Part.Text]
-          case PartPrefix.inlineData          => prefixJson.validate[Part.InlineData]
-          case PartPrefix.functionCall        => prefixJson.validate[Part.FunctionCall]
-          case PartPrefix.functionResponse    => prefixJson.validate[Part.FunctionResponse]
-          case PartPrefix.fileData            => prefixJson.validate[Part.FileData]
-          case PartPrefix.executableCode      => prefixJson.validate[Part.ExecutableCode]
-          case PartPrefix.codeExecutionResult => prefixJson.validate[Part.CodeExecutionResult]
-          case _ => JsError(s"Unknown part type: $prefixFieldName")
-        }
+          JsSuccess(Part.Unknown(jsonObject))
       }
     }
   }
@@ -128,6 +156,11 @@ trait JsonFormats {
   private implicit val googleSearchRetrievalFormat: Format[Tool.GoogleSearchRetrieval] =
     Json.format[Tool.GoogleSearchRetrieval]
 
+  private implicit val streamableHttpTransportFormat: Format[StreamableHttpTransport] =
+    Json.using[Json.WithDefaultValues].format[StreamableHttpTransport]
+  private implicit val mcpServerFormat: Format[McpServer] = Json.format[McpServer]
+  private implicit val mcpServersFormat: Format[Tool.McpServers] = Json.format[Tool.McpServers]
+
   implicit val toolWrites: Writes[Tool] = Writes[Tool] { (part: Tool) =>
     val prefix = part.prefix.toString()
 
@@ -138,6 +171,7 @@ trait JsonFormats {
       case p: Tool.GoogleSearchRetrieval => toJsonWithPrefix(Json.toJson(p))
       case Tool.CodeExecution            => toJsonWithPrefix(Json.obj()) // empty object
       case Tool.GoogleSearch             => toJsonWithPrefix(Json.obj()) // empty object
+      case p: Tool.McpServers            => Json.toJson(p) // no prefix (field name matches)
     }
   }
 
@@ -151,6 +185,7 @@ trait JsonFormats {
         case ToolPrefix.googleSearchRetrieval => prefixJson.as[Tool.GoogleSearchRetrieval]
         case ToolPrefix.codeExecution         => Tool.CodeExecution // no fields
         case ToolPrefix.googleSearch          => Tool.GoogleSearch // no fields
+        case ToolPrefix.mcpServers            => json.as[Tool.McpServers]
         case _ => throw new OpenAIScalaClientException(s"Unknown tool type: $prefixFieldName")
       }
     }

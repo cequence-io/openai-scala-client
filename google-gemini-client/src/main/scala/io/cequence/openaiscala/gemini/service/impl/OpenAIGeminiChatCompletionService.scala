@@ -89,6 +89,48 @@ import play.api.libs.json.{JsObject, Json}
 
 import scala.collection.immutable.Traversable
 
+private[impl] object OpenAIGeminiChatCompletionService {
+
+  /**
+   * Maps Gemini's usage accounting onto OpenAI's, preserving the OpenAI invariant
+   * `prompt_tokens + completion_tokens == total_tokens`. Gemini's identity is `totalTokenCount
+   * \= promptTokenCount + candidatesTokenCount + toolUsePromptTokenCount +
+   * thoughtsTokenCount`, so:
+   *   - `toolUsePromptTokenCount` (input-side context of server-side tool use, e.g.
+   *     `Tool.McpServers`) folds into `prompt_tokens`
+   *   - `thoughtsTokenCount` folds into `completion_tokens` (OpenAI semantics: reasoning
+   *     tokens are INCLUDED in `completion_tokens` and broken out in
+   *     `completion_tokens_details.reasoning_tokens`)
+   */
+  private[impl] def toOpenAIUsage(
+    usageMetadata: UsageMetadata
+  ): OpenAIUsageInfo = {
+    val toolUseTokens = usageMetadata.toolUsePromptTokenCount.getOrElse(0)
+    val thoughtsTokens = usageMetadata.thoughtsTokenCount
+
+    OpenAIUsageInfo(
+      prompt_tokens = usageMetadata.promptTokenCount + toolUseTokens,
+      total_tokens = usageMetadata.totalTokenCount,
+      completion_tokens = usageMetadata.candidatesTokenCount
+        .map(_ + thoughtsTokens.getOrElse(0))
+        .orElse(thoughtsTokens),
+      prompt_tokens_details = Some(
+        PromptTokensDetails(
+          cached_tokens = usageMetadata.cachedContentTokenCount.getOrElse(0),
+          audio_tokens = None
+        )
+      ),
+      completion_tokens_details = thoughtsTokens.map { thinkingTokens =>
+        CompletionTokenDetails(
+          reasoning_tokens = Some(thinkingTokens),
+          accepted_prediction_tokens = None,
+          rejected_prediction_tokens = None
+        )
+      }
+    )
+  }
+}
+
 private[service] class OpenAIGeminiChatCompletionService(
   underlying: GeminiService
 )(
@@ -658,13 +700,22 @@ private[service] class OpenAIGeminiChatCompletionService(
         )
 
         // budget = 0 is out of range for 2.5 Pro (min 128), so clamp to the minimum.
+        // 2.5 Flash-Lite's non-zero range is 512-24576 (live-verified: values below 512
+        // return 400), so raise sub-floor budgets - notably the 'minimal' mapping (256).
         // Conversely, 2.5 Flash / Flash-Lite cap thinkingBudget at 24576 (Pro allows up to
         // 32768), so clamp the 'max' effort mapping (32768) down on non-Pro models.
         val nonProMaxBudget = 24576
+        val flashLiteMinBudget = 512
         val isPro = model.startsWith(NonOpenAIModelId.gemini_2_5_pro)
+        val isFlashLite = model.startsWith("gemini-2.5-flash-lite")
         val budgetFinal =
           if (budget == 0 && isPro) 128
-          else if (!isPro && budget > nonProMaxBudget) {
+          else if (isFlashLite && budget > 0 && budget < flashLiteMinBudget) {
+            logger.warn(
+              s"Thinking budget $budget is below the minimum of $flashLiteMinBudget for model '$model'. Clamping to $flashLiteMinBudget."
+            )
+            flashLiteMinBudget
+          } else if (!isPro && budget > nonProMaxBudget) {
             logger.warn(
               s"Thinking budget $budget exceeds the maximum of $nonProMaxBudget for model '$model'. Clamping to $nonProMaxBudget."
             )
@@ -801,7 +852,9 @@ private[service] class OpenAIGeminiChatCompletionService(
   private def toOpenAIAssistantMessage(
     content: Content
   ): AssistantMessage = {
-    val texts = content.parts.collect { case Part.Text(text) => text }
+    val texts = content.parts.collect {
+      case t: Part.Text if !t.thought.contains(true) => t.text
+    }
     val hasToolCalls = content.parts.exists {
       case _: Part.FunctionCall => true
       case _                    => false
@@ -819,7 +872,9 @@ private[service] class OpenAIGeminiChatCompletionService(
   private def toOpenAIAssistantChunkMessage(
     content: Content
   ): ChunkMessageSpec = {
-    val texts = content.parts.collect { case Part.Text(text) => text }
+    val texts = content.parts.collect {
+      case t: Part.Text if !t.thought.contains(true) => t.text
+    }
 
     ChunkMessageSpec(
       Some(OpenAIChatRole.Assistant),
@@ -853,27 +908,10 @@ private[service] class OpenAIGeminiChatCompletionService(
     }
   }
 
+  // see the companion - kept there so the token accounting is unit-testable
   private def toOpenAIUsage(
     usageMetadata: UsageMetadata
-  ) =
-    OpenAIUsageInfo(
-      prompt_tokens = usageMetadata.promptTokenCount,
-      total_tokens = usageMetadata.totalTokenCount,
-      completion_tokens = usageMetadata.candidatesTokenCount,
-      prompt_tokens_details = Some(
-        PromptTokensDetails(
-          cached_tokens = usageMetadata.cachedContentTokenCount.getOrElse(0),
-          audio_tokens = None
-        )
-      ),
-      completion_tokens_details = usageMetadata.thoughtsTokenCount.map { thinkingTokens =>
-        CompletionTokenDetails(
-          reasoning_tokens = Some(thinkingTokens),
-          accepted_prediction_tokens = None,
-          rejected_prediction_tokens = None
-        )
-      }
-    )
+  ) = OpenAIGeminiChatCompletionService.toOpenAIUsage(usageMetadata)
 
   override def createChatToolCompletion(
     messages: Seq[BaseMessage],
@@ -917,17 +955,18 @@ private[service] class OpenAIGeminiChatCompletionService(
     response: GenerateContentResponse
   ): ChatToolCompletionResponse = {
     val choices = response.candidates.map { candidate =>
-      val toolCalls = candidate.content.parts.collect {
-        case Part.FunctionCall(id, name, args) =>
-          val callId = id.getOrElse(java.util.UUID.randomUUID().toString)
-          val argsJson = Json.toJson(args)(JsonUtil.StringAnyMapFormat).toString
-          (
-            callId,
-            FunctionCallSpec(name, argsJson): io.cequence.openaiscala.domain.ToolCallSpec
-          )
+      val toolCalls = candidate.content.parts.collect { case fc: Part.FunctionCall =>
+        val callId = fc.id.getOrElse(java.util.UUID.randomUUID().toString)
+        val argsJson = Json.toJson(fc.args)(JsonUtil.StringAnyMapFormat).toString
+        (
+          callId,
+          FunctionCallSpec(fc.name, argsJson): io.cequence.openaiscala.domain.ToolCallSpec
+        )
       }
 
-      val texts = candidate.content.parts.collect { case Part.Text(text) => text }
+      val texts = candidate.content.parts.collect {
+        case t: Part.Text if !t.thought.contains(true) => t.text
+      }
 
       val message = AssistantToolMessage(
         content = if (texts.nonEmpty) Some(texts.mkString("\n")) else None,

@@ -103,6 +103,35 @@ class ToolJsonSpec extends AnyWordSpecLike with Matchers {
       )
     }
 
+    "serialize and deserialize McpServers tool" in {
+      testCodec[Tool](
+        Tool.McpServers(
+          Seq(
+            McpServer(
+              name = "exa_web_search",
+              streamableHttpTransport = StreamableHttpTransport(
+                url = "https://mcp.exa.ai/mcp",
+                headers = Some(Map("x-api-key" -> "secret")),
+                timeout = Some("200s")
+              )
+            )
+          )
+        ),
+        """{
+          |  "mcpServers": [
+          |    {
+          |      "name": "exa_web_search",
+          |      "streamableHttpTransport": {
+          |        "url": "https://mcp.exa.ai/mcp",
+          |        "headers": { "x-api-key": "secret" },
+          |        "timeout": "200s"
+          |      }
+          |    }
+          |  ]
+          |}""".stripMargin
+      )
+    }
+
     "serialize and deserialize ToolConfig" in {
       val config = ToolConfig.FunctionCallingConfig(
         mode = Some(FunctionCallingMode.ANY),

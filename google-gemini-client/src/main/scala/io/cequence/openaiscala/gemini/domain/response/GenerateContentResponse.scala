@@ -15,7 +15,10 @@ case class GenerateContentResponse(
 ) {
   def contentHeadTexts: Seq[String] =
     candidates.headOption
-      .map(_.content.parts.collect { case Text(text) => text })
+      // thought-summary parts (ThinkingConfig.includeThoughts) are metadata, not the answer
+      .map(_.content.parts.collect {
+        case t: Text if !t.thought.contains(true) => t.text
+      })
       .getOrElse(
         throw new OpenAIScalaClientException(
           s"No candidates in the Gemini generate content response for mode ${modelVersion}."

@@ -2,6 +2,7 @@ package io.cequence.openaiscala.gemini.domain
 
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.wsclient.domain.EnumValue
+import play.api.libs.json.JsObject
 
 case class Content(
   parts: Seq[Part],
@@ -31,6 +32,9 @@ object PartPrefix {
   case object executableCode extends PartPrefix
   case object codeExecutionResult extends PartPrefix
 
+  // not a wire prefix - the marker for Part.Unknown (kept out of `values`)
+  case object unknown extends PartPrefix
+
   def values: Seq[PartPrefix] = Seq(
     text,
     inlineData,
@@ -57,7 +61,14 @@ object Part {
    *
    * @param text
    */
-  case class Text(text: String) extends Part {
+  case class Text(
+    text: String,
+    // Optional. True for thought-summary parts (returned when
+    // ThinkingConfig.includeThoughts is enabled) - excluded from contentHeadText.
+    thought: Option[Boolean] = None,
+    // Optional. Opaque signature Gemini 3 requires to be echoed back in multi-turn flows.
+    thoughtSignature: Option[String] = None
+  ) extends Part {
     override val prefix: PartPrefix = PartPrefix.text
   }
 
@@ -97,7 +108,10 @@ object Part {
   case class FunctionCall(
     id: Option[String],
     name: String,
-    args: Map[String, Any] = Map.empty
+    args: Map[String, Any] = Map.empty,
+    // Optional. Opaque signature Gemini 3 requires to be echoed back in multi-turn flows;
+    // carried on the enclosing part object on the wire, not inside functionCall.
+    thoughtSignature: Option[String] = None
   ) extends Part {
     override val prefix: PartPrefix = PartPrefix.functionCall
   }
@@ -170,6 +184,15 @@ object Part {
    *   Optional. Contains stdout when code execution is successful, stderr or other description
    *   otherwise.
    */
+  /**
+   * Forward-compatibility catch-all: a part whose type this client does not (yet) model -
+   * carried verbatim so new Gemini block types degrade gracefully instead of failing the whole
+   * response parse. Written back to the wire unchanged.
+   */
+  case class Unknown(data: JsObject) extends Part {
+    override val prefix: PartPrefix = PartPrefix.unknown
+  }
+
   case class CodeExecutionResult(
     outcome: String, // TODO: enum
     output: Option[String]
