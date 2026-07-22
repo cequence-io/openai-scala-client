@@ -34,6 +34,8 @@ import io.cequence.openaiscala.domain.{
 import io.cequence.openaiscala.domain.response.{
   ChatCompletionChoiceInfo,
   ChatCompletionResponse,
+  CompletionTokenDetails,
+  PromptTokensDetails,
   UsageInfo => OpenAIUsageInfo
 }
 import io.cequence.openaiscala.domain.settings.{
@@ -59,7 +61,7 @@ import scala.collection.convert.ImplicitConversions.`iterable asJava`
 import scala.collection.convert.ImplicitConversions.`map AsJavaMap`
 import scala.collection.convert.ImplicitConversions.`list asScalaBuffer`
 
-package object impl {
+package object impl extends io.cequence.openaiscala.service.HasOpenAIConfig {
 
   private val logger: Logger = Logger(
     LoggerFactory.getLogger("io.cequence.openaiscala.vertexai.service.impl")
@@ -191,14 +193,73 @@ package object impl {
     } else None
   }
 
-  // TODO: wire `settings.reasoning_effort` to a ThinkingConfig. The proto-based
-  // GenerationConfig.Builder (com.google.cloud.vertexai.api) only exposes
-  // setThinkingBudget; for thinkingLevel (MINIMAL/LOW/MEDIUM/HIGH) on Gemini 3.x
-  // we need to switch this path to the unified `com.google.genai` SDK
-  // (com.google.genai.types.ThinkingConfig.thinkingLevel(...)). google-genai is
-  // already on the classpath as a transitive of google-cloud-vertexai 1.52.0.
-  // Mirror the model-family branching from OpenAIGeminiChatCompletionService
-  // (Gemini 3.x -> thinkingLevel, Gemini 2.5 -> thinkingBudget).
+  /**
+   * Converts OpenAI's reasoning_effort to a thinking budget for the proto
+   * `GenerationConfig.ThinkingConfig`, mirroring the Gemini-direct adapter's
+   * `toThinkingBudgetConfig` (same config mapping, same 2.5-family clamps).
+   *
+   * Limitation: the proto-based `com.google.cloud.vertexai.api` SDK only exposes
+   * `setThinkingBudget`; `thinkingLevel` (MINIMAL/LOW/MEDIUM/HIGH, required by Gemini 3.x) is
+   * only available in the unified `com.google.genai` SDK - reasoning_effort on Gemini 3.x
+   * models is therefore skipped with a warning until this path switches SDKs.
+   */
+  private def toThinkingBudget(
+    model: String,
+    reasoningEffort: Option[io.cequence.openaiscala.domain.settings.ReasoningEffort]
+  ): Option[Int] = reasoningEffort.flatMap { effort =>
+    import io.cequence.wsclient.ConfigImplicits._
+
+    // batch paths may carry the full publisher resource name - branch on the bare model id
+    val modelId = model.split('/').last
+
+    if (modelId.startsWith("gemini-3-") || modelId.startsWith("gemini-3.")) {
+      logger.warn(
+        s"Skipping reasoning_effort '${effort.toString.toLowerCase}' for model '$model' - Gemini 3.x needs thinkingLevel, which the proto-based VertexAI SDK cannot express (use the Gemini-direct client, or wait for the google-genai SDK switch)."
+      )
+      None
+    } else if (modelId.startsWith("gemini-2.5")) {
+      val effortKey = effort.toString.toLowerCase
+      val configPath =
+        s"$configPrefix.reasoning-effort-thinking-budget-mapping.$effortKey.gemini"
+
+      clientConfig.optionalInt(configPath) match {
+        case Some(budget) =>
+          // same clamps as the Gemini-direct adapter: 2.5 Pro floor 128, Flash-Lite
+          // non-zero floor 512, non-Pro cap 24576
+          val nonProMaxBudget = 24576
+          val flashLiteMinBudget = 512
+          val isPro = modelId.startsWith("gemini-2.5-pro")
+          val isFlashLite = modelId.startsWith("gemini-2.5-flash-lite")
+          val budgetFinal =
+            if (budget == 0 && isPro) 128
+            else if (isFlashLite && budget > 0 && budget < flashLiteMinBudget) {
+              logger.warn(
+                s"Thinking budget $budget is below the minimum of $flashLiteMinBudget for model '$model'. Clamping to $flashLiteMinBudget."
+              )
+              flashLiteMinBudget
+            } else if (!isPro && budget > nonProMaxBudget) {
+              logger.warn(
+                s"Thinking budget $budget exceeds the maximum of $nonProMaxBudget for model '$model'. Clamping to $nonProMaxBudget."
+              )
+              nonProMaxBudget
+            } else budget
+
+          Some(budgetFinal)
+
+        case None =>
+          logger.warn(
+            s"No thinking budget mapping found for reasoning effort '$effortKey' in config path: $configPath"
+          )
+          None
+      }
+    } else {
+      logger.warn(
+        s"Skipping reasoning_effort '${effort.toString.toLowerCase}' for model '$model' - thinking is only supported on Gemini 2.5+ models on this path."
+      )
+      None
+    }
+  }
+
   def toVertexAI(
     settings: CreateChatCompletionSettings
   ): GenerationConfig = {
@@ -239,6 +300,13 @@ package object impl {
 
     // The maximum number of output tokens to generate per message
     setValue(_.setMaxOutputTokens(_: Int), settings.max_tokens)
+
+    // reasoning_effort -> thinking budget (Gemini 2.5 family; see toThinkingBudget)
+    toThinkingBudget(settings.model, settings.reasoning_effort).foreach { budget =>
+      configBuilder.setThinkingConfig(
+        GenerationConfig.ThinkingConfig.newBuilder().setThinkingBudget(budget)
+      )
+    }
 
     // Stop sequences.
     setValue(
@@ -365,16 +433,24 @@ package object impl {
     )
 
   def toOpenAI(usageInfo: UsageMetadata): OpenAIUsageInfo = {
+    val thoughtsTokens = usageInfo.getThoughtsTokenCount
+
     OpenAIUsageInfo(
       prompt_tokens = usageInfo.getPromptTokenCount,
       total_tokens = usageInfo.getTotalTokenCount,
-      completion_tokens = Some(usageInfo.getCandidatesTokenCount)
-      // prompt_tokens_details = Some(
-      //   PromptTokensDetails(
-      //     cached_tokens = usageInfo.getCachedContentTokenCount.getOrElse(0),
-      //     audio_tokens = None
-      //   )
-      // )
+      // OpenAI semantics: reasoning tokens are INCLUDED in completion_tokens (and broken out
+      // in the details) - keeps prompt + completion == total with thinking enabled
+      completion_tokens = Some(usageInfo.getCandidatesTokenCount + thoughtsTokens),
+      prompt_tokens_details = Some(
+        PromptTokensDetails(
+          cached_tokens = usageInfo.getCachedContentTokenCount,
+          audio_tokens = None
+        )
+      ),
+      completion_tokens_details =
+        if (thoughtsTokens > 0)
+          Some(CompletionTokenDetails(reasoning_tokens = Some(thoughtsTokens)))
+        else None
     )
   }
 
