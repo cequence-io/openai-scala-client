@@ -56,7 +56,7 @@ object GoogleGeminiCreateChatCompletionWithToolsCodeExecution
         // Extract and display all parts
         response.candidates.foreach { candidate =>
           candidate.content.parts.foreach {
-            case Part.Text(text) =>
+            case Part.Text(text, _, _) =>
               println(s"\nText:\n$text")
 
             case Part.ExecutableCode(language, code) =>

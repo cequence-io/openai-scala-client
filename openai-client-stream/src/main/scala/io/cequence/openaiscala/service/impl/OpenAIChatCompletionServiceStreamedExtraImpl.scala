@@ -33,6 +33,7 @@ private[service] trait OpenAIChatCompletionServiceStreamedExtraImpl
   ): Source[ChatCompletionChunkResponse, NotUsed] =
     engine
       .execJsonStream(
+        site,
         EndPoint.chat_completions.toString(),
         "POST",
         bodyParams = paramTuplesToStrings(

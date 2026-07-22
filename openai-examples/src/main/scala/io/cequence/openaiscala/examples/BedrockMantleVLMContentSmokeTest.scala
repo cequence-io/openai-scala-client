@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.examples
 
 import akka.actor.ActorSystem
-import akka.stream.Materializer
 import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, ReasoningEffort}
 import io.cequence.openaiscala.domain.{
   BaseMessage,
@@ -39,7 +38,6 @@ object BedrockMantleVLMContentSmokeTest {
 
   def main(args: Array[String]): Unit = {
     implicit val system: ActorSystem = ActorSystem()
-    implicit val materializer: Materializer = Materializer(system)
     implicit val ec: scala.concurrent.ExecutionContext = system.dispatcher
 
     val service = OpenAIServiceFactory.forBedrockMantle(isOpenAIModel = true)

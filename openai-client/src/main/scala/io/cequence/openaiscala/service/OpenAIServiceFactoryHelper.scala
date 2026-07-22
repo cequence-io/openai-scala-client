@@ -1,10 +1,10 @@
 package io.cequence.openaiscala.service
 
-import akka.stream.Materializer
 import com.typesafe.config.Config
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.wsclient.ConfigImplicits._
 import io.cequence.wsclient.domain.WsRequestContext
+import io.cequence.wsclient.service.WSClientEngine
 import io.cequence.wsclient.service.ws.Timeouts
 
 import scala.concurrent.ExecutionContext
@@ -16,8 +16,7 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts with HasOpenAICo
     orgId: Option[String] = None,
     timeouts: Option[Timeouts] = None
   )(
-    implicit ec: ExecutionContext,
-    materializer: Materializer
+    implicit ec: ExecutionContext
   ): F = {
     val orgIdHeader = orgId.map(("OpenAI-Organization", _))
     val authHeaders = orgIdHeader ++: Seq(
@@ -25,21 +24,19 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts with HasOpenAICo
       ("OpenAI-Beta", "assistants=v2")
     )
 
-    customInstance(defaultCoreUrl, WsRequestContext(timeouts, authHeaders, Nil))
+    customInstance(defaultCoreUrl, WsRequestContext(authHeaders, Nil), timeouts)
   }
 
   def apply(
   )(
-    implicit ec: ExecutionContext,
-    materializer: Materializer
+    implicit ec: ExecutionContext
   ): F =
     apply(clientConfig)
 
   def apply(
     config: Config
   )(
-    implicit ec: ExecutionContext,
-    materializer: Materializer
+    implicit ec: ExecutionContext
   ): F = {
     def intTimeoutAux(fieldName: String) =
       config.optionalInt(s"$configPrefix.timeouts.${fieldName}Sec").map(_ * 1000)
@@ -89,11 +86,32 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts with HasOpenAICo
     apiKey: String,
     timeouts: Option[Timeouts] = None
   )(
-    implicit ec: ExecutionContext,
-    materializer: Materializer
+    implicit ec: ExecutionContext
   ): F = {
     val authHeaders = Seq(("api-key", apiKey))
     forAzureAux(resourceName, deploymentId, apiVersion, authHeaders, timeouts)
+  }
+
+  /** Azure OpenAI API-key variant backed by a caller-owned shared engine. */
+  def forAzureWithApiKeyAndEngine(
+    engine: WSClientEngine,
+    resourceName: String,
+    deploymentId: String,
+    apiVersion: String,
+    apiKey: String
+  )(
+    implicit ec: ExecutionContext
+  ): F = {
+    val coreUrl =
+      s"https://${resourceName}.openai.azure.com/openai/deployments/${deploymentId}/"
+    customEngineInstance(
+      engine,
+      coreUrl,
+      WsRequestContext(
+        authHeaders = Seq(("api-key", apiKey)),
+        extraParams = Seq("api-version" -> apiVersion)
+      )
+    )
   }
 
   /**
@@ -120,8 +138,7 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts with HasOpenAICo
     accessToken: String,
     timeouts: Option[Timeouts] = None
   )(
-    implicit ec: ExecutionContext,
-    materializer: Materializer
+    implicit ec: ExecutionContext
   ): F = {
     val authHeaders = Seq(("Authorization", s"Bearer $accessToken"))
     forAzureAux(resourceName, deploymentId, apiVersion, authHeaders, timeouts)
@@ -134,8 +151,7 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts with HasOpenAICo
     authHeaders: Seq[(String, String)],
     timeouts: Option[Timeouts]
   )(
-    implicit ec: ExecutionContext,
-    materializer: Materializer
+    implicit ec: ExecutionContext
   ): F = {
     val coreUrl =
       s"https://${resourceName}.openai.azure.com/openai/deployments/${deploymentId}/"
@@ -145,10 +161,10 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts with HasOpenAICo
     customInstance(
       coreUrl,
       WsRequestContext(
-        timeouts,
         authHeaders,
         extraParams
-      )
+      ),
+      timeouts
     )
   }
 
@@ -194,15 +210,33 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts with HasOpenAICo
     isOpenAIModel: Boolean = false,
     timeouts: Option[Timeouts] = None
   )(
-    implicit ec: ExecutionContext,
-    materializer: Materializer
+    implicit ec: ExecutionContext
   ): F = {
     val basePath =
       if (isOpenAIModel) openAIBedrockMantleBasePath else defaultBedrockMantleBasePath
     val authHeaders = Seq(("Authorization", s"Bearer $apiKey"))
     customInstance(
       bedrockMantleCoreUrl(region, basePath),
-      WsRequestContext(timeouts, authHeaders, Nil)
+      WsRequestContext(authHeaders, Nil),
+      timeouts
+    )
+  }
+
+  /** Amazon Bedrock Mantle variant backed by a caller-owned shared engine. */
+  def forBedrockMantleWithEngine(
+    engine: WSClientEngine,
+    apiKey: String,
+    region: String,
+    isOpenAIModel: Boolean = false
+  )(
+    implicit ec: ExecutionContext
+  ): F = {
+    val basePath =
+      if (isOpenAIModel) openAIBedrockMantleBasePath else defaultBedrockMantleBasePath
+    customEngineInstance(
+      engine,
+      bedrockMantleCoreUrl(region, basePath),
+      WsRequestContext(authHeaders = Seq(("Authorization", s"Bearer $apiKey")))
     )
   }
 
@@ -216,20 +250,83 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts with HasOpenAICo
 
   def customInstance(
     coreUrl: String,
+    requestContext: WsRequestContext = WsRequestContext(),
+    timeouts: Option[Timeouts] = None
+  )(
+    implicit ec: ExecutionContext
+  ): F
+
+  /**
+   * Creates the service on a CALLER-SUPPLIED, SITE-STATELESS engine - ONE engine (one
+   * connection pool, one actor system) can back any number of services/providers; the service
+   * holds its own site binding (built here from the api key) and feeds it into every call.
+   * Closing such a service does NOT close the shared engine - close the engine once, when done
+   * with all services using it. Factories producing streaming services require an engine with
+   * `Source`-typed output streaming (`WSClientOutputStreamExtraAkka`) and fail fast otherwise.
+   */
+  def withEngine(
+    engine: WSClientEngine,
+    apiKey: String = configuredAPIKey,
+    orgId: Option[String] = None
+  )(
+    implicit ec: ExecutionContext
+  ): F = {
+    val orgIdHeader = orgId.map(("OpenAI-Organization", _))
+    val authHeaders = orgIdHeader ++: Seq(
+      ("Authorization", s"Bearer $apiKey"),
+      ("OpenAI-Beta", "assistants=v2")
+    )
+
+    customEngineInstance(engine, defaultCoreUrl, WsRequestContext(authHeaders, Nil))
+  }
+
+  /**
+   * [[withEngine]] with a fully custom base URL and request context (e.g. an OpenAI-compatible
+   * gateway on a shared engine).
+   */
+  def customEngineInstance(
+    engine: WSClientEngine,
+    coreUrl: String,
     requestContext: WsRequestContext = WsRequestContext()
   )(
-    implicit ec: ExecutionContext,
-    materializer: Materializer
+    implicit ec: ExecutionContext
   ): F
+
+  protected def configuredAPIKey: String =
+    clientConfig
+      .optionalString(s"$configPrefix.apiKey")
+      .getOrElse(
+        throw new OpenAIScalaClientException(
+          s"API key is not defined in the config at '$configPrefix.apiKey'. " +
+            "Please set the OPENAI_SCALA_CLIENT_API_KEY environment variable or provide an API key explicitly."
+        )
+      )
 }
 
 trait RawWsServiceFactory[F] {
 
   def apply(
     coreUrl: String,
+    requestContext: WsRequestContext = WsRequestContext(),
+    timeouts: Option[Timeouts] = None
+  )(
+    implicit ec: ExecutionContext
+  ): F
+
+  /**
+   * Creates the service on a CALLER-SUPPLIED, SITE-STATELESS engine - ONE engine (one
+   * connection pool, one actor system) can back any number of services/providers; the service
+   * holds its own site binding (from the given core URL and request context) and feeds it into
+   * every call. Closing such a service does NOT close the shared engine - close the engine
+   * once, when done with all services using it. Factories producing streaming services require
+   * an engine with `Source`-typed output streaming (`WSClientOutputStreamExtraAkka`) and fail
+   * fast otherwise.
+   */
+  def withEngine(
+    engine: WSClientEngine,
+    coreUrl: String,
     requestContext: WsRequestContext = WsRequestContext()
   )(
-    implicit ec: ExecutionContext,
-    materializer: Materializer
+    implicit ec: ExecutionContext
   ): F
 }

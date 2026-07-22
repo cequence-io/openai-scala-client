@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.examples
 
 import akka.actor.{ActorSystem, Scheduler}
-import akka.stream.Materializer
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{
@@ -53,7 +52,6 @@ object CreateChatCompletionBatchVLMSmokeTest {
 
   private implicit val actorSystem: ActorSystem = ActorSystem("vlm-batch-smoke")
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val materializer: Materializer = Materializer(actorSystem)
   private implicit val scheduler: Scheduler = actorSystem.scheduler
 
   private val expectedByCustomId = Map(

@@ -120,6 +120,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
     engine
       .execJsonStream(
+        site,
         EndPoint.messages.toString(),
         "POST",
         bodyParams = stringParams,
@@ -186,6 +187,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   ): Source[MessageBatchIndividualResponse, NotUsed] =
     engine
       .execRawStream(
+        site,
         EndPoint.messageBatches.toString(),
         "GET",
         endPointParam = Some(s"$batchId/results"),
@@ -890,6 +892,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       // without a `data:` line - an initial ": connected." comment and periodic heartbeats -
       // which the generic JSON stream would reject as malformed JSON.
       .execRawStream(
+        site,
         EndPoint.sessions.toString(),
         "GET",
         endPointParam = Some(s"$sessionId/events/stream"),

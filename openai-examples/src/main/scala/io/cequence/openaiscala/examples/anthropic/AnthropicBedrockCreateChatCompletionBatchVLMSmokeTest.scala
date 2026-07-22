@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.examples.anthropic
 
 import akka.actor.{ActorSystem, Scheduler}
-import akka.stream.Materializer
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{
@@ -49,7 +48,6 @@ object AnthropicBedrockCreateChatCompletionBatchVLMSmokeTest {
 
   private implicit val actorSystem: ActorSystem = ActorSystem("bedrock-vlm-batch-smoke")
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val materializer: Materializer = Materializer(actorSystem)
   private implicit val scheduler: Scheduler = actorSystem.scheduler
 
   // EU cross-region inference profile prefix - matches the region the S3 bucket/IAM role are

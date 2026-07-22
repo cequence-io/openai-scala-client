@@ -31,6 +31,7 @@ private[service] trait OpenAICoreServiceStreamedExtraImpl
   ): Source[TextCompletionResponse, NotUsed] =
     engine
       .execJsonStream(
+        site,
         EndPoint.completions.toString(),
         "POST",
         bodyParams = paramTuplesToStrings(

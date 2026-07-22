@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.examples
 
 import akka.actor.ActorSystem
-import akka.stream.Materializer
 import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
   CreateChatCompletionSettings,
@@ -53,7 +52,6 @@ object BedrockMantleJsonSchemaSmokeTest {
 
   def main(args: Array[String]): Unit = {
     implicit val system: ActorSystem = ActorSystem()
-    implicit val materializer: Materializer = Materializer(system)
     implicit val ec: scala.concurrent.ExecutionContext = system.dispatcher
     implicit val scheduler: akka.actor.Scheduler = system.scheduler
 

@@ -1,15 +1,14 @@
 package io.cequence.openaiscala.service.impl
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
 import io.cequence.openaiscala.service.{
   OpenAIService,
   OpenAIServiceConsts,
-  OpenAIServiceFactoryHelper
+  OpenAIServiceFactoryHelper,
+  ProjectWSClientEngine
 }
-import io.cequence.wsclient.domain.WsRequestContext
+import io.cequence.wsclient.domain.{SiteBinding, WsRequestContext}
 import io.cequence.wsclient.service.WSClientEngine
-import io.cequence.wsclient.service.ws.PlayWSClientEngine
+import io.cequence.wsclient.service.ws.Timeouts
 import play.api.libs.ws.ahc.cache.CacheableResponse
 import play.shaded.ahc.org.asynchttpclient.uri.Uri
 import play.shaded.ahc.org.asynchttpclient.{
@@ -24,8 +23,7 @@ class TestOpenAIServiceImpl(
   requestContext: WsRequestContext,
   mockedResponse: AHCResponse
 )(
-  implicit override val ec: ExecutionContext,
-  override val materializer: Materializer
+  implicit override val ec: ExecutionContext
 ) extends OpenAIServiceClassImpl(coreUrl, requestContext) {
 
   protected override val defaultAcceptableStatusCodes: Seq[Int] = Seq(200, 201, 202, 204)
@@ -58,27 +56,50 @@ case class TestOpenAIServiceFactory(mockedResponse: AHCResponse)
 
   override def customInstance(
     coreUrl: String,
-    requestContext: WsRequestContext = WsRequestContext()
+    requestContext: WsRequestContext = WsRequestContext(),
+    timeouts: Option[Timeouts] = None
   )(
-    implicit ec: ExecutionContext,
-    materializer: Materializer
+    implicit ec: ExecutionContext
   ): OpenAIService =
     new TestOpenAIServiceImpl(coreUrl, requestContext, mockedResponse)
+
+  // the mocked-response tests never route through a caller-supplied engine
+  override def customEngineInstance(
+    engine: WSClientEngine,
+    coreUrl: String,
+    requestContext: WsRequestContext = WsRequestContext()
+  )(
+    implicit ec: ExecutionContext
+  ): OpenAIService =
+    throw new UnsupportedOperationException(
+      "TestOpenAIServiceFactory does not support customEngineInstance."
+    )
 }
 
 class OpenAIServiceClassImpl(
   coreUrl: String,
   requestContext: WsRequestContext
 )(
-  implicit val ec: ExecutionContext,
-  val materializer: Materializer
+  implicit val ec: ExecutionContext
 ) extends OpenAIServiceImpl {
-  protected val engine: WSClientEngine = PlayWSClientEngine(coreUrl, requestContext)
+  // ONE engine (and thus one actor system) shared by ALL mocked services - the
+  // mockedService* helpers are created per test and never closed, so a per-service
+  // discovery engine would leak an actor system per call
+  protected val engine: WSClientEngine = TestFactory.sharedEngine
+
+  // shared - never closed by an individual mocked service
+  override protected def ownsEngine: Boolean = false
+
+  protected val site: SiteBinding =
+    ProjectWSClientEngine.siteBinding(coreUrl, requestContext)
 }
 
 object TestFactory extends OpenAIServiceConsts {
   implicit val ec: ExecutionContext = ExecutionContext.global
-  implicit val materializer: Materializer = Materializer(ActorSystem())
+
+  // the single stateless engine behind every mocked service (daemon-threaded, so even
+  // left unclosed it cannot pin the JVM)
+  private[impl] lazy val sharedEngine: WSClientEngine = ProjectWSClientEngine()
 
   val factory = TestOpenAIServiceFactory
 

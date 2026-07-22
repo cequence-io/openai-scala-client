@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.perplexity.service
 
-import akka.stream.Materializer
 import io.cequence.openaiscala.EnvHelper
 import io.cequence.openaiscala.perplexity.service.impl.{
   OpenAISonarChatCompletionService,
@@ -8,6 +7,7 @@ import io.cequence.openaiscala.perplexity.service.impl.{
 }
 import io.cequence.openaiscala.service.ChatProviderSettings
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
+import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtraAkka}
 
 import scala.concurrent.ExecutionContext
 
@@ -22,9 +22,23 @@ object SonarServiceFactory extends SonarServiceConsts with EnvHelper {
   def apply(
     apiKey: String = getEnvValue(apiKeyEnv)
   )(
-    implicit ec: ExecutionContext,
-    materializer: Materializer
+    implicit ec: ExecutionContext
   ): SonarService = new SonarServiceImpl(apiKey)
+
+  /**
+   * Creates the service on a CALLER-SUPPLIED, SITE-STATELESS streaming engine - e.g. one
+   * shared with other providers via `StreamedEngineRegistry.outputStreamed()` - so several
+   * providers can share one connection pool and actor system. The site binding (base URL,
+   * Bearer auth header, logging label) is built here from `apiKey` and held by the service,
+   * threaded into every engine call. Closing such a service does NOT close the shared engine -
+   * close the engine once, when done with all services using it.
+   */
+  def withEngine(
+    engine: WSClientEngine with WSClientOutputStreamExtraAkka,
+    apiKey: String = getEnvValue(apiKeyEnv)
+  )(
+    implicit ec: ExecutionContext
+  ): SonarService = new SonarServiceImpl(apiKey, Some(engine))
 
   /**
    * Create a new instance of the [[OpenAIChatCompletionService]] wrapping the SonarService
@@ -35,14 +49,12 @@ object SonarServiceFactory extends SonarServiceConsts with EnvHelper {
    * @param timeouts
    *   The explicit timeouts to use for the service (optional)
    * @param ec
-   * @param materializer
    * @return
    */
   def asOpenAI(
     apiKey: String = getEnvValue(apiKeyEnv)
   )(
-    implicit ec: ExecutionContext,
-    materializer: Materializer
+    implicit ec: ExecutionContext
   ): OpenAIChatCompletionStreamedService =
     new OpenAISonarChatCompletionService(
       new SonarServiceImpl(apiKey)

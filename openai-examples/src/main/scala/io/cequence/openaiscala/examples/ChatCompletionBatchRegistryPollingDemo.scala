@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.examples
 
 import akka.actor.{ActorSystem, Scheduler}
-import akka.stream.Materializer
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{
@@ -46,8 +45,7 @@ object ChatCompletionBatchRegistryPollingDemo {
   // the poller, exactly like any other use of chatCompletionBatchRouter
   private def buildRouter(
   )(
-    implicit ec: ExecutionContext,
-    materializer: Materializer
+    implicit ec: ExecutionContext
   ): BatchChatService = {
     val geminiService = GeminiServiceFactory.asOpenAI()
     val anthropicService = AnthropicServiceFactory.asOpenAI()
@@ -61,7 +59,6 @@ object ChatCompletionBatchRegistryPollingDemo {
   def main(args: Array[String]): Unit = {
     implicit val ec: ExecutionContext = ExecutionContext.global
     implicit val system: ActorSystem = ActorSystem("batch-registry-demo")
-    implicit val materializer: Materializer = Materializer(system)
     implicit val scheduler: Scheduler = system.scheduler
 
     val flow = for {
@@ -80,8 +77,7 @@ object ChatCompletionBatchRegistryPollingDemo {
   // --- Phase 1: submission - e.g. a web request handler. Only (model, batchId) survives. ---
   private def submit(
   )(
-    implicit ec: ExecutionContext,
-    materializer: Materializer
+    implicit ec: ExecutionContext
   ): Future[(String, String)] = {
     val router = buildRouter()
 
@@ -115,7 +111,6 @@ object ChatCompletionBatchRegistryPollingDemo {
     batchId: String
   )(
     implicit ec: ExecutionContext,
-    materializer: Materializer,
     scheduler: Scheduler
   ): Future[Unit] = {
     val router = buildRouter()

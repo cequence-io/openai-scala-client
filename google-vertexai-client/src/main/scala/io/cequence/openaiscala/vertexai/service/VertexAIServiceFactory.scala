@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.vertexai.service
 
-import akka.stream.Materializer
 import com.google.cloud.vertexai.VertexAI
 import io.cequence.openaiscala.EnvHelper
 import io.cequence.openaiscala.service.OpenAIChatCompletionBatchService
@@ -9,6 +8,7 @@ import io.cequence.openaiscala.vertexai.service.impl.{
   OpenAIVertexAIChatCompletionService,
   VertexAIBatchPredictionServiceImpl
 }
+import io.cequence.wsclient.service.WSClientEngine
 import io.cequence.wsclient.service.ws.Timeouts
 
 import scala.concurrent.ExecutionContext
@@ -61,8 +61,7 @@ object VertexAIServiceFactory extends EnvHelper {
     gcsPathPrefix: String = "openai-scala-client-batches",
     timeouts: Option[Timeouts] = None
   )(
-    implicit ec: ExecutionContext,
-    materializer: Materializer
+    implicit ec: ExecutionContext
   ): OpenAIChatCompletionStreamedService with OpenAIChatCompletionBatchService =
     new OpenAIVertexAIChatCompletionService(
       VertexAIServiceFactory(projectId, location),
@@ -94,8 +93,33 @@ object VertexAIServiceFactory extends EnvHelper {
     location: String = getEnvValue(locationIdKey),
     timeouts: Option[Timeouts] = None
   )(
-    implicit ec: ExecutionContext,
-    materializer: Materializer
+    implicit ec: ExecutionContext
   ): VertexAIBatchPredictionService =
     new VertexAIBatchPredictionServiceImpl(projectId, location, timeouts)
+
+  /**
+   * [[batchPrediction]] variant on a CALLER-SUPPLIED, SITE-STATELESS engine - e.g. one shared
+   * with other providers/services via a single connection pool and actor system. The site
+   * binding (project/location-shaped base URL, per-request ADC Bearer auth, logging label) is
+   * built internally from `projectId`/`location`. Closing the returned service does NOT close
+   * the shared engine - close the engine once, when done with all services using it.
+   *
+   * @param projectId
+   *   GCP project id (defaults to the VERTEXAI_PROJECT_ID env. variable)
+   * @param location
+   *   GCP location, e.g. `us-central1` or `global` (defaults to the VERTEXAI_LOCATION env.
+   *   variable)
+   */
+  def batchPredictionWithEngine(
+    engine: WSClientEngine,
+    projectId: String = getEnvValue(projectIdKey),
+    location: String = getEnvValue(locationIdKey)
+  )(
+    implicit ec: ExecutionContext
+  ): VertexAIBatchPredictionService =
+    new VertexAIBatchPredictionServiceImpl(
+      projectId,
+      location,
+      externalEngine = Some(engine)
+    )
 }

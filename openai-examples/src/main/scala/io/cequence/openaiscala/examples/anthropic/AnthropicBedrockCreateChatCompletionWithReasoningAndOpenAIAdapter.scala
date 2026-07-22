@@ -12,7 +12,7 @@ object AnthropicBedrockCreateChatCompletionWithReasoningAndOpenAIAdapter
     extends ExampleBase[OpenAIChatCompletionService] {
 
   override val service: OpenAIChatCompletionService =
-    ChatCompletionProvider.anthropicBedrock(ec, materializer)
+    ChatCompletionProvider.anthropicBedrock(ec)
 
   // Sonnet 4.6 supports adaptive thinking via `output_config.effort` (mapped from reasoning_effort).
   // Older models (Sonnet 4.5, Opus 4.5, etc.) use the legacy `thinking.budget_tokens` path -

@@ -1,11 +1,9 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
-import io.cequence.wsclient.domain.WsRequestContext
-import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtra}
-import io.cequence.wsclient.service.ws.stream.PlayWSStreamClientEngine
+import io.cequence.wsclient.domain.{SiteBinding, WsRequestContext}
+import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
+import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtraAkka}
 import org.scalatest.PrivateMethodTester.{PrivateMethod, _}
 import play.api.libs.ws.ahc.cache.{CacheableHttpResponseStatus, CacheableResponse}
 import play.shaded.ahc.io.netty.handler.codec.http.DefaultHttpHeaders
@@ -22,8 +20,7 @@ class TestAnthropicServiceImpl(
   requestContext: WsRequestContext,
   mockedResponse: AHCResponse
 )(
-  implicit override val ec: ExecutionContext,
-  override val materializer: Materializer
+  implicit override val ec: ExecutionContext
 ) extends AnthropicServiceClassImpl(coreUrl, requestContext) {
 
   protected override val defaultAcceptableStatusCodes: Seq[Int] = Seq(200, 201, 202, 204)
@@ -52,11 +49,14 @@ class AnthropicServiceClassImpl(
   coreUrl: String,
   requestContext: WsRequestContext
 )(
-  implicit val ec: ExecutionContext,
-  val materializer: Materializer
+  implicit val ec: ExecutionContext
 ) extends AnthropicServiceImpl {
-  override protected val engine: WSClientEngine with WSClientOutputStreamExtra =
-    PlayWSStreamClientEngine(coreUrl, requestContext)
+  // classpath-discovered engine with output streaming (SSE) support, owned (and closed) by this
+  // test instance
+  override protected val engine: WSClientEngine with WSClientOutputStreamExtraAkka =
+    StreamedEngineRegistry.outputStreamed(TransportSettings())
+
+  override protected val site: SiteBinding = SiteBinding(coreUrl, requestContext)
 }
 
 object TestFactory {
@@ -70,7 +70,6 @@ object TestFactory {
   val defaultCoreUrl = factory invokePrivate defaultCoreUrlMethod()
 
   implicit val ec: ExecutionContext = ExecutionContext.global
-  implicit val materializer: Materializer = Materializer(ActorSystem())
 
   private val authHeaders = Seq(
     ("x-api-key", s"$apiKey"),

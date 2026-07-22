@@ -172,6 +172,7 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
 
     engine
       .execRawStream(
+        site,
         endpoint,
         "POST",
         endPointParam = None,

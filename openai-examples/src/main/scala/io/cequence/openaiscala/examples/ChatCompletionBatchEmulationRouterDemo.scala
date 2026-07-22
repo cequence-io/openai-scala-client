@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.examples
 
 import akka.actor.{ActorSystem, Scheduler}
-import akka.stream.Materializer
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{
   ChatCompletionBatchRequest,
@@ -41,8 +40,7 @@ object ChatCompletionBatchEmulationRouterDemo {
 
   private def buildRouter(
   )(
-    implicit ec: ExecutionContext,
-    materializer: Materializer
+    implicit ec: ExecutionContext
   ): BatchChatService = {
     val geminiService = GeminiServiceFactory.asOpenAI() // native batch support
 
@@ -59,7 +57,6 @@ object ChatCompletionBatchEmulationRouterDemo {
   def main(args: Array[String]): Unit = {
     implicit val ec: ExecutionContext = ExecutionContext.global
     implicit val system: ActorSystem = ActorSystem("batch-emulation-router-demo")
-    implicit val materializer: Materializer = Materializer(system)
     implicit val scheduler: Scheduler = system.scheduler
 
     val router = buildRouter()

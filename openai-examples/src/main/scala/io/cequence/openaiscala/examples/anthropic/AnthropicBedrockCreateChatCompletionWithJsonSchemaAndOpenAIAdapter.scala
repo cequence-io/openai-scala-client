@@ -23,7 +23,7 @@ object AnthropicBedrockCreateChatCompletionWithJsonSchemaAndOpenAIAdapter
     extends ExampleBase[OpenAIChatCompletionService] {
 
   override val service: OpenAIChatCompletionService =
-    ChatCompletionProvider.anthropicBedrock(ec, materializer)
+    ChatCompletionProvider.anthropicBedrock(ec)
 
   // Define the JSON schema for weather responses
   // Note: Anthropic will automatically set 'additionalProperties: false' on all objects where it's not specified

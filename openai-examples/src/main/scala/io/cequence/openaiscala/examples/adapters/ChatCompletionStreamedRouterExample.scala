@@ -8,10 +8,20 @@ import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.openaiscala.service._
 import io.cequence.wsclient.domain.WsRequestContext
+import io.cequence.wsclient.service.spi.StreamedEngineRegistry
+import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtraAkka}
 
 import scala.concurrent.Future
 
 /**
+ * Routes streamed chat completions across seven providers backed by ONE stateless engine: a
+ * single connection pool and actor system serve all seven services below, each service just
+ * holding its own site binding (base URL + auth headers) and threading it into every call on
+ * the shared engine. Closing a routed service does NOT close the shared engine - it is closed
+ * exactly once, at the end. (A previous version of this example created an independent engine
+ * \- pool + actor system - per provider and facet, ~8 in total, which its own comment called
+ * "a bit wasteful".)
+ *
  * Requirements:
  *   - Include `openai-scala-client-stream` as a dependency.
  *   - Set the `OCTOAI_TOKEN` environment variable.
@@ -21,55 +31,66 @@ import scala.concurrent.Future
  *   - Set the `AZURE_AI_COHERE_R_PLUS_ENDPOINT`, `AZURE_AI_COHERE_R_PLUS_REGION`, and
  *     `AZURE_AI_COHERE_R_PLUS_ACCESS_KEY` environment variables.
  *   - Set the `GROQ_API_KEY` environment variable.
+ *   - Set the `OPENAI_SCALA_CLIENT_API_KEY` environment variable.
  */
 object ChatCompletionStreamedRouterExample
     extends ExampleBase[OpenAIChatCompletionStreamedServiceExtra] {
 
-  // Note that creation of services here is a bit wasteful, since we are using only the streaming part
+  // ONE stateless engine (connection pool + actor system) shared by every provider below
+  private val engine: WSClientEngine with WSClientOutputStreamExtraAkka =
+    StreamedEngineRegistry.outputStreamed()
+
+  private def bearerAuth(token: String): WsRequestContext =
+    WsRequestContext(authHeaders = Seq(("Authorization", s"Bearer $token")))
 
   // OctoML
-  private val octoMLService = OpenAIChatCompletionServiceFactory.withStreaming(
-    coreUrl = "https://text.octoai.run/v1/",
-    WsRequestContext(authHeaders =
-      Seq(("Authorization", s"Bearer ${sys.env("OCTOAI_TOKEN")}"))
-    )
+  private val octoMLService = OpenAIChatCompletionServiceFactory.withStreaming.withEngine(
+    engine,
+    "https://text.octoai.run/v1/",
+    bearerAuth(sys.env("OCTOAI_TOKEN"))
   )
 
   // Ollama
-  private val ollamaService = OpenAIChatCompletionServiceFactory.withStreaming(
-    coreUrl = "http://localhost:11434/v1/"
+  private val ollamaService = OpenAIChatCompletionServiceFactory.withStreaming.withEngine(
+    engine,
+    "http://localhost:11434/v1/"
   )
 
   // Fireworks AI
   private val fireworksModelPrefix = "accounts/fireworks/models/"
-  private val fireworksService = OpenAIChatCompletionServiceFactory.withStreaming(
-    coreUrl = "https://api.fireworks.ai/inference/v1/",
-    WsRequestContext(authHeaders =
-      Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
-    )
+  private val fireworksService = OpenAIChatCompletionServiceFactory.withStreaming.withEngine(
+    engine,
+    "https://api.fireworks.ai/inference/v1/",
+    bearerAuth(sys.env("FIREWORKS_API_KEY"))
   )
 
-  // Anthropic
-  private val anthropicService = AnthropicServiceFactory.asOpenAI()
+  // Anthropic - its own auth scheme and error taxonomy ride on the site binding that
+  // AnthropicServiceFactory.withEngine builds internally
+  private val anthropicService = AnthropicServiceFactory.asOpenAI(
+    AnthropicServiceFactory.withEngine(engine)
+  )
 
   // Azure AI - Cohere R+
   private val azureAICohereRPlusService =
-    OpenAIChatCompletionServiceFactory.withStreaming.forAzureAI(
-      endpoint = sys.env("AZURE_AI_COHERE_R_PLUS_ENDPOINT"),
-      region = sys.env("AZURE_AI_COHERE_R_PLUS_REGION"),
-      accessToken = sys.env("AZURE_AI_COHERE_R_PLUS_ACCESS_KEY")
+    OpenAIChatCompletionServiceFactory.withStreaming.withEngine(
+      engine,
+      s"https://${sys.env("AZURE_AI_COHERE_R_PLUS_ENDPOINT")}.${sys.env("AZURE_AI_COHERE_R_PLUS_REGION")}.inference.ai.azure.com/v1/",
+      bearerAuth(sys.env("AZURE_AI_COHERE_R_PLUS_ACCESS_KEY"))
     )
 
   // Groq
-  private val groqService = OpenAIChatCompletionServiceFactory.withStreaming(
-    coreUrl = "https://api.groq.com/openai/v1/",
-    WsRequestContext(authHeaders =
-      Seq(("Authorization", s"Bearer ${sys.env("GROQ_API_KEY")}"))
-    )
+  private val groqService = OpenAIChatCompletionServiceFactory.withStreaming.withEngine(
+    engine,
+    "https://api.groq.com/openai/v1/",
+    bearerAuth(sys.env("GROQ_API_KEY"))
   )
 
   // OpenAI
-  private val openAIService = OpenAIServiceFactory.withStreaming()
+  private val openAIService = OpenAIChatCompletionServiceFactory.withStreaming.withEngine(
+    engine,
+    "https://api.openai.com/v1/",
+    bearerAuth(sys.env("OPENAI_SCALA_CLIENT_API_KEY"))
+  )
 
   override val service: OpenAIChatCompletionStreamedServiceExtra =
     OpenAIChatCompletionStreamedServiceRouter(
@@ -94,7 +115,7 @@ object ChatCompletionStreamedRouterExample
   )
 
   override protected def run: Future[_] =
-    for {
+    (for {
       // runs on OctoML
       _ <- runChatCompletionAux(NonOpenAIModelId.mixtral_8x7b_instruct)
 
@@ -115,7 +136,11 @@ object ChatCompletionStreamedRouterExample
 
       // runs on OpenAI
       _ <- runChatCompletionAux(ModelId.gpt_3_5_turbo)
-    } yield ()
+    } yield ()).andThen {
+      // the routed services on the shared engine don't close it when they close - it's closed
+      // exactly once, here
+      case _ => engine.close()
+    }
 
   private def runChatCompletionAux(model: String) = {
     println(s"Running chat completion with the model '$model'\n")

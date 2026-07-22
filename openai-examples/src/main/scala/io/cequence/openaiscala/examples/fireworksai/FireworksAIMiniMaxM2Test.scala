@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.examples.fireworksai
 
 import akka.actor.ActorSystem
-import akka.stream.Materializer
 import io.cequence.openaiscala.JsonFormats.jsonSchemaFormat
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.{
@@ -24,7 +23,6 @@ object FireworksAIMiniMaxM2Test {
 
   def main(args: Array[String]): Unit = {
     implicit val system: ActorSystem = ActorSystem("FireworksAIMiniMaxM2Test")
-    implicit val materializer: Materializer = Materializer(system)
     implicit val ec: ExecutionContext = ExecutionContext.Implicits.global
 
     val service = ChatCompletionProvider.fireworks

@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.gemini.service.impl
 
 import akka.NotUsed
-import akka.stream.Materializer
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.gemini.JsonFormats._
@@ -25,10 +24,10 @@ import io.cequence.openaiscala.gemini.domain.{
 import io.cequence.openaiscala.gemini.service.{GeminiService, HandleGeminiErrorCodes}
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
-import io.cequence.wsclient.domain.WsRequestContext
+import io.cequence.wsclient.domain.{SiteBinding, WsRequestContext}
 import io.cequence.wsclient.service.WSClientWithEngineStreamTypes.WSClientWithOutputStreamEngine
-import io.cequence.wsclient.service.ws.stream.PlayWSStreamClientEngine
-import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtra}
+import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
+import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtraAkka}
 import play.api.libs.json._
 
 import java.io.File
@@ -39,12 +38,23 @@ import scala.concurrent.{ExecutionContext, Future, blocking}
 import scala.util.Try
 import io.cequence.wsclient.service.ws.Timeouts
 
+/**
+ * @param timeouts
+ *   client-level timeouts for the PRIVATELY-created engine - mutually exclusive with
+ *   `externalEngine` (the factory passes one or the other, never both): a caller-supplied
+ *   engine already carries its own `TransportSettings`, so `timeouts` is ignored with it -
+ *   pass `engine.copy(TransportSettings(timeouts = ...))` instead if that engine's timeouts
+ *   don't fit
+ * @param externalEngine
+ *   a caller-supplied, site-stateless engine (e.g. one shared with other providers); not
+ *   closed by this service
+ */
 private[service] class GeminiServiceImpl(
   apiKey: String,
-  timeouts: Option[Timeouts] = None
+  timeouts: Option[Timeouts] = None,
+  externalEngine: Option[WSClientEngine with WSClientOutputStreamExtraAkka] = None
 )(
-  override implicit val ec: ExecutionContext,
-  implicit val materializer: Materializer
+  override implicit val ec: ExecutionContext
 ) extends GeminiService
     with HandleGeminiErrorCodes
     with WSClientWithOutputStreamEngine {
@@ -52,15 +62,25 @@ private[service] class GeminiServiceImpl(
   override protected type PEP = EndPoint
   override protected type PT = Param
 
-  override protected val engine: WSClientEngine with WSClientOutputStreamExtra =
-    PlayWSStreamClientEngine(
-      coreUrl,
-      WsRequestContext(
-        extraParams = Seq(
-          Param.key.toString() -> apiKey
-        ),
-        explTimeouts = timeouts
+  // a caller-supplied, site-stateless engine (e.g. one shared with other providers), or a
+  // privately-owned classpath-discovered engine with output streaming (SSE) support; note that
+  // the raw upload/download paths below use the apiKey directly, engine or not
+  override protected val engine: WSClientEngine with WSClientOutputStreamExtraAkka =
+    externalEngine.getOrElse(
+      StreamedEngineRegistry.outputStreamed(
+        TransportSettings(timeouts = timeouts.getOrElse(Timeouts()))
       )
+    )
+
+  // the engine is only closed by this service when it was privately created here - a
+  // caller-supplied engine is closed by its creator
+  override protected def ownsEngine: Boolean = externalEngine.isEmpty
+
+  override protected val site: SiteBinding =
+    SiteBinding(
+      coreUrl,
+      WsRequestContext(extraParams = Seq(Param.key.toString() -> apiKey)),
+      label = Some("gemini")
     )
 
   override def generateContent(
@@ -83,6 +103,7 @@ private[service] class GeminiServiceImpl(
 
     engine
       .execJsonStream(
+        site,
         EndPoint.streamGenerateContent(settings.model).toString(),
         "POST",
         bodyParams = stringParams,

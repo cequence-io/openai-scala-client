@@ -1,7 +1,5 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
 import io.cequence.openaiscala.anthropic.domain.Message.UserMessage
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.service._
@@ -15,7 +13,6 @@ import scala.concurrent.ExecutionContext
 class AnthropicServiceSpec extends AsyncWordSpec with GivenWhenThen {
 
   implicit val ec: ExecutionContext = ExecutionContext.global
-  implicit val materializer: Materializer = Materializer(ActorSystem())
 
   private val irrelevantMessages = Seq(UserMessage("Hello"))
   private val settings = AnthropicCreateMessageSettings(

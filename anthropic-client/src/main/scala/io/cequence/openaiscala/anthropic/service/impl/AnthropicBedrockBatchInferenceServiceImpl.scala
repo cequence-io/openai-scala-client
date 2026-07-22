@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
-import akka.stream.Materializer
 import io.cequence.openaiscala.anthropic.domain.{
   BatchInferenceJob,
   BatchInferenceJobStatus,
@@ -9,9 +8,10 @@ import io.cequence.openaiscala.anthropic.domain.{
 }
 import io.cequence.openaiscala.anthropic.service.AnthropicBedrockBatchInferenceService
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
-import io.cequence.wsclient.domain.{EnumValue, NamedEnumValue, WsRequestContext}
+import io.cequence.wsclient.domain.{EnumValue, NamedEnumValue, SiteBinding}
 import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithEngine
-import io.cequence.wsclient.service.ws.{PlayJsonUtil, PlayWSClientEngine, Timeouts}
+import io.cequence.wsclient.service.spi.{TransportSettings, WSClientEngineRegistry}
+import io.cequence.wsclient.service.ws.{PlayJsonUtil, Timeouts}
 import io.cequence.wsclient.service.WSClientEngine
 import play.api.libs.json.{JsValue, Json}
 
@@ -42,10 +42,10 @@ private[service] sealed trait BedrockBatchParam extends EnumValue
  */
 private[service] class AnthropicBedrockBatchInferenceServiceImpl(
   connectionInfo: BedrockConnectionSettings,
-  explTimeouts: Option[Timeouts] = None
+  explTimeouts: Option[Timeouts] = None,
+  externalEngine: Option[WSClientEngine] = None
 )(
-  implicit val ec: ExecutionContext,
-  val materializer: Materializer
+  implicit val ec: ExecutionContext
 ) extends AnthropicBedrockBatchInferenceService
     with WSClientWithEngine
     with BedrockAuthHelper
@@ -56,10 +56,18 @@ private[service] class AnthropicBedrockBatchInferenceServiceImpl(
 
   private val serviceName = "bedrock"
 
+  // a caller-supplied shared engine, or a privately-owned classpath-discovered engine
   override protected val engine: WSClientEngine =
-    PlayWSClientEngine(
+    externalEngine.getOrElse(
+      WSClientEngineRegistry(TransportSettings(timeouts = explTimeouts.getOrElse(Timeouts())))
+    )
+
+  override protected def ownsEngine: Boolean = externalEngine.isEmpty
+
+  override protected val site: SiteBinding =
+    SiteBinding(
       coreUrl = s"https://bedrock.${connectionInfo.region}.amazonaws.com/",
-      WsRequestContext(explTimeouts = explTimeouts)
+      label = Some("bedrock-batch")
     )
 
   private def signedHeaders(
@@ -171,5 +179,6 @@ private[service] class AnthropicBedrockBatchInferenceServiceImpl(
   // e.g. S3 object keys with slashes).
   private def encodeOnce(value: String): String = rfc3986Encode(value)
 
-  override def close(): Unit = engine.close()
+  // ownsEngine defaults to true (this engine is privately owned, not caller-supplied), so the
+  // base WSClientWithEngineBase.close() already closes it - no override needed here.
 }

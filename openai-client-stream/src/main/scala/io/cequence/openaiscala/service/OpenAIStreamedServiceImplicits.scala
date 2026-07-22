@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.service
 
 import akka.NotUsed
-import akka.stream.Materializer
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response.{
@@ -19,9 +18,11 @@ import io.cequence.openaiscala.service.adapter.{
   OpenAIServiceWrapper
 }
 import io.cequence.wsclient.domain.WsRequestContext
-import io.cequence.wsclient.service.CloseableService
 import io.cequence.wsclient.service.adapter.ServiceWrapperTypes.CloseableServiceWrapper
 import io.cequence.wsclient.service.adapter.SimpleServiceWrapper
+import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
+import io.cequence.wsclient.service.ws.Timeouts
+import io.cequence.wsclient.service.{CloseableService, WSClientEngine}
 
 import scala.concurrent.ExecutionContext
 
@@ -60,17 +61,48 @@ object OpenAIStreamedServiceImplicits {
 
       override def apply(
         coreUrl: String,
+        requestContext: WsRequestContext,
+        timeouts: Option[Timeouts]
+      )(
+        implicit ec: ExecutionContext
+      ): StreamedServiceTypes.OpenAIChatCompletionStreamedService = {
+        // ONE private stateless engine serves both the base service and the streamed extra;
+        // the merged service owns it (closed via alsoClose)
+        val engine = StreamedEngineRegistry.outputStreamed(
+          TransportSettings(timeouts = timeouts.getOrElse(Timeouts()))
+        )
+
+        merge(engine, coreUrl, requestContext, alsoClose = Seq(engine))
+      }
+
+      override def withEngine(
+        engine: WSClientEngine,
+        coreUrl: String,
         requestContext: WsRequestContext
       )(
-        implicit ec: ExecutionContext,
-        materializer: Materializer
+        implicit ec: ExecutionContext
+      ): StreamedServiceTypes.OpenAIChatCompletionStreamedService =
+        // a shared, caller-supplied engine - closed by its creator
+        merge(engine, coreUrl, requestContext, alsoClose = Nil)
+
+      private def merge(
+        engine: WSClientEngine,
+        coreUrl: String,
+        requestContext: WsRequestContext,
+        alsoClose: Seq[CloseableService]
+      )(
+        implicit ec: ExecutionContext
       ): StreamedServiceTypes.OpenAIChatCompletionStreamedService = {
-        val service = factory(coreUrl, requestContext)
-
+        val service = factory.withEngine(engine, coreUrl, requestContext)
         val streamedExtra =
-          OpenAIChatCompletionStreamedServiceFactory(coreUrl, requestContext)
+          OpenAIChatCompletionStreamedServiceFactory.withEngine(
+            engine,
+            coreUrl,
+            requestContext
+          )
 
-        ChatCompletionStreamExt(service).withStreaming(streamedExtra)
+        new OpenAIChatCompletionStreamedServiceWrapper(service, streamedExtra, alsoClose)
+          with HasOpenAIChatCompletionStreamedExtra
       }
     }
   }
@@ -104,15 +136,23 @@ object OpenAIStreamedServiceImplicits {
   ) {
     def withStreaming(
       coreUrl: String,
-      requestContext: WsRequestContext = WsRequestContext()
+      requestContext: WsRequestContext = WsRequestContext(),
+      timeouts: Option[Timeouts] = None
     )(
-      implicit ec: ExecutionContext,
-      materializer: Materializer
+      implicit ec: ExecutionContext
     ): StreamedServiceTypes.OpenAICoreStreamedService = {
-      val service = factory(coreUrl, requestContext)
-      val streamedExtra = OpenAIStreamedServiceFactory.customInstance(coreUrl, requestContext)
+      // ONE private stateless engine serves both the base service and the streamed extra;
+      // the merged service owns it (closed via alsoClose)
+      val engine = StreamedEngineRegistry.outputStreamed(
+        TransportSettings(timeouts = timeouts.getOrElse(Timeouts()))
+      )
 
-      CoreStreamExt(service).withStreaming(streamedExtra)
+      val service = factory.withEngine(engine, coreUrl, requestContext)
+      val streamedExtra =
+        OpenAIStreamedServiceFactory.customEngineInstance(engine, coreUrl, requestContext)
+
+      new OpenAICoreStreamedServiceWrapper(service, streamedExtra, alsoClose = Seq(engine))
+        with HasOpenAICoreStreamedExtra
     }
   }
 
@@ -152,24 +192,52 @@ object OpenAIStreamedServiceImplicits {
 
       override def customInstance(
         coreUrl: String,
+        requestContext: WsRequestContext,
+        timeouts: Option[Timeouts]
+      )(
+        implicit ec: ExecutionContext
+      ): OpenAIStreamedService = {
+        // ONE private stateless engine serves both the base service and the streamed extra;
+        // the merged service owns it (closed via alsoClose)
+        val engine = StreamedEngineRegistry.outputStreamed(
+          TransportSettings(timeouts = timeouts.getOrElse(Timeouts()))
+        )
+
+        merge(engine, coreUrl, requestContext, alsoClose = Seq(engine))
+      }
+
+      override def customEngineInstance(
+        engine: WSClientEngine,
+        coreUrl: String,
         requestContext: WsRequestContext
       )(
-        implicit ec: ExecutionContext,
-        materializer: Materializer
+        implicit ec: ExecutionContext
+      ): OpenAIStreamedService =
+        // a shared, caller-supplied engine - closed by its creator
+        merge(engine, coreUrl, requestContext, alsoClose = Nil)
+
+      private def merge(
+        engine: WSClientEngine,
+        coreUrl: String,
+        requestContext: WsRequestContext,
+        alsoClose: Seq[CloseableService]
+      )(
+        implicit ec: ExecutionContext
       ): OpenAIStreamedService = {
-        val service = factory.customInstance(coreUrl, requestContext)
-
+        val service = factory.customEngineInstance(engine, coreUrl, requestContext)
         val streamedExtra =
-          OpenAIStreamedServiceFactory.customInstance(coreUrl, requestContext)
+          OpenAIStreamedServiceFactory.customEngineInstance(engine, coreUrl, requestContext)
 
-        StreamExt(service).withStreaming(streamedExtra)
+        new OpenAIStreamedServiceWrapper(service, streamedExtra, alsoClose)
+          with HasOpenAICoreStreamedExtra
       }
     }
   }
 
   private class OpenAIChatCompletionStreamedServiceWrapper(
     service: OpenAIChatCompletionService,
-    val streamedServiceExtra: OpenAIChatCompletionStreamedServiceExtra
+    val streamedServiceExtra: OpenAIChatCompletionStreamedServiceExtra,
+    alsoClose: Seq[CloseableService] = Nil // e.g. a privately-created shared engine
   ) extends OpenAIChatCompletionServiceWrapper {
 
     override protected def delegate: CloseableServiceWrapper[OpenAIChatCompletionService] =
@@ -179,12 +247,14 @@ object OpenAIStreamedServiceImplicits {
     override def close(): Unit = {
       service.close()
       streamedServiceExtra.close()
+      alsoClose.foreach(_.close())
     }
   }
 
   private class OpenAICoreStreamedServiceWrapper[S <: CloseableService](
     service: OpenAICoreService,
-    val streamedServiceExtra: S
+    val streamedServiceExtra: S,
+    alsoClose: Seq[CloseableService] = Nil // e.g. a privately-created shared engine
   ) extends OpenAICoreServiceWrapper {
 
     override protected def delegate: CloseableServiceWrapper[OpenAICoreService] =
@@ -194,12 +264,14 @@ object OpenAIStreamedServiceImplicits {
     override def close(): Unit = {
       service.close()
       streamedServiceExtra.close()
+      alsoClose.foreach(_.close())
     }
   }
 
   private class OpenAIStreamedServiceWrapper[S <: CloseableService](
     service: OpenAIService,
-    val streamedServiceExtra: S
+    val streamedServiceExtra: S,
+    alsoClose: Seq[CloseableService] = Nil // e.g. a privately-created shared engine
   ) extends OpenAIServiceWrapper {
 
     override protected def delegate: CloseableServiceWrapper[OpenAIService] =
@@ -209,6 +281,7 @@ object OpenAIStreamedServiceImplicits {
     override def close(): Unit = {
       service.close()
       streamedServiceExtra.close()
+      alsoClose.foreach(_.close())
     }
   }
 
