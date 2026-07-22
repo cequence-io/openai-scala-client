@@ -39,6 +39,7 @@ object NonOpenAIModelId {
   val bedrock_claude_opus_4_6_v1 = "anthropic.claude-opus-4-6-v1"
   val bedrock_claude_sonnet_5 = "anthropic.claude-sonnet-5"
   val bedrock_claude_sonnet_4_6 = "anthropic.claude-sonnet-4-6"
+  val bedrock_claude_haiku_4_5 = "anthropic.claude-haiku-4-5"
   val bedrock_claude_opus_4_5_20251101_v1_0 = "anthropic.claude-opus-4-5-20251101-v1:0"
   val bedrock_claude_sonnet_4_5_20250929_v1_0 = "anthropic.claude-sonnet-4-5-20250929-v1:0"
   val bedrock_claude_haiku_4_5_20251001_v1_0 = "anthropic.claude-haiku-4-5-20251001-v1:0"
@@ -58,6 +59,16 @@ object NonOpenAIModelId {
   val bedrock_openai_gpt_5_4 = "openai.gpt-5.4"
   val bedrock_openai_gpt_oss_120b = "openai.gpt-oss-120b"
   val bedrock_openai_gpt_oss_20b = "openai.gpt-oss-20b"
+
+  // Other providers (Bedrock - bedrock-mantle endpoint, `/v1/chat/completions`)
+  val bedrock_google_gemma_4_31b = "google.gemma-4-31b"
+  val bedrock_google_gemma_3_27b_it = "google.gemma-3-27b-it"
+  val bedrock_qwen_qwen3_coder_next = "qwen.qwen3-coder-next"
+  val bedrock_qwen_qwen3_235b_a22b_2507 = "qwen.qwen3-235b-a22b-2507"
+  val bedrock_mistral_mistral_large_3_675b_instruct = "mistral.mistral-large-3-675b-instruct"
+  val bedrock_zai_glm_5 = "zai.glm-5"
+  val bedrock_nvidia_nemotron_nano_3_30b = "nvidia.nemotron-nano-3-30b"
+  val bedrock_mistral_ministral_3_8b_instruct = "mistral.ministral-3-8b-instruct"
 
   // Nova (Bedrock)
   val amazon_nova_pro_v1_0 = "amazon.nova-pro-v1:0"
@@ -247,7 +258,10 @@ object NonOpenAIModelId {
   val gemini_2_5_pro_preview_03_25 = "gemini-2.5-pro-preview-03-25"
   val gemini_2_5_pro_exp_03_25 = "gemini-2.5-pro-exp-03-25"
 
+  // Input token limit: 1048576; Output token limit: 65536
+  val gemini_3_6_flash = "gemini-3.6-flash"
   val gemini_3_5_flash = "gemini-3.5-flash"
+  val gemini_3_5_flash_lite = "gemini-3.5-flash-lite"
   val gemini_3_1_flash_lite = "gemini-3.1-flash-lite"
   val gemini_3_1_flash_lite_preview = "gemini-3.1-flash-lite-preview"
   val gemini_2_5_flash = "gemini-2.5-flash"

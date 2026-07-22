@@ -12,13 +12,14 @@ import scala.concurrent.Future
  * Example demonstrating how to use Gemini's thinking/reasoning capabilities via the OpenAI
  * adapter using the reasoning_effort parameter.
  *
- * The reasoning_effort gets automatically converted to Gemini's thinkingBudget based on the
- * configuration in openai-scala-client.conf:
- *   - none -> 0 or 128 (no thinking or absolute minimal thinking)
- *   - minimal -> 256 tokens
- *   - low -> 1024 tokens
- *   - medium -> 4096 tokens
- *   - high -> 8192 tokens
+ * For Gemini 3.x models the reasoning_effort is converted to Gemini's thinkingLevel:
+ *   - none/minimal -> MINIMAL (Flash variants; Pro floors at LOW)
+ *   - low -> LOW
+ *   - medium -> MEDIUM
+ *   - high/xhigh/max -> HIGH
+ *
+ * For Gemini 2.5 models it is converted to a thinkingBudget (token count) based on the
+ * reasoning-effort-thinking-budget-mapping configuration in openai-scala-client.conf.
  *
  * Requires `openai-scala-google-gemini-client` as a dependency and `GOOGLE_API_KEY`
  * environment variable to be set.
@@ -27,9 +28,9 @@ object GoogleGeminiCreateChatCompletionWithReasoningEffort
     extends ExampleBase[OpenAIChatCompletionService] {
 
   private val settings = CreateChatCompletionSettings(
-    model = NonOpenAIModelId.gemini_3_5_flash,
-    max_tokens = Some(10000),
-    temperature = Some(0.2)
+    model = NonOpenAIModelId.gemini_3_6_flash,
+    // temperature/top_p/top_k are deprecated and ignored as of Gemini 3.6
+    max_tokens = Some(10000)
   )
 
   override protected val service: OpenAIChatCompletionService =
@@ -49,9 +50,7 @@ object GoogleGeminiCreateChatCompletionWithReasoningEffort
       response1 <- service.createChatCompletion(
         messages,
         settings.copy(
-          // Converted to thinkingBudget: 0 (no thinking)
-          // Note: Some models like Gemini 2.5 Pro have a minimum thinking budget (128),
-          // so they'll use minimal thinking instead of disabling it completely.
+          // Converted to thinkingLevel: MINIMAL - Gemini 3.x cannot fully disable thinking
           reasoning_effort = Some(ReasoningEffort.none)
         )
       )
@@ -71,7 +70,7 @@ object GoogleGeminiCreateChatCompletionWithReasoningEffort
       response2 <- service.createChatCompletion(
         messages,
         settings.copy(
-          // Converted to thinkingBudget: 256
+          // Converted to thinkingLevel: MINIMAL
           reasoning_effort = Some(ReasoningEffort.minimal)
         )
       )
@@ -91,7 +90,7 @@ object GoogleGeminiCreateChatCompletionWithReasoningEffort
       response3 <- service.createChatCompletion(
         messages,
         settings.copy(
-          // Converted to thinkingBudget: 1024
+          // Converted to thinkingLevel: LOW
           reasoning_effort = Some(ReasoningEffort.low)
         )
       )
@@ -109,7 +108,7 @@ object GoogleGeminiCreateChatCompletionWithReasoningEffort
       response4 <- service.createChatCompletion(
         messages,
         settings.copy(
-          // Converted to thinkingBudget: 4096
+          // Converted to thinkingLevel: MEDIUM
           reasoning_effort = Some(ReasoningEffort.medium)
         )
       )
@@ -128,7 +127,7 @@ object GoogleGeminiCreateChatCompletionWithReasoningEffort
       response5 <- service.createChatCompletion(
         messages,
         settings.copy(
-          // Converted to thinkingBudget: 8192
+          // Converted to thinkingLevel: HIGH
           reasoning_effort = Some(ReasoningEffort.high)
         )
       )

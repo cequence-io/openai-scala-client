@@ -15,7 +15,7 @@ trait OpenAIServiceConsts {
   protected val defaultCoreUrl = "https://api.openai.com/v1/"
 
   // Amazon Bedrock `bedrock-mantle` endpoint (OpenAI Responses API)
-  protected val bedrockMantleBearerTokenEnvKey = "AWS_BEARER_TOKEN_BEDROCK"
+  protected val bedrockMantleBearerTokenEnvKey = "AWS_BEDROCK_BEARER_TOKEN"
   protected val bedrockMantleRegionEnvKey = "AWS_BEDROCK_REGION"
 
   // `bedrock-mantle` serves models from the standard `v1` base path. The OpenAI provider models
@@ -49,7 +49,7 @@ trait OpenAIServiceConsts {
     )
 
     val CreateThreadAndRun = CreateThreadAndRunSettings(
-      model = Some(ModelId.gpt_4o_mini)
+      model = Some(ModelId.gpt_5_4_mini)
     )
 
     val CreateChatCompletion = CreateChatCompletionSettings(
