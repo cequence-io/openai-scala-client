@@ -244,6 +244,10 @@ class OpenAIChatCompletionBatchWithJSONSpec
       results.map(_.customId) shouldBe Seq("a", "b", "c")
       results.head.valueOption shouldBe Some(Answer("city-of-a"))
       results(1).errorOption.flatMap(_.code) shouldBe Some("response_parse_error")
+      // the raw response stays on the item - the failed request was billed, so its usage
+      // must remain accessible to the caller
+      results(1).errorResponse.map(_.model) shouldBe Some("m1")
+      results.head.errorResponse shouldBe None
       results(2).valueOption shouldBe Some(Answer("city-of-c"))
     }
 

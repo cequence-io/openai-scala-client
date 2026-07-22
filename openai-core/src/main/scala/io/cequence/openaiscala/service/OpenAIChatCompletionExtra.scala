@@ -29,8 +29,13 @@ import play.api.libs.json.{Format, JsObject, JsValue, Json}
 
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 import com.fasterxml.jackson.core.JsonProcessingException
-import io.cequence.openaiscala.{OpenAIScalaBatchTimeoutException, OpenAIScalaClientException}
+import io.cequence.openaiscala.{
+  OpenAIScalaBatchTimeoutException,
+  OpenAIScalaClientException,
+  OpenAIScalaJsonParseException
+}
 import io.cequence.openaiscala.domain.JsonSchema
 import io.cequence.openaiscala.domain.JsonSchema.JsonSchemaOrMap
 import io.cequence.wsclient.JsonUtil
@@ -199,7 +204,10 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
      *
      * @return
      *   Future containing a tuple of the parsed response of type T and the raw
-     *   ChatCompletionResponse
+     *   ChatCompletionResponse. If the model's content cannot be parsed as JSON (even after
+     *   repair) or converted to `T`, the future fails with a
+     *   [[io.cequence.openaiscala.OpenAIScalaJsonParseException]] that carries the raw
+     *   response, so the (billed) token usage of the failed attempt remains accessible.
      */
     def createChatCompletionWithJSONFullResponse[T: Format](
       messages: Seq[BaseMessage],
@@ -243,16 +251,29 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
           filterModels
         )
         .flatMap { response =>
-          val outcome = parseJsonResponse[T](response, taskNameForLoggingFinal, parseJson)
+          val outcome = Try(parseJsonResponse[T](response, taskNameForLoggingFinal, parseJson))
 
           logger.debug(
             s"${taskNameForLoggingFinal.capitalize} finished in " + (new java.util.Date().getTime - start.getTime) + " ms."
           )
 
+          // both failure flavors (unparseable JSON and JSON-to-T conversion) surface as
+          // OpenAIScalaJsonParseException carrying the response, so callers can account for
+          // the token usage of the failed attempt (it was billed by the provider)
           outcome match {
-            case Right(result) => Future.successful(result)
-            case Left(errorMessage) =>
-              Future.failed(new OpenAIScalaClientException(errorMessage))
+            case Success(Right(result)) => Future.successful(result)
+
+            case Success(Left(errorMessage)) =>
+              Future.failed(new OpenAIScalaJsonParseException(errorMessage, response))
+
+            case Failure(e) =>
+              Future.failed(
+                new OpenAIScalaJsonParseException(
+                  s"${taskNameForLoggingFinal.capitalize} failed - the response content could not be parsed as JSON (even after repair): ${e.getMessage}",
+                  response,
+                  e
+                )
+              )
           }
         }
     }
@@ -454,7 +475,13 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
               )
           }
 
-        ChatCompletionBatchTypedResultItem(customId, outcome)
+        // on a parse failure keep the raw response on the item - it was billed, so callers
+        // can still account for its usage
+        ChatCompletionBatchTypedResultItem(
+          customId,
+          outcome,
+          errorResponse = if (outcome.isLeft) Some(response) else None
+        )
       }
 
       if (requests.isEmpty)
@@ -558,7 +585,9 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
    * ([[OpenAIChatCompletionBatchImplicits.createChatCompletionBatchWithJSON]]) paths: cleans
    * up the response content, parses it, logs an empty-object diagnostic (incl. usage), and
    * converts it to `T`. Exceptions thrown by `parseJson` propagate to the caller - the sync
-   * path lets them fail the future, the batch path maps them to a per-item error.
+   * path wraps them (and the `Left` conversion failure) into a response-carrying
+   * [[io.cequence.openaiscala.OpenAIScalaJsonParseException]] failing the future, the batch
+   * path maps them to a per-item error.
    */
   private def parseJsonResponse[T: Format](
     response: ChatCompletionResponse,

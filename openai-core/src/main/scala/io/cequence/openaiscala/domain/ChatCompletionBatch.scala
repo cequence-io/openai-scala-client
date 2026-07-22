@@ -93,10 +93,17 @@ final case class ChatCompletionBatchResultItem(
  * value of type `T` paired with the raw response (kept for usage/metadata), or an error - a
  * provider-side one passed through, or a client-side `response_parse_error` /
  * `missing_result`. Produced by `OpenAIChatCompletionExtra.createChatCompletionBatchWithJSON`.
+ *
+ * @param errorResponse
+ *   On a client-side `response_parse_error`, the raw response whose content could not be
+ *   parsed/converted - the batch item WAS answered (and billed), so its usage stays accessible
+ *   to the caller. None for provider-side errors and missing results (no response exists for
+ *   those).
  */
 final case class ChatCompletionBatchTypedResultItem[T](
   customId: String,
-  result: Either[ChatCompletionBatchError, (T, ChatCompletionResponse)]
+  result: Either[ChatCompletionBatchError, (T, ChatCompletionResponse)],
+  errorResponse: Option[ChatCompletionResponse] = None
 ) {
   def valueOption: Option[T] = result.toOption.map(_._1)
   def errorOption: Option[ChatCompletionBatchError] = result.left.toOption
