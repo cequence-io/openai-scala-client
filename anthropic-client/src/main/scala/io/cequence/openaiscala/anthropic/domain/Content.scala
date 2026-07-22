@@ -72,6 +72,15 @@ object Content {
       val `type`: String = "tool_use"
     }
 
+    // client-executed tool result reported back for a previous tool_use (sent in a user message)
+    case class ToolResultBlock(
+      content: String,
+      isError: Option[Boolean],
+      toolUseId: String
+    ) extends ContentBlock {
+      val `type`: String = "tool_result"
+    }
+
     case class ServerToolUseBlock(
       id: String,
       name: ServerToolName,

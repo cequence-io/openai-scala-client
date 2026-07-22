@@ -12,7 +12,11 @@ import io.cequence.openaiscala.{
   OpenAIScalaUnauthorizedException
 }
 import io.cequence.openaiscala.anthropic.domain.CacheControl.Ephemeral
-import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.TextBlock
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{
+  TextBlock,
+  ToolResultBlock,
+  ToolUseBlock
+}
 import io.cequence.openaiscala.anthropic.domain.Content.{ContentBlockBase, ContentBlocks}
 import io.cequence.openaiscala.anthropic.domain.Message.SystemMessageContent
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse.UsageInfo
@@ -48,10 +52,13 @@ import io.cequence.openaiscala.domain.settings.{
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettingsOps.RichCreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{
   ChatRole,
+  FunctionCallSpec,
   MessageSpec,
   NonOpenAIModelId,
   SystemMessage,
   AssistantMessage => OpenAIAssistantMessage,
+  AssistantToolMessage => OpenAIAssistantToolMessage,
+  ToolMessage => OpenAIToolMessage,
   BaseMessage => OpenAIBaseMessage,
   Content => OpenAIContent,
   FileContent => OpenAIFileContent,
@@ -62,6 +69,7 @@ import io.cequence.openaiscala.domain.{
 }
 import io.cequence.openaiscala.service.HasOpenAIConfig
 import org.slf4j.LoggerFactory
+import play.api.libs.json.{JsObject, Json}
 
 import java.{util => ju}
 import scala.concurrent.Future
@@ -115,6 +123,33 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
 
       case OpenAIAssistantMessage(content, _, _) => Message.AssistantMessage(content)
 
+      // assistant tool calls -> assistant turn with tool_use blocks
+      case OpenAIAssistantToolMessage(content, _, toolCalls) =>
+        val toolUseBlocks = toolCalls.collect {
+          case (toolCallId, FunctionCallSpec(name, arguments)) =>
+            val input = scala.util.Try(Json.parse(arguments).as[JsObject]) match {
+              case scala.util.Success(value) => value
+              case scala.util.Failure(cause) =>
+                throw new OpenAIScalaClientException(
+                  s"Tool call '$toolCallId' ($name) has invalid JSON object arguments",
+                  cause
+                )
+            }
+            ContentBlockBase(ToolUseBlock(toolCallId, name, input))
+        }
+        val textBlocks = content.map(text => ContentBlockBase(TextBlock(text))).toSeq
+        Message.AssistantMessageContent(textBlocks ++ toolUseBlocks)
+
+      // client-executed tool result -> user turn with a tool_result block
+      case OpenAIToolMessage(content, toolCallId, _) =>
+        Message.UserMessageContent(
+          Seq(
+            ContentBlockBase(
+              ToolResultBlock(content.getOrElse(""), isError = None, toolUseId = toolCallId)
+            )
+          )
+        )
+
       // legacy message type
       case MessageSpec(role, content, _) if role == ChatRole.User =>
         Message.UserMessage(content)
@@ -122,11 +157,26 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
       case _ => throw new OpenAIScalaClientException("Unsupported message type")
     }
 
+    // merge consecutive tool-result user turns into one - parallel tool calls arrive as
+    // separate OpenAI tool messages but Anthropic expects a single user turn with all results
+    val anthropicMessagesMerged: Seq[Message] =
+      anthropicMessages.foldLeft(List.empty[Message]) {
+        case (
+              init :+ Message.UserMessageContent(prevBlocks),
+              Message.UserMessageContent(newBlocks)
+            )
+            if prevBlocks.forall(_.content.isInstanceOf[ToolResultBlock]) &&
+              newBlocks.forall(_.content.isInstanceOf[ToolResultBlock]) =>
+          init :+ Message.UserMessageContent(prevBlocks ++ newBlocks)
+
+        case (acc, message) => acc :+ message
+      }
+
     // apply cache control to user messages
     // crawl through anthropicMessages, and apply to the first N user messages cache control, where N = countUserMessagesToCache
     val countUserMessagesToCache = settings.anthropicCachedUserMessagesCount
 
-    val anthropicMessagesWithCache: Seq[Message] = anthropicMessages
+    val anthropicMessagesWithCache: Seq[Message] = anthropicMessagesMerged
       .foldLeft((List.empty[Message], countUserMessagesToCache)) {
         case ((acc, userMessagesToCacheCount), message) =>
           message match {
@@ -441,9 +491,32 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
       } else
         settings.top_p
 
+    // When the caller doesn't set max_tokens, fall back to the MODEL's real output cap
+    // (defaultMaxTokens) rather than a flat constant - adaptive-thinking models (Sonnet 4.6,
+    // Fable 5, ...) never send budget_tokens, so nothing below catches an unset max_tokens
+    // being too small; live-verified: an 85-entity JSON extraction on claude-sonnet-4-6 was
+    // silently truncated mid-JSON at exactly 2048 tokens (the old flat default) instead of
+    // using the model's real 128k-token cap.
+    //
+    // Separately, Anthropic requires budget_tokens < max_tokens on the legacy (budget-based)
+    // thinking path; adaptive thinking carries no budget_tokens, so it is unaffected. Already
+    // broken at the 2048 default with medium/high/xhigh budgets - raise max_tokens above the
+    // budget, keeping the default response headroom on top.
+    val baseMaxTokens = settings.max_tokens.getOrElse(defaultMaxTokens(settings.model))
+    val maxTokens = thinkingSettings.flatMap(_.budget_tokens) match {
+      case Some(budget) if budget >= baseMaxTokens =>
+        val raised = budget + DefaultSettings.CreateMessage.max_tokens
+        logger.warn(
+          s"max_tokens ($baseMaxTokens) must exceed the thinking budget_tokens ($budget). " +
+            s"Raising max_tokens to $raised (budget + ${DefaultSettings.CreateMessage.max_tokens} response headroom)."
+        )
+        raised
+      case _ => baseMaxTokens
+    }
+
     AnthropicCreateMessageSettings(
       model = settings.model,
-      max_tokens = settings.max_tokens.getOrElse(DefaultSettings.CreateMessage.max_tokens),
+      max_tokens = maxTokens,
       metadata = Map.empty,
       stop_sequences = settings.stop,
       temperature = temperature,

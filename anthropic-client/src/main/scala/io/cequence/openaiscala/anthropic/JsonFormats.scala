@@ -15,6 +15,7 @@ import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{
   TextEditorCodeExecutionToolResultBlock,
   TextsContentBlock,
   ThinkingBlock,
+  ToolResultBlock,
   ToolUseBlock,
   WebFetchToolResultBlock,
   WebSearchToolResultBlock
@@ -291,6 +292,11 @@ trait JsonFormats {
     Json.format[RedactedThinkingBlock]
 
   private val toolUseBlockFormat: OFormat[ToolUseBlock] = Json.format[ToolUseBlock]
+
+  private val toolResultBlockFormat: OFormat[ToolResultBlock] = {
+    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
+    Json.format[ToolResultBlock]
+  }
 
   implicit lazy val serverToolNameFormat: Format[ServerToolName] =
     JsonUtil.enumFormat[ServerToolName](ServerToolName.values: _*)
@@ -681,6 +687,9 @@ trait JsonFormats {
       case "tool_use" =>
         json.validate[ToolUseBlock](toolUseBlockFormat)
 
+      case "tool_result" =>
+        json.validate[ToolResultBlock](toolResultBlockFormat)
+
       case "server_tool_use" =>
         json.validate[ServerToolUseBlock](serverToolUseBlockFormat)
 
@@ -763,6 +772,9 @@ trait JsonFormats {
 
     case x: ToolUseBlock =>
       Json.toJsObject(x)(toolUseBlockFormat)
+
+    case x: ToolResultBlock =>
+      Json.toJsObject(x)(toolResultBlockFormat)
 
     case x: ServerToolUseBlock =>
       Json.toJsObject(x)(serverToolUseBlockFormat)
