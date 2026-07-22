@@ -104,11 +104,22 @@ For a single dependency that includes all provider clients (Anthropic, Gemini, V
 
 **I. Obtaining OpenAIService**
 
-First you need to provide an implicit execution context as well as akka materializer, e.g., as
+First you need to provide an implicit execution context, e.g., as
 
 ```scala
   implicit val ec = ExecutionContext.global
+```
+
+A `Materializer`/`ActorSystem` is **not** required to build or call a service - each service
+created via a plain factory (e.g. `OpenAIServiceFactory()`) owns and manages its own execution
+environment internally, and `service.close()` tears it down together with the HTTP client. You
+only need an implicit `Materializer` yourself if you're *consuming* a streamed result (a
+`Source[..., akka.NotUsed]` returned by e.g. `createChatCompletionStreamed`), e.g.:
+
+```scala
   implicit val materializer = Materializer(ActorSystem())
+
+  service.createChatCompletionStreamed(...).runWith(Sink.foreach(println))
 ```
 
 Then you can obtain a service in one of the following ways.
@@ -177,6 +188,17 @@ Then you can obtain a service in one of the following ways.
 ```scala
   val service = AnthropicServiceFactory.asOpenAI() // or AnthropicServiceFactory.bedrockAsOpenAI
 ```
+
+   **OAuth / bearer token auth (Anthropic)** - as an alternative to `ANTHROPIC_API_KEY`:
+   ```scala
+     // static bearer/OAuth token, reads ANTHROPIC_AUTH_TOKEN, then CLAUDE_CODE_OAUTH_TOKEN_ALTERNATIVE,
+     // then CLAUDE_CODE_OAUTH_TOKEN
+     val service = AnthropicServiceFactory.forAuthToken()
+
+     // `ant auth login` OAuth profile, with automatic token refresh
+     val service = AnthropicServiceFactory.forOAuthProfile()
+   ```
+   Set `ANTHROPIC_AUTH_TOKEN` to a platform OAuth token, e.g. `export ANTHROPIC_AUTH_TOKEN=$(ant auth print-credentials --access-token)`. `forOAuthProfile()` instead resolves an `ant auth login` profile (`ANTHROPIC_PROFILE` / `<config-dir>/active_config` / `default`) and refreshes its token automatically as it expires. Pass `withOAuthBeta = false` on `forAuthToken()` for a gateway-issued static bearer token. **`CLAUDE_CODE_OAUTH_TOKEN_ALTERNATIVE`** is a safer place to park a fallback token persistently (e.g. in `~/.bashrc`) than `CLAUDE_CODE_OAUTH_TOKEN` itself: the real `claude` CLI reads only the exact literal `CLAUDE_CODE_OAUTH_TOKEN` for its own auth, so exporting that one persistently would silently redirect your interactive `claude` sessions onto it too (ranking above subscription `/login`) - the `_ALTERNATIVE`-suffixed name is invisible to the CLI. **Caveat:** either variant's underlying token (from `claude setup-token`) is a Claude Code subscription token - it's scoped to the Claude Code backend and documented as rejected by the public API (expect a 401), so treat both as best-effort only. Subscription usage for agents is sanctioned exclusively through the Claude Agent SDK/CLI harness (via the "Agent SDK credit" for Pro/Max/Team/Enterprise plans, introduced 2026-06-15) - not through these REST endpoints.
 
 3. [Google Vertex AI](https://cloud.google.com/vertex-ai) - requires `openai-scala-google-vertexai-client` lib and `VERTEXAI_LOCATION` + `VERTEXAI_PROJECT_ID`
 ```scala
@@ -1094,6 +1116,146 @@ class MyCompletionService @Inject() (
   for transforming messages/settings on input or assistant messages on output.
   See [examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/adapters).
 
+**IV. Sharing an HTTP engine**
+
+Every plain factory call (`OpenAIServiceFactory()`, `AnthropicServiceFactory()`, ...) spins up
+its own HTTP client pool **and** its own dedicated actor system (created eagerly, all daemon
+threads, so a leaked service can't block JVM exit) - fine for a handful of long-lived services,
+wasteful if you're building many services, or many providers, in the same app. Since the
+`ws-client` 1.0 engine-discovery migration you can build **one engine** and share it across
+**any number of services, including across different providers**:
+
+```scala
+import io.cequence.wsclient.service.spi.StreamedEngineRegistry
+
+implicit val ec: ExecutionContext = ExecutionContext.global
+
+val engine = StreamedEngineRegistry.outputStreamed() // one pool + one (daemon) actor system
+
+val openAI = OpenAIServiceFactory.withEngine(engine)       // api key from config/env
+val anthropic = AnthropicServiceFactory.withEngine(engine) // api key from env
+val gemini = GeminiServiceFactory.withEngine(engine)       // api key from env
+
+// ... use the services ...
+
+anthropic.close() // closes a service on a SHARED engine without touching the engine itself -
+                   // openAI and gemini keep working
+engine.close()     // the one real teardown - close it once, after every service using it is done
+```
+
+**Timeouts (and proxy) are engine-level**, baked into the HTTP client at construction time and
+deliberately not overridable per call. All four `Timeouts` fields are in **milliseconds** (the
+`*Sec`-suffixed keys in the config file, e.g. `requestTimeoutSec`, are the seconds-based
+equivalent - see the Config section above). A service that needs different timeouts than the rest
+of a shared setup gets its own **engine copy**, which shares the parent's actor system (so you
+don't pay for a second one) but builds its own HTTP client:
+
+```scala
+import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
+import io.cequence.wsclient.service.ws.Timeouts
+
+val engine = StreamedEngineRegistry.outputStreamed() // default timeouts
+
+// e.g. a batch/VLM provider that legitimately needs much longer timeouts than the rest
+val slowEngine = engine.copy(
+  TransportSettings(timeouts = Timeouts(
+    requestTimeout = Some(300000),   // 300s
+    readTimeout = Some(300000),      // 300s
+    connectTimeout = Some(20000),    // 20s
+    pooledConnectionIdleTimeout = Some(60000) // 60s
+  ))
+)
+
+val fastService = OpenAIServiceFactory.withEngine(engine)
+val slowService = AnthropicServiceFactory.withEngine(slowEngine)
+
+slowService.close() // only slowEngine's own HTTP client - the shared actor system lives on
+fastService.close()
+engine.close()       // tear down the shared actor system last
+```
+
+You can also set timeouts on a single, non-shared service directly, without touching engines:
+
+```scala
+val service = OpenAIServiceFactory(
+  apiKey = "your_api_key",
+  timeouts = Some(Timeouts(requestTimeout = Some(120000), readTimeout = Some(120000))) // 120s
+)
+```
+
+To embed a service into an existing Akka application (one Akka app, one `ActorSystem`), build
+the engine on YOUR `Materializer` instead of letting it create its own, so closing the service
+never touches your actor system:
+
+```scala
+import io.cequence.wsclient.service.ws.stream.PlayWSStreamClientEngine
+
+implicit val system: ActorSystem = /* your app's existing ActorSystem */ ???
+implicit val materializer: Materializer = Materializer(system)
+implicit val ec: ExecutionContext = system.dispatcher
+
+val engine = new PlayWSStreamClientEngine() // runs on YOUR materializer/ec
+val service = OpenAIServiceFactory.withEngine(engine)
+
+service.close() // closes only the HTTP client - your ActorSystem is untouched
+```
+
+> **Akka backend, for now.** This library's streaming API currently returns
+> `Source[T, akka.NotUsed]` and depends on the Akka-flavored `ws-client` engines. `ws-client`
+> itself is no longer Akka-only - it also ships Pekko engines, backend-only engines with no
+> actor system (JDK, sttp), and a family-neutral streaming core underneath all of them. A live
+> experiment already swapped the Akka dependency for the Pekko one and ran **synchronous** calls
+> with zero source changes; **streaming** is still Akka-specific in this repo (a few akka types
+> baked into the public API) and will likely be abstracted away in a future release so you can
+> pick your own backend. Nothing you need to do today - just don't be surprised if the streaming
+> API becomes backend-agnostic later.
+
+## Claude Agent Client 🖥️
+
+`claude-agent-client` is a separate module that wraps the **`claude` CLI as a subprocess**
+(NDJSON over stdin/stdout), giving a typed, bidirectional session API compatible with the
+Claude Agent SDK protocol - including tool-permission callbacks and mid-turn interrupt. This
+is a fundamentally different transport from the rest of this library: it does **not** provide
+an `asOpenAI()` adapter and is not a drop-in `OpenAIChatCompletionService`. It's distinct from
+the HTTP-based `AnthropicManagedAgentService` (part of `anthropic-client`), which talks
+directly to Anthropic's Managed Agents REST API instead of spawning a local process.
+
+Add the dependency:
+
+```
+"io.cequence" %% "openai-scala-claude-agent-client" % "1.3.0.RC.3"
+```
+
+```scala
+  import io.cequence.openaiscala.claudeagent.domain.ClaudeAgentSettings
+  import io.cequence.openaiscala.claudeagent.service.ClaudeAgentServiceFactory
+
+  val service = ClaudeAgentServiceFactory.startSession(
+    ClaudeAgentSettings(model = Some("claude-haiku-4-5"))
+  )
+
+  val observed = service.events.runForeach(event => println(event)) // subscribe first
+  service.ready.flatMap { _ =>
+    service.send("Explain the difference between Scala's Option and Try in one sentence.")
+  }
+```
+
+`ready` completes after the CLI's `system/init` handshake; `send` and control requests wait for
+it automatically. `completion` exposes the eventual process exit code and a bounded stderr tail.
+The event stream is hot after its initial init replay, so subscribe before sending a turn whose
+events must be observed. To approve a tool call unchanged, reply with
+`PermissionDecision.Allow(request.input)`; the CLI requires an explicit `updated_input` object.
+
+See [ClaudeAgentOneShotQueryExample](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/claudeagent/ClaudeAgentOneShotQueryExample.scala)
+for a complete runnable example, and
+[ClaudeAgentToolPermissionExample](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/claudeagent/ClaudeAgentToolPermissionExample.scala)
+for a full bidirectional session that handles tool-permission requests.
+
+**Requires the `claude` CLI installed separately** (e.g. `npm install -g
+@anthropic-ai/claude-code`) and authenticated - either via an interactive Claude subscription
+login (`claude /login`) or one of `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN` /
+`CLAUDE_CODE_OAUTH_TOKEN` in the environment.
+
 ## FAQ 🤔
 
 1. _Wen Scala 3?_ 
@@ -1137,4 +1299,3 @@ This project is open-source and welcomes any contribution or feedback ([here](ht
 Development of this library has been supported by  [<img src="https://cequence.io/favicon-16x16.png"> - Cequence.io](https://cequence.io) - `The future of contracting` 
 
 Created and maintained by [Peter Banda](https://peterbanda.net).
-

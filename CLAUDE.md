@@ -42,12 +42,13 @@ The codebase is organized into multiple SBT subprojects with clear dependency re
 - **openai-client-stream** (`client_stream`): Streaming extensions providing OpenAIStreamedServiceExtra and streaming factories for SSE-based completions. Depends on openai-client.
 
 ### Provider-Specific Clients
-- **anthropic-client** (`anthropic_client`): Anthropic/Claude API client with OpenAI-compatible adapter. Supports MCP toolsets, extended thinking, fast mode, tools (bash, code execution, computer use, web search/fetch, text editor, memory).
+- **anthropic-client** (`anthropic_client`): Anthropic/Claude API client with OpenAI-compatible adapter. Supports MCP toolsets, extended thinking, fast mode, tools (bash, code execution, computer use, web search/fetch, text editor, memory). Also supports x-api-key, static bearer/OAuth token (`ANTHROPIC_AUTH_TOKEN` → `CLAUDE_CODE_OAUTH_TOKEN_ALTERNATIVE` → `CLAUDE_CODE_OAUTH_TOKEN`; the `_ALTERNATIVE` var is safe to export persistently since the real `claude` CLI never reads it), and `ant auth` OAuth profiles with auto-refresh (`forAuthToken` / `forOAuthProfile` / `forAuthTokenProvider` / `customInstance`).
 - **google-vertexai-client** (`google_vertexai_client`): Google Vertex AI client (Gemini models on GCP). Supports tools (function declarations, Google search, code execution) with ToolConfig.
 - **google-gemini-client** (`google_gemini_client`): Google Gemini API client (direct Gemini API). Supports tools, prompt caching, thinking levels, and has its own exception hierarchy (GeminiScalaClientException) with error code handling.
 - **perplexity-sonar-client** (`perplexity_sonar_client`): Perplexity Sonar search-based AI client.
+- **claude-agent-client** (`claude_agent_client`): Subprocess transport wrapping the `claude` CLI (Claude Agent SDK-compatible NDJSON protocol over stdin/stdout) - full bidirectional sessions with tool-permission callbacks and interrupt support, distinct from the HTTP-based `anthropic-client`. Requires the `claude` CLI installed and authenticated separately (API key or Claude subscription).
 
-All provider clients depend on openai-core and provide `asOpenAI()` adapters to work with the standard OpenAI interfaces.
+All provider clients depend on openai-core and provide `asOpenAI()` adapters to work with the standard OpenAI interfaces, with one exception: `claude-agent-client` is a fundamentally different subprocess/NDJSON transport (not an `OpenAIChatCompletionService`) and does NOT provide an `asOpenAI()` adapter.
 
 ### Utility Modules
 - **openai-all** (`all`): Envelope module aggregating all clients (except guice) into a single dependency: `openai-scala-all`.
@@ -62,6 +63,7 @@ openai-core
     │   ├── openai-client-stream (aggregates client)
     │   └── openai-count-tokens
     ├── anthropic-client (aggregates core + client + client-stream)
+    │   └── claude-agent-client (subprocess transport; depends on core + anthropic-client)
     ├── google-vertexai-client (aggregates core + client + client-stream)
     ├── google-gemini-client (aggregates core + client + client-stream)
     └── perplexity-sonar-client (aggregates core + client + client-stream)
@@ -148,7 +150,7 @@ When adding new domain classes, update the appropriate JsonFormats with Format i
 ### Configuration
 Configuration uses Typesafe Config with defaults in `openai-scala-client.conf`:
 - API keys via env vars: `OPENAI_SCALA_CLIENT_API_KEY`, `OPENAI_SCALA_CLIENT_ORG_ID`
-- Provider-specific keys: `ANTHROPIC_API_KEY`, `VERTEXAI_PROJECT_ID`, `GOOGLE_API_KEY`, etc.
+- Provider-specific keys: `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN_ALTERNATIVE`, `CLAUDE_CODE_OAUTH_TOKEN`, `VERTEXAI_PROJECT_ID`, `GOOGLE_API_KEY`, etc.
 - Timeout settings: `requestTimeoutSec`, `readTimeoutSec`, `connectTimeoutSec`, `pooledConnectionIdleTimeoutSec`
 - `models-supporting-json-schema` - List of models that support JSON schema structured output (GPT-5.x, GPT-4.x, O-series, Claude, Gemini, Grok, etc.)
 - `reasoning-effort-thinking-budget-mapping` - Maps reasoning effort levels (none/minimal/low/medium/high) to provider-specific thinking budgets (Gemini thinking_budget tokens, Anthropic budget_tokens)
@@ -174,12 +176,102 @@ Configuration uses Typesafe Config with defaults in `openai-scala-client.conf`:
 ### Creating a Service
 ```scala
 implicit val ec = ExecutionContext.global
-implicit val materializer = Materializer(ActorSystem())
 
 val service = OpenAIServiceFactory() // uses env vars
 // or
 val service = OpenAIServiceFactory(apiKey = "sk-...")
 ```
+
+Since the ws-client 1.0 engine-discovery migration (`io.cequence:ws-client-*:1.0.0`, a real
+Maven Central release since 2026-07 - no longer a SNAPSHOT, resolves in CI with no local-ivy
+dependency), EACH service created via the plain factories owns a dedicated ActorSystem (created
+eagerly, ~10 threads; its threads are daemon so a leaked service cannot block JVM exit).
+`service.close()` terminates both the HTTP client and that system. Build services ONCE and
+share the service instance - do NOT construct services per request. A caller-supplied
+Materializer is no longer accepted (or needed) by the factories. Timeouts are client-level:
+they ride in `TransportSettings` (factories take `timeouts: Option[Timeouts]`), NOT in
+`WsRequestContext` (which since ws-client 1.0 carries only per-request data: authHeaders,
+extraParams).
+
+**Akka backend, for now.** This project currently hard-wires its streaming API surface to Akka
+Streams - `createChatCompletionStreamed` etc. return `Source[T, akka.NotUsed]`, and every
+provider module depends on the Akka-flavored ws-client artifacts (`ws-client-core-akka`,
+`ws-client-play-akka`, `ws-client-play-akka-stream`). ws-client itself is no longer
+Akka-only: it also ships Pekko engines (`ws-client-core-pekko`, `ws-client-play-pekko`,
+`ws-client-play-pekko-stream`), backend-only engines with no actor system at all
+(`ws-client-jdk`, `ws-client-sttp`), and a family-neutral streaming core
+(`WSClientOutputStreamCore`, `java.util.concurrent.Flow.Publisher`-typed) that every engine
+implements natively. A live experiment (2026-07-14) swapped `ws-client-play-akka` →
+`ws-client-play-pekko` for **sync** calls with zero source changes (same FQCNs, engine loaded
+from the Pekko jar, ran on `pekko.actor.default-dispatcher` threads). **Streaming is
+currently family-locked**: this repo's streamed traits pin `Source[_, akka.NotUsed]` and ~15
+`akka.*` imports in `openai-core`/`openai-client-stream`, so a full Pekko (or backend-agnostic)
+swap needs a mechanical rename, not just a dependency bump. Expect this to be abstracted away
+in a future release - don't assume `Source`/`akka.NotUsed` in new public APIs if avoidable, and
+prefer routing new streaming code through the same choke points (`WSClientOutputStreamExtraAkka`)
+so the eventual swap stays mechanical.
+
+Engines are SITE-STATELESS since ws-client 1.0: an engine is just the HTTP client + pool +
+actor system; each SERVICE holds a `SiteBinding` (base URL, auth, error recovery, label) and
+feeds it into every call. To share ONE engine across MANY services - including across
+DIFFERENT providers:
+```scala
+import io.cequence.wsclient.service.spi.StreamedEngineRegistry
+
+val engine = StreamedEngineRegistry.outputStreamed() // one pool + one (daemon) actor system
+
+val openAI = OpenAIServiceFactory.withEngine(engine)            // api key from config/env
+val anthropic = AnthropicServiceFactory.withEngine(engine)      // api key from env
+val gemini = GeminiServiceFactory.withEngine(engine)            // api key from env
+// also: SonarServiceFactory.withEngine, VertexAIServiceFactory.batchPredictionWithEngine,
+// withEngine(engine, coreUrl, requestContext) on the OpenAI-shaped factories (custom
+// gateways), and .withStreaming.withEngine(...) for merged sync+streamed services
+
+anthropic.close() // a service on a shared engine does NOT close it; openAI keeps working
+engine.close()    // the one real teardown - close it once, when done with all services
+```
+The plain factories (`OpenAIServiceFactory()`, `AnthropicServiceFactory()` etc.) create a
+PRIVATE engine per service and close it with the service - semantics unchanged.
+
+**Timeouts override on a shared engine.** Timeouts/proxy are baked into the engine's HTTP
+client at construction (`TransportSettings(timeouts: Timeouts, proxyURL: Option[String])`,
+deliberately NOT overridable per-site/per-call - see `TransportSettings`'s scaladoc). All four
+`Timeouts` fields (`requestTimeout`/`readTimeout`/`connectTimeout`/`pooledConnectionIdleTimeout`)
+are **milliseconds** (`Option[Int]`) - only the `*Sec`-suffixed config-file keys
+(`requestTimeoutSec` etc., see `openai-scala-client.conf`) are in seconds; the config loader
+multiplies by 1000 before building `Timeouts`. A service that needs different client-level
+settings than the rest of a shared setup uses an engine COPY via
+`WSClientEngine#copy(transportSettings, reuseExecContext = true)`:
+```scala
+import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
+import io.cequence.wsclient.service.ws.Timeouts
+
+val engine = StreamedEngineRegistry.outputStreamed() // default timeouts, one actor system
+
+// same actor system, own HTTP client with longer timeouts - e.g. for a slow batch/VLM provider
+val slowEngine = engine.copy(
+  TransportSettings(timeouts = Timeouts(
+    requestTimeout = Some(300000),   // 300s
+    readTimeout = Some(300000),      // 300s
+    connectTimeout = Some(20000),    // 20s
+    pooledConnectionIdleTimeout = Some(60000) // 60s
+  ))
+)
+
+val fastService = OpenAIServiceFactory.withEngine(engine)
+val slowService = AnthropicServiceFactory.withEngine(slowEngine)
+
+slowService.close() // closes only slowEngine's own HTTP client, not the shared actor system
+fastService.close()
+engine.close()       // teardown the shared actor system last
+```
+`reuseExecContext = false` instead gives the copy its OWN actor system too (fully independent;
+only supported for discovery-created engines, throws for a caller-supplied one) - rarely
+needed, since the whole point of copying is usually to avoid paying for a second actor system.
+`withStreaming` factory composition builds ONE engine per provider (it used to build two). To
+embed in an existing akka app, build the engine with a ws-client direct constructor on YOUR
+materializer (e.g. `PlayWSStreamClientEngine()`) and pass it to `withEngine` - closing that
+service never touches your ActorSystem.
 
 ### Using Adapters
 ```scala
@@ -197,7 +289,10 @@ The Responses API provides a unified interface with tool support (file search, w
 ## Important Notes
 
 - Always close services with `service.close()` to release resources
-- Use implicit `ExecutionContext` and `Materializer` for async operations
+- Use an implicit `ExecutionContext` for async operations. `Materializer` is NOT needed to
+  construct or call a service (discovery-created engines own their execution environment) -
+  only bring one in if YOU are consuming a returned `Source` (e.g. `.runWith(Sink.foreach(...))`
+  on a streamed chat completion)
 - The library uses Play WS backend but is designed to be swappable
 - Function names match OpenAI API endpoint names in camelCase for consistency
 - Provider adapters may have limited feature support - check provider compatibility table in README
