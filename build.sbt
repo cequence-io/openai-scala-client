@@ -73,6 +73,14 @@ lazy val perplexity_sonar_client = (project in file("perplexity-sonar-client"))
   .dependsOn(core)
   .aggregate(core, client, client_stream)
 
+// subprocess transport (spawns the `claude` CLI) - no ws-client/HTTP engine involved; depends
+// on anthropic_client to reuse its Content/ContentBlock domain model + JSON formats for the
+// embedded Anthropic Messages API objects the CLI emits
+lazy val claude_agent_client = (project in file("claude-agent-client"))
+  .settings(commonSettings *)
+  .dependsOn(core, anthropic_client)
+  .aggregate(core, anthropic_client)
+
 lazy val count_tokens = (project in file("openai-count-tokens"))
   .settings(
     (commonSettings ++ Seq(definedTestNames in Test := Nil)) *
@@ -82,7 +90,8 @@ lazy val count_tokens = (project in file("openai-count-tokens"))
     anthropic_client,
     google_vertexai_client,
     perplexity_sonar_client,
-    google_gemini_client
+    google_gemini_client,
+    claude_agent_client
   )
 
 lazy val all = (project in file("openai-all"))
@@ -93,6 +102,7 @@ lazy val all = (project in file("openai-all"))
     google_vertexai_client,
     google_gemini_client,
     perplexity_sonar_client,
+    claude_agent_client,
     count_tokens
   )
 
@@ -114,14 +124,16 @@ lazy val examples = (project in file("openai-examples"))
     anthropic_client,
     google_vertexai_client,
     perplexity_sonar_client,
-    google_gemini_client
+    google_gemini_client,
+    claude_agent_client
   )
   .aggregate(
     client_stream,
     anthropic_client,
     google_vertexai_client,
     perplexity_sonar_client,
-    google_gemini_client
+    google_gemini_client,
+    claude_agent_client
   )
 
 // POM settings for Sonatype
