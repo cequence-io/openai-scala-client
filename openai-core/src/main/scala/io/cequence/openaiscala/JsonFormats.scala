@@ -128,7 +128,18 @@ object JsonFormats {
 
   implicit val toolMessageFormat: Format[ToolMessage] = Json.format[ToolMessage]
 
-  implicit val assistantMessageFormat: Format[AssistantMessage] = Json.format[AssistantMessage]
+  // Some OpenAI-compatible providers (e.g. gpt-oss on Bedrock mantle) can return
+  // "content": null in a completion - typically a reasoning-only response where the model
+  // decided to output nothing. A null/absent content is read as an empty string instead of
+  // failing the whole response parse; the write side is unchanged (content always written).
+  implicit val assistantMessageFormat: Format[AssistantMessage] = (
+    (__ \ "content").formatNullable[String] and
+      (__ \ "name").formatNullable[String] and
+      (__ \ "refusal").formatNullable[String]
+  )(
+    (content, name, refusal) => AssistantMessage(content.getOrElse(""), name, refusal),
+    (m: AssistantMessage) => (Some(m.content), m.name, m.refusal)
+  )
 
   implicit val urlCitationFormat: Format[UrlCitation] = Json.format[UrlCitation]
   implicit val annotationFormat: Format[Annotation] = Json.format[Annotation]
