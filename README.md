@@ -52,6 +52,7 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 | [Google Vertex AI](https://cloud.google.com/vertex-ai) | Full                   | Yes                               | Yes                     | Gemini models |
 | [Grok](https://x.ai/) | Full                   |                                   |                         | x.AI models |
 | [Groq](https://wow.groq.com/) | Only JSON object mode  |                                   | Yes                     | Fast inference |
+| [MiniMax](https://www.minimax.io/) | Only JSON object mode  |                                   |                         | Chinese provider (global & China) |
 | [Mistral](https://mistral.ai/) | Only JSON object mode  |                                   |                         | Open-source leader |
 | [Novita](https://novita.ai/) | Only JSON object mode  |                                   |                         | Cloud provider |
 | [Octo AI](https://octo.ai/) | Only JSON object mode  |                                   |                         | Cloud provider (obsolete) |
@@ -281,6 +282,23 @@ or with streaming
 ```scala
   val service = OpenAIChatCompletionServiceFactory.withStreaming(
     coreUrl = "http://localhost:11434/v1/"
+  )
+```
+
+15. [MiniMax](https://www.minimax.io/) - requires `MINIMAX_API_KEY`
+```scala
+  // global endpoint
+  val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.minimax)
+  // or with streaming
+  val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.minimax)
+
+  // China endpoint (api.minimaxi.com)
+  val chinaService = OpenAIChatCompletionServiceFactory(ChatProviderSettings.minimaxChina)
+```
+   MiniMax also exposes an Anthropic-compatible endpoint, reachable via the Anthropic client's escape hatch:
+```scala
+  val anthropicService = AnthropicServiceFactory.customInstance(
+    coreUrl = "https://api.minimax.io/anthropic/" // or "https://api.minimaxi.com/anthropic/" for China
   )
 ```
 
