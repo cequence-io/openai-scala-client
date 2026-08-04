@@ -33,7 +33,10 @@ import com.knuddels.jtokkit.api.ModelType
  */
 trait OpenAICountTokensHelper {
 
-  private lazy val registry = Encodings.newLazyEncodingRegistry()
+  // Shared JVM-wide registry (see the companion object): an encoding is large (o200k_base holds
+  // ~200K byte-array keys plus their lookup maps, i.e. tens of MB) and thread-safe, so a
+  // per-instance registry would needlessly multiply that footprint per mixing class instance.
+  private def registry = OpenAICountTokensHelper.sharedEncodingRegistry
 
   def countMessageTokens(
     model: String,
@@ -195,4 +198,14 @@ trait OpenAICountTokensHelper {
     val encoding = registry.getEncodingForModel(modelType.getOrElse(ModelType.GPT_4O))
     encoding.countTokens(text)
   }
+}
+
+object OpenAICountTokensHelper {
+
+  /**
+   * One lazy encoding registry per JVM. Encodings and the registry are thread-safe (see the
+   * jtokkit docs), and each encoding retains a substantial byte-array/token map, so all
+   * instances mixing in [[OpenAICountTokensHelper]] share this single registry.
+   */
+  private lazy val sharedEncodingRegistry = Encodings.newLazyEncodingRegistry()
 }
