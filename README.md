@@ -297,8 +297,13 @@ or with streaming
 ```
    MiniMax also exposes an Anthropic-compatible endpoint, reachable via the Anthropic client's escape hatch:
 ```scala
+  import io.cequence.wsclient.domain.WsRequestContext
+
   val anthropicService = AnthropicServiceFactory.customInstance(
-    coreUrl = "https://api.minimax.io/anthropic/" // or "https://api.minimaxi.com/anthropic/" for China
+    coreUrl = "https://api.minimax.io/anthropic/v1/", // or "https://api.minimaxi.com/anthropic/v1/" for China
+    requestContext = WsRequestContext(
+      authHeaders = Seq(("Authorization", s"Bearer ${sys.env("MINIMAX_API_KEY")}"))
+    )
   )
 ```
 
