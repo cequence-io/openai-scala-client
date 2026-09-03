@@ -102,7 +102,8 @@ trait ChatCompletionBodyMaker {
     ModelId.o4_mini_2025_04_16
   )
 
-  // GPT-5.x model prefixes - order matters (longer prefixes first)
+  // GPT-5.x/6 model prefixes - order matters (longer prefixes first)
+  private val gpt6Prefix = "gpt-6"
   private val gpt5_6Prefix = "gpt-5.6"
   private val gpt5_5Prefix = "gpt-5.5"
   private val gpt5_4Prefix = "gpt-5.4"
@@ -133,6 +134,10 @@ trait ChatCompletionBodyMaker {
         ChatCompletionSettingsConversions.o1Preview(settings)
       else if (regularOModels.contains(settings.model))
         ChatCompletionSettingsConversions.o(settings)
+      else if (settings.model == ModelId.chat_latest)
+        ChatCompletionSettingsConversions.chatLatest(settings)
+      else if (settings.model.startsWith(gpt6Prefix))
+        ChatCompletionSettingsConversions.gpt6(settings)
       else if (settings.model.startsWith(gpt5_6Prefix))
         ChatCompletionSettingsConversions.gpt5_6(settings)
       else if (settings.model.startsWith(gpt5_5Prefix))

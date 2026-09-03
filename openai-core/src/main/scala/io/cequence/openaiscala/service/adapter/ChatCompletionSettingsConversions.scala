@@ -78,6 +78,17 @@ object ChatCompletionSettingsConversions {
       warning = true
     )
 
+    val reasoningEffortMediumOnly: FieldConversionDef = FieldConversionDef(
+      settings =>
+        settings.reasoning_effort.isDefined && !settings.reasoning_effort
+          .contains(ReasoningEffort.medium),
+      _.copy(reasoning_effort = None),
+      Some(settings =>
+        s"${settings.model} model doesn't support reasoning_effort values other than 'medium', converting to None (model default)."
+      ),
+      warning = true
+    )
+
     // Versions that only apply when reasoning_effort is not None
     val temperatureOneOnlyWithReasoning: FieldConversionDef = FieldConversionDef(
       settings =>
@@ -299,6 +310,27 @@ object ChatCompletionSettingsConversions {
       logProbsUnsupported,
       reasoningEffortMaxToXHigh,
       reasoningEffortMinimalToLow
+    )
+  )
+
+  // GPT-6 (Astra) - PRE-REGISTERED 2026-09-03, not yet served by the API, so NOT verified live.
+  // The docs page lists reasoning_effort low/medium/high/xhigh/max and no sampling params;
+  // we assume the GPT-5.6 reasoning-first behaviour (all sampling params rejected, 'max'
+  // Responses-API-only, 'minimal' rejected) until a live probe confirms otherwise.
+  val gpt6: SettingsConversion = gpt5_6
+
+  // 'chat-latest' is a rolling ChatGPT-style alias. Verified against the live API 2026-09-02:
+  // max_tokens must be sent as max_completion_tokens; temperature/top_p/presence_penalty/
+  // frequency_penalty/logprobs all return 400; reasoning_effort accepts only 'medium'.
+  val chatLatest: SettingsConversion = generic(
+    Seq(
+      maxTokensToMaxCompletionTokens,
+      temperatureOneOnly,
+      topPOneOnly,
+      presencePenaltyZeroOnly,
+      frequencyPenaltyZeroOnly,
+      logProbsUnsupported,
+      reasoningEffortMediumOnly
     )
   )
 

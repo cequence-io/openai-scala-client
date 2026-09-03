@@ -116,6 +116,8 @@ Streaming is provided as an extension via the `openai-client-stream` module:
 
 ### Model Parameter Conversions
 `ChatCompletionSettingsConversions` (in openai-core) automatically adjusts unsupported parameters per model:
+- **GPT-6 (Astra)**: Pre-registered 2026-09-03 from the docs page, not yet on the API; routed to the GPT-5.6 conversion (all sampling params restricted, `max`→`xhigh` on chat completions, `minimal`→`low`) until verified live
+- **GPT-5.6**: Reasoning-first, all sampling params always restricted; `reasoning_effort` `max` is Responses-API-only (downgraded to `xhigh` on chat completions), `minimal` downgraded to `low`
 - **GPT-5.4**: `max_tokens→max_completion_tokens`, `logprobs` always unsupported; `temperature`, `top_p`, `presence_penalty`, `frequency_penalty` restricted only when `reasoning_effort` is active
 - **GPT-5.1/5.2**: Same as GPT-5.4 but `presence_penalty` and `frequency_penalty` always restricted
 - **GPT-5.3**: All sampling params always restricted (temperature=1, top_p=1, penalties=0, no logprobs)
