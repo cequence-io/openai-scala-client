@@ -975,7 +975,7 @@ class MyCompletionService @Inject() (
       serviceModels = Map(
         groqService -> Seq(NonOpenAIModelId.llama_3_3_70b_versatile),
         anthropicService -> Seq(
-          NonOpenAIModelId.claude_fable_5,
+          NonOpenAIModelId.claude_fable_5_1,
           NonOpenAIModelId.claude_sonnet_4_6,
           NonOpenAIModelId.claude_haiku_4_5
         )

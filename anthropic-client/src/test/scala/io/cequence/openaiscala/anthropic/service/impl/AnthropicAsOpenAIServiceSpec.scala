@@ -1,5 +1,7 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
+import io.cequence.openaiscala.anthropic.domain.settings.{OutputEffort, ThinkingSettings}
+import io.cequence.openaiscala.anthropic.domain.tools.ToolChoice
 import io.cequence.openaiscala.domain.NonOpenAIModelId
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.{AssistantToolMessage, FunctionCallSpec}
@@ -147,6 +149,133 @@ class AnthropicAsOpenAIServiceSpec extends AnyWordSpec with Matchers {
       )
 
       out.max_tokens shouldBe 500
+    }
+  }
+
+  "Claude Fable 5.1" should {
+
+    "map reasoning_effort=xhigh to adaptive thinking + OutputEffort.xhigh and drop temperature/top_p" in {
+      val out = toAnthropicSettings(
+        CreateChatCompletionSettings(
+          model = NonOpenAIModelId.claude_fable_5_1,
+          reasoning_effort = Some(ReasoningEffort.xhigh),
+          temperature = Some(0.2),
+          top_p = Some(0.9)
+        )
+      )
+
+      out.thinking shouldBe Some(ThinkingSettings.adaptive)
+      out.output_config.flatMap(_.effort) shouldBe Some(OutputEffort.xhigh)
+      out.temperature shouldBe None
+      out.top_p shouldBe None
+    }
+
+    "ignore an explicit thinking budget and use adaptive thinking with no output_config effort" in {
+      val out = toAnthropicSettings(
+        CreateChatCompletionSettings(model = NonOpenAIModelId.claude_fable_5_1)
+          .setAnthropicThinkingBudgetTokens(4096)
+      )
+
+      out.thinking shouldBe Some(ThinkingSettings.adaptive)
+      out.thinking.flatMap(_.budget_tokens) shouldBe None
+      out.output_config.flatMap(_.effort) shouldBe None
+    }
+
+    "use the model's 128k real output cap when max_tokens is unset (bare and Bedrock-prefixed ids)" in {
+      val out = toAnthropicSettings(
+        CreateChatCompletionSettings(model = NonOpenAIModelId.claude_fable_5_1)
+      )
+      out.max_tokens shouldBe 128000
+
+      val bedrockOut = toAnthropicSettings(
+        CreateChatCompletionSettings(model = "eu." + NonOpenAIModelId.bedrock_claude_fable_5_1)
+      )
+      bedrockOut.max_tokens shouldBe 128000
+    }
+
+    "downgrade a forced tool_choice to auto plus a system instruction" in {
+      val (toolChoice, extraSystemMessages) =
+        toAnthropicToolChoice(
+          NonOpenAIModelId.claude_fable_5_1,
+          Some("get_weather"),
+          Some(true)
+        )
+
+      toolChoice shouldBe ToolChoice.Auto(Some(true))
+      extraSystemMessages should have size 1
+      extraSystemMessages.head.content should include("get_weather")
+    }
+
+    "downgrade a forced tool_choice on a Bedrock-prefixed Fable 5.1 id too" in {
+      val (toolChoice, extraSystemMessages) =
+        toAnthropicToolChoice(
+          "us." + NonOpenAIModelId.bedrock_claude_fable_5_1,
+          Some("get_weather"),
+          None
+        )
+
+      toolChoice shouldBe ToolChoice.Auto(None)
+      extraSystemMessages should have size 1
+      extraSystemMessages.head.content should include("get_weather")
+    }
+
+    "still support forced tool_choice on Claude Fable 5 (predecessor)" in {
+      val (toolChoice, extraSystemMessages) =
+        toAnthropicToolChoice(NonOpenAIModelId.claude_fable_5, Some("get_weather"), None)
+
+      toolChoice shouldBe ToolChoice.Tool("get_weather", None)
+      extraSystemMessages shouldBe empty
+    }
+
+    "leave tool_choice as auto with no extra system messages when no tool is forced" in {
+      val (toolChoice, extraSystemMessages) =
+        toAnthropicToolChoice(NonOpenAIModelId.claude_fable_5_1, None, None)
+
+      toolChoice shouldBe ToolChoice.Auto(None)
+      extraSystemMessages shouldBe empty
+    }
+  }
+
+  "Claude Opus 5" should {
+
+    "map reasoning_effort=xhigh to adaptive thinking + OutputEffort.xhigh and drop temperature/top_p" in {
+      val out = toAnthropicSettings(
+        CreateChatCompletionSettings(
+          model = NonOpenAIModelId.claude_opus_5,
+          reasoning_effort = Some(ReasoningEffort.xhigh),
+          temperature = Some(0.2),
+          top_p = Some(0.9)
+        )
+      )
+
+      out.thinking shouldBe Some(ThinkingSettings.adaptive)
+      out.output_config.flatMap(_.effort) shouldBe Some(OutputEffort.xhigh)
+      out.temperature shouldBe None
+      out.top_p shouldBe None
+    }
+
+    "ignore an explicit thinking budget and use adaptive thinking with no output_config effort" in {
+      val out = toAnthropicSettings(
+        CreateChatCompletionSettings(model = NonOpenAIModelId.claude_opus_5)
+          .setAnthropicThinkingBudgetTokens(4096)
+      )
+
+      out.thinking shouldBe Some(ThinkingSettings.adaptive)
+      out.thinking.flatMap(_.budget_tokens) shouldBe None
+      out.output_config.flatMap(_.effort) shouldBe None
+    }
+
+    "still support forced tool_choice and use the model's 128k real output cap when max_tokens is unset" in {
+      val (toolChoice, extraSystemMessages) =
+        toAnthropicToolChoice(NonOpenAIModelId.claude_opus_5, Some("get_weather"), None)
+
+      toolChoice shouldBe ToolChoice.Tool("get_weather", None)
+      extraSystemMessages shouldBe empty
+
+      val out = toAnthropicSettings(
+        CreateChatCompletionSettings(model = NonOpenAIModelId.claude_opus_5)
+      )
+      out.max_tokens shouldBe 128000
     }
   }
 }

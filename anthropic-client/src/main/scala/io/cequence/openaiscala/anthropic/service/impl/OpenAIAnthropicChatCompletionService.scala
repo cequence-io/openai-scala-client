@@ -4,10 +4,7 @@ import akka.NotUsed
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{TextBlock, ToolUseBlock}
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlockBase
-import io.cequence.openaiscala.anthropic.domain.tools.{
-  CustomTool,
-  ToolChoice => AnthropicToolChoice
-}
+import io.cequence.openaiscala.anthropic.domain.tools.CustomTool
 import io.cequence.openaiscala.anthropic.domain.{
   MessageBatch,
   MessageBatchProcessingStatus,
@@ -115,21 +112,20 @@ private[service] class OpenAIAnthropicChatCompletionService(
 
     val disableParallel = settings.parallel_tool_calls.map(!_)
 
-    val anthropicToolChoice = responseToolChoice match {
-      case Some(name) =>
-        Some(AnthropicToolChoice.Tool(name, disableParallelToolUse = disableParallel))
-      case None =>
-        Some(AnthropicToolChoice.Auto(disableParallelToolUse = disableParallel))
-    }
+    val (anthropicToolChoice, extraSystemMessages) =
+      toAnthropicToolChoice(settings.model, responseToolChoice, disableParallel)
 
     val anthropicSettings = toAnthropicSettings(settings).copy(
       tools = anthropicTools,
-      tool_choice = anthropicToolChoice
+      tool_choice = Some(anthropicToolChoice)
     )
 
     underlying
       .createMessage(
-        toAnthropicSystemMessages(messages.filter(_.isSystem), settings) ++
+        toAnthropicSystemMessages(
+          messages.filter(_.isSystem) ++ extraSystemMessages,
+          settings
+        ) ++
           toAnthropicMessages(messages.filter(!_.isSystem), settings),
         anthropicSettings
       )

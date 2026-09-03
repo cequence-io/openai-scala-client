@@ -42,7 +42,9 @@ trait AnthropicServiceConsts {
    * freshly-verified numbers for) keep the flat 2048 fallback rather than a guessed value.
    */
   private val maxOutputTokensByModel: Seq[(String, Int)] = Seq(
+    NonOpenAIModelId.claude_fable_5_1 -> 128000,
     NonOpenAIModelId.claude_fable_5 -> 128000,
+    NonOpenAIModelId.claude_opus_5 -> 128000,
     NonOpenAIModelId.claude_opus_4_8 -> 128000,
     NonOpenAIModelId.claude_opus_4_7 -> 128000,
     NonOpenAIModelId.claude_opus_4_6 -> 128000,

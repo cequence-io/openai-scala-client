@@ -33,6 +33,7 @@ import io.cequence.openaiscala.anthropic.domain.settings.{
   ThinkingSettings
 }
 import io.cequence.openaiscala.anthropic.domain.{CacheControl, Content, Message, OutputFormat}
+import io.cequence.openaiscala.anthropic.domain.tools.ToolChoice
 import io.cequence.openaiscala.domain.response.{
   ChatCompletionChoiceChunkInfo,
   ChatCompletionChoiceInfo,
@@ -316,8 +317,12 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
   // Short ids are substrings of their Bedrock equivalents
   // (e.g. "anthropic.claude-opus-4-7-v1" contains "claude-opus-4-7"),
   // so a `contains` check covers both direct API and Bedrock model IDs.
+  // NOTE: "claude-fable-5" is a substring of "claude-fable-5-1", so it already matches Fable
+  // 5.1 via `contains`; claude_fable_5_1 is still listed explicitly for clarity.
   private val outputEffortModels: Set[String] = Set(
+    NonOpenAIModelId.claude_fable_5_1,
     NonOpenAIModelId.claude_fable_5,
+    NonOpenAIModelId.claude_opus_5,
     NonOpenAIModelId.claude_opus_4_8,
     NonOpenAIModelId.claude_opus_4_7,
     NonOpenAIModelId.claude_opus_4_6,
@@ -328,7 +333,9 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
   // Models that accept output_config.effort = xhigh - narrower than outputEffortModels:
   // Opus 4.6 / Sonnet 4.6 reject xhigh though they do accept max (live-verified 2026-07-11).
   private val xhighOutputEffortModels: Set[String] = Set(
+    NonOpenAIModelId.claude_fable_5_1,
     NonOpenAIModelId.claude_fable_5,
+    NonOpenAIModelId.claude_opus_5,
     NonOpenAIModelId.claude_opus_4_8,
     NonOpenAIModelId.claude_opus_4_7,
     NonOpenAIModelId.claude_sonnet_5
@@ -338,7 +345,9 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
   // (temperature, top_p, top_k) are fully removed - sending them returns a 400.
   // Adaptive thinking is the only thinking mode.
   private val adaptiveOnlyThinkingModels: Set[String] = Set(
+    NonOpenAIModelId.claude_fable_5_1,
     NonOpenAIModelId.claude_fable_5,
+    NonOpenAIModelId.claude_opus_5,
     NonOpenAIModelId.claude_opus_4_8,
     NonOpenAIModelId.claude_opus_4_7,
     NonOpenAIModelId.claude_sonnet_5
@@ -348,6 +357,51 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
     val m = model.toLowerCase
     adaptiveOnlyThinkingModels.exists(m.contains)
   }
+
+  // Models where forced tool use is removed: tool_choice of type "any" or "tool" returns
+  // 400 ("tool_choice: type "tool" and "any" are not supported for this model."). Only
+  // "auto" / "none" are accepted; disable_parallel_tool_use still works with "auto".
+  // Same `contains` convention as above so Bedrock/Vertex-prefixed ids match too.
+  // NOTE: "claude-fable-5" (Fable 5) is deliberately NOT in this set - Fable 5 still supports
+  // forced tool_choice, only its successor Fable 5.1 dropped it.
+  private val forcedToolChoiceUnsupportedModels: Set[String] = Set(
+    NonOpenAIModelId.claude_fable_5_1
+  )
+
+  def supportsForcedToolChoice(model: String): Boolean = {
+    val m = model.toLowerCase
+    !forcedToolChoiceUnsupportedModels.exists(m.contains)
+  }
+
+  /**
+   * Maps the OpenAI-style `responseToolChoice` (a forced tool name, or None for auto) to
+   * Anthropic's ToolChoice. On models that reject forced tool use (Fable 5.1) a forced tool
+   * name is downgraded to `auto` plus a system-prompt instruction naming the tool, which is
+   * Anthropic's recommended replacement. Returns the tool choice and any extra system messages
+   * that must be appended to the caller's system messages.
+   */
+  def toAnthropicToolChoice(
+    model: String,
+    responseToolChoice: Option[String],
+    disableParallelToolUse: Option[Boolean]
+  ): (ToolChoice, Seq[SystemMessage]) =
+    responseToolChoice match {
+      case Some(name) if supportsForcedToolChoice(model) =>
+        (ToolChoice.Tool(name, disableParallelToolUse), Nil)
+
+      case Some(name) =>
+        logger.warn(
+          s"Model '$model' does not support forced tool_choice (type 'tool'/'any' returns 400). " +
+            s"Downgrading to tool_choice=auto with a system instruction to call tool '$name'."
+        )
+        (
+          ToolChoice.Auto(disableParallelToolUse),
+          Seq(SystemMessage(s"You must respond by calling the tool named '$name'."))
+        )
+
+      case None =>
+        (ToolChoice.Auto(disableParallelToolUse), Nil)
+    }
 
   /**
    * Models that support the adaptive thinking + output_config.effort parameter. For these we
@@ -373,8 +427,9 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
     case ReasoningEffort.medium => Some(OutputEffort.medium)
     case ReasoningEffort.high   => Some(OutputEffort.high)
     case ReasoningEffort.xhigh  =>
-      // OutputEffort.xhigh is supported only on Opus 4.7+ (Opus 4.7, Opus 4.8), Fable 5, and
-      // Sonnet 5; downgrade to high on Opus 4.6 / Sonnet 4.6 to avoid a remote 400 from Anthropic.
+      // OutputEffort.xhigh is supported only on Opus 4.7+ (Opus 4.7, Opus 4.8, Opus 5), Fable
+      // 5/5.1, and Sonnet 5; downgrade to high on Opus 4.6 / Sonnet 4.6 to avoid a remote 400
+      // from Anthropic.
       val m = model.toLowerCase
       if (xhighOutputEffortModels.exists(m.contains)) {
         Some(OutputEffort.xhigh)
@@ -401,7 +456,7 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
     // Priority:
     //   1. Explicit anthropicThinkingBudgetTokens -> legacy manual thinking
     //      (preserves pre-existing behavior; user explicitly chose this mode).
-    //      Exception: on adaptive-only models (Fable 5, Opus 4.8/4.7) budget_tokens
+    //      Exception: on adaptive-only models (Fable 5/5.1, Opus 5/4.8/4.7) budget_tokens
     //      returns a 400, so we switch to adaptive thinking instead.
     //   2. Model supports output_config.effort and reasoning_effort is set ->
     //      adaptive thinking + OutputEffort.
@@ -454,7 +509,7 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
       } else
         None
 
-    // Adaptive-only models (Fable 5, Opus 4.8/4.7) reject temperature/top_p/top_k with a 400
+    // Adaptive-only models (Fable 5/5.1, Opus 5/4.8/4.7) reject temperature/top_p/top_k with a 400
     // - drop them entirely. Otherwise, when thinking is enabled, temperature must be 1.0.
     val temperature =
       if (adaptiveOnly) {
@@ -493,7 +548,7 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
 
     // When the caller doesn't set max_tokens, fall back to the MODEL's real output cap
     // (defaultMaxTokens) rather than a flat constant - adaptive-thinking models (Sonnet 4.6,
-    // Fable 5, ...) never send budget_tokens, so nothing below catches an unset max_tokens
+    // Fable 5/5.1, ...) never send budget_tokens, so nothing below catches an unset max_tokens
     // being too small; live-verified: an 85-entity JSON extraction on claude-sonnet-4-6 was
     // silently truncated mid-JSON at exactly 2048 tokens (the old flat default) instead of
     // using the model's real 128k-token cap.

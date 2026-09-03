@@ -93,7 +93,7 @@ final case class OutputConfig(
 
 sealed trait OutputEffort extends EnumValue
 
-// The effort parameter is supported by Claude Fable 5, Opus 4.8/4.7/4.6, Sonnet 5, and
+// The effort parameter is supported by Claude Fable 5/5.1, Opus 5/4.8/4.7/4.6, Sonnet 5, and
 // Sonnet 4.6.
 object OutputEffort {
   case object low extends OutputEffort
@@ -101,7 +101,7 @@ object OutputEffort {
   case object high extends OutputEffort
 
   // Claude always thinks deeply with extended exploration.
-  // Fable 5, Opus 4.7+, and Sonnet 5 only - requests using xhigh on other models
+  // Fable 5/5.1, Opus 5/4.7+, and Sonnet 5 only - requests using xhigh on other models
   // (e.g. Opus 4.6, Sonnet 4.6) return an error (live-verified 2026-07-11).
   case object xhigh extends OutputEffort
 
