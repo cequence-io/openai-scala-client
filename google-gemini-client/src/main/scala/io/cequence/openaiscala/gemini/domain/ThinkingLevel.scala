@@ -7,7 +7,7 @@ sealed trait ThinkingLevel extends EnumValue
 object ThinkingLevel {
   case object THINKING_LEVEL_UNSPECIFIED extends ThinkingLevel
   case object MINIMAL
-      extends ThinkingLevel // Gemini 3 Flash / Flash-Lite / Flash-Image only (not Pro)
+      extends ThinkingLevel // Gemini 3 Flash / Flash-Lite / Flash-Image only (not Pro, not Gemini 3.7 Flash)
   case object LOW extends ThinkingLevel
   case object MEDIUM extends ThinkingLevel
   case object HIGH extends ThinkingLevel

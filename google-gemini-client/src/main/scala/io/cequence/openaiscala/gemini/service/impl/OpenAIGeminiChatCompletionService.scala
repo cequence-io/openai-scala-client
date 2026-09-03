@@ -627,8 +627,9 @@ private[service] class OpenAIGeminiChatCompletionService(
    * Converts OpenAI's reasoning_effort to Gemini's ThinkingConfig.
    *
    * Gemini 3.x models use `thinkingLevel` (MINIMAL/LOW/MEDIUM/HIGH); MINIMAL is only valid on
-   * Flash variants, not Pro. Gemini 2.5 uses `thinkingBudget` (token count) from config.
-   * Setting both fields on Gemini 3 can return an error, so only one is populated.
+   * Flash variants, not Pro, and not on Gemini 3.7 Flash (which dropped it). Gemini 2.5 uses
+   * `thinkingBudget` (token count) from config. Setting both fields on Gemini 3 can return an
+   * error, so only one is populated.
    *
    * @return
    *   ThinkingConfig, or None if reasoning_effort is None or model doesn't support thinking
@@ -652,18 +653,33 @@ private[service] class OpenAIGeminiChatCompletionService(
   private def isGemini3(model: String): Boolean =
     model.startsWith("gemini-3-") || model.startsWith("gemini-3.")
 
-  // Gemini 3 Pro does NOT support MINIMAL (min level is LOW). All Flash variants do.
+  // Gemini 3 Pro does NOT support MINIMAL (min level is LOW). Most Flash variants do, except
+  // Gemini 3.7 Flash, which also dropped it (see minimalThinkingLevelUnsupportedPrefixes).
   private def isGemini3Pro(model: String): Boolean =
     isGemini3(model) && model.contains("-pro") && !model.contains("image")
+
+  // Gemini 3.7 Flash dropped the MINIMAL thinking level (400: "Thinking level MINIMAL is not
+  // supported for this model", live-verified 2026-09-02); 3.6 Flash and earlier Flash
+  // variants still accept it. Pro never did. Extend this as further releases drop it.
+  private val minimalThinkingLevelUnsupportedPrefixes: Seq[String] = Seq("gemini-3.7")
+
+  private def supportsMinimalThinkingLevel(model: String): Boolean =
+    !isGemini3Pro(model) && !minimalThinkingLevelUnsupportedPrefixes.exists(model.startsWith)
 
   private def toThinkingLevelConfig(
     model: String,
     effort: ReasoningEffort
   ): Option[ThinkingConfig] = {
-    val pro = isGemini3Pro(model)
     val level: ThinkingLevel = effort match {
       case ReasoningEffort.none | ReasoningEffort.minimal =>
-        if (pro) ThinkingLevel.LOW else ThinkingLevel.MINIMAL
+        if (supportsMinimalThinkingLevel(model))
+          ThinkingLevel.MINIMAL
+        else {
+          logger.warn(
+            s"Model '$model' does not support thinking level MINIMAL; mapping reasoning_effort '${effort.toString.toLowerCase}' to LOW instead."
+          )
+          ThinkingLevel.LOW
+        }
       case ReasoningEffort.low    => ThinkingLevel.LOW
       case ReasoningEffort.medium => ThinkingLevel.MEDIUM
       case ReasoningEffort.high | ReasoningEffort.xhigh | ReasoningEffort.max =>

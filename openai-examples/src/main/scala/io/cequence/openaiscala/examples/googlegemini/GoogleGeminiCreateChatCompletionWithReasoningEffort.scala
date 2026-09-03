@@ -13,7 +13,7 @@ import scala.concurrent.Future
  * adapter using the reasoning_effort parameter.
  *
  * For Gemini 3.x models the reasoning_effort is converted to Gemini's thinkingLevel:
- *   - none/minimal -> MINIMAL (Flash variants; Pro floors at LOW)
+ *   - none/minimal -> MINIMAL (most Flash variants; Pro and Gemini 3.7 Flash floor at LOW)
  *   - low -> LOW
  *   - medium -> MEDIUM
  *   - high/xhigh/max -> HIGH
@@ -28,8 +28,8 @@ object GoogleGeminiCreateChatCompletionWithReasoningEffort
     extends ExampleBase[OpenAIChatCompletionService] {
 
   private val settings = CreateChatCompletionSettings(
-    model = NonOpenAIModelId.gemini_3_6_flash,
-    // temperature/top_p/top_k are deprecated and ignored as of Gemini 3.6
+    model = NonOpenAIModelId.gemini_3_7_flash,
+    // temperature/top_p/top_k are deprecated and ignored as of Gemini 3.6+
     max_tokens = Some(10000)
   )
 
@@ -50,7 +50,9 @@ object GoogleGeminiCreateChatCompletionWithReasoningEffort
       response1 <- service.createChatCompletion(
         messages,
         settings.copy(
-          // Converted to thinkingLevel: MINIMAL - Gemini 3.x cannot fully disable thinking
+          // Gemini 3.x cannot fully disable thinking. Gemini 3.7 Flash dropped MINIMAL, so
+          // this is converted to thinkingLevel: LOW (a warning is logged); on 3.6 Flash and
+          // earlier Flash variants it would still map to MINIMAL.
           reasoning_effort = Some(ReasoningEffort.none)
         )
       )
@@ -70,7 +72,8 @@ object GoogleGeminiCreateChatCompletionWithReasoningEffort
       response2 <- service.createChatCompletion(
         messages,
         settings.copy(
-          // Converted to thinkingLevel: MINIMAL
+          // Converted to thinkingLevel: LOW on Gemini 3.7 Flash (MINIMAL is not supported and
+          // a warning is logged); on 3.6 Flash and earlier Flash variants this maps to MINIMAL.
           reasoning_effort = Some(ReasoningEffort.minimal)
         )
       )
