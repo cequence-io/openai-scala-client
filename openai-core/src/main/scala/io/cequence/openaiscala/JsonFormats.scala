@@ -137,7 +137,11 @@ object JsonFormats {
       (__ \ "name").formatNullable[String] and
       (__ \ "refusal").formatNullable[String]
   )(
-    (content, name, refusal) => AssistantMessage(content.getOrElse(""), name, refusal),
+    (
+      content,
+      name,
+      refusal
+    ) => AssistantMessage(content.getOrElse(""), name, refusal),
     (m: AssistantMessage) => (Some(m.content), m.name, m.refusal)
   )
 

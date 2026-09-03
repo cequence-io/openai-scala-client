@@ -117,6 +117,8 @@ object ModelId {
   val text_moderation_latest = "text-moderation-latest"
   val text_moderation_stable = "text-moderation-stable"
   val text_moderation_007 = "text-moderation-007"
+  val omni_moderation_latest = "omni-moderation-latest"
+  val omni_moderation_2024_09_26 = "omni-moderation-2024-09-26"
 
   // Embeddings
   val text_embedding_ada_002 = "text-embedding-ada-002"
@@ -128,14 +130,38 @@ object ModelId {
   val audio_transcribe_deprecated = "audio-transcribe-deprecated"
   val whisper_1 = "whisper-1"
   val whisper_1_2 = "whisper-1.2"
+  val tts_1 = "tts-1"
   val tts_1_hd = "tts-1-hd"
   val tts_1_1106 = "tts-1-1106"
   val tts_1_hd_1106 = "tts-1-hd-1106"
   val canary_tts = "canary-tts"
   val canary_whisper = "canary-whisper"
 
+  val gpt_4o_mini_search_preview_2025_03_11 = "gpt-4o-mini-search-preview-2025-03-11"
+  val gpt_4o_search_preview_2025_03_11 = "gpt-4o-search-preview-2025-03-11"
+  val gpt_4o_transcribe = "gpt-4o-transcribe"
   val gpt_4o_mini_transcribe = "gpt-4o-mini-transcribe"
+  val gpt_4o_mini_transcribe_2025_03_20 = "gpt-4o-mini-transcribe-2025-03-20"
+  val gpt_4o_mini_transcribe_2025_12_15 = "gpt-4o-mini-transcribe-2025-12-15"
   val gpt_4o_transcribe_diarize = "gpt-4o-transcribe-diarize"
+  val gpt_4o_mini_tts = "gpt-4o-mini-tts"
+  val gpt_4o_mini_tts_2025_03_20 = "gpt-4o-mini-tts-2025-03-20"
+  val gpt_4o_mini_tts_2025_12_15 = "gpt-4o-mini-tts-2025-12-15"
+  val gpt_transcribe = "gpt-transcribe"
+  val gpt_live_transcribe = "gpt-live-transcribe"
+  val gpt_audio = "gpt-audio"
+  val gpt_audio_1_5 = "gpt-audio-1.5"
+  val gpt_audio_2025_08_28 = "gpt-audio-2025-08-28"
+  val gpt_audio_mini_2025_12_15 = "gpt-audio-mini-2025-12-15"
+  val gpt_realtime = "gpt-realtime"
+  val gpt_realtime_1_5 = "gpt-realtime-1.5"
+  val gpt_realtime_2 = "gpt-realtime-2"
+  val gpt_realtime_2_1 = "gpt-realtime-2.1"
+  val gpt_realtime_2_1_mini = "gpt-realtime-2.1-mini"
+  val gpt_realtime_2025_08_28 = "gpt-realtime-2025-08-28"
+  val gpt_realtime_mini_2025_12_15 = "gpt-realtime-mini-2025-12-15"
+  val gpt_realtime_translate = "gpt-realtime-translate"
+  val gpt_realtime_whisper = "gpt-realtime-whisper"
   val gpt_4o_mini_audio_preview = "gpt-4o-mini-audio-preview"
   val gpt_4o_mini_vision_preview = "gpt-4o-mini-vision-preview"
   val gpt_4o_mini_voice_preview = "gpt-4o-mini-voice-preview"
@@ -159,8 +185,10 @@ object ModelId {
   val dall_e_3 = "dall-e-3"
   val dall_e_2 = "dall-e-2"
   val gpt_image_1_mini = "gpt-image-1-mini"
+  val gpt_image_1_5 = "gpt-image-1.5"
   val gpt_image_2 = "gpt-image-2"
   val gpt_image_2_2026_04_21 = "gpt-image-2-2026-04-21"
+  val chatgpt_image_latest = "chatgpt-image-latest"
 
   // Video gen
   val sora_2 = "sora-2"
@@ -219,6 +247,17 @@ object ModelId {
   // Reasoning-first: sampling params rejected. reasoning_effort on chat completions supports
   // none/low/medium/high/xhigh; 'max' is Responses-API-only (chat completions rejects it) and
   // 'minimal' is rejected by both APIs. Verified against the live API 2026-07-11.
+  // rolling ChatGPT-style alias (chat completions; reasoning_effort supports only 'medium',
+  // sampling params rejected - see ChatCompletionSettingsConversions.chatLatest)
+  val chat_latest = "chat-latest"
+
+  // GPT-6 Astra - PRE-REGISTERED from the docs page (2026-09-03), NOT yet served by the API
+  // (absent from /v1/models as of registration). Docs: 1,050,000 context, 128,000 max output,
+  // knowledge cutoff 2026-04-30, text+image in / text out, chat completions + Responses API,
+  // reasoning_effort low/medium/high/xhigh/max ('max' assumed Responses-API-only like GPT-5.6).
+  // Sampling-param behaviour is assumed identical to GPT-5.6 until verified live.
+  val gpt_6_astra = "gpt-6-astra"
+
   val gpt_5_6_sol = "gpt-5.6-sol"
   val gpt_5_6_terra = "gpt-5.6-terra"
   val gpt_5_6_luna = "gpt-5.6-luna"

@@ -4,7 +4,9 @@ package io.cequence.openaiscala.domain
 object NonOpenAIModelId {
 
   // Anthropic
+  val claude_fable_5_1 = "claude-fable-5-1"
   val claude_fable_5 = "claude-fable-5"
+  val claude_opus_5 = "claude-opus-5"
   val claude_opus_4_8 = "claude-opus-4-8"
   val claude_opus_4_7 = "claude-opus-4-7"
   val claude_opus_4_6 = "claude-opus-4-6"
@@ -33,7 +35,9 @@ object NonOpenAIModelId {
   val claude_instant_1_2 = "claude-instant-1.2"
 
   // Anthropic Bedrock
+  val bedrock_claude_fable_5_1 = "anthropic.claude-fable-5-1"
   val bedrock_claude_fable_5 = "anthropic.claude-fable-5"
+  val bedrock_claude_opus_5 = "anthropic.claude-opus-5"
   val bedrock_claude_opus_4_8 = "anthropic.claude-opus-4-8"
   val bedrock_claude_opus_4_7 = "anthropic.claude-opus-4-7"
   val bedrock_claude_opus_4_6_v1 = "anthropic.claude-opus-4-6-v1"
@@ -243,6 +247,11 @@ object NonOpenAIModelId {
 
   // Google Gemini and Vertex AI
 
+  // rolling aliases (resolve to the current stable model, e.g. gemini-flash-latest -> gemini-3.7-flash as of 2026-09)
+  val gemini_flash_latest = "gemini-flash-latest"
+  val gemini_flash_lite_latest = "gemini-flash-lite-latest"
+  val gemini_pro_latest = "gemini-pro-latest"
+
   val gemini_3_1_pro = "gemini-3.1-pro"
   val gemini_3_1_pro_preview = "gemini-3.1-pro-preview"
   val gemini_3_1_pro_preview_customtools = "gemini-3.1-pro-preview-customtools"
@@ -251,6 +260,7 @@ object NonOpenAIModelId {
   // Input token limit: 1048576; Output token limit: 65536
   val gemini_3_pro = "gemini-3-pro"
   val gemini_3_pro_preview = "gemini-3-pro-preview"
+  val gemini_3_pro_image = "gemini-3-pro-image"
   val gemini_3_pro_image_preview = "gemini-3-pro-image-preview"
   val gemini_2_5_pro = "gemini-2.5-pro"
   val gemini_2_5_pro_preview_06_05 = "gemini-2.5-pro-preview-06-05"
@@ -259,11 +269,39 @@ object NonOpenAIModelId {
   val gemini_2_5_pro_exp_03_25 = "gemini-2.5-pro-exp-03-25"
 
   // Input token limit: 1048576; Output token limit: 65536
+  val gemini_3_7_flash = "gemini-3.7-flash"
   val gemini_3_6_flash = "gemini-3.6-flash"
   val gemini_3_5_flash = "gemini-3.5-flash"
   val gemini_3_5_flash_lite = "gemini-3.5-flash-lite"
   val gemini_3_1_flash_lite = "gemini-3.1-flash-lite"
   val gemini_3_1_flash_lite_preview = "gemini-3.1-flash-lite-preview"
+  val gemini_3_1_flash_image = "gemini-3.1-flash-image"
+  val gemini_3_1_flash_image_preview = "gemini-3.1-flash-image-preview"
+  val gemini_3_1_flash_lite_image = "gemini-3.1-flash-lite-image"
+
+  // Gemini TTS / transcription / live (audio)
+  val gemini_2_5_flash_preview_tts = "gemini-2.5-flash-preview-tts"
+  val gemini_2_5_pro_preview_tts = "gemini-2.5-pro-preview-tts"
+  val gemini_3_1_flash_tts_preview = "gemini-3.1-flash-tts-preview"
+  val gemini_3_5_transcribe = "gemini-3.5-transcribe"
+  val gemini_3_5_transcribe_live = "gemini-3.5-transcribe-live"
+  val gemini_3_5_live_translate_preview = "gemini-3.5-live-translate-preview"
+  val gemini_3_1_flash_live_preview = "gemini-3.1-flash-live-preview"
+  val gemini_2_5_flash_native_audio_latest = "gemini-2.5-flash-native-audio-latest"
+  val gemini_2_5_flash_native_audio_preview_09_2025 =
+    "gemini-2.5-flash-native-audio-preview-09-2025"
+  val gemini_2_5_flash_native_audio_preview_12_2025 =
+    "gemini-2.5-flash-native-audio-preview-12-2025"
+
+  // Gemini specialised (robotics / computer use)
+  val gemini_robotics_er_2_preview = "gemini-robotics-er-2-preview"
+  val gemini_robotics_er_2_streaming_preview = "gemini-robotics-er-2-streaming-preview"
+  val gemini_2_5_computer_use_preview_10_2025 = "gemini-2.5-computer-use-preview-10-2025"
+
+  // Gemini Omni (native multimodal)
+  val gemini_omni_1_1_flash = "gemini-omni-1.1-flash"
+  val gemini_omni_flash_preview = "gemini-omni-flash-preview"
+
   val gemini_2_5_flash = "gemini-2.5-flash"
   val gemini_2_5_flash_lite = "gemini-2.5-flash-lite"
   val gemini_2_5_flash_image = "gemini-2.5-flash-image"
@@ -312,6 +350,9 @@ object NonOpenAIModelId {
   val gemini_pro_experimental = "gemini-pro-experimental"
   val gemini_experimental = "gemini-experimental"
   val text_embedding_004 = "text-embedding-004"
+  val gemini_embedding_2 = "gemini-embedding-2"
+  val gemini_embedding_2_preview = "gemini-embedding-2-preview"
+  val gemini_embedding_001 = "gemini-embedding-001"
 
   // Minimax
 
