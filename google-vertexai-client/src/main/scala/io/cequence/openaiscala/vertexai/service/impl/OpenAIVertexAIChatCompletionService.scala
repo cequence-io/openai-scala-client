@@ -69,8 +69,6 @@ import scala.collection.convert.ImplicitConversions.`seq AsJavaList`
 import scala.compat.java8.FutureConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
-// TODO: convert Google exceptions
-//  (e.g. java.util.concurrent.CompletionException (ResourceExhaustedException)) to OpenAI exceptions
 private[service] class OpenAIVertexAIChatCompletionService(
   underlying: VertexAI,
   batchSupport: Option[VertexAIBatchSupport] = None
@@ -110,7 +108,7 @@ private[service] class OpenAIVertexAIChatCompletionService(
 
     scalaFuture.map { response =>
       toOpenAI(response, settings.model)
-    }
+    }.recoverWith(repackAsOpenAIException)
   }
 
   override def createChatToolCompletion(
@@ -164,7 +162,7 @@ private[service] class OpenAIVertexAIChatCompletionService(
 
     scalaFuture.map { response =>
       toOpenAIToolResponse(response, settings.model)
-    }
+    }.recoverWith(repackAsOpenAIException)
   }
 
   private def toVertexAISchema(jsonSchema: JsonSchema): VertexAISchema =
@@ -291,7 +289,7 @@ private[service] class OpenAIVertexAIChatCompletionService(
         },
         usage = openAIResponse.usage
       )
-    }
+    }.mapError(toOpenAIException)
   }
 
   private def createModel(
@@ -485,7 +483,7 @@ private[service] class OpenAIVertexAIChatCompletionService(
     fun: VertexAIBatchSupport => Future[T]
   ): Future[T] =
     batchSupport
-      .map(fun)
+      .map(fun(_).recoverWith(repackAsOpenAIException))
       .getOrElse(
         Future.failed(
           new OpenAIScalaClientException(

@@ -4,8 +4,10 @@ import com.google.cloud.vertexai.api.GenerateContentResponse.UsageMetadata
 import com.google.cloud.vertexai.api.{
   Blob,
   Content,
+  FunctionCall,
   FunctionCallingConfig,
   FunctionDeclaration => VertexFunctionDeclaration,
+  FunctionResponse,
   GenerateContentResponse,
   GenerationConfig,
   Part,
@@ -14,20 +16,41 @@ import com.google.cloud.vertexai.api.{
   ToolConfig => VertexToolConfig,
   Type
 }
-import com.google.protobuf.ByteString
+import com.google.api.gax.rpc.{
+  ApiException,
+  DeadlineExceededException,
+  InternalException,
+  InvalidArgumentException,
+  PermissionDeniedException,
+  ResourceExhaustedException,
+  UnauthenticatedException,
+  UnavailableException
+}
+import com.google.protobuf.{ByteString, Struct, Value}
+import com.google.protobuf.util.JsonFormat
 import com.typesafe.scalalogging.Logger
-import io.cequence.openaiscala.OpenAIScalaClientException
+import io.cequence.openaiscala.{
+  OpenAIScalaClientException,
+  OpenAIScalaClientTimeoutException,
+  OpenAIScalaEngineOverloadedException,
+  OpenAIScalaRateLimitException,
+  OpenAIScalaServerErrorException,
+  OpenAIScalaUnauthorizedException
+}
 import io.cequence.openaiscala.domain.{
   AssistantMessage,
+  AssistantToolMessage,
   BaseMessage,
   ChatRole,
   DeveloperMessage,
   FileContent,
+  FunctionCallSpec,
   ImageURLContent,
   JsonSchema,
   MessageSpec,
   SystemMessage,
   TextContent,
+  ToolMessage,
   UserMessage,
   UserSeqMessage
 }
@@ -57,6 +80,7 @@ import CreateChatCompletionSettingsOps._
 import org.slf4j.LoggerFactory
 
 import java.{util => ju}
+import java.util.concurrent.{CompletionException, ExecutionException}
 import scala.collection.convert.ImplicitConversions.`iterable asJava`
 import scala.collection.convert.ImplicitConversions.`map AsJavaMap`
 import scala.collection.convert.ImplicitConversions.`list asScalaBuffer`
@@ -68,7 +92,7 @@ package object impl extends io.cequence.openaiscala.service.HasOpenAIConfig {
   )
 
   def toNonSystemVertexAI(messages: Seq[BaseMessage]): Seq[Content] =
-    messages.collect {
+    mergeConsecutiveFunctionResponses(messages.collect {
       case UserMessage(content, _) =>
         Content
           .newBuilder()
@@ -157,6 +181,56 @@ package object impl extends io.cequence.openaiscala.service.HasOpenAIConfig {
           .addParts(0, Part.newBuilder().setText(content).build())
           .build()
 
+      case AssistantToolMessage(content, _, toolCalls) =>
+        val textPart =
+          content.filter(_.nonEmpty).map(text => Part.newBuilder().setText(text).build())
+
+        val functionCallParts = toolCalls.map { case (_, callSpec) =>
+          val (name, argumentsJson) = callSpec match {
+            case FunctionCallSpec(name, arguments) => (name, arguments)
+          }
+
+          Part
+            .newBuilder()
+            .setFunctionCall(
+              FunctionCall
+                .newBuilder()
+                .setName(name)
+                .setArgs(argsToStruct(argumentsJson))
+                .build()
+            )
+            .build()
+        }
+
+        val contentBuilder = Content.newBuilder().setRole("MODEL")
+
+        (textPart.toSeq ++ functionCallParts).zipWithIndex.foreach { case (part, index) =>
+          contentBuilder.addParts(index, part)
+        }
+
+        contentBuilder.build()
+
+      // Vertex AI has no notion of tool_call_id - a function response is matched back to its
+      // call by function name alone, so `toolCallId` is intentionally not used here.
+      case ToolMessage(content, _, name) =>
+        Content
+          .newBuilder()
+          .setRole("USER")
+          .addParts(
+            0,
+            Part
+              .newBuilder()
+              .setFunctionResponse(
+                FunctionResponse
+                  .newBuilder()
+                  .setName(name)
+                  .setResponse(toolResponseToStruct(content))
+                  .build()
+              )
+              .build()
+          )
+          .build()
+
       // legacy message type
       case MessageSpec(role, content, _) if role == ChatRole.User =>
         Content
@@ -165,8 +239,88 @@ package object impl extends io.cequence.openaiscala.service.HasOpenAIConfig {
           .addParts(0, Part.newBuilder().setText(content).build())
           .build()
 
+      // legacy message type
+      case MessageSpec(role, content, _) if role == ChatRole.Assistant =>
+        Content
+          .newBuilder()
+          .setRole("MODEL")
+          .addParts(0, Part.newBuilder().setText(content).build())
+          .build()
+
       // Skip system/developer messages - they are handled separately by toSystemVertexAI
+    })
+
+  // Parses a function call's OpenAI-style JSON arguments string into a proto Struct. An
+  // empty/blank or otherwise invalid JSON string yields an empty Struct (with a warning)
+  // rather than failing the whole request.
+  private def argsToStruct(argumentsJson: String): Struct = {
+    if (argumentsJson == null || argumentsJson.trim.isEmpty) {
+      Struct.newBuilder().build()
+    } else {
+      try {
+        val builder = Struct.newBuilder()
+        JsonFormat.parser().merge(argumentsJson, builder)
+        builder.build()
+      } catch {
+        case e: Exception =>
+          logger.warn(
+            s"Failed to parse function call arguments as JSON: '$argumentsJson' - using an empty Struct instead. Error: ${e.getMessage}"
+          )
+          Struct.newBuilder().build()
+      }
     }
+  }
+
+  // Converts a ToolMessage's content into the Struct expected by FunctionResponse#setResponse.
+  // If the content parses as a JSON object, that object is used as-is; otherwise the raw
+  // string (or an empty string when absent) is wrapped under a single "result" field.
+  private def toolResponseToStruct(content: Option[String]): Struct = {
+    val raw = content.getOrElse("")
+
+    val asObjectStruct =
+      if (raw.trim.startsWith("{")) {
+        try {
+          val builder = Struct.newBuilder()
+          JsonFormat.parser().merge(raw, builder)
+          Some(builder.build())
+        } catch {
+          case _: Exception => None
+        }
+      } else None
+
+    asObjectStruct.getOrElse(
+      Struct
+        .newBuilder()
+        .putFields("result", Value.newBuilder().setStringValue(raw).build())
+        .build()
+    )
+  }
+
+  // Gemini/Vertex require all function responses belonging to one turn (e.g. parallel tool
+  // calls) to be sent as parts of a SINGLE "USER" content. ToolMessage is converted 1:1 above,
+  // so adjacent function-response-only "USER" contents are merged here as a post-processing
+  // step.
+  private def mergeConsecutiveFunctionResponses(contents: Seq[Content]): Seq[Content] = {
+    def isFunctionResponseOnly(content: Content): Boolean =
+      content.getRole == "USER" &&
+        content.getPartsCount > 0 &&
+        content.getPartsList.toSeq.forall(_.hasFunctionResponse)
+
+    contents.foldLeft(Vector.empty[Content]) {
+      (
+        acc,
+        content
+      ) =>
+        acc.lastOption match {
+          case Some(last) if isFunctionResponseOnly(last) && isFunctionResponseOnly(content) =>
+            val merged = last.toBuilder.addAllParts(content.getPartsList).build()
+            acc.dropRight(1) :+ merged
+
+          case _ =>
+            acc :+ content
+        }
+    }
+  }
 
   def toSystemVertexAI(
     messages: Seq[BaseMessage]
@@ -290,16 +444,26 @@ package object impl extends io.cequence.openaiscala.service.HasOpenAIConfig {
       _.setFrequencyPenalty(_: Float),
       settings.frequency_penalty.map(_.toFloat)
     )
-    // If specified, top-k sampling will be used.
+    // Whether to return the log probabilities of the output tokens.
     setValue(
-      _.setTopK(_: Float),
-      if (settings.logprobs.getOrElse(false)) settings.top_logprobs.map(_.toFloat) else None
+      _.setResponseLogprobs(_: Boolean),
+      settings.logprobs
+    )
+    // Number of top candidate tokens (per position) to return log probabilities for - only
+    // meaningful when logprobs is enabled. Note: there is no OpenAI equivalent for Vertex's
+    // top-k SAMPLING parameter, so it is deliberately never set here.
+    setValue(
+      _.setLogprobs(_: Int),
+      if (settings.logprobs.getOrElse(false)) settings.top_logprobs else None
     )
     //  Number of candidates to generate.
     setValue(_.setCandidateCount(_: Int), settings.n)
 
     // The maximum number of output tokens to generate per message
     setValue(_.setMaxOutputTokens(_: Int), settings.max_tokens)
+
+    // Seed for deterministic sampling, if supported by the model.
+    setValue(_.setSeed(_: Int), settings.seed)
 
     // reasoning_effort -> thinking budget (Gemini 2.5 family; see toThinkingBudget)
     toThinkingBudget(settings.model, settings.reasoning_effort).foreach { budget =>
@@ -594,5 +758,52 @@ package object impl extends io.cequence.openaiscala.service.HasOpenAIConfig {
       val textContents = parts.filter(_.hasText).map(_.getText)
       AssistantMessage(textContents.mkString("\n"), name = None)
     }
+  }
+
+  // -- Exception repacking (Vertex/gax -> OpenAI exceptions) --
+
+  /**
+   * Unwraps `CompletionException`/`ExecutionException` (recursively, following non-null
+   * causes) and maps the underlying gax `ApiException` subtypes to their OpenAI equivalents,
+   * so callers of this module can pattern-match on the usual `OpenAIScalaClientException`
+   * hierarchy regardless of the Vertex AI transport in use. An already-
+   * `OpenAIScalaClientException` passes through unchanged; anything unrecognized is returned
+   * as-is.
+   */
+  def toOpenAIException: PartialFunction[Throwable, Throwable] = {
+    case e: OpenAIScalaClientException => e
+
+    case e: CompletionException if e.getCause != null => toOpenAIException(e.getCause)
+    case e: ExecutionException if e.getCause != null  => toOpenAIException(e.getCause)
+
+    case e: ResourceExhaustedException =>
+      new OpenAIScalaRateLimitException(e.getMessage, e)
+
+    case e: UnavailableException =>
+      new OpenAIScalaEngineOverloadedException(e.getMessage, e)
+
+    case e: DeadlineExceededException =>
+      new OpenAIScalaClientTimeoutException(e.getMessage, e)
+
+    case e: InternalException =>
+      new OpenAIScalaServerErrorException(e.getMessage, e)
+
+    case e: UnauthenticatedException =>
+      new OpenAIScalaUnauthorizedException(e.getMessage, e)
+
+    case e: PermissionDeniedException =>
+      new OpenAIScalaUnauthorizedException(e.getMessage, e)
+
+    case e: InvalidArgumentException =>
+      new OpenAIScalaClientException(e.getMessage, e)
+
+    case e: ApiException =>
+      new OpenAIScalaClientException(e.getMessage, e)
+
+    case e => e
+  }
+
+  def repackAsOpenAIException[T]: PartialFunction[Throwable, scala.concurrent.Future[T]] = {
+    case e => scala.concurrent.Future.failed(toOpenAIException(e))
   }
 }
