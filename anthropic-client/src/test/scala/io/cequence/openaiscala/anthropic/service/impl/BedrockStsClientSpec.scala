@@ -130,5 +130,64 @@ class BedrockStsClientSpec extends AnyWordSpec with Matchers {
         ex.getMessage should include("InvalidClientTokenId")
       } finally server.stop(0)
     }
+
+    "not include credential values in the error when the STS response is missing an element" in {
+      val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
+
+      val sampleAccessKey = "ASIASAMPLEACCESSKEY"
+      val sampleSecretKey = "FAKE-SECRET-VALUE"
+      val sampleSessionToken = "FAKE-SESSION-VALUE"
+
+      // Credentials present but missing <Expiration> - the response body must never be echoed
+      // in the resulting exception message, even though the response body carries credential-shaped values.
+      val responseXmlMissingExpiration =
+        s"""<?xml version="1.0" encoding="UTF-8"?>
+           |<GetSessionTokenResponse>
+           |  <GetSessionTokenResult>
+           |    <Credentials>
+           |      <AccessKeyId>$sampleAccessKey</AccessKeyId>
+           |      <SecretAccessKey>$sampleSecretKey</SecretAccessKey>
+           |      <SessionToken>$sampleSessionToken</SessionToken>
+           |    </Credentials>
+           |  </GetSessionTokenResult>
+           |  <ResponseMetadata>
+           |    <RequestId>test-request-id</RequestId>
+           |  </ResponseMetadata>
+           |</GetSessionTokenResponse>""".stripMargin
+
+      server.createContext(
+        "/",
+        new HttpHandler {
+          override def handle(exchange: HttpExchange): Unit = {
+            // Drain the request body so the client's output stream doesn't block.
+            val src = Source.fromInputStream(exchange.getRequestBody)
+            try src.mkString
+            finally src.close()
+
+            val bytes = responseXmlMissingExpiration.getBytes("UTF-8")
+            exchange.sendResponseHeaders(200, bytes.length.toLong)
+            exchange.getResponseBody.write(bytes)
+            exchange.close()
+          }
+        }
+      )
+
+      server.start()
+      try {
+        val endpoint = s"http://localhost:${server.getAddress.getPort}/"
+
+        val ex = intercept[RuntimeException] {
+          BedrockStsClient.getSessionToken(
+            accessKey = FakeAccessKey,
+            secretKey = FakeSecretKey,
+            endpoint = endpoint
+          )
+        }
+
+        ex.getMessage should include("missing the <Expiration>")
+        ex.getMessage should not include sampleSecretKey
+        ex.getMessage should not include sampleSessionToken
+      } finally server.stop(0)
+    }
   }
 }

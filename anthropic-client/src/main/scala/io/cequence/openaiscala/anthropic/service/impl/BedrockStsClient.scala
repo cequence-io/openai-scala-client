@@ -90,15 +90,20 @@ object BedrockStsClient extends BedrockAuthHelper {
   //     <Expiration>...</Expiration>
   //   </Credentials>
   private def parseGetSessionTokenResponse(xml: String): StsCredentials = {
+    // NOTE: never echo the raw response body in an exception message - on a successful STS
+    // call it carries the AccessKeyId/SecretAccessKey/SessionToken values, which must not end
+    // up in logs or exception traces; only the element names are reported.
     def extract(tag: String): String = {
       val re = s"<$tag>([^<]+)</$tag>".r
-      re.findFirstMatchIn(xml)
-        .map(_.group(1))
-        .getOrElse(
-          throw new RuntimeException(
-            s"STS response missing <$tag>. Response body: $xml"
-          )
+      re.findFirstMatchIn(xml).map(_.group(1)).getOrElse {
+        val tagNameRe = "<([A-Za-z]+)[ >]".r
+        val presentTags =
+          tagNameRe.findAllMatchIn(xml).map(_.group(1)).toSet.toSeq.sorted.mkString(", ")
+        throw new RuntimeException(
+          s"STS GetSessionToken response is missing the <$tag> element " +
+            s"(response length ${xml.length}, top-level elements: $presentTags)"
         )
+      }
     }
     StsCredentials(
       accessKeyId = extract("AccessKeyId"),
