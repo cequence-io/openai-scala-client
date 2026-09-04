@@ -31,7 +31,6 @@ import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtraAk
 import play.api.libs.json._
 
 import java.io.File
-import java.net.{HttpURLConnection, URL}
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files => JFiles}
 import scala.concurrent.{ExecutionContext, Future, blocking}
@@ -64,7 +63,8 @@ private[service] class GeminiServiceImpl(
 
   // a caller-supplied, site-stateless engine (e.g. one shared with other providers), or a
   // privately-owned classpath-discovered engine with output streaming (SSE) support; note that
-  // the raw upload/download paths below use the apiKey directly, engine or not
+  // the raw upload/download paths below use the apiKey directly (via GeminiRawHttp), engine or
+  // not
   override protected val engine: WSClientEngine with WSClientOutputStreamExtraAkka =
     externalEngine.getOrElse(
       StreamedEngineRegistry.outputStreamed(
@@ -79,7 +79,7 @@ private[service] class GeminiServiceImpl(
   override protected val site: SiteBinding =
     SiteBinding(
       coreUrl,
-      WsRequestContext(extraParams = Seq(Param.key.toString() -> apiKey)),
+      WsRequestContext(authHeaders = Seq("x-goog-api-key" -> apiKey)),
       label = Some("gemini")
     )
 
@@ -341,7 +341,8 @@ private[service] class GeminiServiceImpl(
       val contentType = mimeType.getOrElse("application/octet-stream")
 
       // step 1: start a resumable upload - the actual upload URL rides on a response header
-      val startConnection = openConnection(s"${uploadBaseUrl}files", "POST")
+      val startConnection =
+        GeminiRawHttp.openConnection(s"${uploadBaseUrl}files", "POST", apiKey)
       startConnection.setDoOutput(true)
       startConnection.setRequestProperty("X-Goog-Upload-Protocol", "resumable")
       startConnection.setRequestProperty("X-Goog-Upload-Command", "start")
@@ -364,7 +365,7 @@ private[service] class GeminiServiceImpl(
       try startOut.write(metadata.getBytes(StandardCharsets.UTF_8))
       finally startOut.close()
 
-      handleRawResponse(startConnection, "start of the file upload")
+      GeminiRawHttp.readResponse(startConnection, "start of the file upload")
 
       val uploadUrl = Option(startConnection.getHeaderField("X-Goog-Upload-URL")).getOrElse(
         throw new OpenAIScalaClientException(
@@ -375,9 +376,7 @@ private[service] class GeminiServiceImpl(
       // step 2: upload the bytes and finalize - streamed from disk in fixed-size chunks so
       // neither the file (up to the 2 GB Files API limit) nor its HttpURLConnection copy is
       // ever held in memory in full
-      val uploadConnection =
-        new URL(uploadUrl).openConnection().asInstanceOf[HttpURLConnection]
-      uploadConnection.setRequestMethod("POST")
+      val uploadConnection = GeminiRawHttp.openConnection(uploadUrl, "POST", apiKey)
       uploadConnection.setDoOutput(true)
       uploadConnection.setFixedLengthStreamingMode(fileLength)
       uploadConnection.setRequestProperty("X-Goog-Upload-Offset", "0")
@@ -397,7 +396,8 @@ private[service] class GeminiServiceImpl(
         uploadOut.close()
       }
 
-      val responseBody = handleRawResponse(uploadConnection, "finalization of the file upload")
+      val responseBody =
+        GeminiRawHttp.readResponse(uploadConnection, "finalization of the file upload")
       (Json.parse(responseBody) \ "file").as[GeminiFile]
     }
   }
@@ -415,9 +415,12 @@ private[service] class GeminiServiceImpl(
   override def downloadFile(name: String): Future[String] = Future {
     blocking {
       val fileId = name.stripPrefix("files/")
-      val connection =
-        openConnection(s"${downloadBaseUrl}files/$fileId:download?alt=media", "GET")
-      handleRawResponse(connection, s"download of the file '$name'")
+      val connection = GeminiRawHttp.openConnection(
+        s"${downloadBaseUrl}files/$fileId:download?alt=media",
+        "GET",
+        apiKey
+      )
+      GeminiRawHttp.readResponse(connection, s"download of the file '$name'")
     }
   }
 
@@ -425,46 +428,6 @@ private[service] class GeminiServiceImpl(
   // which the JSON ws engine does not support - hence plain HTTP connections
   private lazy val uploadBaseUrl = coreUrl.replace("/v1beta/", "/upload/v1beta/")
   private lazy val downloadBaseUrl = coreUrl.replace("/v1beta/", "/download/v1beta/")
-
-  private def openConnection(
-    url: String,
-    method: String
-  ): HttpURLConnection = {
-    val separator = if (url.contains("?")) "&" else "?"
-    val connection =
-      new URL(s"$url${separator}key=$apiKey").openConnection().asInstanceOf[HttpURLConnection]
-    connection.setRequestMethod(method)
-    connection
-  }
-
-  private def handleRawResponse(
-    connection: HttpURLConnection,
-    operation: String
-  ): String = {
-    val status = connection.getResponseCode
-    val stream = if (status >= 400) connection.getErrorStream else connection.getInputStream
-
-    val body =
-      if (stream == null) ""
-      else {
-        val buffer = new java.io.ByteArrayOutputStream()
-        val chunk = new Array[Byte](8192)
-        var read = stream.read(chunk)
-        while (read != -1) {
-          buffer.write(chunk, 0, read)
-          read = stream.read(chunk)
-        }
-        stream.close()
-        buffer.toString(StandardCharsets.UTF_8.name())
-      }
-
-    if (status >= 400)
-      throw new OpenAIScalaClientException(
-        s"Gemini $operation failed with the status $status: $body"
-      )
-
-    body
-  }
 
   /**
    * The batches endpoints return a long-running Operation whose `metadata` carries the

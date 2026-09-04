@@ -14,7 +14,7 @@ trait GeminiServiceConsts {
   object DefaultSettings {
 
     val GenerateContent = GenerateContentSettings(
-      model = NonOpenAIModelId.gemini_2_0_flash
+      model = NonOpenAIModelId.gemini_3_6_flash
     )
   }
 }

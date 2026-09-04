@@ -20,6 +20,40 @@ trait JsonFormats {
 
   private val logger: Logger = Logger(LoggerFactory.getLogger(this.getClass))
 
+  /**
+   * Like [[JsonUtil.enumFormat]] but tolerant of unknown JsString values on read - instead of
+   * failing the whole parse with a JsError, an unrecognized enum value is logged and mapped to
+   * `fallback`. Gemini has repeatedly shipped new enum values (finish reasons, block reasons,
+   * harm probabilities, modalities, ...) ahead of this client modeling them; a strict enum
+   * format would fail an ENTIRE (already billed) response over one unknown string.
+   *
+   * Writes are unaffected - a known value is always serialized as its `toString`.
+   */
+  private def lenientEnumFormat[T](
+    values: Seq[T],
+    fallback: T,
+    enumName: String
+  ): Format[T] = {
+    val valueMap = values.map(v => v.toString -> v).toMap
+
+    val reads: Reads[T] = Reads {
+      case JsString(value) =>
+        valueMap.get(value.trim) match {
+          case Some(v) => JsSuccess(v)
+          case None =>
+            logger.warn(
+              s"Unknown Gemini $enumName value '$value' - falling back to $fallback."
+            )
+            JsSuccess(fallback)
+        }
+      case _ => JsError("String value expected")
+    }
+
+    val writes: Writes[T] = Writes((v: T) => JsString(v.toString))
+
+    Format(reads, writes)
+  }
+
   // Content and Parts
   implicit val chatRoleFormat: Format[ChatRole] = enumFormat(ChatRole.values: _*)
 
@@ -227,8 +261,10 @@ trait JsonFormats {
   implicit lazy val harmBlockThresholdFormat: Format[HarmBlockThreshold] = enumFormat(
     HarmBlockThreshold.values: _*
   )
-  implicit lazy val harmProbabilityFormat: Format[HarmProbability] = enumFormat(
-    HarmProbability.values: _*
+  implicit lazy val harmProbabilityFormat: Format[HarmProbability] = lenientEnumFormat(
+    HarmProbability.values,
+    HarmProbability.HARM_PROBABILITY_UNSPECIFIED,
+    "HarmProbability"
   )
 
   implicit lazy val safetySettingFormat: Format[SafetySetting] = (
@@ -270,7 +306,11 @@ trait JsonFormats {
   implicit val speechConfigFormat: Format[SpeechConfig] =
     Format(speechConfigReads, speechConfigWrites)
 
-  implicit val modalityFormat: Format[Modality] = enumFormat(Modality.values: _*)
+  implicit val modalityFormat: Format[Modality] = lenientEnumFormat(
+    Modality.values,
+    Modality.MODALITY_UNSPECIFIED,
+    "Modality"
+  )
   implicit val thinkingLevelFormat: Format[ThinkingLevel] = enumFormat(
     ThinkingLevel.values: _*
   )
@@ -334,8 +374,16 @@ trait JsonFormats {
     Json.format[GroundingAttribution]
 
   // Candidate and Generate Content Response
-  implicit val finishReasonFormat: Format[FinishReason] = enumFormat(FinishReason.values: _*)
-  implicit val blockReasonFormat: Format[BlockReason] = enumFormat(BlockReason.values: _*)
+  implicit val finishReasonFormat: Format[FinishReason] = lenientEnumFormat(
+    FinishReason.values,
+    FinishReason.OTHER,
+    "FinishReason"
+  )
+  implicit val blockReasonFormat: Format[BlockReason] = lenientEnumFormat(
+    BlockReason.values,
+    BlockReason.OTHER,
+    "BlockReason"
+  )
   implicit val safetyRatingFormat: Format[SafetyRating] = Json.format[SafetyRating]
   implicit val citationSourceFormat: Format[CitationSource] = Json.format[CitationSource]
   implicit val citationMetadataFormat: Format[CitationMetadata] =
@@ -377,7 +425,7 @@ trait JsonFormats {
   )
 
   implicit lazy val candidateReads: Reads[Candidate] = (
-    (__ \ "content").read[Content] and
+    (__ \ "content").readWithDefault[Content](Content(Nil, None)) and
       (__ \ "finishReason").readNullable[FinishReason] and
       (__ \ "safetyRatings").readWithDefault[Seq[SafetyRating]](Nil) and
       (__ \ "citationMetadata").readNullable[CitationMetadata] and

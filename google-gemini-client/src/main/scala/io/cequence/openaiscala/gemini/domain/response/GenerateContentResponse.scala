@@ -31,7 +31,10 @@ case class GenerateContentResponse(
 
 /**
  * @param content
- *   Output only. Generated content returned from the model.
+ *   Output only. Generated content returned from the model. Empty (no parts) when the
+ *   candidate was blocked (e.g. `finishReason` is SAFETY, RECITATION or PROHIBITED_CONTENT) or
+ *   when MAX_TOKENS was consumed entirely by thinking before any output was produced - Gemini
+ *   omits the `content` field on the wire in those cases. Check `finishReason` to know why.
  * @param finishReason
  *   Optional. Output only. The reason why the model stopped generating tokens. If empty, the
  *   model has not stopped generating tokens.
@@ -110,6 +113,15 @@ object FinishReason {
   // IMAGE_SAFETY: Token generation stopped because generated images contain safety violations.
   case object IMAGE_SAFETY extends FinishReason
 
+  // UNEXPECTED_TOOL_CALL: The model generated a tool call but no tools were enabled.
+  case object UNEXPECTED_TOOL_CALL extends FinishReason
+
+  // TOO_MANY_TOOL_CALLS: Token generation stopped because the model generated too many tool calls.
+  case object TOO_MANY_TOOL_CALLS extends FinishReason
+
+  // NO_IMAGE: The model did not generate any images in the response.
+  case object NO_IMAGE extends FinishReason
+
   def values: Seq[FinishReason] = Seq(
     FINISH_REASON_UNSPECIFIED,
     STOP,
@@ -122,7 +134,10 @@ object FinishReason {
     PROHIBITED_CONTENT,
     SPII,
     MALFORMED_FUNCTION_CALL,
-    IMAGE_SAFETY
+    IMAGE_SAFETY,
+    UNEXPECTED_TOOL_CALL,
+    TOO_MANY_TOOL_CALLS,
+    NO_IMAGE
   )
 }
 
