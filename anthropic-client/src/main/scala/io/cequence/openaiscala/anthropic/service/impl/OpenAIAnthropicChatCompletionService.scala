@@ -89,12 +89,13 @@ private[service] class OpenAIAnthropicChatCompletionService(
     settings: CreateChatCompletionSettings
   ): Source[ChatCompletionChunkResponse, NotUsed] =
     underlying
-      .createMessageStreamed(
+      .createMessageStreamedEvents(
         toAnthropicSystemMessages(messages.filter(_.isSystem), settings) ++
           toAnthropicMessages(messages.filter(!_.isSystem), settings),
         toAnthropicSettings(settings)
       )
-      .map(toOpenAI)
+      .via(toOpenAIChunks)
+      .mapError(toOpenAIException)
 
   override def createChatToolCompletion(
     messages: Seq[BaseMessage],

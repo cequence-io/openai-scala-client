@@ -7,7 +7,8 @@ import io.cequence.openaiscala.EnvHelper
 import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.response.{
   ContentBlockDelta,
-  CreateMessageResponse
+  CreateMessageResponse,
+  MessageStreamEvent
 }
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.domain.managedagents.AgentTool
@@ -1173,6 +1174,12 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
       settings: AnthropicCreateMessageSettings
     ): Source[ContentBlockDelta, NotUsed] =
       super.createMessageStreamed(messages, withInferenceProfile(settings))
+
+    override def createMessageStreamedEvents(
+      messages: Seq[Message],
+      settings: AnthropicCreateMessageSettings
+    ): Source[MessageStreamEvent, NotUsed] =
+      super.createMessageStreamedEvents(messages, withInferenceProfile(settings))
   }
 
   private def recoverErrors: String => PartialFunction[Throwable, RichResponse] = {

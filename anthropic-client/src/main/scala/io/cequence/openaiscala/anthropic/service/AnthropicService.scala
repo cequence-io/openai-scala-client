@@ -11,7 +11,8 @@ import io.cequence.openaiscala.anthropic.domain.{
 }
 import io.cequence.openaiscala.anthropic.domain.response.{
   ContentBlockDelta,
-  CreateMessageResponse
+  CreateMessageResponse,
+  MessageStreamEvent
 }
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.domain.skills.{
@@ -70,6 +71,10 @@ trait AnthropicService
    * The Messages API can be used for either single queries or stateless multi-turn
    * conversations.
    *
+   * This is the content-delta-only projection of [[createMessageStreamedEvents]]: it emits
+   * just the `content_block_delta` payloads and drops everything else (message metadata, the
+   * final stop reason and usage). Use [[createMessageStreamedEvents]] when those are needed.
+   *
    * @param messages
    *   A list of messages comprising the conversation so far.
    * @param settings
@@ -82,6 +87,31 @@ trait AnthropicService
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings = DefaultSettings.CreateMessage
   ): Source[ContentBlockDelta, NotUsed]
+
+  /**
+   * Creates a message (streamed version) - full event stream.
+   *
+   * Send a structured list of input messages with text and/or image content, and the model
+   * will generate the next message in the conversation.
+   *
+   * Unlike [[createMessageStreamed]], this emits every SSE event of the stream (message_start,
+   * content_block_start/delta/stop, message_delta, message_stop, ping, and any event type not
+   * yet modeled by this client as [[MessageStreamEvent.UnknownEvent]]) - so message id/model,
+   * per-block starts (including tool_use blocks), the final stop reason and usage are all
+   * available.
+   *
+   * @param messages
+   *   A list of messages comprising the conversation so far.
+   * @param settings
+   * @return
+   *   stream of raw message events
+   * @see
+   *   <a href="https://docs.anthropic.com/en/api/messages-streaming">Anthropic Doc</a>
+   */
+  def createMessageStreamedEvents(
+    messages: Seq[Message],
+    settings: AnthropicCreateMessageSettings = DefaultSettings.CreateMessage
+  ): Source[MessageStreamEvent, NotUsed]
 
   /**
    * Creates a custom skill.

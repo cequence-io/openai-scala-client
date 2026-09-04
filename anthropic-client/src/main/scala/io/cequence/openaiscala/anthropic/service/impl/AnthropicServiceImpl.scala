@@ -16,7 +16,8 @@ import io.cequence.openaiscala.anthropic.domain.{
 }
 import io.cequence.openaiscala.anthropic.domain.response.{
   ContentBlockDelta,
-  CreateMessageResponse
+  CreateMessageResponse,
+  MessageStreamEvent
 }
 import io.cequence.openaiscala.anthropic.domain.managedagents.{
   Agent,
@@ -110,10 +111,10 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     )
   }
 
-  override def createMessageStreamed(
+  private def streamMessageEvents(
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings
-  ): Source[ContentBlockDelta, NotUsed] = {
+  ): Source[MessageStreamEvent, NotUsed] = {
     val bodyParams =
       createBodyParamsForMessageCreation(messages, settings, stream = Some(true))
     val stringParams = paramTuplesToStrings(bodyParams)
@@ -126,9 +127,22 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
         bodyParams = stringParams,
         extraHeaders = messageBetaHeaders
       )
-      .map(serializeStreamedJson)
-      .collect { case Some(delta) => delta }
+      .map(parseStreamEvent)
   }
+
+  override def createMessageStreamedEvents(
+    messages: Seq[Message],
+    settings: AnthropicCreateMessageSettings
+  ): Source[MessageStreamEvent, NotUsed] =
+    streamMessageEvents(messages, settings)
+
+  override def createMessageStreamed(
+    messages: Seq[Message],
+    settings: AnthropicCreateMessageSettings
+  ): Source[ContentBlockDelta, NotUsed] =
+    streamMessageEvents(messages, settings).collect {
+      case MessageStreamEvent.ContentBlockDeltaEvent(delta) => delta
+    }
 
   // ============================================================================
   // Message batches

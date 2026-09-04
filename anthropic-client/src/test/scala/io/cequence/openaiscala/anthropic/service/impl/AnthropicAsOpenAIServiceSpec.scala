@@ -1,5 +1,14 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
+import io.cequence.openaiscala.anthropic.domain.ChatRole
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{
+  TextBlock,
+  ThinkingBlock,
+  ToolUseBlock
+}
+import io.cequence.openaiscala.anthropic.domain.Content.{ContentBlockBase, ContentBlocks}
+import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse
+import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse.UsageInfo
 import io.cequence.openaiscala.anthropic.domain.settings.{OutputEffort, ThinkingSettings}
 import io.cequence.openaiscala.anthropic.domain.tools.ToolChoice
 import io.cequence.openaiscala.domain.NonOpenAIModelId
@@ -7,6 +16,7 @@ import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.{AssistantToolMessage, FunctionCallSpec}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettingsOps._
 import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, ReasoningEffort}
+import play.api.libs.json.Json
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -276,6 +286,60 @@ class AnthropicAsOpenAIServiceSpec extends AnyWordSpec with Matchers {
         CreateChatCompletionSettings(model = NonOpenAIModelId.claude_opus_5)
       )
       out.max_tokens shouldBe 128000
+    }
+  }
+
+  "toOpenAIAssistantMessage (A3 - tool-only/thinking-only responses must not throw)" should {
+
+    "return empty content for a tool-only response (no text block)" in {
+      val content = ContentBlocks(
+        Seq(ContentBlockBase(ToolUseBlock("tool_1", "get_weather", Json.obj())))
+      )
+
+      toOpenAIAssistantMessage(content).content shouldBe ""
+    }
+
+    "return empty content for a thinking-only response (no text block)" in {
+      val content = ContentBlocks(
+        Seq(ContentBlockBase(ThinkingBlock("pondering...", "sig")))
+      )
+
+      toOpenAIAssistantMessage(content).content shouldBe ""
+    }
+
+    "default to the last text block when multiple text blocks are present" in {
+      val content = ContentBlocks(
+        Seq(
+          ContentBlockBase(TextBlock("first")),
+          ContentBlockBase(TextBlock("second"))
+        )
+      )
+
+      toOpenAIAssistantMessage(content).content shouldBe "second"
+    }
+
+    "toOpenAI(CreateMessageResponse) with a tool_use-only body yields empty content and passes finish_reason through" in {
+      val response = CreateMessageResponse(
+        id = "msg_1",
+        role = ChatRole.Assistant,
+        content = ContentBlocks(
+          Seq(ContentBlockBase(ToolUseBlock("tool_1", "get_weather", Json.obj())))
+        ),
+        model = "claude-x",
+        stop_reason = Some("tool_use"),
+        stop_sequence = None,
+        usage = UsageInfo(
+          input_tokens = 10,
+          output_tokens = 5,
+          cache_creation_input_tokens = None,
+          cache_read_input_tokens = None
+        )
+      )
+
+      val out = toOpenAI(response)
+
+      out.choices.head.message.content shouldBe ""
+      out.choices.head.finish_reason shouldBe Some("tool_use")
     }
   }
 }

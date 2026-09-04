@@ -23,7 +23,8 @@ import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse.U
 import io.cequence.openaiscala.anthropic.domain.response.{
   ContentBlockDelta,
   CreateMessageResponse,
-  DeltaBlock
+  DeltaBlock,
+  MessageStreamEvent
 }
 import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicCreateMessageSettings,
@@ -53,10 +54,12 @@ import io.cequence.openaiscala.domain.settings.{
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettingsOps.RichCreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{
   ChatRole,
+  FunctionCallChunkSpec,
   FunctionCallSpec,
   MessageSpec,
   NonOpenAIModelId,
   SystemMessage,
+  ToolCallChunkSpec,
   AssistantMessage => OpenAIAssistantMessage,
   AssistantToolMessage => OpenAIAssistantToolMessage,
   ToolMessage => OpenAIToolMessage,
@@ -69,6 +72,8 @@ import io.cequence.openaiscala.domain.{
   UserSeqMessage => OpenAIUserSeqMessage
 }
 import io.cequence.openaiscala.service.HasOpenAIConfig
+import akka.NotUsed
+import akka.stream.scaladsl.Flow
 import org.slf4j.LoggerFactory
 import play.api.libs.json.{JsObject, Json}
 
@@ -613,6 +618,10 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
     )
   }
 
+  @deprecated(
+    "use toOpenAIChunks - it carries id/model/finish_reason/usage/tool calls, index 0",
+    "1.3.0"
+  )
   def toOpenAI(blockDelta: ContentBlockDelta): ChatCompletionChunkResponse =
     ChatCompletionChunkResponse(
       id = "",
@@ -628,12 +637,155 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
               case _                          => None
             }
           ),
-          index = blockDelta.index,
+          index = 0,
           finish_reason = None
         )
       ),
       usage = None
     )
+
+  /**
+   * Converts a raw Anthropic [[MessageStreamEvent]] stream into an OpenAI-shaped
+   * [[ChatCompletionChunkResponse]] stream. Unlike the deprecated single-delta [[toOpenAI]],
+   * every emitted chunk carries the message `id`/`model` (from `message_start`), uses OpenAI's
+   * choice index (always 0, never Anthropic's content-block index), surfaces streamed tool
+   * calls (`tool_use` block starts + `input_json_delta`s), and emits a final chunk with
+   * `finish_reason`/`usage` on `message_delta`.
+   */
+  def toOpenAIChunks: Flow[MessageStreamEvent, ChatCompletionChunkResponse, NotUsed] =
+    Flow[MessageStreamEvent].statefulMapConcat { () =>
+      var id: String = ""
+      var model: String = ""
+      var startUsage: Option[UsageInfo] = None
+      var toolIndexByBlock: Map[Int, Int] = Map.empty
+      var toolCount: Int = 0
+      val created: ju.Date = new ju.Date()
+
+      def toolOrdinalFor(blockIndex: Int): Int =
+        toolIndexByBlock.getOrElse(
+          blockIndex, {
+            val ordinal = toolCount
+            toolIndexByBlock = toolIndexByBlock + (blockIndex -> ordinal)
+            toolCount += 1
+            ordinal
+          }
+        )
+
+      def chunk(
+        delta: ChunkMessageSpec,
+        finishReason: Option[String] = None,
+        usage: Option[OpenAIUsageInfo] = None
+      ): ChatCompletionChunkResponse =
+        ChatCompletionChunkResponse(
+          id = id,
+          created = created,
+          model = model,
+          system_fingerprint = None,
+          choices = Seq(
+            ChatCompletionChoiceChunkInfo(
+              delta = delta,
+              index = 0,
+              finish_reason = finishReason
+            )
+          ),
+          usage = usage
+        )
+
+      def toolCallChunk(
+        toolCallSpec: ToolCallChunkSpec
+      ): ChunkMessageSpec =
+        ChunkMessageSpec(role = None, content = None, tool_calls = Some(Seq(toolCallSpec)))
+
+      (event: MessageStreamEvent) =>
+        event match {
+          case MessageStreamEvent.MessageStart(message) =>
+            id = message.id
+            model = message.model
+            startUsage = Some(message.usage)
+            List(chunk(ChunkMessageSpec(role = Some(ChatRole.Assistant), content = Some(""))))
+
+          case MessageStreamEvent.ContentBlockStart(
+                index,
+                "tool_use",
+                Some(Content.ContentBlock.ToolUseBlock(toolId, name, _))
+              ) =>
+            val ordinal = toolOrdinalFor(index)
+            List(
+              chunk(
+                toolCallChunk(
+                  ToolCallChunkSpec(
+                    index = ordinal,
+                    id = Some(toolId),
+                    `type` = Some("function"),
+                    function =
+                      Some(FunctionCallChunkSpec(name = Some(name), arguments = Some("")))
+                  )
+                )
+              )
+            )
+
+          case MessageStreamEvent.ContentBlockStart(_, _, _) =>
+            Nil
+
+          case MessageStreamEvent.ContentBlockDeltaEvent(
+                ContentBlockDelta(_, _, DeltaBlock.DeltaText(text))
+              ) =>
+            List(chunk(ChunkMessageSpec(role = None, content = Some(text))))
+
+          case MessageStreamEvent.ContentBlockDeltaEvent(
+                ContentBlockDelta(_, blockIndex, DeltaBlock.DeltaInputJson(partialJson))
+              ) =>
+            val ordinal = toolOrdinalFor(blockIndex)
+            List(
+              chunk(
+                toolCallChunk(
+                  ToolCallChunkSpec(
+                    index = ordinal,
+                    function = Some(FunctionCallChunkSpec(arguments = Some(partialJson)))
+                  )
+                )
+              )
+            )
+
+          case MessageStreamEvent.ContentBlockDeltaEvent(_) =>
+            Nil
+
+          case MessageStreamEvent.MessageDelta(stopReason, _, deltaUsage) =>
+            val mergedUsage = deltaUsage.map { du =>
+              val merged = startUsage match {
+                case Some(su) =>
+                  su.copy(
+                    output_tokens = du.output_tokens,
+                    input_tokens = du.input_tokens.getOrElse(su.input_tokens),
+                    cache_creation_input_tokens =
+                      du.cache_creation_input_tokens.orElse(su.cache_creation_input_tokens),
+                    cache_read_input_tokens =
+                      du.cache_read_input_tokens.orElse(su.cache_read_input_tokens)
+                  )
+                case None =>
+                  UsageInfo(
+                    input_tokens = du.input_tokens.getOrElse(0),
+                    output_tokens = du.output_tokens,
+                    cache_creation_input_tokens = du.cache_creation_input_tokens,
+                    cache_read_input_tokens = du.cache_read_input_tokens
+                  )
+              }
+              toOpenAI(merged)
+            }
+
+            List(
+              chunk(
+                ChunkMessageSpec(role = None, content = None),
+                finishReason = stopReason,
+                usage = mergedUsage
+              )
+            )
+
+          case MessageStreamEvent.ContentBlockStop(_) | MessageStreamEvent.MessageStop |
+              MessageStreamEvent.Ping | MessageStreamEvent.UnknownEvent(_, _) =>
+            Nil
+        }
+    }
 
   def toOpenAIAssistantMessage(
     content: ContentBlocks,
@@ -643,12 +795,12 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
       text
     }
 
-    if (textContents.isEmpty) {
-      throw new IllegalArgumentException("No text content found in the response")
-    }
-
+    // Tool-only / thinking-only responses are legal (e.g. stop_reason "tool_use" or
+    // "max_tokens") - the assistant text is simply empty in that case. The actual reason is
+    // carried on the enclosing response's `finish_reason`, not here.
     val singleTextContent =
-      if (lastTextBlockOnly) textContents.last
+      if (textContents.isEmpty) ""
+      else if (lastTextBlockOnly) textContents.last
       else concatenateMessages(textContents)
 
     OpenAIAssistantMessage(singleTextContent, name = None)
@@ -697,28 +849,40 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
   }
 
   /**
+   * Pure mapping of an Anthropic exception to its OpenAI-adapter equivalent. Any throwable not
+   * recognized as an Anthropic-specific type is passed through unchanged (identity fallback),
+   * so this is total - safe to use directly with `Source.mapError`.
+   */
+  def toOpenAIException: PartialFunction[Throwable, Throwable] = {
+    case e: AnthropicScalaTokenCountExceededException =>
+      new OpenAIScalaTokenCountExceededException(e.getMessage, e)
+    case e: AnthropicScalaUnauthorizedException =>
+      new OpenAIScalaUnauthorizedException(e.getMessage, e)
+    case e: AnthropicScalaRateLimitException =>
+      new OpenAIScalaRateLimitException(e.getMessage, e)
+    case e: AnthropicScalaServerErrorException =>
+      new OpenAIScalaServerErrorException(e.getMessage, e)
+    case e: AnthropicScalaEngineOverloadedException =>
+      new OpenAIScalaEngineOverloadedException(e.getMessage, e)
+    case e: AnthropicScalaClientTimeoutException =>
+      new OpenAIScalaClientTimeoutException(e.getMessage, e)
+    case e: AnthropicScalaClientUnknownHostException =>
+      new OpenAIScalaClientUnknownHostException(e.getMessage, e)
+    case e: AnthropicScalaNotFoundException =>
+      new OpenAIScalaClientException(e.getMessage, e)
+    case e: AnthropicScalaClientException =>
+      new OpenAIScalaClientException(e.getMessage, e)
+    case e =>
+      e
+  }
+
+  /**
    * Repackages Anthropic exceptions as OpenAI exceptions for consistent error handling in
    * adapter services.
    */
   def repackAsOpenAIException[T]: PartialFunction[Throwable, Future[T]] = {
-    case e: AnthropicScalaTokenCountExceededException =>
-      Future.failed(new OpenAIScalaTokenCountExceededException(e.getMessage, e))
-    case e: AnthropicScalaUnauthorizedException =>
-      Future.failed(new OpenAIScalaUnauthorizedException(e.getMessage, e))
-    case e: AnthropicScalaRateLimitException =>
-      Future.failed(new OpenAIScalaRateLimitException(e.getMessage, e))
-    case e: AnthropicScalaServerErrorException =>
-      Future.failed(new OpenAIScalaServerErrorException(e.getMessage, e))
-    case e: AnthropicScalaEngineOverloadedException =>
-      Future.failed(new OpenAIScalaEngineOverloadedException(e.getMessage, e))
-    case e: AnthropicScalaClientTimeoutException =>
-      Future.failed(new OpenAIScalaClientTimeoutException(e.getMessage, e))
-    case e: AnthropicScalaClientUnknownHostException =>
-      Future.failed(new OpenAIScalaClientUnknownHostException(e.getMessage, e))
-    case e: AnthropicScalaNotFoundException =>
-      Future.failed(new OpenAIScalaClientException(e.getMessage, e))
-    case e: AnthropicScalaClientException =>
-      Future.failed(new OpenAIScalaClientException(e.getMessage, e))
+    case e if toOpenAIException.isDefinedAt(e) =>
+      Future.failed(toOpenAIException(e))
   }
 
   def toTracedBlocks(response: CreateMessageResponse): Seq[TracedBlock] =

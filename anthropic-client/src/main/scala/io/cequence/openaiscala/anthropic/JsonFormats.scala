@@ -34,15 +34,20 @@ import io.cequence.openaiscala.anthropic.domain.Message.{
 }
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse.UsageInfo
 import io.cequence.openaiscala.anthropic.domain.response.DeltaBlock.{
+  DeltaCitations,
+  DeltaInputJson,
   DeltaSignature,
   DeltaText,
-  DeltaThinking
+  DeltaThinking,
+  DeltaUnknown
 }
 import io.cequence.openaiscala.anthropic.domain.response.{
   ContentBlockDelta,
   CreateMessageChunkResponse,
   CreateMessageResponse,
-  DeltaBlock
+  DeltaBlock,
+  MessageDeltaUsage,
+  MessageStreamEvent
 }
 import io.cequence.openaiscala.anthropic.domain.settings.{
   OutputConfig,
@@ -968,6 +973,16 @@ trait JsonFormats {
   private val deltaTextFormat: OFormat[DeltaText] = Json.format[DeltaText]
   private val deltaThinkingFormat: OFormat[DeltaThinking] = Json.format[DeltaThinking]
   private val deltaSignatureFormat: OFormat[DeltaSignature] = Json.format[DeltaSignature]
+  private val deltaInputJsonFormat: OFormat[DeltaInputJson] = Json.format[DeltaInputJson]
+
+  private val deltaCitationsFormat: OFormat[DeltaCitations] = OFormat(
+    Reads[DeltaCitations] { json =>
+      JsSuccess(DeltaCitations((json \ "citation").toOption.getOrElse(JsNull)))
+    },
+    OWrites[DeltaCitations] { deltaCitations =>
+      Json.obj("citation" -> deltaCitations.citation)
+    }
+  )
 
   private val deltaBlockReads: Reads[DeltaBlock] = (json: JsValue) =>
     (json \ "type").validate[String].flatMap {
@@ -980,8 +995,15 @@ trait JsonFormats {
       case "signature_delta" =>
         json.validate[DeltaSignature](deltaSignatureFormat)
 
-      case _ =>
-        JsError("Unsupported or invalid delta block type")
+      case "input_json_delta" =>
+        json.validate[DeltaInputJson](deltaInputJsonFormat)
+
+      case "citations_delta" =>
+        json.validate[DeltaCitations](deltaCitationsFormat)
+
+      case other =>
+        // forward compatible: an unrecognized delta type is preserved raw rather than failing
+        json.validate[JsObject].map(raw => DeltaUnknown(other, raw))
     }
 
   private val deltaBlockWrites: OWrites[DeltaBlock] = {
@@ -993,6 +1015,15 @@ trait JsonFormats {
 
     case deltaSignature: DeltaSignature =>
       Json.toJsObject(deltaSignature)(deltaSignatureFormat)
+
+    case deltaInputJson: DeltaInputJson =>
+      Json.toJsObject(deltaInputJson)(deltaInputJsonFormat)
+
+    case deltaCitations: DeltaCitations =>
+      Json.toJsObject(deltaCitations)(deltaCitationsFormat)
+
+    case deltaUnknown: DeltaUnknown =>
+      deltaUnknown.raw
   }
 
   implicit lazy val deltaBlockFormat: Format[DeltaBlock] =
@@ -1000,6 +1031,54 @@ trait JsonFormats {
 
   implicit lazy val contentBlockDeltaReads: Reads[ContentBlockDelta] =
     Json.reads[ContentBlockDelta]
+
+  implicit lazy val messageDeltaUsageFormat: Format[MessageDeltaUsage] =
+    Json.format[MessageDeltaUsage]
+
+  implicit lazy val messageStreamEventReads: Reads[MessageStreamEvent] = Reads { json =>
+    (json \ "type").asOpt[String] match {
+      case Some("message_start") =>
+        (json \ "message")
+          .validate[CreateMessageResponse](createMessageResponseReads)
+          .map(MessageStreamEvent.MessageStart)
+
+      case Some("content_block_start") =>
+        val index = (json \ "index").asOpt[Int].getOrElse(0)
+        val blockJson = (json \ "content_block").toOption
+        val blockType = blockJson.flatMap(bj => (bj \ "type").asOpt[String]).getOrElse("")
+        // lenient: a content block at start time may be incomplete (e.g. a thinking block
+        // has no signature yet) - that's not an error, just an unparsed block for now
+        val contentBlock = blockJson.flatMap(_.validate[ContentBlock](contentBlockReads).asOpt)
+        JsSuccess(MessageStreamEvent.ContentBlockStart(index, blockType, contentBlock))
+
+      case Some("content_block_delta") =>
+        json
+          .validate[ContentBlockDelta](contentBlockDeltaReads)
+          .map(MessageStreamEvent.ContentBlockDeltaEvent)
+
+      case Some("content_block_stop") =>
+        val index = (json \ "index").asOpt[Int].getOrElse(0)
+        JsSuccess(MessageStreamEvent.ContentBlockStop(index))
+
+      case Some("message_delta") =>
+        val stopReason = (json \ "delta" \ "stop_reason").asOpt[String]
+        val stopSequence = (json \ "delta" \ "stop_sequence").asOpt[String]
+        val usage = (json \ "usage").asOpt[MessageDeltaUsage]
+        JsSuccess(MessageStreamEvent.MessageDelta(stopReason, stopSequence, usage))
+
+      case Some("message_stop") =>
+        JsSuccess(MessageStreamEvent.MessageStop)
+
+      case Some("ping") =>
+        JsSuccess(MessageStreamEvent.Ping)
+
+      case Some(other) =>
+        JsSuccess(MessageStreamEvent.UnknownEvent(other, json))
+
+      case None =>
+        JsSuccess(MessageStreamEvent.UnknownEvent("", json))
+    }
+  }
 
   implicit lazy val thinkingTypeFormat: Format[ThinkingType] =
     JsonUtil.enumFormat[ThinkingType](ThinkingType.values: _*)

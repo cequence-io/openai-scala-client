@@ -18,7 +18,8 @@ import io.cequence.openaiscala.anthropic.domain.{
 }
 import io.cequence.openaiscala.anthropic.domain.response.{
   ContentBlockDelta,
-  CreateMessageResponse
+  CreateMessageResponse,
+  MessageStreamEvent
 }
 import io.cequence.openaiscala.anthropic.domain.OutputFormat
 import io.cequence.openaiscala.anthropic.domain.managedagents.{
@@ -143,10 +144,10 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
     )
   }
 
-  override def createMessageStreamed(
+  private def streamMessageEvents(
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings
-  ): Source[ContentBlockDelta, NotUsed] = {
+  ): Source[MessageStreamEvent, NotUsed] = {
     val bedrockSettings = relocateOutputFormatToOutputConfig(settings)
     val coreBodyParams =
       createBodyParamsForMessageCreation(
@@ -190,9 +191,22 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
       .via(AwsEventStreamEventParser.flow) // parse frames into JSON with "bytes"
       .collect { case Some(x) => x }
       .via(AwsEventStreamBytesDecoder.flow) // decode the "
-      .map(serializeStreamedJson)
-      .collect { case Some(delta) => delta }
+      .map(parseStreamEvent)
   }
+
+  override def createMessageStreamedEvents(
+    messages: Seq[Message],
+    settings: AnthropicCreateMessageSettings
+  ): Source[MessageStreamEvent, NotUsed] =
+    streamMessageEvents(messages, settings)
+
+  override def createMessageStreamed(
+    messages: Seq[Message],
+    settings: AnthropicCreateMessageSettings
+  ): Source[ContentBlockDelta, NotUsed] =
+    streamMessageEvents(messages, settings).collect {
+      case MessageStreamEvent.ContentBlockDeltaEvent(delta) => delta
+    }
 
   // Bedrock structured outputs live under `output_config.format` (not the top-level
   // `output_format` field used by the direct Anthropic API). Move the JSON schema across
@@ -796,4 +810,22 @@ case class BedrockConnectionSettings(
   inferenceProfilePrefix: Option[String] = None,
   sessionToken: Option[String] = None,
   bearerToken: Option[String] = None
-)
+) {
+
+  // Redacted toString: this settings object is a tempting thing to log/println for debugging,
+  // and the default case-class toString would print secretKey, sessionToken and bearerToken
+  // (and the full accessKey) verbatim. Only a truncated access key and non-secret fields are
+  // shown in full; equality/copy semantics (generated separately by the compiler) are untouched.
+  override def toString: String = {
+    val redactedAccessKey =
+      if (accessKey.length > 4) s"...${accessKey.takeRight(4)}" else "***"
+
+    "BedrockConnectionSettings(" +
+      s"accessKey=$redactedAccessKey, " +
+      "secretKey=***, " +
+      s"region=$region, " +
+      s"inferenceProfilePrefix=$inferenceProfilePrefix, " +
+      s"sessionToken=${sessionToken.map(_ => "***")}, " +
+      s"bearerToken=${bearerToken.map(_ => "***")})"
+  }
+}

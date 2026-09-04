@@ -4,7 +4,7 @@ import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.anthropic.JsonFormats
 import io.cequence.openaiscala.anthropic.domain.{ChatRole, Content, Message, OutputFormat}
 import io.cequence.openaiscala.anthropic.domain.Message.{SystemMessage, SystemMessageContent}
-import io.cequence.openaiscala.anthropic.domain.response.ContentBlockDelta
+import io.cequence.openaiscala.anthropic.domain.response.MessageStreamEvent
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.service.{AnthropicService, HandleAnthropicErrorCodes}
 import io.cequence.wsclient.service.WSClientWithEngineStreamTypes.WSClientWithOutputStreamEngine
@@ -151,25 +151,28 @@ trait Anthropic
     )
   }
 
-  protected def serializeStreamedJson(json: JsValue): Option[ContentBlockDelta] =
-    (json \ "error").toOption.map { error =>
-      logger.error(s"Error in streamed response: ${error.toString()}")
-      throw new OpenAIScalaClientException(error.toString())
-    }.getOrElse {
-      val jsonType = (json \ "type").as[String]
+  /**
+   * Parses one raw SSE frame of the Anthropic streaming Messages API into a
+   * [[MessageStreamEvent]]. An `{"error": ...}` frame is logged and thrown as an
+   * [[OpenAIScalaClientException]]; any other (including an event type this client doesn't
+   * model yet) is parsed leniently - an unrecognized `type` never throws, it comes back as
+   * [[MessageStreamEvent.UnknownEvent]].
+   */
+  protected def parseStreamEvent(json: JsValue): MessageStreamEvent =
+    (json \ "error").toOption match {
+      case Some(error) =>
+        logger.error(s"Error in streamed response: ${error.toString()}")
+        throw new OpenAIScalaClientException(error.toString())
 
-      // TODO: for now, we return only ContentBlockDelta
-      jsonType match {
-        case "message_start"       => None // json.asSafe[CreateMessageChunkResponse]
-        case "content_block_start" => None
-        case "ping"                => None
-        case "content_block_delta" => Some(json.asSafe[ContentBlockDelta])
-        case "content_block_stop"  => None
-        case "message_delta"       => None
-        case "message_stop"        => None
-        case _ =>
-          logger.error(s"Unknown message type: $jsonType")
-          throw new OpenAIScalaClientException(s"Unknown message type: $jsonType")
-      }
+      case None =>
+        val event = json.asSafe[MessageStreamEvent]
+
+        event match {
+          case MessageStreamEvent.UnknownEvent(eventType, _) =>
+            logger.debug(s"Unhandled/unknown streamed message event type: '$eventType'")
+          case _ => ()
+        }
+
+        event
     }
 }
