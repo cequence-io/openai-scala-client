@@ -12,5 +12,4 @@ target
 **/build.properties
 **/metals.sbt
 *.log
-/TODO.md
-/project/deep-review-prompt.md
+/project/*.md
