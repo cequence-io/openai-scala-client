@@ -134,7 +134,7 @@ class RetryHelpersSpec
   def testWithException(
     ex: OpenAIScalaClientException
   )(
-    test: (Retryable, Future[Int]) => Unit
+    test: (RetryableFixture, Future[Int]) => Unit
   ): Unit = {
     val results = Seq(Future.failed(ex), Future.successful(successfulResult))
     testWithResults(results.length, results)(test)
@@ -144,10 +144,10 @@ class RetryHelpersSpec
     attempts: Int,
     results: Seq[Future[Int]]
   )(
-    test: (Retryable, Future[Int]) => Unit
+    test: (RetryableFixture, Future[Int]) => Unit
   ): Unit = {
     Promise[Int]().future
-    val mockRetryable = mock[Retryable]
+    val mockRetryable = mock[RetryableFixture]
     when(mockRetryable.attempt())
       .thenReturn(results.head, results.takeRight(results.length - 1): _*)
 
@@ -161,13 +161,13 @@ class RetryHelpersSpec
   def verifyNumAttempts[T](
     n: Int,
     f: Future[T],
-    mock: Retryable
+    mock: RetryableFixture
   ): Unit =
     whenReady(f) { _ =>
       verify(mock, times(n)).attempt()
     }
 }
 
-trait Retryable {
+trait RetryableFixture {
   def attempt(): Future[Int]
 }

@@ -6,6 +6,12 @@ import io.cequence.wsclient.service.WSClient
 /**
  * Core WS stuff for OpenAI services.
  *
+ * Any HTTP status code >= 500 (500, 502 Bad Gateway, 504 Gateway Timeout, etc. - typically
+ * emitted by a gateway/proxy such as nginx, CloudFront, or Azure sitting in front of the API,
+ * rather than by OpenAI itself) not otherwise mapped below is treated as a transient server
+ * error ([[OpenAIScalaServerErrorException]]) so that [[io.cequence.openaiscala.Retryable]]
+ * flags it and [[io.cequence.openaiscala.service.adapter.RetryServiceAdapter]] retries it.
+ *
  * @since March
  *   2024
  */
@@ -14,14 +20,25 @@ trait HandleOpenAIErrorCodes extends WSClient {
   override protected def handleErrorCodes(
     httpCode: Int,
     message: String
-  ): Nothing = {
+  ): Nothing =
+    throw HandleOpenAIErrorCodes.toException(httpCode, message)
+}
+
+object HandleOpenAIErrorCodes {
+
+  def toException(
+    httpCode: Int,
+    message: String
+  ): OpenAIScalaClientException = {
     val errorMessage = s"Code ${httpCode} : ${message}"
     httpCode match {
-      case 401 => throw new OpenAIScalaUnauthorizedException(errorMessage)
-      case 429 => throw new OpenAIScalaRateLimitException(errorMessage)
-      case 498 => throw new OpenAIScalaCapacityExceededException(errorMessage)
-      case 500 => throw new OpenAIScalaServerErrorException(errorMessage)
-      case 503 => throw new OpenAIScalaEngineOverloadedException(errorMessage)
+      case 401 => new OpenAIScalaUnauthorizedException(errorMessage)
+      case 403 => new OpenAIScalaUnauthorizedException(errorMessage)
+      case 408 => new OpenAIScalaClientTimeoutException(errorMessage)
+      case 429 => new OpenAIScalaRateLimitException(errorMessage)
+      case 498 => new OpenAIScalaCapacityExceededException(errorMessage)
+      case 503 => new OpenAIScalaEngineOverloadedException(errorMessage)
+      case 529 => new OpenAIScalaEngineOverloadedException(errorMessage)
       case 400 =>
         if (
           message.contains("Please reduce your prompt; or completion length") ||
@@ -29,11 +46,13 @@ trait HandleOpenAIErrorCodes extends WSClient {
           message.contains("maximum input length is") ||
           message.contains("maximum context length is")
         )
-          throw new OpenAIScalaTokenCountExceededException(errorMessage)
+          new OpenAIScalaTokenCountExceededException(errorMessage)
         else
-          throw new OpenAIScalaClientException(errorMessage)
+          new OpenAIScalaClientException(errorMessage)
 
-      case _ => throw new OpenAIScalaClientException(errorMessage)
+      case code if code >= 500 => new OpenAIScalaServerErrorException(errorMessage)
+
+      case _ => new OpenAIScalaClientException(errorMessage)
     }
   }
 }
