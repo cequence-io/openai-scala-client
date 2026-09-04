@@ -11,3 +11,21 @@ case class FunctionCallSpec(
   // Validate the arguments in your code before calling your function.
   arguments: String
 ) extends ToolCallSpec
+
+/**
+ * A streamed (partial) tool call as it appears in a chat-completion chunk's
+ * `delta.tool_calls`. The first chunk of a call carries `id`, `type` and `function.name`;
+ * later chunks carry only `index` and `function.arguments` fragments to be concatenated by the
+ * consumer.
+ */
+case class ToolCallChunkSpec(
+  index: Int,
+  id: Option[String] = None,
+  `type`: Option[String] = None,
+  function: Option[FunctionCallChunkSpec] = None
+)
+
+case class FunctionCallChunkSpec(
+  name: Option[String] = None,
+  arguments: Option[String] = None
+)

@@ -8,7 +8,8 @@ import io.cequence.openaiscala.domain.{
   AssistantToolMessage,
   AssistantWebSearchMessage,
   BaseMessage,
-  ChatRole
+  ChatRole,
+  ToolCallChunkSpec
 }
 
 import java.{util => ju}
@@ -205,5 +206,7 @@ case class ChatCompletionChoiceChunkInfo(
 // we should incorporate this into the MessageSpec hierarchy (but the role is optional)
 case class ChunkMessageSpec(
   role: Option[ChatRole],
-  content: Option[String]
+  content: Option[String],
+  // streamed tool-call fragments (OpenAI `delta.tool_calls`); None when the chunk carries none
+  tool_calls: Option[Seq[ToolCallChunkSpec]] = None
 )

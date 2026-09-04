@@ -290,11 +290,13 @@ object JsonFormats {
           json.as[AssistantToolMessage]
         } else if ((json \ "annotations").isDefined) {
           json.as[AssistantWebSearchMessage]
+        } else if ((json \ "function_call").isDefined) {
+          // legacy function calling - must be checked BEFORE the plain assistant fallback:
+          // since content became nullable, an AssistantMessage read always succeeds, so a
+          // "try assistant, else function" order would silently drop the function call
+          json.as[AssistantFunMessage]
         } else {
-          json.asOpt[AssistantMessage] match {
-            case Some(assistantMessage) => assistantMessage
-            case None                   => json.as[AssistantFunMessage]
-          }
+          json.as[AssistantMessage]
         }
 
       case ChatRole.Function => json.as[FunMessage]
@@ -525,6 +527,10 @@ object JsonFormats {
   implicit lazy val chatFunCompletionResponseFormat: Format[ChatFunCompletionResponse] =
     Json.format[ChatFunCompletionResponse]
 
+  implicit lazy val functionCallChunkSpecFormat: Format[FunctionCallChunkSpec] =
+    Json.format[FunctionCallChunkSpec]
+  implicit lazy val toolCallChunkSpecFormat: Format[ToolCallChunkSpec] =
+    Json.format[ToolCallChunkSpec]
   implicit lazy val chatChunkMessageFormat: Format[ChunkMessageSpec] =
     Json.format[ChunkMessageSpec]
   implicit lazy val chatCompletionChoiceChunkInfoFormat
