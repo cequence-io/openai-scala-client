@@ -251,11 +251,13 @@ object ModelId {
   // sampling params rejected - see ChatCompletionSettingsConversions.chatLatest)
   val chat_latest = "chat-latest"
 
-  // GPT-6 Astra - PRE-REGISTERED from the docs page (2026-09-03), NOT yet served by the API
-  // (absent from /v1/models as of registration). Docs: 1,050,000 context, 128,000 max output,
-  // knowledge cutoff 2026-04-30, text+image in / text out, chat completions + Responses API,
-  // reasoning_effort low/medium/high/xhigh/max ('max' assumed Responses-API-only like GPT-5.6).
-  // Sampling-param behaviour is assumed identical to GPT-5.6 until verified live.
+  // GPT-6 Astra (released 2026-09-05, live-verified the same day): 1,050,000 context, 128,000
+  // max output, knowledge cutoff 2026-04-30, text+image in / text out, chat completions +
+  // Responses API + Batch API, structured outputs, prompt caching, MCP/web search/etc. on the
+  // Responses API. reasoning_effort low/medium/high/xhigh on chat completions ('max' is
+  // Responses-API-only; 'none' and 'minimal' are rejected everywhere); all sampling params
+  // (temperature/top_p/penalties/logprobs) are rejected. Function tools are NOT supported on the
+  // chat completions API at all - createChatToolCompletion is routed through the Responses API.
   val gpt_6_astra = "gpt-6-astra"
 
   val gpt_5_6_sol = "gpt-5.6-sol"

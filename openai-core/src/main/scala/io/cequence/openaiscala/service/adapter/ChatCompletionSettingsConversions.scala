@@ -201,6 +201,37 @@ object ChatCompletionSettingsConversions {
       warning = true
     )
 
+    val reasoningEffortNoneToLow: FieldConversionDef = FieldConversionDef(
+      settings => settings.reasoning_effort.contains(ReasoningEffort.none),
+      _.copy(reasoning_effort = Some(ReasoningEffort.low)),
+      Some(settings =>
+        s"${settings.model} model doesn't support reasoning_effort 'none', converting to 'low'."
+      ),
+      warning = true
+    )
+
+    // Function tools on the chat completions API reject any explicit reasoning_effort on
+    // GPT-5.5 (the model default works) - see the chat-tool conversions below.
+    val reasoningEffortUnsupportedWithTools: FieldConversionDef = FieldConversionDef(
+      settings => settings.reasoning_effort.isDefined,
+      _.copy(reasoning_effort = None),
+      Some(settings =>
+        s"${settings.model} model doesn't support an explicit reasoning_effort together with function tools on the chat completions API, converting to None (model default)."
+      ),
+      warning = true
+    )
+
+    // Function tools on the chat completions API require reasoning_effort = 'none' on GPT-5.6
+    // (any other value, or omitting it, is rejected with a 400).
+    val reasoningEffortNoneRequiredWithTools: FieldConversionDef = FieldConversionDef(
+      settings => !settings.reasoning_effort.contains(ReasoningEffort.none),
+      _.copy(reasoning_effort = Some(ReasoningEffort.none)),
+      Some(settings =>
+        s"${settings.model} model supports function tools on the chat completions API only with reasoning_effort 'none', converting to 'none' (use the Responses API to keep reasoning with tools)."
+      ),
+      warning = true
+    )
+
     val responseFormatTypeMustBeText: FieldConversionDef = FieldConversionDef(
       settings =>
         settings.response_format_type.isDefined && settings.response_format_type.get != ChatCompletionResponseFormatType.text,
@@ -313,11 +344,33 @@ object ChatCompletionSettingsConversions {
     )
   )
 
-  // GPT-6 (Astra) - PRE-REGISTERED 2026-09-03, not yet served by the API, so NOT verified live.
-  // The docs page lists reasoning_effort low/medium/high/xhigh/max and no sampling params;
-  // we assume the GPT-5.6 reasoning-first behaviour (all sampling params rejected, 'max'
-  // Responses-API-only, 'minimal' rejected) until a live probe confirms otherwise.
-  val gpt6: SettingsConversion = gpt5_6
+  // GPT-6 (Astra) is reasoning-first like GPT-5.6. Verified against the live API 2026-09-05:
+  // temperature/top_p/presence_penalty/frequency_penalty/logprobs all return 400, max_tokens
+  // must be sent as max_completion_tokens, and reasoning_effort on chat completions accepts
+  // only low/medium/high/xhigh - 'max' is Responses-API-only, while 'minimal' AND 'none' are
+  // rejected by both APIs (unlike GPT-5.6, which still accepts 'none' on chat completions).
+  val gpt6: SettingsConversion = generic(
+    Seq(
+      maxTokensToMaxCompletionTokens,
+      temperatureOneOnly,
+      topPOneOnly,
+      presencePenaltyZeroOnly,
+      frequencyPenaltyZeroOnly,
+      logProbsUnsupported,
+      reasoningEffortMaxToXHigh,
+      reasoningEffortMinimalToLow,
+      reasoningEffortNoneToLow
+    )
+  )
+
+  // Function tools on the CHAT COMPLETIONS API (createChatToolCompletion) - verified live
+  // 2026-09-05: GPT-5.4 and older accept tools with any reasoning_effort; GPT-5.5 rejects an
+  // explicit reasoning_effort when tools are present; GPT-5.6 requires reasoning_effort 'none'
+  // with tools; GPT-6 requires 'none' with tools but rejects 'none' altogether, so on GPT-6
+  // function tools are Responses-API-only (OpenAIChatCompletionServiceImpl routes them there).
+  val gpt5_5ChatTools: SettingsConversion = generic(Seq(reasoningEffortUnsupportedWithTools))
+
+  val gpt5_6ChatTools: SettingsConversion = generic(Seq(reasoningEffortNoneRequiredWithTools))
 
   // 'chat-latest' is a rolling ChatGPT-style alias. Verified against the live API 2026-09-02:
   // max_tokens must be sent as max_completion_tokens; temperature/top_p/presence_penalty/

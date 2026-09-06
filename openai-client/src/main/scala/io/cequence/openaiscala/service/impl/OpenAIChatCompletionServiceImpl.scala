@@ -1,16 +1,20 @@
 package io.cequence.openaiscala.service.impl
 
 import io.cequence.openaiscala.JsonFormats._
+import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.{AssistantTool, BaseMessage, ChatCompletionTool, ModelId}
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.adapter.{
   ChatCompletionSettingsConversions,
-  MessageConversions
+  MessageConversions,
+  OpenAIResponsesChatCompletionService
 }
-import io.cequence.openaiscala.service.OpenAIChatCompletionService
+import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIResponsesService}
 import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.ResponseImplicits._
+import io.cequence.wsclient.service.CloseableService
+import org.slf4j.LoggerFactory
 import play.api.libs.json.{JsObject, JsValue, Json}
 
 import scala.concurrent.Future
@@ -38,11 +42,55 @@ private[service] trait OpenAIChatCompletionServiceImpl
       _.asSafeJson[ChatCompletionResponse]
     )
 
+  private val logger = LoggerFactory.getLogger(getClass)
+
+  // GPT-6 rejects function tools on the chat completions API outright (they require
+  // reasoning_effort 'none', which the model doesn't accept), so tool completions are routed
+  // through the Responses API when this service provides it (i.e. the full OpenAIService).
+  private lazy val responsesBackedChatCompletionService: Option[OpenAIChatCompletionService] =
+    this match {
+      case responsesService: OpenAIResponsesService with CloseableService =>
+        Some(OpenAIResponsesChatCompletionService(responsesService))
+      case _ =>
+        None
+    }
+
   override def createChatToolCompletion(
     messages: Seq[BaseMessage],
     tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatToolCompletion
+  ): Future[ChatToolCompletionResponse] =
+    if (chatToolsRequireResponsesAPI(settings.model))
+      responsesBackedChatCompletionService match {
+        case Some(service) =>
+          logger.debug(
+            s"${settings.model} model doesn't support function tools on the chat completions API, routing createChatToolCompletion through the Responses API."
+          )
+          service.createChatToolCompletion(messages, tools, responseToolChoice, settings)
+
+        case None =>
+          Future.failed(
+            new OpenAIScalaClientException(
+              s"${settings.model} model doesn't support function tools on the chat completions API (OpenAI: 'To use function tools, use /v1/responses'). " +
+                "Use the full OpenAIService (OpenAIServiceFactory), which routes tool completions through the Responses API automatically, " +
+                "or wrap a Responses-capable service in OpenAIResponsesChatCompletionService."
+            )
+          )
+      }
+    else
+      createChatToolCompletionAux(
+        messages,
+        tools,
+        responseToolChoice,
+        settingsForChatToolCompletion(settings)
+      )
+
+  private def createChatToolCompletionAux(
+    messages: Seq[BaseMessage],
+    tools: Seq[ChatCompletionTool],
+    responseToolChoice: Option[String],
+    settings: CreateChatCompletionSettings
   ): Future[ChatToolCompletionResponse] = {
     val coreParams =
       createBodyParamsForChatCompletion(messages, settings, stream = false)
@@ -106,6 +154,21 @@ trait ChatCompletionBodyMaker {
   private val gpt6Prefix = "gpt-6"
   private val gpt5_6Prefix = "gpt-5.6"
   private val gpt5_5Prefix = "gpt-5.5"
+
+  // Function tools on the chat completions API - see ChatCompletionSettingsConversions.gpt5_5ChatTools
+  // & gpt5_6ChatTools. GPT-6 doesn't support them at all (Responses API only).
+  protected def chatToolsRequireResponsesAPI(model: String): Boolean =
+    model.startsWith(gpt6Prefix)
+
+  protected def settingsForChatToolCompletion(
+    settings: CreateChatCompletionSettings
+  ): CreateChatCompletionSettings =
+    if (settings.model.startsWith(gpt5_6Prefix))
+      ChatCompletionSettingsConversions.gpt5_6ChatTools(settings)
+    else if (settings.model.startsWith(gpt5_5Prefix))
+      ChatCompletionSettingsConversions.gpt5_5ChatTools(settings)
+    else
+      settings
   private val gpt5_4Prefix = "gpt-5.4"
   private val gpt5_3Prefix = "gpt-5.3"
   private val gpt5_2Prefix = "gpt-5.2"
