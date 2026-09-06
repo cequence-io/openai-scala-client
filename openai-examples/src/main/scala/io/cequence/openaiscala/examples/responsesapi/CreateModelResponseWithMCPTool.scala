@@ -16,24 +16,22 @@ object CreateModelResponseWithMCPTool extends Example {
 
   private val model = ModelId.gpt_5_mini
 
+  // NOTE: OpenAI's MCP connector needs streamable-HTTP server URLs (e.g. `.../mcp`); the older
+  // SSE endpoints (`.../sse`) are rejected with "424 Failed Dependency".
+
   // Example 1: DeepWiki MCP Tool
   private val deepwikiMcpTool = Tool.mcp(
     serverLabel = "deepwiki",
-    serverUrl = Some("https://mcp.deepwiki.com/sse"),
+    serverUrl = Some(
+      "https://mcp.deepwiki.com/mcp"
+    ), // streamable HTTP; the /sse endpoint fails with 424
     requireApproval = Some(MCPRequireApproval.Setting.Always)
   )
 
-  // Example 2: Semgrep MCP Tool
-  private val semgrepMcpTool = Tool.mcp(
-    serverLabel = "semgrep",
-    serverUrl = Some("https://mcp.semgrep.ai/mcp"), // sse
-    requireApproval = Some(MCPRequireApproval.Setting.Never)
-  )
-
-  // Example 3: DeepSense CMS Coverage MCP Tool
-  private val cmsCoverageMcpTool = Tool.mcp(
-    serverLabel = "cms_coverage",
-    serverUrl = Some("https://mcp.deepsense.ai/cms_coverage/mcp"),
+  // Example 2: Context7 MCP Tool (library documentation lookup; public, no auth)
+  private val context7McpTool = Tool.mcp(
+    serverLabel = "context7",
+    serverUrl = Some("https://mcp.context7.com/mcp"),
     requireApproval = Some(MCPRequireApproval.Setting.Never)
   )
 
@@ -107,56 +105,32 @@ object CreateModelResponseWithMCPTool extends Example {
         }
       }
 
-      // Example 2: Using Semgrep MCP Server (no approval required)
+      // Example 2: Using Context7 MCP Server (no approval required)
       response2 <- {
         println("=" * 60)
-        println("Example 2: Using Semgrep MCP Server")
+        println("Example 2: Using Context7 MCP Server")
         println("=" * 60)
 
         service.createModelResponse(
           Inputs.Text(
-            "Analyze this code for security vulnerabilities: def unsafe(input: String) = s\"SELECT * FROM users WHERE name = '$input'\""
+            "Using context7, look up the Play JSON library and summarise in two sentences how to define a case class Format."
           ),
           settings = CreateModelResponseSettings(
             model = model,
-            tools = Seq(semgrepMcpTool)
-          )
-        )
-      }
-
-      _ = {
-        response2.output.foreach { output =>
-          println(output)
-        }
-      }
-
-      // Example 3: Using DeepSense CMS Coverage MCP Server
-      response3 <- {
-        println("=" * 60)
-        println("Example 3: Using DeepSense CMS Coverage MCP Server")
-        println("=" * 60)
-
-        service.createModelResponse(
-          Inputs.Text(
-            "What are the recent National Coverage Determinations (NCDs) published in the last 30 days? Include any updates to oncology-related coverage policies."
-          ),
-          settings = CreateModelResponseSettings(
-            model = model,
-            tools = Seq(cmsCoverageMcpTool)
+            tools = Seq(context7McpTool)
           )
         )
       }
 
     } yield {
-      response3.output.foreach { output =>
+      response2.output.foreach { output =>
         println(output)
       }
 
       println("=" * 60)
       println("Example Summary:")
       println("  - Example 1 (DeepWiki): Demonstrated approval flow")
-      println("  - Example 2 (Semgrep): Code security analysis")
-      println("  - Example 3 (CMS Coverage): Medicare coverage policies (NCDs, LCDs)")
+      println("  - Example 2 (Context7): Library documentation lookup")
       println("=" * 60)
     }
   }
