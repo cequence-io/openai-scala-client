@@ -288,7 +288,11 @@ private[service] class OpenAIResponsesChatCompletionService(
     }
     val (textOpt, refusalOpt) = extractTextAndRefusal(response)
     val refusalOnly = refusalOpt.isDefined && textOpt.isEmpty && toolCalls.isEmpty
-    val finishReason = toFinishReason(response, refusalOnly)
+    // chat completions report 'tool_calls' (not 'stop') when the model asked for tool calls
+    val finishReason = toFinishReason(response, refusalOnly).map {
+      case "stop" if toolCalls.nonEmpty => "tool_calls"
+      case other                        => other
+    }
 
     ChatToolCompletionResponse(
       id = response.id,
