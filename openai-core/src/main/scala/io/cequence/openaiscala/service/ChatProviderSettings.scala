@@ -19,4 +19,8 @@ object ChatProviderSettings {
   val geminiCoreURL = "https://generativelanguage.googleapis.com/v1beta/"
   val gemini = ProviderSettings(s"${geminiCoreURL}openai/", "GOOGLE_API_KEY")
   val novita = ProviderSettings("https://api.novita.ai/v3/openai/", "NOVITA_API_KEY")
+  // MiniMax direct API, OpenAI-compatible endpoints (requires MINIMAX_API_KEY).
+  // `minimax` is the global endpoint, `minimaxChina` the China (minimaxi.com) endpoint.
+  val minimax = ProviderSettings("https://api.minimax.io/v1/", "MINIMAX_API_KEY")
+  val minimaxChina = ProviderSettings("https://api.minimaxi.com/v1/", "MINIMAX_API_KEY")
 }
