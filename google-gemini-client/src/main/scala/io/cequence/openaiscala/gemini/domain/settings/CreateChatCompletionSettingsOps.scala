@@ -11,6 +11,7 @@ object CreateChatCompletionSettingsOps {
     private val SystemCacheName = "system_cache_name"
     private val GeminiToolsParam = "gemini_tools"
     private val GeminiToolConfigParam = "gemini_tool_config"
+    private val GeminiIncludeThoughts = "gemini_include_thoughts"
 
     def enableCacheSystemMessage(flag: Boolean): CreateChatCompletionSettings =
       settings.copy(
@@ -43,6 +44,19 @@ object CreateChatCompletionSettingsOps {
         case tools: Seq[_] if tools.forall(_.isInstanceOf[Tool]) =>
           tools.asInstanceOf[Seq[Tool]]
       }
+
+    /**
+     * Whether thought summaries (`Part.Text(thought = true)`) should be requested - only
+     * honoured by the typed stream (`createChatToolCompletionStreamed`), which defaults to
+     * `true` whenever a thinking config is derived from `reasoning_effort`.
+     */
+    def setGeminiIncludeThoughts(flag: Boolean = true): CreateChatCompletionSettings =
+      settings.copy(
+        extra_params = settings.extra_params + (GeminiIncludeThoughts -> flag)
+      )
+
+    def geminiIncludeThoughts: Option[Boolean] =
+      settings.extra_params.get(GeminiIncludeThoughts).map(_.toString == "true")
 
     def getGeminiToolConfig: Option[ToolConfig] =
       settings.extra_params.get(GeminiToolConfigParam).collect { case toolConfig: ToolConfig =>

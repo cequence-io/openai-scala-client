@@ -51,8 +51,14 @@ import io.cequence.openaiscala.gemini.domain.settings.{
 }
 import io.cequence.openaiscala.gemini.JsonFormats.{
   batchRpcErrorReads,
-  generateContentResponseFormat
+  candidateFormat,
+  generateContentResponseFormat,
+  partFormat
 }
+import io.cequence.openaiscala.domain.response.ChatChunk
+import akka.stream.scaladsl.Flow
+import play.api.libs.json.{JsNull, JsString}
+import scala.collection.mutable
 import io.cequence.openaiscala.gemini.domain.{
   BatchRequestItem,
   BatchRpcError,
@@ -90,6 +96,142 @@ import play.api.libs.json.{JsObject, Json}
 import scala.collection.immutable.Traversable
 
 private[impl] object OpenAIGeminiChatCompletionService {
+
+  /**
+   * Converts a streamed [[GenerateContentResponse]] sequence (candidate 0) into typed
+   * [[ChatChunk]]s: thought parts -> Thinking, text -> Text, thought signatures ->
+   * ThinkingSignature, `functionCall` -> ToolCallStart + ToolCall (Gemini sends complete
+   * calls), `executableCode` / `codeExecutionResult` -> server-side ToolCall + ToolResult,
+   * grounding chunks -> Citation, the finish reason -> Finish + Usage. Other parts and further
+   * candidates pass through as [[ChatChunk.Other]].
+   */
+  private[impl] def toChatChunks: Flow[GenerateContentResponse, ChatChunk, NotUsed] =
+    Flow[GenerateContentResponse].statefulMapConcat { () =>
+      var started = false
+      var toolCount = 0
+      var sawFunctionCall = false
+      var lastCodeExecutionCallId: Option[String] = None
+
+      (response: GenerateContentResponse) => {
+        val out = mutable.ListBuffer.empty[ChatChunk]
+
+        if (!started) {
+          started = true
+          out += ChatChunk.Start("gemini", response.modelVersion)
+        }
+
+        response.candidates.foreach { candidate =>
+          val candidateIndex = candidate.index.getOrElse(0)
+
+          if (candidateIndex != 0)
+            out += ChatChunk.Other(s"candidate[$candidateIndex]", Json.toJson(candidate))
+          else {
+            candidate.content.parts.foreach {
+              case Part.Text(text, thought, signature) =>
+                if (text.nonEmpty)
+                  out += (if (thought.contains(true)) ChatChunk.Thinking(text)
+                          else ChatChunk.Text(text))
+                signature.foreach(s => out += ChatChunk.ThinkingSignature(s))
+
+              case Part.FunctionCall(id, name, args, signature) =>
+                sawFunctionCall = true
+                val ordinal = toolCount
+                toolCount += 1
+                val callId = id.getOrElse(java.util.UUID.randomUUID().toString)
+                val argsJson = Json.toJson(args)(JsonUtil.StringAnyMapFormat).toString
+                out += ChatChunk.ToolCallStart(ordinal, callId, name, serverSide = false)
+                out += ChatChunk.ToolCall(ordinal, callId, name, argsJson, serverSide = false)
+                signature.foreach(s => out += ChatChunk.ThinkingSignature(s, Some(callId)))
+
+              case Part.ExecutableCode(language, code) =>
+                val ordinal = toolCount
+                toolCount += 1
+                val callId = java.util.UUID.randomUUID().toString
+                lastCodeExecutionCallId = Some(callId)
+                val arguments = Json.obj("language" -> language, "code" -> code).toString
+                out += ChatChunk.ToolCallStart(
+                  ordinal,
+                  callId,
+                  "code_execution",
+                  serverSide = true
+                )
+                out += ChatChunk.ToolCall(
+                  ordinal,
+                  callId,
+                  "code_execution",
+                  arguments,
+                  serverSide = true
+                )
+                out += ChatChunk.CodeExecution(callId, Some(language.toLowerCase), code)
+
+              case Part.CodeExecutionResult(outcome, output) =>
+                val callId = lastCodeExecutionCallId.getOrElse("")
+                val content = Json.obj(
+                  "outcome" -> outcome,
+                  "output" -> output
+                    .map(JsString(_))
+                    .getOrElse[play.api.libs.json.JsValue](JsNull)
+                )
+                val isError = outcome != "OUTCOME_OK"
+                out += ChatChunk.ToolResult(
+                  callId,
+                  "code_execution",
+                  content,
+                  output.filter(_.nonEmpty),
+                  isError
+                )
+                out += ChatChunk.CodeExecutionResult(
+                  callId,
+                  output.filter(_.nonEmpty),
+                  isError,
+                  content
+                )
+
+              case Part.InlineData(mimeType, data) if mimeType.startsWith("image/") =>
+                out += ChatChunk.Image(Some(mimeType), Some(data), None)
+
+              case other =>
+                out += ChatChunk.Other(other.prefix.toString, Json.toJson(other))
+            }
+
+            candidate.groundingMetadata.foreach { grounding =>
+              if (grounding.webSearchQueries.nonEmpty)
+                out += ChatChunk.WebSearch("", grounding.webSearchQueries)
+              if (grounding.groundingChunks.nonEmpty)
+                out += ChatChunk.WebSearchResult(
+                  "",
+                  grounding.groundingChunks.map(c =>
+                    ChatChunk.WebSearchResultItem(Some(c.web.title), c.web.uri)
+                  ),
+                  Json.toJson(
+                    grounding.groundingChunks.map(c =>
+                      Json.obj("uri" -> c.web.uri, "title" -> c.web.title)
+                    )
+                  )
+                )
+              grounding.groundingChunks.foreach { chunk =>
+                out += ChatChunk.Citation(
+                  citedText = None,
+                  url = Some(chunk.web.uri),
+                  title = Some(chunk.web.title),
+                  raw = Json.obj("uri" -> chunk.web.uri, "title" -> chunk.web.title)
+                )
+              }
+            }
+
+            candidate.finishReason.foreach { finishReason =>
+              out += ChatChunk.Finish(
+                ChatChunk.FinishReason.fromGemini(finishReason.toString, sawFunctionCall),
+                Some(finishReason.toString)
+              )
+              out += ChatChunk.Usage(toOpenAIUsage(response.usageMetadata))
+            }
+          }
+        }
+
+        out.toList
+      }
+    }
 
   /**
    * Maps Gemini's usage accounting onto OpenAI's, preserving the OpenAI invariant
@@ -627,9 +769,9 @@ private[service] class OpenAIGeminiChatCompletionService(
    * Converts OpenAI's reasoning_effort to Gemini's ThinkingConfig.
    *
    * Gemini 3.x models use `thinkingLevel` (MINIMAL/LOW/MEDIUM/HIGH); MINIMAL is only valid on
-   * Flash variants, not Pro, and not on Gemini 3.7 Flash (which dropped it). Gemini 2.5 uses
-   * `thinkingBudget` (token count) from config. Setting both fields on Gemini 3 can return an
-   * error, so only one is populated.
+   * Flash variants, not Pro, and not on Gemini 3.7/3.8 Flash (which dropped it). Gemini 2.5
+   * uses `thinkingBudget` (token count) from config. Setting both fields on Gemini 3 can
+   * return an error, so only one is populated.
    *
    * @return
    *   ThinkingConfig, or None if reasoning_effort is None or model doesn't support thinking
@@ -654,14 +796,16 @@ private[service] class OpenAIGeminiChatCompletionService(
     model.startsWith("gemini-3-") || model.startsWith("gemini-3.")
 
   // Gemini 3 Pro does NOT support MINIMAL (min level is LOW). Most Flash variants do, except
-  // Gemini 3.7 Flash, which also dropped it (see minimalThinkingLevelUnsupportedPrefixes).
+  // Gemini 3.7/3.8 Flash, which also dropped it (see minimalThinkingLevelUnsupportedPrefixes).
   private def isGemini3Pro(model: String): Boolean =
     isGemini3(model) && model.contains("-pro") && !model.contains("image")
 
   // Gemini 3.7 Flash dropped the MINIMAL thinking level (400: "Thinking level MINIMAL is not
-  // supported for this model", live-verified 2026-09-02); 3.6 Flash and earlier Flash
-  // variants still accept it. Pro never did. Extend this as further releases drop it.
-  private val minimalThinkingLevelUnsupportedPrefixes: Seq[String] = Seq("gemini-3.7")
+  // supported for this model", live-verified 2026-09-02) and Gemini 3.8 Flash (GA 2026-09-02)
+  // documents only LOW/MEDIUM/HIGH as well; 3.6 Flash and earlier Flash variants still accept
+  // it. Pro never did. Extend this as further releases drop it.
+  private val minimalThinkingLevelUnsupportedPrefixes: Seq[String] =
+    Seq("gemini-3.7", "gemini-3.8")
 
   private def supportsMinimalThinkingLevel(model: String): Boolean =
     !isGemini3Pro(model) && !minimalThinkingLevelUnsupportedPrefixes.exists(model.startsWith)
@@ -928,6 +1072,83 @@ private[service] class OpenAIGeminiChatCompletionService(
   private def toOpenAIUsage(
     usageMetadata: UsageMetadata
   ) = OpenAIGeminiChatCompletionService.toOpenAIUsage(usageMetadata)
+
+  /**
+   * Typed streaming with tools: OpenAI function tools become function declarations, merged
+   * with any Gemini-native tools from `settings.setGeminiTools(...)` (Google Search, code
+   * execution, MCP servers, ...). Thought summaries are requested (`includeThoughts = true`)
+   * whenever a thinking config is derived from `reasoning_effort`, unless
+   * `settings.setGeminiIncludeThoughts(false)`.
+   */
+  override def createChatToolCompletionStreamed(
+    messages: Seq[BaseMessage],
+    tools: Seq[ChatCompletionTool],
+    responseToolChoice: Option[String],
+    settings: CreateChatCompletionSettings
+  ): Source[ChatChunk, NotUsed] = {
+    val (userMessages, systemMessage) = splitMessage(messages)
+
+    val futureSource = handleCaching(systemMessage, userMessages, settings).map {
+      baseSettings =>
+        val geminiSettings =
+          withThoughts(withTools(baseSettings, tools, responseToolChoice, settings), settings)
+
+        underlying
+          .generateContentStreamed(userMessages.map(toGeminiContent), geminiSettings)
+          .via(OpenAIGeminiChatCompletionService.toChatChunks)
+    }.recoverWith(repackAsOpenAIException)
+
+    Source.fromFutureSource(futureSource).mapMaterializedValue(_ => NotUsed)
+  }
+
+  private def withTools(
+    base: GenerateContentSettings,
+    tools: Seq[ChatCompletionTool],
+    responseToolChoice: Option[String],
+    settings: CreateChatCompletionSettings
+  ): GenerateContentSettings = {
+    val functionDeclarations = tools.collect { case ft: FunctionTool =>
+      FunctionDeclaration(
+        name = ft.name,
+        description = ft.description.getOrElse(""),
+        parameters = Some(toGeminiJSONSchema(ft.parameters))
+      )
+    }
+
+    val allTools =
+      (if (functionDeclarations.nonEmpty)
+         Seq(GeminiTool.FunctionDeclarations(functionDeclarations))
+       else Nil) ++ settings.getGeminiTools.getOrElse(Nil)
+
+    val toolConfig = responseToolChoice.map { name =>
+      ToolConfig.FunctionCallingConfig(
+        mode = Some(FunctionCallingMode.ANY),
+        allowedFunctionNames = Some(Seq(name))
+      )
+    }.orElse(settings.getGeminiToolConfig)
+
+    base.copy(
+      tools = if (allTools.nonEmpty) Some(allTools) else None,
+      toolConfig = toolConfig
+    )
+  }
+
+  // the typed stream exists to surface thinking, so thought summaries default to on
+  private def withThoughts(
+    base: GenerateContentSettings,
+    settings: CreateChatCompletionSettings
+  ): GenerateContentSettings = {
+    val includeThoughts = settings.geminiIncludeThoughts.getOrElse(true)
+
+    base.copy(
+      generationConfig = base.generationConfig.map(config =>
+        config.copy(
+          thinkingConfig =
+            config.thinkingConfig.map(_.copy(includeThoughts = Some(includeThoughts)))
+        )
+      )
+    )
+  }
 
   override def createChatToolCompletion(
     messages: Seq[BaseMessage],

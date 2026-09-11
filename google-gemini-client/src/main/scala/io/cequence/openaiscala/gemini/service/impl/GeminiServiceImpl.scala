@@ -1,6 +1,7 @@
 package io.cequence.openaiscala.gemini.service.impl
 
 import akka.NotUsed
+import io.cequence.openaiscala.service.StreamingConsts
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.gemini.JsonFormats._
@@ -107,7 +108,8 @@ private[service] class GeminiServiceImpl(
         EndPoint.streamGenerateContent(settings.model).toString(),
         "POST",
         bodyParams = stringParams,
-        maxFrameLength = Some(20000),
+        // one JSON element per frame - grounding metadata / code-execution output can be large
+        maxFrameLength = Some(StreamingConsts.DefaultMaxFrameLength),
         framingDelimiter = "\n,\r\n",
         stripPrefix = Some("["),
         stripSuffix = Some("]")
