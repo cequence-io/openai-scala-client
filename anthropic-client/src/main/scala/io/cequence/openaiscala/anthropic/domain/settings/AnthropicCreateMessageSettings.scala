@@ -125,12 +125,32 @@ final case class ThinkingSettings(
   // Must be ≥1024 and less than max_tokens.
   // Only required for type=enabled. Not used with type=adaptive.
   // Deprecated on Opus 4.6 - use adaptive thinking with effort parameter instead.
-  budget_tokens: Option[Int] = None
-)
+  budget_tokens: Option[Int] = None,
+
+  // Controls how thinking content is returned (works with both enabled and adaptive):
+  //   summarized - thinking blocks carry a readable summary (streams as thinking_delta);
+  //                the default on Opus 4.6 / Sonnet 4.6 and earlier
+  //   omitted    - thinking blocks come back with an empty `thinking` field, only the
+  //                signature (faster time-to-first-text); the DEFAULT on Opus 5, Sonnet 5,
+  //                Fable 5/5.1 and Mythos - no thinking_delta events are streamed
+  //   updates    - (beta) empty thinking plus short progress-update blocks between tool calls
+  // Set `summarized` to receive thinking text from the 5-series models.
+  display: Option[ThinkingDisplay] = None
+) {
+  def withDisplay(display: ThinkingDisplay): ThinkingSettings = copy(display = Some(display))
+}
 
 object ThinkingSettings {
   // Convenience constructor for adaptive thinking (recommended for Opus 4.6+)
   def adaptive: ThinkingSettings = ThinkingSettings(`type` = ThinkingType.adaptive)
+
+  // Adaptive thinking with summarized thinking text returned (needed on the 5-series models,
+  // whose display defaults to omitted)
+  def adaptiveSummarized: ThinkingSettings =
+    ThinkingSettings(
+      `type` = ThinkingType.adaptive,
+      display = Some(ThinkingDisplay.summarized)
+    )
 
   // Convenience constructor for enabled thinking with budget (legacy)
   def enabled(budgetTokens: Int): ThinkingSettings =
@@ -144,6 +164,16 @@ object ThinkingType {
   case object adaptive extends ThinkingType
 
   def values: Seq[ThinkingType] = Seq(enabled, adaptive)
+}
+
+sealed trait ThinkingDisplay extends EnumValue
+
+object ThinkingDisplay {
+  case object summarized extends ThinkingDisplay
+  case object omitted extends ThinkingDisplay
+  case object updates extends ThinkingDisplay
+
+  def values: Seq[ThinkingDisplay] = Seq(summarized, omitted, updates)
 }
 
 sealed trait Speed extends EnumValue

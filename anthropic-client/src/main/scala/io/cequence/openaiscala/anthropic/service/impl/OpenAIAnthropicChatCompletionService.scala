@@ -5,6 +5,13 @@ import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{TextBlock, ToolUseBlock}
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlockBase
 import io.cequence.openaiscala.anthropic.domain.tools.CustomTool
+import io.cequence.openaiscala.anthropic.domain.Message
+import io.cequence.openaiscala.anthropic.domain.settings.{
+  AnthropicCreateMessageSettings,
+  ThinkingDisplay
+}
+import io.cequence.openaiscala.domain.response.ChatChunk
+import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettingsOps.RichCreateChatCompletionSettings
 import io.cequence.openaiscala.anthropic.domain.{
   MessageBatch,
   MessageBatchProcessingStatus,
@@ -38,6 +45,8 @@ import io.cequence.openaiscala.service.{
 }
 
 import java.{util => ju}
+import org.slf4j.LoggerFactory
+
 import scala.concurrent.{ExecutionContext, Future}
 
 private[service] class OpenAIAnthropicChatCompletionService(
@@ -47,6 +56,8 @@ private[service] class OpenAIAnthropicChatCompletionService(
 ) extends OpenAIChatCompletionService
     with OpenAIChatCompletionStreamedServiceExtra
     with OpenAIChatCompletionBatchService {
+
+  private val logger = LoggerFactory.getLogger(getClass)
 
   /**
    * Creates a model response for the given chat conversation.
@@ -103,35 +114,89 @@ private[service] class OpenAIAnthropicChatCompletionService(
     responseToolChoice: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatToolCompletion
   ): Future[ChatToolCompletionResponse] = {
-    val anthropicTools = tools.collect { case ft: FunctionTool =>
+    val (anthropicMessages, anthropicSettings) =
+      toAnthropicToolRequest(messages, tools, responseToolChoice, settings)
+
+    underlying
+      .createMessage(anthropicMessages, anthropicSettings)
+      .map(toOpenAIToolResponse)
+      .recoverWith(repackAsOpenAIException)
+  }
+
+  /**
+   * Typed streaming with tools. Besides the OpenAI function tools, Anthropic-native tools set
+   * via `settings.setAnthropicTools(...)` (web search, code execution, ...) are sent, and
+   * their server-side results arrive as [[ChatChunk.ToolResult]]s. Thinking text is requested
+   * with `display = summarized` whenever thinking is configured (the 5-series models omit it
+   * by default), unless the caller pinned a display mode.
+   */
+  override def createChatToolCompletionStreamed(
+    messages: Seq[BaseMessage],
+    tools: Seq[ChatCompletionTool],
+    responseToolChoice: Option[String],
+    settings: CreateChatCompletionSettings
+  ): Source[ChatChunk, NotUsed] = {
+    val (anthropicMessages, anthropicSettings) =
+      toAnthropicToolRequest(messages, tools, responseToolChoice, settings)
+
+    val settingsFinal = anthropicSettings.copy(
+      thinking = anthropicSettings.thinking.map(thinking =>
+        thinking.copy(display = thinking.display.orElse(Some(ThinkingDisplay.summarized)))
+      )
+    )
+
+    underlying
+      .createMessageStreamedEvents(anthropicMessages, settingsFinal)
+      .via(toChatChunks)
+      .mapError(toOpenAIException)
+  }
+
+  // OpenAI function tools -> Anthropic custom tools (+ Anthropic-native tools from
+  // extra_params), tool choice with its forced-tool fallback, and the converted messages
+  private def toAnthropicToolRequest(
+    messages: Seq[BaseMessage],
+    tools: Seq[ChatCompletionTool],
+    responseToolChoice: Option[String],
+    settings: CreateChatCompletionSettings
+  ): (Seq[Message], AnthropicCreateMessageSettings) = {
+    val functionTools = tools.collect { case ft: FunctionTool =>
       CustomTool(
         name = ft.name,
         inputSchema = ft.parameters,
         description = ft.description
       )
     }
+    val allTools = functionTools ++ settings.anthropicTools
 
-    val disableParallel = settings.parallel_tool_calls.map(!_)
+    if (allTools.isEmpty && responseToolChoice.isDefined)
+      logger.warn(
+        s"Anthropic adapter: tool choice '${responseToolChoice.get}' requested but no tools were provided"
+      )
 
+    // an explicit forced choice is always sent (without tools the API rejects it loudly rather
+    // than the choice being dropped silently)
     val (anthropicToolChoice, extraSystemMessages) =
-      toAnthropicToolChoice(settings.model, responseToolChoice, disableParallel)
+      if (allTools.nonEmpty || responseToolChoice.isDefined) {
+        val disableParallel = settings.parallel_tool_calls.map(!_)
+        val (toolChoice, extra) =
+          toAnthropicToolChoice(settings.model, responseToolChoice, disableParallel)
+        (Some(toolChoice), extra)
+      } else
+        (None, Nil)
 
     val anthropicSettings = toAnthropicSettings(settings).copy(
-      tools = anthropicTools,
-      tool_choice = Some(anthropicToolChoice)
+      tools = allTools,
+      tool_choice = anthropicToolChoice
     )
 
-    underlying
-      .createMessage(
-        toAnthropicSystemMessages(
-          messages.filter(_.isSystem) ++ extraSystemMessages,
-          settings
-        ) ++
-          toAnthropicMessages(messages.filter(!_.isSystem), settings),
-        anthropicSettings
-      )
-      .map(toOpenAIToolResponse)
-      .recoverWith(repackAsOpenAIException)
+    val anthropicMessages =
+      toAnthropicSystemMessages(
+        messages.filter(_.isSystem) ++ extraSystemMessages,
+        settings
+      ) ++
+        toAnthropicMessages(messages.filter(!_.isSystem), settings)
+
+    (anthropicMessages, anthropicSettings)
   }
 
   // -- Batch processing (provider-agnostic) --

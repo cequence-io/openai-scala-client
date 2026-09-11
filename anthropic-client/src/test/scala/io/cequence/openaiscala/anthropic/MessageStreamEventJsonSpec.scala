@@ -81,7 +81,7 @@ class MessageStreamEventJsonSpec extends AnyWordSpec with Matchers with JsonForm
       )
 
       event match {
-        case ContentBlockStart(0, "text", Some(_)) => succeed
+        case ContentBlockStart(0, "text", Some(_), _) => succeed
         case other => fail(s"Expected ContentBlockStart, got $other")
       }
     }
@@ -93,7 +93,7 @@ class MessageStreamEventJsonSpec extends AnyWordSpec with Matchers with JsonForm
       )
 
       event match {
-        case ContentBlockStart(1, "tool_use", Some(ToolUseBlock(id, name, _))) =>
+        case ContentBlockStart(1, "tool_use", Some(ToolUseBlock(id, name, _)), _) =>
           id shouldBe "toolu_01"
           name shouldBe "get_weather"
         case other => fail(s"Expected ContentBlockStart(tool_use), got $other")
@@ -107,7 +107,7 @@ class MessageStreamEventJsonSpec extends AnyWordSpec with Matchers with JsonForm
       )
 
       event match {
-        case ContentBlockStart(0, "thinking", None) => succeed
+        case ContentBlockStart(0, "thinking", None, _) => succeed
         case other => fail(s"Expected ContentBlockStart(thinking, None), got $other")
       }
     }

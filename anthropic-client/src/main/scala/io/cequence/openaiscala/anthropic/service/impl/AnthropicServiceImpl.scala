@@ -1,6 +1,7 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
 import akka.NotUsed
+import io.cequence.openaiscala.service.StreamingConsts
 import akka.stream.scaladsl.{Framing, Source}
 import akka.util.ByteString
 import io.cequence.openaiscala.anthropic.domain.{
@@ -111,6 +112,11 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     )
   }
 
+  // A single SSE frame carries a whole content block start - server-tool results such as
+  // `web_search_tool_result` (21 KB live on 2026-09-10) or fetched documents easily exceed
+  // ws-client's 20 000-byte default, which fails the stream with "Stream framing problem".
+  private val messageStreamMaxFrameLength = StreamingConsts.DefaultMaxFrameLength
+
   private def streamMessageEvents(
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings
@@ -125,7 +131,8 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
         EndPoint.messages.toString(),
         "POST",
         bodyParams = stringParams,
-        extraHeaders = messageBetaHeaders
+        extraHeaders = messageBetaHeaders,
+        maxFrameLength = Some(messageStreamMaxFrameLength)
       )
       .map(parseStreamEvent)
   }

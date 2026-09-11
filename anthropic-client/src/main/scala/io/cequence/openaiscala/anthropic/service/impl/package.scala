@@ -24,8 +24,23 @@ import io.cequence.openaiscala.anthropic.domain.response.{
   ContentBlockDelta,
   CreateMessageResponse,
   DeltaBlock,
+  MessageDeltaUsage,
   MessageStreamEvent
 }
+import io.cequence.openaiscala.anthropic.JsonFormats.contentBlockFormat
+import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock
+import io.cequence.openaiscala.anthropic.domain.{
+  BashCodeExecutionToolResultContent,
+  CodeExecutionToolResultContent,
+  McpToolResultString,
+  McpToolResultStructured,
+  TextEditorCodeExecutionToolResultContent,
+  WebFetchToolResultContent,
+  WebSearchToolResultContent
+}
+import io.cequence.openaiscala.domain.response.ChatChunk
+import play.api.libs.json.JsNull
+import scala.collection.mutable
 import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicCreateMessageSettings,
   OutputConfig,
@@ -323,10 +338,14 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
   // (e.g. "anthropic.claude-opus-4-7-v1" contains "claude-opus-4-7"),
   // so a `contains` check covers both direct API and Bedrock model IDs.
   // NOTE: "claude-fable-5" is a substring of "claude-fable-5-1", so it already matches Fable
-  // 5.1 via `contains`; claude_fable_5_1 is still listed explicitly for clarity.
+  // 5.1 via `contains`; claude_fable_5_1 is still listed explicitly for clarity. The same holds
+  // for "claude-mythos-5" / "claude-mythos-5-1" (Mythos = Fable with fewer safeguards, same API
+  // behaviour).
   private val outputEffortModels: Set[String] = Set(
     NonOpenAIModelId.claude_fable_5_1,
     NonOpenAIModelId.claude_fable_5,
+    NonOpenAIModelId.claude_mythos_5_1,
+    NonOpenAIModelId.claude_mythos_5,
     NonOpenAIModelId.claude_opus_5,
     NonOpenAIModelId.claude_opus_4_8,
     NonOpenAIModelId.claude_opus_4_7,
@@ -340,6 +359,8 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
   private val xhighOutputEffortModels: Set[String] = Set(
     NonOpenAIModelId.claude_fable_5_1,
     NonOpenAIModelId.claude_fable_5,
+    NonOpenAIModelId.claude_mythos_5_1,
+    NonOpenAIModelId.claude_mythos_5,
     NonOpenAIModelId.claude_opus_5,
     NonOpenAIModelId.claude_opus_4_8,
     NonOpenAIModelId.claude_opus_4_7,
@@ -352,6 +373,8 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
   private val adaptiveOnlyThinkingModels: Set[String] = Set(
     NonOpenAIModelId.claude_fable_5_1,
     NonOpenAIModelId.claude_fable_5,
+    NonOpenAIModelId.claude_mythos_5_1,
+    NonOpenAIModelId.claude_mythos_5,
     NonOpenAIModelId.claude_opus_5,
     NonOpenAIModelId.claude_opus_4_8,
     NonOpenAIModelId.claude_opus_4_7,
@@ -368,9 +391,11 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
   // "auto" / "none" are accepted; disable_parallel_tool_use still works with "auto".
   // Same `contains` convention as above so Bedrock/Vertex-prefixed ids match too.
   // NOTE: "claude-fable-5" (Fable 5) is deliberately NOT in this set - Fable 5 still supports
-  // forced tool_choice, only its successor Fable 5.1 dropped it.
+  // forced tool_choice, only its successor Fable 5.1 dropped it. Mythos 5.1 is the same model
+  // as Fable 5.1 (not live-verified here - invite-only), so it is treated identically.
   private val forcedToolChoiceUnsupportedModels: Set[String] = Set(
-    NonOpenAIModelId.claude_fable_5_1
+    NonOpenAIModelId.claude_fable_5_1,
+    NonOpenAIModelId.claude_mythos_5_1
   )
 
   def supportsForcedToolChoice(model: String): Boolean = {
@@ -707,7 +732,8 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
           case MessageStreamEvent.ContentBlockStart(
                 index,
                 "tool_use",
-                Some(Content.ContentBlock.ToolUseBlock(toolId, name, _))
+                Some(Content.ContentBlock.ToolUseBlock(toolId, name, _)),
+                _
               ) =>
             val ordinal = toolOrdinalFor(index)
             List(
@@ -724,7 +750,7 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
               )
             )
 
-          case MessageStreamEvent.ContentBlockStart(_, _, _) =>
+          case MessageStreamEvent.ContentBlockStart(_, _, _, _) =>
             Nil
 
           case MessageStreamEvent.ContentBlockDeltaEvent(
@@ -751,27 +777,7 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
             Nil
 
           case MessageStreamEvent.MessageDelta(stopReason, _, deltaUsage) =>
-            val mergedUsage = deltaUsage.map { du =>
-              val merged = startUsage match {
-                case Some(su) =>
-                  su.copy(
-                    output_tokens = du.output_tokens,
-                    input_tokens = du.input_tokens.getOrElse(su.input_tokens),
-                    cache_creation_input_tokens =
-                      du.cache_creation_input_tokens.orElse(su.cache_creation_input_tokens),
-                    cache_read_input_tokens =
-                      du.cache_read_input_tokens.orElse(su.cache_read_input_tokens)
-                  )
-                case None =>
-                  UsageInfo(
-                    input_tokens = du.input_tokens.getOrElse(0),
-                    output_tokens = du.output_tokens,
-                    cache_creation_input_tokens = du.cache_creation_input_tokens,
-                    cache_read_input_tokens = du.cache_read_input_tokens
-                  )
-              }
-              toOpenAI(merged)
-            }
+            val mergedUsage = deltaUsage.map(du => toOpenAI(mergeUsage(startUsage, du)))
 
             List(
               chunk(
@@ -784,6 +790,337 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
           case MessageStreamEvent.ContentBlockStop(_) | MessageStreamEvent.MessageStop |
               MessageStreamEvent.Ping | MessageStreamEvent.UnknownEvent(_, _) =>
             Nil
+        }
+    }
+
+  // message_delta usage is output-only; fold it into the message_start usage
+  private def mergeUsage(
+    start: Option[UsageInfo],
+    du: MessageDeltaUsage
+  ): UsageInfo =
+    start match {
+      case Some(su) =>
+        su.copy(
+          output_tokens = du.output_tokens,
+          input_tokens = du.input_tokens.getOrElse(su.input_tokens),
+          cache_creation_input_tokens =
+            du.cache_creation_input_tokens.orElse(su.cache_creation_input_tokens),
+          cache_read_input_tokens =
+            du.cache_read_input_tokens.orElse(su.cache_read_input_tokens)
+        )
+      case None =>
+        UsageInfo(
+          input_tokens = du.input_tokens.getOrElse(0),
+          output_tokens = du.output_tokens,
+          cache_creation_input_tokens = du.cache_creation_input_tokens,
+          cache_read_input_tokens = du.cache_read_input_tokens
+        )
+    }
+
+  // ---------------------------------------------------------------------------------------
+  // Typed streaming: MessageStreamEvent -> ChatChunk
+  // ---------------------------------------------------------------------------------------
+
+  private final class PendingStreamedToolCall(
+    val ordinal: Int,
+    val callId: String,
+    val toolName: String,
+    val serverSide: Boolean
+  ) {
+    val arguments = new StringBuilder
+  }
+
+  private def toChunkFinishReason(stopReason: String): ChatChunk.FinishReason =
+    stopReason match {
+      case "end_turn" | "stop_sequence" => ChatChunk.FinishReason.stop
+      case "tool_use"                   => ChatChunk.FinishReason.tool_calls
+      case "max_tokens"                 => ChatChunk.FinishReason.length
+      case "refusal"                    => ChatChunk.FinishReason.content_filter
+      case _                            => ChatChunk.FinishReason.unknown
+    }
+
+  private def toolResultChunk(
+    block: ContentBlock,
+    callId: String,
+    toolName: String,
+    text: Option[String],
+    isError: Boolean
+  ): ChatChunk =
+    ChatChunk.ToolResult(
+      callId,
+      toolName,
+      Json.toJson(block)(contentBlockFormat),
+      text.filter(_.nonEmpty),
+      isError
+    )
+
+  // server-side tool result blocks -> tool-layer ToolResult (+ the semantic-layer
+  // WebSearchResult / CodeExecutionResult); Nil for every other block type
+  private def toToolResultChunks(block: ContentBlock): List[ChatChunk] =
+    block match {
+      case b: ContentBlock.WebSearchToolResultBlock =>
+        val (text, isError, items) = b.content match {
+          case WebSearchToolResultContent.Success(results) =>
+            (
+              Some(results.map(r => s"${r.title} - ${r.url}").mkString("\n")),
+              false,
+              results.map(r => ChatChunk.WebSearchResultItem(Some(r.title), r.url))
+            )
+          case WebSearchToolResultContent.Error(code) => (Some(code.toString), true, Nil)
+        }
+        List(
+          toolResultChunk(b, b.toolUseId, "web_search", text, isError),
+          ChatChunk.WebSearchResult(
+            b.toolUseId,
+            items,
+            Json.toJson(b: ContentBlock)(contentBlockFormat)
+          )
+        )
+
+      case b: ContentBlock.WebFetchToolResultBlock =>
+        val (text, isError) = b.content match {
+          case WebFetchToolResultContent.Success(document, _, _) =>
+            (if (document.source.`type` == "text") Some(document.source.data) else None, false)
+          case WebFetchToolResultContent.Error(code) => (Some(code.toString), true)
+        }
+        List(toolResultChunk(b, b.toolUseId, "web_fetch", text, isError))
+
+      case b: ContentBlock.CodeExecutionToolResultBlock =>
+        val (text, isError) = b.content match {
+          case CodeExecutionToolResultContent.Success(_, returnCode, stderr, stdout) =>
+            (Some(Seq(stdout, stderr).filter(_.nonEmpty).mkString("\n")), returnCode != 0)
+          case CodeExecutionToolResultContent.Error(code) => (Some(code.toString), true)
+        }
+        List(
+          toolResultChunk(b, b.toolUseId, "code_execution", text, isError),
+          ChatChunk.CodeExecutionResult(
+            b.toolUseId,
+            text.filter(_.nonEmpty),
+            isError,
+            Json.toJson(b: ContentBlock)(contentBlockFormat)
+          )
+        )
+
+      case b: ContentBlock.BashCodeExecutionToolResultBlock =>
+        val (text, isError) = b.content match {
+          case BashCodeExecutionToolResultContent.Success(_, returnCode, stderr, stdout) =>
+            (Some(Seq(stdout, stderr).filter(_.nonEmpty).mkString("\n")), returnCode != 0)
+          case BashCodeExecutionToolResultContent.Error(code) => (Some(code.toString), true)
+        }
+        List(
+          toolResultChunk(b, b.toolUseId, "bash_code_execution", text, isError),
+          ChatChunk.CodeExecutionResult(
+            b.toolUseId,
+            text.filter(_.nonEmpty),
+            isError,
+            Json.toJson(b: ContentBlock)(contentBlockFormat)
+          )
+        )
+
+      case b: ContentBlock.TextEditorCodeExecutionToolResultBlock =>
+        val (text, isError) = b.content match {
+          case TextEditorCodeExecutionToolResultContent.Error(code, message) =>
+            (message.orElse(Some(code.toString)), true)
+          case v: TextEditorCodeExecutionToolResultContent.ViewResult =>
+            (Some(v.content), false)
+          case _ => (None, false)
+        }
+        List(toolResultChunk(b, b.toolUseId, "text_editor_code_execution", text, isError))
+
+      case b: ContentBlock.McpToolResultBlock =>
+        val text = b.content match {
+          case McpToolResultString(value)     => Some(value)
+          case McpToolResultStructured(items) => Some(items.map(_.text).mkString("\n"))
+        }
+        List(toolResultChunk(b, b.toolUseId, "mcp", text, b.isError))
+
+      case _ => Nil
+    }
+
+  // the semantic-layer chunk of a completed server-side call, derived from its input JSON
+  private def toSemanticToolCallChunk(
+    toolName: String,
+    callId: String,
+    arguments: String
+  ): List[ChatChunk] = {
+    val input = scala.util.Try(Json.parse(arguments)).getOrElse(JsNull)
+    toolName match {
+      case "web_search" =>
+        List(ChatChunk.WebSearch(callId, (input \ "query").asOpt[String].toSeq))
+      case "code_execution" =>
+        (input \ "code")
+          .asOpt[String]
+          .toList
+          .map(code => ChatChunk.CodeExecution(callId, Some("python"), code))
+      case "bash_code_execution" =>
+        (input \ "command")
+          .asOpt[String]
+          .toList
+          .map(command => ChatChunk.CodeExecution(callId, Some("bash"), command))
+      case _ => Nil
+    }
+  }
+
+  /**
+   * Converts a raw Anthropic [[MessageStreamEvent]] stream into provider-neutral typed
+   * [[ChatChunk]]s: text / thinking / signature deltas, tool calls (client `tool_use` and
+   * server-side `server_tool_use` / `mcp_tool_use`, with `input_json_delta` fragments and the
+   * assembled call at `content_block_stop`), server-side tool results, citations, the stop
+   * reason and merged usage. Unmodeled events / blocks pass through as [[ChatChunk.Other]].
+   */
+  def toChatChunks: Flow[MessageStreamEvent, ChatChunk, NotUsed] =
+    Flow[MessageStreamEvent].statefulMapConcat { () =>
+      var startUsage: Option[UsageInfo] = None
+      var toolCount: Int = 0
+      val pendingByBlock = mutable.LinkedHashMap.empty[Int, PendingStreamedToolCall]
+
+      def startToolCall(
+        blockIndex: Int,
+        callId: String,
+        toolName: String,
+        serverSide: Boolean,
+        input: JsObject
+      ): List[ChatChunk] = {
+        val pending = new PendingStreamedToolCall(toolCount, callId, toolName, serverSide)
+        toolCount += 1
+        if (input.fields.nonEmpty) pending.arguments.append(input.toString)
+        pendingByBlock.put(blockIndex, pending)
+        List(ChatChunk.ToolCallStart(pending.ordinal, callId, toolName, serverSide))
+      }
+
+      def completeToolCall(pending: PendingStreamedToolCall): List[ChatChunk] = {
+        val arguments = if (pending.arguments.isEmpty) "{}" else pending.arguments.toString
+        ChatChunk.ToolCall(
+          pending.ordinal,
+          pending.callId,
+          pending.toolName,
+          arguments,
+          pending.serverSide
+        ) :: (if (pending.serverSide)
+                toSemanticToolCallChunk(pending.toolName, pending.callId, arguments)
+              else Nil)
+      }
+
+      (event: MessageStreamEvent) =>
+        event match {
+          case MessageStreamEvent.MessageStart(message) =>
+            startUsage = Some(message.usage)
+            List(ChatChunk.Start(message.id, message.model))
+
+          case MessageStreamEvent.ContentBlockStart(
+                index,
+                _,
+                Some(ToolUseBlock(id, name, input)),
+                _
+              ) =>
+            startToolCall(index, id, name, serverSide = false, input)
+
+          case MessageStreamEvent.ContentBlockStart(
+                index,
+                _,
+                Some(ContentBlock.ServerToolUseBlock(id, name, input)),
+                _
+              ) =>
+            startToolCall(index, id, name.toString, serverSide = true, input)
+
+          case MessageStreamEvent.ContentBlockStart(
+                index,
+                _,
+                Some(ContentBlock.McpToolUseBlock(id, name, _, input)),
+                _
+              ) =>
+            startToolCall(index, id, name, serverSide = true, input)
+
+          case MessageStreamEvent.ContentBlockStart(_, _, Some(TextBlock(text, _)), _) =>
+            if (text.nonEmpty) List(ChatChunk.Text(text)) else Nil
+
+          case MessageStreamEvent.ContentBlockStart(
+                _,
+                _,
+                Some(ContentBlock.RedactedThinkingBlock(data)),
+                _
+              ) =>
+            List(ChatChunk.RedactedThinking(data))
+
+          case MessageStreamEvent.ContentBlockStart(_, blockType, Some(block), raw) =>
+            toToolResultChunks(block) match {
+              case Nil if blockType == "thinking" => Nil
+              case Nil    => List(ChatChunk.Other(blockType, raw.getOrElse(JsNull)))
+              case chunks => chunks
+            }
+
+          // text / thinking block starts carry no content yet - the deltas follow
+          case MessageStreamEvent.ContentBlockStart(_, "text" | "thinking", None, _) =>
+            Nil
+
+          case MessageStreamEvent.ContentBlockStart(_, blockType, None, raw) =>
+            List(ChatChunk.Other(blockType, raw.getOrElse(JsNull)))
+
+          case MessageStreamEvent.ContentBlockDeltaEvent(
+                ContentBlockDelta(_, _, DeltaBlock.DeltaText(text))
+              ) =>
+            List(ChatChunk.Text(text))
+
+          case MessageStreamEvent.ContentBlockDeltaEvent(
+                ContentBlockDelta(_, _, DeltaBlock.DeltaThinking(thinking))
+              ) =>
+            List(ChatChunk.Thinking(thinking))
+
+          case MessageStreamEvent.ContentBlockDeltaEvent(
+                ContentBlockDelta(_, _, DeltaBlock.DeltaSignature(signature))
+              ) =>
+            List(ChatChunk.ThinkingSignature(signature))
+
+          case MessageStreamEvent.ContentBlockDeltaEvent(
+                ContentBlockDelta(_, blockIndex, DeltaBlock.DeltaInputJson(partialJson))
+              ) =>
+            pendingByBlock.get(blockIndex) match {
+              case Some(pending) =>
+                pending.arguments.append(partialJson)
+                List(ChatChunk.ToolCallDelta(pending.ordinal, partialJson))
+              case None =>
+                List(
+                  ChatChunk.Other("input_json_delta", Json.obj("partial_json" -> partialJson))
+                )
+            }
+
+          case MessageStreamEvent.ContentBlockDeltaEvent(
+                ContentBlockDelta(_, _, DeltaBlock.DeltaCitations(citation))
+              ) =>
+            List(
+              ChatChunk.Citation(
+                citedText = (citation \ "cited_text").asOpt[String],
+                url = (citation \ "url").asOpt[String],
+                title = (citation \ "title")
+                  .asOpt[String]
+                  .orElse((citation \ "document_title").asOpt[String]),
+                raw = citation
+              )
+            )
+
+          case MessageStreamEvent.ContentBlockDeltaEvent(
+                ContentBlockDelta(_, _, DeltaBlock.DeltaUnknown(deltaType, raw))
+              ) =>
+            List(ChatChunk.Other(deltaType, raw))
+
+          case MessageStreamEvent.ContentBlockStop(index) =>
+            pendingByBlock.remove(index).toList.flatMap(completeToolCall)
+
+          case MessageStreamEvent.MessageDelta(stopReason, _, deltaUsage) =>
+            val stillPending =
+              pendingByBlock.values.toList.sortBy(_.ordinal).flatMap(completeToolCall)
+            pendingByBlock.clear()
+            stillPending ++
+              stopReason.map(r => ChatChunk.Finish(toChunkFinishReason(r), Some(r))).toList ++
+              deltaUsage
+                .map(du => ChatChunk.Usage(toOpenAI(mergeUsage(startUsage, du))))
+                .toList
+
+          case MessageStreamEvent.MessageStop | MessageStreamEvent.Ping =>
+            Nil
+
+          case MessageStreamEvent.UnknownEvent(eventType, raw) =>
+            List(ChatChunk.Other(eventType, raw))
         }
     }
 

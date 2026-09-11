@@ -1,6 +1,7 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
 import akka.NotUsed
+import io.cequence.openaiscala.service.StreamingConsts
 import akka.stream.javadsl.{Framing, FramingTruncation}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
@@ -184,7 +185,8 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
       .via(
         Framing.delimiter(
           ByteString(":content-type"),
-          maximumFrameLength = 65536,
+          maximumFrameLength =
+            StreamingConsts.DefaultMaxFrameLength, // server-tool result blocks can exceed 64 KB
           FramingTruncation.ALLOW
         )
       )

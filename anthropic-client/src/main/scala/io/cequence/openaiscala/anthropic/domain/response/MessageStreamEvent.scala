@@ -24,7 +24,9 @@ object MessageStreamEvent {
   case class ContentBlockStart(
     index: Int,
     blockType: String,
-    contentBlock: Option[Content.ContentBlock]
+    contentBlock: Option[Content.ContentBlock],
+    // the raw `content_block` JSON - always available, also when `contentBlock` is None
+    raw: Option[JsValue] = None
   ) extends MessageStreamEvent
 
   case class ContentBlockDeltaEvent(delta: ContentBlockDelta) extends MessageStreamEvent

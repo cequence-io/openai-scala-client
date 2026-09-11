@@ -1,5 +1,7 @@
 package io.cequence.openaiscala.domain.settings
 
+import io.cequence.openaiscala.anthropic.domain.tools.Tool
+
 import scala.util.Try
 
 object CreateChatCompletionSettingsOps {
@@ -8,6 +10,7 @@ object CreateChatCompletionSettingsOps {
     private val AnthropicUseSystemMessagesCache = "use_system_messages_cache"
     private val AnthropicThinkingBudgetTokens = "thinking_budget_tokens"
     private val AnthropicFastSpeed = "fast_speed"
+    private val AnthropicTools = "anthropic_tools"
 
     def setAnthropicCachedUserMessagesCount(count: Int): CreateChatCompletionSettings =
       settings.copy(
@@ -52,5 +55,22 @@ object CreateChatCompletionSettingsOps {
 
     def anthropicFastSpeed: Boolean =
       settings.extra_params.get(AnthropicFastSpeed).map(_.toString).contains("true")
+
+    /**
+     * Anthropic-native tools (e.g. `Tool.webSearch()`, `Tool.codeExecution()`) to send in
+     * addition to the OpenAI function tools of `createChatToolCompletion(Streamed)`. Their
+     * server-side results come back as `ChatChunk.ToolResult`s on the typed stream.
+     */
+    def setAnthropicTools(tools: Seq[Tool]): CreateChatCompletionSettings =
+      settings.copy(
+        extra_params = settings.extra_params + (AnthropicTools -> tools)
+      )
+
+    def anthropicTools: Seq[Tool] =
+      settings.extra_params.get(AnthropicTools) match {
+        case Some(tools: Seq[_]) if tools.forall(_.isInstanceOf[Tool]) =>
+          tools.asInstanceOf[Seq[Tool]]
+        case _ => Nil
+      }
   }
 }

@@ -229,6 +229,20 @@ class AnthropicAsOpenAIServiceSpec extends AnyWordSpec with Matchers {
       extraSystemMessages.head.content should include("get_weather")
     }
 
+    "treat Claude Mythos 5.1 (same model, invite-only) like Fable 5.1" in {
+      val out = toAnthropicSettings(
+        CreateChatCompletionSettings(model = NonOpenAIModelId.claude_mythos_5_1)
+      )
+      out.max_tokens shouldBe 128000
+
+      val (toolChoice, extraSystemMessages) =
+        toAnthropicToolChoice(NonOpenAIModelId.claude_mythos_5_1, Some("get_weather"), None)
+
+      toolChoice shouldBe ToolChoice.Auto(None)
+      extraSystemMessages should have size 1
+      extraSystemMessages.head.content should include("get_weather")
+    }
+
     "still support forced tool_choice on Claude Fable 5 (predecessor)" in {
       val (toolChoice, extraSystemMessages) =
         toAnthropicToolChoice(NonOpenAIModelId.claude_fable_5, Some("get_weather"), None)

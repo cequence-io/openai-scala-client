@@ -53,6 +53,7 @@ import io.cequence.openaiscala.anthropic.domain.settings.{
   OutputConfig,
   OutputEffort,
   Speed,
+  ThinkingDisplay,
   ThinkingSettings,
   ThinkingType
 }
@@ -1049,7 +1050,9 @@ trait JsonFormats {
         // lenient: a content block at start time may be incomplete (e.g. a thinking block
         // has no signature yet) - that's not an error, just an unparsed block for now
         val contentBlock = blockJson.flatMap(_.validate[ContentBlock](contentBlockReads).asOpt)
-        JsSuccess(MessageStreamEvent.ContentBlockStart(index, blockType, contentBlock))
+        JsSuccess(
+          MessageStreamEvent.ContentBlockStart(index, blockType, contentBlock, blockJson)
+        )
 
       case Some("content_block_delta") =>
         json
@@ -1082,6 +1085,8 @@ trait JsonFormats {
 
   implicit lazy val thinkingTypeFormat: Format[ThinkingType] =
     JsonUtil.enumFormat[ThinkingType](ThinkingType.values: _*)
+  implicit lazy val thinkingDisplayFormat: Format[ThinkingDisplay] =
+    JsonUtil.enumFormat[ThinkingDisplay](ThinkingDisplay.values: _*)
   implicit lazy val thinkingSettingsFormat: Format[ThinkingSettings] =
     Json.format[ThinkingSettings]
 
