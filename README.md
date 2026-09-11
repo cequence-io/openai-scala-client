@@ -253,8 +253,19 @@ Then you can obtain a service in one of the following ways.
 ```
    Strict `json_schema` and function tools work on the `openai/gpt-oss-*` and `qwen/qwen3.x-27b` models; the agentic
    `groq/compound*` models reject both a `tools` array and `json_schema` (they run their own built-in tools instead),
-   and `allam-2-7b` supports neither. On the gpt-oss models Groq additionally executes `browser_search` and
-   `code_interpreter` server-side, reporting them in a non-OpenAI `executed_tools` field, and serves a Responses API.
+   and `allam-2-7b` supports neither. Two Groq-specific behaviours are worth coding for:
+   - **The schema is validated server-side, not constrained during decoding.** You never get a non-conforming 200, but a
+     generation that breaks the schema comes back as HTTP 400 `json_validate_failed` with the offending text in
+     `failed_generation` (reproduced on four of the five schema-capable models with a prompt that fights the schema).
+     Treat it as a retryable outcome rather than an unexpected error.
+   - **`response_format` cannot be combined with a non-empty `tools` array** on any Groq model: HTTP 400 "json mode
+     cannot be combined with tool/function calling". Adding `tool_choice = "none"` makes the request succeed, at the
+     cost of never calling a tool.
+
+   Beyond plain function calling, Groq accepts `mcp` tools everywhere and executes `browser_search` and
+   `code_interpreter` server-side on the `openai/gpt-oss-*` models. It also serves a Responses API across its chat
+   models. Note the two surfaces report provider-executed tools differently: `/chat/completions` returns a non-OpenAI
+   `executed_tools` array, while `/responses` emits typed output items instead.
 
 8. [Grok](https://x.ai) - requires `GROK_API_KEY"`
 ```scala
