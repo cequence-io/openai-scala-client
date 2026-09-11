@@ -964,7 +964,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
         role = ChatRole.Assistant
       )
     ),
-    model = ModelId.gpt_4o_mini_2024_07_18,
+    model = ModelId.gpt_5_mini,
     name = "helpfulness_scorer",
     range = Seq(0.0, 1.0)
   )
@@ -989,7 +989,7 @@ import io.cequence.openaiscala.domain.{AssistantMessage, BaseMessage, FunctionSp
 
 class MyCompletionService extends OpenAICountTokensHelper {
   def exec = {
-    val model = ModelId.gpt_4_turbo_2024_04_09
+    val model = ModelId.gpt_5_6_luna
 
     // messages to be sent to OpenAI
     val messages: Seq[BaseMessage] = Seq(
@@ -1011,7 +1011,7 @@ import io.cequence.openaiscala.domain.{BaseMessage, FunctionSpec, ModelId, Syste
 
 class MyCompletionService extends OpenAICountTokensHelper {
   def exec = {
-    val model = ModelId.gpt_4_turbo_2024_04_09
+    val model = ModelId.gpt_5_6_luna
     
     // messages to be sent to OpenAI
     val messages: Seq[BaseMessage] = 
@@ -1141,10 +1141,10 @@ class MyCompletionService @Inject() (
     adapters.chatCompletionRouter(
       // OpenAI service is default so no need to specify its models here
       serviceModels = Map(
-        groqService -> Seq(NonOpenAIModelId.llama_3_3_70b_versatile),
+        groqService -> Seq(NonOpenAIModelId.groq_qwen3_8_27b),
         anthropicService -> Seq(
           NonOpenAIModelId.claude_fable_5_1,
-          NonOpenAIModelId.claude_sonnet_4_6,
+          NonOpenAIModelId.claude_sonnet_5,
           NonOpenAIModelId.claude_haiku_4_5
         )
       ),
@@ -1233,13 +1233,13 @@ class MyCompletionService @Inject() (
   val anthropicService = AnthropicServiceFactory.asOpenAI() // batch-capable (default)
 
   val router = OpenAIServiceAdapters.forChatCompletionService.chatCompletionBatchRouter(
-    serviceModels = Map(geminiService -> Seq(NonOpenAIModelId.gemini_2_5_flash)),
+    serviceModels = Map(geminiService -> Seq(NonOpenAIModelId.gemini_3_8_flash)),
     anthropicService
   )
 
   // routed by settings.model on submit, and by the explicit `model` arg on status/results/cancel/delete
-  val batch   = router.createChatCompletionBatch(requests, CreateChatCompletionSettings(NonOpenAIModelId.gemini_2_5_flash))
-  val results = router.retrieveChatCompletionBatchResults(batch.id, NonOpenAIModelId.gemini_2_5_flash)
+  val batch   = router.createChatCompletionBatch(requests, CreateChatCompletionSettings(NonOpenAIModelId.gemini_3_8_flash))
+  val results = router.retrieveChatCompletionBatchResults(batch.id, NonOpenAIModelId.gemini_3_8_flash)
 ```
 
   To register a provider that has **no native batch support** in a batch router, wrap it with
@@ -1255,7 +1255,7 @@ class MyCompletionService @Inject() (
 
   val router = OpenAIServiceAdapters.forChatCompletionService.chatCompletionBatchRouter(
     serviceModels = Map(
-      geminiService -> Seq(NonOpenAIModelId.gemini_2_5_flash), // native batch
+      geminiService -> Seq(NonOpenAIModelId.gemini_3_8_flash), // native batch
       sonarBatch    -> Seq(NonOpenAIModelId.sonar)             // emulated fallback
     ),
     anthropicService
@@ -1536,4 +1536,4 @@ This project is open-source and welcomes any contribution or feedback ([here](ht
 
 Development of this library has been supported by  [<img src="https://cequence.io/favicon-16x16.png"> - Cequence.io](https://cequence.io) - `The future of contracting` 
 
-Created and maintained by [Peter Banda](https://peterbanda.net).
+Created and maintained by [Peter Banda](https://peterbanda.net) (on X [here](https://x.com/0xbnd)).
