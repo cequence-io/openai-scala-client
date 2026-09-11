@@ -44,7 +44,7 @@ object GroqCreateChatCompletionBatch extends ExampleBase[OpenAIService] {
     )
   )
 
-  private val model = NonOpenAIModelId.llama_3_3_70b_versatile
+  private val model = NonOpenAIModelId.openai_gpt_oss_120b
 
   private val requests = Seq(
     ChatCompletionBatchRequest(

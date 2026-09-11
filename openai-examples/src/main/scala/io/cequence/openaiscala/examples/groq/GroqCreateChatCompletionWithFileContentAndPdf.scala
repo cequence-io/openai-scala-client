@@ -53,7 +53,7 @@ object GroqCreateChatCompletionWithFileContentAndPdf
     )
   )
 
-  private val modelId = NonOpenAIModelId.moonshotai_kimi_k2_instruct_0905
+  private val modelId = NonOpenAIModelId.groq_qwen3_8_27b
 
   override protected def run: Future[_] =
     service

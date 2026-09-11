@@ -9,10 +9,13 @@ import io.cequence.openaiscala.service.OpenAIChatCompletionService
 import scala.concurrent.Future
 
 /**
+ * Groq's reasoning knobs (`setReasoningFormat` / `setMaxCompletionTokens`) on a current
+ * reasoning-capable model. `ReasoningFormat.hidden` drops the thinking trace; `parsed` returns
+ * it in a separate `reasoning` field, and `raw` inlines `<think>` tags in the content.
+ *
  * Requires `GROQ_API_KEY` environment variable to be set.
  */
-object GroqCreateChatCompletionWithDeepseekR1
-    extends ExampleBase[OpenAIChatCompletionService] {
+object GroqCreateChatCompletionWithReasoning extends ExampleBase[OpenAIChatCompletionService] {
 
   override val service: OpenAIChatCompletionService = ChatCompletionProvider.groq
 
@@ -21,7 +24,7 @@ object GroqCreateChatCompletionWithDeepseekR1
     UserMessage("What is the weather like in Norway?")
   )
 
-  private val modelId = NonOpenAIModelId.deepseek_r1_distill_llama_70b
+  private val modelId = NonOpenAIModelId.groq_qwen3_8_27b
   private val reasoningFormat = ReasoningFormat.hidden
 
   override protected def run: Future[_] =

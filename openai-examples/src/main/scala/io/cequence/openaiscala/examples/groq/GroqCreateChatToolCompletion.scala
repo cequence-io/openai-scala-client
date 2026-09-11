@@ -46,7 +46,7 @@ object GroqCreateChatToolCompletion extends ExampleBase[OpenAIChatCompletionServ
         tools = tools,
         responseToolChoice = None,
         settings = CreateChatCompletionSettings(
-          NonOpenAIModelId.moonshotai_kimi_k2_instruct_0905,
+          NonOpenAIModelId.groq_qwen3_8_27b,
           parallel_tool_calls = Some(true)
         )
       )
