@@ -54,7 +54,7 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 | [Google Gemini](https://ai.google.dev/) | Full                   | Yes (🔥 New)                      | Yes                     | Google's models |
 | [Google Vertex AI](https://cloud.google.com/vertex-ai) | Full                   | Yes                               | Yes                     | Gemini models |
 | [Grok](https://x.ai/) | Full                   | Yes                               |                         | x.AI models |
-| [Groq](https://wow.groq.com/) | Only JSON object mode  |                                   | Yes                     | Fast inference |
+| [Groq](https://wow.groq.com/) | Full (`openai/gpt-oss-*`, `qwen/qwen3.x-27b`) | Yes, also MCP and server-side tools | Yes                     | Fast inference |
 | [Mistral](https://mistral.ai/) | Only JSON object mode  |                                   |                         | Open-source leader |
 | [Novita](https://novita.ai/) | Only JSON object mode  |                                   |                         | Cloud provider |
 | [Octo AI](https://octo.ai/) | Only JSON object mode  |                                   |                         | Cloud provider (obsolete) |
@@ -251,6 +251,10 @@ Then you can obtain a service in one of the following ways.
   // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.groq)
 ```
+   Strict `json_schema` and function tools work on the `openai/gpt-oss-*` and `qwen/qwen3.x-27b` models; the agentic
+   `groq/compound*` models reject both a `tools` array and `json_schema` (they run their own built-in tools instead),
+   and `allam-2-7b` supports neither. On the gpt-oss models Groq additionally executes `browser_search` and
+   `code_interpreter` server-side, reporting them in a non-OpenAI `executed_tools` field, and serves a Responses API.
 
 8. [Grok](https://x.ai) - requires `GROK_API_KEY"`
 ```scala
