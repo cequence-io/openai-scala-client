@@ -19,7 +19,7 @@ object DeepseekCreateChatCompletion extends ExampleBase[OpenAIChatCompletionServ
     UserMessage("What is the weather like in Norway?")
   )
 
-  private val modelId = NonOpenAIModelId.deepseek_chat
+  private val modelId = NonOpenAIModelId.deepseek_v4_flash
 
   override protected def run: Future[_] =
     service

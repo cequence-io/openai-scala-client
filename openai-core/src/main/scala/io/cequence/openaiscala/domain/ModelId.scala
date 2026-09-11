@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.domain
 
 /**
- * OpenAI models available as of `2025-04-02`.
+ * OpenAI models available as of `2026-09-08`.
  *
  * @since Jan
  *   2023
@@ -188,6 +188,12 @@ object ModelId {
   val gpt_image_1_5 = "gpt-image-1.5"
   val gpt_image_2 = "gpt-image-2"
   val gpt_image_2_2026_04_21 = "gpt-image-2-2026-04-21"
+  // GPT Image 2.5 (released 2026-09-08): Flare = fast default (~50% lower latency than
+  // gpt-image-2), Sunburst = slower, higher-precision editing tier
+  val gpt_image_2_5_flare = "gpt-image-2.5-flare"
+  val gpt_image_2_5_flare_2026_09_08 = "gpt-image-2.5-flare-2026-09-08"
+  val gpt_image_2_5_sunburst = "gpt-image-2.5-sunburst"
+  val gpt_image_2_5_sunburst_2026_09_08 = "gpt-image-2.5-sunburst-2026-09-08"
   val chatgpt_image_latest = "chatgpt-image-latest"
 
   // Video gen
@@ -251,7 +257,7 @@ object ModelId {
   // sampling params rejected - see ChatCompletionSettingsConversions.chatLatest)
   val chat_latest = "chat-latest"
 
-  // GPT-6 Astra (released 2026-09-05, live-verified the same day): 1,050,000 context, 128,000
+  // GPT-6 Astra (limited preview 2026-09-03, API GA 2026-09-04, live-verified 2026-09-05): 1,050,000 context, 128,000
   // max output, knowledge cutoff 2026-04-30, text+image in / text out, chat completions +
   // Responses API + Batch API, structured outputs, prompt caching, MCP/web search/etc. on the
   // Responses API. reasoning_effort low/medium/high/xhigh on chat completions ('max' is
@@ -263,6 +269,9 @@ object ModelId {
   val gpt_5_6_sol = "gpt-5.6-sol"
   val gpt_5_6_terra = "gpt-5.6-terra"
   val gpt_5_6_luna = "gpt-5.6-luna"
+  // Daybreak Red: GPT-5.6 Cyber - vulnerability research / exploit reproduction specialist;
+  // requires Trusted Access for Cyber enrollment (not generally available)
+  val gpt_5_6_cyber = "gpt-5.6-cyber"
 
   // GPT-5.5
   val gpt_5_5 = "gpt-5.5"
@@ -295,6 +304,7 @@ object ModelId {
   val gpt_5_2_pro = "gpt-5.2-pro"
   val gpt_5_2_pro_2025_12_11 = "gpt-5.2-pro-2025-12-11"
   val gpt_5_2_chat_latest = "gpt-5.2-chat-latest"
+  val gpt_5_2_codex = "gpt-5.2-codex"
 
   // GPT-5.1
   // 400k context window, 128k max output tokens, Sep 30, 2024 knowledge cutoff, Reasoning token support
