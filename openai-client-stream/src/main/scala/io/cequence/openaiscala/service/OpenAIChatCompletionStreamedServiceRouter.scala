@@ -1,5 +1,8 @@
 package io.cequence.openaiscala.service
 
+import io.cequence.openaiscala.domain.ChatCompletionTool
+import io.cequence.openaiscala.domain.response.ChatChunk
+
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.domain.BaseMessage
@@ -60,6 +63,29 @@ object OpenAIChatCompletionStreamedServiceRouter {
 
         case None =>
           defaultService.createChatCompletionStreamed(messages, settings)
+      }
+
+    override def createChatToolCompletionStreamed(
+      messages: Seq[BaseMessage],
+      tools: Seq[ChatCompletionTool],
+      responseToolChoice: Option[String],
+      settings: CreateChatCompletionSettings
+    ): Source[ChatChunk, NotUsed] =
+      modelServiceMap.get(settings.model) match {
+        case Some((modelService, modelToUse)) =>
+          modelService.createChatToolCompletionStreamed(
+            messages,
+            tools,
+            responseToolChoice,
+            settings.copy(model = modelToUse)
+          )
+        case None =>
+          defaultService.createChatToolCompletionStreamed(
+            messages,
+            tools,
+            responseToolChoice,
+            settings
+          )
       }
 
     override def close(): Unit =

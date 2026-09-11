@@ -1,5 +1,8 @@
 package io.cequence.openaiscala.service
 
+import io.cequence.openaiscala.domain.ChatCompletionTool
+import io.cequence.openaiscala.domain.response.ChatChunk
+
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.domain.BaseMessage
@@ -30,6 +33,19 @@ object OpenAIChatCompletionStreamedConversionAdapter {
     ): Source[ChatCompletionChunkResponse, NotUsed] =
       underlying.createChatCompletionStreamed(
         messagesConversion(messages),
+        settingsConversion(settings)
+      )
+
+    override def createChatToolCompletionStreamed(
+      messages: Seq[BaseMessage],
+      tools: Seq[ChatCompletionTool],
+      responseToolChoice: Option[String],
+      settings: CreateChatCompletionSettings
+    ): Source[ChatChunk, NotUsed] =
+      underlying.createChatToolCompletionStreamed(
+        messagesConversion(messages),
+        tools,
+        responseToolChoice,
         settingsConversion(settings)
       )
 

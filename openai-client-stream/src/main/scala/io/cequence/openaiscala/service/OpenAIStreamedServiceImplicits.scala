@@ -1,5 +1,18 @@
 package io.cequence.openaiscala.service
 
+import io.cequence.openaiscala.domain.responsesapi.{
+  CreateModelResponseSettings,
+  Inputs,
+  ResponseStreamEvent
+}
+import io.cequence.openaiscala.service.adapter.{
+  ChatCompletionSettingsConversions,
+  OpenAIResponsesChatCompletionService
+}
+
+import io.cequence.openaiscala.domain.ChatCompletionTool
+import io.cequence.openaiscala.domain.response.ChatChunk
+
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.domain.BaseMessage
@@ -31,7 +44,7 @@ import scala.concurrent.ExecutionContext
  * offering streaming functions, as well as to extend (monkey patch) the factory methods such
  * that normal services are created automatically with streaming extensions.
  */
-object OpenAIStreamedServiceImplicits {
+object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
 
   implicit class ChatCompletionStreamExt(
     service: OpenAIChatCompletionService
@@ -154,6 +167,44 @@ object OpenAIStreamedServiceImplicits {
       new OpenAICoreStreamedServiceWrapper(service, streamedExtra, alsoClose = Seq(engine))
         with HasOpenAICoreStreamedExtra
     }
+  }
+
+  /**
+   * Chat-completion-shaped access to the Responses API on a streamed OpenAI service: the same
+   * messages + `CreateChatCompletionSettings` inputs as `createChatToolCompletionStreamed`,
+   * served by `createModelResponseStreamed` and rendered as [[ChatChunk]]s - the OpenAI
+   * counterpart of what the Anthropic / Gemini `asOpenAI()` adapters expose natively.
+   */
+  implicit class ResponsesChatCompletionStreamExt(service: OpenAIStreamedService) {
+
+    /** A chat-completion-shaped (sync + typed streamed) view served by the Responses API. */
+    def responsesAsChatCompletion(
+      implicit ec: ExecutionContext
+    ): StreamedServiceTypes.OpenAIChatCompletionStreamedService =
+      OpenAIResponsesChatCompletionService(service)
+
+    def createChatCompletionStreamedViaResponses(
+      messages: Seq[BaseMessage],
+      settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
+    )(
+      implicit ec: ExecutionContext
+    ): Source[ChatChunk, NotUsed] =
+      responsesAsChatCompletion.createChatCompletionStreamedTyped(messages, settings)
+
+    def createChatToolCompletionStreamedViaResponses(
+      messages: Seq[BaseMessage],
+      tools: Seq[ChatCompletionTool] = Nil,
+      responseToolChoice: Option[String] = None,
+      settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
+    )(
+      implicit ec: ExecutionContext
+    ): Source[ChatChunk, NotUsed] =
+      responsesAsChatCompletion.createChatToolCompletionStreamed(
+        messages,
+        tools,
+        responseToolChoice,
+        settings
+      )
   }
 
   implicit class StreamExt(
@@ -294,6 +345,38 @@ object OpenAIStreamedServiceImplicits {
       settings: CreateCompletionSettings
     ): Source[TextCompletionResponse, NotUsed] =
       streamedServiceExtra.createCompletionStreamed(prompt, settings)
+
+    override def createModelResponseStreamed(
+      inputs: Inputs,
+      settings: CreateModelResponseSettings
+    ): Source[ResponseStreamEvent, NotUsed] =
+      streamedServiceExtra.createModelResponseStreamed(inputs, settings)
+
+    // GPT-6 accepts function tools only on the Responses API: when the merged service is a full
+    // OpenAIService, route the typed tool stream through the Responses-backed adapter (which
+    // streams via this service's createModelResponseStreamed)
+    override def createChatToolCompletionStreamed(
+      messages: Seq[BaseMessage],
+      tools: Seq[ChatCompletionTool],
+      responseToolChoice: Option[String],
+      settings: CreateChatCompletionSettings
+    ): Source[ChatChunk, NotUsed] =
+      this match {
+        case full: OpenAIResponsesService with CloseableService
+            if tools.nonEmpty &&
+              ChatCompletionSettingsConversions.chatToolsRequireResponsesAPI(settings.model) =>
+          // the adapter's Future-based (non-streamed) methods are never used on this path
+          OpenAIResponsesChatCompletionService(full)(ExecutionContext.global)
+            .createChatToolCompletionStreamed(messages, tools, responseToolChoice, settings)
+
+        case _ =>
+          streamedServiceExtra.createChatToolCompletionStreamed(
+            messages,
+            tools,
+            responseToolChoice,
+            settings
+          )
+      }
   }
 
   private type HasOpenAIChatCompletionStreamedExtra =
@@ -309,6 +392,19 @@ object OpenAIStreamedServiceImplicits {
       settings: CreateChatCompletionSettings
     ): Source[ChatCompletionChunkResponse, NotUsed] =
       streamedServiceExtra.createChatCompletionStreamed(messages, settings)
+
+    override def createChatToolCompletionStreamed(
+      messages: Seq[BaseMessage],
+      tools: Seq[ChatCompletionTool],
+      responseToolChoice: Option[String],
+      settings: CreateChatCompletionSettings
+    ): Source[ChatChunk, NotUsed] =
+      streamedServiceExtra.createChatToolCompletionStreamed(
+        messages,
+        tools,
+        responseToolChoice,
+        settings
+      )
 
   }
 }

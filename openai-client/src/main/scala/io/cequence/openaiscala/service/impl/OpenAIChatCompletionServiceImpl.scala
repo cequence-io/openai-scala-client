@@ -61,7 +61,7 @@ private[service] trait OpenAIChatCompletionServiceImpl
     responseToolChoice: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatToolCompletion
   ): Future[ChatToolCompletionResponse] =
-    if (chatToolsRequireResponsesAPI(settings.model))
+    if (tools.nonEmpty && chatToolsRequireResponsesAPI(settings.model))
       responsesBackedChatCompletionService match {
         case Some(service) =>
           logger.debug(
@@ -95,24 +95,9 @@ private[service] trait OpenAIChatCompletionServiceImpl
     val coreParams =
       createBodyParamsForChatCompletion(messages, settings, stream = false)
 
-    val toolJsons: Seq[Map[String, Object]] = tools.map {
-      case tool: AssistantTool.FunctionTool =>
-        Map("type" -> "function", "function" -> Json.toJson(tool))
-    }
-
-    val extraParams = JsonUtil.jsonBodyParams(
-      Param.tools -> Some(toolJsons),
-      Param.tool_choice -> responseToolChoice.map(name =>
-        Map(
-          "type" -> "function",
-          "function" -> Map("name" -> name)
-        )
-      )
-    )
-
     execPOST(
       EndPoint.chat_completions,
-      bodyParams = coreParams ++ extraParams
+      bodyParams = coreParams ++ createToolBodyParams(tools, responseToolChoice)
     ).map(
       _.asSafeJson[ChatToolCompletionResponse]
     )
@@ -158,7 +143,7 @@ trait ChatCompletionBodyMaker {
   // Function tools on the chat completions API - see ChatCompletionSettingsConversions.gpt5_5ChatTools
   // & gpt5_6ChatTools. GPT-6 doesn't support them at all (Responses API only).
   protected def chatToolsRequireResponsesAPI(model: String): Boolean =
-    model.startsWith(gpt6Prefix)
+    ChatCompletionSettingsConversions.chatToolsRequireResponsesAPI(model)
 
   protected def settingsForChatToolCompletion(
     settings: CreateChatCompletionSettings
@@ -169,6 +154,35 @@ trait ChatCompletionBodyMaker {
       ChatCompletionSettingsConversions.gpt5_5ChatTools(settings)
     else
       settings
+
+  // `tools` / `tool_choice` body params shared by the sync and streamed tool completions
+  protected def createToolBodyParams(
+    tools: Seq[ChatCompletionTool],
+    responseToolChoice: Option[String]
+  ): Seq[(Param, Option[JsValue])] = {
+    val toolJsons: Seq[Map[String, Object]] = tools.map {
+      case tool: AssistantTool.FunctionTool =>
+        Map("type" -> "function", "function" -> Json.toJson(tool))
+    }
+
+    JsonUtil.jsonBodyParams(
+      Param.tools -> Some(toolJsons),
+      Param.tool_choice -> responseToolChoice.map(name =>
+        Map(
+          "type" -> "function",
+          "function" -> Map("name" -> name)
+        )
+      )
+    )
+  }
+
+  // asks for the trailing usage-only chunk on streamed chat completions, unless the caller
+  // already controls `stream_options` through extra_params
+  protected def createStreamOptionsParams(
+    settings: CreateChatCompletionSettings
+  ): Seq[(Param, Option[JsValue])] =
+    if (settings.extra_params.contains("stream_options")) Nil
+    else JsonUtil.jsonBodyParams(Param.stream_options -> Some(Map("include_usage" -> true)))
   private val gpt5_4Prefix = "gpt-5.4"
   private val gpt5_3Prefix = "gpt-5.3"
   private val gpt5_2Prefix = "gpt-5.2"

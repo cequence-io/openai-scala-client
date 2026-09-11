@@ -1,5 +1,8 @@
 package io.cequence.openaiscala.service
 
+import io.cequence.openaiscala.domain.ChatCompletionTool
+import io.cequence.openaiscala.domain.response.ChatChunk
+
 import akka.NotUsed
 import akka.stream.FlowShape
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Source, Zip}
@@ -10,17 +13,30 @@ import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 object OpenAIChatCompletionStreamedOutputConversionAdapter {
   def apply(
     service: OpenAIChatCompletionStreamedServiceExtra,
-    messageConversion: Flow[Seq[ChunkMessageSpec], Seq[ChunkMessageSpec], NotUsed]
+    messageConversion: Flow[Seq[ChunkMessageSpec], Seq[ChunkMessageSpec], NotUsed],
+    chunkConversion: Flow[ChatChunk, ChatChunk, NotUsed] = Flow[ChatChunk]
   ): OpenAIChatCompletionStreamedServiceExtra =
     new OpenAIChatCompletionStreamedOutputConversionAdapterImpl(
       service,
-      messageConversion
+      messageConversion,
+      chunkConversion
     )
 
   final private class OpenAIChatCompletionStreamedOutputConversionAdapterImpl(
     underlying: OpenAIChatCompletionStreamedServiceExtra,
-    messageConversion: Flow[Seq[ChunkMessageSpec], Seq[ChunkMessageSpec], NotUsed]
+    messageConversion: Flow[Seq[ChunkMessageSpec], Seq[ChunkMessageSpec], NotUsed],
+    chunkConversion: Flow[ChatChunk, ChatChunk, NotUsed]
   ) extends OpenAIChatCompletionStreamedServiceExtra {
+
+    override def createChatToolCompletionStreamed(
+      messages: Seq[BaseMessage],
+      tools: Seq[ChatCompletionTool],
+      responseToolChoice: Option[String],
+      settings: CreateChatCompletionSettings
+    ): Source[ChatChunk, NotUsed] =
+      underlying
+        .createChatToolCompletionStreamed(messages, tools, responseToolChoice, settings)
+        .via(chunkConversion)
 
     override def createChatCompletionStreamed(
       messages: Seq[BaseMessage],

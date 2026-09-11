@@ -1,7 +1,9 @@
 package io.cequence.openaiscala.service
 
-import akka.NotUsed
+import io.cequence.openaiscala.domain.response.ChatChunk
 import akka.stream.scaladsl.Flow
+
+import akka.NotUsed
 import io.cequence.openaiscala.domain.response.ChunkMessageSpec
 import io.cequence.openaiscala.domain.{AssistantMessage, BaseMessage}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
@@ -23,7 +25,8 @@ object OpenAIChatCompletionIOConversionAdapter {
     inputMessagesConversion: Conversion[Seq[BaseMessage]] = None,
     inputSettingsConversion: Conversion[CreateChatCompletionSettings] = None,
     outputMessageConversion: Conversion[AssistantMessage] = None,
-    outputChunkMessageConversion: FlowConversion[Seq[ChunkMessageSpec]] = None
+    outputChunkMessageConversion: FlowConversion[Seq[ChunkMessageSpec]] = None,
+    outputChatChunkConversion: FlowConversion[ChatChunk] = None
   )(
     implicit ec: ExecutionContext
   ): OpenAIChatCompletionStreamedService = {
@@ -57,12 +60,15 @@ object OpenAIChatCompletionIOConversionAdapter {
       chatCompletionAdapters.chatCompletionOutput(_)(nonStreamedServiceAux)
     }.getOrElse(nonStreamedServiceAux)
 
-    val streamedService = outputChunkMessageConversion.map {
-      OpenAIChatCompletionStreamedOutputConversionAdapter(
-        streamedServiceAux,
-        _
-      )
-    }.getOrElse(streamedServiceAux)
+    val streamedService =
+      if (outputChunkMessageConversion.isDefined || outputChatChunkConversion.isDefined)
+        OpenAIChatCompletionStreamedOutputConversionAdapter(
+          streamedServiceAux,
+          outputChunkMessageConversion.getOrElse(Flow[Seq[ChunkMessageSpec]]),
+          outputChatChunkConversion.getOrElse(Flow[ChatChunk])
+        )
+      else
+        streamedServiceAux
 
     nonStreamedService.withStreaming(streamedService)
   }
