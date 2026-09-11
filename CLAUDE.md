@@ -111,8 +111,29 @@ Factories support multiple initialization modes: default config, custom config, 
 ### Streaming Support
 Streaming is provided as an extension via the `openai-client-stream` module:
 - Import `OpenAIStreamedServiceImplicits._` to add `.withStreaming()` to factories
-- Returns `Source[String, _]` for SSE streams
-- Requires Akka Streams materializer in implicit scope
+- `createChatCompletionStreamed` returns `Source[ChatCompletionChunkResponse, NotUsed]` (OpenAI-shaped chunks)
+- **Typed streaming** (1.3.0): `createChatToolCompletionStreamed(messages, tools, responseToolChoice, settings)` /
+  `createChatCompletionStreamedTyped` return `Source[ChatChunk, NotUsed]` - a provider-neutral sealed ADT
+  (`domain/response/ChatChunk.scala`: `Start`, `Text`, `Thinking`, `ThinkingSignature`, `RedactedThinking`,
+  `ToolCallStart`/`ToolCallDelta`/`ToolCall`, `ToolResult`, `Citation`, `Finish`, `Usage`, `Other`). The trait
+  default derives it from the OpenAI chunks via `service/ChatChunks.fromOpenAIChunks` (handles `delta.reasoning_content`
+  / `delta.reasoning`); Anthropic (`impl/package.scala#toChatChunks`, requests `display = summarized` thinking) and
+  Gemini (`OpenAIGeminiChatCompletionService.toChatChunks`, turns `includeThoughts` on) and Vertex AI
+  (`vertexai/service/impl/VertexAIChatChunks`, protobuf parts; `setVertexAIIncludeThoughts`) override it natively and accept
+  provider tools via `setAnthropicTools` / `setGeminiTools` / `setVertexAITools`. Grok, Groq, Cerebras, Fireworks and
+  DeepSeek use the generic mapping (live-verified 2026-09-10; repeated per-chunk `usage` is deduplicated). Every streamed wrapper in `openai-client-stream` must
+  delegate the 4-arg method explicitly (see `StreamedWrappersDelegationSpec`). `source.texts` is the legacy string view,
+  `source.assembled` folds into `AssembledChatCompletion`. Two layers: the tool layer (`ToolCall*`/`ToolResult`, client and
+  server tools alike) plus a semantic layer emitted in addition (`CodeExecution`/`CodeExecutionResult`, `WebSearch`/
+  `WebSearchResult`, `Image`, `Refusal`, `Citation`); anything unmapped is `Other(kind, raw)`, never dropped.
+- **Responses API streaming** (1.3.0): `OpenAIStreamedServiceExtra.createModelResponseStreamed(inputs, settings)` returns
+  `Source[ResponseStreamEvent, NotUsed]` (`domain/responsesapi/ResponseStreamEvent.scala`, parsed on the JSON `type`;
+  unknown events -> `UnknownEvent`) and `createModelResponseStreamedTyped` maps it via `ChatChunks.fromResponseEvents`.
+  `OpenAIResponsesChatCompletionService` (the Responses-backed chat adapter) implements the streamed trait on top of it,
+  and the merged `withStreaming` full service routes GPT-6 typed tool streams through it (`chatToolsRequireResponsesAPI`
+  in `ChatCompletionSettingsConversions`).
+- Streamed SSE frames are capped at 1 MB (ws-client's default of 20 KB broke Anthropic web-search result blocks)
+- Requires Akka Streams materializer in implicit scope only when consuming the `Source`
 
 ### Model Parameter Conversions
 `ChatCompletionSettingsConversions` (in openai-core) automatically adjusts unsupported parameters per model:

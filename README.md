@@ -1,29 +1,30 @@
 # OpenAI Scala Client 🤖
-[![version](https://img.shields.io/badge/version-1.3.0.RC.3-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT) ![GitHub Stars](https://img.shields.io/github/stars/cequence-io/openai-scala-client?style=social) [![Twitter Follow](https://img.shields.io/twitter/follow/0xbnd?style=social)](https://twitter.com/0xbnd) ![GitHub CI](https://github.com/cequence-io/openai-scala-client/actions/workflows/continuous-integration.yml/badge.svg)
+[![version](https://img.shields.io/badge/version-1.3.0-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT) ![GitHub Stars](https://img.shields.io/github/stars/cequence-io/openai-scala-client?style=social) [![Twitter Follow](https://img.shields.io/twitter/follow/0xbnd?style=social)](https://twitter.com/0xbnd) ![GitHub CI](https://github.com/cequence-io/openai-scala-client/actions/workflows/continuous-integration.yml/badge.svg)
 
-This is a no-nonsense async Scala client for OpenAI API and multiple LLM providers supporting all the available endpoints and params **including streaming**, **chat completion**, **responses API**, **assistants API**, **tools** (including MCP), **graders**, **vision**, and **voice routines** (as defined [here](https://platform.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala) with adapters for Anthropic, Google Gemini/Vertex AI, Groq, Perplexity, and others. The supported calls are:
+This is a no-nonsense async Scala client for OpenAI API and multiple LLM providers supporting all the available endpoints and params **including streaming** (with a 🔥 new provider-neutral typed stream of text / thinking / tool-call / tool-result chunks), **chat completion**, **responses API**, **assistants API**, **tools** (including MCP), **graders**, **vision** (with provider-uniform file/image attachments), **batch processing**, and **voice routines** (as defined [here](https://platform.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala) with adapters for Anthropic (incl. Bedrock and Managed Agents), Google Gemini/Vertex AI, Groq, Perplexity, and others. The supported calls are:
 
 * **Models**: [listModels](https://platform.openai.com/docs/api-reference/models/list), and [retrieveModel](https://platform.openai.com/docs/api-reference/models/retrieve)
 * **Completions**: [createCompletion](https://platform.openai.com/docs/api-reference/completions/create)
-* **Chat Completions**: [createChatCompletion](https://platform.openai.com/docs/api-reference/chat/create), [createChatFunCompletion](https://platform.openai.com/docs/api-reference/chat/create) (deprecated), and [createChatToolCompletion](https://platform.openai.com/docs/api-reference/chat/create)
+* **Chat Completions**: [createChatCompletion](https://platform.openai.com/docs/api-reference/chat/create), [createChatFunCompletion](https://platform.openai.com/docs/api-reference/chat/create) (deprecated), [createChatToolCompletion](https://platform.openai.com/docs/api-reference/chat/create), and [createChatWebSearchCompletion](https://platform.openai.com/docs/guides/tools-web-search?api-mode=chat)
 * **Edits**: [createEdit](https://platform.openai.com/docs/api-reference/edits/create) (deprecated)
 * **Images**: [createImage](https://platform.openai.com/docs/api-reference/images/create), [createImageEdit](https://platform.openai.com/docs/api-reference/images/create-edit), and [createImageVariation](https://platform.openai.com/docs/api-reference/images/create-variation)
 * **Embeddings**: [createEmbeddings](https://platform.openai.com/docs/api-reference/embeddings/create)
-* **Batches**: [createBatch](https://platform.openai.com/docs/api-reference/batch/create), [retrieveBatch](https://platform.openai.com/docs/api-reference/batch/retrieve), [cancelBatch](https://platform.openai.com/docs/api-reference/batch/cancel), and [listBatches](https://platform.openai.com/docs/api-reference/batch/list)
+* **Batches**: [createBatch](https://platform.openai.com/docs/api-reference/batch/create), [retrieveBatch](https://platform.openai.com/docs/api-reference/batch/retrieve), [cancelBatch](https://platform.openai.com/docs/api-reference/batch/cancel), and [listBatches](https://platform.openai.com/docs/api-reference/batch/list), plus the helpers `uploadBatchFile`, `buildAndUploadBatchFile`, `buildBatchFileContent`, `retrieveBatchFile`, `retrieveBatchFileContent`, and `retrieveBatchResponses`
 * **Audio**: [createAudioTranscription](https://platform.openai.com/docs/api-reference/audio/createTranscription), [createAudioTranslation](https://platform.openai.com/docs/api-reference/audio/createTranslation), and [createAudioSpeech](https://platform.openai.com/docs/api-reference/audio/createSpeech)
-* **Files**: [listFiles](https://platform.openai.com/docs/api-reference/files/list), [uploadFile](https://platform.openai.com/docs/api-reference/files/upload), [deleteFile](https://platform.openai.com/docs/api-reference/files/delete), [retrieveFile](https://platform.openai.com/docs/api-reference/files/retrieve), and [retrieveFileContent](https://platform.openai.com/docs/api-reference/files/retrieve-content)
+* **Files**: [listFiles](https://platform.openai.com/docs/api-reference/files/list), [uploadFile](https://platform.openai.com/docs/api-reference/files/upload), [deleteFile](https://platform.openai.com/docs/api-reference/files/delete), [retrieveFile](https://platform.openai.com/docs/api-reference/files/retrieve), [retrieveFileContent](https://platform.openai.com/docs/api-reference/files/retrieve-content), and `retrieveFileContentAsSource` (streamed)
 * **Fine-tunes**: [createFineTune](https://platform.openai.com/docs/api-reference/fine-tunes/create), [listFineTunes](https://platform.openai.com/docs/api-reference/fine-tunes/list), [retrieveFineTune](https://platform.openai.com/docs/api-reference/fine-tunes/retrieve), [cancelFineTune](https://platform.openai.com/docs/api-reference/fine-tunes/cancel), [listFineTuneEvents](https://platform.openai.com/docs/api-reference/fine-tunes/events), [listFineTuneCheckpoints](https://platform.openai.com/docs/api-reference/fine-tuning/list-checkpoints), and [deleteFineTuneModel](https://platform.openai.com/docs/api-reference/fine-tunes/delete-model)
 * **Moderations**: [createModeration](https://platform.openai.com/docs/api-reference/moderations/create)
-* **Assistants**: [createAssistant](https://platform.openai.com/docs/api-reference/messages/createMessage), [listAssistants](https://platform.openai.com/docs/api-reference/assistants/listAssistants), [retrieveAssistant](https://platform.openai.com/docs/api-reference/assistants/retrieveAssistant), [modifyAssistant](https://platform.openai.com/docs/api-reference/assistants/modifyAssistant), and [deleteAssistant](https://platform.openai.com/docs/api-reference/assistants/deleteAssistant)
+* **Assistants**: [createAssistant](https://platform.openai.com/docs/api-reference/messages/createMessage), [listAssistants](https://platform.openai.com/docs/api-reference/assistants/listAssistants), [retrieveAssistant](https://platform.openai.com/docs/api-reference/assistants/retrieveAssistant), [modifyAssistant](https://platform.openai.com/docs/api-reference/assistants/modifyAssistant), [deleteAssistant](https://platform.openai.com/docs/api-reference/assistants/deleteAssistant), and `deleteAssistantFile`
 * **Threads**: [createThread](https://platform.openai.com/docs/api-reference/threads/createThread), [retrieveThread](https://platform.openai.com/docs/api-reference/threads/getThread), [modifyThread](https://platform.openai.com/docs/api-reference/threads/modifyThread), and [deleteThread](https://platform.openai.com/docs/api-reference/threads/deleteThread)
-* **Thread Messages**: [createThreadMessage](https://platform.openai.com/docs/api-reference/assistants/createAssistant), [retrieveThreadMessage](https://platform.openai.com/docs/api-reference/messages/getMessage), [modifyThreadMessage](https://platform.openai.com/docs/api-reference/messages/modifyMessage), [listThreadMessages](https://platform.openai.com/docs/api-reference/messages/listMessages), [retrieveThreadMessageFile](https://platform.openai.com/docs/api-reference/messages/getMessageFile), and [listThreadMessageFiles](https://platform.openai.com/docs/api-reference/messages/listMessageFiles)
+* **Thread Messages**: [createThreadMessage](https://platform.openai.com/docs/api-reference/assistants/createAssistant), [retrieveThreadMessage](https://platform.openai.com/docs/api-reference/messages/getMessage), [modifyThreadMessage](https://platform.openai.com/docs/api-reference/messages/modifyMessage), [listThreadMessages](https://platform.openai.com/docs/api-reference/messages/listMessages), [retrieveThreadMessageFile](https://platform.openai.com/docs/api-reference/messages/getMessageFile), [listThreadMessageFiles](https://platform.openai.com/docs/api-reference/messages/listMessageFiles), and [deleteThreadMessage](https://platform.openai.com/docs/api-reference/messages/deleteMessage)
 * **Runs**: [createRun](https://platform.openai.com/docs/api-reference/runs/createRun), [createThreadAndRun](https://platform.openai.com/docs/api-reference/runs/createThreadAndRun), [listRuns](https://platform.openai.com/docs/api-reference/runs/listRuns), [retrieveRun](https://platform.openai.com/docs/api-reference/runs/retrieveRun), [modifyRun](https://platform.openai.com/docs/api-reference/runs/modifyRun), [submitToolOutputs](https://platform.openai.com/docs/api-reference/runs/submitToolOutputs), and [cancelRun](https://platform.openai.com/docs/api-reference/runs/cancelRun)
 * **Run Steps**: [listRunSteps](https://platform.openai.com/docs/api-reference/run-steps/listRunSteps), and [retrieveRunStep](https://platform.openai.com/docs/api-reference/run-steps/getRunStep) 
 * **Vector Stores**: [createVectorStore](https://platform.openai.com/docs/api-reference/vector-stores/create), [listVectorStores](https://platform.openai.com/docs/api-reference/vector-stores/list), [retrieveVectorStore](https://platform.openai.com/docs/api-reference/vector-stores/retrieve), [modifyVectorStore](https://platform.openai.com/docs/api-reference/vector-stores/modify), and [deleteVectorStore](https://platform.openai.com/docs/api-reference/vector-stores/delete)
 * **Vector Store Files**: [createVectorStoreFile](https://platform.openai.com/docs/api-reference/vector-stores-files/createFile), [listVectorStoreFiles](https://platform.openai.com/docs/api-reference/vector-stores-files/listFiles), [retrieveVectorStoreFile](https://platform.openai.com/docs/api-reference/vector-stores-files/getFile), and [deleteVectorStoreFile](https://platform.openai.com/docs/api-reference/vector-stores-files/deleteFile)  
-* **Vector Store File Batches**: [createVectorStoreFileBatch](https://platform.openai.com/docs/api-reference/vector-stores-file-batches/createBatch), [retrieveVectorStoreFileBatch](https://platform.openai.com/docs/api-reference/vector-stores-file-batches/getBatch), [cancelVectorStoreFileBatch](https://platform.openai.com/docs/api-reference/vector-stores-file-batches/cancelBatch), and [listVectorStoreBatchFiles](https://platform.openai.com/docs/api-reference/vector-stores-file-batches/listBatchFiles)
-* **Responses**: [createModelResponse](https://platform.openai.com/docs/api-reference/responses/create) (🔥 with tools support), [getModelResponse](https://platform.openai.com/docs/api-reference/responses/get), [deleteModelResponse](https://platform.openai.com/docs/api-reference/responses/delete), [cancelModelResponse](https://platform.openai.com/docs/api-reference/responses/cancel), [getModelResponseInputTokenCounts](https://platform.openai.com/docs/api-reference/responses/token-counts), and [listModelResponseInputItems](https://platform.openai.com/docs/api-reference/responses/input-items)
-* **Graders** (🔥 new): [runGrader](https://platform.openai.com/docs/api-reference/graders/run), and [validateGrader](https://platform.openai.com/docs/api-reference/graders/validate)
+* **Responses**: [createModelResponse](https://platform.openai.com/docs/api-reference/responses/create) (🔥 with tools support), [getModelResponse](https://platform.openai.com/docs/api-reference/responses/get), [deleteModelResponse](https://platform.openai.com/docs/api-reference/responses/delete), [cancelModelResponse](https://platform.openai.com/docs/api-reference/responses/cancel), [getModelResponseInputTokenCounts](https://platform.openai.com/docs/api-reference/responses/token-counts), [listModelResponseInputItems](https://platform.openai.com/docs/api-reference/responses/input-items), and [createModelResponseStreamed](https://platform.openai.com/docs/api-reference/responses-streaming) (🔥 new, typed events or `ChatChunk`s)
+* **Graders**: [runGrader](https://platform.openai.com/docs/api-reference/graders/run), and [validateGrader](https://platform.openai.com/docs/api-reference/graders/validate)
+
+The Anthropic client additionally covers the native **Messages** (incl. typed stream events), **Message Batches**, **Files**, **Skills**, and the whole **Managed Agents** API surface (agents, environments and their work queue, sessions, deployments, vaults and credentials, memory stores) - see the [Anthropic Managed Agents](#anthropic-managed-agents) section below.
 
 Note that in order to be consistent with the OpenAI API naming, the service function names match exactly the API endpoint titles/descriptions in camelCase.
 Also, we aimed for the library to be self-contained with the fewest dependencies possible. Therefore, we implemented our own generic WS client (currently with Play WS backend, which can be swapped for other engines in the future). Additionally, if dependency injection is required, we use the `scala-guice` library.
@@ -42,9 +43,9 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 | [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) | Full                   | Standard + Responses API          | Yes                     | OpenAI on Azure|
 | [Anthropic](https://www.anthropic.com/api) | Full (🔥 New)          | Yes, also MCP and Skills (🔥 New) | Yes                     | Claude models |
 | [Anthropic Bedrock](https://aws.amazon.com/bedrock/claude/) | Full (🔥 New)          | Yes, also MCP (🔥 New)            | Yes (no prompt caching) | Claude on AWS |
-| [OpenAI Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-mantle.html) | Full (🔥 New)          | Standard + Responses API          |                         | GPT-5.x & gpt-oss on AWS (`bedrock-mantle`) |
+| [OpenAI Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-mantle.html) | Full (🔥 New)          | Standard + Responses API          |                         | GPT-5.x/5.6, gpt-oss, Grok, Gemma & other OpenAI-compatible models on AWS (`bedrock-mantle`) |
 | [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) | Varies                 |                                   |                         | Open-source models |
-| [Cerebras](https://cerebras.ai/) | Only JSON object mode  |                                   |                         | Fast inference |
+| [Cerebras](https://cerebras.ai/) | Full (`gpt-oss-120b`, `qwen-3.8-27b`) | Yes                  |                         | Fast inference |
 | [Deepseek](https://deepseek.com/) | Only JSON object mode  |                                   |                         | Chinese provider |
 | [FastChat](https://github.com/lm-sys/FastChat) | Varies                 |                                   |                         | Local LLMs |
 | [Fireworks AI](https://fireworks.ai/) | Only JSON object mode  |                                   |                         | Cloud provider |
@@ -56,7 +57,7 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 | [Novita](https://novita.ai/) | Only JSON object mode  |                                   |                         | Cloud provider |
 | [Octo AI](https://octo.ai/) | Only JSON object mode  |                                   |                         | Cloud provider (obsolete) |
 | [Ollama](https://ollama.com/) | Varies                 |                                   |                         | Local LLMs |
-| [Perplexity Sonar](https://www.perplexity.ai/) | Only implied           |                                   |                         | Search-based AI |
+| [Perplexity Sonar](https://www.perplexity.ai/) | Only implied           |                                   |                         | Search-based AI (⚠️ Sonar chat completions retire on 2026-09-27, see below) |
 | [TogetherAI](https://www.together.ai/) | Only JSON object mode  |                                   |                         | Cloud provider |
 
 ---
@@ -74,7 +75,7 @@ The currently supported Scala versions are **2.12, 2.13**, and **3**.
 To install the library, add the following dependency to your *build.sbt*
 
 ```
-"io.cequence" %% "openai-scala-client" % "1.3.0.RC.3"
+"io.cequence" %% "openai-scala-client" % "1.3.0"
 ```
 
 or to *pom.xml* (if you use maven)
@@ -83,16 +84,16 @@ or to *pom.xml* (if you use maven)
 <dependency>
     <groupId>io.cequence</groupId>
     <artifactId>openai-scala-client_2.12</artifactId>
-    <version>1.3.0.RC.3</version>
+    <version>1.3.0</version>
 </dependency>
 ```
 
-If you want streaming support, use `"io.cequence" %% "openai-scala-client-stream" % "1.3.0.RC.3"` instead.
+If you want streaming support, use `"io.cequence" %% "openai-scala-client-stream" % "1.3.0"` instead.
 
 For a single dependency that includes all provider clients (Anthropic, Gemini, Vertex AI, Perplexity, token counting):
 
 ```
-"io.cequence" %% "openai-scala-all" % "1.3.0.RC.3"
+"io.cequence" %% "openai-scala-all" % "1.3.0"
 ```
 
 ## Config ⚙️
@@ -200,6 +201,25 @@ Then you can obtain a service in one of the following ways.
    ```
    Set `ANTHROPIC_AUTH_TOKEN` to a platform OAuth token, e.g. `export ANTHROPIC_AUTH_TOKEN=$(ant auth print-credentials --access-token)`. `forOAuthProfile()` instead resolves an `ant auth login` profile (`ANTHROPIC_PROFILE` / `<config-dir>/active_config` / `default`) and refreshes its token automatically as it expires. Pass `withOAuthBeta = false` on `forAuthToken()` for a gateway-issued static bearer token. **`CLAUDE_CODE_OAUTH_TOKEN_ALTERNATIVE`** is a safer place to park a fallback token persistently (e.g. in `~/.bashrc`) than `CLAUDE_CODE_OAUTH_TOKEN` itself: the real `claude` CLI reads only the exact literal `CLAUDE_CODE_OAUTH_TOKEN` for its own auth, so exporting that one persistently would silently redirect your interactive `claude` sessions onto it too (ranking above subscription `/login`) - the `_ALTERNATIVE`-suffixed name is invisible to the CLI. **Caveat:** either variant's underlying token (from `claude setup-token`) is a Claude Code subscription token - it's scoped to the Claude Code backend and documented as rejected by the public API (expect a 401), so treat both as best-effort only. Subscription usage for agents is sanctioned exclusively through the Claude Agent SDK/CLI harness (via the "Agent SDK credit" for Pro/Max/Team/Enterprise plans, introduced 2026-06-15) - not through these REST endpoints.
 
+   **Anthropic on Amazon Bedrock** - all variants read `AWS_BEDROCK_REGION`, static credentials come from `AWS_BEDROCK_ACCESS_KEY` / `AWS_BEDROCK_SECRET_KEY` (+ optional `AWS_SESSION_TOKEN`):
+   ```scala
+     // SigV4 with static (or env-provided session) credentials
+     val service = AnthropicServiceFactory.bedrockAsOpenAI()
+
+     // SigV4 with temporary STS session credentials minted from the access/secret key (default 1h, auto-refreshed)
+     val service = AnthropicServiceFactory.bedrockAsOpenAIWithSessionToken()
+
+     // Bedrock API key (`AWS_BEARER_TOKEN_BEDROCK`) - plain bearer auth, no SigV4 signing
+     val service = AnthropicServiceFactory.bedrockAsOpenAIWithBearerToken()
+
+     // Bedrock's own batch inference (S3-staged JSONL); returns a batch-capable service - see the Batch section
+     val service = AnthropicServiceFactory.bedrockAsOpenAIWithBatchSupport(s3Bucket = "my-bucket", roleArn = "arn:aws:iam::...:role/bedrock-batch")
+
+     // the native AnthropicService against the `bedrock-mantle` Anthropic Messages endpoint (`AWS_BEARER_TOKEN_BEDROCK`)
+     val service = AnthropicServiceFactory.forBedrockMantle()
+   ```
+   Pass `inferenceProfilePrefix = Some("eu")` (or `"us"` / `"global"`) to route through a cross-region inference profile. The native (non-adapter) counterparts are `forBedrock`, `forBedrockWithSessionToken`, and `forBedrockWithBearerToken`.
+
 3. [Google Vertex AI](https://cloud.google.com/vertex-ai) - requires `openai-scala-google-vertexai-client` lib and `VERTEXAI_LOCATION` + `VERTEXAI_PROJECT_ID`
 ```scala
   val service = VertexAIServiceFactory.asOpenAI()
@@ -214,6 +234,7 @@ Then you can obtain a service in one of the following ways.
 ```scala
   val service = SonarServiceFactory.asOpenAI()
 ```
+   ⚠️ Perplexity is [retiring the Sonar Chat Completions endpoint on 2026-09-27](https://docs.perplexity.ai/docs/agent-api/migrate-from-sonar/overview) in favour of its Responses-style **Agent API** (`POST /v1/agent`). This client (and the `ChatProviderSettings.sonar` shortcut) targets the chat-completions contract, so expect it to stop working after that date until an Agent API transport lands.
 
 6. [Novita](https://novita.ai/) - requires `NOVITA_API_KEY`
 ```scala
@@ -284,7 +305,7 @@ or with streaming
   )
 ```
 
-- Note that services with additional streaming support - `createCompletionStreamed` and `createChatCompletionStreamed` provided by [OpenAIStreamedServiceExtra](./openai-client-stream/src/main/scala/io/cequence/openaiscala/service/OpenAIStreamedServiceExtra.scala) (requires `openai-scala-client-stream` lib)
+- Note that services with additional streaming support - `createCompletionStreamed` and `createChatCompletionStreamed` provided by [OpenAIStreamedServiceExtra](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIStreamedServiceExtra.scala) (requires `openai-scala-client-stream` lib)
 
 ```scala
   import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIStreamedService
@@ -313,6 +334,105 @@ or only if streaming is required
       authHeaders = Seq(("Authorization", s"Bearer ${sys.env("FIREWORKS_API_KEY")}"))
    )
 ```
+
+- **Typed streaming** (🔥 New) - `createChatToolCompletionStreamed` (and the tool-less alias `createChatCompletionStreamedTyped`)
+  returns `Source[ChatChunk, NotUsed]`, a provider-neutral sealed hierarchy that OpenAI (and every OpenAI-compatible provider),
+  Anthropic (direct and Bedrock) and Google Gemini / Vertex AI all map onto, so the same pattern match works everywhere:
+
+  | `ChatChunk` | Meaning | OpenAI / compatible | Anthropic | Gemini / Vertex AI |
+  |---|---|---|---|---|
+  | `Start(id, model)` | first chunk | chunk id / model | `message_start` | `modelVersion` |
+  | `Text(text)` | answer fragment | `delta.content` | `text_delta` | text part |
+  | `Thinking(text)` | reasoning fragment | `delta.reasoning_content` (DeepSeek, Grok, ...) / `delta.reasoning` (Groq) | `thinking_delta` (summarized thinking is requested automatically) | thought-summary part (`includeThoughts` on by default) |
+  | `ThinkingSignature(signature, callId)`, `RedactedThinking` | opaque data to echo back in tool loops (`callId` set when the signature rides on a function call) | encrypted reasoning (Responses API) | `signature_delta`, `redacted_thinking` | `thoughtSignature` |
+  | `ToolCallStart` / `ToolCallDelta` / `ToolCall` | tool call: start, argument fragments, assembled call | `delta.tool_calls` fragments | `tool_use` + `input_json_delta`; `server_tool_use` / `mcp_tool_use` (`serverSide = true`) | `functionCall` (complete); `executableCode` (`serverSide = true`) |
+  | `ToolResult` | result of a provider-executed tool | code interpreter outputs, MCP / file search results (Responses API) | web search / web fetch / code execution / bash / text editor / MCP result blocks | `codeExecutionResult` |
+  | `CodeExecution` / `CodeExecutionResult` | semantic view of server-side code runs (emitted in addition to the tool layer, same `callId`) | `code_interpreter_call` (Responses API) | `code_execution` / `bash_code_execution` | `executableCode` / `codeExecutionResult` |
+  | `WebSearch` / `WebSearchResult` | semantic view of server-side web searches | `web_search_call` (Responses API) | `web_search` server tool | Google Search grounding queries / chunks |
+  | `Image` | generated / returned images (base64 or URL) | image generation partial & final images, code interpreter image outputs (Responses API) | - | inline image parts |
+  | `Refusal` | refusal text | `refusal` deltas (Responses API) | - | - |
+  | `Citation` | citation / grounding reference | output-text annotations (Responses API) | `citations_delta` | `groundingMetadata` |
+  | `Finish(reason, providerReason)` | normalized stop reason (`stop`, `tool_calls`, `length`, `content_filter`, `unknown`) + the provider's own | `finish_reason` | `message_delta.stop_reason` | `finishReason` |
+  | `Usage(usage)` | OpenAI-shaped usage | trailing usage chunk (`stream_options.include_usage` is requested unless you set `stream_options` in `extra_params`) | merged `message_start` + `message_delta` usage | `usageMetadata` |
+  | `Other(kind, raw)` | anything unmodeled (never dropped) | further choices | `ping`, unknown events / blocks | further candidates, unknown parts |
+
+```scala
+  import io.cequence.openaiscala.domain.response.ChatChunk._
+
+  val weather = FunctionTool(name = "get_weather", parameters = JsonSchema.Object(
+    properties = Seq("location" -> JsonSchema.String()), required = Seq("location")))
+
+  service
+    .createChatToolCompletionStreamed(
+      messages = Seq(UserMessage("What is the weather in Oslo? Use get_weather.")),
+      tools = Seq(weather),
+      settings = CreateChatCompletionSettings(NonOpenAIModelId.claude_sonnet_5, reasoning_effort = Some(ReasoningEffort.medium))
+    )
+    .runWith(Sink.foreach {
+      case Thinking(t)                       => print(s"[thinking] $t")
+      case Text(t)                           => print(t)
+      case ToolCall(_, id, name, args, _)    => println(s"call $name($args) -> $id")
+      case ToolResult(_, name, _, text, _)   => println(s"$name returned ${text.getOrElse("")}")
+      case Finish(reason, _)                 => println(s"done: $reason")
+      case _                                 => ()
+    })
+```
+
+  `source.texts` is the legacy text-only `Source[String, _]` view (`thinkingTexts`, `toolCalls`, `toolResults`, `citations` likewise), and
+  `source.assembled` folds the stream into an `AssembledChatCompletion` whose `toAssistantToolMessage` is the assistant turn of a tool loop
+  (append it and one `ToolMessage` per `clientToolCalls` entry, then call again). Provider knobs: `settings.setAnthropicTools(Seq(Tool.webSearch()))`
+  and `settings.setGeminiTools(Seq(Tool.CodeExecution))` add provider-native (server-side) tools whose results come back as `ToolResult`s;
+  `settings.setGeminiIncludeThoughts(false)` turns thought summaries off. Only the first choice / candidate is mapped. On the OpenAI
+  provider, GPT-5.4+ accepts function tools on the chat completions API only with `reasoning_effort = none`; GPT-6 accepts them only on
+  the Responses API, so the full streamed service (`OpenAIServiceFactory.withStreaming()`) routes GPT-6 typed tool streams through the
+  Responses API automatically (a chat-only service fails fast). Vertex AI maps the same parts as Gemini natively (function calls,
+  `Tool.CodeExecution`, `Tool.GoogleSearch` grounding, inline images, thoughts - `setVertexAIIncludeThoughts(false)` turns them off).
+  The OpenAI-compatible providers - Grok, Groq, Cerebras, Fireworks, DeepSeek - go through the generic mapping and were live-verified
+  for thinking + tool calls (Groq repeats `usage` on every chunk; it is emitted once). Services that don't override the typed method
+  (Sonar, Managed Agents) still get text / reasoning / finish / usage chunks derived from `createChatCompletionStreamed`, but reject tools. The
+  `ChatChunk` hierarchy also has a JSON `Format` (`"type"`-keyed) for logging and replay; anything a provider sends that is not modeled
+  arrives as `Other(kind, raw)` rather than being dropped.
+
+  **Responses API streaming** (🔥 New) - `createModelResponseStreamed(inputs, settings)` on the streamed OpenAI service returns
+  `Source[ResponseStreamEvent, NotUsed]` with every server-sent event typed (`ResponseCreated`, `OutputItemAdded/Done`,
+  `OutputTextDelta`, `ReasoningSummaryTextDelta`, `FunctionCallArgumentsDelta/Done`, `CodeInterpreterCodeDelta/Done`,
+  `ImageGenerationPartialImage`, `OutputTextAnnotationAdded`, `ResponseCompleted/Incomplete/Failed`, `ToolCallStatus` for the
+  lifecycle notifications, `UnknownEvent` for the rest), and `createModelResponseStreamedTyped` renders the same stream as `ChatChunk`s -
+  reasoning summaries as `Thinking`, the encrypted reasoning as `ThinkingSignature`, web search / code interpreter / MCP / file search /
+  image generation as tool-layer chunks plus `WebSearch`, `CodeExecution`, `CodeExecutionResult`, `Image`, annotations as `Citation`.
+  A `response.failed` or `error` event fails the stream. See
+  [CreateModelResponseStreamed](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/responsesapi/CreateModelResponseStreamed.scala).
+
+  The chat-completion-shaped way to use it - the same messages + `CreateChatCompletionSettings` inputs as
+  `createChatToolCompletionStreamed`, exactly like the Anthropic and Gemini `asOpenAI()` adapters expose natively - is available on the
+  streamed OpenAI service via `OpenAIStreamedServiceImplicits._`:
+
+```scala
+  import io.cequence.openaiscala.domain.settings.ResponsesChatCompletionSettingsOps._
+
+  val service = OpenAIServiceFactory.withStreaming()
+
+  service
+    .createChatToolCompletionStreamedViaResponses(
+      messages = Seq(UserMessage("Search the news about Jupiter missions, then call get_weather for Oslo.")),
+      tools = Seq(weather),
+      settings = CreateChatCompletionSettings(ModelId.gpt_5_4, reasoning_effort = Some(ReasoningEffort.low))
+        .setResponsesTools(Seq(WebSearchTool(), CodeInterpreterTool(container = CodeInterpreterContainer.Auto())))
+    )
+    .runWith(Sink.foreach(println))
+
+  // or as a reusable chat-completion service (sync + typed streamed) served by the Responses API
+  val chatViaResponses: OpenAIChatCompletionStreamedService = service.responsesAsChatCompletion
+```
+
+  Reasoning summaries are requested automatically when `reasoning_effort` is set (`setResponsesReasoningSummary(false)` opts out), and
+  `setResponsesTools` adds Responses-native tools (web search, code interpreter, file search, MCP, image generation) whose activity
+  arrives as server-side tool-layer chunks plus `WebSearch`, `CodeExecution`, `Image`, .... `service.responsesAsChatCompletion` also
+  exists on a plain (non-streaming) `OpenAIService` through `OpenAIChatCompletionExtra._` for the synchronous adapter. See
+  [CreateChatToolCompletionStreamedViaResponses](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/responsesapi/CreateChatToolCompletionStreamedViaResponses.scala).
+  See [CreateChatToolCompletionStreamed](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/CreateChatToolCompletionStreamed.scala),
+  [AnthropicCreateChatToolCompletionStreamedWithOpenAIAdapter](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/anthropic/AnthropicCreateChatToolCompletionStreamedWithOpenAIAdapter.scala),
+  and [GoogleGeminiCreateChatToolCompletionStreamedWithOpenAIAdapter](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/googlegemini/GoogleGeminiCreateChatToolCompletionStreamedWithOpenAIAdapter.scala).
 
 - Via dependency injection (requires `openai-scala-guice` lib)
 
@@ -775,6 +895,52 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
   `Tool.custom()`, and MCP servers via `MCPServerURLDefinition`.
   See [examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/anthropic/tools).
 
+- **Reasoning effort** - `CreateChatCompletionSettings(reasoning_effort = Some(ReasoningEffort.high))` works across providers:
+  OpenAI reasoning models take it natively (`none`/`minimal`/`low`/`medium`/`high`/`xhigh`, plus `max` on the Responses API),
+  while the Anthropic, Gemini, and Vertex AI adapters translate it into `output_config.effort` / adaptive thinking
+  (Claude) or `thinking_level` / `thinking_budget` (Gemini). The token budgets behind each level are configurable via
+  `reasoning-effort-thinking-budget-mapping` in [openai-scala-client.conf](./openai-client/src/main/resources/openai-scala-client.conf).
+  Unsupported combinations (e.g. sampling params on GPT-5.x/GPT-6, `minimal` on Gemini 3.7+/Pro) are downgraded automatically
+  with a warning by [ChatCompletionSettingsConversions](./openai-core/src/main/scala/io/cequence/openaiscala/service/adapter/ChatCompletionSettingsConversions.scala)
+  and the provider adapters.
+
+- **Files and images as provider-uniform attachments** - `FileContent` (PDF) and `ImageURLContent` (JPEG/PNG/GIF/WebP, data URLs or http URLs)
+  are accepted by the OpenAI, Anthropic (+ Bedrock), Gemini, and Vertex AI chat completion services. Because only OpenAI
+  carries the filename on the wire, [VLMContent](./openai-core/src/main/scala/io/cequence/openaiscala/domain/VLMContent.scala)
+  emits each file as a `[file: NAME]` label plus the right content envelope for the file type, so the model can refer
+  to files by name on every provider:
+
+```scala
+  import io.cequence.openaiscala.domain.VLMContent
+
+  val files: Seq[(String, Array[Byte])] = ... // (fileName, bytes) - PDFs and images
+
+  val messages = Seq(
+    SystemMessage(
+      "Each attached file is preceded by a label of the form '[file: NAME]'. " +
+        "When referring to a file in your answer, use exactly the NAME from its label."
+    ),
+    UserSeqMessage(
+      TextContent("Summarize each attached file in one sentence.") +:
+        files.flatMap { case (name, bytes) => VLMContent.of(bytes, name) }
+    )
+  )
+
+  service.createChatCompletion(
+    messages = messages,
+    settings = CreateChatCompletionSettings(model = NonOpenAIModelId.claude_sonnet_5)
+  )
+```
+  See the `*WithFileContentAndPdf`, `*WithMultipleNamedPdfsAsFileContent`, and `*VLMSmokeTest` [examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples).
+
+- **Anthropic native streaming events** - besides the text-only `createMessageStreamed`, `AnthropicService.createMessageStreamedEvents`
+  returns a typed `Source[MessageStreamEvent, NotUsed]` with every SSE event (message start/delta/stop, content block
+  start/delta/stop incl. tool_use blocks, ping, usage), which the OpenAI adapter also uses to surface streamed tool calls and to build
+  the typed `ChatChunk` stream. Note that Claude Opus 5 / Sonnet 5 / Fable 5.x default to `display = omitted` for thinking - set
+  `ThinkingSettings.adaptiveSummarized` (or `thinking.withDisplay(ThinkingDisplay.summarized)`) to receive `thinking_delta` events on the
+  native API; the typed stream does this for you. Streamed frames of up to 1 MB are accepted, so large server-tool result blocks
+  (web search, web fetch) no longer break the stream.
+
 - **Graders API** - evaluate model outputs
 
 ```scala
@@ -931,6 +1097,7 @@ Note that the adapters can be arbitrarily combined/stacked.
     Some(println(_)) // simple logging
   )
 ```
+  `RetrySettings(jitterMs = Some(500))` adds random jitter to the back-off, and `includeExceptionMessage = true` on the `RetryHelpers` methods (`retry` / `retryOnFailure`, below) puts the failing exception's message into the retry log line.
 - **Retry** on a specific function using [RetryHelpers](./openai-core/src/main/scala/io/cequence/openaiscala/RetryHelpers.scala) directly
  
 ```scala
@@ -983,6 +1150,7 @@ class MyCompletionService @Inject() (
       openAIService
     )
 ```
+  `chatCompletionRouterMapped` is the same router with `MappedModel` entries (the model name a caller asks for → the model id actually sent to that provider, e.g. to expose a provider-neutral alias), and `chatCompletionBatchRouterMixed(Mapped)` accepts a mix of batch-capable and plain services.
 
 - **Batch processing** (🔥 New) - provider-agnostic, ~50% of standard cost, async (typically a 24h turnaround target).
   Available on the full OpenAI service and on the Anthropic, Anthropic Bedrock, Gemini, and Vertex AI adapters
@@ -1027,6 +1195,30 @@ class MyCompletionService @Inject() (
   val results  = service.retrieveChatCompletionBatchResults(batchId, model)         // match items by customId
   service.deleteChatCompletionBatch(batchId, model)                                 // clean up staged files
 ```
+
+  **Typed JSON batches** - `createChatCompletionBatchWithJSON[T]` is the batch twin of `createChatCompletionWithJSON`: it
+  applies the JSON schema (or the prompt-appendix fallback for models without json-schema support) to every request,
+  waits for the batch, and deserializes each result to `T`. Per-item problems come back as `Left(ChatCompletionBatchError)`
+  (never failing the whole future), `failoverModels` resubmits the whole batch on a terminal batch-level failure, and a
+  `timeout` raises a typed `OpenAIScalaBatchTimeoutException` carrying the batch id so it can be picked up later:
+
+```scala
+  val results: Future[Seq[ChatCompletionBatchTypedResultItem[Capitals]]] =
+    service.createChatCompletionBatchWithJSON[Capitals](
+      requests,
+      CreateChatCompletionSettings(
+        model = NonOpenAIModelId.claude_sonnet_5,
+        response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
+        jsonSchema = Some(jsonSchemaDef)
+      ),
+      pollingInterval = 30.seconds,
+      timeout = Some(2.hours),
+      failoverModels = Seq(NonOpenAIModelId.claude_haiku_4_5)
+    )
+```
+
+  On Anthropic Bedrock, batch goes through Bedrock's own S3-staged batch inference and needs
+  `AnthropicServiceFactory.bedrockAsOpenAIWithBatchSupport(s3Bucket, roleArn)` (the plain `bedrockAsOpenAI()` is not batch-capable).
 
 - **Batch router** (🔥 New) - the batch-aware sibling of `chatCompletionRouter`, routing the batch endpoints across
   providers by model. Every registered service (and the default) must be batch-capable, and it respects the adapter's
@@ -1210,6 +1402,51 @@ service.close() // closes only the HTTP client - your ActorSystem is untouched
 > pick your own backend. Nothing you need to do today - just don't be surprised if the streaming
 > API becomes backend-agnostic later.
 
+## Anthropic Managed Agents 🤝
+
+The `openai-scala-anthropic-client` module covers Anthropic's **Managed Agents** REST API (beta `managed-agents-2026-04-01`,
+not available on Bedrock) as part of the native `AnthropicService`: agents (`createAgent`, `listAgents`, `getAgent`,
+`updateAgent`, `archiveAgent`, `listAgentVersions`), environments and their work queue (`createEnvironment`, `pollWork`,
+`acknowledgeWork`, `recordWorkHeartbeat`, `stopWork`, `getWorkQueueStats`, ...), sessions with events, resources and
+threads (`createSession`, `sendSessionEvents`, `streamSessionEvents`, `addSessionResource`, ...), deployments and runs
+(`createDeployment`, `runDeployment`, `pauseDeployment`, `listDeploymentRuns`, ...), vaults and credentials
+(`createVault`, `createCredential`, `mcpOAuthValidateCredential`, ...), and memory stores with versioned memories
+(`createMemoryStore`, `createMemory`, `listMemoryVersions`, `redactMemoryVersion`, ...).
+
+```scala
+  import io.cequence.openaiscala.anthropic.domain.managedagents._
+  import io.cequence.openaiscala.anthropic.domain.settings.{AnthropicCreateAgentSettings}
+
+  val service: AnthropicService = AnthropicServiceFactory() // ANTHROPIC_API_KEY, or forAuthToken() / forOAuthProfile()
+
+  for {
+    agent <- service.createAgent(
+      AnthropicCreateAgentSettings(
+        name = "docs assistant",
+        model = AgentModelConfig(NonOpenAIModelId.claude_opus_5),
+        system = Some("You are a concise assistant."),
+        tools = Seq(AgentTool.Toolset())
+      )
+    )
+    versions <- service.listAgentVersions(agent.id)
+    _ <- service.archiveAgent(agent.id)
+  } yield versions
+```
+
+To drive a managed agent through the regular OpenAI chat-completion interface (routers, retries, streaming, ...) use
+the adapter - each `createChatCompletion` call runs one session turn, agents/environments are created lazily and cached
+when not given explicitly:
+
+```scala
+  val service = AnthropicServiceFactory.managedAgentAsOpenAI(
+    agentId = None,        // or Some("agent_...") to pin a pre-created agent (its model wins over settings.model)
+    environmentId = None   // or Some("env_...")
+  )
+```
+
+See the [managedagents examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/anthropic/managedagents)
+for end-to-end flows over every resource type.
+
 ## Claude Agent Client 🖥️
 
 `claude-agent-client` is a separate module that wraps the **`claude` CLI as a subprocess**
@@ -1223,7 +1460,7 @@ directly to Anthropic's Managed Agents REST API instead of spawning a local proc
 Add the dependency:
 
 ```
-"io.cequence" %% "openai-scala-claude-agent-client" % "1.3.0.RC.3"
+"io.cequence" %% "openai-scala-claude-agent-client" % "1.3.0"
 ```
 
 ```scala
