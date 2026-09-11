@@ -692,6 +692,12 @@ object NonOpenAIModelId {
   val deepseek_ai_deepseek_v4_pro = "deepseek-ai/DeepSeek-V4-Pro" // Together AI
   val deepseek_ai_deepseek_v4_pro_0813 = "deepseek-ai/DeepSeek-V4-Pro-0813" // Together AI
   val deepseek_ai_deepseek_v4_flash_0731 = "deepseek-ai/DeepSeek-V4-Flash-0731" // Together AI
+  // DeepSeek V4.1 Flash - reasoning model, 1M context, tools + image input + strict json_schema
+  // (live-verified 2026-09-11). Fireworks spells decimals with "p" (cf. glm-5p2, qwen3p8-max);
+  // prepend "accounts/fireworks/models/" as the other Fireworks ids here do. Novita's form is
+  // `novita_deepseek_v4_1_flash` below. Not served by Together AI, DeepSeek's own API,
+  // SambaNova, Cerebras, Groq or Bedrock, whose newest DeepSeek is V3.2.
+  val deepseek_v4p1_flash = "deepseek-v4p1-flash" // Fireworks
   // Together AI - other 2026 open-weight flagships (listed 2026-09-10)
   val qwen_qwen3_8_flash = "Qwen/Qwen3.8-Flash" // Together AI
   val qwen_qwen3_8_2_4t_a95b = "Qwen/Qwen3.8-2.4T-A95B" // Together AI
@@ -744,6 +750,8 @@ object NonOpenAIModelId {
 
   // Novita
   // Novita - 2026 additions (listed 2026-09-10)
+  // the only spelling Novita accepts - the `deepseek/` prefix is mandatory and `v4p1` is
+  // rejected there (Fireworks is the mirror image: see `deepseek_v4p1_flash`)
   val novita_deepseek_v4_1_flash = "deepseek/deepseek-v4.1-flash"
   val novita_deepseek_v4_flash = "deepseek/deepseek-v4-flash"
   val novita_deepseek_v4_flash_vision_exp = "deepseek/deepseek-v4-flash-vision-exp"
