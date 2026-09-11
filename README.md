@@ -380,20 +380,19 @@ or only if streaming is required
     })
 ```
 
-  `source.texts` is the legacy text-only `Source[String, _]` view (`thinkingTexts`, `toolCalls`, `toolResults`, `citations` likewise), and
-  `source.assembled` folds the stream into an `AssembledChatCompletion` whose `toAssistantToolMessage` is the assistant turn of a tool loop
-  (append it and one `ToolMessage` per `clientToolCalls` entry, then call again). Provider knobs: `settings.setAnthropicTools(Seq(Tool.webSearch()))`
-  and `settings.setGeminiTools(Seq(Tool.CodeExecution))` add provider-native (server-side) tools whose results come back as `ToolResult`s;
-  `settings.setGeminiIncludeThoughts(false)` turns thought summaries off. Only the first choice / candidate is mapped. On the OpenAI
-  provider, GPT-5.4+ accepts function tools on the chat completions API only with `reasoning_effort = none`; GPT-6 accepts them only on
-  the Responses API, so the full streamed service (`OpenAIServiceFactory.withStreaming()`) routes GPT-6 typed tool streams through the
-  Responses API automatically (a chat-only service fails fast). Vertex AI maps the same parts as Gemini natively (function calls,
-  `Tool.CodeExecution`, `Tool.GoogleSearch` grounding, inline images, thoughts - `setVertexAIIncludeThoughts(false)` turns them off).
-  The OpenAI-compatible providers - Grok, Groq, Cerebras, Fireworks, DeepSeek - go through the generic mapping and were live-verified
-  for thinking + tool calls (Groq repeats `usage` on every chunk; it is emitted once). Services that don't override the typed method
-  (Sonar, Managed Agents) still get text / reasoning / finish / usage chunks derived from `createChatCompletionStreamed`, but reject tools. The
-  `ChatChunk` hierarchy also has a JSON `Format` (`"type"`-keyed) for logging and replay; anything a provider sends that is not modeled
-  arrives as `Other(kind, raw)` rather than being dropped.
+  `source.texts` is the legacy text-only view (`thinkingTexts`, `toolCalls`, `toolResults`, `citations`, `codeExecutions`,
+  `webSearches`, `images` likewise), and `source.assembled` folds the stream into an `AssembledChatCompletion` whose
+  `toAssistantToolMessage` is the assistant turn of a tool loop - append it plus one `ToolMessage` per `clientToolCalls` entry,
+  then call again. Every chunk also has a JSON `Format` (`"type"`-keyed) for logging and replay.
+
+  Provider-native server-side tools ride along via `setAnthropicTools` / `setGeminiTools` / `setVertexAITools` /
+  `setResponsesTools` and come back as `ToolResult`s; `setGeminiIncludeThoughts(false)` and `setVertexAIIncludeThoughts(false)`
+  turn thought summaries off.
+
+  GPT-5.4+ accepts function tools on the chat completions API only with `reasoning_effort = none`, and GPT-6 only on the
+  Responses API - so `OpenAIServiceFactory.withStreaming()` routes GPT-6 tool streams through it automatically (a chat-only
+  service fails fast). Grok, Groq, Cerebras, Fireworks and DeepSeek use the generic mapping (Groq's per-chunk `usage` is
+  emitted once); Sonar and Managed Agents stream text / reasoning / finish / usage but reject tools.
 
   **Responses API streaming** (🔥 New) - `createModelResponseStreamed(inputs, settings)` on the streamed OpenAI service returns
   `Source[ResponseStreamEvent, NotUsed]` with every server-sent event typed (`ResponseCreated`, `OutputItemAdded/Done`,
