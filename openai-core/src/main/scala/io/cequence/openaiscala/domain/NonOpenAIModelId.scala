@@ -550,13 +550,21 @@ object NonOpenAIModelId {
   val grok_4_6 = "grok-4.6"
   // Grok 4.5 (2026-07): 500K context, coding / agent workflows
   val grok_4_5 = "grok-4.5"
+  val grok_4_5_latest = "grok-4.5-latest"
   // Grok Build 0.1: 256K context, xAI's coding-agent model
   val grok_build_0_1 = "grok-build-0.1"
   // context 1,000,000
   val grok_4_3 = "grok-4.3"
+  val grok_4_3_latest = "grok-4.3-latest"
   val grok_4_20_0309_reasoning = "grok-4.20-0309-reasoning"
   val grok_4_20_0309_non_reasoning = "grok-4.20-0309-non-reasoning"
   val grok_4_20_multi_agent_0309 = "grok-4.20-multi-agent-0309"
+  // stable aliases of the dated 4.20 ids above (live-verified 2026-09-11)
+  val grok_4_20 = "grok-4.20" // -> grok-4.20-0309-reasoning
+  val grok_4_20_non_reasoning = "grok-4.20-non-reasoning"
+  // multi-agent is rejected by the chat completions API ("Multi Agent requests are not
+  // allowed on chat completions") - use it through the Responses API
+  val grok_4_20_multi_agent = "grok-4.20-multi-agent"
   // Grok image / video gen
   val grok_imagine_image = "grok-imagine-image"
   @Deprecated // not listed by the xAI models endpoint as of 2026-09-10
