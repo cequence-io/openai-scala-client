@@ -208,5 +208,12 @@ case class ChunkMessageSpec(
   role: Option[ChatRole],
   content: Option[String],
   // streamed tool-call fragments (OpenAI `delta.tool_calls`); None when the chunk carries none
-  tool_calls: Option[Seq[ToolCallChunkSpec]] = None
-)
+  tool_calls: Option[Seq[ToolCallChunkSpec]] = None,
+  // reasoning fragment of OpenAI-compatible providers: `delta.reasoning_content` (DeepSeek,
+  // Grok, Mistral, Fireworks, ...)
+  reasoning_content: Option[String] = None,
+  // ... or `delta.reasoning` (Groq with reasoning_format=parsed, OpenRouter)
+  reasoning: Option[String] = None
+) {
+  def reasoningText: Option[String] = reasoning_content.orElse(reasoning)
+}

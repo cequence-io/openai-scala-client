@@ -3,7 +3,7 @@ package io.cequence.openaiscala.domain.responsesapi
 import java.{util => ju}
 import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.JsonUtil.{enumFormat, snakeEnumFormat}
-import io.cequence.openaiscala.domain.responsesapi.ModelStatus
+import io.cequence.openaiscala.domain.responsesapi.{ModelStatus, ResponseStreamEvent}
 import io.cequence.openaiscala.JsonFormats.{jsonSchemaFormat, reasoningEffortFormat}
 import io.cequence.openaiscala.domain.responsesapi.{TruncationStrategy, ResponseFormat}
 import io.cequence.openaiscala.domain.responsesapi.tools._
@@ -689,6 +689,186 @@ object JsonFormats {
       )
     }
   }
+
+  // streamed Responses API events, dispatched on the JSON "type"; anything unmodeled becomes
+  // UnknownEvent (never a parse failure)
+  implicit lazy val responseStreamEventReads: Reads[ResponseStreamEvent] =
+    Reads[ResponseStreamEvent] { json =>
+      import ResponseStreamEvent._
+
+      def s(name: String) = (json \ name).validate[String]
+      def i(name: String) = (json \ name).validate[Int]
+      def optS(name: String) = (json \ name).asOpt[String]
+
+      val responseId = (json \ "response" \ "id").asOpt[String].getOrElse("")
+      def responseUsage: Option[UsageInfo] =
+        (json \ "response" \ "usage").validate[UsageInfo].asOpt
+
+      def outputItem(
+        added: Boolean
+      ): JsResult[ResponseStreamEvent] = {
+        val itemJson = json \ "item"
+        val itemType = (itemJson \ "type").asOpt[String].getOrElse("")
+        val itemId = (itemJson \ "id").asOpt[String]
+        val item = itemJson.validate[Output].asOpt
+        i("output_index").map { outputIndex =>
+          if (added) OutputItemAdded(outputIndex, itemType, itemId, item, json)
+          else OutputItemDone(outputIndex, itemType, itemId, item, json)
+        }
+      }
+
+      def toolCallStatus(eventType: String): Boolean =
+        Seq(
+          "response.web_search_call.",
+          "response.code_interpreter_call.",
+          "response.file_search_call.",
+          "response.mcp_call.",
+          "response.mcp_list_tools.",
+          "response.image_generation_call."
+        ).exists(eventType.startsWith)
+
+      val eventType = (json \ "type").asOpt[String].getOrElse("")
+
+      val parsed: JsResult[ResponseStreamEvent] = eventType match {
+        case "response.created" =>
+          JsSuccess(
+            ResponseCreated(
+              responseId,
+              (json \ "response" \ "model").asOpt[String].getOrElse(""),
+              json
+            )
+          )
+        case "response.in_progress" => JsSuccess(ResponseInProgress(responseId, json))
+        case "response.queued"      => JsSuccess(ResponseQueued(responseId, json))
+        case "response.completed" =>
+          JsSuccess(ResponseCompleted(responseId, responseUsage, json))
+        case "response.incomplete" =>
+          JsSuccess(
+            ResponseIncomplete(
+              responseId,
+              (json \ "response" \ "incomplete_details" \ "reason").asOpt[String],
+              responseUsage,
+              json
+            )
+          )
+        case "response.failed" =>
+          JsSuccess(
+            ResponseFailed(
+              responseId,
+              (json \ "response" \ "error").validate[ResponseError].asOpt,
+              json
+            )
+          )
+        case "response.output_item.added" => outputItem(added = true)
+        case "response.output_item.done"  => outputItem(added = false)
+        case "response.output_text.delta" =>
+          for {
+            itemId <- s("item_id"); oi <- i("output_index"); ci <- i("content_index")
+            delta <- s("delta")
+          } yield OutputTextDelta(itemId, oi, ci, delta)
+        case "response.output_text.done" =>
+          for {
+            itemId <- s("item_id"); oi <- i("output_index"); ci <- i("content_index")
+            text <- s("text")
+          } yield OutputTextDone(itemId, oi, ci, text)
+        case "response.refusal.delta" =>
+          for {
+            itemId <- s("item_id"); oi <- i("output_index"); ci <- i("content_index")
+            delta <- s("delta")
+          } yield RefusalDelta(itemId, oi, ci, delta)
+        case "response.refusal.done" =>
+          for {
+            itemId <- s("item_id"); oi <- i("output_index"); ci <- i("content_index")
+            refusal <- s("refusal")
+          } yield RefusalDone(itemId, oi, ci, refusal)
+        case "response.reasoning_summary_text.delta" =>
+          for {
+            itemId <- s("item_id"); oi <- i("output_index"); si <- i("summary_index")
+            delta <- s("delta")
+          } yield ReasoningSummaryTextDelta(itemId, oi, si, delta)
+        case "response.reasoning_summary_text.done" =>
+          for {
+            itemId <- s("item_id"); oi <- i("output_index"); si <- i("summary_index")
+            text <- s("text")
+          } yield ReasoningSummaryTextDone(itemId, oi, si, text)
+        case "response.reasoning_text.delta" =>
+          for {
+            itemId <- s("item_id"); oi <- i("output_index"); ci <- i("content_index")
+            delta <- s("delta")
+          } yield ReasoningTextDelta(itemId, oi, ci, delta)
+        case "response.reasoning_text.done" =>
+          for {
+            itemId <- s("item_id"); oi <- i("output_index"); ci <- i("content_index")
+            text <- s("text")
+          } yield ReasoningTextDone(itemId, oi, ci, text)
+        case "response.function_call_arguments.delta" =>
+          for {
+            itemId <- s("item_id"); oi <- i("output_index"); delta <- s("delta")
+          } yield FunctionCallArgumentsDelta(itemId, oi, delta)
+        case "response.function_call_arguments.done" =>
+          for {
+            itemId <- s("item_id"); oi <- i("output_index"); args <- s("arguments")
+          } yield FunctionCallArgumentsDone(itemId, oi, args)
+        case "response.mcp_call_arguments.delta" =>
+          for {
+            itemId <- s("item_id"); oi <- i("output_index"); delta <- s("delta")
+          } yield McpCallArgumentsDelta(itemId, oi, delta)
+        case "response.mcp_call_arguments.done" =>
+          for {
+            itemId <- s("item_id"); oi <- i("output_index"); args <- s("arguments")
+          } yield McpCallArgumentsDone(itemId, oi, args)
+        case "response.code_interpreter_call_code.delta" =>
+          for {
+            itemId <- s("item_id"); oi <- i("output_index"); delta <- s("delta")
+          } yield CodeInterpreterCodeDelta(itemId, oi, delta)
+        case "response.code_interpreter_call_code.done" =>
+          for {
+            itemId <- s("item_id"); oi <- i("output_index"); code <- s("code")
+          } yield CodeInterpreterCodeDone(itemId, oi, code)
+        case "response.image_generation_call.partial_image" =>
+          for {
+            itemId <- s("item_id"); oi <- i("output_index"); pi <- i("partial_image_index")
+            b64 <- s("partial_image_b64")
+          } yield ImageGenerationPartialImage(itemId, oi, pi, b64)
+        case "response.output_text.annotation.added" =>
+          for {
+            itemId <- s("item_id"); oi <- i("output_index"); ci <- i("content_index")
+            ai <- i("annotation_index")
+          } yield OutputTextAnnotationAdded(
+            itemId,
+            oi,
+            ci,
+            ai,
+            (json \ "annotation").validate[Annotation].asOpt,
+            json
+          )
+        case "error" =>
+          JsSuccess(
+            ErrorEvent(
+              optS("code"),
+              optS("message").getOrElse(json.toString),
+              optS("param"),
+              json
+            )
+          )
+        case eventType if toolCallStatus(eventType) =>
+          for { itemId <- s("item_id"); oi <- i("output_index") } yield ToolCallStatus(
+            eventType,
+            itemId,
+            oi,
+            json
+          )
+        case other =>
+          JsSuccess(UnknownEvent(other, json))
+      }
+
+      // a recognized type with an unexpected shape (a gateway omitting a field) degrades to
+      // UnknownEvent as well, rather than failing the whole stream
+      parsed match {
+        case JsError(_) => JsSuccess(UnknownEvent(eventType, json))
+        case ok         => ok
+      }
+    }
 
   implicit lazy val responsesDeleteResponseFormat: Format[DeleteResponse] =
     Json.format[DeleteResponse]

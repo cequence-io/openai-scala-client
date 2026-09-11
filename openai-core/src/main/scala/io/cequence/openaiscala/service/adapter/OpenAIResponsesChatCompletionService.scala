@@ -2,6 +2,8 @@ package io.cequence.openaiscala.service.adapter
 
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings._
+import io.cequence.openaiscala.domain.settings.ResponsesChatCompletionSettingsOps._
+
 import io.cequence.openaiscala.domain.response.{
   ChatCompletionChoiceInfo,
   ChatCompletionResponse,
@@ -22,23 +24,116 @@ import io.cequence.openaiscala.domain.responsesapi.tools.{
   FunctionTool => ResponsesFunctionTool
 }
 import io.cequence.openaiscala.service.{
+  ChatChunks,
   OpenAIChatCompletionExtra,
   OpenAIChatCompletionService,
-  OpenAIResponsesService
+  OpenAIChatCompletionStreamedServiceExtra,
+  OpenAIResponsesService,
+  OpenAIStreamedServiceExtra
 }
+import io.cequence.openaiscala.OpenAIScalaClientException
+import io.cequence.openaiscala.domain.response.{ChatChunk, ChatCompletionChunkResponse}
+import akka.NotUsed
+import akka.stream.scaladsl.Source
 import io.cequence.wsclient.service.CloseableService
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.{ExecutionContext, Future}
 
 private[service] class OpenAIResponsesChatCompletionService(
-  underlying: OpenAIResponsesService with CloseableService
+  underlying: OpenAIResponsesService with CloseableService,
+  // the same service when it also streams (OpenAIStreamedService) - enables the typed stream
+  streamedUnderlying: Option[OpenAIStreamedServiceExtra]
 )(
   implicit ec: ExecutionContext
 ) extends OpenAIChatCompletionService
+    with OpenAIChatCompletionStreamedServiceExtra
     with OpenAIResponsesChatCompletionMappingExt {
 
   private val logger = LoggerFactory.getLogger(getClass)
+
+  override def createChatCompletionStreamed(
+    messages: Seq[BaseMessage],
+    settings: CreateChatCompletionSettings
+  ): Source[ChatCompletionChunkResponse, NotUsed] =
+    createChatToolCompletionStreamed(messages, Nil, None, settings).via(
+      ChatChunks.toOpenAIChunks
+    )
+
+  /**
+   * Streams a Responses API call as typed chunks (reasoning summaries, text, function / server
+   * tool calls, citations, ...) - the route used for GPT-6 streamed tool completions.
+   */
+  override def createChatToolCompletionStreamed(
+    messages: Seq[BaseMessage],
+    tools: Seq[ChatCompletionTool],
+    responseToolChoice: Option[String],
+    settings: CreateChatCompletionSettings
+  ): Source[ChatChunk, NotUsed] =
+    streamedUnderlying match {
+      case Some(streamed) =>
+        val (items, responsesSettings) =
+          toResponsesRequest(messages, tools, responseToolChoice, settings)
+
+        // the typed stream exists to surface thinking - ask for reasoning summaries whenever
+        // reasoning is configured (unless the caller opted out)
+        val withSummaries =
+          if (settings.responsesReasoningSummary.getOrElse(true))
+            responsesSettings.copy(
+              reasoning = responsesSettings.reasoning.map(r =>
+                r.copy(summary = r.summary.orElse(Some("auto")))
+              )
+            )
+          else responsesSettings
+
+        streamed
+          .createModelResponseStreamed(Inputs.Items(items: _*), withSummaries)
+          .via(ChatChunks.fromResponseEvents)
+
+      case None =>
+        Source.failed(
+          new OpenAIScalaClientException(
+            "Streamed Responses API calls require a streaming-capable service (e.g. OpenAIServiceFactory.withStreaming())."
+          )
+        )
+    }
+
+  private def toResponsesRequest(
+    messages: Seq[BaseMessage],
+    tools: Seq[ChatCompletionTool],
+    responseToolChoice: Option[String],
+    settings: CreateChatCompletionSettings
+  ): (Seq[Input], CreateModelResponseSettings) = {
+    val (instructions, items) = convertMessages(messages)
+
+    val responsesTools = tools.collect { case ft: AssistantTool.FunctionTool =>
+      ResponsesFunctionTool(
+        ft.name,
+        ft.parameters,
+        ft.strict.getOrElse(false),
+        ft.description
+      )
+    }
+
+    // Responses-native tools (web search, code interpreter, file search, MCP, ...) from
+    // settings.setResponsesTools(...) ride along with the function tools
+    val allTools = responsesTools ++ settings.responsesTools
+
+    // an explicit forced choice is always sent (without tools the API rejects it loudly rather
+    // than the choice being dropped silently); 'auto' only when there are tools to choose from
+    val responsesToolChoice = responseToolChoice match {
+      case Some(name) =>
+        if (allTools.isEmpty)
+          logger.warn(
+            s"Responses API adapter: tool choice '$name' requested but no tools were provided"
+          )
+        Some(ToolChoice.FunctionTool(name))
+      case None =>
+        if (allTools.isEmpty) None else Some(ToolChoice.Mode.Auto)
+    }
+
+    (items, toResponsesSettings(settings, instructions, allTools, responsesToolChoice))
+  }
 
   override def createChatCompletion(
     messages: Seq[BaseMessage],
@@ -59,24 +154,8 @@ private[service] class OpenAIResponsesChatCompletionService(
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
   ): Future[ChatToolCompletionResponse] = {
-    val (instructions, items) = convertMessages(messages)
-
-    val responsesTools = tools.collect { case ft: AssistantTool.FunctionTool =>
-      ResponsesFunctionTool(
-        ft.name,
-        ft.parameters,
-        ft.strict.getOrElse(false),
-        ft.description
-      )
-    }
-
-    val responsesToolChoice = responseToolChoice match {
-      case None       => Some(ToolChoice.Mode.Auto)
-      case Some(name) => Some(ToolChoice.FunctionTool(name))
-    }
-
-    val responsesSettings =
-      toResponsesSettings(settings, instructions, responsesTools, responsesToolChoice)
+    val (items, responsesSettings) =
+      toResponsesRequest(messages, tools, responseToolChoice, settings)
 
     underlying
       .createModelResponse(Inputs.Items(items: _*), responsesSettings)
@@ -184,7 +263,9 @@ private[service] class OpenAIResponsesChatCompletionService(
       logger.warn("Responses API adapter: 'seed' parameter is not supported, ignoring")
     if (settings.verbosity.isDefined)
       logger.warn("Responses API adapter: 'verbosity' parameter is not supported, ignoring")
-    if (settings.extra_params.nonEmpty)
+    if (
+      (settings.extra_params.keySet -- ResponsesChatCompletionSettingsOps.knownParams).nonEmpty
+    )
       logger.warn(
         "Responses API adapter: 'extra_params' parameter is not supported, ignoring"
       )
@@ -390,6 +471,14 @@ object OpenAIResponsesChatCompletionService {
     underlying: OpenAIResponsesService with CloseableService
   )(
     implicit ec: ExecutionContext
-  ): OpenAIChatCompletionService with OpenAIResponsesChatCompletionMappingExt =
-    new OpenAIResponsesChatCompletionService(underlying)
+  ): OpenAIChatCompletionService
+    with OpenAIChatCompletionStreamedServiceExtra
+    with OpenAIResponsesChatCompletionMappingExt =
+    new OpenAIResponsesChatCompletionService(
+      underlying,
+      underlying match {
+        case streamed: OpenAIStreamedServiceExtra => Some(streamed)
+        case _                                    => None
+      }
+    )
 }

@@ -289,6 +289,26 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       }
   }
 
+  implicit class OpenAIResponsesChatCompletionImplicits(service: OpenAIService) {
+
+    /**
+     * A chat-completion-shaped view of the Responses API: `createChatCompletion` /
+     * `createChatToolCompletion` take the usual messages + `CreateChatCompletionSettings` and
+     * are served by `createModelResponse`. Responses-native tools come from
+     * `settings.setResponsesTools(...)`. Closing the view closes `service`.
+     *
+     * The typed streamed methods (`createChatToolCompletionStreamed` /
+     * `createChatCompletionStreamedTyped`) are exposed by the same-named extension in
+     * `OpenAIStreamedServiceImplicits` (openai-client-stream), whose receiver is statically a
+     * streaming-capable service - a plain `OpenAIService` cannot stream, so this view does not
+     * advertise it.
+     */
+    def responsesAsChatCompletion(
+      implicit ec: ExecutionContext
+    ): OpenAIChatCompletionService =
+      adapter.OpenAIResponsesChatCompletionService(service)
+  }
+
   implicit class OpenAIChatCompletionBatchImplicits(
     openAIChatCompletionService: OpenAIChatCompletionService
       with OpenAIChatCompletionBatchService

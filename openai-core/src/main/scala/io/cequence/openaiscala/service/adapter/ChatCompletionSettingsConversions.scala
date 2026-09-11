@@ -12,6 +12,14 @@ import io.cequence.openaiscala.domain.settings.Verbosity
 
 object ChatCompletionSettingsConversions {
 
+  /**
+   * Whether function tools for this model are accepted only on the Responses API (GPT-6
+   * rejects them on the chat completions API outright), so tool completions must be routed
+   * through the Responses API.
+   */
+  def chatToolsRequireResponsesAPI(model: String): Boolean =
+    model.startsWith("gpt-6")
+
   private val logger = LoggerFactory.getLogger(getClass)
 
   type SettingsConversion = CreateChatCompletionSettings => CreateChatCompletionSettings

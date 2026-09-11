@@ -539,6 +539,206 @@ object JsonFormats {
   implicit lazy val chatCompletionChunkResponseFormat: Format[ChatCompletionChunkResponse] =
     Json.format[ChatCompletionChunkResponse]
 
+  implicit lazy val chatChunkFinishReasonFormat: Format[ChatChunk.FinishReason] =
+    enumFormat[ChatChunk.FinishReason](ChatChunk.FinishReason.values: _*)
+
+  // typed streamed chunks, keyed on "type" (snake_case field names) - for logging, replay
+  // fixtures and re-emitting streams to clients
+  implicit lazy val chatChunkFormat: Format[ChatChunk] = {
+    import ChatChunk._
+
+    def obj(fields: (String, Option[JsValue])*): JsObject =
+      JsObject(fields.collect { case (name, Some(value)) => name -> value })
+
+    def str(s: String): Option[JsValue] = Some(JsString(s))
+    def optStr(s: Option[String]): Option[JsValue] = s.map(JsString(_))
+
+    val writes: Writes[ChatChunk] = Writes[ChatChunk] {
+      case Start(id, model) =>
+        obj("type" -> str("start"), "id" -> str(id), "model" -> str(model))
+      case Text(text) =>
+        obj("type" -> str("text"), "text" -> str(text))
+      case Thinking(text) =>
+        obj("type" -> str("thinking"), "text" -> str(text))
+      case ThinkingSignature(signature, callId) =>
+        obj(
+          "type" -> str("thinking_signature"),
+          "signature" -> str(signature),
+          "call_id" -> optStr(callId)
+        )
+      case RedactedThinking(data) =>
+        obj("type" -> str("redacted_thinking"), "data" -> str(data))
+      case ToolCallStart(index, callId, toolName, serverSide) =>
+        obj(
+          "type" -> str("tool_call_start"),
+          "index" -> Some(JsNumber(index)),
+          "call_id" -> str(callId),
+          "tool_name" -> str(toolName),
+          "server_side" -> Some(JsBoolean(serverSide))
+        )
+      case ToolCallDelta(index, fragment) =>
+        obj(
+          "type" -> str("tool_call_delta"),
+          "index" -> Some(JsNumber(index)),
+          "arguments_fragment" -> str(fragment)
+        )
+      case ToolCall(index, callId, toolName, arguments, serverSide) =>
+        obj(
+          "type" -> str("tool_call"),
+          "index" -> Some(JsNumber(index)),
+          "call_id" -> str(callId),
+          "tool_name" -> str(toolName),
+          "arguments" -> str(arguments),
+          "server_side" -> Some(JsBoolean(serverSide))
+        )
+      case ToolResult(callId, toolName, content, text, isError) =>
+        obj(
+          "type" -> str("tool_result"),
+          "call_id" -> str(callId),
+          "tool_name" -> str(toolName),
+          "content" -> Some(content),
+          "text" -> optStr(text),
+          "is_error" -> Some(JsBoolean(isError))
+        )
+      case CodeExecution(callId, language, code) =>
+        obj(
+          "type" -> str("code_execution"),
+          "call_id" -> str(callId),
+          "language" -> optStr(language),
+          "code" -> str(code)
+        )
+      case CodeExecutionResult(callId, output, isError, raw) =>
+        obj(
+          "type" -> str("code_execution_result"),
+          "call_id" -> str(callId),
+          "output" -> optStr(output),
+          "is_error" -> Some(JsBoolean(isError)),
+          "raw" -> Some(raw)
+        )
+      case WebSearch(callId, queries) =>
+        obj(
+          "type" -> str("web_search"),
+          "call_id" -> str(callId),
+          "queries" -> Some(JsArray(queries.map(JsString(_))))
+        )
+      case WebSearchResult(callId, results, raw) =>
+        obj(
+          "type" -> str("web_search_result"),
+          "call_id" -> str(callId),
+          "results" -> Some(
+            JsArray(
+              results.map(r => obj("title" -> optStr(r.title), "url" -> str(r.url)))
+            )
+          ),
+          "raw" -> Some(raw)
+        )
+      case Image(mimeType, base64Data, url) =>
+        obj(
+          "type" -> str("image"),
+          "mime_type" -> optStr(mimeType),
+          "base64_data" -> optStr(base64Data),
+          "url" -> optStr(url)
+        )
+      case Refusal(text) =>
+        obj("type" -> str("refusal"), "text" -> str(text))
+      case Citation(citedText, url, title, raw) =>
+        obj(
+          "type" -> str("citation"),
+          "cited_text" -> optStr(citedText),
+          "url" -> optStr(url),
+          "title" -> optStr(title),
+          "raw" -> Some(raw)
+        )
+      case Finish(reason, providerReason) =>
+        obj(
+          "type" -> str("finish"),
+          "reason" -> Some(Json.toJson(reason)),
+          "provider_reason" -> optStr(providerReason)
+        )
+      case Usage(usage) =>
+        obj("type" -> str("usage"), "usage" -> Some(Json.toJson(usage)))
+      case Other(kind, raw) =>
+        obj("type" -> str("other"), "kind" -> str(kind), "raw" -> Some(raw))
+    }
+
+    val reads: Reads[ChatChunk] = Reads[ChatChunk] { json =>
+      def s(name: String) = (json \ name).validate[String]
+      def optS(name: String) = (json \ name).asOpt[String]
+      def i(name: String) = (json \ name).validate[Int]
+      def b(name: String) = (json \ name).validate[Boolean]
+      def js(name: String) = (json \ name).validate[JsValue]
+
+      s("type").flatMap {
+        case "start"    => for { id <- s("id"); model <- s("model") } yield Start(id, model)
+        case "text"     => s("text").map(Text(_))
+        case "thinking" => s("text").map(Thinking(_))
+        case "thinking_signature" =>
+          s("signature").map(ThinkingSignature(_, optS("call_id")))
+        case "redacted_thinking" => s("data").map(RedactedThinking(_))
+        case "tool_call_start" =>
+          for {
+            index <- i("index"); callId <- s("call_id"); toolName <- s("tool_name")
+            serverSide <- b("server_side")
+          } yield ToolCallStart(index, callId, toolName, serverSide)
+        case "tool_call_delta" =>
+          for { index <- i("index"); fragment <- s("arguments_fragment") } yield ToolCallDelta(
+            index,
+            fragment
+          )
+        case "tool_call" =>
+          for {
+            index <- i("index"); callId <- s("call_id"); toolName <- s("tool_name")
+            arguments <- s("arguments"); serverSide <- b("server_side")
+          } yield ToolCall(index, callId, toolName, arguments, serverSide)
+        case "tool_result" =>
+          for {
+            callId <- s("call_id"); toolName <- s("tool_name"); content <- js("content")
+            isError <- b("is_error")
+          } yield ToolResult(callId, toolName, content, optS("text"), isError)
+        case "code_execution" =>
+          for { callId <- s("call_id"); code <- s("code") } yield CodeExecution(
+            callId,
+            optS("language"),
+            code
+          )
+        case "code_execution_result" =>
+          for {
+            callId <- s("call_id"); isError <- b("is_error"); raw <- js("raw")
+          } yield CodeExecutionResult(callId, optS("output"), isError, raw)
+        case "web_search" =>
+          for {
+            callId <- s("call_id"); queries <- (json \ "queries").validate[Seq[String]]
+          } yield WebSearch(callId, queries)
+        case "web_search_result" =>
+          for {
+            callId <- s("call_id")
+            raw <- js("raw")
+            results <- (json \ "results").validate[Seq[JsObject]]
+          } yield WebSearchResult(
+            callId,
+            results.map(r =>
+              WebSearchResultItem((r \ "title").asOpt[String], (r \ "url").as[String])
+            ),
+            raw
+          )
+        case "image" =>
+          JsSuccess(Image(optS("mime_type"), optS("base64_data"), optS("url")))
+        case "refusal" => s("text").map(Refusal(_))
+        case "citation" =>
+          js("raw").map(raw => Citation(optS("cited_text"), optS("url"), optS("title"), raw))
+        case "finish" =>
+          (json \ "reason")
+            .validate[ChatChunk.FinishReason]
+            .map(reason => Finish(reason, optS("provider_reason")))
+        case "usage" => (json \ "usage").validate[UsageInfo].map(Usage(_))
+        case "other" => for { kind <- s("kind"); raw <- js("raw") } yield Other(kind, raw)
+        case other   => JsError(s"Unknown chat chunk type '$other'.")
+      }
+    }
+
+    Format(reads, writes)
+  }
+
   implicit lazy val textEditChoiceInfoFormat: Format[TextEditChoiceInfo] =
     Json.format[TextEditChoiceInfo]
   implicit lazy val textEditFormat: Format[TextEditResponse] =

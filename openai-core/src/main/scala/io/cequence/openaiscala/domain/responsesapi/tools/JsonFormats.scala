@@ -193,9 +193,25 @@ object JsonFormats {
     Json.format[MCPTool]
 
   // code interpreter tool
+  // the wire shape is {"type": "auto", "file_ids": [...]} - `type` is not a constructor field
   private implicit lazy val codeInterpreterContainerAutoFormat
     : OFormat[CodeInterpreterContainer.Auto] =
-    Json.format[CodeInterpreterContainer.Auto]
+    OFormat(
+      Reads[CodeInterpreterContainer.Auto] { json =>
+        JsSuccess(
+          CodeInterpreterContainer.Auto(
+            (json \ "file_ids")
+              .asOpt[Seq[String]]
+              .orElse((json \ "fileIds").asOpt[Seq[String]])
+              .getOrElse(Nil)
+          )
+        )
+      },
+      OWrites[CodeInterpreterContainer.Auto] { auto =>
+        Json.obj("type" -> auto.`type`) ++
+          (if (auto.fileIds.nonEmpty) Json.obj("file_ids" -> auto.fileIds) else Json.obj())
+      }
+    )
 
   implicit lazy val codeInterpreterContainerFormat: Format[CodeInterpreterContainer] =
     new Format[CodeInterpreterContainer] {
