@@ -3,7 +3,7 @@ package io.cequence.openaiscala.vertexai.service.impl
 import akka.NotUsed
 import akka.stream.scaladsl.{Source, StreamConverters}
 import com.google.cloud.vertexai.VertexAI
-import com.google.cloud.vertexai.api.GenerateContentResponse
+import com.google.cloud.vertexai.api.{GenerateContentResponse, GenerationConfig}
 import com.google.cloud.vertexai.generativeai.GenerativeModel
 import com.google.auth.oauth2.GoogleCredentials
 import com.google.protobuf.util.JsonFormat
@@ -23,7 +23,7 @@ import io.cequence.openaiscala.domain.{
   FunctionCallSpec,
   JsonSchema
 }
-import io.cequence.openaiscala.domain.response.{PromptTokensDetails, UsageInfo}
+import io.cequence.openaiscala.domain.response.{ChatChunk, PromptTokensDetails, UsageInfo}
 import io.cequence.openaiscala.vertexai.domain.{
   BatchJobInput,
   BatchJobOutput,
@@ -117,38 +117,8 @@ private[service] class OpenAIVertexAIChatCompletionService(
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
   ): Future[ChatToolCompletionResponse] = {
-    val functionDeclarations = tools.collect { case ft: FunctionTool =>
-      VertexAIFunctionDeclaration(
-        name = ft.name,
-        description = ft.description.getOrElse(""),
-        parameters = Some(toVertexAISchema(ft.parameters))
-      )
-    }
-
-    val toolConfig = responseToolChoice match {
-      case Some(name) =>
-        Some(
-          ToolConfig.FunctionCallingConfig(
-            mode = Some(FunctionCallingMode.ANY),
-            allowedFunctionNames = Some(Seq(name))
-          )
-        )
-      case None =>
-        Some(
-          ToolConfig.FunctionCallingConfig(
-            mode = Some(FunctionCallingMode.AUTO),
-            allowedFunctionNames = None
-          )
-        )
-    }
-
-    val settingsWithTools =
-      settings.setVertexAITools(Seq(VertexAITool.FunctionDeclarations(functionDeclarations)))
-
-    val settingsWithToolConfig =
-      toolConfig.map(settingsWithTools.setVertexAIToolConfig).getOrElse(settingsWithTools)
-
-    val model = createModel(messages, settingsWithToolConfig)
+    val model =
+      createModel(messages, toVertexAIToolSettings(tools, responseToolChoice, settings))
 
     val javaFuture = model.generateContentAsync(
       toNonSystemVertexAI(
@@ -163,6 +133,85 @@ private[service] class OpenAIVertexAIChatCompletionService(
     scalaFuture.map { response =>
       toOpenAIToolResponse(response, settings.model)
     }.recoverWith(repackAsOpenAIException)
+  }
+
+  /**
+   * Adds the OpenAI function tools (as Vertex function declarations, merged with any tools
+   * already set via `setVertexAITools`, e.g. Google Search or code execution) and the tool
+   * config. Precedence (as in the Gemini adapter): an explicit `responseToolChoice` wins, then
+   * a config set via `setVertexAIToolConfig`, then `AUTO` whenever function declarations are
+   * sent.
+   */
+  private def toVertexAIToolSettings(
+    tools: Seq[ChatCompletionTool],
+    responseToolChoice: Option[String],
+    settings: CreateChatCompletionSettings
+  ): CreateChatCompletionSettings = {
+    val functionDeclarations = tools.collect { case ft: FunctionTool =>
+      VertexAIFunctionDeclaration(
+        name = ft.name,
+        description = ft.description.getOrElse(""),
+        parameters = Some(toVertexAISchema(ft.parameters))
+      )
+    }
+
+    val existingTools = settings.getVertexAITools.getOrElse(Nil)
+
+    val allTools =
+      if (functionDeclarations.nonEmpty)
+        existingTools :+ VertexAITool.FunctionDeclarations(functionDeclarations)
+      else existingTools
+
+    val toolConfig = responseToolChoice.map { name =>
+      // sent even without function declarations, so the API rejects it loudly rather than
+      // the forced choice being dropped silently
+      if (functionDeclarations.isEmpty)
+        logger.warn(
+          s"Vertex AI adapter: tool choice '$name' requested but no function tools were provided"
+        )
+      ToolConfig.FunctionCallingConfig(
+        mode = Some(FunctionCallingMode.ANY),
+        allowedFunctionNames = Some(Seq(name))
+      )
+    }.orElse(settings.getVertexAIToolConfig)
+      .orElse(
+        if (functionDeclarations.isEmpty) None
+        else
+          Some(
+            ToolConfig.FunctionCallingConfig(
+              mode = Some(FunctionCallingMode.AUTO),
+              allowedFunctionNames = None
+            )
+          )
+      )
+
+    val settingsWithTools =
+      if (allTools.nonEmpty) settings.setVertexAITools(allTools) else settings
+
+    toolConfig.map(settingsWithTools.setVertexAIToolConfig).getOrElse(settingsWithTools)
+  }
+
+  /**
+   * Typed streaming: thoughts (requested by default, see `setVertexAIIncludeThoughts`), text,
+   * function calls, server-side code execution, inline images and grounding are mapped to
+   * [[ChatChunk]]s by [[VertexAIChatChunks.toChatChunks]]; function tools (plus any Vertex
+   * tools set via `setVertexAITools`) are sent along.
+   */
+  override def createChatToolCompletionStreamed(
+    messages: Seq[BaseMessage],
+    tools: Seq[ChatCompletionTool],
+    responseToolChoice: Option[String],
+    settings: CreateChatCompletionSettings
+  ): Source[ChatChunk, NotUsed] = {
+    val model = createModel(
+      messages,
+      toVertexAIToolSettings(tools, responseToolChoice, settings),
+      includeThoughts = settings.vertexAIIncludeThoughts.getOrElse(true)
+    )
+
+    lazyContentStream(model, messages)
+      .via(VertexAIChatChunks.toChatChunks(settings.model))
+      .mapError(toOpenAIException)
   }
 
   private def toVertexAISchema(jsonSchema: JsonSchema): VertexAISchema =
@@ -260,16 +309,7 @@ private[service] class OpenAIVertexAIChatCompletionService(
   ): Source[ChatCompletionChunkResponse, NotUsed] = {
     val model = createModel(messages, settings)
 
-    val javaStream = model.generateContentStream(
-      toNonSystemVertexAI(
-        messages.filter(message =>
-          message.role != ChatRole.System && message.role != ChatRole.Developer
-        )
-      )
-    )
-    val scalaStream = StreamConverters.fromJavaStream(() => javaStream.stream())
-
-    scalaStream.map { response =>
+    lazyContentStream(model, messages).map { response =>
       val openAIResponse = toOpenAI(response, settings.model)
 
       ChatCompletionChunkResponse(
@@ -292,11 +332,39 @@ private[service] class OpenAIVertexAIChatCompletionService(
     }.mapError(toOpenAIException)
   }
 
+  // the Vertex SDK opens the gRPC stream (and fetches credentials) inside generateContentStream,
+  // so it is deferred to materialization instead of running on the caller's thread
+  private def lazyContentStream(
+    model: GenerativeModel,
+    messages: Seq[BaseMessage]
+  ): Source[GenerateContentResponse, NotUsed] = {
+    val contents = toNonSystemVertexAI(
+      messages.filter(message =>
+        message.role != ChatRole.System && message.role != ChatRole.Developer
+      )
+    )
+
+    Source
+      .lazySource(() =>
+        StreamConverters.fromJavaStream(() => model.generateContentStream(contents).stream())
+      )
+      .mapMaterializedValue(_ => NotUsed)
+  }
+
   private def createModel(
     messages: Seq[BaseMessage],
-    settings: CreateChatCompletionSettings
+    settings: CreateChatCompletionSettings,
+    includeThoughts: Boolean = false
   ): GenerativeModel = {
-    val config = toVertexAI(settings)
+    val baseConfig = toVertexAI(settings)
+
+    val config =
+      if (includeThoughts) {
+        val thinkingConfig =
+          (if (baseConfig.hasThinkingConfig) baseConfig.getThinkingConfig.toBuilder
+           else GenerationConfig.ThinkingConfig.newBuilder()).setIncludeThoughts(true)
+        baseConfig.toBuilder.setThinkingConfig(thinkingConfig).build()
+      } else baseConfig
 
     var modelAux = new GenerativeModel(settings.model, underlying).withGenerationConfig(config)
 
