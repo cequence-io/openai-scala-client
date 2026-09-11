@@ -53,7 +53,7 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 | [Fireworks AI](https://fireworks.ai/) | Only JSON object mode  |                                   |                         | Cloud provider |
 | [Google Gemini](https://ai.google.dev/) | Full                   | Yes (🔥 New)                      | Yes                     | Google's models |
 | [Google Vertex AI](https://cloud.google.com/vertex-ai) | Full                   | Yes                               | Yes                     | Gemini models |
-| [Grok](https://x.ai/) | Full                   |                                   |                         | x.AI models |
+| [Grok](https://x.ai/) | Full                   | Yes                               |                         | x.AI models |
 | [Groq](https://wow.groq.com/) | Only JSON object mode  |                                   | Yes                     | Fast inference |
 | [Mistral](https://mistral.ai/) | Only JSON object mode  |                                   |                         | Open-source leader |
 | [Novita](https://novita.ai/) | Only JSON object mode  |                                   |                         | Cloud provider |
