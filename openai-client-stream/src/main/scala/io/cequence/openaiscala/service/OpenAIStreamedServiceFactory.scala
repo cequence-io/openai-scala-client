@@ -41,14 +41,46 @@ object OpenAIStreamedServiceFactory
         )
     }
 
+  /** The engine was created for this service (e.g. by `forBedrockSigV4`), so it closes it. */
+  override protected def ownedEngineInstance(
+    engine: WSClientEngine,
+    coreUrl: String,
+    requestContext: WsRequestContext
+  )(
+    implicit ec: ExecutionContext
+  ): OpenAIStreamedServiceExtra =
+    engine match {
+      case streamed: WSClientOutputStreamExtraAkka =>
+        new OpenAICoreStreamedServiceExtraEngineImpl(
+          streamed,
+          ProjectWSClientEngine.siteBinding(coreUrl, requestContext, label = Some("openai")),
+          owns = true
+        )
+      case _ =>
+        throw new OpenAIScalaClientException(
+          "The streamed service factory requires an engine with Source-typed output streaming " +
+            s"(WSClientOutputStreamExtraAkka) but got ${engine.getClass.getName}."
+        )
+    }
+
+  override protected def newPrivateEngine(
+    timeouts: Option[Timeouts]
+  )(
+    implicit ec: ExecutionContext
+  ): WSClientEngine =
+    StreamedEngineRegistry.outputStreamed(
+      TransportSettings(timeouts = timeouts.getOrElse(Timeouts()))
+    )
+
   private final class OpenAICoreStreamedServiceExtraEngineImpl(
     override protected val engine: WSClientEngine with WSClientOutputStreamExtraAkka,
-    protected val site: SiteBinding
+    protected val site: SiteBinding,
+    owns: Boolean = false
   )(
     implicit val ec: ExecutionContext
   ) extends OpenAICoreServiceStreamedExtraImpl {
-    // the engine is shared/caller-supplied - closed by its creator, not by this service
-    override protected def ownsEngine: Boolean = false
+    // a caller-supplied engine is closed by its creator; one built for this service is ours
+    override protected def ownsEngine: Boolean = owns
   }
 
   private final class OpenAICoreStreamedServiceExtraClassImpl(

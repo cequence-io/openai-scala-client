@@ -30,17 +30,33 @@ object OpenAIServiceFactory
   ): OpenAIService =
     new OpenAIServiceEngineImpl(
       engine,
-      ProjectWSClientEngine.siteBinding(coreUrl, requestContext, label = Some("openai"))
+      ProjectWSClientEngine.siteBinding(coreUrl, requestContext, label = Some("openai")),
+      owns = false
+    )
+
+  /** The engine was created for this service (e.g. by `forBedrockSigV4`), so it closes it. */
+  override protected def ownedEngineInstance(
+    engine: WSClientEngine,
+    coreUrl: String,
+    requestContext: WsRequestContext
+  )(
+    implicit ec: ExecutionContext
+  ): OpenAIService =
+    new OpenAIServiceEngineImpl(
+      engine,
+      ProjectWSClientEngine.siteBinding(coreUrl, requestContext, label = Some("openai")),
+      owns = true
     )
 
   private final class OpenAIServiceEngineImpl(
     protected val engine: WSClientEngine,
-    protected val site: SiteBinding
+    protected val site: SiteBinding,
+    owns: Boolean
   )(
     implicit val ec: ExecutionContext
   ) extends OpenAIServiceImpl {
-    // the engine is shared/caller-supplied - closed by its creator, not by this service
-    override protected def ownsEngine: Boolean = false
+    // a caller-supplied engine is closed by its creator; one built for this service is ours
+    override protected def ownsEngine: Boolean = owns
   }
 }
 

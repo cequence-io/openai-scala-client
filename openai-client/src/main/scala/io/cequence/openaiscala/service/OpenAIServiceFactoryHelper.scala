@@ -2,10 +2,14 @@ package io.cequence.openaiscala.service
 
 import com.typesafe.config.Config
 import io.cequence.openaiscala.OpenAIScalaClientException
+import io.cequence.openaiscala.aws.{AwsCredentialsProvider, SigningWSClientEngine}
 import io.cequence.wsclient.ConfigImplicits._
 import io.cequence.wsclient.domain.WsRequestContext
 import io.cequence.wsclient.service.WSClientEngine
+import io.cequence.wsclient.service.spi.TransportSettings
 import io.cequence.wsclient.service.ws.Timeouts
+
+import scala.util.control.NonFatal
 
 import scala.concurrent.ExecutionContext
 
@@ -247,6 +251,112 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts with HasOpenAICo
           "Please set it or provide the value explicitly."
       )
     )
+
+  /**
+   * Amazon Bedrock with AWS **SigV4** auth - an IAM access key and secret (optionally an STS
+   * session token) instead of the Bedrock bearer API key [[forBedrockMantle]] requires. Use
+   * this when the deployment has AWS credentials but no Bedrock API key.
+   *
+   * Credentials are resolved on EVERY request, so rotating STS / instance-profile / IRSA
+   * credentials are picked up without restarting the service.
+   *
+   * Multipart and raw-file endpoints (file upload, image edit/variation, audio transcription)
+   * fail fast on a signed service - their bytes are produced inside the HTTP engine and cannot
+   * be hashed beforehand. The Bedrock OpenAI-compatible surface does not serve them anyway.
+   *
+   * @param endpoint
+   *   [[BedrockEndpoint.Mantle]] (default) targets `bedrock-mantle.$region.api.aws`;
+   *   [[BedrockEndpoint.Runtime]] targets `bedrock-runtime.$region.amazonaws.com/openai/v1`,
+   *   which also serves the cross-region `us.*` / `global.*` inference-profile model ids.
+   * @param isOpenAIModel
+   *   as in [[forBedrockMantle]]: the OpenAI provider models (e.g. `openai.gpt-5.6-luna`) are
+   *   served from the `openai/v1` base path. Ignored for [[BedrockEndpoint.Runtime]], which is
+   *   always `openai/v1`.
+   */
+  def forBedrockSigV4(
+    credentials: AwsCredentialsProvider = AwsCredentialsProvider.fromEnv(),
+    region: String = getEnvOrThrow(bedrockMantleRegionEnvKey),
+    endpoint: BedrockEndpoint = BedrockEndpoint.Mantle,
+    isOpenAIModel: Boolean = false,
+    timeouts: Option[Timeouts] = None
+  )(
+    implicit ec: ExecutionContext
+  ): F =
+    forAwsSigV4Custom(
+      coreUrl = bedrockSigV4CoreUrl(endpoint, region, isOpenAIModel),
+      credentials = credentials,
+      region = region,
+      timeouts = timeouts
+    )
+
+  /**
+   * [[forBedrockSigV4]] pointed at an explicit base URL - e.g. a PrivateLink / VPC endpoint or
+   * a gateway that fronts Bedrock - with an explicit AWS signing scope.
+   */
+  def forAwsSigV4Custom(
+    coreUrl: String,
+    credentials: AwsCredentialsProvider = AwsCredentialsProvider.fromEnv(),
+    region: String = getEnvOrThrow(bedrockMantleRegionEnvKey),
+    service: String = "bedrock",
+    timeouts: Option[Timeouts] = None
+  )(
+    implicit ec: ExecutionContext
+  ): F = {
+    val signing = SigningWSClientEngine(
+      underlying = newPrivateEngine(timeouts),
+      credentials = credentials,
+      region = region,
+      awsService = service,
+      ownsUnderlying = true
+    )
+
+    // an EMPTY request context: the engine appends per-call extraHeaders to authHeaders, so a
+    // static Authorization here would ride alongside the AWS4-HMAC-SHA256 one
+    try ownedEngineInstance(signing, coreUrl, WsRequestContext())
+    catch {
+      case NonFatal(e) =>
+        // the engine was built for this service only - do not orphan its actor system
+        signing.close()
+        throw e
+    }
+  }
+
+  /**
+   * The engine a private-engine entry point creates. The default is the classpath-discovered
+   * (non-streaming) engine; the streaming factories override it with a streaming one.
+   */
+  protected def newPrivateEngine(
+    timeouts: Option[Timeouts]
+  )(
+    implicit ec: ExecutionContext
+  ): WSClientEngine =
+    ProjectWSClientEngine(TransportSettings(timeouts = timeouts.getOrElse(Timeouts())))
+
+  /**
+   * Like [[customEngineInstance]] but the resulting service OWNS `engine` and closes it. The
+   * default does not take ownership; factories whose service impl can own an engine override
+   * this.
+   */
+  protected def ownedEngineInstance(
+    engine: WSClientEngine,
+    coreUrl: String,
+    requestContext: WsRequestContext
+  )(
+    implicit ec: ExecutionContext
+  ): F = customEngineInstance(engine, coreUrl, requestContext)
+
+  protected def bedrockSigV4CoreUrl(
+    endpoint: BedrockEndpoint,
+    region: String,
+    isOpenAIModel: Boolean
+  ): String = endpoint match {
+    case BedrockEndpoint.Mantle =>
+      bedrockMantleCoreUrl(
+        region,
+        if (isOpenAIModel) openAIBedrockMantleBasePath else defaultBedrockMantleBasePath
+      )
+    case BedrockEndpoint.Runtime => bedrockRuntimeOpenAICoreUrl(region)
+  }
 
   def customInstance(
     coreUrl: String,

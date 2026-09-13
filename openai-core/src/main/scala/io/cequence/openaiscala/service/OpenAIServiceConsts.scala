@@ -23,6 +23,11 @@ trait OpenAIServiceConsts {
   protected val defaultBedrockMantleBasePath = "v1"
   protected val openAIBedrockMantleBasePath = "openai/v1"
 
+  // the classic Bedrock runtime host also serves an OpenAI-compatible surface, and unlike the
+  // mantle host it exposes the cross-region inference profiles (`us.*`, `global.*`)
+  protected def bedrockRuntimeOpenAICoreUrl(region: String): String =
+    s"https://bedrock-runtime.$region.amazonaws.com/openai/v1/"
+
   protected def bedrockMantleCoreUrl(
     region: String,
     basePath: String = defaultBedrockMantleBasePath

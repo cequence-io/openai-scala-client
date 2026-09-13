@@ -267,6 +267,25 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
         // a shared, caller-supplied engine - closed by its creator
         merge(engine, coreUrl, requestContext, alsoClose = Nil)
 
+      /** The engine was created for this service (e.g. `forBedrockSigV4`), so it closes it. */
+      override protected def ownedEngineInstance(
+        engine: WSClientEngine,
+        coreUrl: String,
+        requestContext: WsRequestContext
+      )(
+        implicit ec: ExecutionContext
+      ): StreamedServiceTypes.OpenAIStreamedService =
+        merge(engine, coreUrl, requestContext, alsoClose = Seq(engine))
+
+      override protected def newPrivateEngine(
+        timeouts: Option[Timeouts]
+      )(
+        implicit ec: ExecutionContext
+      ): WSClientEngine =
+        StreamedEngineRegistry.outputStreamed(
+          TransportSettings(timeouts = timeouts.getOrElse(Timeouts()))
+        )
+
       private def merge(
         engine: WSClientEngine,
         coreUrl: String,
