@@ -1,25 +1,18 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
-import java.net.{URL, URLEncoder}
-import java.nio.charset.StandardCharsets
-import scala.collection.mutable
-import io.cequence.wsclient.EncryptionUtil._
+import io.cequence.openaiscala.aws.AwsSigV4
 
 /**
- * AWS SigV4 request signer. Service-agnostic — pass the AWS service name (e.g. `bedrock`,
- * `sts`) and region to compute the canonical request, derive the signing key, and emit the
- * `Authorization: AWS4-HMAC-SHA256 ...` header.
+ * AWS SigV4 request signer for the Anthropic-on-Bedrock services.
  *
- * Optionally accepts an STS `sessionToken`; when supplied it's added as `X-Amz-Security-Token`
- * BEFORE canonicalization, so it participates in the signed headers list (a SigV4 requirement
- * when using temporary credentials).
+ * The implementation now lives in `openai-core` as [[AwsSigV4]], so the OpenAI-compatible
+ * Bedrock path can share it; this trait is a thin delegating shim that keeps the mixin shape
+ * (and the `protected` signatures) the Anthropic services were written against.
  *
- * Reused by [[AnthropicBedrockServiceImpl]] (for Bedrock Invoke) and [[BedrockStsClient]] (for
- * STS:GetSessionToken).
+ * Used by [[AnthropicBedrockServiceImpl]] (Bedrock Invoke), [[BedrockStsClient]]
+ * (STS:GetSessionToken), [[S3BatchStorage]] and [[AnthropicBedrockBatchInferenceServiceImpl]].
  */
 trait BedrockAuthHelper {
-
-  private val SignaturePrefix = "AWS4-HMAC-SHA256"
 
   protected def addAuthHeaders(
     method: String,
@@ -31,175 +24,18 @@ trait BedrockAuthHelper {
     region: String,
     service: String,
     sessionToken: Option[String] = None
-  ): Map[String, String] = {
-    // ISO 8601 format for date/time and a short date
-    val now = java.time.Instant.now()
-    val amzdate = java.time.format.DateTimeFormatter
-      .ofPattern("yyyyMMdd'T'HHmmss'Z'")
-      .withZone(java.time.ZoneOffset.UTC)
-      .format(now)
+  ): Map[String, String] =
+    AwsSigV4.signedHeaders(
+      method = method,
+      url = url,
+      headers = headers,
+      body = body,
+      accessKey = accessKey,
+      secretKey = secretKey,
+      region = region,
+      service = service,
+      sessionToken = sessionToken
+    )
 
-    val datestamp =
-      java.time.format.DateTimeFormatter
-        .ofPattern("yyyyMMdd")
-        .withZone(java.time.ZoneOffset.UTC)
-        .format(now)
-
-    val newHeaders = mutable.Map(headers.toSeq: _*)
-
-    // Add required headers
-    newHeaders += ("X-Amz-Date" -> amzdate)
-
-    // STS session token must be part of the signed headers (AWS SigV4 requirement
-    // when using temporary credentials from IAM roles).
-    sessionToken.foreach(token => newHeaders += ("X-Amz-Security-Token" -> token))
-
-    // Compute payload hash
-    val payloadHash = sha256Hash(body)
-
-    // Create canonical request
-    val (canonicalRequest, signedHeadersStr) =
-      createCanonicalRequest(method, url, newHeaders, payloadHash)
-
-    // Create string to sign
-    val (stringToSign, credentialScope) =
-      createStringToSign(canonicalRequest, datestamp, amzdate, region, service)
-
-    // Calculate the signature
-    val signature = calculateSignature(secretKey, datestamp, region, service, stringToSign)
-
-    // Create Authorization header
-    val authorizationHeader =
-      s"AWS4-HMAC-SHA256 Credential=$accessKey/$credentialScope, SignedHeaders=$signedHeadersStr, Signature=$signature"
-
-    newHeaders += ("Authorization" -> authorizationHeader)
-
-    newHeaders.toMap
-  }
-
-  // RFC 3986 percent-encoding as required by SigV4 canonicalization - URLEncoder alone emits
-  // form-encoding ('+' for space, bare '*', '%7E' for '~') which AWS re-canonicalizes
-  // differently, breaking the signature.
-  protected def rfc3986Encode(value: String): String =
-    URLEncoder
-      .encode(value, "UTF-8")
-      .replace("+", "%20")
-      .replace("*", "%2A")
-      .replace("%7E", "~")
-
-  private def createStringToSign(
-    canonicalRequest: String,
-    datestamp: String,
-    amzdate: String,
-    region: String,
-    service: String
-  ): (String, String) = {
-    val credentialScope = s"$datestamp/$region/$service/aws4_request"
-    val hash = sha256Hash(canonicalRequest)
-    val stringToSign =
-      s"""$SignaturePrefix
-         |$amzdate
-         |$credentialScope
-         |$hash""".stripMargin
-    (stringToSign, credentialScope)
-  }
-
-  private def calculateSignature(
-    secretKey: String,
-    datestamp: String,
-    region: String,
-    service: String,
-    stringToSign: String
-  ): String = {
-    val kDate = hmacSHA256(("AWS4" + secretKey).getBytes(StandardCharsets.UTF_8), datestamp)
-    val kRegion = hmacSHA256(kDate, region)
-    val kService = hmacSHA256(kRegion, service)
-    val kSigning = hmacSHA256(kService, "aws4_request")
-    val signature = hmacSHA256(kSigning, stringToSign)
-    signature.map("%02x".format(_)).mkString
-  }
-
-  // URL util
-  private def hostFromUrl(url: String): String = {
-    val parsedUrl = new URL(url)
-    val scheme = parsedUrl.getProtocol
-    val host = parsedUrl.getHost.toLowerCase
-    val port = parsedUrl.getPort
-    val defaultPort = scheme match {
-      case "http"  => 80
-      case "https" => 443
-      case _       => -1
-    }
-    if (port != -1 && port != defaultPort) s"$host:$port" else host
-  }
-
-  private def normalizePath(path: String): String = {
-    val normalizedPath = if (!path.startsWith("/")) "/" + path else path
-    normalizedPath.replace(":", "%3A") // TODO: expand this to handle more special characters
-  }
-
-  // `getQuery` returns the query string exactly as written in the URL - already percent-encoded,
-  // since every caller here builds it via `URLEncoder.encode(...)` before constructing the URL
-  // (java.net.URL does not decode). Re-encoding it here would double-encode it (e.g. "%2F"
-  // becoming "%252F"), producing a canonical request that no longer matches what is actually
-  // sent on the wire - so this only sorts the already-encoded pairs, it does not re-encode them.
-  private def canonicalQueryString(url: String): String = {
-    val parsedUrl = new URL(url)
-    val query = parsedUrl.getQuery
-    if (query == null || query.isEmpty) {
-      ""
-    } else {
-      val queryParams = query
-        .split("&")
-        .toList
-        .map { param =>
-          param.split("=", 2) match {
-            case Array(k, v) => (k, v)
-            case Array(k)    => (k, "")
-          }
-        }
-        .sortBy(_._1)
-
-      queryParams.map { case (k, v) => s"$k=$v" }.mkString("&")
-    }
-  }
-
-  private def createCanonicalRequest(
-    method: String,
-    url: String,
-    headers: mutable.Map[String, String],
-    payloadHash: String
-  ): (String, String) = {
-    // Ensure 'host' header is present
-    if (!headers.exists { case (k, _) => k.equalsIgnoreCase("host") }) {
-      headers += ("Host" -> hostFromUrl(url))
-    }
-
-    // Lowercase header keys and trim values
-    val lowercaseHeaders = headers.map { case (k, v) => (k.toLowerCase, v.trim) }
-    val sortedHeaderKeys = lowercaseHeaders.keys.toList.sorted
-
-    // Canonical headers
-    val canonicalHeadersStr =
-      sortedHeaderKeys.map(k => s"$k:${lowercaseHeaders(k)}").mkString("\n") + "\n"
-
-    // Signed headers
-    val signedHeadersStr = sortedHeaderKeys.mkString(";")
-
-    // Path and query
-    val parsedUrl = new URL(url)
-    val canonicalPath = normalizePath(parsedUrl.getPath)
-    val canonicalQuery = canonicalQueryString(url)
-
-    // Build canonical request
-    val canonicalRequest =
-      s"""${method.toUpperCase}
-         |$canonicalPath
-         |$canonicalQuery
-         |$canonicalHeadersStr
-         |$signedHeadersStr
-         |$payloadHash""".stripMargin
-
-    (canonicalRequest, signedHeadersStr)
-  }
+  protected def rfc3986Encode(value: String): String = AwsSigV4.rfc3986Encode(value)
 }
