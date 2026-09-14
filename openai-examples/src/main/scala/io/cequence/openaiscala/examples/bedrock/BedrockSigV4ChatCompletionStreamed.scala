@@ -3,7 +3,7 @@ package io.cequence.openaiscala.examples.bedrock
 import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.aws.AwsCredentialsProvider
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.domain.{NonOpenAIModelId, UserMessage}
+import io.cequence.openaiscala.domain.{ModelId, UserMessage}
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service.OpenAIServiceFactory
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
@@ -36,7 +36,7 @@ object BedrockSigV4ChatCompletionStreamed extends ExampleBase[OpenAIStreamedServ
       .createChatCompletionStreamed(
         messages = Seq(UserMessage("Count from 1 to 5, separated by spaces.")),
         settings = CreateChatCompletionSettings(
-          NonOpenAIModelId.bedrock_openai_gpt_5_6_luna
+          ModelId.bedrock_openai_gpt_5_6_luna
         )
       )
       .runWith(Sink.foreach { chunk =>

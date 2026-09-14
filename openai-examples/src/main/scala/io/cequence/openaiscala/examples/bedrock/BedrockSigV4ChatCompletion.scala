@@ -2,7 +2,7 @@ package io.cequence.openaiscala.examples.bedrock
 
 import io.cequence.openaiscala.aws.AwsCredentialsProvider
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.domain.{NonOpenAIModelId, UserMessage}
+import io.cequence.openaiscala.domain.{ModelId, UserMessage}
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service.{BedrockEndpoint, OpenAIService, OpenAIServiceFactory}
 
@@ -68,7 +68,7 @@ object BedrockSigV4ChatCompletion extends ExampleBase[OpenAIService] {
           messages,
           // max_tokens is converted to max_completion_tokens for the gpt-5.x ids, Bedrock prefix included
           CreateChatCompletionSettings(
-            NonOpenAIModelId.bedrock_openai_gpt_5_6_luna,
+            ModelId.bedrock_openai_gpt_5_6_luna,
             max_tokens = Some(50)
           )
         )
@@ -77,7 +77,7 @@ object BedrockSigV4ChatCompletion extends ExampleBase[OpenAIService] {
         "mantle v1         gpt-oss-120b",
         gptOssService.createChatCompletion(
           messages,
-          CreateChatCompletionSettings(NonOpenAIModelId.bedrock_openai_gpt_oss_120b)
+          CreateChatCompletionSettings(ModelId.bedrock_openai_gpt_oss_120b)
         )
       )
       _ <- show(

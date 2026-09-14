@@ -8,6 +8,7 @@ import io.cequence.openaiscala.domain.settings.{
 }
 import io.cequence.openaiscala.domain.{
   JsonSchema,
+  ModelId,
   NonOpenAIModelId,
   SystemMessage,
   UserMessage
@@ -68,12 +69,12 @@ object CreateChatCompletionViaBedrockMantleMultiProvider extends ExampleBase[Ope
     // Max output16K tokens
     // Input price$0.15 / 1M tokens
     // Output price$0.6 / 1M tokens
-    NonOpenAIModelId.bedrock_openai_gpt_oss_120b,
+    ModelId.bedrock_openai_gpt_oss_120b,
     // Context window128K tokens
     // Max output16K tokens
     // Input price$0.07 / 1M tokens
     // Output price$0.3 / 1M tokens
-    NonOpenAIModelId.bedrock_openai_gpt_oss_20b,
+    ModelId.bedrock_openai_gpt_oss_20b,
     // Context window256K tokens
     // Max output16K tokens
     // Input price$0.6 / 1M tokens

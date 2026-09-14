@@ -273,6 +273,20 @@ object ModelId {
   // requires Trusted Access for Cyber enrollment (not generally available)
   val gpt_5_6_cyber = "gpt-5.6-cyber"
 
+  // OpenAI models as served on Amazon Bedrock (`bedrock-mantle` and the OpenAI-compatible
+  // `bedrock-runtime` surface) - the same models under a provider-prefixed id; the per-model
+  // parameter rules apply to these ids too (see ChatCompletionSettingsConversions)
+  // GPT-5.6 Sol/Terra/Luna (Bedrock launch 2026-07-13, 1M context); `openai.gpt-5.6-sol` is
+  // verified against the AWS model card, Terra/Luna follow the same naming. On bedrock-runtime
+  // use the `us.`/`global.` cross-region inference-profile prefix instead.
+  val bedrock_openai_gpt_5_6_sol = "openai.gpt-5.6-sol"
+  val bedrock_openai_gpt_5_6_terra = "openai.gpt-5.6-terra"
+  val bedrock_openai_gpt_5_6_luna = "openai.gpt-5.6-luna"
+  val bedrock_openai_gpt_5_5 = "openai.gpt-5.5"
+  val bedrock_openai_gpt_5_4 = "openai.gpt-5.4"
+  val bedrock_openai_gpt_oss_120b = "openai.gpt-oss-120b"
+  val bedrock_openai_gpt_oss_20b = "openai.gpt-oss-20b"
+
   // GPT-5.5
   val gpt_5_5 = "gpt-5.5"
   val gpt_5_5_2026_04_23 = "gpt-5.5-2026-04-23"

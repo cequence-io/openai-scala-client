@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, ReasoningEffort}
 import io.cequence.openaiscala.domain.{
   BaseMessage,
-  NonOpenAIModelId,
+  ModelId,
   SystemMessage,
   TextContent,
   UserSeqMessage,
@@ -56,7 +56,7 @@ object BedrockMantleVLMContentSmokeTest {
           chatService.createChatCompletion(
             messages = messages,
             settings = CreateChatCompletionSettings(
-              model = NonOpenAIModelId.bedrock_openai_gpt_5_5,
+              model = ModelId.bedrock_openai_gpt_5_5,
               // gpt-5.5 on bedrock-mantle returns an empty completion (0 output tokens) for
               // file/PDF input under its DEFAULT reasoning effort; an explicit effort fixes it.
               reasoning_effort = Some(ReasoningEffort.low)

@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.examples
 
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.domain.{NonOpenAIModelId, SystemMessage, UserMessage}
+import io.cequence.openaiscala.domain.{ModelId, SystemMessage, UserMessage}
 import io.cequence.openaiscala.service.{OpenAIService, OpenAIServiceFactory}
 
 import scala.concurrent.Future
@@ -35,7 +35,7 @@ object CreateChatCompletionViaBedrockMantleGptOss extends ExampleBase[OpenAIServ
           UserMessage("Can you explain the features of Amazon Bedrock? Be concise.")
         ),
         settings = CreateChatCompletionSettings(
-          model = NonOpenAIModelId.bedrock_openai_gpt_oss_120b
+          model = ModelId.bedrock_openai_gpt_oss_120b
         )
       )
       .map { response =>

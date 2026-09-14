@@ -164,7 +164,7 @@ Then you can obtain a service in one of the following ways.
   // OpenAI provider models (e.g. "openai.gpt-5.5") are served from the `openai/v1` base path
   val service = OpenAIServiceFactory.forBedrockMantle(isOpenAIModel = true)
   service.createModelResponse(Inputs.Text("What is the capital of France?"),
-    settings = CreateModelResponseSettings(model = NonOpenAIModelId.bedrock_openai_gpt_5_5))
+    settings = CreateModelResponseSettings(model = ModelId.bedrock_openai_gpt_5_5))
 
   // other models (e.g. "openai.gpt-oss-120b") use the standard `v1` base path
   val service = OpenAIServiceFactory.forBedrockMantle()

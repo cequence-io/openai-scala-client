@@ -66,18 +66,6 @@ object NonOpenAIModelId {
   val bedrock_claude_3_sonnet_20240229_v1_0 = "anthropic.claude-3-sonnet-20240229-v1:0"
   val bedrock_claude_3_haiku_20240307_v1_0 = "anthropic.claude-3-haiku-20240307-v1:0"
 
-  // OpenAI (Bedrock - bedrock-mantle endpoint, OpenAI Responses API)
-  // GPT-5.6 Sol/Terra/Luna (Bedrock launch 2026-07-13, 1M context); `openai.gpt-5.6-sol` is
-  // verified against the AWS model card, Terra/Luna follow the same naming. On bedrock-runtime
-  // use the `us.`/`global.` cross-region inference-profile prefix instead.
-  val bedrock_openai_gpt_5_6_sol = "openai.gpt-5.6-sol"
-  val bedrock_openai_gpt_5_6_terra = "openai.gpt-5.6-terra"
-  val bedrock_openai_gpt_5_6_luna = "openai.gpt-5.6-luna"
-  val bedrock_openai_gpt_5_5 = "openai.gpt-5.5"
-  val bedrock_openai_gpt_5_4 = "openai.gpt-5.4"
-  val bedrock_openai_gpt_oss_120b = "openai.gpt-oss-120b"
-  val bedrock_openai_gpt_oss_20b = "openai.gpt-oss-20b"
-
   // Other providers (Bedrock - bedrock-mantle endpoint, `/v1/chat/completions`)
   // xAI Grok on Bedrock: served from the OpenAI-style `/openai/v1` base path (like the OpenAI
   // models above) - use `forBedrockMantle(isOpenAIModel = true)`. Grok 4.6: 500K context,

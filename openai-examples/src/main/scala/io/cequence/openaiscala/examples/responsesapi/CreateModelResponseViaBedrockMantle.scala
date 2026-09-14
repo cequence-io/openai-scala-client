@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.examples.responsesapi
 
-import io.cequence.openaiscala.domain.NonOpenAIModelId
+import io.cequence.openaiscala.domain.ModelId
 import io.cequence.openaiscala.domain.responsesapi.{CreateModelResponseSettings, Inputs}
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service.{OpenAIService, OpenAIServiceFactory}
@@ -31,7 +31,7 @@ object CreateModelResponseViaBedrockMantle extends ExampleBase[OpenAIService] {
       .createModelResponse(
         Inputs.Text("Can you explain the features of Amazon Bedrock? Be concise."),
         settings = CreateModelResponseSettings(
-          model = NonOpenAIModelId.bedrock_openai_gpt_5_5
+          model = ModelId.bedrock_openai_gpt_5_5
         )
       )
       .map { response =>

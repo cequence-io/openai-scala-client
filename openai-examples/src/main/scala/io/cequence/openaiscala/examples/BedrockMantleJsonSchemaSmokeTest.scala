@@ -7,12 +7,7 @@ import io.cequence.openaiscala.domain.settings.{
   JsonSchemaDef,
   ReasoningEffort
 }
-import io.cequence.openaiscala.domain.{
-  JsonSchema,
-  NonOpenAIModelId,
-  SystemMessage,
-  UserMessage
-}
+import io.cequence.openaiscala.domain.{JsonSchema, ModelId, SystemMessage, UserMessage}
 import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
 import io.cequence.openaiscala.service.adapter.OpenAIResponsesChatCompletionService
 import io.cequence.openaiscala.service.{OpenAIChatCompletionExtra, OpenAIServiceFactory}
@@ -65,7 +60,7 @@ object BedrockMantleJsonSchemaSmokeTest {
         ._2
         .response_format_type
     }
-    val listed = modeFor(NonOpenAIModelId.bedrock_openai_gpt_oss_120b)
+    val listed = modeFor(ModelId.bedrock_openai_gpt_oss_120b)
     val control = modeFor("totally-unknown-model-xyz")
     println(s"openai.gpt-oss-120b -> $listed (expected: Some(json_schema), i.e. native mode)")
     println(s"unknown model       -> $control (expected: Some(json_object), i.e. fallback)")
@@ -91,7 +86,7 @@ object BedrockMantleJsonSchemaSmokeTest {
             UserMessage("Give the capital and population of France.")
           ),
           settings = CreateChatCompletionSettings(
-            model = NonOpenAIModelId.bedrock_openai_gpt_5_5,
+            model = ModelId.bedrock_openai_gpt_5_5,
             reasoning_effort = Some(ReasoningEffort.low),
             response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
             jsonSchema = Some(countrySchema)
@@ -113,7 +108,7 @@ object BedrockMantleJsonSchemaSmokeTest {
             UserMessage("Give the capital and population of Norway.")
           ),
           settings = CreateChatCompletionSettings(
-            model = NonOpenAIModelId.bedrock_openai_gpt_5_5,
+            model = ModelId.bedrock_openai_gpt_5_5,
             reasoning_effort = Some(ReasoningEffort.low),
             response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
             jsonSchema = Some(countrySchema)

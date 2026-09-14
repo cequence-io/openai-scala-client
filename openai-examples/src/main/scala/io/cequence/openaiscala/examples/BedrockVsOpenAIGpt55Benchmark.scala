@@ -7,7 +7,7 @@ import io.cequence.openaiscala.domain.responsesapi.{
   ReasoningConfig
 }
 import io.cequence.openaiscala.domain.settings.ReasoningEffort
-import io.cequence.openaiscala.domain.{ModelId, NonOpenAIModelId}
+import io.cequence.openaiscala.domain.{ModelId}
 import io.cequence.openaiscala.service.{OpenAIService, OpenAIServiceFactory}
 
 import scala.collection.mutable
@@ -107,7 +107,7 @@ object BedrockVsOpenAIGpt55Benchmark {
     try {
       // Single warm-up to prime connection pools / TLS so it isn't charged to scenario #1.
       println("Warming up ...")
-      timeOne(bedrock, NonOpenAIModelId.bedrock_openai_gpt_5_5, scenarios.head)
+      timeOne(bedrock, ModelId.bedrock_openai_gpt_5_5, scenarios.head)
       timeOne(openai, ModelId.gpt_5_5, scenarios.head)
 
       scenarios.foreach { scenario =>
@@ -122,7 +122,7 @@ object BedrockVsOpenAIGpt55Benchmark {
         val openaiSamples = mutable.ListBuffer.empty[Sample]
 
         (1 to trials).foreach { i =>
-          val b = timeOne(bedrock, NonOpenAIModelId.bedrock_openai_gpt_5_5, scenario)
+          val b = timeOne(bedrock, ModelId.bedrock_openai_gpt_5_5, scenario)
           bedrockSamples += b
           printRow(i, "bedrock", b)
 
