@@ -140,6 +140,19 @@ class ChatCompletionSettingsConversionsSpec extends AnyWordSpec with Matchers {
       ) shouldBe "gpt-5.6-sol"
     }
 
+    "handle geo prefixes AWS has not shipped yet, such as eu., without a code change" in {
+      // the prefix is matched generically, so an EU (or any future) inference profile works
+      ChatCompletionSettingsConversions.canonicalOpenAIModel("eu.openai.gpt-5.6-luna") shouldBe
+        "gpt-5.6-luna"
+      ChatCompletionSettingsConversions.canonicalOpenAIModel(
+        "apac.openai.gpt-6-astra"
+      ) shouldBe
+        "gpt-6-astra"
+      ChatCompletionSettingsConversions.chatToolsRequireResponsesAPI(
+        "eu.openai.gpt-6-astra"
+      ) shouldBe true
+    }
+
     "leave plain OpenAI ids and other providers' ids alone" in {
       ChatCompletionSettingsConversions.canonicalOpenAIModel("gpt-5.6-luna") shouldBe
         "gpt-5.6-luna"
