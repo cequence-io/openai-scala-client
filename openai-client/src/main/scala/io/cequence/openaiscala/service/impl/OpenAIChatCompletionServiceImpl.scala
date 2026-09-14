@@ -147,13 +147,17 @@ trait ChatCompletionBodyMaker {
 
   protected def settingsForChatToolCompletion(
     settings: CreateChatCompletionSettings
-  ): CreateChatCompletionSettings =
-    if (settings.model.startsWith(gpt5_6Prefix))
+  ): CreateChatCompletionSettings = {
+    // the bare id, so the rules also apply to Bedrock's `openai.` / `us.openai.` ids
+    val model = ChatCompletionSettingsConversions.canonicalOpenAIModel(settings.model)
+
+    if (model.startsWith(gpt5_6Prefix))
       ChatCompletionSettingsConversions.gpt5_6ChatTools(settings)
-    else if (settings.model.startsWith(gpt5_5Prefix))
+    else if (model.startsWith(gpt5_5Prefix))
       ChatCompletionSettingsConversions.gpt5_5ChatTools(settings)
     else
       settings
+  }
 
   // `tools` / `tool_choice` body params shared by the sync and streamed tool completions
   protected def createToolBodyParams(
@@ -205,29 +209,33 @@ trait ChatCompletionBodyMaker {
 
     val messageJsons = messagesFinal.map(Json.toJson(_)(messageWrites))
 
+    // the bare id, so the rules also apply to Bedrock's `openai.` / `us.openai.` ids; the
+    // request itself still carries settings.model untouched
+    val model = ChatCompletionSettingsConversions.canonicalOpenAIModel(settings.model)
+
     // revisit this later
     val settingsFinal =
-      if (o1PreviewModels.contains(settings.model))
+      if (o1PreviewModels.contains(model))
         ChatCompletionSettingsConversions.o1Preview(settings)
-      else if (regularOModels.contains(settings.model))
+      else if (regularOModels.contains(model))
         ChatCompletionSettingsConversions.o(settings)
-      else if (settings.model == ModelId.chat_latest)
+      else if (model == ModelId.chat_latest)
         ChatCompletionSettingsConversions.chatLatest(settings)
-      else if (settings.model.startsWith(gpt6Prefix))
+      else if (model.startsWith(gpt6Prefix))
         ChatCompletionSettingsConversions.gpt6(settings)
-      else if (settings.model.startsWith(gpt5_6Prefix))
+      else if (model.startsWith(gpt5_6Prefix))
         ChatCompletionSettingsConversions.gpt5_6(settings)
-      else if (settings.model.startsWith(gpt5_5Prefix))
+      else if (model.startsWith(gpt5_5Prefix))
         ChatCompletionSettingsConversions.gpt5_5(settings)
-      else if (settings.model.startsWith(gpt5_4Prefix))
+      else if (model.startsWith(gpt5_4Prefix))
         ChatCompletionSettingsConversions.gpt5_4(settings)
-      else if (settings.model.startsWith(gpt5_3Prefix))
+      else if (model.startsWith(gpt5_3Prefix))
         ChatCompletionSettingsConversions.gpt5_3(settings)
-      else if (settings.model.startsWith(gpt5_2Prefix))
+      else if (model.startsWith(gpt5_2Prefix))
         ChatCompletionSettingsConversions.gpt5_2(settings)
-      else if (settings.model.startsWith(gpt5_1Prefix))
+      else if (model.startsWith(gpt5_1Prefix))
         ChatCompletionSettingsConversions.gpt5_1(settings)
-      else if (settings.model.startsWith(gpt5Prefix))
+      else if (model.startsWith(gpt5Prefix))
         ChatCompletionSettingsConversions.gpt5(settings)
       else
         settings

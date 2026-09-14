@@ -18,7 +18,21 @@ object ChatCompletionSettingsConversions {
    * through the Responses API.
    */
   def chatToolsRequireResponsesAPI(model: String): Boolean =
-    model.startsWith("gpt-6")
+    canonicalOpenAIModel(model).startsWith("gpt-6")
+
+  // Amazon Bedrock serves OpenAI models under a provider prefix, optionally behind a
+  // cross-region inference profile: `openai.gpt-5.6-luna`, `us.openai.gpt-6-astra`,
+  // `global.openai.gpt-5.6-sol`. The per-model parameter rules key on the bare id.
+  private val bedrockOpenAIPrefix = "^(?:[a-z0-9-]+\\.)*openai\\.".r
+
+  /**
+   * The bare OpenAI model id behind a Bedrock provider / inference-profile prefix (e.g.
+   * `global.openai.gpt-5.6-luna` -> `gpt-5.6-luna`); any other id is returned unchanged. Use
+   * it wherever a conversion or routing rule is keyed on the model id, so the rules apply on
+   * Bedrock too.
+   */
+  def canonicalOpenAIModel(model: String): String =
+    bedrockOpenAIPrefix.replaceFirstIn(model, "")
 
   private val logger = LoggerFactory.getLogger(getClass)
 

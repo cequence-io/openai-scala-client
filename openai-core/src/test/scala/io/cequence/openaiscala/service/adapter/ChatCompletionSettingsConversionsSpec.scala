@@ -127,4 +127,38 @@ class ChatCompletionSettingsConversionsSpec extends AnyWordSpec with Matchers {
       ChatCompletionSettingsConversions.gpt5_6ChatTools(none) shouldBe none
     }
   }
+
+  "ChatCompletionSettingsConversions.canonicalOpenAIModel" should {
+
+    "strip Bedrock's provider prefix and any inference-profile geo prefix" in {
+      ChatCompletionSettingsConversions.canonicalOpenAIModel("openai.gpt-5.6-luna") shouldBe
+        "gpt-5.6-luna"
+      ChatCompletionSettingsConversions.canonicalOpenAIModel("us.openai.gpt-6-astra") shouldBe
+        "gpt-6-astra"
+      ChatCompletionSettingsConversions.canonicalOpenAIModel(
+        "global.openai.gpt-5.6-sol"
+      ) shouldBe "gpt-5.6-sol"
+    }
+
+    "leave plain OpenAI ids and other providers' ids alone" in {
+      ChatCompletionSettingsConversions.canonicalOpenAIModel("gpt-5.6-luna") shouldBe
+        "gpt-5.6-luna"
+      // Groq / Fireworks use a slash, not a dot - not a Bedrock id
+      ChatCompletionSettingsConversions.canonicalOpenAIModel("openai/gpt-oss-120b") shouldBe
+        "openai/gpt-oss-120b"
+      ChatCompletionSettingsConversions.canonicalOpenAIModel(
+        "anthropic.claude-sonnet-4-6"
+      ) shouldBe
+        "anthropic.claude-sonnet-4-6"
+    }
+
+    "make the GPT-6 Responses-API routing apply to the Bedrock ids too" in {
+      ChatCompletionSettingsConversions.chatToolsRequireResponsesAPI(
+        "us.openai.gpt-6-astra"
+      ) shouldBe true
+      ChatCompletionSettingsConversions.chatToolsRequireResponsesAPI(
+        "openai.gpt-5.6-luna"
+      ) shouldBe false
+    }
+  }
 }

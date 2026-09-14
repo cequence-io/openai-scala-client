@@ -66,7 +66,11 @@ object BedrockSigV4ChatCompletion extends ExampleBase[OpenAIService] {
         "mantle openai/v1  gpt-5.6-luna",
         service.createChatCompletion(
           messages,
-          CreateChatCompletionSettings(NonOpenAIModelId.bedrock_openai_gpt_5_6_luna)
+          // max_tokens is converted to max_completion_tokens for the gpt-5.x ids, Bedrock prefix included
+          CreateChatCompletionSettings(
+            NonOpenAIModelId.bedrock_openai_gpt_5_6_luna,
+            max_tokens = Some(50)
+          )
         )
       )
       _ <- show(
@@ -80,7 +84,7 @@ object BedrockSigV4ChatCompletion extends ExampleBase[OpenAIService] {
         "runtime openai/v1 global luna",
         runtimeService.createChatCompletion(
           messages,
-          CreateChatCompletionSettings("global.openai.gpt-5.6-luna")
+          CreateChatCompletionSettings("global.openai.gpt-5.6-luna", max_tokens = Some(50))
         )
       )
       _ = gptOssService.close()
