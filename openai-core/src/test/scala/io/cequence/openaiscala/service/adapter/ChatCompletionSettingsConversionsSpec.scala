@@ -153,6 +153,16 @@ class ChatCompletionSettingsConversionsSpec extends AnyWordSpec with Matchers {
       ) shouldBe true
     }
 
+    "canonicalize the dated Bedrock snapshots onto their undated parameter rules" in {
+      // the per-model dispatch matches on a prefix, so the date suffix must survive stripping
+      ChatCompletionSettingsConversions.canonicalOpenAIModel(
+        ModelId.bedrock_openai_gpt_5_5_2026_04_23
+      ) shouldBe ModelId.gpt_5_5_2026_04_23
+      ChatCompletionSettingsConversions.canonicalOpenAIModel(
+        ModelId.bedrock_openai_gpt_5_4_2026_03_05
+      ) shouldBe ModelId.gpt_5_4_2026_03_05
+    }
+
     "leave plain OpenAI ids and other providers' ids alone" in {
       ChatCompletionSettingsConversions.canonicalOpenAIModel("gpt-5.6-luna") shouldBe
         "gpt-5.6-luna"

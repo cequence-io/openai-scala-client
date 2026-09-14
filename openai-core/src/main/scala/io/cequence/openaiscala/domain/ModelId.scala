@@ -283,7 +283,11 @@ object ModelId {
   val bedrock_openai_gpt_5_6_terra = "openai.gpt-5.6-terra"
   val bedrock_openai_gpt_5_6_luna = "openai.gpt-5.6-luna"
   val bedrock_openai_gpt_5_5 = "openai.gpt-5.5"
+  // dated snapshots, live-verified on bedrock-mantle 2026-09-14; unlike the undated ids they
+  // are not (yet) served by the OpenAI-compatible bedrock-runtime surface
+  val bedrock_openai_gpt_5_5_2026_04_23 = "openai.gpt-5.5-2026-04-23"
   val bedrock_openai_gpt_5_4 = "openai.gpt-5.4"
+  val bedrock_openai_gpt_5_4_2026_03_05 = "openai.gpt-5.4-2026-03-05"
   val bedrock_openai_gpt_oss_120b = "openai.gpt-oss-120b"
   val bedrock_openai_gpt_oss_20b = "openai.gpt-oss-20b"
 
