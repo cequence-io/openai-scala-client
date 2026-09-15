@@ -158,16 +158,32 @@ Then you can obtain a service in one of the following ways.
   )
 ```
 
-- For **Amazon Bedrock** via the [`bedrock-mantle`](https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-mantle.html) endpoint, which exposes the OpenAI **Responses API** (and Chat Completions for the gpt-oss family) with simple bearer-token auth — no AWS SigV4 signing. Requires a Bedrock API key (`AWS_BEARER_TOKEN_BEDROCK`) and region (`AWS_BEDROCK_REGION`).
+- For **Amazon Bedrock**, which exposes the OpenAI **Responses API** and Chat Completions. One entry point, `forBedrock`, with two independent choices: how to authenticate (`auth`) and which host to talk to (`endpoint`). Requires a region (`AWS_BEDROCK_REGION`).
 
 ```scala
+  // auth defaults to BedrockAuth.fromEnv(): the Bedrock API key (`AWS_BEARER_TOKEN_BEDROCK`)
+  // when one is set, otherwise SigV4 with IAM credentials - no branching for dev vs. prod
+
   // OpenAI provider models (e.g. "openai.gpt-5.5") are served from the `openai/v1` base path
-  val service = OpenAIServiceFactory.forBedrockMantle(isOpenAIModel = true)
+  val service = OpenAIServiceFactory.forBedrock(isOpenAIModel = true)
   service.createModelResponse(Inputs.Text("What is the capital of France?"),
     settings = CreateModelResponseSettings(model = ModelId.bedrock_openai_gpt_5_5))
 
   // other models (e.g. "openai.gpt-oss-120b") use the standard `v1` base path
-  val service = OpenAIServiceFactory.forBedrockMantle()
+  val service = OpenAIServiceFactory.forBedrock()
+
+  // an explicit IAM access key and secret, signed per request (rotating creds are re-read)
+  val signed = OpenAIServiceFactory.forBedrock(
+    auth = BedrockAuth.SigV4(AwsCredentialsProvider.static(accessKey, secretKey)),
+    isOpenAIModel = true)
+
+  // the classic runtime host, which also accepts the cross-region inference profiles
+  val runtime = OpenAIServiceFactory.forBedrock(endpoint = BedrockEndpoint.Runtime)
+  runtime.createChatCompletion(Seq(UserMessage("Hi")),
+    CreateChatCompletionSettings(model = "global.openai.gpt-5.6-luna"))
+
+  // both auth forms also take a shared engine, which the service never closes
+  val shared = OpenAIServiceFactory.forBedrockWithEngine(engine, endpoint = BedrockEndpoint.Runtime)
 ```
 
 - Minimal `OpenAICoreService` supporting `listModels`, `createCompletion`, `createChatCompletion`, and `createEmbeddings` calls - provided e.g. by [FastChat](https://github.com/lm-sys/FastChat) service running on the port 8000
