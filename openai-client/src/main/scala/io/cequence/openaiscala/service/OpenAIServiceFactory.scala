@@ -34,7 +34,7 @@ object OpenAIServiceFactory
       owns = false
     )
 
-  /** The engine was created for this service (e.g. by `forBedrockSigV4`), so it closes it. */
+  /** The engine was created for this service (e.g. by `forBedrock`), so it closes it. */
   override protected def ownedEngineInstance(
     engine: WSClientEngine,
     coreUrl: String,

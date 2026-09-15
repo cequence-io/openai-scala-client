@@ -4,7 +4,12 @@ import io.cequence.openaiscala.aws.AwsCredentialsProvider
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{ModelId, UserMessage}
 import io.cequence.openaiscala.examples.ExampleBase
-import io.cequence.openaiscala.service.{BedrockEndpoint, OpenAIService, OpenAIServiceFactory}
+import io.cequence.openaiscala.service.{
+  BedrockAuth,
+  BedrockEndpoint,
+  OpenAIService,
+  OpenAIServiceFactory
+}
 
 import scala.concurrent.Future
 
@@ -24,28 +29,30 @@ object BedrockSigV4ChatCompletion extends ExampleBase[OpenAIService] {
 
   private val region = sys.env.getOrElse("AWS_BEDROCK_REGION", "us-east-1")
 
-  private val credentials = AwsCredentialsProvider.static(
-    accessKeyId = sys.env("AWS_BEDROCK_ACCESS_KEY"),
-    secretAccessKey = sys.env("AWS_BEDROCK_SECRET_KEY"),
-    sessionToken = sys.env.get("AWS_SESSION_TOKEN")
+  private val auth = BedrockAuth.SigV4(
+    AwsCredentialsProvider.static(
+      accessKeyId = sys.env("AWS_BEDROCK_ACCESS_KEY"),
+      secretAccessKey = sys.env("AWS_BEDROCK_SECRET_KEY"),
+      sessionToken = sys.env.get("AWS_SESSION_TOKEN")
+    )
   )
 
   // the OpenAI provider models are served from the `openai/v1` base path
-  override val service: OpenAIService = OpenAIServiceFactory.forBedrockSigV4(
-    credentials = credentials,
+  override val service: OpenAIService = OpenAIServiceFactory.forBedrock(
+    auth = auth,
     region = region,
     isOpenAIModel = true
   )
 
-  private val gptOssService: OpenAIService = OpenAIServiceFactory.forBedrockSigV4(
-    credentials = credentials,
+  private val gptOssService: OpenAIService = OpenAIServiceFactory.forBedrock(
+    auth = auth,
     region = region,
     isOpenAIModel = false
   )
 
   // the classic runtime host additionally accepts cross-region inference profiles
-  private val runtimeService: OpenAIService = OpenAIServiceFactory.forBedrockSigV4(
-    credentials = credentials,
+  private val runtimeService: OpenAIService = OpenAIServiceFactory.forBedrock(
+    auth = auth,
     region = region,
     endpoint = BedrockEndpoint.Runtime
   )

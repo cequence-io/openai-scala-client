@@ -68,7 +68,7 @@ object NonOpenAIModelId {
 
   // Other providers (Bedrock - bedrock-mantle endpoint, `/v1/chat/completions`)
   // xAI Grok on Bedrock: served from the OpenAI-style `/openai/v1` base path (like the OpenAI
-  // models above) - use `forBedrockMantle(isOpenAIModel = true)`. Grok 4.6: 500K context,
+  // models above) - use `forBedrock(isOpenAIModel = true)`. Grok 4.6: 500K context,
   // reasoning low/medium/high/xhigh; Grok 4.3: 1M context, reasoning none/low/medium/high.
   val bedrock_xai_grok_4_6 = "xai.grok-4.6"
   val bedrock_xai_grok_4_3 = "xai.grok-4.3"

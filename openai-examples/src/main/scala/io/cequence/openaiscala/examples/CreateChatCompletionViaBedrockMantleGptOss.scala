@@ -25,7 +25,7 @@ import scala.concurrent.Future
 object CreateChatCompletionViaBedrockMantleGptOss extends ExampleBase[OpenAIService] {
 
   override protected val service: OpenAIService =
-    OpenAIServiceFactory.forBedrockMantle()
+    OpenAIServiceFactory.forBedrock()
 
   override protected def run: Future[_] =
     service

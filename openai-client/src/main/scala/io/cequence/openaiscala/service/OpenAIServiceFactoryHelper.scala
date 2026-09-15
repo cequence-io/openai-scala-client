@@ -173,17 +173,22 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts with HasOpenAICo
   }
 
   /**
-   * Create an OpenAI Service backed by the Amazon Bedrock `bedrock-mantle` endpoint, which
-   * exposes the OpenAI Responses API for models such as `openai.gpt-5.5`, `openai.gpt-5.4`,
-   * and the `openai.gpt-oss-*` family.
+   * Create an OpenAI-compatible service backed by Amazon Bedrock.
    *
-   * Authentication uses a Bedrock (long-term) API key passed as a bearer token, exactly like
-   * the OpenAI SDK configured via `OPENAI_BASE_URL` / `OPENAI_API_KEY`. No AWS SigV4 signing
-   * is required (unlike the Anthropic Bedrock `bedrock-runtime` path).
+   * Authentication and host are independent choices:
+   *   - `auth` is either a Bedrock API key sent as a bearer token
+   *     ([[BedrockAuth.BearerToken]]) or an IAM access key and secret signed per request
+   *     ([[BedrockAuth.SigV4]]). The default, [[BedrockAuth.fromEnv]], takes the bearer token
+   *     when one is in the environment and falls back to SigV4 credentials - the usual "API
+   *     key in development, IAM role in production" split, with no branching at the call site.
+   *   - `endpoint` selects the host: [[BedrockEndpoint.Mantle]] (default) or
+   *     [[BedrockEndpoint.Runtime]], which additionally accepts the cross-region
+   *     inference-profile model ids (`us.openai.*`, `global.openai.*`).
    *
-   * Note that not all endpoints of the full OpenAI service are available on `bedrock-mantle` -
-   * primarily the Responses API (`createModelResponse`) and the Models API (`listModels`). See
-   * <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-mantle.html">the
+   * Note that not all endpoints of the full OpenAI service are available on Bedrock -
+   * primarily the Responses API (`createModelResponse`), Chat Completions and the Models API
+   * (`listModels`). See <a
+   * href="https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-mantle.html">the
    * bedrock-mantle documentation</a> for details.
    *
    * '''No Batch API support''' (verified July 2026): `/batches` does not exist on either base
@@ -198,51 +203,71 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts with HasOpenAICo
    * `/chat/completions` altogether (Responses API only), so wrap the service in
    * `OpenAIResponsesChatCompletionService` before emulating batches for it.
    *
-   * @param apiKey
-   *   Bedrock API key (sent as a bearer token). Defaults to the `AWS_BEARER_TOKEN_BEDROCK` env
-   *   var.
+   * '''Under SigV4''', multipart and raw-file endpoints (file upload, image edit/variation,
+   * audio transcription) fail fast - their bytes are produced inside the HTTP engine and
+   * cannot be hashed beforehand. The Bedrock OpenAI-compatible surface does not serve them
+   * anyway.
+   *
    * @param region
    *   AWS region, e.g. "us-east-2". Defaults to the `AWS_BEDROCK_REGION` env var.
    * @param isOpenAIModel
-   *   The OpenAI provider models (e.g. `openai.gpt-5.5`) are an exception and are served from
-   *   the `openai/v1` base path; set this to `true` for them. All other models (e.g. the
-   *   gpt-oss family) use the standard `v1` base path, so leave the default `false`.
+   *   the OpenAI provider models (e.g. `openai.gpt-5.6-luna`) are served from the `openai/v1`
+   *   base path; set this to `true` for them. All other models (e.g. the gpt-oss family) use
+   *   the standard `v1` base path, so leave the default `false`. Ignored for
+   *   [[BedrockEndpoint.Runtime]], which is always `openai/v1`.
    */
-  def forBedrockMantle(
-    apiKey: String = getEnvOrThrow(bedrockMantleBearerTokenEnvKey),
-    region: String = getEnvOrThrow(bedrockMantleRegionEnvKey),
+  def forBedrock(
+    auth: BedrockAuth = BedrockAuth.fromEnv(),
+    region: String = getEnvOrThrow(bedrockRegionEnvKey),
+    endpoint: BedrockEndpoint = BedrockEndpoint.Mantle,
     isOpenAIModel: Boolean = false,
     timeouts: Option[Timeouts] = None
   )(
     implicit ec: ExecutionContext
   ): F = {
-    val basePath =
-      if (isOpenAIModel) openAIBedrockMantleBasePath else defaultBedrockMantleBasePath
-    val authHeaders = Seq(("Authorization", s"Bearer $apiKey"))
-    customInstance(
-      bedrockMantleCoreUrl(region, basePath),
-      WsRequestContext(authHeaders, Nil),
-      timeouts
-    )
+    val coreUrl = endpoint.coreUrl(region, isOpenAIModel)
+
+    auth match {
+      case BedrockAuth.BearerToken(apiKey) =>
+        customInstance(coreUrl, bearerTokenContext(apiKey), timeouts)
+
+      case BedrockAuth.SigV4(credentials) =>
+        forAwsSigV4Custom(coreUrl, credentials, region, timeouts = timeouts)
+    }
   }
 
-  /** Amazon Bedrock Mantle variant backed by a caller-owned shared engine. */
-  def forBedrockMantleWithEngine(
+  /**
+   * [[forBedrock]] on a CALLER-SUPPLIED, shared engine - see [[customEngineInstance]] for the
+   * shared-engine semantics. Closing the returned service never closes `engine`, under either
+   * form of authentication.
+   */
+  def forBedrockWithEngine(
     engine: WSClientEngine,
-    apiKey: String,
-    region: String,
+    auth: BedrockAuth = BedrockAuth.fromEnv(),
+    region: String = getEnvOrThrow(bedrockRegionEnvKey),
+    endpoint: BedrockEndpoint = BedrockEndpoint.Mantle,
     isOpenAIModel: Boolean = false
   )(
     implicit ec: ExecutionContext
   ): F = {
-    val basePath =
-      if (isOpenAIModel) openAIBedrockMantleBasePath else defaultBedrockMantleBasePath
-    customEngineInstance(
-      engine,
-      bedrockMantleCoreUrl(region, basePath),
-      WsRequestContext(authHeaders = Seq(("Authorization", s"Bearer $apiKey")))
-    )
+    val coreUrl = endpoint.coreUrl(region, isOpenAIModel)
+
+    auth match {
+      case BedrockAuth.BearerToken(apiKey) =>
+        customEngineInstance(engine, coreUrl, bearerTokenContext(apiKey))
+
+      case BedrockAuth.SigV4(credentials) =>
+        customEngineInstance(
+          awsSigningEngine(engine, credentials, region),
+          coreUrl,
+          // an EMPTY request context - see forAwsSigV4Custom
+          WsRequestContext()
+        )
+    }
   }
+
+  private def bearerTokenContext(apiKey: String): WsRequestContext =
+    WsRequestContext(authHeaders = Seq(("Authorization", s"Bearer $apiKey")))
 
   private def getEnvOrThrow(envKey: String): String =
     Option(System.getenv(envKey)).getOrElse(
@@ -253,60 +278,23 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts with HasOpenAICo
     )
 
   /**
-   * Amazon Bedrock with AWS **SigV4** auth - an IAM access key and secret (optionally an STS
-   * session token) instead of the Bedrock bearer API key [[forBedrockMantle]] requires. Use
-   * this when the deployment has AWS credentials but no Bedrock API key.
-   *
-   * Credentials are resolved on EVERY request, so rotating STS / instance-profile / IRSA
-   * credentials are picked up without restarting the service.
-   *
-   * Multipart and raw-file endpoints (file upload, image edit/variation, audio transcription)
-   * fail fast on a signed service - their bytes are produced inside the HTTP engine and cannot
-   * be hashed beforehand. The Bedrock OpenAI-compatible surface does not serve them anyway.
-   *
-   * @param endpoint
-   *   [[BedrockEndpoint.Mantle]] (default) targets `bedrock-mantle.$region.api.aws`;
-   *   [[BedrockEndpoint.Runtime]] targets `bedrock-runtime.$region.amazonaws.com/openai/v1`,
-   *   which also serves the cross-region `us.*` / `global.*` inference-profile model ids.
-   * @param isOpenAIModel
-   *   as in [[forBedrockMantle]]: the OpenAI provider models (e.g. `openai.gpt-5.6-luna`) are
-   *   served from the `openai/v1` base path. Ignored for [[BedrockEndpoint.Runtime]], which is
-   *   always `openai/v1`.
-   */
-  def forBedrockSigV4(
-    credentials: AwsCredentialsProvider = AwsCredentialsProvider.fromEnv(),
-    region: String = getEnvOrThrow(bedrockMantleRegionEnvKey),
-    endpoint: BedrockEndpoint = BedrockEndpoint.Mantle,
-    isOpenAIModel: Boolean = false,
-    timeouts: Option[Timeouts] = None
-  )(
-    implicit ec: ExecutionContext
-  ): F =
-    forAwsSigV4Custom(
-      coreUrl = bedrockSigV4CoreUrl(endpoint, region, isOpenAIModel),
-      credentials = credentials,
-      region = region,
-      timeouts = timeouts
-    )
-
-  /**
-   * [[forBedrockSigV4]] pointed at an explicit base URL - e.g. a PrivateLink / VPC endpoint or
-   * a gateway that fronts Bedrock - with an explicit AWS signing scope.
+   * [[forBedrock]] with SigV4 auth pointed at an explicit base URL - e.g. a PrivateLink / VPC
+   * endpoint or a gateway that fronts Bedrock - with an explicit AWS signing scope.
    */
   def forAwsSigV4Custom(
     coreUrl: String,
     credentials: AwsCredentialsProvider = AwsCredentialsProvider.fromEnv(),
-    region: String = getEnvOrThrow(bedrockMantleRegionEnvKey),
+    region: String = getEnvOrThrow(bedrockRegionEnvKey),
     service: String = "bedrock",
     timeouts: Option[Timeouts] = None
   )(
     implicit ec: ExecutionContext
   ): F = {
-    val signing = SigningWSClientEngine(
-      underlying = newPrivateEngine(timeouts),
-      credentials = credentials,
-      region = region,
-      awsService = service,
+    val signing = awsSigningEngine(
+      newPrivateEngine(timeouts),
+      credentials,
+      region,
+      service,
       ownsUnderlying = true
     )
 
@@ -320,6 +308,22 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts with HasOpenAICo
         throw e
     }
   }
+
+  /** [[forAwsSigV4Custom]] on a CALLER-SUPPLIED, shared engine, which it never closes. */
+  def forAwsSigV4CustomWithEngine(
+    engine: WSClientEngine,
+    coreUrl: String,
+    credentials: AwsCredentialsProvider = AwsCredentialsProvider.fromEnv(),
+    region: String = getEnvOrThrow(bedrockRegionEnvKey),
+    service: String = "bedrock"
+  )(
+    implicit ec: ExecutionContext
+  ): F =
+    customEngineInstance(
+      awsSigningEngine(engine, credentials, region, service),
+      coreUrl,
+      WsRequestContext()
+    )
 
   /**
    * The engine a private-engine entry point creates. The default is the classpath-discovered
@@ -345,18 +349,26 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts with HasOpenAICo
     implicit ec: ExecutionContext
   ): F = customEngineInstance(engine, coreUrl, requestContext)
 
-  protected def bedrockSigV4CoreUrl(
-    endpoint: BedrockEndpoint,
+  /**
+   * The signing decorator. `ownsUnderlying = false` by default: a shared engine must survive
+   * the service that borrowed it.
+   */
+  private def awsSigningEngine(
+    underlying: WSClientEngine,
+    credentials: AwsCredentialsProvider,
     region: String,
-    isOpenAIModel: Boolean
-  ): String = endpoint match {
-    case BedrockEndpoint.Mantle =>
-      bedrockMantleCoreUrl(
-        region,
-        if (isOpenAIModel) openAIBedrockMantleBasePath else defaultBedrockMantleBasePath
-      )
-    case BedrockEndpoint.Runtime => bedrockRuntimeOpenAICoreUrl(region)
-  }
+    service: String = "bedrock",
+    ownsUnderlying: Boolean = false
+  )(
+    implicit ec: ExecutionContext
+  ): WSClientEngine =
+    SigningWSClientEngine(
+      underlying = underlying,
+      credentials = credentials,
+      region = region,
+      awsService = service,
+      ownsUnderlying = ownsUnderlying
+    )
 
   def customInstance(
     coreUrl: String,

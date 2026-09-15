@@ -24,7 +24,7 @@ object CreateModelResponseViaBedrockMantle extends ExampleBase[OpenAIService] {
 
   // `openai.gpt-5.5` is an OpenAI provider model, served from the `openai/v1` base path.
   override protected val service: OpenAIService =
-    OpenAIServiceFactory.forBedrockMantle(isOpenAIModel = true)
+    OpenAIServiceFactory.forBedrock(isOpenAIModel = true)
 
   override protected def run: Future[_] =
     service

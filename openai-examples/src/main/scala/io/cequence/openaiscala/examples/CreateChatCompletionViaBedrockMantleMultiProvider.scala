@@ -54,7 +54,7 @@ object CreateChatCompletionViaBedrockMantleMultiProvider extends ExampleBase[Ope
   private val timeoutMs = 3 * 60 * 1000 // tolerate cold starts, give up on unserved models
 
   override protected val service: OpenAIService =
-    OpenAIServiceFactory.forBedrockMantle(
+    OpenAIServiceFactory.forBedrock(
       region = region,
       timeouts = Some(
         Timeouts(

@@ -1060,7 +1060,7 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
    * Amazon Bedrock `bedrock-mantle` variant backed by a caller-owned shared engine - see
    * [[withEngine]] for the engine-sharing semantics (closing this service does NOT close the
    * engine) and [[forBedrockMantle]] for the mantle endpoint semantics. Mirrors
-   * `OpenAIServiceFactory.forBedrockMantleWithEngine`, so one engine can serve both the
+   * `OpenAIServiceFactory.forBedrockWithEngine`, so one engine can serve both the
    * OpenAI-provider mantle models and Claude.
    */
   def forBedrockMantleWithEngine(

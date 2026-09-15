@@ -5,7 +5,7 @@ import io.cequence.openaiscala.aws.AwsCredentialsProvider
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{ModelId, UserMessage}
 import io.cequence.openaiscala.examples.ExampleBase
-import io.cequence.openaiscala.service.OpenAIServiceFactory
+import io.cequence.openaiscala.service.{BedrockAuth, OpenAIServiceFactory}
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIStreamedService
 
@@ -22,10 +22,12 @@ import scala.concurrent.Future
 object BedrockSigV4ChatCompletionStreamed extends ExampleBase[OpenAIStreamedService] {
 
   override val service: OpenAIStreamedService =
-    OpenAIServiceFactory.withStreaming.forBedrockSigV4(
-      credentials = AwsCredentialsProvider.static(
-        accessKeyId = sys.env("AWS_BEDROCK_ACCESS_KEY"),
-        secretAccessKey = sys.env("AWS_BEDROCK_SECRET_KEY")
+    OpenAIServiceFactory.withStreaming.forBedrock(
+      auth = BedrockAuth.SigV4(
+        AwsCredentialsProvider.static(
+          accessKeyId = sys.env("AWS_BEDROCK_ACCESS_KEY"),
+          secretAccessKey = sys.env("AWS_BEDROCK_SECRET_KEY")
+        )
       ),
       region = sys.env.getOrElse("AWS_BEDROCK_REGION", "us-east-1"),
       isOpenAIModel = true

@@ -76,7 +76,7 @@ object BedrockMantleJsonSchemaSmokeTest {
 
     // ---- 2. live gpt-5.5 structured output via Responses API ----
     println("=== live gpt-5.5 structured output (Responses API) ===")
-    val service = OpenAIServiceFactory.forBedrockMantle(isOpenAIModel = true)
+    val service = OpenAIServiceFactory.forBedrock(isOpenAIModel = true)
     val chatService = OpenAIResponsesChatCompletionService(service)
     try {
       val response = Await.result(

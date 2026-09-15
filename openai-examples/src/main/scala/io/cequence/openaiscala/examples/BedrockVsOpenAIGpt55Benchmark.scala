@@ -101,7 +101,7 @@ object BedrockVsOpenAIGpt55Benchmark {
     implicit val system: ActorSystem = ActorSystem()
     implicit val ec: scala.concurrent.ExecutionContext = system.dispatcher
 
-    val bedrock = OpenAIServiceFactory.forBedrockMantle(isOpenAIModel = true)
+    val bedrock = OpenAIServiceFactory.forBedrock(isOpenAIModel = true)
     val openai = OpenAIServiceFactory()
 
     try {

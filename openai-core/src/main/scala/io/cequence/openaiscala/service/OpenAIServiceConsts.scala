@@ -14,25 +14,9 @@ trait OpenAIServiceConsts {
 
   protected val defaultCoreUrl = "https://api.openai.com/v1/"
 
-  // Amazon Bedrock `bedrock-mantle` endpoint (OpenAI Responses API)
-  protected val bedrockMantleBearerTokenEnvKey = "AWS_BEDROCK_BEARER_TOKEN"
-  protected val bedrockMantleRegionEnvKey = "AWS_BEDROCK_REGION"
-
-  // `bedrock-mantle` serves models from the standard `v1` base path. The OpenAI provider models
-  // (e.g. `openai.gpt-5.5`) are an exception - they are served from the `openai/v1` base path.
-  protected val defaultBedrockMantleBasePath = "v1"
-  protected val openAIBedrockMantleBasePath = "openai/v1"
-
-  // the classic Bedrock runtime host also serves an OpenAI-compatible surface, and unlike the
-  // mantle host it exposes the cross-region inference profiles (`us.*`, `global.*`)
-  protected def bedrockRuntimeOpenAICoreUrl(region: String): String =
-    s"https://bedrock-runtime.$region.amazonaws.com/openai/v1/"
-
-  protected def bedrockMantleCoreUrl(
-    region: String,
-    basePath: String = defaultBedrockMantleBasePath
-  ): String =
-    s"https://bedrock-mantle.$region.api.aws/$basePath/"
+  // Amazon Bedrock. The base URLs live on `BedrockEndpoint` itself so that callers building a
+  // service by hand can reuse them; the auth env var lives on `BedrockAuth`.
+  protected val bedrockRegionEnvKey = "AWS_BEDROCK_REGION"
 
   object DefaultSettings {
 

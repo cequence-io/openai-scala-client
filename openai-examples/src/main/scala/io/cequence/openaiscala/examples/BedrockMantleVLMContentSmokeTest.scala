@@ -40,7 +40,7 @@ object BedrockMantleVLMContentSmokeTest {
     implicit val system: ActorSystem = ActorSystem()
     implicit val ec: scala.concurrent.ExecutionContext = system.dispatcher
 
-    val service = OpenAIServiceFactory.forBedrockMantle(isOpenAIModel = true)
+    val service = OpenAIServiceFactory.forBedrock(isOpenAIModel = true)
     val chatService = OpenAIResponsesChatCompletionService(service)
 
     def ask(
