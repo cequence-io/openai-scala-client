@@ -104,134 +104,292 @@ private[impl] object OpenAIGeminiChatCompletionService {
    * calls), `executableCode` / `codeExecutionResult` -> server-side ToolCall + ToolResult,
    * grounding chunks -> Citation, the finish reason -> Finish + Usage. Other parts and further
    * candidates pass through as [[ChatChunk.Other]].
+   *
+   * Without MCP server names every `functionCall` is a client-side call; see
+   * [[chatChunksFlow]] for the `mcpServers` handling.
    */
   private[impl] def toChatChunks: Flow[GenerateContentResponse, ChatChunk, NotUsed] =
-    Flow[GenerateContentResponse].statefulMapConcat { () =>
-      var started = false
-      var toolCount = 0
-      var sawFunctionCall = false
-      var lastCodeExecutionCallId: Option[String] = None
+    chatChunksFlow(Nil)
 
-      (response: GenerateContentResponse) => {
-        val out = mutable.ListBuffer.empty[ChatChunk]
+  /**
+   * [[toChatChunks]] aware of the request's `Tool.McpServers`: Gemini runs those tools itself
+   * and (Gemini 2.5; Gemini 3 echoes nothing) streams the round back as a `functionCall` part
+   * named `<server>_<tool>` in a chunk that carries its own `finishReason: STOP`, then a
+   * `functionResponse` part, then the answer with the real `STOP`. So, for a call whose name
+   * starts with one of `mcpServerNames`:
+   *   - `ToolCallStart` / `ToolCall` are `serverSide = true` (nothing for the caller to run)
+   *   - the `functionResponse` becomes a `ToolResult` paired with that call (Gemini gives no
+   *     ids - pairing is by name, in order); its `result` / `call_tool_result_json` is the
+   *     text
+   *   - the `STOP` of the chunk that made the call is held back while the result is pending
+   *     and dropped once more chunks arrive, so the stream carries ONE `Finish` and ONE
+   *     `Usage`
+   *   - if the stream ends with the call still unanswered (Gemini's MCP executor fails
+   *     transiently - the same request also shows up as HTTP 500 / 503 on `generateContent`),
+   *     the failure is surfaced instead of an empty answer: a warning is logged and a
+   *     `ToolResult(isError = true)` precedes the held `Finish`
+   */
+  private[impl] def chatChunksFlow(
+    mcpServerNames: Seq[String]
+  ): Flow[GenerateContentResponse, ChatChunk, NotUsed] =
+    Flow[GenerateContentResponse]
+      .map(Option(_))
+      .concat(Source.single(Option.empty[GenerateContentResponse]))
+      .statefulMapConcat { () =>
+        var started = false
+        var toolCount = 0
+        var sawClientFunctionCall = false
+        var lastCodeExecutionCallId: Option[String] = None
+        // server-side (MCP) calls whose functionResponse has not arrived: (callId, name)
+        val pendingMcpCalls = mutable.ListBuffer.empty[(String, String)]
+        // the Finish + Usage of a chunk that ended while MCP calls were pending
+        var heldBoundary: List[ChatChunk] = Nil
 
-        if (!started) {
-          started = true
-          out += ChatChunk.Start("gemini", response.modelVersion)
-        }
+        def isMcpCall(name: String): Boolean = isMcpToolName(name, mcpServerNames)
 
-        response.candidates.foreach { candidate =>
-          val candidateIndex = candidate.index.getOrElse(0)
+        def mapResponse(response: GenerateContentResponse): List[ChatChunk] = {
+          val out = mutable.ListBuffer.empty[ChatChunk]
 
-          if (candidateIndex != 0)
-            out += ChatChunk.Other(s"candidate[$candidateIndex]", Json.toJson(candidate))
-          else {
-            candidate.content.parts.foreach {
-              case Part.Text(text, thought, signature) =>
-                if (text.nonEmpty)
-                  out += (if (thought.contains(true)) ChatChunk.Thinking(text)
-                          else ChatChunk.Text(text))
-                signature.foreach(s => out += ChatChunk.ThinkingSignature(s))
+          // more chunks after a held boundary: it was a round boundary, not the end
+          heldBoundary = Nil
 
-              case Part.FunctionCall(id, name, args, signature) =>
-                sawFunctionCall = true
-                val ordinal = toolCount
-                toolCount += 1
-                val callId = id.getOrElse(java.util.UUID.randomUUID().toString)
-                val argsJson = Json.toJson(args)(JsonUtil.StringAnyMapFormat).toString
-                out += ChatChunk.ToolCallStart(ordinal, callId, name, serverSide = false)
-                out += ChatChunk.ToolCall(ordinal, callId, name, argsJson, serverSide = false)
-                signature.foreach(s => out += ChatChunk.ThinkingSignature(s, Some(callId)))
+          if (!started) {
+            started = true
+            out += ChatChunk.Start("gemini", response.modelVersion)
+          }
 
-              case Part.ExecutableCode(language, code) =>
-                val ordinal = toolCount
-                toolCount += 1
-                val callId = java.util.UUID.randomUUID().toString
-                lastCodeExecutionCallId = Some(callId)
-                val arguments = Json.obj("language" -> language, "code" -> code).toString
-                out += ChatChunk.ToolCallStart(
-                  ordinal,
-                  callId,
-                  "code_execution",
-                  serverSide = true
-                )
-                out += ChatChunk.ToolCall(
-                  ordinal,
-                  callId,
-                  "code_execution",
-                  arguments,
-                  serverSide = true
-                )
-                out += ChatChunk.CodeExecution(callId, Some(language.toLowerCase), code)
+          response.candidates.foreach { candidate =>
+            val candidateIndex = candidate.index.getOrElse(0)
 
-              case Part.CodeExecutionResult(outcome, output) =>
-                val callId = lastCodeExecutionCallId.getOrElse("")
-                val content = Json.obj(
-                  "outcome" -> outcome,
-                  "output" -> output
-                    .map(JsString(_))
-                    .getOrElse[play.api.libs.json.JsValue](JsNull)
-                )
-                val isError = outcome != "OUTCOME_OK"
-                out += ChatChunk.ToolResult(
-                  callId,
-                  "code_execution",
-                  content,
-                  output.filter(_.nonEmpty),
-                  isError
-                )
-                out += ChatChunk.CodeExecutionResult(
-                  callId,
-                  output.filter(_.nonEmpty),
-                  isError,
-                  content
-                )
+            if (candidateIndex != 0)
+              out += ChatChunk.Other(s"candidate[$candidateIndex]", Json.toJson(candidate))
+            else {
+              candidate.content.parts.foreach {
+                case Part.Text(text, thought, signature) =>
+                  if (text.nonEmpty)
+                    out += (if (thought.contains(true)) ChatChunk.Thinking(text)
+                            else ChatChunk.Text(text))
+                  signature.foreach(s => out += ChatChunk.ThinkingSignature(s))
 
-              case Part.InlineData(mimeType, data) if mimeType.startsWith("image/") =>
-                out += ChatChunk.Image(Some(mimeType), Some(data), None)
+                case Part.FunctionCall(id, name, args, signature) =>
+                  val serverSide = isMcpCall(name)
+                  if (!serverSide) sawClientFunctionCall = true
+                  val ordinal = toolCount
+                  toolCount += 1
+                  val callId = id.getOrElse(java.util.UUID.randomUUID().toString)
+                  if (serverSide) pendingMcpCalls += ((callId, name))
+                  val argsJson = Json.toJson(args)(JsonUtil.StringAnyMapFormat).toString
+                  out += ChatChunk.ToolCallStart(ordinal, callId, name, serverSide)
+                  out += ChatChunk.ToolCall(ordinal, callId, name, argsJson, serverSide)
+                  signature.foreach(s => out += ChatChunk.ThinkingSignature(s, Some(callId)))
 
-              case other =>
-                out += ChatChunk.Other(other.prefix.toString, Json.toJson(other))
-            }
+                case Part.FunctionResponse(id, name, functionResponse) =>
+                  val pendingIndex = pendingMcpCalls.indexWhere(_._2 == name)
+                  val callId =
+                    if (pendingIndex >= 0) pendingMcpCalls.remove(pendingIndex)._1
+                    else id.getOrElse("")
+                  val (text, isError) = mcpResultSummary(functionResponse)
+                  out += ChatChunk.ToolResult(
+                    callId,
+                    name,
+                    Json.toJson(functionResponse)(JsonUtil.StringAnyMapFormat),
+                    text,
+                    isError
+                  )
 
-            candidate.groundingMetadata.foreach { grounding =>
-              if (grounding.webSearchQueries.nonEmpty)
-                out += ChatChunk.WebSearch("", grounding.webSearchQueries)
-              if (grounding.groundingChunks.nonEmpty)
-                out += ChatChunk.WebSearchResult(
-                  "",
-                  grounding.groundingChunks.map(c =>
-                    ChatChunk.WebSearchResultItem(Some(c.web.title), c.web.uri)
-                  ),
-                  Json.toJson(
-                    grounding.groundingChunks.map(c =>
-                      Json.obj("uri" -> c.web.uri, "title" -> c.web.title)
+                case Part.ExecutableCode(language, code) =>
+                  val ordinal = toolCount
+                  toolCount += 1
+                  val callId = java.util.UUID.randomUUID().toString
+                  lastCodeExecutionCallId = Some(callId)
+                  val arguments = Json.obj("language" -> language, "code" -> code).toString
+                  out += ChatChunk.ToolCallStart(
+                    ordinal,
+                    callId,
+                    "code_execution",
+                    serverSide = true
+                  )
+                  out += ChatChunk.ToolCall(
+                    ordinal,
+                    callId,
+                    "code_execution",
+                    arguments,
+                    serverSide = true
+                  )
+                  out += ChatChunk.CodeExecution(callId, Some(language.toLowerCase), code)
+
+                case Part.CodeExecutionResult(outcome, output) =>
+                  val callId = lastCodeExecutionCallId.getOrElse("")
+                  val content = Json.obj(
+                    "outcome" -> outcome,
+                    "output" -> output
+                      .map(JsString(_))
+                      .getOrElse[play.api.libs.json.JsValue](JsNull)
+                  )
+                  val isError = outcome != "OUTCOME_OK"
+                  out += ChatChunk.ToolResult(
+                    callId,
+                    "code_execution",
+                    content,
+                    output.filter(_.nonEmpty),
+                    isError
+                  )
+                  out += ChatChunk.CodeExecutionResult(
+                    callId,
+                    output.filter(_.nonEmpty),
+                    isError,
+                    content
+                  )
+
+                case Part.InlineData(mimeType, data) if mimeType.startsWith("image/") =>
+                  out += ChatChunk.Image(Some(mimeType), Some(data), None)
+
+                case other =>
+                  out += ChatChunk.Other(other.prefix.toString, Json.toJson(other))
+              }
+
+              candidate.groundingMetadata.foreach { grounding =>
+                if (grounding.webSearchQueries.nonEmpty)
+                  out += ChatChunk.WebSearch("", grounding.webSearchQueries)
+                if (grounding.groundingChunks.nonEmpty)
+                  out += ChatChunk.WebSearchResult(
+                    "",
+                    grounding.groundingChunks
+                      .map(c => ChatChunk.WebSearchResultItem(Some(c.web.title), c.web.uri)),
+                    Json.toJson(
+                      grounding.groundingChunks
+                        .map(c => Json.obj("uri" -> c.web.uri, "title" -> c.web.title))
                     )
                   )
+                grounding.groundingChunks.foreach { chunk =>
+                  out += ChatChunk.Citation(
+                    citedText = None,
+                    url = Some(chunk.web.uri),
+                    title = Some(chunk.web.title),
+                    raw = Json.obj("uri" -> chunk.web.uri, "title" -> chunk.web.title)
+                  )
+                }
+              }
+
+              candidate.finishReason.foreach { finishReason =>
+                val boundary = List(
+                  ChatChunk.Finish(
+                    ChatChunk.FinishReason
+                      .fromGemini(finishReason.toString, sawClientFunctionCall),
+                    Some(finishReason.toString)
+                  ),
+                  ChatChunk.Usage(toOpenAIUsage(response.usageMetadata))
                 )
-              grounding.groundingChunks.foreach { chunk =>
-                out += ChatChunk.Citation(
-                  citedText = None,
-                  url = Some(chunk.web.uri),
-                  title = Some(chunk.web.title),
-                  raw = Json.obj("uri" -> chunk.web.uri, "title" -> chunk.web.title)
-                )
+                // a server-side call is still running: this STOP is (normally) the end of
+                // the round, not of the turn - decided when the next chunk / the end arrives
+                if (pendingMcpCalls.nonEmpty) heldBoundary = boundary
+                else out ++= boundary
               }
             }
-
-            candidate.finishReason.foreach { finishReason =>
-              out += ChatChunk.Finish(
-                ChatChunk.FinishReason.fromGemini(finishReason.toString, sawFunctionCall),
-                Some(finishReason.toString)
-              )
-              out += ChatChunk.Usage(toOpenAIUsage(response.usageMetadata))
-            }
           }
+
+          out.toList
         }
 
-        out.toList
+        def endOfStream(): List[ChatChunk] = {
+          val unanswered = pendingMcpCalls.toList
+          pendingMcpCalls.clear()
+          val held = heldBoundary
+          heldBoundary = Nil
+
+          val failures = unanswered.map { case (callId, name) =>
+            val message = danglingMcpCallMessage(name)
+            logger.warn(s"Gemini adapter: $message")
+            ChatChunk.ToolResult(
+              callId,
+              name,
+              Json.obj("error" -> message),
+              Some(message),
+              isError = true
+            )
+          }
+          failures ++ held
+        }
+
+        (maybeResponse: Option[GenerateContentResponse]) =>
+          maybeResponse match {
+            case Some(response) => mapResponse(response)
+            case None           => endOfStream()
+          }
       }
+
+  private val logger: Logger = Logger(LoggerFactory.getLogger(getClass))
+
+  /** Gemini names an MCP server's tool `<server name>_<tool name>`. */
+  private[impl] def isMcpToolName(
+    name: String,
+    mcpServerNames: Seq[String]
+  ): Boolean =
+    mcpServerNames.exists(server => name.startsWith(server + "_"))
+
+  /** The names of the `Tool.McpServers` on the request, if any. */
+  private[impl] def mcpServerNames(settings: CreateChatCompletionSettings): Seq[String] =
+    settings.getGeminiTools.getOrElse(Nil).flatMap {
+      case GeminiTool.McpServers(servers) => servers.map(_.name)
+      case _                              => Nil
     }
+
+  /**
+   * The text of an MCP `functionResponse` and whether the tool reported an error: Gemini wraps
+   * the MCP result either as `{"result": "<text>"}` or as `{"call_tool_result_json": "<the MCP
+   * CallToolResult as a JSON string>"}` (with its `content[].text` and `isError`).
+   */
+  private[impl] def mcpResultSummary(response: Map[String, Any]): (Option[String], Boolean) =
+    response.get("result") match {
+      case Some(result: String) => (Some(result).filter(_.nonEmpty), false)
+      case _ =>
+        response.get("call_tool_result_json") match {
+          case Some(raw: String) =>
+            scala.util.Try(Json.parse(raw)).toOption match {
+              case Some(json) =>
+                val texts = (json \ "content")
+                  .asOpt[Seq[JsObject]]
+                  .getOrElse(Nil)
+                  .flatMap(item => (item \ "text").asOpt[String])
+                (
+                  Some(texts.mkString("\n")).filter(_.nonEmpty),
+                  (json \ "isError").asOpt[Boolean].getOrElse(false)
+                )
+              case None => (Some(raw), false)
+            }
+          case _ => (None, false)
+        }
+    }
+
+  private[impl] def danglingMcpCallMessage(name: String): String =
+    s"Gemini did not execute the server-side MCP call '$name' - the response ended right " +
+      "after the functionCall, without a functionResponse. Gemini's MCP executor fails " +
+      "transiently (the same request also surfaces as HTTP 500 / 503 on generateContent); " +
+      "retry the request."
+
+  /**
+   * MCP calls of a (non-streamed) response that got no `functionResponse` - Gemini answered
+   * with a call it never ran.
+   */
+  private[impl] def danglingMcpCalls(
+    response: GenerateContentResponse,
+    mcpServerNames: Seq[String]
+  ): Seq[Part.FunctionCall] = {
+    val parts = response.candidates.headOption.toSeq.flatMap(_.content.parts)
+    val answered = mutable.Map.empty[String, Int].withDefaultValue(0)
+    parts.foreach {
+      case fr: Part.FunctionResponse => answered(fr.name) += 1
+      case _                         => ()
+    }
+    parts.collect {
+      case fc: Part.FunctionCall if isMcpToolName(fc.name, mcpServerNames) => fc
+    }.filter { fc =>
+      if (answered(fc.name) > 0) {
+        answered(fc.name) -= 1
+        false
+      } else true
+    }
+  }
 
   /**
    * Maps Gemini's usage accounting onto OpenAI's, preserving the OpenAI invariant
@@ -284,21 +442,50 @@ private[service] class OpenAIGeminiChatCompletionService(
 
   protected val logger: Logger = Logger(LoggerFactory.getLogger(this.getClass))
 
+  import OpenAIGeminiChatCompletionService.{isMcpToolName, mcpServerNames}
+
   override def createChatCompletion(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
   ): Future[ChatCompletionResponse] = {
     val (userMessages, systemMessage) = splitMessage(messages)
+    val serverNames = mcpServerNames(settings)
 
     for {
-      settings <- handleCaching(systemMessage, userMessages, settings)
+      geminiSettings <- handleCaching(systemMessage, userMessages, settings)
 
       response <- underlying.generateContent(
         userMessages.map(toGeminiContent),
-        settings
+        geminiSettings
       )
-    } yield toOpenAIResponse(response)
+    } yield toOpenAIResponse(requireMcpCallsExecuted(response, serverNames), serverNames)
   }.recoverWith(repackAsOpenAIException)
+
+  /**
+   * Gemini's `mcpServers` executor fails transiently: `generateContent` then answers with the
+   * `functionCall` it meant to run, no `functionResponse` and no text - which the adapter
+   * would otherwise pass on as an empty answer. Thrown as a client exception instead (when
+   * there is no answer text at all; otherwise only warned about).
+   */
+  private def requireMcpCallsExecuted(
+    response: GenerateContentResponse,
+    mcpServerNames: Seq[String]
+  ): GenerateContentResponse = {
+    val dangling = OpenAIGeminiChatCompletionService.danglingMcpCalls(response, mcpServerNames)
+
+    if (dangling.nonEmpty) {
+      val message = OpenAIGeminiChatCompletionService.danglingMcpCallMessage(
+        dangling.map(_.name).mkString(", ")
+      )
+      val hasAnswer = response.candidates.headOption.exists(_.content.parts.exists {
+        case t: Part.Text => !t.thought.contains(true) && t.text.nonEmpty
+        case _            => false
+      })
+      if (hasAnswer) logger.warn(s"Gemini adapter: $message")
+      else throw new OpenAIScalaClientException(message)
+    }
+    response
+  }
 
   override def createChatCompletionStreamed(
     messages: Seq[BaseMessage],
@@ -972,7 +1159,8 @@ private[service] class OpenAIGeminiChatCompletionService(
   }
 
   private def toOpenAIResponse(
-    response: GenerateContentResponse
+    response: GenerateContentResponse,
+    mcpServerNames: Seq[String] = Nil
   ): ChatCompletionResponse =
     ChatCompletionResponse(
       id = "gemini",
@@ -982,7 +1170,7 @@ private[service] class OpenAIGeminiChatCompletionService(
       choices = response.candidates.map { candidate =>
         ChatCompletionChoiceInfo(
           index = candidate.index.getOrElse(0),
-          message = toOpenAIAssistantMessage(candidate.content),
+          message = toOpenAIAssistantMessage(candidate.content, mcpServerNames),
           finish_reason = candidate.finishReason.map(_.toString),
           logprobs = None
         )
@@ -1010,17 +1198,18 @@ private[service] class OpenAIGeminiChatCompletionService(
     )
 
   private def toOpenAIAssistantMessage(
-    content: Content
+    content: Content,
+    mcpServerNames: Seq[String] = Nil
   ): AssistantMessage = {
     val texts = content.parts.collect {
       case t: Part.Text if !t.thought.contains(true) => t.text
     }
-    val hasToolCalls = content.parts.exists {
-      case _: Part.FunctionCall => true
-      case _                    => false
+    val hasClientToolCalls = content.parts.exists {
+      case fc: Part.FunctionCall => !isMcpToolName(fc.name, mcpServerNames)
+      case _                     => false
     }
 
-    if (hasToolCalls)
+    if (hasClientToolCalls)
       logger.warn(
         "Gemini response includes function calls; OpenAI adapter will expose only text content. " +
           "Inspect originalResponse for tool call details."
@@ -1095,7 +1284,11 @@ private[service] class OpenAIGeminiChatCompletionService(
 
         underlying
           .generateContentStreamed(userMessages.map(toGeminiContent), geminiSettings)
-          .via(OpenAIGeminiChatCompletionService.toChatChunks)
+          .via(
+            OpenAIGeminiChatCompletionService.chatChunksFlow(
+              OpenAIGeminiChatCompletionService.mcpServerNames(settings)
+            )
+          )
     }.recoverWith(repackAsOpenAIException)
 
     Source.fromFutureSource(futureSource).mapMaterializedValue(_ => NotUsed)
@@ -1158,47 +1351,35 @@ private[service] class OpenAIGeminiChatCompletionService(
   ): Future[ChatToolCompletionResponse] = {
     val (userMessages, systemMessage) = splitMessage(messages)
 
-    val geminiFunctionDeclarations = tools.collect { case ft: FunctionTool =>
-      FunctionDeclaration(
-        name = ft.name,
-        description = ft.description.getOrElse(""),
-        parameters = Some(toGeminiJSONSchema(ft.parameters))
-      )
-    }
-
-    val geminiTools = Seq(GeminiTool.FunctionDeclarations(geminiFunctionDeclarations))
-
-    val toolConfig = responseToolChoice.map { name =>
-      ToolConfig.FunctionCallingConfig(
-        mode = Some(FunctionCallingMode.ANY),
-        allowedFunctionNames = Some(Seq(name))
-      )
-    }
-
+    // the same tool wiring as the typed stream: function declarations + Gemini-native tools
+    // from `setGeminiTools` (MCP servers, Google search, ...)
     (for {
       baseSettings <- handleCaching(systemMessage, userMessages, settings)
-      geminiSettings = baseSettings.copy(
-        tools = Some(geminiTools),
-        toolConfig = toolConfig.orElse(settings.getGeminiToolConfig)
-      )
+      geminiSettings = withTools(baseSettings, tools, responseToolChoice, settings)
       response <- underlying.generateContent(
         userMessages.map(toGeminiContent),
         geminiSettings
       )
-    } yield toOpenAIToolResponse(response)).recoverWith(repackAsOpenAIException)
+    } yield toOpenAIToolResponse(
+      requireMcpCallsExecuted(response, mcpServerNames(settings)),
+      mcpServerNames(settings)
+    )).recoverWith(repackAsOpenAIException)
   }
 
   private def toOpenAIToolResponse(
-    response: GenerateContentResponse
+    response: GenerateContentResponse,
+    mcpServerNames: Seq[String] = Nil
   ): ChatToolCompletionResponse = {
     val choices = response.candidates.map { candidate =>
-      val toolCalls = candidate.content.parts.collect { case fc: Part.FunctionCall =>
-        val callId = fc.id.getOrElse(java.util.UUID.randomUUID().toString)
-        val argsJson = Json.toJson(fc.args)(JsonUtil.StringAnyMapFormat).toString
-        (
-          callId,
-          FunctionCallSpec(fc.name, argsJson): io.cequence.openaiscala.domain.ToolCallSpec
-        )
+      // MCP-server calls were run by Gemini - they are not for the caller to execute
+      val toolCalls = candidate.content.parts.collect {
+        case fc: Part.FunctionCall if !isMcpToolName(fc.name, mcpServerNames) =>
+          val callId = fc.id.getOrElse(java.util.UUID.randomUUID().toString)
+          val argsJson = Json.toJson(fc.args)(JsonUtil.StringAnyMapFormat).toString
+          (
+            callId,
+            FunctionCallSpec(fc.name, argsJson): io.cequence.openaiscala.domain.ToolCallSpec
+          )
       }
 
       val texts = candidate.content.parts.collect {

@@ -404,8 +404,8 @@ or only if streaming is required
   | `Text(text)` | answer fragment | `delta.content` | `text_delta` | text part |
   | `Thinking(text)` | reasoning fragment | `delta.reasoning_content` (DeepSeek, Grok, ...) / `delta.reasoning` (Groq) | `thinking_delta` (summarized thinking is requested automatically) | thought-summary part (`includeThoughts` on by default) |
   | `ThinkingSignature(signature, callId)`, `RedactedThinking` | opaque data to echo back in tool loops (`callId` set when the signature rides on a function call) | encrypted reasoning (Responses API) | `signature_delta`, `redacted_thinking` | `thoughtSignature` |
-  | `ToolCallStart` / `ToolCallDelta` / `ToolCall` | tool call: start, argument fragments, assembled call | `delta.tool_calls` fragments | `tool_use` + `input_json_delta`; `server_tool_use` / `mcp_tool_use` (`serverSide = true`, MCP servers via `setAnthropicMcpServers`) | `functionCall` (complete); `executableCode` (`serverSide = true`) |
-  | `ToolResult` | result of a provider-executed tool | code interpreter outputs, MCP / file search results (Responses API) | web search / web fetch / code execution / bash / text editor / MCP result blocks | `codeExecutionResult` |
+  | `ToolCallStart` / `ToolCallDelta` / `ToolCall` | tool call: start, argument fragments, assembled call | `delta.tool_calls` fragments | `tool_use` + `input_json_delta`; `server_tool_use` / `mcp_tool_use` (`serverSide = true`, MCP servers via `setAnthropicMcpServers`) | `functionCall` (complete); `executableCode` and `mcpServers` calls (`serverSide = true`) |
+  | `ToolResult` | result of a provider-executed tool | code interpreter outputs, MCP / file search results (Responses API) | web search / web fetch / code execution / bash / text editor / MCP result blocks | `codeExecutionResult`; `functionResponse` of `mcpServers` calls |
   | `CodeExecution` / `CodeExecutionResult` | semantic view of server-side code runs (emitted in addition to the tool layer, same `callId`) | `code_interpreter_call` (Responses API) | `code_execution` / `bash_code_execution` | `executableCode` / `codeExecutionResult` |
   | `WebSearch` / `WebSearchResult` | semantic view of server-side web searches | `web_search_call` (Responses API) | `web_search` server tool | Google Search grounding queries / chunks |
   | `Image` | generated / returned images (base64 or URL) | image generation partial & final images, code interpreter image outputs (Responses API) | - | inline image parts |
@@ -450,6 +450,13 @@ or only if streaming is required
   on the same `Source` - one `Start`, one final `Finish`, one summed `Usage`; `setAnthropicMaxContinuations` caps it (default 6). See
   [AnthropicCreateChatToolCompletionStreamedWithMCPServers](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/anthropic/AnthropicCreateChatToolCompletionStreamedWithMCPServers.scala).
   (Anthropic API only - Bedrock rejects `mcp_servers`.)
+  Gemini's native MCP (`setGeminiTools(Seq(Tool.McpServers(...)))`, live-verified 2026-09-16 with Exa, the GitHub Copilot MCP and
+  DeepWiki, alone and several per request, authenticated with `x-api-key` or `Authorization: Bearer` transport headers alike): Gemini
+  runs the tools itself; Gemini 2.5 streams each call as a server-side `ToolCall` named `<server>_<tool>` plus a `ToolResult`, Gemini 3
+  echoes no call / result parts at all. Its executor fails transiently (HTTP 500 / 503, or a stream that ends right after the call) -
+  the adapter surfaces that as a `ToolResult(isError = true)` on the stream and as an `OpenAIScalaClientException` on the plain call
+  instead of an empty answer; retry. See
+  [GoogleGeminiCreateChatToolCompletionStreamedWithMcpServers](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/googlegemini/GoogleGeminiCreateChatToolCompletionStreamedWithMcpServers.scala).
 
   GPT-5.4+ accepts function tools on the chat completions API only with `reasoning_effort = none`, and GPT-6 only on the
   Responses API - so `OpenAIServiceFactory.withStreaming()` routes GPT-6 tool streams through it automatically (a chat-only

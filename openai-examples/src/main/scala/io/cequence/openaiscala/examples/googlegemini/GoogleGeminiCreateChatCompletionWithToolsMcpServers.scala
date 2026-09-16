@@ -74,12 +74,12 @@ object GoogleGeminiCreateChatCompletionWithToolsMcpServers extends ExampleBase[G
         println("Response (via the DeepWiki MCP server):")
         println(response.contentHeadText)
 
-        // Report any tool-call / tool-result blocks in the response. For `Tool.McpServers`
-        // Gemini executes the MCP tools entirely SERVER-side and (verified July 2026 on both
-        // generateContent and streamGenerateContent) does NOT return the blocks - expect
-        // "(none)" here, with `usageMetadata.toolUsePromptTokenCount` below as the observable
-        // evidence of the calls. The collection is kept so the blocks surface immediately
-        // should Google start echoing them.
+        // Report the tool-call / tool-result blocks in the response. For `Tool.McpServers`
+        // Gemini executes the MCP tools entirely SERVER-side; whether it echoes the blocks
+        // depends on the model (live-verified 2026-09-16): Gemini 2.5 returns the
+        // `functionCall` + `functionResponse` pairs in front of the answer, Gemini 3 (as
+        // used here) returns the answer only - then expect "(none)" and read
+        // `usageMetadata.toolUsePromptTokenCount` below as the evidence of the calls.
         val parts = response.candidates.flatMap(_.content.parts)
 
         val toolCalls = parts.collect { case fc: Part.FunctionCall => fc }
@@ -89,7 +89,9 @@ object GoogleGeminiCreateChatCompletionWithToolsMcpServers extends ExampleBase[G
 
         println("\nTool call/result blocks returned:")
         if (toolCalls.isEmpty && toolResults.isEmpty && unknownBlocks.isEmpty)
-          println("  (none - Gemini runs MCP tools server-side and does not echo the blocks)")
+          println(
+            "  (none - this model runs the MCP tools server-side without echoing the blocks)"
+          )
         else {
           toolCalls.foreach(fc => println(s"  - call:    ${fc.name}(${fc.args})"))
           toolResults.foreach(fr => println(s"  - result:  ${fr.name} -> ${fr.response}"))

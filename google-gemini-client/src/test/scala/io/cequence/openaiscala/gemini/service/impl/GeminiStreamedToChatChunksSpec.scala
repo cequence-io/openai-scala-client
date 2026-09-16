@@ -110,6 +110,154 @@ class GeminiStreamedToChatChunksSpec
       )
     }
 
+    "label an mcpServers call server-side, pair its functionResponse, and keep one Finish" in {
+      // what Gemini 2.5 streams for a native MCP call (live-verified 2026-09-16): the call in
+      // a chunk carrying its own STOP, the result, then the answer with the real STOP
+      val out = Source(
+        List(
+          response(
+            Seq(Part.FunctionCall(None, "exa_web_search_exa", Map("query" -> "jupiter"))),
+            finishReason = Some(GeminiFinishReason.STOP)
+          ),
+          response(
+            Seq(
+              Part.FunctionResponse(
+                None,
+                "exa_web_search_exa",
+                Map("result" -> "Title: Juice flyby\nURL: https://ex.com/j")
+              )
+            )
+          ),
+          response(
+            Seq(Part.Text("Juice flew by.")),
+            finishReason = Some(GeminiFinishReason.STOP)
+          )
+        )
+      ).via(OpenAIGeminiChatCompletionService.chatChunksFlow(Seq("exa")))
+        .runWith(Sink.seq)
+        .futureValue
+
+      val callId = out.collectFirst { case ToolCallStart(0, id, _, _) => id }.get
+
+      out shouldBe Seq(
+        Start("gemini", "gemini-test"),
+        ToolCallStart(0, callId, "exa_web_search_exa", serverSide = true),
+        ToolCall(
+          0,
+          callId,
+          "exa_web_search_exa",
+          "{\"query\":\"jupiter\"}",
+          serverSide = true
+        ),
+        ToolResult(
+          callId,
+          "exa_web_search_exa",
+          Json.obj("result" -> "Title: Juice flyby\nURL: https://ex.com/j"),
+          Some("Title: Juice flyby\nURL: https://ex.com/j"),
+          isError = false
+        ),
+        Text("Juice flew by."),
+        // the STOP of the chunk that made the call was a round boundary - dropped
+        Finish(FinishReason.stop, Some("STOP")),
+        Usage(OpenAIGeminiChatCompletionService.toOpenAIUsage(usage))
+      )
+    }
+
+    "summarize a call_tool_result_json functionResponse, incl. its isError" in {
+      val callToolResult =
+        """{"content":[{"type":"text","text":"line one"},{"type":"text","text":"line two"}],"isError":true}"""
+
+      val out = Source(
+        List(
+          response(Seq(Part.FunctionCall(None, "github_search", Map.empty[String, Any]))),
+          response(
+            Seq(
+              Part.FunctionResponse(
+                None,
+                "github_search",
+                Map("call_tool_result_json" -> callToolResult)
+              )
+            ),
+            finishReason = Some(GeminiFinishReason.STOP)
+          )
+        )
+      ).via(OpenAIGeminiChatCompletionService.chatChunksFlow(Seq("github")))
+        .runWith(Sink.seq)
+        .futureValue
+
+      out.collect { case tr: ToolResult => (tr.toolName, tr.text, tr.isError) } shouldBe Seq(
+        ("github_search", Some("line one\nline two"), true)
+      )
+      out.collect { case f: Finish => f } shouldBe Seq(Finish(FinishReason.stop, Some("STOP")))
+    }
+
+    "report an mcpServers call the stream never answered as an error result, not an empty end" in {
+      // the transient Gemini failure (live-observed 2026-09-16): the stream closes right after
+      // the functionCall chunk
+      val out = Source(
+        List(
+          response(
+            Seq(
+              Part.FunctionCall(None, "github_search_repositories", Map("query" -> "org:x"))
+            ),
+            finishReason = Some(GeminiFinishReason.STOP)
+          )
+        )
+      ).via(OpenAIGeminiChatCompletionService.chatChunksFlow(Seq("github")))
+        .runWith(Sink.seq)
+        .futureValue
+
+      val callId = out.collectFirst { case ToolCallStart(0, id, _, _) => id }.get
+
+      out.map {
+        case tr: ToolResult => tr.copy(content = Json.obj())
+        case other          => other
+      } shouldBe Seq(
+        Start("gemini", "gemini-test"),
+        ToolCallStart(0, callId, "github_search_repositories", serverSide = true),
+        ToolCall(
+          0,
+          callId,
+          "github_search_repositories",
+          "{\"query\":\"org:x\"}",
+          serverSide = true
+        ),
+        ToolResult(
+          callId,
+          "github_search_repositories",
+          Json.obj(),
+          Some(
+            OpenAIGeminiChatCompletionService.danglingMcpCallMessage(
+              "github_search_repositories"
+            )
+          ),
+          isError = true
+        ),
+        // not tool_calls: there is nothing for the caller to run
+        Finish(FinishReason.stop, Some("STOP")),
+        Usage(OpenAIGeminiChatCompletionService.toOpenAIUsage(usage))
+      )
+      out.collect { case tr: ToolResult => tr.text.get } should contain(
+        OpenAIGeminiChatCompletionService.danglingMcpCallMessage("github_search_repositories")
+      )
+    }
+
+    "keep a client function call client-side next to MCP servers" in {
+      val out = Source(
+        List(
+          response(
+            Seq(Part.FunctionCall(Some("c1"), "get_weather", Map("location" -> "Oslo"))),
+            finishReason = Some(GeminiFinishReason.STOP)
+          )
+        )
+      ).via(OpenAIGeminiChatCompletionService.chatChunksFlow(Seq("exa")))
+        .runWith(Sink.seq)
+        .futureValue
+
+      out(1) shouldBe ToolCallStart(0, "c1", "get_weather", serverSide = false)
+      out(3) shouldBe Finish(FinishReason.tool_calls, Some("STOP"))
+    }
+
     "pair executable code with its execution result as a server-side tool call" in {
       val out = run(
         response(Seq(Part.ExecutableCode("PYTHON", "print(1)"))),
@@ -188,6 +336,35 @@ class GeminiStreamedToChatChunksSpec
           )(io.cequence.openaiscala.gemini.JsonFormats.candidateFormat)
         )
       )
+    }
+  }
+
+  "danglingMcpCalls / mcpResultSummary" should {
+
+    "find MCP calls without a matching functionResponse, pairing by name in order" in {
+      val r = response(
+        Seq(
+          Part.FunctionCall(None, "exa_search", Map.empty[String, Any]),
+          Part.FunctionResponse(None, "exa_search", Map("result" -> "ok")),
+          Part.FunctionCall(None, "exa_search", Map("q" -> 2)),
+          Part.FunctionCall(None, "get_weather", Map.empty[String, Any]) // client tool
+        )
+      )
+
+      OpenAIGeminiChatCompletionService
+        .danglingMcpCalls(r, Seq("exa"))
+        .map(_.args) shouldBe Seq(Map("q" -> 2))
+      OpenAIGeminiChatCompletionService.danglingMcpCalls(r, Nil) shouldBe empty
+    }
+
+    "read `result` and `call_tool_result_json` shapes" in {
+      OpenAIGeminiChatCompletionService.mcpResultSummary(Map("result" -> "text")) shouldBe
+        (Some("text"), false)
+      OpenAIGeminiChatCompletionService.mcpResultSummary(
+        Map("call_tool_result_json" -> """{"content":[{"type":"text","text":"a"}]}""")
+      ) shouldBe (Some("a"), false)
+      OpenAIGeminiChatCompletionService.mcpResultSummary(Map("other" -> 1)) shouldBe
+        (None, false)
     }
   }
 }
