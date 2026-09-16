@@ -454,8 +454,8 @@ or only if streaming is required
   DeepWiki, alone and several per request, authenticated with `x-api-key` or `Authorization: Bearer` transport headers alike): Gemini
   runs the tools itself; Gemini 2.5 streams each call as a server-side `ToolCall` named `<server>_<tool>` plus a `ToolResult`, Gemini 3
   echoes no call / result parts at all. Its executor fails transiently (HTTP 500 / 503, or a stream that ends right after the call) -
-  the adapter surfaces that as a `ToolResult(isError = true)` on the stream and as an `OpenAIScalaClientException` on the plain call
-  instead of an empty answer; retry. See
+  the adapter surfaces that as a `ToolResult(isError = true)` on the stream and as a `GeminiScalaMcpCallNotExecutedException` (a
+  server-error subtype, so `Retryable` through the adapter - the retry adapter re-issues it) on the plain call instead of an empty answer. See
   [GoogleGeminiCreateChatToolCompletionStreamedWithMcpServers](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/googlegemini/GoogleGeminiCreateChatToolCompletionStreamedWithMcpServers.scala).
 
   GPT-5.4+ accepts function tools on the chat completions API only with `reasoning_effort = none`, and GPT-6 only on the

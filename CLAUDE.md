@@ -132,7 +132,8 @@ Streaming is provided as an extension via the `openai-client-stream` module:
   `setAnthropicMaxContinuations`, default 6). Gemini's native MCP (`setGeminiTools(Tool.McpServers)`) is server-executed:
   `OpenAIGeminiChatCompletionService.chatChunksFlow(mcpServerNames)` labels `<server>_<tool>` calls `serverSide = true`, maps
   the `functionResponse` to `ToolResult`, holds the intermediate STOP of the call chunk, and reports a call the stream never
-  answered as `ToolResult(isError = true)` (the plain path throws); `createChatToolCompletion` honours `setGeminiTools` too.
+  answered as `ToolResult(isError = true)` (the plain path throws `GeminiScalaMcpCallNotExecutedException`, a
+  `GeminiScalaServerErrorException` subtype -> `OpenAIScalaServerErrorException`, i.e. `Retryable`); `createChatToolCompletion` honours `setGeminiTools` too.
   Live-verified 2026-09-16: Authorization-bearer transport headers and multi-server requests work; failures are transient
   Gemini-side (500/503/dangling call), Gemini 3 echoes no call/result parts, Gemini 2.5 does. Grok, Groq, Cerebras, Fireworks and
   DeepSeek use the generic mapping (live-verified 2026-09-10; repeated per-chunk `usage` is deduplicated). Every streamed wrapper in `openai-client-stream` must

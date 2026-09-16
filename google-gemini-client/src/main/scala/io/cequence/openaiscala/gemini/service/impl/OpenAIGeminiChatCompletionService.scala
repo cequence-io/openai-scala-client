@@ -70,7 +70,10 @@ import io.cequence.openaiscala.gemini.domain.{
   Part,
   ThinkingLevel
 }
-import io.cequence.openaiscala.gemini.service.GeminiService
+import io.cequence.openaiscala.gemini.service.{
+  GeminiScalaMcpCallNotExecutedException,
+  GeminiService
+}
 import io.cequence.openaiscala.service.{
   HasOpenAIConfig,
   OpenAIChatCompletionBatchService,
@@ -464,8 +467,10 @@ private[service] class OpenAIGeminiChatCompletionService(
   /**
    * Gemini's `mcpServers` executor fails transiently: `generateContent` then answers with the
    * `functionCall` it meant to run, no `functionResponse` and no text - which the adapter
-   * would otherwise pass on as an empty answer. Thrown as a client exception instead (when
-   * there is no answer text at all; otherwise only warned about).
+   * would otherwise pass on as an empty answer. Thrown as a
+   * [[GeminiScalaMcpCallNotExecutedException]] instead (when there is no answer text at all;
+   * otherwise only warned about) - a server-error subtype, so through
+   * `repackAsOpenAIException` it is an `OpenAIScalaServerErrorException` and retryable.
    */
   private def requireMcpCallsExecuted(
     response: GenerateContentResponse,
@@ -482,7 +487,7 @@ private[service] class OpenAIGeminiChatCompletionService(
         case _            => false
       })
       if (hasAnswer) logger.warn(s"Gemini adapter: $message")
-      else throw new OpenAIScalaClientException(message)
+      else throw new GeminiScalaMcpCallNotExecutedException(message)
     }
     response
   }
