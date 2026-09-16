@@ -142,6 +142,14 @@ Streaming is provided as an extension via the `openai-client-stream` module:
   `source.assembled` folds into `AssembledChatCompletion`. Two layers: the tool layer (`ToolCall*`/`ToolResult`, client and
   server tools alike) plus a semantic layer emitted in addition (`CodeExecution`/`CodeExecutionResult`, `WebSearch`/
   `WebSearchResult`, `Image`, `Refusal`, `Citation`); anything unmapped is `Other(kind, raw)`, never dropped.
+- **Provider-neutral tools** (1.3.0): `ChatCompletionTool.MCPServerTool` / `ChatCompletionTool.SkillTool` (openai-core
+  `domain/AssistantTool.scala`) go in `tools` next to `FunctionTool`. OpenAI: `ChatCompletionSettingsConversions.chatToolsRequireResponsesAPI(model, tools)`
+  routes any request carrying them through the Responses API (`OpenAIResponsesChatCompletionService.toResponsesTools`: `mcp`
+  tool, skills as ONE hosted `ShellTool(ContainerAuto(skills))` - `responsesapi/tools/ShellTool.scala`, `shell_call` items map to
+  server-side chunks); a chat-only service fails fast (`ChatCompletionBodyMaker.responsesOnlyToolsMessage`). Anthropic
+  (`toAnthropicToolRequest`): `mcp_servers` (custom headers refused) and `container.skills` + code execution tool (skill beta
+  headers now also sent on streams). Gemini (`toGeminiMcpServersTool`): one `mcpServers` tool, bearer -> Authorization header,
+  allowedTools warned; SkillTool refused. Vertex AI: both refused (`rejectUnsupportedTools`).
 - **Responses API streaming** (1.3.0): `OpenAIStreamedServiceExtra.createModelResponseStreamed(inputs, settings)` returns
   `Source[ResponseStreamEvent, NotUsed]` (`domain/responsesapi/ResponseStreamEvent.scala`, parsed on the JSON `type`;
   unknown events -> `UnknownEvent`) and `createModelResponseStreamedTyped` maps it via `ChatChunks.fromResponseEvents`.

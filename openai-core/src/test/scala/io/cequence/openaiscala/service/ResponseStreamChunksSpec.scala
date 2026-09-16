@@ -321,5 +321,30 @@ class ResponseStreamChunksSpec
 
       json.as[ResponseStreamEvent] shouldBe UnknownEvent("response.output_text.delta", json)
     }
+
+    "map the hosted shell (skills) call and its output to server-side chunks" in {
+      val out = run(
+        event(
+          """{"type":"response.output_item.added","sequence_number":1,"output_index":0,"item":{"id":"sh_1","type":"shell_call","status":"in_progress"}}"""
+        ),
+        event(
+          """{"type":"response.output_item.done","sequence_number":2,"output_index":0,"item":{"id":"sh_1","type":"shell_call","status":"completed","action":{"commands":["python build.py"]}}}"""
+        ),
+        event(
+          """{"type":"response.output_item.added","sequence_number":3,"output_index":1,"item":{"id":"sho_1","type":"shell_call_output","call_id":"sh_1"}}"""
+        ),
+        event(
+          """{"type":"response.output_item.done","sequence_number":4,"output_index":1,"item":{"id":"sho_1","type":"shell_call_output","call_id":"sh_1","output":{"stdout":"built\n","stderr":"","outcome":{"type":"exit","exit_code":0}}}}"""
+        )
+      )
+
+      out.collect { case c: ToolCallStart => (c.toolName, c.serverSide) } shouldBe
+        Seq(("shell", true))
+      out.collect { case c: ToolCall => (c.callId, c.arguments) } shouldBe
+        Seq(("sh_1", """{"commands":["python build.py"]}"""))
+      out.collect { case r: ToolResult => (r.callId, r.toolName, r.text, r.isError) } shouldBe
+        Seq(("sh_1", "shell", Some("built\n"), false))
+      out.collect { case o: Other => o.kind } shouldBe empty
+    }
   }
 }

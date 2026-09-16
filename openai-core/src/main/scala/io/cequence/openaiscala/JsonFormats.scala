@@ -380,6 +380,32 @@ object JsonFormats {
       _ match {
         case x: FunctionTool =>
           Json.obj("type" -> "function", "function" -> Json.toJson(x))
+
+        // the provider-neutral tools have no chat-completions wire shape (the adapters map
+        // them per provider) - a descriptive rendering for logging / interception
+        case x: ChatCompletionTool.MCPServerTool =>
+          Json.obj(
+            "type" -> "mcp_server",
+            "name" -> x.name,
+            "url" -> x.url,
+            "allowed_tools" -> x.allowedTools,
+            "description" -> x.description,
+            "timeout_ms" -> x.timeout.map(_.toMillis),
+            "require_approval" -> x.requireApproval,
+            "authorization" -> x.authorizationToken.map(_ => "***"),
+            "headers" -> x.headers.keys.toSeq
+          )
+
+        case x: ChatCompletionTool.SkillTool =>
+          Json.obj(
+            "type" -> "skill",
+            "skill_id" -> x.skillId,
+            "version" -> x.version,
+            "source" -> (x.source match {
+              case ChatCompletionTool.SkillSource.Provider => "provider"
+              case ChatCompletionTool.SkillSource.Custom   => "custom"
+            })
+          )
       }
     }
 

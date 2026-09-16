@@ -14,7 +14,15 @@ import io.cequence.openaiscala.anthropic.domain.response.{
   CreateMessageResponse,
   MessageStreamEvent
 }
-import io.cequence.openaiscala.anthropic.domain.tools.CustomTool
+import io.cequence.openaiscala.anthropic.domain.skills.{Container, SkillParams, SkillSource}
+import io.cequence.openaiscala.anthropic.domain.tools.{
+  CodeExecutionTool,
+  CustomTool,
+  MCPServerURLDefinition,
+  MCPToolConfiguration,
+  Tool
+}
+import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicCreateMessageSettings,
@@ -405,9 +413,15 @@ private[service] class OpenAIAnthropicChatCompletionService(
     round(messages, 0, 0, None)
   }
 
-  // OpenAI function tools -> Anthropic custom tools (+ Anthropic-native tools from
-  // extra_params), tool choice with its forced-tool fallback, and the converted messages
-  private def toAnthropicToolRequest(
+  /**
+   * OpenAI function tools -> Anthropic custom tools (+ Anthropic-native tools from
+   * extra_params), the provider-neutral tools -> the MCP connector (`mcp_servers`; a
+   * [[ChatCompletionTool.MCPServerTool]] with custom `headers` is refused, the connector takes
+   * a bearer token only) and the skills container (`container.skills`, with the code execution
+   * tool added when missing - skills run there), tool choice with its forced-tool fallback,
+   * and the converted messages.
+   */
+  private[impl] def toAnthropicToolRequest(
     messages: Seq[BaseMessage],
     tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String],
@@ -420,7 +434,45 @@ private[service] class OpenAIAnthropicChatCompletionService(
         description = ft.description
       )
     }
-    val allTools = functionTools ++ settings.anthropicTools
+
+    val mcpServers = tools.collect { case mcp: ChatCompletionTool.MCPServerTool =>
+      if (mcp.headers.nonEmpty)
+        throw new OpenAIScalaClientException(
+          s"Anthropic's MCP connector sends a bearer token only - MCPServerTool '${mcp.name}' " +
+            s"carries custom headers (${mcp.headers.keys.mkString(", ")}) it cannot deliver."
+        )
+      MCPServerURLDefinition(
+        name = mcp.name,
+        url = mcp.url,
+        authorizationToken = mcp.authorizationToken,
+        toolConfiguration =
+          if (mcp.allowedTools.nonEmpty)
+            Some(MCPToolConfiguration(allowedTools = mcp.allowedTools, enabled = Some(true)))
+          else None
+      )
+    }
+
+    val skills = tools.collect { case skill: ChatCompletionTool.SkillTool =>
+      SkillParams(
+        skillId = skill.skillId,
+        `type` = skill.source match {
+          case ChatCompletionTool.SkillSource.Provider => SkillSource.anthropic
+          case ChatCompletionTool.SkillSource.Custom   => SkillSource.custom
+        },
+        version = skill.version
+      )
+    }
+    val container =
+      if (skills.nonEmpty) Some(Container(skills = skills)) else None
+
+    val nativeTools = settings.anthropicTools
+    // skills run in the code execution container
+    val codeExecutionForSkills =
+      if (skills.nonEmpty && !nativeTools.exists(_.isInstanceOf[CodeExecutionTool]))
+        Seq(Tool.codeExecution())
+      else Nil
+
+    val allTools = functionTools ++ nativeTools ++ codeExecutionForSkills
 
     if (allTools.isEmpty && responseToolChoice.isDefined)
       logger.warn(
@@ -438,9 +490,12 @@ private[service] class OpenAIAnthropicChatCompletionService(
       } else
         (None, Nil)
 
-    val anthropicSettings = toAnthropicSettings(settings).copy(
+    val baseSettings = toAnthropicSettings(settings)
+    val anthropicSettings = baseSettings.copy(
       tools = allTools,
-      tool_choice = anthropicToolChoice
+      tool_choice = anthropicToolChoice,
+      mcp_servers = baseSettings.mcp_servers ++ mcpServers,
+      container = container.orElse(baseSettings.container)
     )
 
     val anthropicMessages =

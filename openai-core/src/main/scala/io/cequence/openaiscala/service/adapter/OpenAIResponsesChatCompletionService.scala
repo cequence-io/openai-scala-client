@@ -19,9 +19,17 @@ import io.cequence.openaiscala.domain.responsesapi.tools.{
   FunctionToolCall,
   FunctionToolCallOutput,
   FunctionToolOutput,
+  ShellEnvironment,
+  ShellSkill,
+  ShellTool,
   Tool,
   ToolChoice,
   FunctionTool => ResponsesFunctionTool
+}
+import io.cequence.openaiscala.domain.responsesapi.tools.mcp.{
+  MCPAllowedTools,
+  MCPRequireApproval,
+  MCPTool
 }
 import io.cequence.openaiscala.service.{
   ChatChunks,
@@ -106,18 +114,7 @@ private[service] class OpenAIResponsesChatCompletionService(
   ): (Seq[Input], CreateModelResponseSettings) = {
     val (instructions, items) = convertMessages(messages)
 
-    val responsesTools = tools.collect { case ft: AssistantTool.FunctionTool =>
-      ResponsesFunctionTool(
-        ft.name,
-        ft.parameters,
-        ft.strict.getOrElse(false),
-        ft.description
-      )
-    }
-
-    // Responses-native tools (web search, code interpreter, file search, MCP, ...) from
-    // settings.setResponsesTools(...) ride along with the function tools
-    val allTools = responsesTools ++ settings.responsesTools
+    val allTools = OpenAIResponsesChatCompletionService.toResponsesTools(tools, settings)
 
     // an explicit forced choice is always sent (without tools the API rejects it loudly rather
     // than the choice being dropped silently); 'auto' only when there are tools to choose from
@@ -466,6 +463,54 @@ private[service] class OpenAIResponsesChatCompletionService(
 }
 
 object OpenAIResponsesChatCompletionService {
+
+  /**
+   * The Responses tools of a chat-completion request: function tools as `function`, the
+   * provider-neutral [[ChatCompletionTool.MCPServerTool]]s as `mcp` tools (approval never
+   * required unless asked for - the chat shape cannot answer an approval request) and the
+   * [[ChatCompletionTool.SkillTool]]s as ONE hosted `shell` tool with the skills loaded into
+   * its `container_auto` environment, plus the Responses-native tools from
+   * `settings.setResponsesTools(...)` (web search, code interpreter, file search, MCP, ...).
+   */
+  private[openaiscala] def toResponsesTools(
+    tools: Seq[ChatCompletionTool],
+    settings: CreateChatCompletionSettings
+  ): Seq[Tool] = {
+    val functionTools = tools.collect { case ft: AssistantTool.FunctionTool =>
+      ResponsesFunctionTool(
+        ft.name,
+        ft.parameters,
+        ft.strict.getOrElse(false),
+        ft.description
+      )
+    }
+
+    val mcpTools = tools.collect { case mcp: ChatCompletionTool.MCPServerTool =>
+      MCPTool(
+        serverLabel = mcp.name,
+        serverUrl = Some(mcp.url),
+        authorization = mcp.authorizationToken,
+        headers = if (mcp.headers.nonEmpty) Some(mcp.headers) else None,
+        allowedTools =
+          if (mcp.allowedTools.nonEmpty) Some(MCPAllowedTools.ToolNames(mcp.allowedTools))
+          else None,
+        requireApproval = Some(
+          if (mcp.requireApproval) MCPRequireApproval.Setting.Always
+          else MCPRequireApproval.Setting.Never
+        ),
+        serverDescription = mcp.description
+      )
+    }
+
+    val skills = tools.collect { case skill: ChatCompletionTool.SkillTool =>
+      ShellSkill.Reference(skill.skillId, skill.version)
+    }
+    val shellTool =
+      if (skills.nonEmpty) Seq(ShellTool(ShellEnvironment.ContainerAuto(skills = skills)))
+      else Nil
+
+    functionTools ++ mcpTools ++ shellTool ++ settings.responsesTools
+  }
 
   def apply(
     underlying: OpenAIResponsesService with CloseableService

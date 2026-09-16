@@ -42,8 +42,12 @@ trait OpenAIChatCompletionService extends OpenAIServiceConsts with CloseableServ
    * @param messages
    *   A list of messages comprising the conversation so far.
    * @param tools
-   *   A list of tools the model may call. Currently, only functions are supported as a tool.
-   *   Use this to provide a list of functions the model may generate JSON inputs for.
+   *   A list of tools the model may call: function tools the caller executes
+   *   ([[io.cequence.openaiscala.domain.AssistantTool.FunctionTool]]), and the
+   *   provider-neutral [[io.cequence.openaiscala.domain.ChatCompletionTool.MCPServerTool]] /
+   *   [[io.cequence.openaiscala.domain.ChatCompletionTool.SkillTool]] the PROVIDER runs itself
+   *   (each adapter maps them onto its native feature or fails loudly; on OpenAI they route
+   *   the call through the Responses API).
    * @param responseToolChoice
    *   Controls which (if any) function/tool is called by the model. Specifying a particular
    *   function forces the model to call that function (must be listed in `tools`). Otherwise,

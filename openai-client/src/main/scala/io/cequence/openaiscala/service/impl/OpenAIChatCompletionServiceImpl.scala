@@ -61,7 +61,7 @@ private[service] trait OpenAIChatCompletionServiceImpl
     responseToolChoice: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatToolCompletion
   ): Future[ChatToolCompletionResponse] =
-    if (tools.nonEmpty && chatToolsRequireResponsesAPI(settings.model))
+    if (tools.nonEmpty && chatToolsRequireResponsesAPI(settings.model, tools))
       responsesBackedChatCompletionService match {
         case Some(service) =>
           logger.debug(
@@ -72,8 +72,8 @@ private[service] trait OpenAIChatCompletionServiceImpl
         case None =>
           Future.failed(
             new OpenAIScalaClientException(
-              s"${settings.model} model doesn't support function tools on the chat completions API (OpenAI: 'To use function tools, use /v1/responses'). " +
-                "Use the full OpenAIService (OpenAIServiceFactory), which routes tool completions through the Responses API automatically, " +
+              ChatCompletionBodyMaker.responsesOnlyToolsMessage(settings.model, tools) +
+                " Use the full OpenAIService (OpenAIServiceFactory), which routes such tool completions through the Responses API automatically, " +
                 "or wrap a Responses-capable service in OpenAIResponsesChatCompletionService."
             )
           )
@@ -145,6 +145,12 @@ trait ChatCompletionBodyMaker {
   protected def chatToolsRequireResponsesAPI(model: String): Boolean =
     ChatCompletionSettingsConversions.chatToolsRequireResponsesAPI(model)
 
+  protected def chatToolsRequireResponsesAPI(
+    model: String,
+    tools: Seq[ChatCompletionTool]
+  ): Boolean =
+    ChatCompletionSettingsConversions.chatToolsRequireResponsesAPI(model, tools)
+
   protected def settingsForChatToolCompletion(
     settings: CreateChatCompletionSettings
   ): CreateChatCompletionSettings = {
@@ -167,6 +173,11 @@ trait ChatCompletionBodyMaker {
     val toolJsons: Seq[Map[String, Object]] = tools.map {
       case tool: AssistantTool.FunctionTool =>
         Map("type" -> "function", "function" -> Json.toJson(tool))
+      case other =>
+        // MCPServerTool / SkillTool: Responses API only - never silently dropped
+        throw new OpenAIScalaClientException(
+          ChatCompletionBodyMaker.responsesOnlyToolsMessage("this", Seq(other))
+        )
     }
 
     JsonUtil.jsonBodyParams(
@@ -338,4 +349,22 @@ trait ChatCompletionBodyMaker {
       // TODO: is it legal?
       Map("type" -> "json_schema")
     )
+}
+
+object ChatCompletionBodyMaker {
+
+  /** Why a tool list cannot go to the chat completions API. */
+  def responsesOnlyToolsMessage(
+    model: String,
+    tools: Seq[ChatCompletionTool]
+  ): String = {
+    val neutral = tools.collect {
+      case t: ChatCompletionTool.MCPServerTool => s"MCPServerTool(${t.name})"
+      case t: ChatCompletionTool.SkillTool     => s"SkillTool(${t.skillId})"
+    }
+    if (neutral.nonEmpty)
+      s"${neutral.mkString(", ")} exist on OpenAI only as Responses API tools (mcp / hosted shell), which the chat completions API doesn't have."
+    else
+      s"$model model doesn't support function tools on the chat completions API (OpenAI: 'To use function tools, use /v1/responses')."
+  }
 }

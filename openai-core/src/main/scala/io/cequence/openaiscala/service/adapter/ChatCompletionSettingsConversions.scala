@@ -1,5 +1,7 @@
 package io.cequence.openaiscala.service.adapter
 
+import io.cequence.openaiscala.domain.{AssistantTool, ChatCompletionTool}
+
 import io.cequence.openaiscala.domain.NonOpenAIModelId
 import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
@@ -19,6 +21,21 @@ object ChatCompletionSettingsConversions {
    */
   def chatToolsRequireResponsesAPI(model: String): Boolean =
     canonicalOpenAIModel(model).startsWith("gpt-6")
+
+  /**
+   * [[chatToolsRequireResponsesAPI]] for a concrete tool list: besides the model rule, the
+   * provider-neutral [[io.cequence.openaiscala.domain.ChatCompletionTool.MCPServerTool]] and
+   * [[io.cequence.openaiscala.domain.ChatCompletionTool.SkillTool]] exist on OpenAI only as
+   * Responses API tools (`mcp`, the hosted `shell`), whatever the model.
+   */
+  def chatToolsRequireResponsesAPI(
+    model: String,
+    tools: Seq[ChatCompletionTool]
+  ): Boolean =
+    chatToolsRequireResponsesAPI(model) || tools.exists {
+      case _: AssistantTool.FunctionTool => false
+      case _                             => true
+    }
 
   // Amazon Bedrock serves OpenAI models under a provider prefix, optionally behind a
   // cross-region inference profile: `openai.gpt-5.6-luna`, `us.openai.gpt-6-astra`,

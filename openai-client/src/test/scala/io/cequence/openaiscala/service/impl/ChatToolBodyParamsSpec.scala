@@ -2,7 +2,8 @@ package io.cequence.openaiscala.service.impl
 
 import io.cequence.openaiscala.JsonFormats.chatCompletionToolFormat
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
-import io.cequence.openaiscala.domain.JsonSchema
+import io.cequence.openaiscala.OpenAIScalaClientException
+import io.cequence.openaiscala.domain.{ChatCompletionTool, JsonSchema}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -16,7 +17,7 @@ class ChatToolBodyParamsSpec extends AnyWordSpec with Matchers {
 
   private object maker extends ChatCompletionBodyMaker {
     def toolParams(
-      tools: Seq[FunctionTool],
+      tools: Seq[ChatCompletionTool],
       choice: Option[String]
     ): Map[String, JsValue] =
       createToolBodyParams(tools, choice).collect { case (param, Some(json)) =>
@@ -51,6 +52,23 @@ class ChatToolBodyParamsSpec extends AnyWordSpec with Matchers {
 
     "omit tool_choice when no tool is forced" in {
       maker.toolParams(Seq(weather), None).keySet shouldBe Set("tools")
+    }
+
+    "refuse the provider-neutral tools, which the chat completions API cannot carry" in {
+      val e = the[OpenAIScalaClientException] thrownBy maker.toolParams(
+        Seq(
+          weather,
+          ChatCompletionTool.MCPServerTool("deepwiki", "https://mcp.deepwiki.com/mcp")
+        ),
+        None
+      )
+      e.getMessage should include("MCPServerTool(deepwiki)")
+      e.getMessage should include("Responses API")
+
+      (the[OpenAIScalaClientException] thrownBy maker.toolParams(
+        Seq(ChatCompletionTool.SkillTool("pptx")),
+        None
+      )).getMessage should include("SkillTool(pptx)")
     }
   }
 

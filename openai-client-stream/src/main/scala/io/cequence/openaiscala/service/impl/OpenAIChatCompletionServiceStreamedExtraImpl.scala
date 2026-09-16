@@ -44,11 +44,11 @@ private[service] trait OpenAIChatCompletionServiceStreamedExtraImpl
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
   ): Source[ChatChunk, NotUsed] =
-    if (tools.nonEmpty && chatToolsRequireResponsesAPI(settings.model))
+    if (tools.nonEmpty && chatToolsRequireResponsesAPI(settings.model, tools))
       Source.failed(
         new OpenAIScalaClientException(
-          s"${settings.model} model doesn't support function tools on the chat completions API (OpenAI: 'To use function tools, use /v1/responses'). " +
-            "Use the full streamed OpenAIService (OpenAIServiceFactory.withStreaming()), which routes typed tool streams through the Responses API automatically, " +
+          ChatCompletionBodyMaker.responsesOnlyToolsMessage(settings.model, tools) +
+            " Use the full streamed OpenAIService (OpenAIServiceFactory.withStreaming()), which routes such typed tool streams through the Responses API automatically, " +
             "or wrap a Responses-capable streamed service in OpenAIResponsesChatCompletionService."
         )
       )

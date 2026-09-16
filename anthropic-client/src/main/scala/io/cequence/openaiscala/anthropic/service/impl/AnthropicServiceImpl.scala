@@ -131,7 +131,9 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
         EndPoint.messages.toString(),
         "POST",
         bodyParams = stringParams,
-        extraHeaders = messageBetaHeaders,
+        // message-feature betas + skill headers if a container (with skills) is passed
+        extraHeaders =
+          messageBetaHeaders ++ (if (settings.container.isDefined) skillHeaders else Nil),
         maxFrameLength = Some(messageStreamMaxFrameLength)
       )
       .map(parseStreamEvent)

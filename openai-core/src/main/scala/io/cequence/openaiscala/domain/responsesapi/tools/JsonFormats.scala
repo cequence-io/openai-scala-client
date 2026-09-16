@@ -295,6 +295,88 @@ object JsonFormats {
   private implicit lazy val customToolFormat: OFormat[CustomTool] =
     Json.format[CustomTool]
 
+  // hosted shell tool: {"type": "shell", "environment": {"type": "container_auto", "skills":
+  // [{"type": "skill_reference", "skill_id": ..., "version": 2 | "latest"} | {"type": "inline",
+  // "name": ..., "description": ..., "source": {"type": "base64", "media_type":
+  // "application/zip", "data": ...}}], "file_ids": [...]}} or {"type": "container", "id": ...}
+  private lazy val shellSkillFormat: Format[ShellSkill] = Format(
+    Reads { json =>
+      (json \ "type").validate[String].flatMap {
+        case "skill_reference" =>
+          for {
+            skillId <- (json \ "skill_id").validate[String]
+            version <- (json \ "version")
+              .validateOpt[JsValue]
+              .map(_.map {
+                case JsString(v) => v
+                case other       => other.toString
+              })
+          } yield ShellSkill.Reference(skillId, version)
+        case "inline" =>
+          for {
+            name <- (json \ "name").validate[String]
+            description <- (json \ "description").validate[String]
+            data <- (json \ "source" \ "data").validate[String]
+          } yield ShellSkill.Inline(name, description, data)
+        case other => JsError(s"Unsupported shell skill type: $other")
+      }
+    },
+    Writes[ShellSkill] {
+      case ShellSkill.Reference(skillId, version) =>
+        Json.obj("type" -> "skill_reference", "skill_id" -> skillId) ++
+          version.fold(Json.obj()) { v =>
+            Json.obj(
+              "version" -> scala.util.Try(v.trim.toInt).fold(_ => JsString(v), JsNumber(_))
+            )
+          }
+      case ShellSkill.Inline(name, description, base64Zip) =>
+        Json.obj(
+          "type" -> "inline",
+          "name" -> name,
+          "description" -> description,
+          "source" -> Json
+            .obj("type" -> "base64", "media_type" -> "application/zip", "data" -> base64Zip)
+        )
+    }
+  )
+
+  private lazy val shellEnvironmentFormat: Format[ShellEnvironment] = Format(
+    Reads { json =>
+      (json \ "type").validate[String].flatMap {
+        case "container_auto" =>
+          for {
+            skills <- (json \ "skills")
+              .validateOpt[Seq[ShellSkill]](Reads.seq(shellSkillFormat))
+            fileIds <- (json \ "file_ids").validateOpt[Seq[String]]
+          } yield ShellEnvironment.ContainerAuto(skills.getOrElse(Nil), fileIds.getOrElse(Nil))
+        case "container" =>
+          (json \ "id").validate[String].map(ShellEnvironment.ContainerId(_))
+        case other => JsError(s"Unsupported shell environment type: $other")
+      }
+    },
+    Writes[ShellEnvironment] {
+      case ShellEnvironment.ContainerAuto(skills, fileIds) =>
+        Json.obj("type" -> "container_auto") ++
+          (if (skills.nonEmpty)
+             Json.obj("skills" -> skills.map(Json.toJson(_)(shellSkillFormat)))
+           else Json.obj()) ++
+          (if (fileIds.nonEmpty) Json.obj("file_ids" -> fileIds) else Json.obj())
+      case ShellEnvironment.ContainerId(id) =>
+        Json.obj("type" -> "container", "id" -> id)
+    }
+  )
+
+  private lazy val shellToolFormat: OFormat[ShellTool] = OFormat(
+    Reads { json =>
+      (json \ "environment")
+        .validateOpt[ShellEnvironment](shellEnvironmentFormat)
+        .map(env => ShellTool(env.getOrElse(ShellEnvironment.ContainerAuto())))
+    },
+    OWrites[ShellTool](tool =>
+      Json.obj("environment" -> Json.toJson(tool.environment)(shellEnvironmentFormat))
+    )
+  )
+
   private lazy val toolReads: Reads[Tool] = Reads { json =>
     (json \ "type").validate[String].flatMap {
       case "function"                      => functionToolFormat.reads(json)
@@ -304,6 +386,7 @@ object JsonFormats {
       case "code_interpreter"              => codeInterpreterToolFormat.reads(json)
       case "image_generation"              => imageGenerationToolFormat.reads(json)
       case "local_shell"                   => localShellToolFormat.reads(json)
+      case "shell"                         => shellToolFormat.reads(json)
       case "custom"                        => customToolFormat.reads(json)
       case "mcp"                           => mcpServerToolFormat.reads(json)
 
@@ -319,6 +402,7 @@ object JsonFormats {
     case t: CodeInterpreterTool => codeInterpreterToolFormat.writes(t)
     case t: ImageGenerationTool => imageGenerationToolFormat.writes(t)
     case LocalShellTool         => localShellToolFormat.writes(LocalShellTool)
+    case t: ShellTool           => shellToolFormat.writes(t)
     case t: CustomTool          => customToolFormat.writes(t)
     case t: MCPTool             => mcpServerToolFormat.writes(t)
   }

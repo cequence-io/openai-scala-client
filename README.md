@@ -450,6 +450,32 @@ or only if streaming is required
   on the same `Source` - one `Start`, one final `Finish`, one summed `Usage`; `setAnthropicMaxContinuations` caps it (default 6). See
   [AnthropicCreateChatToolCompletionStreamedWithMCPServers](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/anthropic/AnthropicCreateChatToolCompletionStreamedWithMCPServers.scala).
   (Anthropic API only - Bedrock rejects `mcp_servers`.)
+
+  **Provider-neutral MCP servers and skills** (🔥 New) - instead of the provider-specific settings above, pass
+  `ChatCompletionTool.MCPServerTool` / `ChatCompletionTool.SkillTool` in `tools` next to your function tools, on
+  `createChatToolCompletion` and `createChatToolCompletionStreamed` alike; each adapter maps them onto its native feature or
+  fails loudly rather than dropping them:
+
+  | | OpenAI | Anthropic | Gemini | Vertex AI |
+  |---|---|---|---|---|
+  | `MCPServerTool(name, url, authorizationToken, headers, allowedTools, description, timeout, requireApproval)` | Responses `mcp` tool (the request is routed through the Responses API on any model; approval never required unless asked) | MCP connector `mcp_servers` (bearer token + allowed tools; custom `headers` are refused) | `mcpServers` (bearer as an `Authorization` header, `timeout`; `allowedTools` warned and ignored) | refused |
+  | `SkillTool(skillId, version, source)` | hosted `shell` tool, `container_auto` environment with `skill_reference`s (GPT-6) | `container.skills` (`Provider` = Anthropic's built-in skills, `Custom` = uploaded; the code execution tool is added) | refused | refused |
+
+```scala
+  import io.cequence.openaiscala.domain.ChatCompletionTool.{MCPServerTool, SkillTool, SkillSource}
+
+  service.createChatToolCompletionStreamed(
+    messages = Seq(UserMessage("What is the 'given' keyword for in Scala 3? Check scala/scala3.")),
+    tools = Seq(
+      MCPServerTool("deepwiki", "https://mcp.deepwiki.com/mcp"),          // the provider calls it
+      SkillTool("pptx", version = Some("latest"), source = SkillSource.Provider) // Anthropic's built-in skill
+    ),
+    settings = CreateChatCompletionSettings(NonOpenAIModelId.claude_sonnet_5)
+  )
+```
+  See [CreateChatToolCompletionStreamedWithMCPServerTool](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/CreateChatToolCompletionStreamedWithMCPServerTool.scala)
+  (one DeepWiki server on OpenAI, Anthropic and Gemini) and
+  [AnthropicCreateChatToolCompletionWithSkillTool](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/anthropic/skills/AnthropicCreateChatToolCompletionWithSkillTool.scala).
   Gemini's native MCP (`setGeminiTools(Seq(Tool.McpServers(...)))`, live-verified 2026-09-16 with Exa, the GitHub Copilot MCP and
   DeepWiki, alone and several per request, authenticated with `x-api-key` or `Authorization: Bearer` transport headers alike): Gemini
   runs the tools itself; Gemini 2.5 streams each call as a server-side `ToolCall` (named `<server>_<tool>`, at times by the bare tool

@@ -147,6 +147,8 @@ private[service] class OpenAIVertexAIChatCompletionService(
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
   ): CreateChatCompletionSettings = {
+    OpenAIVertexAIChatCompletionService.rejectUnsupportedTools(tools)
+
     val functionDeclarations = tools.collect { case ft: FunctionTool =>
       VertexAIFunctionDeclaration(
         name = ft.name,
@@ -676,4 +678,23 @@ private[service] class OpenAIVertexAIChatCompletionService(
     underlying.close()
     batchSupport.foreach(_.batchService.close())
   }
+}
+
+object OpenAIVertexAIChatCompletionService {
+
+  /**
+   * The Vertex AI SDK's `Tool` knows function declarations, Google Search and code execution
+   * only - a provider-neutral MCPServerTool / SkillTool cannot be sent and is refused rather
+   * than dropped.
+   */
+  private[impl] def rejectUnsupportedTools(tools: Seq[ChatCompletionTool]): Unit =
+    tools.collectFirst {
+      case t: ChatCompletionTool.MCPServerTool => s"MCPServerTool '${t.name}'"
+      case t: ChatCompletionTool.SkillTool     => s"SkillTool '${t.skillId}'"
+    }.foreach { unsupported =>
+      throw new OpenAIScalaClientException(
+        s"Vertex AI has no remote MCP servers or agent skills on generateContent - $unsupported cannot be sent " +
+          "(use the Gemini API adapter for MCP servers, Anthropic or OpenAI for skills)."
+      )
+    }
 }

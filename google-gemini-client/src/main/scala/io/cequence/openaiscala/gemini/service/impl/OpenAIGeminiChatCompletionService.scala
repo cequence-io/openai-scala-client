@@ -88,7 +88,12 @@ import io.cequence.openaiscala.domain.response.{
   ChatToolCompletionChoiceInfo,
   ChatToolCompletionResponse
 }
-import io.cequence.openaiscala.gemini.domain.{FunctionDeclaration, Tool => GeminiTool}
+import io.cequence.openaiscala.gemini.domain.{
+  FunctionDeclaration,
+  McpServer,
+  StreamableHttpTransport,
+  Tool => GeminiTool
+}
 import io.cequence.openaiscala.gemini.domain.Schema
 import io.cequence.wsclient.JsonUtil
 import com.typesafe.scalalogging.Logger
@@ -357,9 +362,48 @@ private[impl] object OpenAIGeminiChatCompletionService {
       serverNames = settings.getGeminiTools.getOrElse(Nil).flatMap {
         case GeminiTool.McpServers(servers) => servers.map(_.name)
         case _                              => Nil
-      },
+      } ++ tools.collect { case mcp: ChatCompletionTool.MCPServerTool => mcp.name },
       clientToolNames = tools.collect { case ft: FunctionTool => ft.name }.toSet
     )
+
+  /**
+   * The provider-neutral [[ChatCompletionTool.MCPServerTool]]s as ONE Gemini `mcpServers`
+   * tool: the bearer token becomes an `Authorization` header (Gemini has no dedicated field),
+   * the timeout its duration string; `allowedTools` cannot be expressed - warned about, all of
+   * the server's tools are offered. A [[ChatCompletionTool.SkillTool]] is refused: Gemini has
+   * no skills.
+   */
+  private[impl] def toGeminiMcpServersTool(
+    tools: Seq[ChatCompletionTool]
+  ): Option[GeminiTool.McpServers] = {
+    tools.collect { case skill: ChatCompletionTool.SkillTool => skill }.headOption.foreach {
+      skill =>
+        throw new OpenAIScalaClientException(
+          s"Gemini has no agent skills - SkillTool '${skill.skillId}' cannot be sent. " +
+            "Skills are supported by the Anthropic and OpenAI (Responses API) adapters."
+        )
+    }
+
+    val servers = tools.collect { case mcp: ChatCompletionTool.MCPServerTool =>
+      if (mcp.allowedTools.nonEmpty)
+        logger.warn(
+          "Gemini's mcpServers tool cannot restrict a server's tools - offering all tools of " +
+            s"MCPServerTool '${mcp.name}' (allowedTools ${mcp.allowedTools.mkString(", ")} ignored)."
+        )
+      val authHeader = mcp.authorizationToken.map(token => "Authorization" -> s"Bearer $token")
+      val headers = mcp.headers ++ authHeader
+      McpServer(
+        name = mcp.name,
+        streamableHttpTransport = StreamableHttpTransport(
+          url = mcp.url,
+          headers = if (headers.nonEmpty) Some(headers) else None,
+          timeout = mcp.timeout.map(t => s"${t.toSeconds}s")
+        )
+      )
+    }
+
+    if (servers.nonEmpty) Some(GeminiTool.McpServers(servers)) else None
+  }
 
   /**
    * The text of an MCP `functionResponse` and whether the tool reported an error: Gemini wraps
@@ -1338,7 +1382,8 @@ private[service] class OpenAIGeminiChatCompletionService(
     val allTools =
       (if (functionDeclarations.nonEmpty)
          Seq(GeminiTool.FunctionDeclarations(functionDeclarations))
-       else Nil) ++ settings.getGeminiTools.getOrElse(Nil)
+       else Nil) ++ settings.getGeminiTools.getOrElse(Nil) ++
+        OpenAIGeminiChatCompletionService.toGeminiMcpServersTool(tools).toSeq
 
     val toolConfig = responseToolChoice.map { name =>
       ToolConfig.FunctionCallingConfig(

@@ -20,7 +20,7 @@ import io.cequence.openaiscala.domain.responsesapi.{
   ResponseStreamEvent,
   UsageInfo => ResponsesUsageInfo
 }
-import play.api.libs.json.{JsNull, JsObject, JsValue, Json}
+import play.api.libs.json.{JsNull, JsObject, JsString, JsValue, Json}
 
 import java.{util => ju}
 import scala.collection.mutable
@@ -267,6 +267,10 @@ object ChatChunks {
                   "local_shell",
                   serverSide = false
                 )
+              // the hosted shell (skills) runs in the provider's container
+              case "shell_call" =>
+                register(itemId, itemId, "shell", serverSide = true)
+              case "shell_call_output" => Nil
               case "web_search_call" =>
                 register(itemId, itemId, "web_search", serverSide = true)
               case "code_interpreter_call" =>
@@ -377,6 +381,23 @@ object ChatChunks {
                        )
                      )
                    else Nil)
+              case "shell_call" =>
+                complete(
+                  itemId,
+                  outputIndex,
+                  (item \ "action").toOption.map(_.toString).orElse(Some("{}"))
+                )
+              case "shell_call_output" =>
+                val callId = (item \ "call_id").asOpt[String].getOrElse(itemId)
+                val output = (item \ "output").toOption.filterNot(_ == JsNull)
+                val text = output.flatMap {
+                  case JsString(t) => Some(t)
+                  case other =>
+                    (other \ "stdout").asOpt[String].orElse(Some(other.toString))
+                }
+                List(
+                  ToolResult(callId, "shell", output.getOrElse(raw), text, isError = false)
+                )
               case "file_search_call" =>
                 val queries = (item \ "queries").asOpt[Seq[String]].getOrElse(Nil)
                 val results = (item \ "results").toOption.filterNot(_ == JsNull)

@@ -371,7 +371,8 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
     ): Source[ResponseStreamEvent, NotUsed] =
       streamedServiceExtra.createModelResponseStreamed(inputs, settings)
 
-    // GPT-6 accepts function tools only on the Responses API: when the merged service is a full
+    // GPT-6 accepts function tools only on the Responses API, and the provider-neutral
+    // MCPServerTool / SkillTool exist there only: when the merged service is a full
     // OpenAIService, route the typed tool stream through the Responses-backed adapter (which
     // streams via this service's createModelResponseStreamed)
     override def createChatToolCompletionStreamed(
@@ -383,7 +384,10 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
       this match {
         case full: OpenAIResponsesService with CloseableService
             if tools.nonEmpty &&
-              ChatCompletionSettingsConversions.chatToolsRequireResponsesAPI(settings.model) =>
+              ChatCompletionSettingsConversions.chatToolsRequireResponsesAPI(
+                settings.model,
+                tools
+              ) =>
           // the adapter's Future-based (non-streamed) methods are never used on this path
           OpenAIResponsesChatCompletionService(full)(ExecutionContext.global)
             .createChatToolCompletionStreamed(messages, tools, responseToolChoice, settings)

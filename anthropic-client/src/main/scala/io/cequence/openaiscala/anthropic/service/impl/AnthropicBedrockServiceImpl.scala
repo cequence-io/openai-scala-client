@@ -172,6 +172,8 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
       jsBodyObject
     )
 
+    val extraSkillsHeaders = if (settings.container.isDefined) skillHeaders else Nil
+
     engine
       .execRawStream(
         site,
@@ -180,7 +182,7 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
         endPointParam = None,
         params = Nil,
         bodyParams = stringParams,
-        extraHeaders = extraHeaders
+        extraHeaders = extraHeaders ++ extraSkillsHeaders
       )
       .via(
         Framing.delimiter(
