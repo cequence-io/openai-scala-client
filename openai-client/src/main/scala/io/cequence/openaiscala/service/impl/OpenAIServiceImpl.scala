@@ -9,7 +9,12 @@ import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
-import io.cequence.openaiscala.service.{HandleOpenAIErrorCodes, OpenAIService}
+import io.cequence.openaiscala.service.adapter.OpenAIResponsesChatCompletionService
+import io.cequence.openaiscala.service.{
+  HandleOpenAIErrorCodes,
+  OpenAIChatCompletionService,
+  OpenAIService
+}
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits._
 import io.cequence.wsclient.StreamResponseImplicits.StreamSafeOps
@@ -34,6 +39,12 @@ private[service] trait OpenAIServiceImpl
     with OpenAIGraderServiceImpl
     with OpenAIService
     with HandleOpenAIErrorCodes { // TODO: should HandleOpenAIErrorCodes be here?
+
+  // this service serves the Responses API too, so tool completions the chat completions API
+  // cannot carry go through it (see OpenAIChatCompletionServiceImpl.createChatToolCompletion)
+  override protected lazy val responsesBackedChatCompletion
+    : Option[OpenAIChatCompletionService] =
+    Some(OpenAIResponsesChatCompletionService(this)(ec))
 
   override def retrieveModel(
     modelId: String

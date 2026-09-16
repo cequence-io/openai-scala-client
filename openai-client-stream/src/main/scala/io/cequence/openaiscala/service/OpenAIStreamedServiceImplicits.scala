@@ -216,7 +216,7 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
       new OpenAIStreamedServiceWrapper(
         service,
         streamedExtra
-      ) with HasOpenAICoreStreamedExtra
+      ) with HasOpenAIFullStreamedExtra
   }
 
   implicit class ChatCompletionStreamFullExt(
@@ -299,7 +299,7 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
           OpenAIStreamedServiceFactory.customEngineInstance(engine, coreUrl, requestContext)
 
         new OpenAIStreamedServiceWrapper(service, streamedExtra, alsoClose)
-          with HasOpenAICoreStreamedExtra
+          with HasOpenAIFullStreamedExtra
       }
     }
   }
@@ -371,26 +371,36 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
     ): Source[ResponseStreamEvent, NotUsed] =
       streamedServiceExtra.createModelResponseStreamed(inputs, settings)
 
-    // GPT-6 accepts function tools only on the Responses API, and the provider-neutral
-    // MCPServerTool / SkillTool exist there only: when the merged service is a full
-    // OpenAIService, route the typed tool stream through the Responses-backed adapter (which
-    // streams via this service's createModelResponseStreamed)
+    /**
+     * The Responses-backed typed tool stream of this service, when it also serves the
+     * Responses API (the full streamed `OpenAIService` overrides this): tool streams the chat
+     * completions API cannot carry - GPT-6 function tools, the provider-neutral MCPServerTool
+     * / SkillTool - go through it. `None` (the default) leaves them to the chat completions
+     * stream, which fails fast on them.
+     */
+    protected def responsesBackedTypedToolStream
+      : Option[OpenAIChatCompletionStreamedServiceExtra] =
+      None
+
     override def createChatToolCompletionStreamed(
       messages: Seq[BaseMessage],
       tools: Seq[ChatCompletionTool],
       responseToolChoice: Option[String],
       settings: CreateChatCompletionSettings
     ): Source[ChatChunk, NotUsed] =
-      this match {
-        case full: OpenAIResponsesService with CloseableService
+      responsesBackedTypedToolStream match {
+        case Some(responsesBacked)
             if tools.nonEmpty &&
               ChatCompletionSettingsConversions.chatToolsRequireResponsesAPI(
                 settings.model,
                 tools
               ) =>
-          // the adapter's Future-based (non-streamed) methods are never used on this path
-          OpenAIResponsesChatCompletionService(full)(ExecutionContext.global)
-            .createChatToolCompletionStreamed(messages, tools, responseToolChoice, settings)
+          responsesBacked.createChatToolCompletionStreamed(
+            messages,
+            tools,
+            responseToolChoice,
+            settings
+          )
 
         case _ =>
           streamedServiceExtra.createChatToolCompletionStreamed(
@@ -400,6 +410,20 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
             settings
           )
       }
+  }
+
+  /**
+   * [[HasOpenAICoreStreamedExtra]] for the merged FULL service, which serves the Responses
+   * API: its typed tool streams that need the Responses API run through the Responses-backed
+   * adapter, which streams via this very service's `createModelResponseStreamed`.
+   */
+  private trait HasOpenAIFullStreamedExtra extends HasOpenAICoreStreamedExtra {
+    self: OpenAIService =>
+
+    // the adapter's Future-based (non-streamed) methods are never used on this path
+    override protected lazy val responsesBackedTypedToolStream
+      : Option[OpenAIChatCompletionStreamedServiceExtra] =
+      Some(OpenAIResponsesChatCompletionService(this)(ExecutionContext.global))
   }
 
   private type HasOpenAIChatCompletionStreamedExtra =

@@ -7,13 +7,11 @@ import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.adapter.{
   ChatCompletionSettingsConversions,
-  MessageConversions,
-  OpenAIResponsesChatCompletionService
+  MessageConversions
 }
-import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIResponsesService}
+import io.cequence.openaiscala.service.OpenAIChatCompletionService
 import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.ResponseImplicits._
-import io.cequence.wsclient.service.CloseableService
 import org.slf4j.LoggerFactory
 import play.api.libs.json.{JsObject, JsValue, Json}
 
@@ -44,16 +42,13 @@ private[service] trait OpenAIChatCompletionServiceImpl
 
   private val logger = LoggerFactory.getLogger(getClass)
 
-  // GPT-6 rejects function tools on the chat completions API outright (they require
-  // reasoning_effort 'none', which the model doesn't accept), so tool completions are routed
-  // through the Responses API when this service provides it (i.e. the full OpenAIService).
-  private lazy val responsesBackedChatCompletionService: Option[OpenAIChatCompletionService] =
-    this match {
-      case responsesService: OpenAIResponsesService with CloseableService =>
-        Some(OpenAIResponsesChatCompletionService(responsesService))
-      case _ =>
-        None
-    }
+  /**
+   * The Responses-backed chat completion of this service, when it also serves the Responses
+   * API (the full `OpenAIService` overrides this): tool completions the chat completions API
+   * cannot carry - GPT-6 function tools, the provider-neutral MCPServerTool / SkillTool - are
+   * routed through it. `None` (the default) makes such calls fail fast instead.
+   */
+  protected def responsesBackedChatCompletion: Option[OpenAIChatCompletionService] = None
 
   override def createChatToolCompletion(
     messages: Seq[BaseMessage],
@@ -62,7 +57,7 @@ private[service] trait OpenAIChatCompletionServiceImpl
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatToolCompletion
   ): Future[ChatToolCompletionResponse] =
     if (tools.nonEmpty && chatToolsRequireResponsesAPI(settings.model, tools))
-      responsesBackedChatCompletionService match {
+      responsesBackedChatCompletion match {
         case Some(service) =>
           logger.debug(
             s"${settings.model} model doesn't support function tools on the chat completions API, routing createChatToolCompletion through the Responses API."
