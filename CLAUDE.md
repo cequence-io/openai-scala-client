@@ -46,9 +46,10 @@ The codebase is organized into multiple SBT subprojects with clear dependency re
 - **google-vertexai-client** (`google_vertexai_client`): Google Vertex AI client (Gemini models on GCP). Supports tools (function declarations, Google search, code execution) with ToolConfig.
 - **google-gemini-client** (`google_gemini_client`): Google Gemini API client (direct Gemini API). Supports tools, prompt caching, thinking levels, and has its own exception hierarchy (GeminiScalaClientException) with error code handling.
 - **perplexity-sonar-client** (`perplexity_sonar_client`): Perplexity Sonar search-based AI client.
+- **typesafe-client** (`typesafe_client`): TypeSafe AI System One API (`POST /v1/systemone`, `GET /v1/models`) - a decision model, not chat: `TypeSafeService.systemOne(state, questions)` sends named typed questions (`NoulQuestion` / `ChoiceQuestion` / `ScoreQuestion`) and returns typed `Answer`s with calibrated probabilities; unknown answer types arrive as `UnknownAnswer`. No streaming, no `asOpenAI()`. Env: `TYPESAFE_API_KEY`, optional `TYPESAFE_BASE_URL` / `TYPESAFE_DEFAULT_MODEL` (same as the official SDKs). Errors map onto the OpenAI exception hierarchy (529 Overloaded -> `OpenAIScalaEngineOverloadedException`); `TypeSafeServiceAdapters.retry` wraps it. Tests pin the wire format against the vendored OpenAPI spec (`src/test/resources/typesafe-openapi.json`, 0.2.0) and the Python SDK's fixtures, plus a local-HTTP-server wire spec. Added 2026-09-16 while access was still waitlisted - not yet live-verified.
 - **claude-agent-client** (`claude_agent_client`): Subprocess transport wrapping the `claude` CLI (Claude Agent SDK-compatible NDJSON protocol over stdin/stdout) - full bidirectional sessions with tool-permission callbacks and interrupt support, distinct from the HTTP-based `anthropic-client`. Requires the `claude` CLI installed and authenticated separately (API key or Claude subscription).
 
-All provider clients depend on openai-core and provide `asOpenAI()` adapters to work with the standard OpenAI interfaces, with one exception: `claude-agent-client` is a fundamentally different subprocess/NDJSON transport (not an `OpenAIChatCompletionService`) and does NOT provide an `asOpenAI()` adapter.
+All provider clients depend on openai-core and provide `asOpenAI()` adapters to work with the standard OpenAI interfaces, with two exceptions: `claude-agent-client` is a fundamentally different subprocess/NDJSON transport (not an `OpenAIChatCompletionService`), and `typesafe-client` wraps a decision API with no chat shape at all - neither provides an `asOpenAI()` adapter.
 
 ### Utility Modules
 - **openai-all** (`all`): Envelope module aggregating all clients (except guice) into a single dependency: `openai-scala-all`.
@@ -66,7 +67,8 @@ openai-core
     │   └── claude-agent-client (subprocess transport; depends on core + anthropic-client)
     ├── google-vertexai-client (aggregates core + client + client-stream)
     ├── google-gemini-client (aggregates core + client + client-stream)
-    └── perplexity-sonar-client (aggregates core + client + client-stream)
+    ├── perplexity-sonar-client (aggregates core + client + client-stream)
+    └── typesafe-client (core only - plain request/response, no streaming)
 
 openai-all depends on all streaming + provider clients + count-tokens
 openai-guice depends on openai-client, aggregates count-tokens + all

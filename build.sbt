@@ -73,6 +73,13 @@ lazy val perplexity_sonar_client = (project in file("perplexity-sonar-client"))
   .dependsOn(core)
   .aggregate(core, client, client_stream)
 
+// TypeSafe AI System One API (typed decisions, not chat) - plain request/response, no streaming,
+// so it needs neither the OpenAI client nor the stream module
+lazy val typesafe_client = (project in file("typesafe-client"))
+  .settings(commonSettings *)
+  .dependsOn(core)
+  .aggregate(core)
+
 // subprocess transport (spawns the `claude` CLI) - no ws-client/HTTP engine involved; depends
 // on anthropic_client to reuse its Content/ContentBlock domain model + JSON formats for the
 // embedded Anthropic Messages API objects the CLI emits
@@ -91,6 +98,7 @@ lazy val count_tokens = (project in file("openai-count-tokens"))
     google_vertexai_client,
     perplexity_sonar_client,
     google_gemini_client,
+    typesafe_client,
     claude_agent_client
   )
 
@@ -102,6 +110,7 @@ lazy val all = (project in file("openai-all"))
     google_vertexai_client,
     google_gemini_client,
     perplexity_sonar_client,
+    typesafe_client,
     claude_agent_client,
     count_tokens
   )
@@ -125,6 +134,7 @@ lazy val examples = (project in file("openai-examples"))
     google_vertexai_client,
     perplexity_sonar_client,
     google_gemini_client,
+    typesafe_client,
     claude_agent_client
   )
   .aggregate(
@@ -133,6 +143,7 @@ lazy val examples = (project in file("openai-examples"))
     google_vertexai_client,
     perplexity_sonar_client,
     google_gemini_client,
+    typesafe_client,
     claude_agent_client
   )
 

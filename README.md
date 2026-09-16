@@ -61,6 +61,7 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 | [Ollama](https://ollama.com/) | Varies                 |                                   |                         | Local LLMs |
 | [Perplexity Sonar](https://www.perplexity.ai/) | Only implied           |                                   |                         | Search-based AI (⚠️ Sonar chat completions retire on 2026-09-27, see below) |
 | [TogetherAI](https://www.together.ai/) | Only JSON object mode  |                                   |                         | Cloud provider |
+| [TypeSafe AI](https://typesafe.ai/) (🔥 New) | Typed by construction  | n/a - a decision model, not chat  |                         | System One model `Jev`: typed Choice / Score / yes-no answers with calibrated probabilities and confidence, ~100 ms (see below) |
 
 ---
 
@@ -92,7 +93,7 @@ or to *pom.xml* (if you use maven)
 
 If you want streaming support, use `"io.cequence" %% "openai-scala-client-stream" % "1.3.0"` instead.
 
-For a single dependency that includes all provider clients (Anthropic, Gemini, Vertex AI, Perplexity, token counting):
+For a single dependency that includes all provider clients (Anthropic, Gemini, Vertex AI, Perplexity, TypeSafe AI, token counting):
 
 ```
 "io.cequence" %% "openai-scala-all" % "1.3.0"
@@ -260,6 +261,31 @@ Then you can obtain a service in one of the following ways.
   // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.novita)
 ```
+
+7. [TypeSafe AI](https://typesafe.ai/) (🔥 New) - requires `openai-scala-typesafe-client` lib and `TYPESAFE_API_KEY`
+
+   TypeSafe's **System One** model (`jev-latest`) is not a chat model: you send a `state` (text or JSON) plus named, typed questions and get typed answers with calibrated probabilities back in ~100 ms - so there is no `asOpenAI()` adapter and no streaming, just `TypeSafeService`. Three question kinds: `ChoiceQuestion` (one of a fixed set), `ScoreQuestion` (a level on an ordered rubric) and `NoulQuestion` (yes/no). Ask everything at once - questions are evaluated independently in one call.
+```scala
+  import io.cequence.openaiscala.typesafe.domain._
+  import io.cequence.openaiscala.typesafe.service.TypeSafeServiceFactory
+
+  val typeSafe = TypeSafeServiceFactory()  // TYPESAFE_API_KEY (+ optional TYPESAFE_BASE_URL, TYPESAFE_DEFAULT_MODEL)
+
+  typeSafe.systemOne(
+    state = "I've been trying to connect my Stripe account for 3 days. I'm losing sales. Please help ASAP.",
+    questions = Map(
+      "department"  -> ChoiceQuestion("Which team should handle this", "billing" -> "Payments", "technical" -> "Bugs, integrations", "sales" -> "Pricing"),
+      "frustration" -> ScoreQuestion("How frustrated is the customer?", "Calm", "Frustrated but civil", "Very angry"),
+      "is_urgent"   -> NoulQuestion("The message conveys urgency")
+    )
+  ).map { response =>
+    val department = response.choice("department")   // .choice = "technical", .confidence, .probabilities
+    val frustration = response.score("frustration")  // .score = 1.04 (between levels 1 and 2), .legend, .probabilities
+    val urgent = response.noul("is_urgent")          // .noul = 0.999
+    if (department.confidence < 0.7) escalateToHuman() else routeTo(department.choice)
+  }
+```
+   Errors map onto the usual exceptions (`OpenAIScalaRateLimitException` for 429, `OpenAIScalaEngineOverloadedException` for TypeSafe's 529, ...), so `TypeSafeServiceAdapters.retry(typeSafe)` backs off exactly where TypeSafe asks you to. `TypeSafeServiceFactory.withEngine(engine)` shares one engine with the other providers. Model names come from `typeSafe.listModels`; the wire format is pinned against TypeSafe's published OpenAPI spec and the official Python SDK's fixtures in the module's tests. (Early access is waitlisted at typesafe.ai; the client is verified against the spec and a local server, not yet against a live key.)
 
 7. [Groq](https://wow.groq.com/) - requires `GROQ_API_KEY"`
 ```scala
