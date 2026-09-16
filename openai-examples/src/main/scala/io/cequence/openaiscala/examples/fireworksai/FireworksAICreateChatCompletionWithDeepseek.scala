@@ -4,31 +4,30 @@ import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase}
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
-import io.cequence.openaiscala.service.adapter.{MessageConversions, OpenAIServiceAdapters}
 
 import scala.concurrent.Future
 
 /**
+ * Reasoning output from a DeepSeek model on Fireworks.
+ *
+ * DeepSeek-R1-era builds inlined the chain of thought as a `<think>` block in the content,
+ * which the deprecated `MessageConversions.filterOutToThinkEnd` adapter had to cut away.
+ * Current builds return it in a separate `reasoning_content` field instead, so the content is
+ * already just the answer and no output adapter is needed.
+ *
+ * Note that the non-streamed domain message carries no reasoning field, so that field is
+ * dropped here; see [[FireworksAICreateChatCompletionStreamedWithDeepseek]] for the streamed
+ * path, which does surface it.
+ *
  * Requires `FIREWORKS_API_KEY` environment variable to be set.
  *
  * Check out [[ChatCompletionInputAdapterForFireworksAI]] for a more complex example with an
- * input adapter
+ * input adapter.
  */
 object FireworksAICreateChatCompletionWithDeepseek
     extends ExampleBase[OpenAIChatCompletionService] {
 
-  // thinking process ends with </think>
-  private val omitThinkingOutput = true
-
-  override val service: OpenAIChatCompletionService = {
-    val adapters = OpenAIServiceAdapters.forChatCompletionService
-    val vanillaService = ChatCompletionProvider.fireworks
-
-    if (omitThinkingOutput)
-      adapters.chatCompletionOutput(MessageConversions.filterOutToThinkEnd)(vanillaService)
-    else
-      vanillaService
-  }
+  override val service: OpenAIChatCompletionService = ChatCompletionProvider.fireworks
 
   private val fireworksModelPrefix = "accounts/fireworks/models/"
 
@@ -37,7 +36,7 @@ object FireworksAICreateChatCompletionWithDeepseek
     UserMessage("What is the weather like in Norway?")
   )
 
-  private val modelId = NonOpenAIModelId.deepseek_r1 // llama_v3p1_405b_instruct
+  private val modelId = NonOpenAIModelId.deepseek_v4p1_flash
 
   override protected def run: Future[_] =
     service

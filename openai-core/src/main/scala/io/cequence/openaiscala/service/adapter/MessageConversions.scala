@@ -43,14 +43,25 @@ object MessageConversions {
       }
     }
 
+  private final val thinkTagDeprecation =
+    "Inline <think> tags were a DeepSeek-R1-era workaround, from when reasoning models had " +
+      "nowhere else to put their chain of thought. OpenAI-compatible providers now return it " +
+      "in a dedicated field - `delta.reasoning_content` (DeepSeek, Grok, Mistral, Fireworks) " +
+      "or `delta.reasoning` (Groq) - so there is nothing to strip out of the content. Read it " +
+      "from ChatCompletionResponse's `reasoningText`, or from ChatChunk.Thinking when " +
+      "streaming, and drop the adapter."
+
+  @deprecated(thinkTagDeprecation, since = "1.3.0")
   lazy val thinkEndTagRegex = "(?<!['\"])</think>(?!['\"])"
 
+  @deprecated(thinkTagDeprecation, since = "1.3.0")
   val filterOutToThinkEnd: AssistantMessage => AssistantMessage =
     (message: AssistantMessage) => {
       val newContent = message.content.split(thinkEndTagRegex).last.trim
       message.copy(content = newContent)
     }
 
+  @deprecated(thinkTagDeprecation, since = "1.3.0")
   def filterOutToThinkEndFlow: Flow[Seq[ChunkMessageSpec], Seq[ChunkMessageSpec], NotUsed] = {
     Flow[Seq[ChunkMessageSpec]].statefulMapConcat { () =>
       var startOutput: Option[Boolean] = None
