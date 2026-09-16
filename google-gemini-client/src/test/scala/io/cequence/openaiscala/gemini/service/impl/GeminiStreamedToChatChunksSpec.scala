@@ -242,7 +242,31 @@ class GeminiStreamedToChatChunksSpec
       )
     }
 
-    "keep a client function call client-side next to MCP servers" in {
+    "treat a bare-named call as the MCP server's when it is not a declared client tool" in {
+      // live-observed 2026-09-16: Gemini sometimes drops the `<server>_` prefix
+      val out = Source(
+        List(
+          response(
+            Seq(Part.FunctionCall(None, "search_repositories", Map("query" -> "org:x"))),
+            finishReason = Some(GeminiFinishReason.STOP)
+          )
+        )
+      ).via(
+        OpenAIGeminiChatCompletionService.chatChunksFlow(
+          OpenAIGeminiChatCompletionService.McpCallRule(Seq("github"), Set("get_weather"))
+        )
+      ).runWith(Sink.seq)
+        .futureValue
+
+      out(1) shouldBe a[ToolCallStart]
+      out(1).asInstanceOf[ToolCallStart].serverSide shouldBe true
+      out.collect { case tr: ToolResult => (tr.toolName, tr.isError) } shouldBe Seq(
+        ("search_repositories", true)
+      )
+      out.collect { case f: Finish => f } shouldBe Seq(Finish(FinishReason.stop, Some("STOP")))
+    }
+
+    "keep a declared client tool client-side even under the bare-name rule" in {
       val out = Source(
         List(
           response(
@@ -250,8 +274,31 @@ class GeminiStreamedToChatChunksSpec
             finishReason = Some(GeminiFinishReason.STOP)
           )
         )
-      ).via(OpenAIGeminiChatCompletionService.chatChunksFlow(Seq("exa")))
-        .runWith(Sink.seq)
+      ).via(
+        OpenAIGeminiChatCompletionService.chatChunksFlow(
+          OpenAIGeminiChatCompletionService.McpCallRule(Seq("github"), Set("get_weather"))
+        )
+      ).runWith(Sink.seq)
+        .futureValue
+
+      out(1) shouldBe ToolCallStart(0, "c1", "get_weather", serverSide = false)
+      out.collect { case f: Finish => f } shouldBe
+        Seq(Finish(FinishReason.tool_calls, Some("STOP")))
+    }
+
+    "keep a declared client function call client-side next to MCP servers" in {
+      val out = Source(
+        List(
+          response(
+            Seq(Part.FunctionCall(Some("c1"), "get_weather", Map("location" -> "Oslo"))),
+            finishReason = Some(GeminiFinishReason.STOP)
+          )
+        )
+      ).via(
+        OpenAIGeminiChatCompletionService.chatChunksFlow(
+          OpenAIGeminiChatCompletionService.McpCallRule(Seq("exa"), Set("get_weather"))
+        )
+      ).runWith(Sink.seq)
         .futureValue
 
       out(1) shouldBe ToolCallStart(0, "c1", "get_weather", serverSide = false)
@@ -351,10 +398,21 @@ class GeminiStreamedToChatChunksSpec
         )
       )
 
+      val rule = OpenAIGeminiChatCompletionService.McpCallRule(Seq("exa"), Set("get_weather"))
+      OpenAIGeminiChatCompletionService.danglingMcpCalls(r, rule).map(_.args) shouldBe Seq(
+        Map("q" -> 2)
+      )
+      OpenAIGeminiChatCompletionService.danglingMcpCalls(
+        r,
+        OpenAIGeminiChatCompletionService.McpCallRule.none
+      ) shouldBe empty
+      // an undeclared bare name counts as an MCP call
       OpenAIGeminiChatCompletionService
-        .danglingMcpCalls(r, Seq("exa"))
-        .map(_.args) shouldBe Seq(Map("q" -> 2))
-      OpenAIGeminiChatCompletionService.danglingMcpCalls(r, Nil) shouldBe empty
+        .danglingMcpCalls(
+          r,
+          OpenAIGeminiChatCompletionService.McpCallRule(Seq("exa"), Set.empty)
+        )
+        .map(_.name) shouldBe Seq("exa_search", "get_weather")
     }
 
     "read `result` and `call_tool_result_json` shapes" in {

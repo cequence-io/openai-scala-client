@@ -130,7 +130,8 @@ Streaming is provided as an extension via the `openai-client-stream` module:
   `createMessageWithContinuation`: echo the assistant blocks rebuilt by `StreamedChunkMapper` + "Continue from where you
   left off."; one Start, intermediate Finish/Usage dropped, final Usage summed, tool ordinals continue; capped by
   `setAnthropicMaxContinuations`, default 6). Gemini's native MCP (`setGeminiTools(Tool.McpServers)`) is server-executed:
-  `OpenAIGeminiChatCompletionService.chatChunksFlow(mcpServerNames)` labels `<server>_<tool>` calls `serverSide = true`, maps
+  `OpenAIGeminiChatCompletionService.chatChunksFlow(McpCallRule)` labels MCP calls (`<server>_<tool>`, or any call that is
+  not a declared client function tool - Gemini sometimes drops the prefix) `serverSide = true`, maps
   the `functionResponse` to `ToolResult`, holds the intermediate STOP of the call chunk, and reports a call the stream never
   answered as `ToolResult(isError = true)` (the plain path throws `GeminiScalaMcpCallNotExecutedException`, a
   `GeminiScalaServerErrorException` subtype -> `OpenAIScalaServerErrorException`, i.e. `Retryable`); `createChatToolCompletion` honours `setGeminiTools` too.

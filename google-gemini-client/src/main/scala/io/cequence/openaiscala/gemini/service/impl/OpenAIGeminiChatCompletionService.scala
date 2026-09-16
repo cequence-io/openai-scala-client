@@ -112,14 +112,14 @@ private[impl] object OpenAIGeminiChatCompletionService {
    * [[chatChunksFlow]] for the `mcpServers` handling.
    */
   private[impl] def toChatChunks: Flow[GenerateContentResponse, ChatChunk, NotUsed] =
-    chatChunksFlow(Nil)
+    chatChunksFlow(McpCallRule.none)
 
   /**
    * [[toChatChunks]] aware of the request's `Tool.McpServers`: Gemini runs those tools itself
    * and (Gemini 2.5; Gemini 3 echoes nothing) streams the round back as a `functionCall` part
    * named `<server>_<tool>` in a chunk that carries its own `finishReason: STOP`, then a
-   * `functionResponse` part, then the answer with the real `STOP`. So, for a call whose name
-   * starts with one of `mcpServerNames`:
+   * `functionResponse` part, then the answer with the real `STOP`. So, for a call the
+   * [[McpCallRule]] attributes to an MCP server:
    *   - `ToolCallStart` / `ToolCall` are `serverSide = true` (nothing for the caller to run)
    *   - the `functionResponse` becomes a `ToolResult` paired with that call (Gemini gives no
    *     ids - pairing is by name, in order); its `result` / `call_tool_result_json` is the
@@ -135,6 +135,11 @@ private[impl] object OpenAIGeminiChatCompletionService {
   private[impl] def chatChunksFlow(
     mcpServerNames: Seq[String]
   ): Flow[GenerateContentResponse, ChatChunk, NotUsed] =
+    chatChunksFlow(McpCallRule(mcpServerNames, Set.empty))
+
+  private[impl] def chatChunksFlow(
+    mcp: McpCallRule
+  ): Flow[GenerateContentResponse, ChatChunk, NotUsed] =
     Flow[GenerateContentResponse]
       .map(Option(_))
       .concat(Source.single(Option.empty[GenerateContentResponse]))
@@ -148,7 +153,7 @@ private[impl] object OpenAIGeminiChatCompletionService {
         // the Finish + Usage of a chunk that ended while MCP calls were pending
         var heldBoundary: List[ChatChunk] = Nil
 
-        def isMcpCall(name: String): Boolean = isMcpToolName(name, mcpServerNames)
+        def isMcpCall(name: String): Boolean = mcp.isMcpCall(name)
 
         def mapResponse(response: GenerateContentResponse): List[ChatChunk] = {
           val out = mutable.ListBuffer.empty[ChatChunk]
@@ -323,19 +328,38 @@ private[impl] object OpenAIGeminiChatCompletionService {
 
   private val logger: Logger = Logger(LoggerFactory.getLogger(getClass))
 
-  /** Gemini names an MCP server's tool `<server name>_<tool name>`. */
-  private[impl] def isMcpToolName(
-    name: String,
-    mcpServerNames: Seq[String]
-  ): Boolean =
-    mcpServerNames.exists(server => name.startsWith(server + "_"))
+  /**
+   * Which `functionCall`s of a response are calls Gemini ran itself against the request's
+   * `Tool.McpServers`. Gemini normally names them `<server name>_<tool name>`, but at times
+   * (live-observed 2026-09-16) by the bare tool name - so with MCP servers configured, every
+   * call that is not one of the client tools the caller declared is an MCP call.
+   */
+  private[impl] final case class McpCallRule(
+    serverNames: Seq[String],
+    clientToolNames: Set[String]
+  ) {
+    def isMcpCall(name: String): Boolean =
+      serverNames.nonEmpty &&
+        (serverNames.exists(server => name.startsWith(server + "_")) ||
+          !clientToolNames.contains(name))
+  }
 
-  /** The names of the `Tool.McpServers` on the request, if any. */
-  private[impl] def mcpServerNames(settings: CreateChatCompletionSettings): Seq[String] =
-    settings.getGeminiTools.getOrElse(Nil).flatMap {
-      case GeminiTool.McpServers(servers) => servers.map(_.name)
-      case _                              => Nil
-    }
+  private[impl] object McpCallRule {
+    val none: McpCallRule = McpCallRule(Nil, Set.empty)
+  }
+
+  /** The rule for a request: its `Tool.McpServers` names and its declared function tools. */
+  private[impl] def mcpCallRule(
+    settings: CreateChatCompletionSettings,
+    tools: Seq[ChatCompletionTool] = Nil
+  ): McpCallRule =
+    McpCallRule(
+      serverNames = settings.getGeminiTools.getOrElse(Nil).flatMap {
+        case GeminiTool.McpServers(servers) => servers.map(_.name)
+        case _                              => Nil
+      },
+      clientToolNames = tools.collect { case ft: FunctionTool => ft.name }.toSet
+    )
 
   /**
    * The text of an MCP `functionResponse` and whether the tool reported an error: Gemini wraps
@@ -376,7 +400,7 @@ private[impl] object OpenAIGeminiChatCompletionService {
    */
   private[impl] def danglingMcpCalls(
     response: GenerateContentResponse,
-    mcpServerNames: Seq[String]
+    mcp: McpCallRule
   ): Seq[Part.FunctionCall] = {
     val parts = response.candidates.headOption.toSeq.flatMap(_.content.parts)
     val answered = mutable.Map.empty[String, Int].withDefaultValue(0)
@@ -385,7 +409,7 @@ private[impl] object OpenAIGeminiChatCompletionService {
       case _                         => ()
     }
     parts.collect {
-      case fc: Part.FunctionCall if isMcpToolName(fc.name, mcpServerNames) => fc
+      case fc: Part.FunctionCall if mcp.isMcpCall(fc.name) => fc
     }.filter { fc =>
       if (answered(fc.name) > 0) {
         answered(fc.name) -= 1
@@ -445,14 +469,14 @@ private[service] class OpenAIGeminiChatCompletionService(
 
   protected val logger: Logger = Logger(LoggerFactory.getLogger(this.getClass))
 
-  import OpenAIGeminiChatCompletionService.{isMcpToolName, mcpServerNames}
+  import OpenAIGeminiChatCompletionService.{mcpCallRule, McpCallRule}
 
   override def createChatCompletion(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
   ): Future[ChatCompletionResponse] = {
     val (userMessages, systemMessage) = splitMessage(messages)
-    val serverNames = mcpServerNames(settings)
+    val mcp = mcpCallRule(settings)
 
     for {
       geminiSettings <- handleCaching(systemMessage, userMessages, settings)
@@ -461,7 +485,7 @@ private[service] class OpenAIGeminiChatCompletionService(
         userMessages.map(toGeminiContent),
         geminiSettings
       )
-    } yield toOpenAIResponse(requireMcpCallsExecuted(response, serverNames), serverNames)
+    } yield toOpenAIResponse(requireMcpCallsExecuted(response, mcp), mcp)
   }.recoverWith(repackAsOpenAIException)
 
   /**
@@ -474,9 +498,9 @@ private[service] class OpenAIGeminiChatCompletionService(
    */
   private def requireMcpCallsExecuted(
     response: GenerateContentResponse,
-    mcpServerNames: Seq[String]
+    mcp: McpCallRule
   ): GenerateContentResponse = {
-    val dangling = OpenAIGeminiChatCompletionService.danglingMcpCalls(response, mcpServerNames)
+    val dangling = OpenAIGeminiChatCompletionService.danglingMcpCalls(response, mcp)
 
     if (dangling.nonEmpty) {
       val message = OpenAIGeminiChatCompletionService.danglingMcpCallMessage(
@@ -1165,7 +1189,7 @@ private[service] class OpenAIGeminiChatCompletionService(
 
   private def toOpenAIResponse(
     response: GenerateContentResponse,
-    mcpServerNames: Seq[String] = Nil
+    mcp: McpCallRule = McpCallRule.none
   ): ChatCompletionResponse =
     ChatCompletionResponse(
       id = "gemini",
@@ -1175,7 +1199,7 @@ private[service] class OpenAIGeminiChatCompletionService(
       choices = response.candidates.map { candidate =>
         ChatCompletionChoiceInfo(
           index = candidate.index.getOrElse(0),
-          message = toOpenAIAssistantMessage(candidate.content, mcpServerNames),
+          message = toOpenAIAssistantMessage(candidate.content, mcp),
           finish_reason = candidate.finishReason.map(_.toString),
           logprobs = None
         )
@@ -1204,13 +1228,13 @@ private[service] class OpenAIGeminiChatCompletionService(
 
   private def toOpenAIAssistantMessage(
     content: Content,
-    mcpServerNames: Seq[String] = Nil
+    mcp: McpCallRule = McpCallRule.none
   ): AssistantMessage = {
     val texts = content.parts.collect {
       case t: Part.Text if !t.thought.contains(true) => t.text
     }
     val hasClientToolCalls = content.parts.exists {
-      case fc: Part.FunctionCall => !isMcpToolName(fc.name, mcpServerNames)
+      case fc: Part.FunctionCall => !mcp.isMcpCall(fc.name)
       case _                     => false
     }
 
@@ -1290,9 +1314,7 @@ private[service] class OpenAIGeminiChatCompletionService(
         underlying
           .generateContentStreamed(userMessages.map(toGeminiContent), geminiSettings)
           .via(
-            OpenAIGeminiChatCompletionService.chatChunksFlow(
-              OpenAIGeminiChatCompletionService.mcpServerNames(settings)
-            )
+            OpenAIGeminiChatCompletionService.chatChunksFlow(mcpCallRule(settings, tools))
           )
     }.recoverWith(repackAsOpenAIException)
 
@@ -1366,19 +1388,19 @@ private[service] class OpenAIGeminiChatCompletionService(
         geminiSettings
       )
     } yield toOpenAIToolResponse(
-      requireMcpCallsExecuted(response, mcpServerNames(settings)),
-      mcpServerNames(settings)
+      requireMcpCallsExecuted(response, mcpCallRule(settings, tools)),
+      mcpCallRule(settings, tools)
     )).recoverWith(repackAsOpenAIException)
   }
 
   private def toOpenAIToolResponse(
     response: GenerateContentResponse,
-    mcpServerNames: Seq[String] = Nil
+    mcp: McpCallRule = McpCallRule.none
   ): ChatToolCompletionResponse = {
     val choices = response.candidates.map { candidate =>
       // MCP-server calls were run by Gemini - they are not for the caller to execute
       val toolCalls = candidate.content.parts.collect {
-        case fc: Part.FunctionCall if !isMcpToolName(fc.name, mcpServerNames) =>
+        case fc: Part.FunctionCall if !mcp.isMcpCall(fc.name) =>
           val callId = fc.id.getOrElse(java.util.UUID.randomUUID().toString)
           val argsJson = Json.toJson(fc.args)(JsonUtil.StringAnyMapFormat).toString
           (

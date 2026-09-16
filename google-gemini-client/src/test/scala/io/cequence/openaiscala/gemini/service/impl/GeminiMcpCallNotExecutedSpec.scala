@@ -1,7 +1,13 @@
 package io.cequence.openaiscala.gemini.service.impl
 
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import io.cequence.openaiscala.domain.{NonOpenAIModelId, UserMessage}
+import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
+import io.cequence.openaiscala.domain.{
+  FunctionCallSpec,
+  JsonSchema,
+  NonOpenAIModelId,
+  UserMessage
+}
 import io.cequence.openaiscala.gemini.domain.ChatRole.Model
 import io.cequence.openaiscala.gemini.domain.response.{
   Candidate,
@@ -106,10 +112,40 @@ class GeminiMcpCallNotExecutedSpec extends AnyWordSpec with Matchers with ScalaF
       out.contentHead shouldBe "The repository is app."
     }
 
-    "not fail for a client function call (no MCP server named like it)" in {
+    "fail the same way for a bare-named call - createChatCompletion declares no client tools" in {
+      val e = adapterReturning(
+        response(Seq(Part.FunctionCall(None, "search_repositories", Map("query" -> "org:x"))))
+      ).createChatCompletion(Seq(UserMessage("list repos")), settings).failed.futureValue
+
+      e shouldBe an[OpenAIScalaServerErrorException]
+      e.getCause shouldBe a[GeminiScalaMcpCallNotExecutedException]
+    }
+
+    "keep a declared client tool a plain tool call on createChatToolCompletion" in {
+      val weather = FunctionTool(
+        name = "get_weather",
+        parameters = JsonSchema.Object(
+          properties = Seq("location" -> JsonSchema.String()),
+          required = Seq("location")
+        )
+      )
       val out = adapterReturning(
         response(Seq(Part.FunctionCall(Some("c1"), "get_weather", Map("location" -> "Oslo"))))
-      ).createChatCompletion(Seq(UserMessage("weather?")), settings).futureValue
+      ).createChatToolCompletion(Seq(UserMessage("weather?")), Seq(weather), None, settings)
+        .futureValue
+
+      out.choices.head.message.tool_calls
+        .map(_._2.asInstanceOf[FunctionCallSpec].name) shouldBe
+        Seq("get_weather")
+    }
+
+    "not fail without MCP servers - a function call is then always the caller's" in {
+      val out = adapterReturning(
+        response(Seq(Part.FunctionCall(Some("c1"), "get_weather", Map("location" -> "Oslo"))))
+      ).createChatCompletion(
+        Seq(UserMessage("weather?")),
+        CreateChatCompletionSettings(NonOpenAIModelId.gemini_2_5_flash)
+      ).futureValue
 
       out.contentHead shouldBe ""
     }

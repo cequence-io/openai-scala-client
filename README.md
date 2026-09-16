@@ -452,8 +452,9 @@ or only if streaming is required
   (Anthropic API only - Bedrock rejects `mcp_servers`.)
   Gemini's native MCP (`setGeminiTools(Seq(Tool.McpServers(...)))`, live-verified 2026-09-16 with Exa, the GitHub Copilot MCP and
   DeepWiki, alone and several per request, authenticated with `x-api-key` or `Authorization: Bearer` transport headers alike): Gemini
-  runs the tools itself; Gemini 2.5 streams each call as a server-side `ToolCall` named `<server>_<tool>` plus a `ToolResult`, Gemini 3
-  echoes no call / result parts at all. Its executor fails transiently (HTTP 500 / 503, or a stream that ends right after the call) -
+  runs the tools itself; Gemini 2.5 streams each call as a server-side `ToolCall` (named `<server>_<tool>`, at times by the bare tool
+  name - with MCP servers configured every call that is not one of your declared function tools counts as theirs) plus a `ToolResult`,
+  Gemini 3 echoes no call / result parts at all. Its executor fails transiently (HTTP 500 / 503, or a stream that ends right after the call) -
   the adapter surfaces that as a `ToolResult(isError = true)` on the stream and as a `GeminiScalaMcpCallNotExecutedException` (a
   server-error subtype, so `Retryable` through the adapter - the retry adapter re-issues it) on the plain call instead of an empty answer. See
   [GoogleGeminiCreateChatToolCompletionStreamedWithMcpServers](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/googlegemini/GoogleGeminiCreateChatToolCompletionStreamedWithMcpServers.scala).
