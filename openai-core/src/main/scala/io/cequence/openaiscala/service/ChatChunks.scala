@@ -20,7 +20,7 @@ import io.cequence.openaiscala.domain.responsesapi.{
   ResponseStreamEvent,
   UsageInfo => ResponsesUsageInfo
 }
-import play.api.libs.json.{JsNull, JsObject, JsString, JsValue, Json}
+import play.api.libs.json.{JsArray, JsNull, JsObject, JsString, JsValue, Json}
 
 import java.{util => ju}
 import scala.collection.mutable
@@ -390,11 +390,14 @@ object ChatChunks {
               case "shell_call_output" =>
                 val callId = (item \ "call_id").asOpt[String].getOrElse(itemId)
                 val output = (item \ "output").toOption.filterNot(_ == JsNull)
+                // the output is a string, one {stdout, stderr, outcome} object, or one per command
+                def stdoutOf(json: JsValue): Option[String] =
+                  (json \ "stdout").asOpt[String].orElse(Some(json.toString))
                 val text = output.flatMap {
-                  case JsString(t) => Some(t)
-                  case other =>
-                    (other \ "stdout").asOpt[String].orElse(Some(other.toString))
-                }
+                  case JsString(t)    => Some(t)
+                  case JsArray(items) => Some(items.flatMap(stdoutOf).mkString("\n"))
+                  case other          => stdoutOf(other)
+                }.filter(_.nonEmpty)
                 List(
                   ToolResult(callId, "shell", output.getOrElse(raw), text, isError = false)
                 )
@@ -480,6 +483,15 @@ object ChatChunks {
               _: ReasoningTextDone | _: ResponseInProgress | _: ResponseQueued =>
             Nil
 
+          // hosted shell (skills): the command streams in fragments like function arguments
+          case ToolCallStatus("response.shell_call_command.delta", itemId, outputIndex, raw) =>
+            (raw \ "delta").asOpt[String].toList.flatMap(delta(itemId, outputIndex, _))
+          case UnknownEvent("response.shell_call_command.delta", raw) =>
+            (for {
+              itemId <- (raw \ "item_id").asOpt[String]
+              outputIndex <- (raw \ "output_index").asOpt[Int]
+              fragment <- (raw \ "delta").asOpt[String]
+            } yield delta(itemId, outputIndex, fragment)).getOrElse(Nil)
           case ToolCallStatus(eventType, _, _, raw) => List(Other(eventType, raw))
           case UnknownEvent(eventType, raw)         => List(Other(eventType, raw))
         }

@@ -129,10 +129,15 @@ class GeminiMcpCallNotExecutedSpec extends AnyWordSpec with Matchers with ScalaF
           required = Seq("location")
         )
       )
+      // no MCP servers here: Gemini refuses mcpServers next to any other tool type
       val out = adapterReturning(
         response(Seq(Part.FunctionCall(Some("c1"), "get_weather", Map("location" -> "Oslo"))))
-      ).createChatToolCompletion(Seq(UserMessage("weather?")), Seq(weather), None, settings)
-        .futureValue
+      ).createChatToolCompletion(
+        Seq(UserMessage("weather?")),
+        Seq(weather),
+        None,
+        CreateChatCompletionSettings(NonOpenAIModelId.gemini_2_5_flash)
+      ).futureValue
 
       out.choices.head.message.tool_calls
         .map(_._2.asInstanceOf[FunctionCallSpec].name) shouldBe

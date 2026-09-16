@@ -458,7 +458,7 @@ or only if streaming is required
 
   | | OpenAI | Anthropic | Gemini | Vertex AI |
   |---|---|---|---|---|
-  | `MCPServerTool(name, url, authorizationToken, headers, allowedTools, description, timeout, requireApproval)` | Responses `mcp` tool (the request is routed through the Responses API on any model; approval never required unless asked) | MCP connector `mcp_servers` (bearer token + allowed tools; custom `headers` are refused) | `mcpServers` (bearer as an `Authorization` header, `timeout`; `allowedTools` warned and ignored) | refused |
+  | `MCPServerTool(name, url, authorizationToken, headers, allowedTools, description, timeout, requireApproval)` | Responses `mcp` tool (the request is routed through the Responses API on any model; approval never required unless asked) | MCP connector `mcp_servers` (bearer token + allowed tools; custom `headers` are refused) | `mcpServers` (bearer as an `Authorization` header, `timeout`; `allowedTools` warned and ignored; Gemini cannot combine it with ANY other tool type, incl. function tools - the adapter fails fast) | refused |
   | `SkillTool(skillId, version, source)` | hosted `shell` tool, `container_auto` environment with `skill_reference`s (GPT-6) | `container.skills` (`Provider` = Anthropic's built-in skills, `Custom` = uploaded; the code execution tool is added) | refused | refused |
 
 ```scala

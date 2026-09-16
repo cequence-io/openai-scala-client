@@ -84,6 +84,23 @@ class GeminiNeutralToolsSpec extends AnyWordSpec with Matchers with ScalaFutures
     }
   }
 
+  "requireMcpServersAlone" should {
+
+    "refuse mcpServers next to function declarations or other Gemini tools, naming them" in {
+      val mcp = OpenAIGeminiChatCompletionService.toGeminiMcpServersTool(Seq(deepwiki)).get
+
+      (the[OpenAIScalaClientException] thrownBy OpenAIGeminiChatCompletionService
+        .requireMcpServersAlone(
+          Seq(Tool.FunctionDeclarations(Nil), mcp, Tool.GoogleSearch)
+        )).getMessage should include("functionDeclarations, googleSearch")
+
+      OpenAIGeminiChatCompletionService.requireMcpServersAlone(Seq(mcp))
+      OpenAIGeminiChatCompletionService.requireMcpServersAlone(
+        Seq(Tool.FunctionDeclarations(Nil), Tool.GoogleSearch)
+      )
+    }
+  }
+
   "mcpCallRule" should {
 
     "count the neutral tools' servers as MCP servers" in {
@@ -98,11 +115,10 @@ class GeminiNeutralToolsSpec extends AnyWordSpec with Matchers with ScalaFutures
     }
   }
 
-  "createChatToolCompletion / createChatToolCompletionStreamed" should {
+  "createChatToolCompletion" should {
 
-    "send the mcpServers tool alongside the function declarations" in {
+    def adapter(captor: ArgumentCaptor[GenerateContentSettings]) = {
       val underlying = mock(classOf[GeminiService])
-      val captor = ArgumentCaptor.forClass(classOf[GenerateContentSettings])
       when(underlying.generateContent(any(), any())).thenReturn(
         Future.successful(
           GenerateContentResponse(
@@ -118,23 +134,47 @@ class GeminiNeutralToolsSpec extends AnyWordSpec with Matchers with ScalaFutures
           )
         )
       )
+      (new OpenAIGeminiChatCompletionService(underlying), underlying)
+    }
 
-      new OpenAIGeminiChatCompletionService(underlying)
+    "send the mcpServers tool on its own" in {
+      val captor = ArgumentCaptor.forClass(classOf[GenerateContentSettings])
+      val (service, underlying) = adapter(captor)
+
+      service
         .createChatToolCompletion(
           Seq(UserMessage("hi")),
-          Seq(deepwiki, FunctionTool("get_weather", parameters = JsonSchema.Object(Nil))),
+          Seq(deepwiki),
           None,
           CreateChatCompletionSettings(NonOpenAIModelId.gemini_2_5_flash)
         )
         .futureValue
 
       verify(underlying).generateContent(any(), captor.capture())
-      val tools = captor.getValue.tools.getOrElse(Nil)
-      tools.collect { case t: Tool.FunctionDeclarations =>
-        t.functionDeclarations.map(_.name)
-      }.flatten shouldBe Seq("get_weather")
-      tools.collect { case t: Tool.McpServers => t.mcpServers.map(_.name) }.flatten shouldBe
-        Seq("deepwiki")
+      captor.getValue.tools
+        .getOrElse(Nil)
+        .collect { case t: Tool.McpServers =>
+          t.mcpServers.map(_.name)
+        }
+        .flatten shouldBe Seq("deepwiki")
+    }
+
+    "fail fast when an MCPServerTool is combined with a function tool" in {
+      val captor = ArgumentCaptor.forClass(classOf[GenerateContentSettings])
+      val (service, _) = adapter(captor)
+
+      val e = service
+        .createChatToolCompletion(
+          Seq(UserMessage("hi")),
+          Seq(deepwiki, FunctionTool("get_weather", parameters = JsonSchema.Object(Nil))),
+          None,
+          CreateChatCompletionSettings(NonOpenAIModelId.gemini_2_5_flash)
+        )
+        .failed
+        .futureValue
+
+      e shouldBe an[OpenAIScalaClientException]
+      e.getMessage should include("functionDeclarations")
     }
   }
 }

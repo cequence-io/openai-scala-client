@@ -367,6 +367,21 @@ private[impl] object OpenAIGeminiChatCompletionService {
     )
 
   /**
+   * Gemini refuses an `mcpServers` tool next to any other tool type (`400: MCP tools cannot be
+   * used with other tool types`, live 2026-09-16) - fail before the call, naming the conflict,
+   * rather than surfacing the raw 400.
+   */
+  private[impl] def requireMcpServersAlone(tools: Seq[GeminiTool]): Unit = {
+    val (mcp, others) = tools.partition(_.isInstanceOf[GeminiTool.McpServers])
+    if (mcp.nonEmpty && others.nonEmpty)
+      throw new OpenAIScalaClientException(
+        "Gemini's mcpServers tool cannot share a request with other tool types (the API " +
+          "rejects it: 'MCP tools cannot be used with other tool types') - also sent: " +
+          s"${others.map(_.prefix.toString).mkString(", ")}. Send the MCP servers in a request of their own."
+      )
+  }
+
+  /**
    * The provider-neutral [[ChatCompletionTool.MCPServerTool]]s as ONE Gemini `mcpServers`
    * tool: the bearer token becomes an `Authorization` header (Gemini has no dedicated field),
    * the timeout its duration string; `allowedTools` cannot be expressed - warned about, all of
@@ -1384,6 +1399,8 @@ private[service] class OpenAIGeminiChatCompletionService(
          Seq(GeminiTool.FunctionDeclarations(functionDeclarations))
        else Nil) ++ settings.getGeminiTools.getOrElse(Nil) ++
         OpenAIGeminiChatCompletionService.toGeminiMcpServersTool(tools).toSeq
+
+    OpenAIGeminiChatCompletionService.requireMcpServersAlone(allTools)
 
     val toolConfig = responseToolChoice.map { name =>
       ToolConfig.FunctionCallingConfig(
