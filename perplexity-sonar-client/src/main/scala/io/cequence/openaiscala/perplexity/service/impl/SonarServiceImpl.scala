@@ -11,6 +11,7 @@ import io.cequence.openaiscala.perplexity.domain.response.{
   SonarChatCompletionResponse
 }
 import io.cequence.openaiscala.perplexity.service.SonarService
+import io.cequence.openaiscala.service.StreamingConsts
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
 import io.cequence.wsclient.domain.{SiteBinding, WsRequestContext}
@@ -75,8 +76,9 @@ private[service] class SonarServiceImpl(
         EndPoint.chatCompletion.toString(),
         "POST",
         bodyParams = stringParams,
-        framingDelimiter = "\r\n\r\n"
-//        maxFrameLength = Some(20000) // default is now 20000 so no need to change
+        framingDelimiter = "\r\n\r\n",
+        // citation-heavy frames exceed ws-client's 20 000-byte default
+        maxFrameLength = Some(StreamingConsts.DefaultMaxFrameLength)
       )
       .map { json =>
         (json \ "error").toOption.map { error =>

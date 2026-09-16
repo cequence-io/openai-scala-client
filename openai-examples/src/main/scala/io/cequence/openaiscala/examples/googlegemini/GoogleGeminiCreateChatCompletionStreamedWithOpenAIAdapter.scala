@@ -30,7 +30,7 @@ object GoogleGeminiCreateChatCompletionStreamedWithOpenAIAdapter
         messages = messages,
         settings = CreateChatCompletionSettings(
           model = modelId,
-          temperature = Some(20),
+          temperature = Some(0.5),
           max_tokens = Some(1000)
         )
       )
