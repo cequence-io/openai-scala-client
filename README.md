@@ -404,7 +404,7 @@ or only if streaming is required
   | `Text(text)` | answer fragment | `delta.content` | `text_delta` | text part |
   | `Thinking(text)` | reasoning fragment | `delta.reasoning_content` (DeepSeek, Grok, ...) / `delta.reasoning` (Groq) | `thinking_delta` (summarized thinking is requested automatically) | thought-summary part (`includeThoughts` on by default) |
   | `ThinkingSignature(signature, callId)`, `RedactedThinking` | opaque data to echo back in tool loops (`callId` set when the signature rides on a function call) | encrypted reasoning (Responses API) | `signature_delta`, `redacted_thinking` | `thoughtSignature` |
-  | `ToolCallStart` / `ToolCallDelta` / `ToolCall` | tool call: start, argument fragments, assembled call | `delta.tool_calls` fragments | `tool_use` + `input_json_delta`; `server_tool_use` / `mcp_tool_use` (`serverSide = true`) | `functionCall` (complete); `executableCode` (`serverSide = true`) |
+  | `ToolCallStart` / `ToolCallDelta` / `ToolCall` | tool call: start, argument fragments, assembled call | `delta.tool_calls` fragments | `tool_use` + `input_json_delta`; `server_tool_use` / `mcp_tool_use` (`serverSide = true`, MCP servers via `setAnthropicMcpServers`) | `functionCall` (complete); `executableCode` (`serverSide = true`) |
   | `ToolResult` | result of a provider-executed tool | code interpreter outputs, MCP / file search results (Responses API) | web search / web fetch / code execution / bash / text editor / MCP result blocks | `codeExecutionResult` |
   | `CodeExecution` / `CodeExecutionResult` | semantic view of server-side code runs (emitted in addition to the tool layer, same `callId`) | `code_interpreter_call` (Responses API) | `code_execution` / `bash_code_execution` | `executableCode` / `codeExecutionResult` |
   | `WebSearch` / `WebSearchResult` | semantic view of server-side web searches | `web_search_call` (Responses API) | `web_search` server tool | Google Search grounding queries / chunks |
@@ -444,7 +444,12 @@ or only if streaming is required
 
   Provider-native server-side tools ride along via `setAnthropicTools` / `setGeminiTools` / `setVertexAITools` /
   `setResponsesTools` and come back as `ToolResult`s; `setGeminiIncludeThoughts(false)` and `setVertexAIIncludeThoughts(false)`
-  turn thought summaries off.
+  turn thought summaries off. Anthropic's **MCP connector** (🔥 New) rides along the same way: `setAnthropicMcpServers(Seq(MCPServerURLDefinition(name, url)))`
+  puts remote MCP servers on the request (typed stream and plain calls alike), their `mcp_tool_use` / `mcp_tool_result` arrive as
+  server-side `ToolCall`s / `ToolResult`s, and a `pause_turn` (a tool run that outlived the turn budget) is continued transparently
+  on the same `Source` - one `Start`, one final `Finish`, one summed `Usage`; `setAnthropicMaxContinuations` caps it (default 6). See
+  [AnthropicCreateChatToolCompletionStreamedWithMCPServers](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/anthropic/AnthropicCreateChatToolCompletionStreamedWithMCPServers.scala).
+  (Anthropic API only - Bedrock rejects `mcp_servers`.)
 
   GPT-5.4+ accepts function tools on the chat completions API only with `reasoning_effort = none`, and GPT-6 only on the
   Responses API - so `OpenAIServiceFactory.withStreaming()` routes GPT-6 tool streams through it automatically (a chat-only

@@ -124,7 +124,12 @@ Streaming is provided as an extension via the `openai-client-stream` module:
   / `delta.reasoning`); Anthropic (`impl/package.scala#toChatChunks`, requests `display = summarized` thinking) and
   Gemini (`OpenAIGeminiChatCompletionService.toChatChunks`, turns `includeThoughts` on) and Vertex AI
   (`vertexai/service/impl/VertexAIChatChunks`, protobuf parts; `setVertexAIIncludeThoughts`) override it natively and accept
-  provider tools via `setAnthropicTools` / `setGeminiTools` / `setVertexAITools`. Grok, Groq, Cerebras, Fireworks and
+  provider tools via `setAnthropicTools` / `setGeminiTools` / `setVertexAITools`. Anthropic's MCP connector rides on
+  `setAnthropicMcpServers` (all adapter paths send `mcp_servers`; Anthropic API only, Bedrock rejects it) and the adapter
+  continues `pause_turn` stops itself (`OpenAIAnthropicChatCompletionService.streamWithContinuation` /
+  `createMessageWithContinuation`: echo the assistant blocks rebuilt by `StreamedChunkMapper` + "Continue from where you
+  left off."; one Start, intermediate Finish/Usage dropped, final Usage summed, tool ordinals continue; capped by
+  `setAnthropicMaxContinuations`, default 6). Grok, Groq, Cerebras, Fireworks and
   DeepSeek use the generic mapping (live-verified 2026-09-10; repeated per-chunk `usage` is deduplicated). Every streamed wrapper in `openai-client-stream` must
   delegate the 4-arg method explicitly (see `StreamedWrappersDelegationSpec`). `source.texts` is the legacy string view,
   `source.assembled` folds into `AssembledChatCompletion`. Two layers: the tool layer (`ToolCall*`/`ToolResult`, client and

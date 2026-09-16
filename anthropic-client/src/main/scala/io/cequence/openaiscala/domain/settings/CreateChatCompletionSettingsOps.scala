@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.domain.settings
 
-import io.cequence.openaiscala.anthropic.domain.tools.Tool
+import io.cequence.openaiscala.anthropic.domain.tools.{MCPServerURLDefinition, Tool}
 
 import scala.util.Try
 
@@ -11,6 +11,8 @@ object CreateChatCompletionSettingsOps {
     private val AnthropicThinkingBudgetTokens = "thinking_budget_tokens"
     private val AnthropicFastSpeed = "fast_speed"
     private val AnthropicTools = "anthropic_tools"
+    private val AnthropicMcpServers = "anthropic_mcp_servers"
+    private val AnthropicMaxContinuations = "anthropic_max_continuations"
 
     def setAnthropicCachedUserMessagesCount(count: Int): CreateChatCompletionSettings =
       settings.copy(
@@ -71,6 +73,44 @@ object CreateChatCompletionSettingsOps {
         case Some(tools: Seq[_]) if tools.forall(_.isInstanceOf[Tool]) =>
           tools.asInstanceOf[Seq[Tool]]
         case _ => Nil
+      }
+
+    /**
+     * Remote MCP servers for Anthropic's MCP connector (`mcp_servers` on the Messages API,
+     * Anthropic API only - Bedrock rejects it). Claude calls their tools itself; on the typed
+     * stream each call arrives as `ToolCallStart` / `ToolCall` (`serverSide = true`) and its
+     * result as `ToolResult`. When a server-side tool run exceeds the turn budget the API
+     * stops with `pause_turn`; the adapter continues the turn transparently, see
+     * [[setAnthropicMaxContinuations]].
+     */
+    def setAnthropicMcpServers(
+      servers: Seq[MCPServerURLDefinition]
+    ): CreateChatCompletionSettings =
+      settings.copy(
+        extra_params = settings.extra_params + (AnthropicMcpServers -> servers)
+      )
+
+    def anthropicMcpServers: Seq[MCPServerURLDefinition] =
+      settings.extra_params.get(AnthropicMcpServers) match {
+        case Some(servers: Seq[_]) if servers.forall(_.isInstanceOf[MCPServerURLDefinition]) =>
+          servers.asInstanceOf[Seq[MCPServerURLDefinition]]
+        case _ => Nil
+      }
+
+    /**
+     * How many times the Anthropic adapter re-issues a request that stopped with `pause_turn`
+     * (a server-side / MCP tool run that outlived its turn budget) before giving up and
+     * reporting that stop reason. Defaults to 6; 0 disables the continuation.
+     */
+    def setAnthropicMaxContinuations(max: Int): CreateChatCompletionSettings =
+      settings.copy(
+        extra_params = settings.extra_params + (AnthropicMaxContinuations -> max)
+      )
+
+    def anthropicMaxContinuations: Option[Int] =
+      settings.extra_params.get(AnthropicMaxContinuations).flatMap {
+        case value: Int => Some(value)
+        case value: Any => Try(value.toString.toInt).toOption
       }
   }
 }

@@ -6,12 +6,19 @@ import akka.stream.scaladsl.{Sink, Source}
 import io.cequence.openaiscala.anthropic.domain.ChatRole
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{
   McpToolResultBlock,
+  McpToolUseBlock,
   RedactedThinkingBlock,
   ServerToolUseBlock,
+  TextBlock,
+  ThinkingBlock,
   ToolUseBlock,
   WebSearchToolResultBlock
 }
-import io.cequence.openaiscala.anthropic.domain.Content.ContentBlocks
+import io.cequence.openaiscala.anthropic.domain.Content.{
+  ContentBlock,
+  ContentBlockBase,
+  ContentBlocks
+}
 import io.cequence.openaiscala.anthropic.domain.response.CreateMessageResponse.UsageInfo
 import io.cequence.openaiscala.anthropic.domain.response.DeltaBlock._
 import io.cequence.openaiscala.anthropic.domain.response.MessageStreamEvent._
@@ -22,6 +29,7 @@ import io.cequence.openaiscala.anthropic.domain.response.{
   MessageStreamEvent
 }
 import io.cequence.openaiscala.anthropic.domain.{
+  McpToolResultString,
   McpToolResultStructured,
   MCPToolResultItem,
   ServerToolName,
@@ -290,6 +298,89 @@ class AnthropicStreamedToChatChunksSpec
         Other("weird_delta", Json.obj()),
         Other("mystery", Json.obj("type" -> "mystery"))
       )
+    }
+
+    "map mcp_tool_use + input_json_delta + mcp_tool_result to a server-side call and its result" in {
+      val result = McpToolResultBlock(McpToolResultString("given = implicit"), false, "mcp_1")
+
+      val out = run(
+        messageStart(),
+        ContentBlockStart(
+          0,
+          "mcp_tool_use",
+          Some(McpToolUseBlock("mcp_1", "read_wiki", "deepwiki", Json.obj()))
+        ),
+        inputJsonDelta(0, "{\"repo\": "),
+        inputJsonDelta(0, "\"scala/scala\"}"),
+        ContentBlockStop(0),
+        ContentBlockStart(1, "mcp_tool_result", Some(result)),
+        ContentBlockStop(1),
+        messageDelta("end_turn", 9)
+      )
+
+      out shouldBe Seq(
+        Start("msg_1", "claude-x"),
+        ToolCallStart(0, "mcp_1", "read_wiki", serverSide = true),
+        ToolCallDelta(0, "{\"repo\": "),
+        ToolCallDelta(0, "\"scala/scala\"}"),
+        ToolCall(0, "mcp_1", "read_wiki", "{\"repo\": \"scala/scala\"}", serverSide = true),
+        ToolResult(
+          "mcp_1",
+          "mcp",
+          Json.toJson(result: ContentBlock)(
+            io.cequence.openaiscala.anthropic.JsonFormats.contentBlockFormat
+          ),
+          Some("given = implicit"),
+          isError = false
+        ),
+        Finish(FinishReason.stop, Some("end_turn")),
+        Usage(toOpenAI(UsageInfo(10, 9, None, None)))
+      )
+    }
+
+    "rebuild the assistant content blocks, stop reason and usage for a continuation" in {
+      val mapper = new StreamedChunkMapper(initialToolCount = 3)
+      val result = McpToolResultBlock(McpToolResultString("r"), false, "mcp_1")
+
+      val events = Seq(
+        messageStart(inputTokens = 10),
+        ContentBlockStart(0, "thinking", None),
+        thinkingDelta(0, "let me"),
+        signatureDelta(0, "sig"),
+        ContentBlockStop(0),
+        ContentBlockStart(
+          1,
+          "mcp_tool_use",
+          Some(McpToolUseBlock("mcp_1", "read_wiki", "deepwiki", Json.obj()))
+        ),
+        inputJsonDelta(1, "{\"repo\": \"scala/scala\"}"),
+        ContentBlockStop(1),
+        ContentBlockStart(2, "mcp_tool_result", Some(result)),
+        ContentBlockStop(2),
+        ContentBlockStart(3, "text", None),
+        textDelta(3, "Look"),
+        textDelta(3, "ing"),
+        ContentBlockStop(3),
+        ContentBlockStart(4, "tool_use", Some(ToolUseBlock("t1", "f", Json.obj("a" -> 1)))),
+        messageDelta("pause_turn", 7)
+      )
+      val chunks = events.flatMap(mapper.apply)
+
+      mapper.contentBlocks shouldBe Seq(
+        ContentBlockBase(ThinkingBlock("let me", "sig")),
+        ContentBlockBase(
+          McpToolUseBlock("mcp_1", "read_wiki", "deepwiki", Json.obj("repo" -> "scala/scala"))
+        ),
+        ContentBlockBase(result),
+        ContentBlockBase(TextBlock("Looking")),
+        // still open at message_delta - closed with the input it started with
+        ContentBlockBase(ToolUseBlock("t1", "f", Json.obj("a" -> 1)))
+      )
+      mapper.stopReason shouldBe Some("pause_turn")
+      mapper.usage shouldBe Some(UsageInfo(10, 7, None, None))
+      // ordinals continue from the offset the mapper was created with
+      chunks.collect { case ToolCallStart(ordinal, _, _, _) => ordinal } shouldBe Seq(3, 4)
+      mapper.nextToolOrdinal shouldBe 5
     }
 
     "flush a tool call still pending at message_delta and map max_tokens to length" in {

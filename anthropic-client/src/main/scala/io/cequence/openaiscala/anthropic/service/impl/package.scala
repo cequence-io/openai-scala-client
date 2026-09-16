@@ -612,7 +612,8 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
       output_format = jsonSchema.map { schema =>
         OutputFormat.JsonSchemaFormat(schema)
       },
-      speed = if (settings.anthropicFastSpeed) Some(Speed.fast) else None
+      speed = if (settings.anthropicFastSpeed) Some(Speed.fast) else None,
+      mcp_servers = settings.anthropicMcpServers
     )
   }
 
@@ -970,159 +971,309 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
    */
   def toChatChunks: Flow[MessageStreamEvent, ChatChunk, NotUsed] =
     Flow[MessageStreamEvent].statefulMapConcat { () =>
-      var startUsage: Option[UsageInfo] = None
-      var toolCount: Int = 0
-      val pendingByBlock = mutable.LinkedHashMap.empty[Int, PendingStreamedToolCall]
-
-      def startToolCall(
-        blockIndex: Int,
-        callId: String,
-        toolName: String,
-        serverSide: Boolean,
-        input: JsObject
-      ): List[ChatChunk] = {
-        val pending = new PendingStreamedToolCall(toolCount, callId, toolName, serverSide)
-        toolCount += 1
-        if (input.fields.nonEmpty) pending.arguments.append(input.toString)
-        pendingByBlock.put(blockIndex, pending)
-        List(ChatChunk.ToolCallStart(pending.ordinal, callId, toolName, serverSide))
-      }
-
-      def completeToolCall(pending: PendingStreamedToolCall): List[ChatChunk] = {
-        val arguments = if (pending.arguments.isEmpty) "{}" else pending.arguments.toString
-        ChatChunk.ToolCall(
-          pending.ordinal,
-          pending.callId,
-          pending.toolName,
-          arguments,
-          pending.serverSide
-        ) :: (if (pending.serverSide)
-                toSemanticToolCallChunk(pending.toolName, pending.callId, arguments)
-              else Nil)
-      }
-
-      (event: MessageStreamEvent) =>
-        event match {
-          case MessageStreamEvent.MessageStart(message) =>
-            startUsage = Some(message.usage)
-            List(ChatChunk.Start(message.id, message.model))
-
-          case MessageStreamEvent.ContentBlockStart(
-                index,
-                _,
-                Some(ToolUseBlock(id, name, input)),
-                _
-              ) =>
-            startToolCall(index, id, name, serverSide = false, input)
-
-          case MessageStreamEvent.ContentBlockStart(
-                index,
-                _,
-                Some(ContentBlock.ServerToolUseBlock(id, name, input)),
-                _
-              ) =>
-            startToolCall(index, id, name.toString, serverSide = true, input)
-
-          case MessageStreamEvent.ContentBlockStart(
-                index,
-                _,
-                Some(ContentBlock.McpToolUseBlock(id, name, _, input)),
-                _
-              ) =>
-            startToolCall(index, id, name, serverSide = true, input)
-
-          case MessageStreamEvent.ContentBlockStart(_, _, Some(TextBlock(text, _)), _) =>
-            if (text.nonEmpty) List(ChatChunk.Text(text)) else Nil
-
-          case MessageStreamEvent.ContentBlockStart(
-                _,
-                _,
-                Some(ContentBlock.RedactedThinkingBlock(data)),
-                _
-              ) =>
-            List(ChatChunk.RedactedThinking(data))
-
-          case MessageStreamEvent.ContentBlockStart(_, blockType, Some(block), raw) =>
-            toToolResultChunks(block) match {
-              case Nil if blockType == "thinking" => Nil
-              case Nil    => List(ChatChunk.Other(blockType, raw.getOrElse(JsNull)))
-              case chunks => chunks
-            }
-
-          // text / thinking block starts carry no content yet - the deltas follow
-          case MessageStreamEvent.ContentBlockStart(_, "text" | "thinking", None, _) =>
-            Nil
-
-          case MessageStreamEvent.ContentBlockStart(_, blockType, None, raw) =>
-            List(ChatChunk.Other(blockType, raw.getOrElse(JsNull)))
-
-          case MessageStreamEvent.ContentBlockDeltaEvent(
-                ContentBlockDelta(_, _, DeltaBlock.DeltaText(text))
-              ) =>
-            List(ChatChunk.Text(text))
-
-          case MessageStreamEvent.ContentBlockDeltaEvent(
-                ContentBlockDelta(_, _, DeltaBlock.DeltaThinking(thinking))
-              ) =>
-            List(ChatChunk.Thinking(thinking))
-
-          case MessageStreamEvent.ContentBlockDeltaEvent(
-                ContentBlockDelta(_, _, DeltaBlock.DeltaSignature(signature))
-              ) =>
-            List(ChatChunk.ThinkingSignature(signature))
-
-          case MessageStreamEvent.ContentBlockDeltaEvent(
-                ContentBlockDelta(_, blockIndex, DeltaBlock.DeltaInputJson(partialJson))
-              ) =>
-            pendingByBlock.get(blockIndex) match {
-              case Some(pending) =>
-                pending.arguments.append(partialJson)
-                List(ChatChunk.ToolCallDelta(pending.ordinal, partialJson))
-              case None =>
-                List(
-                  ChatChunk.Other("input_json_delta", Json.obj("partial_json" -> partialJson))
-                )
-            }
-
-          case MessageStreamEvent.ContentBlockDeltaEvent(
-                ContentBlockDelta(_, _, DeltaBlock.DeltaCitations(citation))
-              ) =>
-            List(
-              ChatChunk.Citation(
-                citedText = (citation \ "cited_text").asOpt[String],
-                url = (citation \ "url").asOpt[String],
-                title = (citation \ "title")
-                  .asOpt[String]
-                  .orElse((citation \ "document_title").asOpt[String]),
-                raw = citation
-              )
-            )
-
-          case MessageStreamEvent.ContentBlockDeltaEvent(
-                ContentBlockDelta(_, _, DeltaBlock.DeltaUnknown(deltaType, raw))
-              ) =>
-            List(ChatChunk.Other(deltaType, raw))
-
-          case MessageStreamEvent.ContentBlockStop(index) =>
-            pendingByBlock.remove(index).toList.flatMap(completeToolCall)
-
-          case MessageStreamEvent.MessageDelta(stopReason, _, deltaUsage) =>
-            val stillPending =
-              pendingByBlock.values.toList.sortBy(_.ordinal).flatMap(completeToolCall)
-            pendingByBlock.clear()
-            stillPending ++
-              stopReason.map(r => ChatChunk.Finish(toChunkFinishReason(r), Some(r))).toList ++
-              deltaUsage
-                .map(du => ChatChunk.Usage(toOpenAI(mergeUsage(startUsage, du))))
-                .toList
-
-          case MessageStreamEvent.MessageStop | MessageStreamEvent.Ping =>
-            Nil
-
-          case MessageStreamEvent.UnknownEvent(eventType, raw) =>
-            List(ChatChunk.Other(eventType, raw))
-        }
+      val mapper = new StreamedChunkMapper()
+      (event: MessageStreamEvent) => mapper(event)
     }
+
+  /**
+   * The stateful event-to-chunk mapping behind [[toChatChunks]], one instance per streamed
+   * message. Besides emitting the chunks it rebuilds the assistant turn's content blocks from
+   * the events ([[contentBlocks]]) and records the stop reason and merged usage, which is what
+   * a `pause_turn` continuation has to send back (see `OpenAIAnthropicChatCompletionService`).
+   *
+   * @param initialToolCount
+   *   ordinal of the first tool call - a continuation round keeps counting where the previous
+   *   round stopped, so ordinals stay unique across the whole turn
+   */
+  private[impl] final class StreamedChunkMapper(initialToolCount: Int = 0)
+      extends (MessageStreamEvent => List[ChatChunk]) {
+
+    private var startUsage: Option[UsageInfo] = None
+    private var toolCount: Int = initialToolCount
+    private val pendingByBlock = mutable.LinkedHashMap.empty[Int, PendingStreamedToolCall]
+
+    // the assistant content, block by block, for echoing the turn back
+    private val openBlocks = mutable.LinkedHashMap.empty[Int, StreamedBlockBuilder]
+    private val closedBlocks = mutable.ListBuffer.empty[ContentBlockBase]
+    private var _stopReason: Option[String] = None
+    private var _usage: Option[UsageInfo] = None
+
+    /** Content blocks of the message so far, in order (blocks still open are not included). */
+    def contentBlocks: Seq[ContentBlockBase] = closedBlocks.toList
+
+    /** The `message_delta` stop reason, once it arrived. */
+    def stopReason: Option[String] = _stopReason
+
+    /**
+     * `message_start` usage merged with the `message_delta` usage, once the latter arrived.
+     */
+    def usage: Option[UsageInfo] = _usage
+
+    /** Ordinal the next tool call would get. */
+    def nextToolOrdinal: Int = toolCount
+
+    private def startToolCall(
+      blockIndex: Int,
+      callId: String,
+      toolName: String,
+      serverSide: Boolean,
+      input: JsObject
+    ): List[ChatChunk] = {
+      val pending = new PendingStreamedToolCall(toolCount, callId, toolName, serverSide)
+      toolCount += 1
+      if (input.fields.nonEmpty) pending.arguments.append(input.toString)
+      pendingByBlock.put(blockIndex, pending)
+      List(ChatChunk.ToolCallStart(pending.ordinal, callId, toolName, serverSide))
+    }
+
+    private def completeToolCall(pending: PendingStreamedToolCall): List[ChatChunk] = {
+      val arguments = if (pending.arguments.isEmpty) "{}" else pending.arguments.toString
+      ChatChunk.ToolCall(
+        pending.ordinal,
+        pending.callId,
+        pending.toolName,
+        arguments,
+        pending.serverSide
+      ) :: (if (pending.serverSide)
+              toSemanticToolCallChunk(pending.toolName, pending.callId, arguments)
+            else Nil)
+    }
+
+    private def openBlock(
+      index: Int,
+      builder: StreamedBlockBuilder
+    ): Unit =
+      openBlocks.put(index, builder)
+
+    private def closeBlock(index: Int): Unit =
+      openBlocks.remove(index).flatMap(_.result()).foreach(closedBlocks += _)
+
+    private def closeAllBlocks(): Unit = {
+      openBlocks.keys.toList.foreach(closeBlock)
+      openBlocks.clear()
+    }
+
+    def apply(event: MessageStreamEvent): List[ChatChunk] =
+      event match {
+        case MessageStreamEvent.MessageStart(message) =>
+          startUsage = Some(message.usage)
+          List(ChatChunk.Start(message.id, message.model))
+
+        case MessageStreamEvent.ContentBlockStart(
+              index,
+              _,
+              Some(block @ ToolUseBlock(id, name, input)),
+              _
+            ) =>
+          openBlock(index, new StreamedBlockBuilder.ToolUse(block, input))
+          startToolCall(index, id, name, serverSide = false, input)
+
+        case MessageStreamEvent.ContentBlockStart(
+              index,
+              _,
+              Some(block @ ContentBlock.ServerToolUseBlock(id, name, input)),
+              _
+            ) =>
+          openBlock(index, new StreamedBlockBuilder.ToolUse(block, input))
+          startToolCall(index, id, name.toString, serverSide = true, input)
+
+        case MessageStreamEvent.ContentBlockStart(
+              index,
+              _,
+              Some(block @ ContentBlock.McpToolUseBlock(id, name, _, input)),
+              _
+            ) =>
+          openBlock(index, new StreamedBlockBuilder.ToolUse(block, input))
+          startToolCall(index, id, name, serverSide = true, input)
+
+        case MessageStreamEvent.ContentBlockStart(index, _, Some(TextBlock(text, _)), _) =>
+          openBlock(index, new StreamedBlockBuilder.Text(text))
+          if (text.nonEmpty) List(ChatChunk.Text(text)) else Nil
+
+        case MessageStreamEvent.ContentBlockStart(
+              index,
+              _,
+              Some(block @ ContentBlock.RedactedThinkingBlock(data)),
+              _
+            ) =>
+          openBlock(index, new StreamedBlockBuilder.Complete(block))
+          List(ChatChunk.RedactedThinking(data))
+
+        case MessageStreamEvent.ContentBlockStart(index, blockType, Some(block), raw) =>
+          openBlock(index, new StreamedBlockBuilder.Complete(block))
+          toToolResultChunks(block) match {
+            case Nil if blockType == "thinking" => Nil
+            case Nil    => List(ChatChunk.Other(blockType, raw.getOrElse(JsNull)))
+            case chunks => chunks
+          }
+
+        // text / thinking block starts carry no content yet - the deltas follow
+        case MessageStreamEvent.ContentBlockStart(index, "text", None, _) =>
+          openBlock(index, new StreamedBlockBuilder.Text(""))
+          Nil
+
+        case MessageStreamEvent.ContentBlockStart(index, "thinking", None, _) =>
+          openBlock(index, new StreamedBlockBuilder.Thinking)
+          Nil
+
+        case MessageStreamEvent.ContentBlockStart(_, blockType, None, raw) =>
+          List(ChatChunk.Other(blockType, raw.getOrElse(JsNull)))
+
+        case MessageStreamEvent.ContentBlockDeltaEvent(
+              ContentBlockDelta(_, index, DeltaBlock.DeltaText(text))
+            ) =>
+          openBlocks.get(index).foreach(_.append(DeltaBlock.DeltaText(text)))
+          List(ChatChunk.Text(text))
+
+        case MessageStreamEvent.ContentBlockDeltaEvent(
+              ContentBlockDelta(_, index, DeltaBlock.DeltaThinking(thinking))
+            ) =>
+          openBlocks.get(index).foreach(_.append(DeltaBlock.DeltaThinking(thinking)))
+          List(ChatChunk.Thinking(thinking))
+
+        case MessageStreamEvent.ContentBlockDeltaEvent(
+              ContentBlockDelta(_, index, DeltaBlock.DeltaSignature(signature))
+            ) =>
+          openBlocks.get(index).foreach(_.append(DeltaBlock.DeltaSignature(signature)))
+          List(ChatChunk.ThinkingSignature(signature))
+
+        case MessageStreamEvent.ContentBlockDeltaEvent(
+              ContentBlockDelta(_, blockIndex, DeltaBlock.DeltaInputJson(partialJson))
+            ) =>
+          openBlocks.get(blockIndex).foreach(_.append(DeltaBlock.DeltaInputJson(partialJson)))
+          pendingByBlock.get(blockIndex) match {
+            case Some(pending) =>
+              pending.arguments.append(partialJson)
+              List(ChatChunk.ToolCallDelta(pending.ordinal, partialJson))
+            case None =>
+              List(
+                ChatChunk.Other("input_json_delta", Json.obj("partial_json" -> partialJson))
+              )
+          }
+
+        case MessageStreamEvent.ContentBlockDeltaEvent(
+              ContentBlockDelta(_, _, DeltaBlock.DeltaCitations(citation))
+            ) =>
+          List(
+            ChatChunk.Citation(
+              citedText = (citation \ "cited_text").asOpt[String],
+              url = (citation \ "url").asOpt[String],
+              title = (citation \ "title")
+                .asOpt[String]
+                .orElse((citation \ "document_title").asOpt[String]),
+              raw = citation
+            )
+          )
+
+        case MessageStreamEvent.ContentBlockDeltaEvent(
+              ContentBlockDelta(_, _, DeltaBlock.DeltaUnknown(deltaType, raw))
+            ) =>
+          List(ChatChunk.Other(deltaType, raw))
+
+        case MessageStreamEvent.ContentBlockStop(index) =>
+          closeBlock(index)
+          pendingByBlock.remove(index).toList.flatMap(completeToolCall)
+
+        case MessageStreamEvent.MessageDelta(stopReason, _, deltaUsage) =>
+          closeAllBlocks()
+          _stopReason = stopReason
+          _usage = deltaUsage.map(du => mergeUsage(startUsage, du)).orElse(startUsage)
+
+          val stillPending =
+            pendingByBlock.values.toList.sortBy(_.ordinal).flatMap(completeToolCall)
+          pendingByBlock.clear()
+          stillPending ++
+            stopReason.map(r => ChatChunk.Finish(toChunkFinishReason(r), Some(r))).toList ++
+            deltaUsage.map(du => ChatChunk.Usage(toOpenAI(mergeUsage(startUsage, du)))).toList
+
+        case MessageStreamEvent.MessageStop | MessageStreamEvent.Ping =>
+          Nil
+
+        case MessageStreamEvent.UnknownEvent(eventType, raw) =>
+          List(ChatChunk.Other(eventType, raw))
+      }
+  }
+
+  /** Rebuilds one content block of a streamed assistant message from its start + deltas. */
+  private sealed trait StreamedBlockBuilder {
+    def append(delta: DeltaBlock): Unit = ()
+    def result(): Option[ContentBlockBase]
+  }
+
+  private object StreamedBlockBuilder {
+
+    final class Text(initial: String) extends StreamedBlockBuilder {
+      private val text = new StringBuilder(initial)
+
+      override def append(delta: DeltaBlock): Unit =
+        delta match {
+          case DeltaBlock.DeltaText(t) => text.append(t); ()
+          case _                       => ()
+        }
+
+      def result(): Option[ContentBlockBase] = Some(ContentBlockBase(TextBlock(text.toString)))
+    }
+
+    final class Thinking extends StreamedBlockBuilder {
+      private val thinking = new StringBuilder
+      private val signature = new StringBuilder
+
+      override def append(delta: DeltaBlock): Unit =
+        delta match {
+          case DeltaBlock.DeltaThinking(t)  => thinking.append(t); ()
+          case DeltaBlock.DeltaSignature(s) => signature.append(s); ()
+          case _                            => ()
+        }
+
+      // a thinking block is only replayable with its signature
+      def result(): Option[ContentBlockBase] =
+        if (signature.isEmpty) None
+        else
+          Some(
+            ContentBlockBase(
+              ContentBlock.ThinkingBlock(thinking.toString, signature.toString)
+            )
+          )
+    }
+
+    /**
+     * `tool_use` / `server_tool_use` / `mcp_tool_use`: the input arrives as JSON fragments.
+     */
+    final class ToolUse(
+      block: ContentBlock,
+      initialInput: JsObject
+    ) extends StreamedBlockBuilder {
+      private val partialJson = new StringBuilder
+
+      override def append(delta: DeltaBlock): Unit =
+        delta match {
+          case DeltaBlock.DeltaInputJson(json) => partialJson.append(json); ()
+          case _                               => ()
+        }
+
+      def result(): Option[ContentBlockBase] = {
+        val input =
+          if (partialJson.isEmpty) initialInput
+          else
+            scala.util
+              .Try(Json.parse(partialJson.toString).as[JsObject])
+              .getOrElse(initialInput)
+
+        val withInput = block match {
+          case b: ToolUseBlock                    => b.copy(input = input)
+          case b: ContentBlock.ServerToolUseBlock => b.copy(input = input)
+          case b: ContentBlock.McpToolUseBlock    => b.copy(input = input)
+          case other                              => other
+        }
+        Some(ContentBlockBase(withInput))
+      }
+    }
+
+    /** A block that arrived whole in `content_block_start` (results, redacted thinking). */
+    final class Complete(block: ContentBlock) extends StreamedBlockBuilder {
+      def result(): Option[ContentBlockBase] = Some(ContentBlockBase(block))
+    }
+  }
 
   def toOpenAIAssistantMessage(
     content: ContentBlocks,
