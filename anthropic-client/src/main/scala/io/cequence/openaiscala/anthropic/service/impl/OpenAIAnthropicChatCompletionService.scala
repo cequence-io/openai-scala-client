@@ -633,7 +633,10 @@ private[service] class OpenAIAnthropicChatCompletionService(
           finish_reason = response.stop_reason
         )
       ),
-      usage = Some(toOpenAI(response.usage))
+      usage = Some(toOpenAI(response.usage)),
+      // the raw Anthropic response (with a continued turn's rounds concatenated) - what the
+      // provider ran, server-side tool blocks included
+      originalResponse = Some(response)
     )
   }
 

@@ -345,6 +345,11 @@ class AnthropicStreamedContinuationSpec
       out.choices.head.message.content shouldBe Some("Looking\n done.")
       out.usage.map(_.prompt_tokens) shouldBe Some(10 + 4 + 30 + 2)
       out.usage.flatMap(_.completion_tokens) shouldBe Some(25)
+      // the raw Anthropic response rides along, with both rounds' blocks
+      out.originalResponse.collect { case r: CreateMessageResponse =>
+        r.content.blocks.size
+      } shouldBe
+        Some(round1Blocks.size + 1)
     }
 
     "give up at the cap on the plain path too" in {
