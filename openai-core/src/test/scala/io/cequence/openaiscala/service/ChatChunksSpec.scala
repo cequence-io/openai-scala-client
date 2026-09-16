@@ -245,7 +245,10 @@ class ChatChunksSpec
         Finish(FinishReason.content_filter, Some("refusal")),
         Finish(FinishReason.unknown, None),
         Usage(usage),
-        Other("ping", Json.obj("type" -> "ping"))
+        Other("ping", Json.obj("type" -> "ping")),
+        Retry(2, Some("m2")),
+        Retry(3, None),
+        Done
       )
 
       chunks.foreach { c =>
@@ -258,9 +261,53 @@ class ChatChunksSpec
       Json.toJson(Finish(FinishReason.tool_calls, None): ChatChunk).toString shouldBe
         """{"type":"finish","reason":"tool_calls"}"""
     }
+
+    "give the control events their own type rather than an Other kind" in {
+      Json.toJson(Retry(2, Some("m2")): ChatChunk).toString shouldBe
+        """{"type":"retry","attempt":2,"model":"m2"}"""
+      Json
+        .toJson(Retry(2, None): ChatChunk)
+        .toString shouldBe """{"type":"retry","attempt":2}"""
+      Json.toJson(Done: ChatChunk).toString shouldBe """{"type":"done"}"""
+    }
   }
 
   "AssembledChatCompletion" should {
+
+    "discard what a restarted stream streamed before the retry" in {
+      val chunks = List[ChatChunk](
+        Start("id-1", "m1"),
+        Thinking("hmm"),
+        Text("half an ans"),
+        ThinkingSignature("s1"),
+        ToolCall(0, "c1", "f", "{}", serverSide = false),
+        Other("ping", Json.obj()),
+        Retry(2, Some("m2")),
+        Start("id-2", "m2"),
+        Text("Oslo"),
+        Finish(FinishReason.stop, Some("stop")),
+        Usage(usage),
+        Done
+      )
+
+      val folded = chunks.foldLeft(AssembledChatCompletion.empty)(_ add _)
+      val built = chunks.foldLeft(new AssembledChatCompletion.Builder)(_ add _).result()
+
+      // the immutable fold and the mutable builder must agree
+      folded shouldBe built
+      folded shouldBe AssembledChatCompletion(
+        id = Some("id-2"),
+        model = Some("m2"),
+        text = "Oslo",
+        finishReason = Some(FinishReason.stop),
+        providerFinishReason = Some("stop"),
+        usage = Some(usage)
+      )
+
+      // a retry that changes model seeds it until the new attempt's Start arrives
+      AssembledChatCompletion.empty.add(Text("x")).add(Retry(2, Some("m2"))) shouldBe
+        AssembledChatCompletion(model = Some("m2"))
+    }
 
     "fold a typed stream, ignoring argument deltas and excluding server-side calls from the assistant message" in {
       val assembled = Source(

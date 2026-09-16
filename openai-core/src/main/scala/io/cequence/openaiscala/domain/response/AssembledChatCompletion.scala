@@ -67,6 +67,10 @@ final case class AssembledChatCompletion(
         copy(finishReason = Some(reason), providerFinishReason = providerReason)
       case ChatChunk.Usage(u) => copy(usage = Some(u))
       case o: ChatChunk.Other => copy(other = other :+ o)
+      // a restart voids everything accumulated so far; the new attempt's Start overwrites the
+      // model seeded here when it arrives
+      case ChatChunk.Retry(_, retryModel) => AssembledChatCompletion(model = retryModel)
+      case ChatChunk.Done                 => this
     }
 
   /** Tool calls the caller has to execute (provider-executed ones are excluded). */
@@ -142,8 +146,35 @@ object AssembledChatCompletion {
           providerFinishReason = providerReason
         case ChatChunk.Usage(u) => usage = Some(u)
         case o: ChatChunk.Other => other += o
+        case ChatChunk.Retry(_, retryModel) =>
+          reset()
+          model = retryModel
+        case ChatChunk.Done => ()
       }
       this
+    }
+
+    private def reset(): Unit = {
+      id = None
+      model = None
+      text.clear()
+      thinking.clear()
+      thinkingSignatures.clear()
+      toolCallSignatures.clear()
+      redactedThinking.clear()
+      toolCalls.clear()
+      toolResults.clear()
+      codeExecutions.clear()
+      codeExecutionResults.clear()
+      webSearches.clear()
+      webSearchResults.clear()
+      images.clear()
+      refusal.clear()
+      citations.clear()
+      finishReason = None
+      providerFinishReason = None
+      usage = None
+      other.clear()
     }
 
     def result(): AssembledChatCompletion =

@@ -96,6 +96,9 @@ object ChatChunkPrinter {
         s"citation   : ${title.getOrElse("")} ${url.getOrElse("")}"
       case Finish(reason, provider) => s"finish     : $reason (${provider.getOrElse("-")})"
       case Usage(usage)             => s"usage      : $usage"
-      case Other(kind, _)           => s"other      : $kind"
+      case Retry(attempt, model) =>
+        s"retry      : attempt $attempt${model.fold("")(m => s" -> $m")}"
+      case Done           => "done"
+      case Other(kind, _) => s"other      : $kind"
     }
 }

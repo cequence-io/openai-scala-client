@@ -659,6 +659,15 @@ object JsonFormats {
         obj("type" -> str("usage"), "usage" -> Some(Json.toJson(usage)))
       case Other(kind, raw) =>
         obj("type" -> str("other"), "kind" -> str(kind), "raw" -> Some(raw))
+      // control events get their own `type`, not Other's provider-namespaced `kind`
+      case Retry(attempt, model) =>
+        obj(
+          "type" -> str("retry"),
+          "attempt" -> Some(JsNumber(attempt)),
+          "model" -> optStr(model)
+        )
+      case Done =>
+        obj("type" -> str("done"))
     }
 
     val reads: Reads[ChatChunk] = Reads[ChatChunk] { json =>
@@ -732,6 +741,8 @@ object JsonFormats {
             .map(reason => Finish(reason, optS("provider_reason")))
         case "usage" => (json \ "usage").validate[UsageInfo].map(Usage(_))
         case "other" => for { kind <- s("kind"); raw <- js("raw") } yield Other(kind, raw)
+        case "retry" => i("attempt").map(Retry(_, optS("model")))
+        case "done"  => JsSuccess(Done)
         case other   => JsError(s"Unknown chat chunk type '$other'.")
       }
     }

@@ -115,7 +115,9 @@ Streaming is provided as an extension via the `openai-client-stream` module:
 - **Typed streaming** (1.3.0): `createChatToolCompletionStreamed(messages, tools, responseToolChoice, settings)` /
   `createChatCompletionStreamedTyped` return `Source[ChatChunk, NotUsed]` - a provider-neutral sealed ADT
   (`domain/response/ChatChunk.scala`: `Start`, `Text`, `Thinking`, `ThinkingSignature`, `RedactedThinking`,
-  `ToolCallStart`/`ToolCallDelta`/`ToolCall`, `ToolResult`, `Citation`, `Finish`, `Usage`, `Other`). The trait
+  `ToolCallStart`/`ToolCallDelta`/`ToolCall`, `ToolResult`, `Citation`, `Finish`, `Usage`, `Other`, plus two
+  control events no provider mapper emits - `Retry(attempt, model)` inserted by whoever restarts a stream, which resets
+  the assembler, and `Done`, an explicit terminator for transports that cannot signal completion). The trait
   default derives it from the OpenAI chunks via `service/ChatChunks.fromOpenAIChunks` (handles `delta.reasoning_content`
   / `delta.reasoning`); Anthropic (`impl/package.scala#toChatChunks`, requests `display = summarized` thinking) and
   Gemini (`OpenAIGeminiChatCompletionService.toChatChunks`, turns `includeThoughts` on) and Vertex AI

@@ -38,6 +38,11 @@ import scala.concurrent.Future
  *
  * Anything a provider sends that is not modeled here is passed through as [[ChatChunk.Other]]
  * (never dropped, never an error), so the hierarchy is forward compatible.
+ *
+ * Two '''control events''' are never produced by a provider mapper; they are inserted by
+ * whoever owns the stream: [[ChatChunk.Retry]] when a stream is restarted (everything before
+ * it is void) and [[ChatChunk.Done]] as an explicit terminator for transports that cannot
+ * signal completion themselves.
  */
 sealed trait ChatChunk
 
@@ -232,6 +237,32 @@ object ChatChunk {
     kind: String,
     raw: JsValue
   ) extends ChatChunk
+
+  /**
+   * The stream was restarted: everything streamed before this chunk is void and the response
+   * begins again (a fresh [[Start]] follows). Emitted by whoever retries a stream - a retry
+   * adapter, a failover router - never by a provider. [[AssembledChatCompletion]] discards the
+   * partial response it had accumulated, so folding a restarted stream yields the answer that
+   * survived.
+   *
+   * @param attempt
+   *   1-based number of the attempt that begins with this chunk (so the first `Retry` carries
+   *   2)
+   * @param model
+   *   the model the new attempt targets, when a failover changed it
+   */
+  final case class Retry(
+    attempt: Int,
+    model: Option[String] = None
+  ) extends ChatChunk
+
+  /**
+   * Explicit end of stream, for transports that cannot signal completion on their own - a
+   * chunked HTTP body, an SSE relay, an NDJSON file - and for consumers that need a terminal
+   * marker after a [[Finish]] that may not be the last chunk (a trailing [[Usage]] usually
+   * follows it). Carries nothing and does not affect assembly.
+   */
+  case object Done extends ChatChunk
 
   sealed trait FinishReason extends EnumValue
 
