@@ -1,7 +1,11 @@
 package io.cequence.openaiscala.typesafe.service
 
 import io.cequence.openaiscala.EnvHelper
-import io.cequence.openaiscala.typesafe.service.impl.TypeSafeServiceImpl
+import io.cequence.openaiscala.service.OpenAIChatCompletionService
+import io.cequence.openaiscala.typesafe.service.impl.{
+  OpenAITypeSafeChatCompletionService,
+  TypeSafeServiceImpl
+}
 import io.cequence.wsclient.service.WSClientEngine
 import io.cequence.wsclient.service.ws.Timeouts
 
@@ -65,6 +69,35 @@ object TypeSafeServiceFactory extends EnvHelper {
     implicit ec: ExecutionContext
   ): TypeSafeService =
     new TypeSafeServiceImpl(apiKey, baseUrl, defaultModel, externalEngine = Some(engine))
+
+  /**
+   * System One behind the OpenAI chat-completion interface - structured output ONLY: every
+   * request must set `response_format_type = json_schema` with a closed-vocabulary
+   * `jsonSchema` (booleans, string enums, numeric enums / small ranges, arrays of string
+   * enums, objects of those); the schema becomes the questions, the messages the `state`, and
+   * the assistant message's content is a JSON document of that schema. Anything else fails
+   * fast with an explanation. Made for `createChatCompletionWithJSON[T]` (pass the model in
+   * `jsonSchemaModels`, or rely on the `jev-*` entries of `models-supporting-json-schema`).
+   */
+  def asOpenAI(
+    apiKey: String = getEnvValue(apiKeyEnvKey),
+    baseUrl: String = baseUrlFromEnv,
+    defaultModel: String = defaultModelFromEnv,
+    timeouts: Option[Timeouts] = None
+  )(
+    implicit ec: ExecutionContext
+  ): OpenAIChatCompletionService =
+    new OpenAITypeSafeChatCompletionService(apply(apiKey, baseUrl, defaultModel, timeouts))
+
+  /**
+   * The OpenAI adapter over an EXISTING service (e.g. one on a shared engine, or retrying).
+   */
+  def asOpenAI(
+    service: TypeSafeService
+  )(
+    implicit ec: ExecutionContext
+  ): OpenAIChatCompletionService =
+    new OpenAITypeSafeChatCompletionService(service)
 
   private def baseUrlFromEnv: String = envOrElse(baseUrlEnvKey, defaultBaseUrl)
 

@@ -61,7 +61,7 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 | [Ollama](https://ollama.com/) | Varies                 |                                   |                         | Local LLMs |
 | [Perplexity Sonar](https://www.perplexity.ai/) | Only implied           |                                   |                         | Search-based AI (⚠️ Sonar chat completions retire on 2026-09-27, see below) |
 | [TogetherAI](https://www.together.ai/) | Only JSON object mode  |                                   |                         | Cloud provider |
-| [TypeSafe AI](https://typesafe.ai/) (🔥 New) | Typed by construction  | n/a - a decision model, not chat  |                         | System One model `Jev`: typed Choice / Score / yes-no answers with calibrated probabilities and confidence, ~100 ms (see below) |
+| [TypeSafe AI](https://typesafe.ai/) (🔥 New) | Typed by construction  | `json_schema` structured output only (`asOpenAI()`) |                         | System One model `Jev`: typed Choice / Score / yes-no answers with calibrated probabilities and confidence, ~100 ms (see below) |
 
 ---
 
@@ -264,7 +264,7 @@ Then you can obtain a service in one of the following ways.
 
 7. [TypeSafe AI](https://typesafe.ai/) (🔥 New) - requires `openai-scala-typesafe-client` lib and `TYPESAFE_API_KEY`
 
-   TypeSafe's **System One** model (`jev-latest`) is not a chat model: you send a `state` (text or JSON) plus named, typed questions and get typed answers with calibrated probabilities back in ~100 ms - so there is no `asOpenAI()` adapter and no streaming, just `TypeSafeService`. Three question kinds: `ChoiceQuestion` (one of a fixed set), `ScoreQuestion` (a level on an ordered rubric) and `NoulQuestion` (yes/no). Ask everything at once - questions are evaluated independently in one call.
+   TypeSafe's **System One** model (`jev-latest`) is not a chat model: you send a `state` (text or JSON) plus named, typed questions and get typed answers with calibrated probabilities back in ~100 ms - so there is no streaming, and the `asOpenAI()` adapter (below) serves structured output only. Three question kinds: `ChoiceQuestion` (one of a fixed set), `ScoreQuestion` (a level on an ordered rubric) and `NoulQuestion` (yes/no). Ask everything at once - questions are evaluated independently in one call.
 ```scala
   import io.cequence.openaiscala.typesafe.domain._
   import io.cequence.openaiscala.typesafe.service.TypeSafeServiceFactory
@@ -285,9 +285,52 @@ Then you can obtain a service in one of the following ways.
     if (department.confidence < 0.7) escalateToHuman() else routeTo(department.choice)
   }
 ```
-   Errors map onto the usual exceptions (`OpenAIScalaRateLimitException` for 429, `OpenAIScalaEngineOverloadedException` for TypeSafe's 529, ...), so `TypeSafeServiceAdapters.retry(typeSafe)` backs off exactly where TypeSafe asks you to. `TypeSafeServiceFactory.withEngine(engine)` shares one engine with the other providers. Model names come from `typeSafe.listModels`; the wire format is pinned against TypeSafe's published OpenAPI spec and the official Python SDK's fixtures in the module's tests. (Early access is waitlisted at typesafe.ai; the client is verified against the spec and a local server, not yet against a live key.)
+   Every response carries token usage (`usage.input_tokens` is what you are billed for, `output_tokens` is currently free and grows with the number of questions); there is no streaming, and the API ignores a `stream` flag rather than honouring it. `examples/typesafe/TypeSafeOpenAIAdapterWalkthrough` prints the exact System One request an OpenAI-shaped call turns into, and the response it comes back as.
 
-7. [Groq](https://wow.groq.com/) - requires `GROQ_API_KEY"`
+   Errors map onto the usual exceptions (`OpenAIScalaRateLimitException` for 429, `OpenAIScalaEngineOverloadedException` for TypeSafe's 529, ...), so `TypeSafeServiceAdapters.retry(typeSafe)` backs off exactly where TypeSafe asks you to. `TypeSafeServiceFactory.withEngine(engine)` shares one engine with the other providers. Model names come from `typeSafe.listModels`; the wire format is pinned against TypeSafe's published OpenAPI spec and the official Python SDK's fixtures in the module's tests. **Through the OpenAI interface.** `TypeSafeServiceFactory.asOpenAI()` is an `OpenAIChatCompletionService` for STRUCTURED OUTPUT: the request must set `response_format_type = json_schema` with a closed-vocabulary `jsonSchema` - booleans (noul), string enums (choice), numeric enums or small `minimum`..`maximum` ranges (score; the typed `JsonSchema.Integer` / `Number` carry these as optional fields - portable as `enum`, while `minimum` / `maximum` are honoured by OpenAI in strict mode and stripped by the Anthropic adapter, which would otherwise get a 400), arrays of string enums (multi-select nouls) and nested objects of those. The schema becomes the questions and the messages the state (system messages as `instructions`, a user message that is a JSON object embedded as JSON, several turns as a `conversation` - `TypeSafeChatMapping.toState` / `toQuestions` show you exactly what will be sent), and the assistant message's content is a JSON document of the schema - so `createChatCompletionWithJSON[T]` (and the routers, retry, logging adapters) work unchanged, and the calibrated probabilities ride in `originalResponse` as the `SystemOneResponse`. A free-form string, a plain (non-`json_schema`) request, `n > 1`, tools, streaming and image content are refused up front with an explanation. Only `model`, `response_format_type`, `jsonSchema` and `n` = 1 are honoured out of the standard settings; anything else you set (temperature, `max_tokens`, `seed`, `reasoning_effort`, ...) is dropped with one warning naming it, since System One does not sample. The `jev-*` ids are listed under `models-supporting-json-schema`, so the JSON helper keeps the request in schema mode. See `examples/typesafe/TypeSafeCreateChatCompletionWithJSON`, and `TypeSafeOpenAIAdapterScenarios` for fifteen "how to call it and what happens when" cases (JSON user messages, system instructions, multi-turn, thresholds, `originalResponse`, dropped settings, and every refusal).
+```scala
+  import io.cequence.openaiscala.domain._
+  import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, JsonSchemaDef}
+  import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
+  import io.cequence.openaiscala.typesafe.domain.{SystemOneResponse, TypeSafeModelId}
+  import io.cequence.openaiscala.typesafe.service.TypeSafeServiceFactory
+
+  val service = TypeSafeServiceFactory.asOpenAI()   // an OpenAIChatCompletionService; TYPESAFE_API_KEY
+  // or over an existing service, e.g. one on a shared engine or wrapped in the retry adapter:
+  // val service = TypeSafeServiceFactory.asOpenAI(TypeSafeServiceAdapters.retry(TypeSafeServiceFactory.withEngine(engine)))
+
+  case class Triage(department: String, is_urgent: Boolean, frustration: Int, topics: Seq[String])
+  implicit val triageFormat: Format[Triage] = Json.format[Triage]
+
+  // closed vocabulary only: enum -> choice, boolean -> noul, bounded integer -> score, array of enum -> multi-select
+  val triageSchema = JsonSchemaDef("triage", strict = true, structure = Left(JsonSchema.Object(
+    properties = Seq(
+      "department"  -> JsonSchema.String(Some("Which team should handle this"), `enum` = Seq("billing", "technical", "sales")),
+      "is_urgent"   -> JsonSchema.Boolean(Some("The message conveys time pressure")),
+      "frustration" -> JsonSchema.Integer(Some("How frustrated the customer appears, 1 calm .. 5 furious"), minimum = Some(1), maximum = Some(5)),
+      "topics"      -> JsonSchema.Array(JsonSchema.String(`enum` = Seq("payments", "integration", "pricing")), Some("What the message is about"))
+    ),
+    required = Seq("department", "is_urgent", "frustration", "topics")
+  )))
+
+  service.createChatCompletionWithJSONFullResponse[Triage](
+    Seq(
+      SystemMessage("You triage support tickets for a payments platform."),   // -> state.instructions
+      UserMessage("My Stripe connection has been failing for 3 days. I'm losing sales, please help ASAP.")  // -> state.message
+    ),
+    CreateChatCompletionSettings(model = TypeSafeModelId.jev_latest).withJsonSchema(triageSchema)
+  ).map { case (triage, response) =>
+    triage                                                        // Triage(technical, true, 4, List(payments, integration))
+    response.originalResponse.collect { case r: SystemOneResponse =>
+      r.choice("department").ranked                               // List((technical, 0.98), (billing, 0.02), (sales, 0.0))
+    }
+  }
+```
+   `TypeSafeChatMapping.toState(messages)` / `toQuestions(schema)` show what a call will send. Of the standard settings only `model`, `response_format_type`, `jsonSchema` and `n` = 1 are used; anything else you set is dropped with one warning naming it, and a plain (non-`json_schema`) request, `n > 1`, tools, streaming and image content are refused up front. Because it is an `OpenAIChatCompletionService`, the routers, retry, logging and interception adapters compose over it, so a `chatCompletionRouter` can send closed-vocabulary schemas to Jev and everything else to an LLM.
+
+   Live-verified 2026-09-16 (`examples/typesafe/TypeSafeSmokeTest` runs every question shape, JSON states, parallel calls, the retry adapter and the error mapping against the API): `jev-latest` resolves to a dated build (`jev-1.13.0`) named in the response, and `jev-preview` is the next one.
+
+8. [Groq](https://wow.groq.com/) - requires `GROQ_API_KEY"`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.groq)
   // or with streaming
@@ -309,49 +352,49 @@ Then you can obtain a service in one of the following ways.
    models. Note the two surfaces report provider-executed tools differently: `/chat/completions` returns a non-OpenAI
    `executed_tools` array, while `/responses` emits typed output items instead.
 
-8. [Grok](https://x.ai) - requires `GROK_API_KEY"`
+9. [Grok](https://x.ai) - requires `GROK_API_KEY"`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.grok)
   // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.grok)
 ```
 
-9. [Fireworks AI](https://fireworks.ai/) - requires `FIREWORKS_API_KEY"`
+10. [Fireworks AI](https://fireworks.ai/) - requires `FIREWORKS_API_KEY"`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.fireworks)
   // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.fireworks)
 ```
 
-10. [Octo AI](https://octo.ai/) - requires `OCTOAI_TOKEN`
+11. [Octo AI](https://octo.ai/) - requires `OCTOAI_TOKEN`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.octoML)
   // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.octoML)
 ```
 
-11. [TogetherAI](https://www.together.ai/)  requires `TOGETHERAI_API_KEY`
+12. [TogetherAI](https://www.together.ai/)  requires `TOGETHERAI_API_KEY`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.togetherAI)
   // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.togetherAI)
 ```
 
-12. [Cerebras](https://cerebras.ai/)  requires `CEREBRAS_API_KEY`
+13. [Cerebras](https://cerebras.ai/)  requires `CEREBRAS_API_KEY`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.cerebras)
   // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.cerebras)
 ```
 
-13. [Mistral](https://mistral.ai/) requires `MISTRAL_API_KEY`
+14. [Mistral](https://mistral.ai/) requires `MISTRAL_API_KEY`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.mistral)
   // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.mistral)
 ```
 
-14. [Ollama](https://ollama.com/)
+15. [Ollama](https://ollama.com/)
 ```scala
   val service = OpenAIChatCompletionServiceFactory(
     coreUrl = "http://localhost:11434/v1/"
