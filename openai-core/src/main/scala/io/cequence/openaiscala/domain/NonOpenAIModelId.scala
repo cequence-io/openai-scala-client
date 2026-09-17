@@ -798,12 +798,19 @@ object NonOpenAIModelId {
   val novita_qwen_2_7b_instruct = "qwen/qwen-2-7b-instruct"
 
   // TypeSafe AI (typesafe.ai) - System One decision models, `POST /v1/systemone` via the
-  // typesafe-client module (not chat). Aliases as listed by `GET /v1/models` on 2026-09-16;
-  // the response names the dated build an alias resolved to (jev-latest -> jev-1.13.0).
+  // typesafe-client module (not chat). Facts as of 2026-09-17 (docs.typesafe.ai/models +
+  // live probes): input $0.042 / 1M tokens ($42 / 1B), output tokens FREE (unmetered);
+  // input limit ~32k tokens (~150k characters) SHARED by the state and the questions - a
+  // request of 32,202 input tokens was accepted, ~33.7k answered 400 max_tokens_exceeded
+  // (-> OpenAIScalaTokenCountExceededException); rate limits 250k tokens/s and 1,200
+  // requests/min, adjusting dynamically; ~70-500 ms per call; a choice takes at most 255
+  // options. The response names the dated build an alias resolved to.
+  // rolling alias: "the most recent stable, official release" (jev-1.13.0 as of 2026-09-17)
   val jev_latest = "jev-latest"
-  // the next jev-latest: "should be better in most ways"
+  // rolling alias for the next release - currently ALSO jev-1.13.0 ("there is no preview
+  // build available right now")
   val jev_preview = "jev-preview"
-  // the build jev-latest resolved to on 2026-09-16 (dated builds are accepted by name but
-  // not listed; jev-1.12 is already gone)
+  // pin a dated build to keep answers stable across alias moves (dated builds are accepted
+  // by name but not listed by /v1/models; jev-1.12 is already gone)
   val jev_1_13_0 = "jev-1.13.0"
 }

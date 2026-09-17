@@ -10,9 +10,11 @@ import scala.util.Try
  * Maps the TypeSafe API's HTTP errors onto the shared exception hierarchy: 401/403 to
  * [[OpenAIScalaUnauthorizedException]], 429 to [[OpenAIScalaRateLimitException]], 529
  * (TypeSafe's "Overloaded") and 503 to [[OpenAIScalaEngineOverloadedException]], any other 5xx
- * to [[OpenAIScalaServerErrorException]] - all of them [[Retryable]] except the first - and
- * 400/404/422 to a plain [[OpenAIScalaClientException]]. The body's `detail` is unpacked into
- * the message the way the official SDK does it.
+ * to [[OpenAIScalaServerErrorException]] - all of them [[Retryable]] except the first - a 400
+ * `max_tokens_exceeded` (the ~32k-token input limit) to
+ * [[OpenAIScalaTokenCountExceededException]], and other 400/404/422 to a plain
+ * [[OpenAIScalaClientException]]. The body's `detail` is unpacked into the message the way the
+ * official SDK does it.
  */
 trait HandleTypeSafeErrorCodes extends WSClient {
 
@@ -32,6 +34,10 @@ object HandleTypeSafeErrorCodes {
     val errorMessage = s"Code ${httpCode} : ${extractMessage(message)}"
 
     httpCode match {
+      // the state + questions exceed the ~32k-token input limit: the body is only
+      // {"detail":{"error_type":"max_tokens_exceeded"}}
+      case 400 if errorType(message).contains("max_tokens_exceeded") =>
+        new OpenAIScalaTokenCountExceededException(errorMessage)
       case 401 | 403           => new OpenAIScalaUnauthorizedException(errorMessage)
       case 408                 => new OpenAIScalaClientTimeoutException(errorMessage)
       case 429                 => new OpenAIScalaRateLimitException(errorMessage)
@@ -50,6 +56,12 @@ object HandleTypeSafeErrorCodes {
   def extractMessage(body: String): String =
     Try(Json.parse(body)).toOption.flatMap(extractMessage).getOrElse(body)
 
+  /** `detail.error_type` of a TypeSafe error body, e.g. `max_tokens_exceeded`. */
+  def errorType(body: String): Option[String] =
+    Try(Json.parse(body)).toOption.flatMap(json =>
+      (json \ "detail" \ "error_type").asOpt[String]
+    )
+
   private def extractMessage(json: JsValue): Option[String] =
     json match {
       case JsString(text) => Some(text).filter(_.nonEmpty)
@@ -66,6 +78,8 @@ object HandleTypeSafeErrorCodes {
           .orElse(detail.asOpt[String])
           .orElse((detail \ "message").asOpt[String])
           .orElse(detail.asOpt[JsArray].flatMap(validationErrors))
+          // some errors carry only a type: {"detail":{"error_type":"max_tokens_exceeded"}}
+          .orElse((detail \ "error_type").asOpt[String])
 
       case _ => None
     }

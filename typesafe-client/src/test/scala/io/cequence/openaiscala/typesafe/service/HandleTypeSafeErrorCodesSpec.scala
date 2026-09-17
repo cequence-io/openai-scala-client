@@ -25,6 +25,20 @@ class HandleTypeSafeErrorCodesSpec extends AnyWordSpec with Matchers {
       toException(502, "") shouldBe an[OpenAIScalaServerErrorException]
     }
 
+    "map the input-limit 400 to a token-count exception, with the error type as message" in {
+      val body = """{"detail":{"error_type":"max_tokens_exceeded"}}"""
+      val e = toException(400, body)
+      e shouldBe an[OpenAIScalaTokenCountExceededException]
+      e.getMessage shouldBe "Code 400 : max_tokens_exceeded"
+      Retryable(e) shouldBe false
+      // any other 400 stays a plain client exception
+      toException(
+        400,
+        """{"detail":{"error_type":"api_usage_error","message":"Unknown model: x"}}"""
+      ).getClass shouldBe
+        classOf[OpenAIScalaClientException]
+    }
+
     "leave validation and other client errors non-retryable" in {
       Seq(400, 404, 422).foreach { code =>
         val e = toException(code, "")

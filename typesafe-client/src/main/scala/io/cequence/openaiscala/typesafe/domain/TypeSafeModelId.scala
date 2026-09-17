@@ -7,8 +7,10 @@ import io.cequence.openaiscala.domain.NonOpenAIModelId
  * [[NonOpenAIModelId]]). Jev is the first System One model; `jev-latest` is the alias the
  * official SDKs default to and resolves to a dated build (the response's `model` names it).
  * `GET /v1/models` lists what a given account can use - the dated builds themselves are not
- * listed but are accepted by name (2026-09-16: `jev-latest` -> `jev-1.13.0`; the `jev-1.12`
- * the cookbooks pinned is already gone, so prefer the aliases).
+ * listed but are accepted by name (2026-09-17: `jev-latest` and `jev-preview` both ->
+ * `jev-1.13.0`; the `jev-1.12` the cookbooks pinned is already gone). Pricing $0.042 per 1M
+ * input tokens, output free; the state and the questions share an input limit of ~32k tokens
+ * (~150k characters) - see the TypeSafe AI section of [[NonOpenAIModelId]].
  */
 object TypeSafeModelId {
   val jev_latest: String = NonOpenAIModelId.jev_latest
