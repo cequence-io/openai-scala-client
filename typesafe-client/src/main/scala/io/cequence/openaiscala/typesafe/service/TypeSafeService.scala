@@ -11,10 +11,13 @@ import scala.concurrent.Future
  * with calibrated probabilities back - a decision model, not a chat one, so there is no
  * streaming and no `asOpenAI()` adapter.
  *
- * Errors map onto the shared exception hierarchy (`OpenAIScalaUnauthorizedException` for
- * 401/403, `OpenAIScalaRateLimitException` for 429, `OpenAIScalaEngineOverloadedException` for
- * 529 Overloaded, ...), so [[io.cequence.openaiscala.Retryable]] and
- * [[TypeSafeServiceAdapters.retry]] know what to retry.
+ * Errors are [[TypeSafeScalaClientException]]s classified by status and body
+ * (`TypeSafeScalaUnauthorizedException`, `TypeSafeScalaTokenCountExceededException`,
+ * `TypeSafeScalaRateLimitException`, `TypeSafeScalaEngineOverloadedException`, ...), each
+ * carrying the HTTP code, the API's `error_type` and the request id; [[TypeSafeRetryable]]
+ * says which to retry and [[TypeSafeServiceAdapters.retry]] does so. Through the OpenAI
+ * adapter ([[TypeSafeServiceFactory.asOpenAI]]) they surface as the shared `OpenAIScala*`
+ * exceptions with the native one as the cause.
  *
  * @see
  *   <a href="https://docs.typesafe.ai/api">TypeSafe API reference</a>

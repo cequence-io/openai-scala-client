@@ -54,6 +54,7 @@ private class RetryTypeSafeService(
       .retryOnFailure(
         Some("SystemOne call failed"),
         log,
+        isRetryable = retryable,
         includeExceptionMessage = includeExceptionMessage
       )
 
@@ -61,8 +62,15 @@ private class RetryTypeSafeService(
     underlying.listModels.retryOnFailure(
       Some("ListModels call failed"),
       log,
+      isRetryable = retryable,
       includeExceptionMessage = includeExceptionMessage
     )
+
+  // the native exceptions, not the OpenAI ones the shared Retryable matcher knows
+  private val retryable: Throwable => Boolean = {
+    case TypeSafeRetryable(_) => true
+    case _                    => false
+  }
 
   override def close(): Unit = underlying.close()
 }

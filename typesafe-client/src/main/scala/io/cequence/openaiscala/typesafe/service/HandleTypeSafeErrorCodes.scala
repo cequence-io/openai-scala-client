@@ -1,20 +1,16 @@
 package io.cequence.openaiscala.typesafe.service
 
-import io.cequence.openaiscala._
 import io.cequence.wsclient.service.WSClient
 import play.api.libs.json.{JsArray, JsObject, JsString, JsValue, Json}
 
 import scala.util.Try
 
 /**
- * Maps the TypeSafe API's HTTP errors onto the shared exception hierarchy: 401/403 to
- * [[OpenAIScalaUnauthorizedException]], 429 to [[OpenAIScalaRateLimitException]], 529
- * (TypeSafe's "Overloaded") and 503 to [[OpenAIScalaEngineOverloadedException]], any other 5xx
- * to [[OpenAIScalaServerErrorException]] - all of them [[Retryable]] except the first - a 400
- * `max_tokens_exceeded` (the ~32k-token input limit) to
- * [[OpenAIScalaTokenCountExceededException]], and other 400/404/422 to a plain
- * [[OpenAIScalaClientException]]. The body's `detail` is unpacked into the message the way the
- * official SDK does it.
+ * Classifies the TypeSafe API's HTTP errors into the [[TypeSafeScalaClientException]]
+ * hierarchy (see its scaladoc for the status / body table) and unpacks the body's `detail`
+ * into the message the way the official SDK does. Mixed into the service so ws-client's error
+ * path lands here; [[TypeSafeServiceImpl]] calls [[HandleTypeSafeErrorCodes.toException]]
+ * directly to add the request id.
  */
 trait HandleTypeSafeErrorCodes extends WSClient {
 
@@ -29,38 +25,106 @@ object HandleTypeSafeErrorCodes {
 
   def toException(
     httpCode: Int,
-    message: String
-  ): OpenAIScalaClientException = {
-    val errorMessage = s"Code ${httpCode} : ${extractMessage(message)}"
+    body: String,
+    requestId: Option[String] = None
+  ): TypeSafeScalaClientException = {
+    val json = Try(Json.parse(body)).toOption
+    val kind = json.flatMap(errorType)
+    val errorMessage =
+      s"Code ${httpCode} : ${json.flatMap(extractMessage).getOrElse(body)}" +
+        requestId.fold("")(id => s" [request $id]")
 
     httpCode match {
-      // the state + questions exceed the ~32k-token input limit: the body is only
-      // {"detail":{"error_type":"max_tokens_exceeded"}}
-      case 400 if errorType(message).contains("max_tokens_exceeded") =>
-        new OpenAIScalaTokenCountExceededException(errorMessage)
-      case 401 | 403           => new OpenAIScalaUnauthorizedException(errorMessage)
-      case 408                 => new OpenAIScalaClientTimeoutException(errorMessage)
-      case 429                 => new OpenAIScalaRateLimitException(errorMessage)
-      case 503 | 529           => new OpenAIScalaEngineOverloadedException(errorMessage)
-      case code if code >= 500 => new OpenAIScalaServerErrorException(errorMessage)
-      case _                   => new OpenAIScalaClientException(errorMessage)
+      case 400 if kind.contains("max_tokens_exceeded") =>
+        new TypeSafeScalaTokenCountExceededException(
+          errorMessage,
+          httpCode = Some(httpCode),
+          errorType = kind,
+          requestId = requestId
+        )
+      case 400 if kind.isDefined =>
+        new TypeSafeScalaApiUsageException(
+          errorMessage,
+          httpCode = Some(httpCode),
+          errorType = kind,
+          requestId = requestId
+        )
+      case 400 | 422 =>
+        new TypeSafeScalaInvalidRequestException(
+          errorMessage,
+          httpCode = Some(httpCode),
+          errorType = kind,
+          requestId = requestId,
+          violations = json.map(violations).getOrElse(Nil)
+        )
+      case 401 | 403 =>
+        new TypeSafeScalaUnauthorizedException(
+          errorMessage,
+          httpCode = Some(httpCode),
+          errorType = kind,
+          requestId = requestId
+        )
+      case 404 | 405 =>
+        new TypeSafeScalaNotFoundException(
+          errorMessage,
+          httpCode = Some(httpCode),
+          errorType = kind,
+          requestId = requestId
+        )
+      case 408 =>
+        new TypeSafeScalaClientTimeoutException(
+          errorMessage,
+          httpCode = Some(httpCode),
+          errorType = kind,
+          requestId = requestId
+        )
+      case 429 =>
+        new TypeSafeScalaRateLimitException(
+          errorMessage,
+          httpCode = Some(httpCode),
+          errorType = kind,
+          requestId = requestId
+        )
+      case 503 | 529 =>
+        new TypeSafeScalaEngineOverloadedException(
+          errorMessage,
+          httpCode = Some(httpCode),
+          errorType = kind,
+          requestId = requestId
+        )
+      case code if code >= 500 =>
+        new TypeSafeScalaServerErrorException(
+          errorMessage,
+          httpCode = Some(httpCode),
+          errorType = kind,
+          requestId = requestId
+        )
+      case _ =>
+        new TypeSafeScalaClientException(
+          errorMessage,
+          httpCode = Some(httpCode),
+          errorType = kind,
+          requestId = requestId
+        )
     }
   }
 
   /**
-   * The human-readable part of an error body - `{"detail": {"message": ...}}` for auth errors,
-   * `{"detail": [{"loc": ["body", "state"], "msg": "Field required"}]}` for 422 validation
-   * errors (rendered as `state: Field required`), plus the generic `error` / `message` shapes
-   * \- or the body itself when it is none of those.
+   * The human-readable part of an error body - `{"detail": {"message": ...}}` for auth and
+   * usage errors, `{"detail": "..."}` for question-shape errors, a 422 validation list
+   * rendered as `state: Field required; questions.q.criteria: Field required`, `{"detail":
+   * {"error_type": ...}}` when that is all there is (`max_tokens_exceeded`), plus the generic
+   * `error` / `message` shapes - or the body itself when it is none of those.
    */
   def extractMessage(body: String): String =
     Try(Json.parse(body)).toOption.flatMap(extractMessage).getOrElse(body)
 
   /** `detail.error_type` of a TypeSafe error body, e.g. `max_tokens_exceeded`. */
   def errorType(body: String): Option[String] =
-    Try(Json.parse(body)).toOption.flatMap(json =>
-      (json \ "detail" \ "error_type").asOpt[String]
-    )
+    Try(Json.parse(body)).toOption.flatMap(errorType)
+
+  private def errorType(json: JsValue): Option[String] =
+    (json \ "detail" \ "error_type").asOpt[String]
 
   private def extractMessage(json: JsValue): Option[String] =
     json match {
@@ -77,15 +141,15 @@ object HandleTypeSafeErrorCodes {
           .orElse(message.asOpt[String])
           .orElse(detail.asOpt[String])
           .orElse((detail \ "message").asOpt[String])
-          .orElse(detail.asOpt[JsArray].flatMap(validationErrors))
-          // some errors carry only a type: {"detail":{"error_type":"max_tokens_exceeded"}}
+          .orElse(Some(violations(json)).filter(_.nonEmpty).map(render))
           .orElse((detail \ "error_type").asOpt[String])
 
       case _ => None
     }
 
-  private def validationErrors(entries: JsArray): Option[String] = {
-    val parts = entries.value.toSeq.flatMap { entry =>
+  /** The entries of a 422 validation list, paths without the `body` prefix. */
+  private def violations(json: JsValue): Seq[TypeSafeViolation] =
+    (json \ "detail").asOpt[JsArray].map(_.value.toSeq).getOrElse(Nil).flatMap { entry =>
       (entry \ "msg").asOpt[String].map { msg =>
         val path = (entry \ "loc")
           .asOpt[Seq[JsValue]]
@@ -95,11 +159,12 @@ object HandleTypeSafeErrorCodes {
             case other: play.api.libs.json.JsNumber => other.value.toString
           }
           .mkString(".")
-
-        if (path.nonEmpty) s"$path: $msg" else msg
+        TypeSafeViolation(path, msg)
       }
     }
 
-    Some(parts.mkString("; ")).filter(_.nonEmpty)
-  }
+  private def render(violations: Seq[TypeSafeViolation]): String =
+    violations.map { v =>
+      if (v.path.nonEmpty) s"${v.path}: ${v.message}" else v.message
+    }.mkString("; ")
 }

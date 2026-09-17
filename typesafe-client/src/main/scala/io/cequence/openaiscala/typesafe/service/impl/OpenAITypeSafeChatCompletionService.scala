@@ -36,6 +36,8 @@ import scala.util.Try
  * json-schema mode.
  *
  * The full [[SystemOneResponse]] (probabilities, confidences) rides in `originalResponse`.
+ * Native `TypeSafeScala*` exceptions are repacked onto the `OpenAIScala*` hierarchy
+ * ([[repackAsOpenAIException]]), the native one kept as the cause.
  *
  * Of the standard `CreateChatCompletionSettings` only `model` (a System One model or alias),
  * `response_format_type` (which must be `json_schema`), `jsonSchema` (the questions) and `n`
@@ -87,12 +89,15 @@ private[service] class OpenAITypeSafeChatCompletionService(
         (plan, TypeSafeChatMapping.toState(messages), settings.typeSafeNoulThreshold)
       })
       .flatMap { case (plan, state, threshold) =>
-        underlying.systemOne(state, plan.questions, settings.model).map { response =>
-          toChatCompletionResponse(
-            response,
-            SchemaQuestions.assemble(plan, response.answers, threshold)
-          )
-        }
+        underlying
+          .systemOne(state, plan.questions, settings.model)
+          .map { response =>
+            toChatCompletionResponse(
+              response,
+              SchemaQuestions.assemble(plan, response.answers, threshold)
+            )
+          }
+          .recoverWith(repackAsOpenAIException)
       }
 
   private def toChatCompletionResponse(

@@ -9,12 +9,8 @@ import io.cequence.openaiscala.domain.settings.{
 }
 import io.cequence.openaiscala.domain.{JsonSchema, SystemMessage, UserMessage}
 import io.cequence.openaiscala.typesafe.domain._
-import io.cequence.openaiscala.typesafe.service.{
-  TypeSafeServiceAdapters,
-  TypeSafeServiceConsts,
-  TypeSafeServiceFactory
-}
 import io.cequence.openaiscala.{OpenAIScalaClientException, OpenAIScalaUnauthorizedException}
+import io.cequence.openaiscala.typesafe.service._
 import io.cequence.wsclient.service.spi.{TransportSettings, WSClientEngineRegistry}
 import play.api.libs.json.{JsString, Json}
 
@@ -33,9 +29,12 @@ import scala.util.{Failure, Success, Try}
  *   - an explicit model (`jev-preview`), the request id header, usage
  *   - many questions in one call, many calls in parallel, a service on a shared engine, the
  *     retry adapter
- *   - errors: a bad key (401 -> `OpenAIScalaUnauthorizedException`), an unknown model (400 ->
- *     `OpenAIScalaClientException` with the API's message), and the client-side checks that
- *     mirror the API's 400s (fail before any I/O)
+ *   - errors, natively: a bad key (`TypeSafeScalaUnauthorizedException` carrying the request
+ *     id), an unknown model (`TypeSafeScalaApiUsageException`), the ~32k-token input limit
+ *     (`TypeSafeScalaTokenCountExceededException`), a wrong path
+ *     (`TypeSafeScalaNotFoundException`); through the OpenAI adapter the same errors as
+ *     `OpenAIScala*` with the native cause; and the client-side checks that mirror the API's
+ *     400s (fail before any I/O)
  *
  * Every section prints PASS/FAIL and the run continues; the exit code is 1 if any failed.
  * Requires `TYPESAFE_API_KEY`.
@@ -290,12 +289,17 @@ object TypeSafeSmokeTest {
         }
       }
 
-      _ <- section("bad key -> OpenAIScalaUnauthorizedException") {
+      _ <- section("bad key -> TypeSafeScalaUnauthorizedException (with the request id)") {
         val bogus = TypeSafeServiceFactory(apiKey = "sk-bogus")
         bogus.systemOne(ticket, Map("urgent" -> NoulQuestion("Is it urgent?"))).transform {
-          case Failure(e: OpenAIScalaUnauthorizedException) =>
+          case Failure(e: TypeSafeScalaUnauthorizedException) =>
             bogus.close()
-            check(e.getMessage.contains("Code 401"), e.getMessage)
+            check(
+              e.httpCode.contains(401) && e.errorType.contains("authentication_error"),
+              e.toString
+            )
+            check(e.requestId.exists(_.startsWith("req_")), s"request id ${e.requestId}")
+            check(!TypeSafeRetryable(e), "must not be retryable")
             Success(e.getMessage)
           case Failure(other) => bogus.close(); Failure(other)
           case Success(_) =>
@@ -303,7 +307,7 @@ object TypeSafeSmokeTest {
         }
       }
 
-      _ <- section("unknown model -> OpenAIScalaClientException, not retryable") {
+      _ <- section("unknown model -> TypeSafeScalaApiUsageException") {
         service
           .systemOne(
             ticket,
@@ -311,13 +315,69 @@ object TypeSafeSmokeTest {
             model = "jev-nope"
           )
           .transform {
-            case Failure(e: OpenAIScalaClientException)
-                if e.getClass == classOf[OpenAIScalaClientException] =>
-              check(e.getMessage == "Code 400 : Unknown model: jev-nope", e.getMessage)
+            case Failure(e: TypeSafeScalaApiUsageException) =>
+              check(
+                e.getMessage.startsWith("Code 400 : Unknown model: jev-nope [request req_"),
+                e.getMessage
+              )
+              check(e.errorType.contains("api_usage_error"), e.toString)
               Success(e.getMessage)
             case Failure(other) => Failure(other)
             case Success(_)     => Failure(new AssertionError("an unknown model was accepted"))
           }
+      }
+
+      _ <- section("~34k-token state -> TypeSafeScalaTokenCountExceededException") {
+        val huge = JsString((ticket + " ") * 1500)
+        service.systemOne(huge, Map("urgent" -> NoulQuestion("Is it urgent?"))).transform {
+          case Failure(e: TypeSafeScalaTokenCountExceededException) =>
+            check(e.errorType.contains("max_tokens_exceeded"), e.toString)
+            Success(e.getMessage)
+          case Failure(other) => Failure(other)
+          case Success(r)     => Failure(new AssertionError(s"accepted ${r.usage}"))
+        }
+      }
+
+      _ <- section("wrong base path -> TypeSafeScalaNotFoundException") {
+        val wrong =
+          TypeSafeServiceFactory(baseUrl = TypeSafeServiceConsts.defaultBaseUrl + "nope")
+        wrong.listModels.transform {
+          case Failure(e: TypeSafeScalaNotFoundException) =>
+            wrong.close(); Success(e.getMessage)
+          case Failure(other) => wrong.close(); Failure(other)
+          case Success(_) =>
+            wrong.close(); Failure(new AssertionError("a wrong path answered"))
+        }
+      }
+
+      _ <- section(
+        "through the OpenAI adapter the same errors are OpenAIScala* with the native cause"
+      ) {
+        val bogus = TypeSafeServiceFactory.asOpenAI(apiKey = "sk-bogus")
+        val schema = JsonSchemaDef(
+          "s",
+          strict = true,
+          structure = Left(JsonSchema.Object(Seq("urgent" -> JsonSchema.Boolean())))
+        )
+        val settings = CreateChatCompletionSettings(
+          TypeSafeModelId.jev_latest,
+          response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
+          jsonSchema = Some(schema)
+        )
+        bogus.createChatCompletion(Seq(UserMessage(ticket)), settings).transform {
+          case Failure(e: OpenAIScalaUnauthorizedException) =>
+            bogus.close()
+            check(
+              e.getCause.isInstanceOf[TypeSafeScalaUnauthorizedException],
+              s"cause ${e.getCause}"
+            )
+            Success(
+              s"${e.getClass.getSimpleName} caused by ${e.getCause.getClass.getSimpleName}"
+            )
+          case Failure(other) => bogus.close(); Failure(other)
+          case Success(_) =>
+            bogus.close(); Failure(new AssertionError("a bogus key was accepted"))
+        }
       }
 
       _ <- section("client-side checks mirror the API's 400s") {

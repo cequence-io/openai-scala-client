@@ -1,69 +1,119 @@
 package io.cequence.openaiscala.typesafe.service
 
-import io.cequence.openaiscala._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 /**
- * The status -> exception mapping and the error-body unpacking, the latter pinned to the
- * official Python SDK's `extract_message` rules.
+ * The status + body -> exception classification, pinned to the bodies collected against the
+ * live API on 2026-09-17, and the error-body unpacking (the official SDK's `extract_message`
+ * rules).
  */
 class HandleTypeSafeErrorCodesSpec extends AnyWordSpec with Matchers {
 
-  import HandleTypeSafeErrorCodes.{extractMessage, toException}
+  import HandleTypeSafeErrorCodes.{errorType, extractMessage, toException}
+
+  private val authError =
+    """{"detail":{"error_type":"authentication_error","message":"Cannot authenticate with the server. Please check your API key and try again."}}"""
+  private val noKey =
+    """{"detail":{"error_type":"authentication_error","message":"Must supply an API key! Check your request and try again."}}"""
+  private val tokenLimit = """{"detail":{"error_type":"max_tokens_exceeded"}}"""
+  private val unknownModel =
+    """{"detail":{"error_type":"api_usage_error","message":"Unknown model: jev-nope"}}"""
+  private val invalidJson =
+    """{"detail":{"error_type":"api_usage_error","message":"Request contains invalid JSON."}}"""
+  private val notEnabled =
+    """{"detail":{"error_type":"api_usage_error","message":"Bounding-box questions are not enabled for your organization."}}"""
+  private val tooManyChoices =
+    """{"detail":"Too many choices. Must have at most 255 choices."}"""
+  private val validation =
+    """{"detail":[
+      |  {"type":"missing","loc":["body","state"],"msg":"Field required","input":{}},
+      |  {"type":"too_short","loc":["body","questions"],"msg":"Dictionary should have at least 1 item after validation, not 0","input":{},"ctx":{"min_length":1}}
+      |]}""".stripMargin
+  private val notFound = """{"detail":"Not Found"}"""
 
   "toException" should {
 
-    "map the statuses the API documents" in {
-      toException(401, "") shouldBe an[OpenAIScalaUnauthorizedException]
-      toException(403, "") shouldBe an[OpenAIScalaUnauthorizedException]
-      toException(408, "") shouldBe an[OpenAIScalaClientTimeoutException]
-      toException(429, "") shouldBe an[OpenAIScalaRateLimitException]
-      toException(529, "") shouldBe an[OpenAIScalaEngineOverloadedException]
-      toException(503, "") shouldBe an[OpenAIScalaEngineOverloadedException]
-      toException(500, "") shouldBe an[OpenAIScalaServerErrorException]
-      toException(502, "") shouldBe an[OpenAIScalaServerErrorException]
+    "classify the bodies the live API sends" in {
+      toException(401, authError) shouldBe a[TypeSafeScalaUnauthorizedException]
+      toException(403, noKey) shouldBe a[TypeSafeScalaUnauthorizedException]
+      toException(400, tokenLimit) shouldBe a[TypeSafeScalaTokenCountExceededException]
+      toException(400, unknownModel) shouldBe a[TypeSafeScalaApiUsageException]
+      toException(400, invalidJson) shouldBe a[TypeSafeScalaApiUsageException]
+      toException(400, notEnabled) shouldBe a[TypeSafeScalaApiUsageException]
+      toException(400, tooManyChoices) shouldBe a[TypeSafeScalaInvalidRequestException]
+      toException(422, validation) shouldBe a[TypeSafeScalaInvalidRequestException]
+      toException(404, notFound) shouldBe a[TypeSafeScalaNotFoundException]
+      toException(405, """{"detail":"Method Not Allowed"}""") shouldBe
+        a[TypeSafeScalaNotFoundException]
+      toException(408, "") shouldBe a[TypeSafeScalaClientTimeoutException]
+      toException(429, """{"detail":"Rate limit exceeded"}""") shouldBe
+        a[TypeSafeScalaRateLimitException]
+      toException(529, """{"detail":"Overloaded"}""") shouldBe
+        a[TypeSafeScalaEngineOverloadedException]
+      toException(503, "") shouldBe a[TypeSafeScalaEngineOverloadedException]
+      toException(500, "") shouldBe a[TypeSafeScalaServerErrorException]
+      toException(502, "<html>502 Bad Gateway</html>") shouldBe
+        a[TypeSafeScalaServerErrorException]
+      toException(418, "teapot").getClass shouldBe classOf[TypeSafeScalaClientException]
     }
 
-    "map the input-limit 400 to a token-count exception, with the error type as message" in {
-      val body = """{"detail":{"error_type":"max_tokens_exceeded"}}"""
-      val e = toException(400, body)
-      e shouldBe an[OpenAIScalaTokenCountExceededException]
-      e.getMessage shouldBe "Code 400 : max_tokens_exceeded"
-      Retryable(e) shouldBe false
-      // any other 400 stays a plain client exception
-      toException(
-        400,
-        """{"detail":{"error_type":"api_usage_error","message":"Unknown model: x"}}"""
-      ).getClass shouldBe
-        classOf[OpenAIScalaClientException]
-    }
+    "carry the code, the error type and the request id, and put them in the message" in {
+      val e = toException(400, unknownModel, requestId = Some("req_1"))
+      e.httpCode shouldBe Some(400)
+      e.errorType shouldBe Some("api_usage_error")
+      e.requestId shouldBe Some("req_1")
+      e.getMessage shouldBe "Code 400 : Unknown model: jev-nope [request req_1]"
 
-    "leave validation and other client errors non-retryable" in {
-      Seq(400, 404, 422).foreach { code =>
-        val e = toException(code, "")
-        e.getClass shouldBe classOf[OpenAIScalaClientException]
-        Retryable(e) shouldBe false
-      }
-      Retryable(toException(401, "")) shouldBe false
-    }
+      val limit = toException(400, tokenLimit)
+      limit.errorType shouldBe Some("max_tokens_exceeded")
+      limit.requestId shouldBe None
+      limit.getMessage shouldBe "Code 400 : max_tokens_exceeded"
 
-    "make rate limits, overloads and server errors retryable" in {
-      Seq(408, 429, 503, 529, 500, 502).foreach { code =>
-        withClue(s"$code: ") { Retryable(toException(code, "")) shouldBe true }
-      }
-    }
-
-    "put the unpacked message after the code" in {
-      toException(
-        401,
-        """{"detail":{"error_type":"authentication_error","message":"Cannot authenticate with the server. Please check your API key and try again."}}"""
-      ).getMessage shouldBe
+      toException(401, authError).getMessage shouldBe
         "Code 401 : Cannot authenticate with the server. Please check your API key and try again."
+    }
+
+    "expose a 422's violations one by one, paths without the body prefix" in {
+      val e = toException(422, validation).asInstanceOf[TypeSafeScalaInvalidRequestException]
+      e.violations shouldBe Seq(
+        TypeSafeViolation("state", "Field required"),
+        TypeSafeViolation(
+          "questions",
+          "Dictionary should have at least 1 item after validation, not 0"
+        )
+      )
+      e.getMessage should include(
+        "state: Field required; questions: Dictionary should have at least 1 item"
+      )
+      toException(400, tooManyChoices)
+        .asInstanceOf[TypeSafeScalaInvalidRequestException]
+        .violations shouldBe empty
+    }
+
+    "mark rate limits, overloads, server errors and timeouts retryable, nothing else" in {
+      Seq(408, 429, 500, 502, 503, 529).foreach { code =>
+        withClue(s"$code: ") { TypeSafeRetryable(toException(code, "")) shouldBe true }
+      }
+      Seq(
+        toException(400, tokenLimit),
+        toException(400, unknownModel),
+        toException(400, tooManyChoices),
+        toException(401, authError),
+        toException(404, notFound),
+        toException(422, validation)
+      ).foreach { e =>
+        withClue(s"${e.getClass.getSimpleName}: ") { TypeSafeRetryable(e) shouldBe false }
+      }
+      // the extractor form, on a plain Throwable
+      (new RuntimeException("x") match {
+        case TypeSafeRetryable(_) => true
+        case _                    => false
+      }) shouldBe false
     }
   }
 
-  "extractMessage" should {
+  "extractMessage / errorType" should {
 
     "unpack the shapes the official SDK unpacks" in {
       extractMessage("""{"error":"boom"}""") shouldBe "boom"
@@ -74,43 +124,19 @@ class HandleTypeSafeErrorCodesSpec extends AnyWordSpec with Matchers {
       extractMessage("\"just a string\"") shouldBe "just a string"
     }
 
-    "render a 422 validation list as `path: msg; path: msg`, dropping the `body` prefix" in {
+    "render a validation list, fall back to the error type, then to the body" in {
       extractMessage(
-        """{"detail":[
-          |  {"loc":["body","state"],"msg":"Field required","type":"missing"},
-          |  {"loc":["body","questions","q","criteria"],"msg":"Field required","type":"missing"}
-          |]}""".stripMargin
-      ) shouldBe "state: Field required; questions.q.criteria: Field required"
-
-      extractMessage("""{"detail":[{"msg":"no location"}]}""") shouldBe "no location"
-    }
-
-    // bodies observed against the live API on 2026-09-16
-    "unpack the bodies the live API sends" in {
-      // 400 - unknown model, 400 - a question the server-side validation rejects
-      extractMessage(
-        """{"detail":{"error_type":"api_usage_error","message":"Unknown model: jev-nope"}}"""
-      ) shouldBe "Unknown model: jev-nope"
-      extractMessage(
-        """{"detail":"Choice question must have at least one choice: q"}"""
-      ) shouldBe "Choice question must have at least one choice: q"
-
-      // 422 - pydantic validation errors carry `input` / `ctx` too
-      extractMessage(
-        """{"detail":[{"type":"too_short","loc":["body","questions"],"msg":"Dictionary should have at least 1 item after validation, not 0","input":{},"ctx":{"field_type":"Dictionary","min_length":1,"actual_length":0}}]}"""
-      ) shouldBe "questions: Dictionary should have at least 1 item after validation, not 0"
-      extractMessage(
-        """{"detail":[{"type":"missing","loc":["body","questions","intent","choice","criteria"],"msg":"Field required","input":{"type":"choice"}}]}"""
-      ) shouldBe "questions.intent.choice.criteria: Field required"
-      extractMessage(
-        """{"detail":[{"type":"string_type","loc":["body","state","str"],"msg":"Input should be a valid string","input":42},{"type":"dict_type","loc":["body","state","dict[any,any]"],"msg":"Input should be a valid dictionary","input":42}]}"""
-      ) shouldBe "state.str: Input should be a valid string; state.dict[any,any]: Input should be a valid dictionary"
-    }
-
-    "fall back to the body as is" in {
+        """{"detail":[{"loc":["body","questions","q","criteria"],"msg":"Field required"},{"msg":"no location"}]}"""
+      ) shouldBe "questions.q.criteria: Field required; no location"
+      extractMessage(tokenLimit) shouldBe "max_tokens_exceeded"
       extractMessage("<html>502 Bad Gateway</html>") shouldBe "<html>502 Bad Gateway</html>"
       extractMessage("""{"unexpected":true}""") shouldBe """{"unexpected":true}"""
       extractMessage("""{"detail":[]}""") shouldBe """{"detail":[]}"""
+
+      errorType(tokenLimit) shouldBe Some("max_tokens_exceeded")
+      errorType(unknownModel) shouldBe Some("api_usage_error")
+      errorType(tooManyChoices) shouldBe None
+      errorType("not json") shouldBe None
     }
   }
 }

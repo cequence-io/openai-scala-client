@@ -9,17 +9,28 @@ import io.cequence.openaiscala.typesafe.domain.{
 }
 import io.cequence.openaiscala.typesafe.service.{
   HandleTypeSafeErrorCodes,
+  TypeSafeScalaClientTimeoutException,
+  TypeSafeScalaClientUnknownHostException,
   TypeSafeService,
   TypeSafeServiceConsts
 }
 import io.cequence.wsclient.JsonUtil.JsonOps
-import io.cequence.wsclient.domain.{RichResponse, SiteBinding, WsRequestContext}
+import io.cequence.wsclient.domain.{
+  CequenceWSTimeoutException,
+  CequenceWSUnknownHostException,
+  Response,
+  RichResponse,
+  SiteBinding,
+  WsRequestContext
+}
 import io.cequence.wsclient.service.WSClientEngine
 import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithEngine
 import io.cequence.wsclient.service.spi.{TransportSettings, WSClientEngineRegistry}
 import io.cequence.wsclient.service.ws.Timeouts
 import play.api.libs.json.{JsValue, Json}
 
+import java.net.UnknownHostException
+import java.util.concurrent.TimeoutException
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -77,15 +88,32 @@ private[service] class TypeSafeServiceImpl(
       EndPoint.systemOne,
       body = Json.toJson(request)
     ).map { rich =>
-      val response = getResponseOrError(rich).json.asSafe[SystemOneResponse]
+      val response = responseOrError(rich).json.asSafe[SystemOneResponse]
       response.copy(requestId = TypeSafeServiceImpl.requestId(rich))
-    }
+    }.recoverWith(transportErrors)
   }
 
   override def listModels: Future[Seq[ModelMetadata]] =
-    execGET(EndPoint.models).map { response =>
-      (response.json \ "models").get.asSafe[Seq[ModelMetadata]]
-    }
+    execGETRich(EndPoint.models).map { rich =>
+      (responseOrError(rich).json \ "models").get.asSafe[Seq[ModelMetadata]]
+    }.recoverWith(transportErrors)
+
+  // like ws-client's getResponseOrError, but the exception also carries the request id
+  private def responseOrError(rich: RichResponse): Response =
+    rich.response.getOrElse(
+      throw HandleTypeSafeErrorCodes.toException(
+        rich.status.code,
+        rich.status.message,
+        TypeSafeServiceImpl.requestId(rich)
+      )
+    )
+
+  private def transportErrors[T]: PartialFunction[Throwable, Future[T]] = {
+    case e @ (_: CequenceWSTimeoutException | _: TimeoutException) =>
+      Future.failed(new TypeSafeScalaClientTimeoutException(e.getMessage, e))
+    case e @ (_: CequenceWSUnknownHostException | _: UnknownHostException) =>
+      Future.failed(new TypeSafeScalaClientUnknownHostException(e.getMessage, e))
+  }
 }
 
 private[service] object TypeSafeServiceImpl {

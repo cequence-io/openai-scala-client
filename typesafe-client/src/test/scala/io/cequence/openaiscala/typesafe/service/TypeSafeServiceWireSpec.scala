@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.typesafe.service
 
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
-import io.cequence.openaiscala._
 import io.cequence.openaiscala.typesafe.domain._
 import io.cequence.wsclient.service.spi.{TransportSettings, WSClientEngineRegistry}
 import org.scalatest.BeforeAndAfterAll
@@ -32,6 +31,8 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
 
   @volatile private var received: Option[Received] = None
   @volatile private var reply: (Int, String, Map[String, String]) = (200, "{}", Map.empty)
+  // when set, decides the reply per request (for the retry test)
+  @volatile private var onRequest: () => (Int, String, Map[String, String]) = null
 
   private val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
   private val engine = WSClientEngineRegistry(TransportSettings())
@@ -61,7 +62,8 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
             )
           )
 
-          val (status, responseBody, responseHeaders) = reply
+          val (status, responseBody, responseHeaders) =
+            if (onRequest != null) onRequest() else reply
           responseHeaders.foreach { case (k, v) => exchange.getResponseHeaders.add(k, v) }
           exchange.getResponseHeaders.add("Content-Type", "application/json")
           val bytes = responseBody.getBytes(StandardCharsets.UTF_8)
@@ -183,20 +185,26 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       received shouldBe None
     }
 
-    "map a 401 to an unauthorized exception carrying the API's message" in {
+    "map a 401 to an unauthorized exception carrying the API's message and the request id" in {
       respond(
         401,
-        """{"detail":{"error_type":"authentication_error","message":"Cannot authenticate with the server. Please check your API key and try again."}}"""
+        """{"detail":{"error_type":"authentication_error","message":"Cannot authenticate with the server. Please check your API key and try again."}}""",
+        Map("x-typesafe-request-id" -> "req-err-1")
       )
 
       val e = await(service.systemOne("x", questions).failed)
 
-      e shouldBe an[OpenAIScalaUnauthorizedException]
+      e shouldBe a[TypeSafeScalaUnauthorizedException]
+      val typed = e.asInstanceOf[TypeSafeScalaUnauthorizedException]
+      typed.httpCode shouldBe Some(401)
+      typed.errorType shouldBe Some("authentication_error")
+      typed.requestId shouldBe Some("req-err-1")
       e.getMessage should include("Cannot authenticate with the server")
+      e.getMessage should include("[request req-err-1]")
       e.getMessage should not include "test-key"
     }
 
-    "map a 422 to a client exception naming the offending field" in {
+    "map a 422 to an invalid-request exception naming the offending field" in {
       respond(
         422,
         """{"detail":[{"loc":["body","state"],"msg":"Field required","type":"missing"}]}"""
@@ -204,23 +212,80 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
 
       val e = await(service.systemOne("x", questions).failed)
 
-      e.getClass shouldBe classOf[OpenAIScalaClientException]
+      e shouldBe a[TypeSafeScalaInvalidRequestException]
+      e.asInstanceOf[TypeSafeScalaInvalidRequestException].violations shouldBe
+        Seq(TypeSafeViolation("state", "Field required"))
       e.getMessage should include("state: Field required")
+    }
+
+    "map the input limit, an unknown model and a wrong path" in {
+      respond(400, """{"detail":{"error_type":"max_tokens_exceeded"}}""")
+      await(service.systemOne("x", questions).failed) shouldBe
+        a[TypeSafeScalaTokenCountExceededException]
+
+      respond(
+        400,
+        """{"detail":{"error_type":"api_usage_error","message":"Unknown model: x"}}"""
+      )
+      await(service.systemOne("x", questions).failed) shouldBe a[
+        TypeSafeScalaApiUsageException
+      ]
+
+      respond(404, """{"detail":"Not Found"}""")
+      await(service.listModels.failed) shouldBe a[TypeSafeScalaNotFoundException]
     }
 
     "map 429 and 529 to retryable exceptions" in {
       respond(429, """{"detail":"Rate limit exceeded"}""")
       val rateLimited = await(service.systemOne("x", questions).failed)
-      rateLimited shouldBe an[OpenAIScalaRateLimitException]
+      rateLimited shouldBe a[TypeSafeScalaRateLimitException]
 
       respond(529, """{"detail":"Overloaded"}""")
       val overloaded = await(service.systemOne("x", questions).failed)
-      overloaded shouldBe an[OpenAIScalaEngineOverloadedException]
+      overloaded shouldBe a[TypeSafeScalaEngineOverloadedException]
 
       Seq(rateLimited, overloaded).foreach {
-        case Retryable(_) => succeed
-        case other        => fail(s"$other should be retryable")
+        case TypeSafeRetryable(_) => succeed
+        case other                => fail(s"$other should be retryable")
       }
+    }
+
+    "retry a 529 through the retry adapter and give up on a 401" in {
+      import io.cequence.openaiscala.RetryHelpers.RetrySettings
+      import scala.concurrent.duration._
+      implicit val retrySettings: RetrySettings =
+        RetrySettings(maxRetries = 2, delayOffset = 10.millis)
+      implicit val system: akka.actor.ActorSystem = akka.actor.ActorSystem("retry-spec")
+      implicit val scheduler: akka.actor.Scheduler = system.scheduler
+      val retrying = TypeSafeServiceAdapters.retry(service)
+
+      var calls = 0
+      onRequest = () => {
+        calls += 1
+        if (calls < 3) (529, """{"detail":"Overloaded"}""", Map.empty[String, String])
+        else (200, quickStartResponse, Map.empty[String, String])
+      }
+      await(retrying.systemOne("x", questions))
+        .choice("department")
+        .choice shouldBe "technical"
+      calls shouldBe 3
+
+      calls = 0
+      onRequest = () => {
+        calls += 1;
+        (
+          401,
+          """{"detail":{"error_type":"authentication_error","message":"no"}}""",
+          Map.empty[String, String]
+        )
+      }
+      await(retrying.systemOne("x", questions).failed) shouldBe a[
+        TypeSafeScalaUnauthorizedException
+      ]
+      calls shouldBe 1
+
+      onRequest = null
+      await(system.terminate())
     }
   }
 

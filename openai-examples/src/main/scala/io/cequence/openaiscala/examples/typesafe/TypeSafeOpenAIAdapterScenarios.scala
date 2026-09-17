@@ -102,7 +102,9 @@ object TypeSafeOpenAIAdapterScenarios {
       call.transform {
         case Success(outcome) => println(s"outcome   : $outcome"); Success(())
         case Failure(e) =>
-          println(s"refused   : ${e.getClass.getSimpleName}: ${e.getMessage.take(600)}")
+          val cause =
+            Option(e.getCause).map(c => s" (cause: ${c.getClass.getSimpleName})").getOrElse("")
+          println(s"refused   : ${e.getClass.getSimpleName}$cause: ${e.getMessage.take(600)}")
           Success(())
       }
     }
@@ -321,7 +323,7 @@ object TypeSafeOpenAIAdapterScenarios {
       _ <- {
         val m = Seq(UserMessage(ticket)); val s = jsonSchemaSettings().copy(model = "jev-nope")
         scenario(
-          "15. WHAT HAPPENS WHEN: unknown model -> the API's 400, as a client exception",
+          "15. WHAT HAPPENS WHEN: unknown model -> OpenAIScalaClientException caused by TypeSafeScalaApiUsageException",
           m,
           s
         )(

@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.typesafe.service.impl
 
-import io.cequence.openaiscala.OpenAIScalaClientException
+import io.cequence.openaiscala._
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
@@ -12,7 +12,7 @@ import io.cequence.openaiscala.domain.settings.{
 }
 import io.cequence.openaiscala.typesafe.domain._
 import io.cequence.openaiscala.typesafe.domain.settings.CreateChatCompletionSettingsOps._
-import io.cequence.openaiscala.typesafe.service.{TypeSafeService, TypeSafeServiceFactory}
+import io.cequence.openaiscala.typesafe.service._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json._
@@ -374,6 +374,71 @@ class OpenAITypeSafeChatCompletionServiceSpec extends AnyWordSpec with Matchers 
       )
       Json.parse(response.contentHead) shouldBe
         Json.obj("department" -> "billing", "is_urgent" -> true)
+    }
+
+    "repack the native exceptions onto the OpenAI hierarchy, keeping them as the cause" in {
+      def failingWith(e: Throwable) = TypeSafeServiceFactory.asOpenAI(new Stub(answers) {
+        override def systemOne(
+          state: JsValue,
+          questions: Map[String, Question],
+          model: String
+        ): Future[SystemOneResponse] = Future.failed(e)
+      })
+
+      val cases: Seq[(TypeSafeScalaClientException, Class[_])] = Seq(
+        new TypeSafeScalaUnauthorizedException("u") -> classOf[
+          OpenAIScalaUnauthorizedException
+        ],
+        new TypeSafeScalaTokenCountExceededException("t") -> classOf[
+          OpenAIScalaTokenCountExceededException
+        ],
+        new TypeSafeScalaRateLimitException("r") -> classOf[OpenAIScalaRateLimitException],
+        new TypeSafeScalaEngineOverloadedException("o") -> classOf[
+          OpenAIScalaEngineOverloadedException
+        ],
+        new TypeSafeScalaServerErrorException("s") -> classOf[OpenAIScalaServerErrorException],
+        new TypeSafeScalaClientTimeoutException("ti") -> classOf[
+          OpenAIScalaClientTimeoutException
+        ],
+        new TypeSafeScalaClientUnknownHostException("h") -> classOf[
+          OpenAIScalaClientUnknownHostException
+        ],
+        new TypeSafeScalaApiUsageException("a") -> classOf[OpenAIScalaClientException],
+        new TypeSafeScalaInvalidRequestException("i") -> classOf[OpenAIScalaClientException],
+        new TypeSafeScalaNotFoundException("n") -> classOf[OpenAIScalaClientException],
+        new TypeSafeScalaClientException("c") -> classOf[OpenAIScalaClientException]
+      )
+
+      cases.foreach { case (native, expected) =>
+        val e = failure(
+          failingWith(native).createChatCompletion(Seq(UserMessage("x")), jsonSchemaSettings)
+        )
+        withClue(s"${native.getClass.getSimpleName}: ") {
+          e.getClass shouldBe expected
+          e.getCause shouldBe theSameInstanceAs(native)
+          e.getMessage shouldBe native.getMessage
+        }
+      }
+
+      // the shared Retryable matcher now sees them right
+      Retryable(
+        failure(
+          failingWith(new TypeSafeScalaRateLimitException("r"))
+            .createChatCompletion(Seq(UserMessage("x")), jsonSchemaSettings)
+        ).asInstanceOf[OpenAIScalaClientException]
+      ) shouldBe true
+      Retryable(
+        failure(
+          failingWith(new TypeSafeScalaUnauthorizedException("u"))
+            .createChatCompletion(Seq(UserMessage("x")), jsonSchemaSettings)
+        ).asInstanceOf[OpenAIScalaClientException]
+      ) shouldBe false
+
+      // a foreign exception passes through untouched
+      val foreign = new IllegalStateException("boom")
+      failure(
+        failingWith(foreign).createChatCompletion(Seq(UserMessage("x")), jsonSchemaSettings)
+      ) shouldBe theSameInstanceAs(foreign)
     }
 
     "not support tool completions" in {
