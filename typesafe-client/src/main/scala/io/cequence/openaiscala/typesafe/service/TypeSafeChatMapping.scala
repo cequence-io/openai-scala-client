@@ -26,7 +26,9 @@ import scala.util.Try
  *   - one user message with instructions -> `{"instructions": ..., "message": ...}`
  *   - several turns -> `{"instructions": ..., "conversation": [{"role", "content"}, ...]}`
  *
- * Image content, tool messages and an empty conversation are refused.
+ * Image content, tool messages and an empty conversation are refused. Everything this object
+ * cannot map fails with an `OpenAIScalaClientException` - it is the OpenAI adapter's mapping,
+ * so its errors wear the OpenAI adapter's type.
  *
  * '''Schema -> `questions`.''' Only the schema produces questions - one per property, named by
  * its path, with the description as the instructions and the enum / range as the criteria
@@ -78,9 +80,14 @@ object TypeSafeChatMapping {
     }
   }
 
-  /** The `questions` the adapter sends for this schema (throws if it cannot be answered). */
-  def toQuestions(schema: JsonSchemaDef): Map[String, Question] =
-    SchemaQuestions.plan(Json.toJson(schema.structure)).questions
+  /** The `questions` the adapter sends for this schema. */
+  def toQuestions(schema: JsonSchemaDef): Map[String, Question] = plan(schema).questions
+
+  // the adapter's own plan (it also needs the slots to assemble the answers); a schema System
+  // One cannot answer fails the way every other misuse here does
+  private[typesafe] def plan(schema: JsonSchemaDef): SchemaQuestions.Plan =
+    try SchemaQuestions.plan(Json.toJson(schema.structure))
+    catch { case e: IllegalArgumentException => fail(e.getMessage) }
 
   // a user message that IS a JSON object or array goes in as structured state; a number, a
   // quoted string or plain prose stays text

@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.typesafe.service
 
-import io.cequence.wsclient.service.WSClient
 import play.api.libs.json.{JsArray, JsObject, JsString, JsValue, Json}
 
 import scala.util.Try
@@ -8,19 +7,10 @@ import scala.util.Try
 /**
  * Classifies the TypeSafe API's HTTP errors into the [[TypeSafeScalaClientException]]
  * hierarchy (see its scaladoc for the status / body table) and unpacks the body's `detail`
- * into the message the way the official SDK does. Mixed into the service so ws-client's error
- * path lands here; [[TypeSafeServiceImpl]] calls [[HandleTypeSafeErrorCodes.toException]]
- * directly to add the request id.
+ * into the message the way the official SDK does. `TypeSafeServiceImpl` calls [[toException]]
+ * from its own error path so the request id can ride along (ws-client's `handleErrorCodes`
+ * hook sees neither the headers nor the rich response, so it is not used).
  */
-trait HandleTypeSafeErrorCodes extends WSClient {
-
-  override protected def handleErrorCodes(
-    httpCode: Int,
-    message: String
-  ): Nothing =
-    throw HandleTypeSafeErrorCodes.toException(httpCode, message)
-}
-
 object HandleTypeSafeErrorCodes {
 
   def toException(
@@ -34,79 +24,27 @@ object HandleTypeSafeErrorCodes {
       s"Code ${httpCode} : ${json.flatMap(extractMessage).getOrElse(body)}" +
         requestId.fold("")(id => s" [request $id]")
 
-    httpCode match {
+    // (message, httpCode, errorType, requestId) -> the exception of the right kind
+    type Build =
+      (String, Option[Int], Option[String], Option[String]) => TypeSafeScalaClientException
+
+    val build: Build = httpCode match {
       case 400 if kind.contains("max_tokens_exceeded") =>
-        new TypeSafeScalaTokenCountExceededException(
-          errorMessage,
-          httpCode = Some(httpCode),
-          errorType = kind,
-          requestId = requestId
-        )
-      case 400 if kind.isDefined =>
-        new TypeSafeScalaApiUsageException(
-          errorMessage,
-          httpCode = Some(httpCode),
-          errorType = kind,
-          requestId = requestId
-        )
+        new TypeSafeScalaTokenCountExceededException(_, null, _, _, _)
+      case 400 if kind.isDefined => new TypeSafeScalaApiUsageException(_, null, _, _, _)
       case 400 | 422 =>
-        new TypeSafeScalaInvalidRequestException(
-          errorMessage,
-          httpCode = Some(httpCode),
-          errorType = kind,
-          requestId = requestId,
-          violations = json.map(violations).getOrElse(Nil)
-        )
-      case 401 | 403 =>
-        new TypeSafeScalaUnauthorizedException(
-          errorMessage,
-          httpCode = Some(httpCode),
-          errorType = kind,
-          requestId = requestId
-        )
-      case 404 | 405 =>
-        new TypeSafeScalaNotFoundException(
-          errorMessage,
-          httpCode = Some(httpCode),
-          errorType = kind,
-          requestId = requestId
-        )
-      case 408 =>
-        new TypeSafeScalaClientTimeoutException(
-          errorMessage,
-          httpCode = Some(httpCode),
-          errorType = kind,
-          requestId = requestId
-        )
-      case 429 =>
-        new TypeSafeScalaRateLimitException(
-          errorMessage,
-          httpCode = Some(httpCode),
-          errorType = kind,
-          requestId = requestId
-        )
-      case 503 | 529 =>
-        new TypeSafeScalaEngineOverloadedException(
-          errorMessage,
-          httpCode = Some(httpCode),
-          errorType = kind,
-          requestId = requestId
-        )
-      case code if code >= 500 =>
-        new TypeSafeScalaServerErrorException(
-          errorMessage,
-          httpCode = Some(httpCode),
-          errorType = kind,
-          requestId = requestId
-        )
-      case _ =>
-        new TypeSafeScalaClientException(
-          errorMessage,
-          httpCode = Some(httpCode),
-          errorType = kind,
-          requestId = requestId
-        )
+        val violations = json.map(HandleTypeSafeErrorCodes.violations).getOrElse(Nil)
+        new TypeSafeScalaInvalidRequestException(_, null, _, _, _, violations)
+      case 401 | 403           => new TypeSafeScalaUnauthorizedException(_, null, _, _, _)
+      case 404 | 405           => new TypeSafeScalaNotFoundException(_, null, _, _, _)
+      case 408                 => new TypeSafeScalaClientTimeoutException(_, null, _, _, _)
+      case 429                 => new TypeSafeScalaRateLimitException(_, null, _, _, _)
+      case 503 | 529           => new TypeSafeScalaEngineOverloadedException(_, null, _, _, _)
+      case code if code >= 500 => new TypeSafeScalaServerErrorException(_, null, _, _, _)
+      case _                   => new TypeSafeScalaClientException(_, null, _, _, _)
     }
+
+    build(errorMessage, Some(httpCode), kind, requestId)
   }
 
   /**

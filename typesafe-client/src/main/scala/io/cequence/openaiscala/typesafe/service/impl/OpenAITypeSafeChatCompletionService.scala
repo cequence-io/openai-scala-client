@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.typesafe.service.impl
 
-import io.cequence.openaiscala.JsonFormats.eitherJsonSchemaWrites
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.response.{
@@ -82,9 +81,7 @@ private[service] class OpenAITypeSafeChatCompletionService(
           .filter(_ > 1)
           .foreach(n => fail(s"n = $n is not supported; System One answers once."))
 
-        val plan =
-          try SchemaQuestions.plan(Json.toJson(schema.structure))
-          catch { case e: IllegalArgumentException => fail(e.getMessage) }
+        val plan = TypeSafeChatMapping.plan(schema)
 
         (plan, TypeSafeChatMapping.toState(messages), settings.typeSafeNoulThreshold)
       })

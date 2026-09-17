@@ -135,6 +135,69 @@ class SchemaQuestionsSpec extends AnyWordSpec with Matchers {
       )
     }
 
+    "build levels for bounds anywhere on the number line" in {
+      val plan = SchemaQuestions.plan(
+        Json.parse(
+          """{"type":"object","properties":{
+            |  "big":{"type":"integer","minimum":3000000000,"maximum":3000000002},
+            |  "neg":{"type":"integer","minimum":-2,"maximum":0}
+            |}}""".stripMargin
+        )
+      )
+      plan.questions("big") shouldBe
+        ScoreQuestion("Big", "3000000000", "3000000001", "3000000002")
+      plan.root.fields.collect { case ("big", s: ScoreSlot) => s.levels } shouldBe
+        Seq(Seq(BigDecimal(3000000000L), BigDecimal(3000000001L), BigDecimal(3000000002L)))
+      plan.questions("neg") shouldBe ScoreQuestion("Neg", "-2", "-1", "0")
+    }
+
+    "refuse a string enum with non-string values instead of trimming it" in {
+      val e = the[IllegalArgumentException] thrownBy SchemaQuestions.plan(
+        Json.parse(
+          """{"type":"object","properties":{
+            |  "mixed":{"type":"string","enum":["a",42,"b"]},
+            |  "tags":{"type":"array","items":{"type":"string","enum":["x",null]}}
+            |}}""".stripMargin
+        )
+      )
+      e.getMessage should include("mixed: a string enum with non-string values")
+      e.getMessage should include("tags: a string enum with non-string values")
+    }
+
+    "fold duplicate enum values so the count, the questions and the output agree" in {
+      val plan = SchemaQuestions.plan(
+        Json.parse(
+          """{"type":"object","properties":{
+            |  "pick":{"type":"string","enum":["a","a","b"]},
+            |  "tags":{"type":"array","items":{"type":"string","enum":["a","a","b"]}}
+            |}}""".stripMargin
+        )
+      )
+      plan.questions("pick") shouldBe ChoiceQuestion.ofLabels("Pick", "a", "b")
+      plan.questions.keySet should contain allOf ("tags.[a]", "tags.[b]")
+      plan.questions.size shouldBe 3
+
+      val json = SchemaQuestions.assemble(
+        plan,
+        Map(
+          "pick" -> ChoiceAnswer("a", 1, Map("a" -> 1.0, "b" -> 0.0)),
+          "tags.[a]" -> NoulAnswer(0.9),
+          "tags.[b]" -> NoulAnswer(0.1)
+        ),
+        0.5
+      )
+      (json \ "tags").as[Seq[String]] shouldBe Seq("a")
+
+      // 256 raw values that fold to 255 are within the cap
+      val wide = (1 to 255).map(i => s"o$i") :+ "o1"
+      noException should be thrownBy SchemaQuestions.plan(
+        Json.obj(
+          "type" -> "object",
+          "properties" -> Json.obj("pick" -> Json.obj("type" -> "string", "enum" -> wide))
+        )
+      )
+    }
+
     "refuse a non-object root" in {
       an[IllegalArgumentException] should be thrownBy
         SchemaQuestions.plan(Json.parse("""{"type":"boolean"}"""))

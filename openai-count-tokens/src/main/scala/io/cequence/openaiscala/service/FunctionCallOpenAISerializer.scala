@@ -52,6 +52,10 @@ object FunctionCallOpenAISerializer {
     lines.map(line => " " * indent + line).mkString("\n")
   }
 
+  // 1.0 -> "1", 0.5 -> "0.5", as JavaScript's template literal would print the number
+  private def formatNumber(value: Double): String =
+    if (value.isWhole && math.abs(value) < 1e15) value.toLong.toString else value.toString
+
   private def extractDescription(schema: JsonSchema): Option[String] = schema match {
     case JsonSchema.String(description, _)        => description
     case JsonSchema.Number(description, _, _, _)  => description
@@ -68,7 +72,13 @@ object FunctionCallOpenAISerializer {
   ): String = schema match {
     case JsonSchema.String(_, enumVals) if enumVals.nonEmpty =>
       enumVals.map(v => "\"" + v + "\"").mkString(" | ")
-    case JsonSchema.String(_, _)        => "string"
+    case JsonSchema.String(_, _) => "string"
+    // numeric enums render as their values, like the upstream openai-chat-tokens algorithm
+    // (minimum / maximum are not rendered there either)
+    case JsonSchema.Number(_, _, _, enumVals) if enumVals.nonEmpty =>
+      enumVals.map(formatNumber).mkString(" | ")
+    case JsonSchema.Integer(_, _, _, enumVals) if enumVals.nonEmpty =>
+      enumVals.map(_.toString).mkString(" | ")
     case JsonSchema.Number(_, _, _, _)  => "number"
     case JsonSchema.Integer(_, _, _, _) => "number"
     case JsonSchema.Boolean(_)          => "boolean"

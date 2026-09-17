@@ -94,15 +94,16 @@ private[typesafe] object SchemaQuestions {
 
           case Some("string") =>
             stringEnum(schema) match {
-              case Some(options) if options.size > ChoiceQuestion.MaxOptions =>
+              case Some(Right(options)) if options.size > ChoiceQuestion.MaxOptions =>
                 unsupported(
                   path,
                   s"an enum with ${options.size} values - a choice allows at most " +
                     s"${ChoiceQuestion.MaxOptions}"
                 )
-              case Some(options) if options.nonEmpty =>
+              case Some(Right(options)) if options.nonEmpty =>
                 ChoiceSlot(add(path, ChoiceQuestion.ofLabels(instructions, options: _*)))
-              case Some(_) => unsupported(path, "an empty enum")
+              case Some(Right(_))      => unsupported(path, "an empty enum")
+              case Some(Left(problem)) => unsupported(path, problem)
               case None =>
                 unsupported(
                   path,
@@ -130,17 +131,16 @@ private[typesafe] object SchemaQuestions {
             }
 
           case Some("array") =>
-            (schema \ "items").toOption.flatMap(items =>
-              stringEnum(items).map(items -> _)
-            ) match {
-              case Some((_, options)) if options.nonEmpty =>
+            (schema \ "items").toOption.flatMap(stringEnum) match {
+              case Some(Right(options)) if options.nonEmpty =>
                 MultiSelectSlot(options.map { option =>
                   option -> add(
                     path :+ s"[$option]",
                     NoulQuestion(s"Does '$option' apply? ($instructions)")
                   )
                 })
-              case Some(_) => unsupported(path, "an empty enum")
+              case Some(Right(_))      => unsupported(path, "an empty enum")
+              case Some(Left(problem)) => unsupported(path, problem)
               case None =>
                 unsupported(path, "an array whose items are not a string enum (multi-select)")
             }
@@ -240,8 +240,14 @@ private[typesafe] object SchemaQuestions {
       case _ => None
     }
 
-  private def stringEnum(schema: JsValue): Option[Seq[String]] =
-    (schema \ "enum").asOpt[JsArray].map(_.value.toSeq.collect { case JsString(s) => s })
+  // None = no enum; Left = an enum with non-string values (refused, not silently trimmed);
+  // duplicates are folded so the option count, the questions and the output agree
+  private def stringEnum(schema: JsValue): Option[Either[String, Seq[String]]] =
+    (schema \ "enum").asOpt[JsArray].map { values =>
+      val strings = values.value.toSeq.collect { case JsString(s) => s }
+      if (strings.size == values.value.size) Right(strings.distinct)
+      else Left("a string enum with non-string values")
+    }
 
   private def numericLevels(schema: JsValue): Either[String, Seq[BigDecimal]] =
     (schema \ "enum").asOpt[JsArray] match {
@@ -262,7 +268,8 @@ private[typesafe] object SchemaQuestions {
           case (Some(min), Some(max)) if max - min + 1 > MaxRangeLevels =>
             Left(s"a minimum..maximum range wider than $MaxRangeLevels values")
           case (Some(min), Some(max)) =>
-            Right((min.toInt to max.toInt).map(BigDecimal(_)))
+            // iterate in BigDecimal - the bounds may sit anywhere on the number line
+            Right(Iterator.iterate(min)(_ + 1).takeWhile(_ <= max).toVector)
           case _ =>
             Left(
               "a number without an enum or a minimum..maximum range - System One rates on a " +

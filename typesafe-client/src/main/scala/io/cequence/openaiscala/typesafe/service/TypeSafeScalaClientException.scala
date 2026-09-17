@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.typesafe.service
 
+import io.cequence.openaiscala.ProviderErrorDetails
 import io.cequence.wsclient.domain.CequenceWSException
 
 /**
@@ -31,6 +32,7 @@ class TypeSafeScalaClientException(
   val errorType: Option[String] = None,
   val requestId: Option[String] = None
 ) extends CequenceWSException(message, cause)
+    with ProviderErrorDetails
 
 /** 401 (bad key) or 403 (no key). */
 class TypeSafeScalaUnauthorizedException(

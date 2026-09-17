@@ -60,6 +60,7 @@ class HandleTypeSafeErrorCodesSpec extends AnyWordSpec with Matchers {
 
     "carry the code, the error type and the request id, and put them in the message" in {
       val e = toException(400, unknownModel, requestId = Some("req_1"))
+      e shouldBe a[io.cequence.openaiscala.ProviderErrorDetails]
       e.httpCode shouldBe Some(400)
       e.errorType shouldBe Some("api_usage_error")
       e.requestId shouldBe Some("req_1")

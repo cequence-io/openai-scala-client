@@ -52,8 +52,7 @@ private[service] class TypeSafeServiceImpl(
 )(
   implicit val ec: ExecutionContext
 ) extends TypeSafeService
-    with WSClientWithEngine
-    with HandleTypeSafeErrorCodes {
+    with WSClientWithEngine {
 
   override protected type PEP = EndPoint
   override protected type PT = Param

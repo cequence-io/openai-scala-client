@@ -11,6 +11,7 @@ import io.cequence.openaiscala.domain.settings.{
   Verbosity
 }
 import io.cequence.openaiscala.typesafe.domain._
+import io.cequence.openaiscala.typesafe.domain.settings.CreateChatCompletionSettingsOps
 import io.cequence.openaiscala.typesafe.domain.settings.CreateChatCompletionSettingsOps._
 import io.cequence.openaiscala.typesafe.service._
 import org.scalatest.matchers.should.Matchers
@@ -439,6 +440,72 @@ class OpenAITypeSafeChatCompletionServiceSpec extends AnyWordSpec with Matchers 
       failure(
         failingWith(foreign).createChatCompletion(Seq(UserMessage("x")), jsonSchemaSettings)
       ) shouldBe theSameInstanceAs(foreign)
+    }
+
+    "fail with the library's exception on a threshold that is not a number within 0..1" in {
+      val service = TypeSafeServiceFactory.asOpenAI(new Stub(answers))
+      Seq[Any]("high", 1.5, -0.1, Seq(1)).foreach { bad =>
+        val e = failure(
+          service.createChatCompletion(
+            Seq(UserMessage("x")),
+            jsonSchemaSettings.copy(extra_params =
+              Map(CreateChatCompletionSettingsOps.NoulThresholdParam -> bad)
+            )
+          )
+        )
+        withClue(s"$bad: ") {
+          e shouldBe an[OpenAIScalaClientException]
+          e.getMessage should include("must be a number within 0..1")
+        }
+      }
+      // numbers of any kind, and numeric strings, are accepted
+      Seq[Any](0.7, 0.7f, "0.7", BigDecimal("0.7")).foreach { ok =>
+        jsonSchemaSettings
+          .copy(extra_params = Map(CreateChatCompletionSettingsOps.NoulThresholdParam -> ok))
+          .typeSafeNoulThreshold shouldBe 0.7 +- 0.0001
+      }
+      jsonSchemaSettings
+        .copy(extra_params = Map(CreateChatCompletionSettingsOps.NoulThresholdParam -> 1))
+        .typeSafeNoulThreshold shouldBe 1.0
+    }
+
+    "expose the provider error details through the cause of a repacked exception" in {
+      val native = new TypeSafeScalaRateLimitException(
+        "r",
+        httpCode = Some(429),
+        errorType = Some("rate_limit"),
+        requestId = Some("req-9")
+      )
+      val stub = new Stub(answers) {
+        override def systemOne(
+          state: JsValue,
+          questions: Map[String, Question],
+          model: String
+        ): Future[SystemOneResponse] = Future.failed(native)
+      }
+      val e = failure(
+        TypeSafeServiceFactory
+          .asOpenAI(stub)
+          .createChatCompletion(Seq(UserMessage("x")), jsonSchemaSettings)
+      )
+      e shouldBe an[OpenAIScalaRateLimitException]
+      (e match {
+        case ProviderErrorDetails(d) => (d.httpCode, d.errorType, d.requestId)
+        case _                       => fail("no details")
+      }) shouldBe ((Some(429), Some("rate_limit"), Some("req-9")))
+    }
+
+    "throw one exception brand from the mapping previews" in {
+      val freeText = JsonSchemaDef(
+        "s",
+        strict = true,
+        structure = Left(JsonSchema.Object(Seq("summary" -> JsonSchema.String())))
+      )
+      an[OpenAIScalaClientException] should be thrownBy TypeSafeChatMapping.toQuestions(
+        freeText
+      )
+      an[OpenAIScalaClientException] should be thrownBy TypeSafeChatMapping.toState(Nil)
+      TypeSafeChatMapping.toQuestions(schema).keySet shouldBe Set("department", "is_urgent")
     }
 
     "not support tool completions" in {
