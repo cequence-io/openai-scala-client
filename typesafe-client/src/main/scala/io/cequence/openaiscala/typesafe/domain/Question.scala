@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.typesafe.domain
 
-import play.api.libs.json.{JsString, JsValue}
+import play.api.libs.json.{JsArray, JsObject, JsString, JsValue}
 
 import scala.collection.immutable.ListMap
 
@@ -32,7 +32,13 @@ sealed trait Question {
 final case class NoulQuestion(
   instructions: Option[JsValue] = None,
   criteria: Option[NoulCriteria] = None
-) extends Question
+) extends Question {
+  // the API answers 400 "Noul question must have criteria or instructions" otherwise
+  require(
+    instructions.isDefined || criteria.exists(c => c.yes.isDefined || c.no.isDefined),
+    "A noul question needs instructions or criteria (what counts as yes / no)."
+  )
+}
 
 object NoulQuestion {
 
@@ -77,11 +83,20 @@ final case class ChoiceQuestion(
   instructions: Option[JsValue] = None
 ) extends Question {
   require(criteria.nonEmpty, "A choice question needs at least one option.")
+  // the API answers 400 "Too many choices. Must have at most 255 choices." (2026-09-17)
+  require(
+    criteria.size <= ChoiceQuestion.MaxOptions,
+    s"A choice question allows at most ${ChoiceQuestion.MaxOptions} options (got ${criteria.size}); " +
+      "narrow in two stages - pick the section first, then the option inside it."
+  )
 
   def labels: Seq[String] = criteria.keys.toSeq
 }
 
 object ChoiceQuestion {
+
+  /** The API's cap on options per choice question. */
+  val MaxOptions = 255
 
   /**
    * Described options: `ChoiceQuestion("Which team?", "billing" -> "Payments, refunds", ...)`.
@@ -126,6 +141,14 @@ final case class ScoreQuestion(
   instructions: Option[JsValue] = None
 ) extends Question {
   require(criteria.nonEmpty, "A score question needs at least one level.")
+  // the API answers 422 for a level that is not text, an object or an array
+  require(
+    criteria.forall {
+      case _: JsString | _: JsObject | _: JsArray => true
+      case _                                      => false
+    },
+    "Every score level must be text, a JSON object or a JSON array."
+  )
 }
 
 object ScoreQuestion {

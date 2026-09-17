@@ -96,7 +96,8 @@ class JsonFormatsSpec extends AnyWordSpec with Matchers {
     }
 
     "omit what was not set, as the SDK does (omit_defaults)" in {
-      Json.toJson[Question](NoulQuestion()) shouldBe Json.obj("type" -> "noul")
+      Json.toJson[Question](NoulQuestion(Some(JsString("Spam?")))) shouldBe
+        Json.obj("type" -> "noul", "instructions" -> "Spam?")
 
       Json.toJson[Question](ChoiceQuestion(ListMap("a" -> None))) shouldBe
         Json.obj("type" -> "choice", "criteria" -> Json.obj("a" -> JsNull))
@@ -144,6 +145,34 @@ class JsonFormatsSpec extends AnyWordSpec with Matchers {
         ListMap.empty[String, Option[JsValue]]
       )
     }
+
+    // the API answers 400 "Too many choices. Must have at most 255 choices."
+    "refuse a choice question with more than 255 options" in {
+      noException should be thrownBy
+        ChoiceQuestion.ofLabels("Which?", (1 to 255).map(i => s"o$i"): _*)
+      val e = the[IllegalArgumentException] thrownBy
+        ChoiceQuestion.ofLabels("Which?", (1 to 256).map(i => s"o$i"): _*)
+      e.getMessage should include("at most 255 options (got 256)")
+    }
+
+    // the API answers 422 "Input should be a valid string / dictionary / list" per level
+    "refuse a numeric score level" in {
+      an[IllegalArgumentException] should be thrownBy
+        ScoreQuestion(Seq(JsNumber(1), JsNumber(2)))
+      noException should be thrownBy
+        ScoreQuestion(Seq(JsString("1"), Json.obj("label" -> "low")))
+    }
+
+    // the API answers 400 "Noul question must have criteria or instructions: <name>"
+    "refuse a noul question with nothing to evaluate" in {
+      an[IllegalArgumentException] should be thrownBy NoulQuestion()
+      an[IllegalArgumentException] should be thrownBy NoulQuestion(criteria =
+        Some(NoulCriteria())
+      )
+      noException should be thrownBy NoulQuestion(criteria =
+        Some(NoulCriteria(yes = Some(JsString("spam"))))
+      )
+    }
   }
 
   "SystemOneRequest writes" should {
@@ -186,6 +215,24 @@ class JsonFormatsSpec extends AnyWordSpec with Matchers {
     "refuse a request without questions" in {
       an[IllegalArgumentException] should be thrownBy
         SystemOneRequest(JsString("x"), "jev-latest", Map.empty)
+    }
+
+    // a number / boolean / null state is a 422 on the API's side (str | dict | list)
+    "refuse a state that is neither text nor a JSON object or array" in {
+      val q = Map("q" -> (NoulQuestion("x"): Question))
+      an[IllegalArgumentException] should be thrownBy SystemOneRequest(
+        JsNumber(42),
+        "jev-latest",
+        q
+      )
+      an[IllegalArgumentException] should be thrownBy SystemOneRequest(JsNull, "jev-latest", q)
+      an[IllegalArgumentException] should be thrownBy SystemOneRequest(
+        JsBoolean(true),
+        "jev-latest",
+        q
+      )
+      noException should be thrownBy SystemOneRequest(Json.arr("a", "b"), "jev-latest", q)
+      noException should be thrownBy SystemOneRequest(Json.obj("a" -> 1), "jev-latest", q)
     }
   }
 

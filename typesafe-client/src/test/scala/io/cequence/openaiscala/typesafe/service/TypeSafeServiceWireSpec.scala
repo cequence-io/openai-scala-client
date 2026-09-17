@@ -155,10 +155,10 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       respond(200, quickStartResponse)
 
       val state = Json.obj("subject" -> "Duplicate charge", "message" -> "Please help.")
-      await(service.systemOne(state, questions, model = TypeSafeModelId.jev_1_12))
+      await(service.systemOne(state, questions, model = TypeSafeModelId.jev_preview))
 
       val body = Json.parse(received.get.body).as[JsObject]
-      (body \ "model").as[String] shouldBe "jev-1.12"
+      (body \ "model").as[String] shouldBe TypeSafeModelId.jev_preview
       (body \ "state").get shouldBe state
     }
 

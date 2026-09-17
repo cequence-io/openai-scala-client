@@ -796,4 +796,14 @@ object NonOpenAIModelId {
   val novita_llama_3_1_8b_instruct_bf16 = "meta-llama/llama-3.1-8b-instruct-bf16"
   val novita_l31_70b_euryale_v2_2 = "sao10k/l31-70b-euryale-v2.2"
   val novita_qwen_2_7b_instruct = "qwen/qwen-2-7b-instruct"
+
+  // TypeSafe AI (typesafe.ai) - System One decision models, `POST /v1/systemone` via the
+  // typesafe-client module (not chat). Aliases as listed by `GET /v1/models` on 2026-09-16;
+  // the response names the dated build an alias resolved to (jev-latest -> jev-1.13.0).
+  val jev_latest = "jev-latest"
+  // the next jev-latest: "should be better in most ways"
+  val jev_preview = "jev-preview"
+  // the build jev-latest resolved to on 2026-09-16 (dated builds are accepted by name but
+  // not listed; jev-1.12 is already gone)
+  val jev_1_13_0 = "jev-1.13.0"
 }

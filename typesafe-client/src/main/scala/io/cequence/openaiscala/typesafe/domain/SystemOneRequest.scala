@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.typesafe.domain
 
-import play.api.libs.json.JsValue
+import play.api.libs.json.{JsArray, JsObject, JsString, JsValue}
 
 /**
  * The body of `POST /v1/systemone`: named questions, all evaluated against one `state`.
@@ -19,4 +19,12 @@ final case class SystemOneRequest(
   questions: Map[String, Question]
 ) {
   require(questions.nonEmpty, "At least one question is required.")
+  // anything else (a number, a boolean, null) is a 422 on the API's side
+  require(
+    state match {
+      case _: JsString | _: JsObject | _: JsArray => true
+      case _                                      => false
+    },
+    "The state must be text, a JSON object or a JSON array."
+  )
 }

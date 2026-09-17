@@ -71,6 +71,28 @@ class HandleTypeSafeErrorCodesSpec extends AnyWordSpec with Matchers {
       extractMessage("""{"detail":[{"msg":"no location"}]}""") shouldBe "no location"
     }
 
+    // bodies observed against the live API on 2026-09-16
+    "unpack the bodies the live API sends" in {
+      // 400 - unknown model, 400 - a question the server-side validation rejects
+      extractMessage(
+        """{"detail":{"error_type":"api_usage_error","message":"Unknown model: jev-nope"}}"""
+      ) shouldBe "Unknown model: jev-nope"
+      extractMessage(
+        """{"detail":"Choice question must have at least one choice: q"}"""
+      ) shouldBe "Choice question must have at least one choice: q"
+
+      // 422 - pydantic validation errors carry `input` / `ctx` too
+      extractMessage(
+        """{"detail":[{"type":"too_short","loc":["body","questions"],"msg":"Dictionary should have at least 1 item after validation, not 0","input":{},"ctx":{"field_type":"Dictionary","min_length":1,"actual_length":0}}]}"""
+      ) shouldBe "questions: Dictionary should have at least 1 item after validation, not 0"
+      extractMessage(
+        """{"detail":[{"type":"missing","loc":["body","questions","intent","choice","criteria"],"msg":"Field required","input":{"type":"choice"}}]}"""
+      ) shouldBe "questions.intent.choice.criteria: Field required"
+      extractMessage(
+        """{"detail":[{"type":"string_type","loc":["body","state","str"],"msg":"Input should be a valid string","input":42},{"type":"dict_type","loc":["body","state","dict[any,any]"],"msg":"Input should be a valid dictionary","input":42}]}"""
+      ) shouldBe "state.str: Input should be a valid string; state.dict[any,any]: Input should be a valid dictionary"
+    }
+
     "fall back to the body as is" in {
       extractMessage("<html>502 Bad Gateway</html>") shouldBe "<html>502 Bad Gateway</html>"
       extractMessage("""{"unexpected":true}""") shouldBe """{"unexpected":true}"""
