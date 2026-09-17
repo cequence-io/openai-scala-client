@@ -1181,13 +1181,13 @@ private[service] class OpenAIGeminiChatCompletionService(
         `enum` = Some(enumVals)
       )
 
-    case JsonSchema.Number(description) =>
+    case JsonSchema.Number(description, _, _, _) =>
       Schema(
         `type` = SchemaType.NUMBER,
         description = description
       )
 
-    case JsonSchema.Integer(description) =>
+    case JsonSchema.Integer(description, _, _, _) =>
       Schema(
         `type` = SchemaType.INTEGER,
         description = description

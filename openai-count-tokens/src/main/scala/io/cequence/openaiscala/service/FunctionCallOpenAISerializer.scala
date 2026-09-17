@@ -53,13 +53,13 @@ object FunctionCallOpenAISerializer {
   }
 
   private def extractDescription(schema: JsonSchema): Option[String] = schema match {
-    case JsonSchema.String(description, _) => description
-    case JsonSchema.Number(description)    => description
-    case JsonSchema.Integer(description)   => description
-    case JsonSchema.Boolean(description)   => description
-    case JsonSchema.Object(_, _, _, desc)  => desc
-    case JsonSchema.Array(_, desc)         => desc
-    case _                                 => None
+    case JsonSchema.String(description, _)        => description
+    case JsonSchema.Number(description, _, _, _)  => description
+    case JsonSchema.Integer(description, _, _, _) => description
+    case JsonSchema.Boolean(description)          => description
+    case JsonSchema.Object(_, _, _, desc)         => desc
+    case JsonSchema.Array(_, desc)                => desc
+    case _                                        => None
   }
 
   private def formatType(
@@ -68,11 +68,11 @@ object FunctionCallOpenAISerializer {
   ): String = schema match {
     case JsonSchema.String(_, enumVals) if enumVals.nonEmpty =>
       enumVals.map(v => "\"" + v + "\"").mkString(" | ")
-    case JsonSchema.String(_, _) => "string"
-    case JsonSchema.Number(_)    => "number"
-    case JsonSchema.Integer(_)   => "number"
-    case JsonSchema.Boolean(_)   => "boolean"
-    case JsonSchema.Null()       => "null"
+    case JsonSchema.String(_, _)        => "string"
+    case JsonSchema.Number(_, _, _, _)  => "number"
+    case JsonSchema.Integer(_, _, _, _) => "number"
+    case JsonSchema.Boolean(_)          => "boolean"
+    case JsonSchema.Null()              => "null"
     case obj: JsonSchema.Object =>
       "{" + "\n" + formatObjectProperties(obj, indent + 2) + "\n" + "}"
     case JsonSchema.Array(items, _) =>

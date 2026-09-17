@@ -35,13 +35,49 @@ object JsonSchema {
   ) extends JsonSchema {
     override val `type` = JsonType.String
   }
+
+  /**
+   * `minimum` / `maximum` / `enum` are standard JSON-schema keywords whose support across the
+   * providers is UNEVEN (live-verified 2026-09-17):
+   *
+   *   - OpenAI: honours both in STRICT mode (`JsonSchemaDef.strict = true`) on gpt-5.4-mini
+   *     and gpt-6-astra - a `minimum` 30 / `maximum` 40 rating came back in range; with
+   *     `strict = false` the bounds are accepted but IGNORED (the same prompt answered 4)
+   *   - Anthropic: rejects `minimum` / `maximum` with a 400 ("For 'number' type, properties
+   *     maximum, minimum are not supported"), so the adapter drops them with a warning; `enum`
+   *     is honoured
+   *   - Gemini / Vertex AI: the adapters read only the description, so all three are dropped
+   *
+   * So `enum` travels everywhere, while `minimum` / `maximum` are OpenAI-strict-only.
+   */
   case class Number(
-    description: Option[JString] = None
+    description: Option[JString] = None,
+    minimum: Option[Double] = None,
+    maximum: Option[Double] = None,
+    `enum`: Seq[Double] = Nil
   ) extends JsonSchema {
     override val `type` = JsonType.Number
   }
+
+  /**
+   * `minimum` / `maximum` / `enum` are standard JSON-schema keywords whose support across the
+   * providers is UNEVEN (live-verified 2026-09-17):
+   *
+   *   - OpenAI: honours both in STRICT mode (`JsonSchemaDef.strict = true`) on gpt-5.4-mini
+   *     and gpt-6-astra - a `minimum` 30 / `maximum` 40 rating came back in range; with
+   *     `strict = false` the bounds are accepted but IGNORED (the same prompt answered 4)
+   *   - Anthropic: rejects `minimum` / `maximum` with a 400 ("For 'integer' type, properties
+   *     maximum, minimum are not supported"), so the adapter drops them with a warning; `enum`
+   *     is honoured
+   *   - Gemini / Vertex AI: the adapters read only the description, so all three are dropped
+   *
+   * So `enum` travels everywhere, while `minimum` / `maximum` are OpenAI-strict-only.
+   */
   case class Integer(
-    description: Option[JString] = None
+    description: Option[JString] = None,
+    minimum: Option[Long] = None,
+    maximum: Option[Long] = None,
+    `enum`: Seq[Long] = Nil
   ) extends JsonSchema {
     override val `type` = JsonType.Integer
   }

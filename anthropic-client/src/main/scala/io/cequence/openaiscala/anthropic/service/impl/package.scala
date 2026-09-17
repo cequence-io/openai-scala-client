@@ -70,6 +70,7 @@ import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettingsOps.R
 import io.cequence.openaiscala.domain.{
   ChatRole,
   FunctionCallChunkSpec,
+  JsonSchema,
   FunctionCallSpec,
   MessageSpec,
   NonOpenAIModelId,
@@ -476,6 +477,52 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
       Some(OutputEffort.max)
   }
 
+  /**
+   * Strips `minimum` / `maximum` off every numeric property of a STRUCTURED-OUTPUT schema,
+   * returning the sanitized schema and the paths it changed. Anthropic answers 400
+   * ("output_format.schema: For 'integer' type, properties maximum, minimum are not
+   * supported", live-verified 2026-09-17 on Haiku 4.5 and Fable 5.1) rather than ignoring
+   * them, which would fail requests that work everywhere else; `enum` IS supported and is left
+   * untouched.
+   *
+   * TODO revisit: drop this sanitizing once Anthropic accepts the bounds - and note it is
+   * deliberately NOT applied to TOOL input schemas, which accept `minimum` / `maximum` today.
+   */
+  private[impl] def dropNumericBounds(schema: JsonSchema): (JsonSchema, Seq[String]) = {
+    val dropped = mutable.ListBuffer.empty[String]
+
+    def pathOf(path: Seq[String]): String =
+      if (path.isEmpty) "<root>" else path.mkString(".")
+
+    def aux(
+      path: Seq[String],
+      schema: JsonSchema
+    ): JsonSchema =
+      schema match {
+        case number: JsonSchema.Number
+            if number.minimum.isDefined || number.maximum.isDefined =>
+          dropped += pathOf(path)
+          number.copy(minimum = None, maximum = None)
+
+        case integer: JsonSchema.Integer
+            if integer.minimum.isDefined || integer.maximum.isDefined =>
+          dropped += pathOf(path)
+          integer.copy(minimum = None, maximum = None)
+
+        case obj: JsonSchema.Object =>
+          obj.copy(properties = obj.properties.map { case (name, property) =>
+            name -> aux(path :+ name, property)
+          })
+
+        case array: JsonSchema.Array =>
+          array.copy(items = aux(path :+ "[]", array.items))
+
+        case other => other
+      }
+
+    (aux(Nil, schema), dropped.toSeq)
+  }
+
   def toAnthropicSettings(
     settings: CreateChatCompletionSettings
   ): AnthropicCreateMessageSettings = {
@@ -529,7 +576,16 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
                 "OpenAI's 'strict' mode is not supported by Anthropic. The schema will be used without strict validation, and 'additionalProperties' will be set to false by default on all objects."
               )
 
-            Some(schema)
+            val (sanitizedSchema, droppedBounds) = dropNumericBounds(schema)
+
+            if (droppedBounds.nonEmpty)
+              logger.warn(
+                "Anthropic's structured output rejects 'minimum' / 'maximum' on numeric " +
+                  s"properties - dropped from: ${droppedBounds.mkString(", ")}. Constrain the " +
+                  "values with 'enum' instead, which Anthropic does honour."
+              )
+
+            Some(sanitizedSchema)
           case Right(_) =>
             logger.warn(
               "Map-like legacy JSON schema format is not supported for Anthropic - only structured JsonSchema objects are supported"

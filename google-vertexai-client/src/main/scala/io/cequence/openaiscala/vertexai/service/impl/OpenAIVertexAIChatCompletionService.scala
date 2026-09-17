@@ -225,10 +225,10 @@ private[service] class OpenAIVertexAIChatCompletionService(
           `enum` = if (enumVals.nonEmpty) Some(enumVals) else None
         )
 
-      case JsonSchema.Number(description) =>
+      case JsonSchema.Number(description, _, _, _) =>
         VertexAISchema(`type` = VertexAISchemaType.NUMBER, description = description)
 
-      case JsonSchema.Integer(description) =>
+      case JsonSchema.Integer(description, _, _, _) =>
         VertexAISchema(`type` = VertexAISchemaType.INTEGER, description = description)
 
       case JsonSchema.Boolean(description) =>

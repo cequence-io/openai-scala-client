@@ -1537,10 +1537,12 @@ object JsonFormats {
           if ((json \ "enum").asOpt[Seq[String]].exists(_.isEmpty)) json - "enum" else json
 
         case c: JsonSchema.Number =>
-          Json.toJsObject(c)
+          val json = Json.toJsObject(c)
+          if (c.`enum`.isEmpty) json - "enum" else json
 
         case c: JsonSchema.Integer =>
-          Json.toJsObject(c)
+          val json = Json.toJsObject(c)
+          if (c.`enum`.isEmpty) json - "enum" else json
 
         case c: JsonSchema.Boolean =>
           Json.toJsObject(c)
@@ -1591,8 +1593,19 @@ object JsonFormats {
         (__ \ "enum").readWithDefault[Seq[String]](Nil)
     )(JsonSchema.String.apply _)
 
-    implicit val numberReads: Reads[JsonSchema.Number] = Json.reads[JsonSchema.Number]
-    implicit val integerReads: Reads[JsonSchema.Integer] = Json.reads[JsonSchema.Integer]
+    implicit val numberReads: Reads[JsonSchema.Number] = (
+      (__ \ "description").readNullable[String] and
+        (__ \ "minimum").readNullable[Double] and
+        (__ \ "maximum").readNullable[Double] and
+        (__ \ "enum").readWithDefault[Seq[Double]](Nil)
+    )(JsonSchema.Number.apply _)
+
+    implicit val integerReads: Reads[JsonSchema.Integer] = (
+      (__ \ "description").readNullable[String] and
+        (__ \ "minimum").readNullable[Long] and
+        (__ \ "maximum").readNullable[Long] and
+        (__ \ "enum").readWithDefault[Seq[Long]](Nil)
+    )(JsonSchema.Integer.apply _)
     implicit val booleanReads: Reads[JsonSchema.Boolean] = Json.reads[JsonSchema.Boolean]
     //    implicit val nullReads = Json.reads[JsonSchema.Null]
 

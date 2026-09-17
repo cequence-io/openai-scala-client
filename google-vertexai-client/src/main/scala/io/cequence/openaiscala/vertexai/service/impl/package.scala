@@ -525,11 +525,11 @@ package object impl extends io.cequence.openaiscala.service.HasOpenAIConfig {
         description.foreach(builder.setDescription)
         enumVals.foreach(builder.addEnum)
 
-      case JsonSchema.Number(description) =>
+      case JsonSchema.Number(description, _, _, _) =>
         val b = builder.setType(Type.NUMBER)
         description.foreach(b.setDescription)
 
-      case JsonSchema.Integer(description) =>
+      case JsonSchema.Integer(description, _, _, _) =>
         val b = builder.setType(Type.INTEGER)
         description.foreach(b.setDescription)
 
