@@ -154,7 +154,7 @@ Then you can obtain a service in one of the following ways.
 ```scala
   val service = OpenAIServiceFactory.forAzureWithApiKey(
     resourceName = "your-resource-name",
-    deploymentId = "your-deployment-id", // usually model name such as "gpt-35-turbo"
+    deploymentId = "your-deployment-id", // usually model name such as "gpt-5.4"
     apiVersion = "2023-05-15",           // newest version
     apiKey = "your_api_key"
   )
@@ -426,7 +426,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
 
 - Retrieve model
 ```scala
-  service.retrieveModel(ModelId.gpt_5_4).map(model =>
+  service.retrieveModel(ModelId.gpt_5_5).map(model =>
     println(model.getOrElse("N/A"))
   )
 ```
@@ -435,7 +435,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
 
 ```scala
   val createChatCompletionSettings = CreateChatCompletionSettings(
-    model = ModelId.gpt_5_4
+    model = ModelId.gpt_5_5
   )
 
   val messages = Seq(
@@ -489,7 +489,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
     messages = messages,
     tools = tools,
     responseToolChoice = None, // means "auto"
-    settings = CreateChatCompletionSettings(ModelId.gpt_5_4)
+    settings = CreateChatCompletionSettings(ModelId.gpt_5_5)
   ).map { response =>
     val chatFunCompletionMessage = response.choices.head.message
     val toolCalls = chatFunCompletionMessage.tool_calls.collect {
@@ -545,7 +545,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
     .createChatCompletion(
       messages = messages,
       settings = CreateChatCompletionSettings(
-        model = ModelId.gpt_5_2,
+        model = ModelId.gpt_5_5,
         max_tokens = Some(1000),
         response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
         jsonSchema = Some(jsonSchemaDef)
@@ -568,7 +568,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
     .createChatCompletionWithJSON[JsObject](
       messages = messages,
       settings = CreateChatCompletionSettings(
-        model = ModelId.gpt_5_2,
+        model = ModelId.gpt_5_5,
         max_tokens = Some(1000),
         response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
         jsonSchema = Some(jsonSchemaDef)
@@ -593,9 +593,9 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
     .createChatCompletionWithFailover(
       messages = messages,
       settings = CreateChatCompletionSettings(
-        model = ModelId.gpt_5_2
+        model = ModelId.gpt_5_5
       ),
-      failoverModels = Seq(ModelId.gpt_5_1, ModelId.gpt_5),
+      failoverModels = Seq(ModelId.gpt_5_4, ModelId.gpt_5_4_mini),
       retryOnAnyError = true,
       failureMessage = "Weather assistant failed to provide a response."
     )
@@ -645,14 +645,14 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
     .createChatCompletionWithJSON[JsObject](
       messages = messages,
       settings = CreateChatCompletionSettings(
-        model = ModelId.gpt_5_2, // Primary model
+        model = ModelId.gpt_5_5, // Primary model
         max_tokens = Some(1000),
         response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
         jsonSchema = Some(jsonSchemaDef)
       ),
       failoverModels = Seq(
-        ModelId.gpt_5_1,  // First fallback model
-        ModelId.gpt_5     // Second fallback model
+        ModelId.gpt_5_4,  // First fallback model
+        ModelId.gpt_5_4_mini     // Second fallback model
       ),
       maxRetries = Some(3),       // Maximum number of retries per model
       retryOnAnyError = true,     // Retry on any error, not just retryable ones
@@ -731,7 +731,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
     .createModelResponse(
       Inputs.Text("What are the attributes of an ancient brown dragon?"),
       settings = CreateModelResponseSettings(
-        model = ModelId.gpt_5_mini,
+        model = ModelId.gpt_5_4_mini,
         tools = Seq(
           FileSearchTool(
             vectorStoreIds = Seq("vs_1234567890"),
@@ -765,7 +765,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
     .createModelResponse(
       Inputs.Text("What was a positive news story from today?"),
       settings = CreateModelResponseSettings(
-        model = ModelId.gpt_5_mini,
+        model = ModelId.gpt_5_4_mini,
         tools = Seq(WebSearchTool())
       )
     )
@@ -792,7 +792,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
     .createModelResponse(
       Inputs.Text("What is the weather like in Boston today?"),
       settings = CreateModelResponseSettings(
-        model = ModelId.gpt_5_mini,
+        model = ModelId.gpt_5_4_mini,
         tools = Seq(
           FunctionTool(
             name = "get_current_weather",
@@ -843,7 +843,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
     .createModelResponse(
       Inputs.Text("Search for information about Scala programming language."),
       settings = CreateModelResponseSettings(
-        model = ModelId.gpt_5_mini,
+        model = ModelId.gpt_5_4_mini,
         tools = Seq(
           Tool.mcp(
             serverLabel = "deepwiki",
@@ -1028,7 +1028,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
     .createChatToolCompletionStreamedViaResponses(
       messages = Seq(UserMessage("Search the news about Jupiter missions, then call get_weather for Oslo.")),
       tools = Seq(weather),
-      settings = CreateChatCompletionSettings(ModelId.gpt_5_4, reasoning_effort = Some(ReasoningEffort.low))
+      settings = CreateChatCompletionSettings(ModelId.gpt_5_5, reasoning_effort = Some(ReasoningEffort.low))
         .setResponsesTools(Seq(WebSearchTool(), CodeInterpreterTool(container = CodeInterpreterContainer.Auto())))
     )
     .runWith(Sink.foreach(println))
@@ -1068,7 +1068,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
         role = ChatRole.Assistant
       )
     ),
-    model = ModelId.gpt_5_mini,
+    model = ModelId.gpt_5_4_mini,
     name = "helpfulness_scorer",
     range = Seq(0.0, 1.0)
   )
