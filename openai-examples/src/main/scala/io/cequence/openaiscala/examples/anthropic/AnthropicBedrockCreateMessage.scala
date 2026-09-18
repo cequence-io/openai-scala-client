@@ -22,7 +22,7 @@ object AnthropicBedrockCreateMessage extends ExampleBase[AnthropicService] {
 
   private val modelId =
     // using 'us.' prefix because of the cross-region inference (enabled only in the us)
-    "us." + NonOpenAIModelId.bedrock_claude_3_5_sonnet_20241022_v2_0
+    "us." + NonOpenAIModelId.bedrock_claude_sonnet_5
 
   override protected def run: Future[_] =
     service

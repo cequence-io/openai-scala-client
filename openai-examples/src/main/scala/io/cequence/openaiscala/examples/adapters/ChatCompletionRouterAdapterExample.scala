@@ -58,9 +58,9 @@ object ChatCompletionRouterAdapterExample extends ExampleBase[OpenAIService] {
           fireworksModelPrefix + NonOpenAIModelId.drbx_instruct
         ),
         anthropicService -> Seq(
-          NonOpenAIModelId.claude_2_1,
-          NonOpenAIModelId.claude_3_opus_20240229,
-          NonOpenAIModelId.claude_3_haiku_20240307
+          NonOpenAIModelId.claude_sonnet_5,
+          NonOpenAIModelId.claude_opus_5,
+          NonOpenAIModelId.claude_haiku_4_5
         )
       ),
       openAIService
@@ -86,7 +86,7 @@ object ChatCompletionRouterAdapterExample extends ExampleBase[OpenAIService] {
       _ <- runChatCompletionAux(fireworksModelPrefix + NonOpenAIModelId.drbx_instruct)
 
       // runs on Anthropic
-      _ <- runChatCompletionAux(NonOpenAIModelId.claude_3_haiku_20240307)
+      _ <- runChatCompletionAux(NonOpenAIModelId.claude_haiku_4_5)
 
       // runs on OpenAI
       _ <- runChatCompletionAux(ModelId.gpt_3_5_turbo)

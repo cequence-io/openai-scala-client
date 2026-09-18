@@ -22,7 +22,7 @@ object AnthropicCreateChatCompletionWithOpenAIAdapter
     service
       .createChatCompletion(
         messages = messages,
-        settings = CreateChatCompletionSettings(NonOpenAIModelId.claude_3_5_haiku_20241022)
+        settings = CreateChatCompletionSettings(NonOpenAIModelId.claude_haiku_4_5)
       )
       .map { content =>
         println(content.contentHead)

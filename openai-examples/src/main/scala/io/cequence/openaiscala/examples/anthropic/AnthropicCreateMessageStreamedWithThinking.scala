@@ -23,7 +23,7 @@ object AnthropicCreateMessageStreamedWithThinking extends ExampleBase[AnthropicS
     UserMessage("What is the weather like in Norway?")
   )
 
-  private val modelId = NonOpenAIModelId.claude_3_7_sonnet_20250219
+  private val modelId = NonOpenAIModelId.claude_sonnet_5
 
   override protected def run: Future[_] =
     service
@@ -32,7 +32,7 @@ object AnthropicCreateMessageStreamedWithThinking extends ExampleBase[AnthropicS
         settings = AnthropicCreateMessageSettings(
           model = modelId,
           max_tokens = 10000,
-          thinking = Some(ThinkingSettings.enabled(2000))
+          thinking = Some(ThinkingSettings.adaptiveSummarized)
         )
       )
       .runWith(

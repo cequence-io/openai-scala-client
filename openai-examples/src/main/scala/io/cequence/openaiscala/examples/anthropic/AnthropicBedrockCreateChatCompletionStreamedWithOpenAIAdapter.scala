@@ -24,7 +24,7 @@ object AnthropicBedrockCreateChatCompletionStreamedWithOpenAIAdapter
       .createChatCompletionStreamed(
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = NonOpenAIModelId.bedrock_claude_3_5_haiku_20241022_v1_0
+          model = "us." + NonOpenAIModelId.bedrock_claude_haiku_4_5_20251001_v1_0
         )
       )
       .runWith(

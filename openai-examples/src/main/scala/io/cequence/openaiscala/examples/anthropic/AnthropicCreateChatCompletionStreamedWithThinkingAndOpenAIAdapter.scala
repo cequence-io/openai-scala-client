@@ -26,7 +26,7 @@ object AnthropicCreateChatCompletionStreamedWithThinkingAndOpenAIAdapter
       .createChatCompletionStreamed(
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = NonOpenAIModelId.claude_3_7_sonnet_20250219,
+          model = NonOpenAIModelId.claude_sonnet_5,
           max_tokens = Some(10000)
         ).setAnthropicThinkingBudgetTokens(2000)
       )

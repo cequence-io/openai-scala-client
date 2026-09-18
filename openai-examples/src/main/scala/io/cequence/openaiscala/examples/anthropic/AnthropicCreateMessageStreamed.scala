@@ -20,7 +20,7 @@ object AnthropicCreateMessageStreamed extends ExampleBase[AnthropicService] {
     UserMessage("What is the weather like in Norway?")
   )
 
-  private val modelId = NonOpenAIModelId.claude_3_5_haiku_20241022
+  private val modelId = NonOpenAIModelId.claude_haiku_4_5
 
   override protected def run: Future[_] =
     service

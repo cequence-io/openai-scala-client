@@ -13,7 +13,7 @@ import scala.concurrent.{ExecutionContext, Future}
 object AnthropicTestHelper {
 
   val FailingModel: String = NonOpenAIModelId.claude_3_opus_20240229
-  val WorkingModel: String = NonOpenAIModelId.claude_3_haiku_20240307
+  val WorkingModel: String = NonOpenAIModelId.claude_haiku_4_5
 
   def timoutingService(
     implicit ec: ExecutionContext,

@@ -51,7 +51,7 @@ object AnthropicCreateMessageWithTextContentsAndCitations
       .createMessage(
         messages,
         settings = AnthropicCreateMessageSettings(
-          model = NonOpenAIModelId.claude_3_5_sonnet_20241022,
+          model = NonOpenAIModelId.claude_sonnet_5,
           max_tokens = 8192
         )
       )

@@ -26,7 +26,7 @@ object AnthropicBedrockCreateMessageWithBearerTokenAndOpenAIAdapter
 
   private val modelId =
     // 'us.' prefix for cross-region inference
-    "us." + NonOpenAIModelId.bedrock_claude_sonnet_4_20250514_v1_0
+    "us." + NonOpenAIModelId.bedrock_claude_sonnet_5
 
   override protected def run: Future[_] =
     service

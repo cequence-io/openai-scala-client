@@ -22,7 +22,7 @@ object AnthropicBedrockCreateMessageStreamed extends ExampleBase[AnthropicServic
     )
   )
 
-  private val modelId = "us." + NonOpenAIModelId.bedrock_claude_3_5_sonnet_20241022_v2_0
+  private val modelId = "us." + NonOpenAIModelId.bedrock_claude_sonnet_5
 
   override protected def run: Future[_] =
     service

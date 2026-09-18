@@ -22,7 +22,7 @@ object AnthropicBedrockCreateChatCompletionInEUWithOpenAIAdapter
   //  "eu." + NonOpenAIModelId.bedrock_claude_opus_4_6_v1
 
   private val modelId =
-    "eu." + NonOpenAIModelId.bedrock_claude_fable_5
+    "eu." + NonOpenAIModelId.bedrock_claude_sonnet_5 // Fable 5 is only a global.* profile in the EU
 
   override protected def run: Future[_] =
     service

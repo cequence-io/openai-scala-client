@@ -100,8 +100,8 @@ object ChatCompletionStreamedRouterExample
         ollamaService -> Seq(NonOpenAIModelId.llama2),
         fireworksService -> Seq(fireworksModelPrefix + NonOpenAIModelId.llama_v2_13b_chat),
         anthropicService -> Seq(
-          NonOpenAIModelId.claude_2_1,
-          NonOpenAIModelId.claude_3_haiku_20240307
+          NonOpenAIModelId.claude_sonnet_5,
+          NonOpenAIModelId.claude_haiku_4_5
         ),
         azureAICohereRPlusService -> Seq(NonOpenAIModelId.cohere_command_r_plus),
         groqService -> Seq(NonOpenAIModelId.llama3_70b_8192)
@@ -126,7 +126,7 @@ object ChatCompletionStreamedRouterExample
       _ <- runChatCompletionAux(fireworksModelPrefix + NonOpenAIModelId.llama_v2_13b_chat)
 
       // runs on Anthropic
-      _ <- runChatCompletionAux(NonOpenAIModelId.claude_3_haiku_20240307)
+      _ <- runChatCompletionAux(NonOpenAIModelId.claude_haiku_4_5)
 
       // runs on Azure AI
       _ <- runChatCompletionAux(NonOpenAIModelId.cohere_command_r_plus)

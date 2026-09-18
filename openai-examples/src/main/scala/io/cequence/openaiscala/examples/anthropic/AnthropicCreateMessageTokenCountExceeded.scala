@@ -26,7 +26,7 @@ object AnthropicCreateMessageTokenCountExceeded extends ExampleBase[AnthropicSer
       .createMessage(
         messages,
         settings = AnthropicCreateMessageSettings(
-          model = NonOpenAIModelId.claude_3_5_haiku_20241022,
+          model = NonOpenAIModelId.claude_haiku_4_5,
           max_tokens = 4096
         )
       )

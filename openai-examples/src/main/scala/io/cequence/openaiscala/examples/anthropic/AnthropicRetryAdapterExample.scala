@@ -11,7 +11,7 @@ import scala.concurrent.Future
 object AnthropicRetryAdapterExample extends ExampleBase[OpenAIChatCompletionService] {
 
   private val failingModel = NonOpenAIModelId.claude_3_opus_20240229
-  private val workingModel = NonOpenAIModelId.claude_3_haiku_20240307
+  private val workingModel = NonOpenAIModelId.claude_haiku_4_5
 
   override protected val service: OpenAIChatCompletionService =
     AnthropicTestHelper.timoutingService

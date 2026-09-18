@@ -27,9 +27,9 @@ object AnthropicCreateMessageWithThinking extends ExampleBase[AnthropicService] 
       .createMessage(
         messages,
         settings = AnthropicCreateMessageSettings(
-          model = NonOpenAIModelId.claude_sonnet_4_20250514,
+          model = NonOpenAIModelId.claude_sonnet_5,
           max_tokens = 10000,
-          thinking = Some(ThinkingSettings.enabled(2000))
+          thinking = Some(ThinkingSettings.adaptiveSummarized)
         )
       )
       .map { response =>

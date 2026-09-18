@@ -50,7 +50,7 @@ object ChatCompletionStreamedRouterWithFullServiceExample
         octoMLService -> Seq(NonOpenAIModelId.mixtral_8x7b_instruct),
         ollamaService -> Seq(NonOpenAIModelId.llama2),
         anthropicService -> Seq(
-          NonOpenAIModelId.claude_3_5_haiku_20241022
+          NonOpenAIModelId.claude_haiku_4_5
         )
       ),
       defaultService = openAIService
@@ -74,7 +74,7 @@ object ChatCompletionStreamedRouterWithFullServiceExample
       _ <- runChatCompletionAux(NonOpenAIModelId.llama2)
 
       // runs on Anthropic
-      _ <- runChatCompletionAux(NonOpenAIModelId.claude_3_5_haiku_20241022)
+      _ <- runChatCompletionAux(NonOpenAIModelId.claude_haiku_4_5)
 
       // runs on OpenAI
       _ <- runChatCompletionAux(ModelId.gpt_4o)

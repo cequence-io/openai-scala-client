@@ -60,7 +60,8 @@ object AnthropicBedrockCreateChatCompletionWithJsonSchemaAndOpenAIAdapter
       .createChatCompletionWithJSON[JsObject](
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = "eu." + NonOpenAIModelId.bedrock_claude_sonnet_4_5_20250929_v1_0,
+          model =
+            "eu." + NonOpenAIModelId.bedrock_claude_sonnet_4_6, // Bedrock accepts output_config.format only up to Claude 4.6 (verified 2026-09-18)
           max_tokens = Some(16000),
           response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
           jsonSchema = Some(weatherSchemaDef)

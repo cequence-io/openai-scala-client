@@ -24,7 +24,7 @@ object AnthropicCreateChatCompletionWithOpenAIAdapterTokenCountExceeded2
       .createChatCompletion(
         messages = messages,
         settings = CreateChatCompletionSettings(
-          NonOpenAIModelId.claude_3_7_sonnet_20250219,
+          NonOpenAIModelId.claude_sonnet_5,
           // the second type of "token exceeded" error - input + max_tokens > limit (200000)
           max_tokens = Some(70000)
         )
