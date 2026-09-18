@@ -45,7 +45,7 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 | [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) | Full                   | Standard + Responses API          | Yes                     | OpenAI on Azure|
 | [Anthropic](https://www.anthropic.com/api) | Full (🔥 New)          | Yes, also MCP and Skills (🔥 New) | Yes                     | Claude models |
 | [Anthropic Bedrock](https://aws.amazon.com/bedrock/claude/) | Full (🔥 New)          | Yes, also MCP (🔥 New)            | Yes (no prompt caching) | Claude on AWS |
-| [OpenAI Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-mantle.html) | Full (🔥 New)          | Standard + Responses API          |                         | GPT-5.x/5.6, gpt-oss, Grok, Gemma & other OpenAI-compatible models on AWS via `bedrock-mantle` (default) or the classic `bedrock-runtime` endpoint (`BedrockEndpoint.Runtime`) |
+| [OpenAI Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-mantle.html) | Full (🔥 New)          | Standard + Responses API          |                         | GPT-5.x, gpt-oss, Grok & more on AWS (`bedrock-mantle` / `bedrock-runtime`) |
 | [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) | Varies                 |                                   |                         | Open-source models |
 | [Cerebras](https://cerebras.ai/) | Full (`gpt-oss-120b`, `qwen-3.8-27b`) | Yes                  |                         | Fast inference |
 | [Deepseek](https://deepseek.com/) | Only JSON object mode  |                                   |                         | Chinese provider |
