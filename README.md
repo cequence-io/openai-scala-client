@@ -45,23 +45,23 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 | [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) | Full                   | Standard + Responses API          | Yes                     | OpenAI on Azure|
 | [Anthropic](https://www.anthropic.com/api) | Full (🔥 New)          | Yes, also MCP and Skills (🔥 New) | Yes                     | Claude models |
 | [Anthropic Bedrock](https://aws.amazon.com/bedrock/claude/) | Full (🔥 New)          | Yes, also MCP (🔥 New)            | Yes (no prompt caching) | Claude on AWS |
-| [OpenAI Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-mantle.html) | Full (🔥 New)          | Standard + Responses API          |                         | GPT-5.x/5.6, gpt-oss, Grok, Gemma & other OpenAI-compatible models on AWS (`bedrock-mantle`) |
+| [OpenAI Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-mantle.html) | Full (🔥 New)          | Standard + Responses API          |                         | GPT-5.x/5.6, gpt-oss, Grok, Gemma & other OpenAI-compatible models on AWS via `bedrock-mantle` (default) or the classic `bedrock-runtime` endpoint (`BedrockEndpoint.Runtime`) |
 | [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) | Varies                 |                                   |                         | Open-source models |
 | [Cerebras](https://cerebras.ai/) | Full (`gpt-oss-120b`, `qwen-3.8-27b`) | Yes                  |                         | Fast inference |
 | [Deepseek](https://deepseek.com/) | Only JSON object mode  |                                   |                         | Chinese provider |
 | [FastChat](https://github.com/lm-sys/FastChat) | Varies                 |                                   |                         | Local LLMs |
-| [Fireworks AI](https://fireworks.ai/) | Only JSON object mode  |                                   |                         | Cloud provider |
+| [Fireworks AI](https://fireworks.ai/) | Full (🔥 New)           |                                   |                         | Cloud provider |
 | [Google Gemini](https://ai.google.dev/) | Full                   | Yes (🔥 New)                      | Yes                     | Google's models |
 | [Google Vertex AI](https://cloud.google.com/vertex-ai) | Full                   | Yes                               | Yes                     | Gemini models |
 | [Grok](https://x.ai/) | Full                   | Yes                               |                         | x.AI models |
 | [Groq](https://wow.groq.com/) | Full (`openai/gpt-oss-*`, `qwen/qwen3.x-27b`) | Yes, also MCP and server-side tools | Yes                     | Fast inference |
-| [MiniMax](https://www.minimax.io/) | Only JSON object mode  |                                   |                         | Chinese provider (global & China) |
-| [Mistral](https://mistral.ai/) | Only JSON object mode  |                                   |                         | Open-source leader |
-| [Novita](https://novita.ai/) | Only JSON object mode  |                                   |                         | Cloud provider |
+| [MiniMax](https://www.minimax.io/) | Varies (`json_schema` on M2.7+ per docs)|                                   |                         | Chinese provider (global & China) |
+| [Mistral](https://mistral.ai/) | Full (🔥 New)           |                                   |                         | Open-source leader |
+| [Novita](https://novita.ai/) | Full (model-dependent) |                                   |                         | Cloud provider |
 | [Octo AI](https://octo.ai/) | Only JSON object mode  |                                   |                         | Cloud provider (obsolete) |
 | [Ollama](https://ollama.com/) | Varies                 |                                   |                         | Local LLMs |
 | [Perplexity Sonar](https://www.perplexity.ai/) | Only implied           |                                   |                         | Search-based AI (⚠️ Sonar chat completions retire on 2026-09-27, see below) |
-| [TogetherAI](https://www.together.ai/) | Only JSON object mode  |                                   |                         | Cloud provider |
+| [TogetherAI](https://www.together.ai/) | Full (🔥 New, model-dependent)|                                   |                         | Cloud provider |
 | [TypeSafe AI](https://typesafe.ai/) (🔥 New) | Typed by construction  | `json_schema` structured output only (`asOpenAI()`) |                         | System One model `Jev`: typed Choice / Score / yes-no answers with calibrated probabilities and confidence, ~100 ms (see below) |
 
 ---
