@@ -55,6 +55,7 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 | [Google Vertex AI](https://cloud.google.com/vertex-ai) | Full                   | Yes                               | Yes                     | Gemini models |
 | [Grok](https://x.ai/) | Full                   | Yes                               |                         | x.AI models |
 | [Groq](https://wow.groq.com/) | Full (`openai/gpt-oss-*`, `qwen/qwen3.x-27b`) | Yes, also MCP and server-side tools | Yes                     | Fast inference |
+| [MiniMax](https://www.minimax.io/) | Only JSON object mode  |                                   |                         | Chinese provider (global & China) |
 | [Mistral](https://mistral.ai/) | Only JSON object mode  |                                   |                         | Open-source leader |
 | [Novita](https://novita.ai/) | Only JSON object mode  |                                   |                         | Cloud provider |
 | [Octo AI](https://octo.ai/) | Only JSON object mode  |                                   |                         | Cloud provider (obsolete) |
@@ -404,6 +405,28 @@ or with streaming
 ```scala
   val service = OpenAIChatCompletionServiceFactory.withStreaming(
     coreUrl = "http://localhost:11434/v1/"
+  )
+```
+
+16. [MiniMax](https://www.minimax.io/) - requires `MINIMAX_API_KEY`
+```scala
+  // global endpoint
+  val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.minimax)
+  // or with streaming
+  val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.minimax)
+
+  // China endpoint (api.minimaxi.com)
+  val chinaService = OpenAIChatCompletionServiceFactory(ChatProviderSettings.minimaxChina)
+```
+   MiniMax also exposes an Anthropic-compatible endpoint, reachable via the Anthropic client's escape hatch:
+```scala
+  import io.cequence.wsclient.domain.WsRequestContext
+
+  val anthropicService = AnthropicServiceFactory.customInstance(
+    coreUrl = "https://api.minimax.io/anthropic/v1/", // or "https://api.minimaxi.com/anthropic/v1/" for China
+    requestContext = WsRequestContext(
+      authHeaders = Seq(("Authorization", s"Bearer ${sys.env("MINIMAX_API_KEY")}"))
+    )
   )
 ```
 

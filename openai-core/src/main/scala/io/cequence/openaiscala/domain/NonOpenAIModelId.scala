@@ -481,6 +481,9 @@ object NonOpenAIModelId {
   val sambanova_minimax_m2 = "MiniMax-M2" // SambaNova
   val sambanova_minimax_m2_5 = "MiniMax-M2.5" // SambaNova
   val sambanova_minimax_m2_7 = "MiniMax-M2.7" // SambaNova
+  // MiniMax direct API (api.minimax.io / api.minimaxi.com) - official model ids
+  val minimax_m3 = "MiniMax-M3" // MiniMax
+  val minimax_m2_7 = "MiniMax-M2.7" // MiniMax
   @Deprecated // not listed by the Groq models endpoint as of 2026-09-10
   val moonshotai_kimi_k2_instruct = "moonshotai/kimi-k2-instruct" // Groq
   // context 262,144

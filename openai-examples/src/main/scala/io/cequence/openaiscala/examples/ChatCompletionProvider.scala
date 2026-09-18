@@ -117,6 +117,20 @@ object ChatCompletionProvider {
     implicit ec: ExecutionContext
   ): OpenAIChatCompletionStreamedService = provide(ChatProviderSettings.novita)
 
+  /**
+   * MiniMax global endpoint. Requires `MINIMAX_API_KEY`
+   */
+  def minimax(
+    implicit ec: ExecutionContext
+  ): OpenAIChatCompletionStreamedService = provide(ChatProviderSettings.minimax)
+
+  /**
+   * MiniMax China endpoint. Requires `MINIMAX_API_KEY`
+   */
+  def minimaxChina(
+    implicit ec: ExecutionContext
+  ): OpenAIChatCompletionStreamedService = provide(ChatProviderSettings.minimaxChina)
+
   private def provide(
     settings: ProviderSettings
   )(
