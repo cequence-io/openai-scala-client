@@ -16,8 +16,8 @@ import org.scalatest.wordspec.AnyWordSpec
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
-import scala.concurrent.duration.DurationInt
-import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.concurrent.{Await, ExecutionContext, Promise}
 
 class ClaudeAgentServiceLifecycleSpec
     extends AnyWordSpec
@@ -27,6 +27,9 @@ class ClaudeAgentServiceLifecycleSpec
   private implicit val system: ActorSystem = ActorSystem("claude-agent-lifecycle-spec")
   private implicit val materializer: Materializer = Materializer(system)
   private implicit val ec: ExecutionContext = system.dispatcher
+
+  // generous: CI runs these under coverage instrumentation on a cold JVM
+  private val timeout: FiniteDuration = 15.seconds
 
   private val fakeCli: Path = Files.createTempFile("fake-claude-cli", ".sh")
 
@@ -45,16 +48,24 @@ class ClaudeAgentServiceLifecycleSpec
       val service = newService("success")
 
       try {
-        val init = Await.result(service.ready, 3.seconds)
+        val init = Await.result(service.ready, timeout)
         init.model shouldBe "fake-model"
 
+        // `events` is a hot BroadcastHub: a subscriber only sees what is published after it has
+        // registered with the hub. Registration is asynchronous, so wait for the replayed init
+        // (the first element this subscription emits, which cannot arrive before its stages have
+        // started) before sending - otherwise the result can be published before the
+        // registration lands and this subscriber never sees the end of the turn (CI flake).
+        val subscribed = Promise[Unit]()
         val events = service.events
+          .wireTap(_ => subscribed.trySuccess(()))
           .takeWhile(event => !isTurnEnd(event), inclusive = true)
           .runWith(Sink.seq)
 
-        Await.result(service.send("hello"), 3.seconds)
+        Await.result(subscribed.future, timeout)
+        Await.result(service.send("hello"), timeout)
         Await
-          .result(events, 3.seconds)
+          .result(events, timeout)
           .collect { case event: ClaudeAgentEvent.ResultSuccess => event }
           .head
           .result shouldBe "ok"
@@ -66,11 +77,11 @@ class ClaudeAgentServiceLifecycleSpec
 
       try {
         val streamFailure = intercept[ClaudeAgentProcessException] {
-          Await.result(service.events.runWith(Sink.seq), 3.seconds)
+          Await.result(service.events.runWith(Sink.seq), timeout)
         }
 
         streamFailure.getMessage should include("code 23")
-        Await.result(service.completion, 3.seconds).exitCode shouldBe Some(23)
+        Await.result(service.completion, timeout).exitCode shouldBe Some(23)
       } finally service.close()
     }
 
@@ -78,8 +89,8 @@ class ClaudeAgentServiceLifecycleSpec
       val service = newService("success")
 
       try {
-        Await.result(service.ready, 3.seconds)
-        Await.result(service.interrupt(), 3.seconds) shouldBe InterruptResult(Seq("queued-1"))
+        Await.result(service.ready, timeout)
+        Await.result(service.interrupt(), timeout) shouldBe InterruptResult(Seq("queued-1"))
       } finally service.close()
     }
 
@@ -87,14 +98,14 @@ class ClaudeAgentServiceLifecycleSpec
       val service = newService("no_response")
 
       try {
-        Await.result(service.ready, 3.seconds)
+        Await.result(service.ready, timeout)
         val pending = service.interrupt()
 
         Thread.sleep(100)
         service.close()
 
         intercept[ClaudeAgentProcessException] {
-          Await.result(pending, 3.seconds)
+          Await.result(pending, timeout)
         }.getMessage should include("closed")
       } finally service.close()
     }

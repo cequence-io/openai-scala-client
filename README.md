@@ -1,7 +1,7 @@
 # OpenAI Scala Client 🤖
 [![version](https://img.shields.io/badge/version-1.3.0-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT) ![GitHub Stars](https://img.shields.io/github/stars/cequence-io/openai-scala-client?style=social) [![Follow on X](https://img.shields.io/badge/X-%400xbnd-black?logo=x)](https://x.com/0xbnd) ![GitHub CI](https://github.com/cequence-io/openai-scala-client/actions/workflows/continuous-integration.yml/badge.svg)
 
-This is a no-nonsense async Scala client for OpenAI API and multiple LLM providers supporting all the available endpoints and params **including streaming** (with a 🔥 new provider-neutral typed stream of text / thinking / tool-call / tool-result chunks), **chat completion**, **responses API**, **assistants API**, **tools** (including MCP), **graders**, **vision** (with provider-uniform file/image attachments), **batch processing**, and **voice routines** (as defined [here](https://platform.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala) with adapters for Anthropic (incl. Bedrock and Managed Agents), Google Gemini/Vertex AI, Groq, Perplexity, and others. The supported calls are:
+This is a no-nonsense async Scala client for OpenAI API and multiple LLM providers supporting all the available endpoints and params **including streaming** (with a 🔥 new provider-neutral typed stream of text / thinking / tool-call / tool-result chunks), **chat completion**, **responses API**, **assistants API**, **tools** (including MCP), **graders**, **vision** (with provider-uniform file/image attachments), **batch processing**, and **voice routines** (as defined [here](https://platform.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala) with adapters for Anthropic (incl. Bedrock and Managed Agents), Google Gemini/Vertex AI, Groq, Perplexity, TypeSafe AI (Jev), and others. The supported calls are:
 
 * **Models**: [listModels](https://platform.openai.com/docs/api-reference/models/list), and [retrieveModel](https://platform.openai.com/docs/api-reference/models/retrieve)
 * **Completions**: [createCompletion](https://platform.openai.com/docs/api-reference/completions/create)
@@ -264,72 +264,14 @@ Then you can obtain a service in one of the following ways.
 ```
 
 7. [TypeSafe AI](https://typesafe.ai/) (🔥 New) - requires `openai-scala-typesafe-client` lib and `TYPESAFE_API_KEY`
-
-   TypeSafe's **System One** model (`jev-latest`) is not a chat model: you send a `state` (text or JSON) plus named, typed questions and get typed answers with calibrated probabilities back in ~100 ms - so there is no streaming, and the `asOpenAI()` adapter (below) serves structured output only. Three question kinds: `ChoiceQuestion` (one of a fixed set), `ScoreQuestion` (a level on an ordered rubric) and `NoulQuestion` (yes/no). Ask everything at once - questions are evaluated independently in one call.
 ```scala
-  import io.cequence.openaiscala.typesafe.domain._
   import io.cequence.openaiscala.typesafe.service.TypeSafeServiceFactory
 
-  val typeSafe = TypeSafeServiceFactory()  // TYPESAFE_API_KEY (+ optional TYPESAFE_BASE_URL, TYPESAFE_DEFAULT_MODEL)
-
-  typeSafe.systemOne(
-    state = "I've been trying to connect my Stripe account for 3 days. I'm losing sales. Please help ASAP.",
-    questions = Map(
-      "department"  -> ChoiceQuestion("Which team should handle this", "billing" -> "Payments", "technical" -> "Bugs, integrations", "sales" -> "Pricing"),
-      "frustration" -> ScoreQuestion("How frustrated is the customer?", "Calm", "Frustrated but civil", "Very angry"),
-      "is_urgent"   -> NoulQuestion("The message conveys urgency")
-    )
-  ).map { response =>
-    val department = response.choice("department")   // .choice = "technical", .confidence, .probabilities
-    val frustration = response.score("frustration")  // .score = 1.04 (between levels 1 and 2), .legend, .probabilities
-    val urgent = response.noul("is_urgent")          // .noul = 0.999
-    if (department.confidence < 0.7) escalateToHuman() else routeTo(department.choice)
-  }
+  val typeSafe = TypeSafeServiceFactory()        // native System One service (jev-latest)
+  // or as an OpenAIChatCompletionService for json_schema structured output
+  val service = TypeSafeServiceFactory.asOpenAI()
 ```
-   Every response carries token usage (`usage.input_tokens` is what you are billed for, `output_tokens` is currently free and grows with the number of questions); there is no streaming, and the API ignores a `stream` flag rather than honouring it. `examples/typesafe/TypeSafeOpenAIAdapterWalkthrough` prints the exact System One request an OpenAI-shaped call turns into, and the response it comes back as.
-
-   Errors are `TypeSafeScalaClientException`s classified by status and body - `TypeSafeScalaUnauthorizedException` (401/403), `TypeSafeScalaTokenCountExceededException` (the ~32k-token input limit), `TypeSafeScalaApiUsageException` (unknown model, invalid JSON, feature not enabled), `TypeSafeScalaInvalidRequestException` (422 validation, with `violations`), `TypeSafeScalaRateLimitException` (429), `TypeSafeScalaEngineOverloadedException` (529/503), ... - each carrying the HTTP code, the API's `error_type` and the `x-typesafe-request-id`; `TypeSafeRetryable` picks the ones worth retrying and `TypeSafeServiceAdapters.retry(typeSafe)` backs off exactly there. Through `asOpenAI()` they surface as the usual `OpenAIScala*` exceptions with the native one as the cause. `TypeSafeServiceFactory.withEngine(engine)` shares one engine with the other providers. Model names come from `typeSafe.listModels`; the wire format is pinned against TypeSafe's published OpenAPI spec and the official Python SDK's fixtures in the module's tests. **Through the OpenAI interface.** `TypeSafeServiceFactory.asOpenAI()` is an `OpenAIChatCompletionService` for STRUCTURED OUTPUT: the request must set `response_format_type = json_schema` with a closed-vocabulary `jsonSchema` - booleans (noul), string enums (choice), numeric enums or small `minimum`..`maximum` ranges (score; the typed `JsonSchema.Integer` / `Number` carry these as optional fields - portable as `enum`, while `minimum` / `maximum` are honoured by OpenAI in strict mode and stripped by the Anthropic adapter, which would otherwise get a 400), arrays of string enums (multi-select nouls) and nested objects of those. The schema becomes the questions and the messages the state (system messages as `instructions`, a user message that is a JSON object embedded as JSON, several turns as a `conversation` - `TypeSafeChatMapping.toState` / `toQuestions` show you exactly what will be sent), and the assistant message's content is a JSON document of the schema - so `createChatCompletionWithJSON[T]` (and the routers, retry, logging adapters) work unchanged, and the calibrated probabilities ride in `originalResponse` as the `SystemOneResponse`. A free-form string, a plain (non-`json_schema`) request, `n > 1`, tools, streaming and image content are refused up front with an explanation. Only `model`, `response_format_type`, `jsonSchema` and `n` = 1 are honoured out of the standard settings; anything else you set (temperature, `max_tokens`, `seed`, `reasoning_effort`, ...) is dropped with one warning naming it, since System One does not sample. The `jev-*` ids are listed under `models-supporting-json-schema`, so the JSON helper keeps the request in schema mode. See `examples/typesafe/TypeSafeCreateChatCompletionWithJSON`, and `TypeSafeOpenAIAdapterScenarios` for fifteen "how to call it and what happens when" cases (JSON user messages, system instructions, multi-turn, thresholds, `originalResponse`, dropped settings, and every refusal).
-```scala
-  import io.cequence.openaiscala.domain._
-  import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, JsonSchemaDef}
-  import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
-  import io.cequence.openaiscala.typesafe.domain.{SystemOneResponse, TypeSafeModelId}
-  import io.cequence.openaiscala.typesafe.service.TypeSafeServiceFactory
-
-  val service = TypeSafeServiceFactory.asOpenAI()   // an OpenAIChatCompletionService; TYPESAFE_API_KEY
-  // or over an existing service, e.g. one on a shared engine or wrapped in the retry adapter:
-  // val service = TypeSafeServiceFactory.asOpenAI(TypeSafeServiceAdapters.retry(TypeSafeServiceFactory.withEngine(engine)))
-
-  case class Triage(department: String, is_urgent: Boolean, frustration: Int, topics: Seq[String])
-  implicit val triageFormat: Format[Triage] = Json.format[Triage]
-
-  // closed vocabulary only: enum -> choice, boolean -> noul, bounded integer -> score, array of enum -> multi-select
-  val triageSchema = JsonSchemaDef("triage", strict = true, structure = Left(JsonSchema.Object(
-    properties = Seq(
-      "department"  -> JsonSchema.String(Some("Which team should handle this"), `enum` = Seq("billing", "technical", "sales")),
-      "is_urgent"   -> JsonSchema.Boolean(Some("The message conveys time pressure")),
-      "frustration" -> JsonSchema.Integer(Some("How frustrated the customer appears, 1 calm .. 5 furious"), minimum = Some(1), maximum = Some(5)),
-      "topics"      -> JsonSchema.Array(JsonSchema.String(`enum` = Seq("payments", "integration", "pricing")), Some("What the message is about"))
-    ),
-    required = Seq("department", "is_urgent", "frustration", "topics")
-  )))
-
-  service.createChatCompletionWithJSONFullResponse[Triage](
-    Seq(
-      SystemMessage("You triage support tickets for a payments platform."),   // -> state.instructions
-      UserMessage("My Stripe connection has been failing for 3 days. I'm losing sales, please help ASAP.")  // -> state.message
-    ),
-    CreateChatCompletionSettings(model = TypeSafeModelId.jev_latest).withJsonSchema(triageSchema)
-  ).map { case (triage, response) =>
-    triage                                                        // Triage(technical, true, 4, List(payments, integration))
-    response.originalResponse.collect { case r: SystemOneResponse =>
-      r.choice("department").ranked                               // List((technical, 0.98), (billing, 0.02), (sales, 0.0))
-    }
-  }
-```
-   `TypeSafeChatMapping.toState(messages)` / `toQuestions(schema)` show what a call will send. Of the standard settings only `model`, `response_format_type`, `jsonSchema` and `n` = 1 are used; anything else you set is dropped with one warning naming it, and a plain (non-`json_schema`) request, `n > 1`, tools, streaming and image content are refused up front. Because it is an `OpenAIChatCompletionService`, the routers, retry, logging and interception adapters compose over it, so a `chatCompletionRouter` can send closed-vocabulary schemas to Jev and everything else to an LLM.
-
-   Live-verified 2026-09-16 (`examples/typesafe/TypeSafeSmokeTest` runs every question shape, JSON states, parallel calls, the retry adapter and the error mapping against the API): `jev-latest` resolves to a dated build (`jev-1.13.0`) named in the response, and `jev-preview` is the next one.
+   System One (`jev`) is a decision model, not a chat model - see [TypeSafe AI (Jev)](#typesafe-ai-jev-) below for the questions / answers API and what the OpenAI adapter does.
 
 8. [Groq](https://wow.groq.com/) - requires `GROQ_API_KEY"`
 ```scala
@@ -1564,6 +1506,112 @@ service.close() // closes only the HTTP client - your ActorSystem is untouched
 > baked into the public API) and will likely be abstracted away in a future release so you can
 > pick your own backend. Nothing you need to do today - just don't be surprised if the streaming
 > API becomes backend-agnostic later.
+
+## TypeSafe AI (Jev) 🎯
+
+`openai-scala-typesafe-client` wraps TypeSafe's **System One** API (`POST /v1/systemone`, model `jev-latest`). It is not a
+chat model: you send a `state` (text or JSON) plus named, typed questions and get typed answers with calibrated
+probabilities back in ~100 ms - so there is no streaming (the API ignores a `stream` flag rather than honouring it), and
+the `asOpenAI()` adapter serves structured output only. Three question kinds: `ChoiceQuestion` (one of a fixed set),
+`ScoreQuestion` (a level on an ordered rubric) and `NoulQuestion` (yes/no). Ask everything at once - the questions are
+evaluated independently in one call. Requires `TYPESAFE_API_KEY` (optional `TYPESAFE_BASE_URL`, `TYPESAFE_DEFAULT_MODEL`).
+
+```scala
+  import io.cequence.openaiscala.typesafe.domain._
+  import io.cequence.openaiscala.typesafe.service.TypeSafeServiceFactory
+
+  val typeSafe = TypeSafeServiceFactory()  // TYPESAFE_API_KEY (+ optional TYPESAFE_BASE_URL, TYPESAFE_DEFAULT_MODEL)
+
+  typeSafe.systemOne(
+    state = "I've been trying to connect my Stripe account for 3 days. I'm losing sales. Please help ASAP.",
+    questions = Map(
+      "department"  -> ChoiceQuestion("Which team should handle this", "billing" -> "Payments", "technical" -> "Bugs, integrations", "sales" -> "Pricing"),
+      "frustration" -> ScoreQuestion("How frustrated is the customer?", "Calm", "Frustrated but civil", "Very angry"),
+      "is_urgent"   -> NoulQuestion("The message conveys urgency")
+    )
+  ).map { response =>
+    val department = response.choice("department")   // .choice = "technical", .confidence, .probabilities
+    val frustration = response.score("frustration")  // .score = 1.04 (between levels 1 and 2), .legend, .probabilities
+    val urgent = response.noul("is_urgent")          // .noul = 0.999
+    if (department.confidence < 0.7) escalateToHuman() else routeTo(department.choice)
+  }
+```
+
+Every response carries token usage (`usage.input_tokens` is what you are billed for, `output_tokens` is currently free and
+grows with the number of questions). Model names come from `typeSafe.listModels`; `TypeSafeServiceFactory.withEngine(engine)`
+shares one engine with the other providers. The wire format is pinned against TypeSafe's published OpenAPI spec and the
+official Python SDK's fixtures in the module's tests, and `examples/typesafe/TypeSafeSmokeTest` runs every question shape,
+JSON states, parallel calls, the retry adapter and the error mapping against the live API (`jev-latest` resolves to a dated
+build such as `jev-1.13.0`, named in the response; `jev-preview` is the next one).
+
+**Errors** are `TypeSafeScalaClientException`s classified by status and body - `TypeSafeScalaUnauthorizedException`
+(401/403), `TypeSafeScalaTokenCountExceededException` (the ~32k-token input limit), `TypeSafeScalaApiUsageException`
+(unknown model, invalid JSON, feature not enabled), `TypeSafeScalaInvalidRequestException` (422 validation, with
+`violations`), `TypeSafeScalaRateLimitException` (429), `TypeSafeScalaEngineOverloadedException` (529/503), ... - each
+carrying the HTTP code, the API's `error_type` and the `x-typesafe-request-id`. `TypeSafeRetryable` picks the ones worth
+retrying and `TypeSafeServiceAdapters.retry(typeSafe)` backs off exactly there. Through `asOpenAI()` they surface as the
+usual `OpenAIScala*` exceptions with the native one as the cause.
+
+**Through the OpenAI interface.** `TypeSafeServiceFactory.asOpenAI()` is an `OpenAIChatCompletionService` for
+STRUCTURED OUTPUT: the request must set `response_format_type = json_schema` with a closed-vocabulary `jsonSchema` -
+booleans (noul), string enums (choice), numeric enums or small `minimum`..`maximum` ranges (score; `JsonSchema.Integer` /
+`Number` carry these as optional fields - `enum` is portable, while `minimum` / `maximum` are honoured by OpenAI in strict
+mode and stripped by the Anthropic adapter, which would otherwise get a 400), arrays of string enums (multi-select nouls)
+and nested objects of those. The schema becomes the questions and the messages the state (system messages as
+`instructions`, a user message that is a JSON object embedded as JSON, several turns as a `conversation`), and the
+assistant message's content is a JSON document of the schema - so `createChatCompletionWithJSON[T]` (and the routers,
+retry, logging and interception adapters) work unchanged, and the calibrated probabilities ride in `originalResponse` as
+the `SystemOneResponse`.
+
+```scala
+  import io.cequence.openaiscala.domain._
+  import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, JsonSchemaDef}
+  import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
+  import io.cequence.openaiscala.typesafe.domain.{SystemOneResponse, TypeSafeModelId}
+  import io.cequence.openaiscala.typesafe.service.TypeSafeServiceFactory
+
+  val service = TypeSafeServiceFactory.asOpenAI()   // an OpenAIChatCompletionService; TYPESAFE_API_KEY
+  // or over an existing service, e.g. one on a shared engine or wrapped in the retry adapter:
+  // val service = TypeSafeServiceFactory.asOpenAI(TypeSafeServiceAdapters.retry(TypeSafeServiceFactory.withEngine(engine)))
+
+  case class Triage(department: String, is_urgent: Boolean, frustration: Int, topics: Seq[String])
+  implicit val triageFormat: Format[Triage] = Json.format[Triage]
+
+  // closed vocabulary only: enum -> choice, boolean -> noul, bounded integer -> score, array of enum -> multi-select
+  val triageSchema = JsonSchemaDef("triage", strict = true, structure = Left(JsonSchema.Object(
+    properties = Seq(
+      "department"  -> JsonSchema.String(Some("Which team should handle this"), `enum` = Seq("billing", "technical", "sales")),
+      "is_urgent"   -> JsonSchema.Boolean(Some("The message conveys time pressure")),
+      "frustration" -> JsonSchema.Integer(Some("How frustrated the customer appears, 1 calm .. 5 furious"), minimum = Some(1), maximum = Some(5)),
+      "topics"      -> JsonSchema.Array(JsonSchema.String(`enum` = Seq("payments", "integration", "pricing")), Some("What the message is about"))
+    ),
+    required = Seq("department", "is_urgent", "frustration", "topics")
+  )))
+
+  service.createChatCompletionWithJSONFullResponse[Triage](
+    Seq(
+      SystemMessage("You triage support tickets for a payments platform."),   // -> state.instructions
+      UserMessage("My Stripe connection has been failing for 3 days. I'm losing sales, please help ASAP.")  // -> state.message
+    ),
+    CreateChatCompletionSettings(model = TypeSafeModelId.jev_latest).withJsonSchema(triageSchema)
+  ).map { case (triage, response) =>
+    triage                                                        // Triage(technical, true, 4, List(payments, integration))
+    response.originalResponse.collect { case r: SystemOneResponse =>
+      r.choice("department").ranked                               // List((technical, 0.98), (billing, 0.02), (sales, 0.0))
+    }
+  }
+```
+
+`TypeSafeChatMapping.toState(messages)` / `toQuestions(schema)` show what a call will send, and
+`examples/typesafe/TypeSafeOpenAIAdapterWalkthrough` prints the exact System One request an OpenAI-shaped call turns into.
+Of the standard settings only `model`, `response_format_type`, `jsonSchema` and `n` = 1 are honoured; anything else you
+set (temperature, `max_tokens`, `seed`, `reasoning_effort`, ...) is dropped with one warning naming it, since System One
+does not sample. A free-form string in the schema, a plain (non-`json_schema`) request, `n > 1`, tools, streaming and
+image content are refused up front with an explanation. The `jev-*` ids are listed under `models-supporting-json-schema`,
+so the JSON helper keeps the request in schema mode, and a `chatCompletionRouter` can send closed-vocabulary schemas to
+Jev and everything else to an LLM. See `examples/typesafe/TypeSafeCreateChatCompletionWithJSON`, and
+`TypeSafeOpenAIAdapterScenarios` for fifteen "how to call it and what happens when" cases (JSON user messages, system
+instructions, multi-turn, thresholds, `originalResponse`, dropped settings, and every refusal).
 
 ## Anthropic Managed Agents 🤝
 
