@@ -62,7 +62,7 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 | [Ollama](https://ollama.com/) | Varies                 |                                   |                         | Local LLMs |
 | [Perplexity Sonar](https://www.perplexity.ai/) | Only implied           |                                   |                         | Search-based AI (⚠️ Sonar chat completions retire on 2026-09-27, see below) |
 | [TogetherAI](https://www.together.ai/) | Full (🔥 New, model-dependent)|                                   |                         | Cloud provider |
-| [TypeSafe AI](https://typesafe.ai/) (🔥 New) | Typed by construction  | `json_schema` structured output only (`asOpenAI()`) |                         | System One model `Jev`: typed Choice / Score / yes-no answers with calibrated probabilities and confidence, ~100 ms (see below) |
+| [TypeSafe AI](https://typesafe.ai/) (🔥 New) | Typed by construction  | `json_schema` structured output only (`asOpenAI()`) |                         | Decision model `Jev`: typed answers with calibrated probabilities |
 
 ---
 
