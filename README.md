@@ -1612,6 +1612,9 @@ so the JSON helper keeps the request in schema mode, and a `chatCompletionRouter
 Jev and everything else to an LLM. See `examples/typesafe/TypeSafeCreateChatCompletionWithJSON`, and
 `TypeSafeOpenAIAdapterScenarios` for fifteen "how to call it and what happens when" cases (JSON user messages, system
 instructions, multi-turn, thresholds, `originalResponse`, dropped settings, and every refusal).
+`TypeSafeSemanticFind` ports the [semantic search cookbook](https://docs.typesafe.ai/cookbooks/semantic_find) to the
+adapter: the 218 tagged lines of GitHub's Terms of Service are the state, a string enum over the line ids ranks every
+line by relevance and a boolean tells whether the document answers the query at all, in one ~200 ms request.
 
 ## Anthropic Managed Agents 🤝
 
