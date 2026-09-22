@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+### New models
+
+- **GPT-6 Sol / Luna** - `ModelId.gpt_6_sol` / `gpt_6_luna`, plus Bedrock `openai.gpt-6-sol` / `openai.gpt-6-luna` /
+  `openai.gpt-6-astra` (`us.` / `global.` inference profiles), all with `json_schema` structured output. Unlike GPT-6
+  Astra they keep the GPT-5.6 rules: sampling params stripped, `max_tokens` → `max_completion_tokens`, `reasoning_effort`
+  `max` → `xhigh` and `minimal` → `low` on chat completions while `none` is kept. There is no `gpt-6-terra` yet.
+- **Tools keep reasoning on GPT-5.6 / GPT-6** - the chat completions API takes function tools from these models only with
+  `reasoning_effort = none`, so the full OpenAI service now routes their `createChatToolCompletion` and typed
+  `createChatToolCompletionStreamed` calls through the Responses API unless `none` is requested (GPT-6 Astra always). The
+  Responses adapter keeps `max`, maps `minimal` → `low` (and `none` → `low` on Astra), and drops `temperature` / `top_p` /
+  `top_logprobs`, which the Responses API rejects for these models. A chat-only service still forces `none`.
+- **Claude Opus 5.5** - `NonOpenAIModelId.claude_opus_5_5` / `bedrock_claude_opus_5_5`: adaptive thinking with
+  `output_config.effort` up to `max`, no sampling params, a 128k output cap, `json_schema` structured output on the Claude
+  API (on Bedrock it rejects `output_config.format` like Opus 5, so the JSON helper uses prompt mode there), and no forced
+  `tool_choice` - a forced tool is downgraded to `auto` plus a system instruction, as for Fable 5.1.
+
+See `GPT6SolLunaOpus55SmokeTest` for a live walkthrough.
+
 ## 1.3.0 (2026-09-18)
 
 292 commits since v1.2.0 (2025-04-23), 646 files, +69k lines. Three release candidates along the way

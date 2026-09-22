@@ -374,9 +374,11 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
     /**
      * The Responses-backed typed tool stream of this service, when it also serves the
      * Responses API (the full streamed `OpenAIService` overrides this): tool streams the chat
-     * completions API cannot carry - GPT-6 function tools, the provider-neutral MCPServerTool
-     * / SkillTool - go through it. `None` (the default) leaves them to the chat completions
-     * stream, which fails fast on them.
+     * completions API cannot carry - GPT-6 Astra function tools, the provider-neutral
+     * MCPServerTool / SkillTool - go through it, and so do GPT-5.6 / GPT-6 Sol/Luna tool
+     * streams unless reasoning_effort is 'none' (chat completions would force 'none' on them).
+     * `None` (the default) leaves them to the chat completions stream, which fails fast on
+     * them.
      */
     protected def responsesBackedTypedToolStream
       : Option[OpenAIChatCompletionStreamedServiceExtra] =
@@ -390,11 +392,10 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
     ): Source[ChatChunk, NotUsed] =
       responsesBackedTypedToolStream match {
         case Some(responsesBacked)
-            if tools.nonEmpty &&
-              ChatCompletionSettingsConversions.chatToolsRequireResponsesAPI(
-                settings.model,
-                tools
-              ) =>
+            if ChatCompletionSettingsConversions.chatToolsPreferResponsesAPI(
+              settings,
+              tools
+            ) =>
           responsesBacked.createChatToolCompletionStreamed(
             messages,
             tools,

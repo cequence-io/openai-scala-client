@@ -56,13 +56,22 @@ private[service] trait OpenAIChatCompletionServiceImpl
     responseToolChoice: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatToolCompletion
   ): Future[ChatToolCompletionResponse] =
-    if (tools.nonEmpty && chatToolsRequireResponsesAPI(settings.model, tools))
+    if (ChatCompletionSettingsConversions.chatToolsPreferResponsesAPI(settings, tools))
       responsesBackedChatCompletion match {
         case Some(service) =>
           logger.debug(
-            s"${settings.model} model doesn't support function tools on the chat completions API, routing createChatToolCompletion through the Responses API."
+            s"${settings.model} model doesn't support function tools (with reasoning) on the chat completions API, routing createChatToolCompletion through the Responses API."
           )
           service.createChatToolCompletion(messages, tools, responseToolChoice, settings)
+
+        // chat-only service: GPT-5.6 / GPT-6 Sol/Luna still work there with reasoning 'none'
+        case None if !chatToolsRequireResponsesAPI(settings.model, tools) =>
+          createChatToolCompletionAux(
+            messages,
+            tools,
+            responseToolChoice,
+            settingsForChatToolCompletion(settings)
+          )
 
         case None =>
           Future.failed(
@@ -136,7 +145,7 @@ trait ChatCompletionBodyMaker {
   private val gpt5_5Prefix = "gpt-5.5"
 
   // Function tools on the chat completions API - see ChatCompletionSettingsConversions.gpt5_5ChatTools
-  // & gpt5_6ChatTools. GPT-6 doesn't support them at all (Responses API only).
+  // & gpt5_6ChatTools. GPT-6 Astra doesn't support them at all (Responses API only).
   protected def chatToolsRequireResponsesAPI(model: String): Boolean =
     ChatCompletionSettingsConversions.chatToolsRequireResponsesAPI(model)
 
@@ -152,7 +161,8 @@ trait ChatCompletionBodyMaker {
     // the bare id, so the rules also apply to Bedrock's `openai.` / `us.openai.` ids
     val model = ChatCompletionSettingsConversions.canonicalOpenAIModel(settings.model)
 
-    if (model.startsWith(gpt5_6Prefix))
+    // GPT-6 Astra never gets here (routed to the Responses API); Sol/Luna follow GPT-5.6
+    if (model.startsWith(gpt5_6Prefix) || model.startsWith(gpt6Prefix))
       ChatCompletionSettingsConversions.gpt5_6ChatTools(settings)
     else if (model.startsWith(gpt5_5Prefix))
       ChatCompletionSettingsConversions.gpt5_5ChatTools(settings)
@@ -227,8 +237,10 @@ trait ChatCompletionBodyMaker {
         ChatCompletionSettingsConversions.o(settings)
       else if (model == ModelId.chat_latest)
         ChatCompletionSettingsConversions.chatLatest(settings)
-      else if (model.startsWith(gpt6Prefix))
+      else if (ChatCompletionSettingsConversions.isGpt6Astra(model))
         ChatCompletionSettingsConversions.gpt6(settings)
+      else if (model.startsWith(gpt6Prefix))
+        ChatCompletionSettingsConversions.gpt6SolLuna(settings)
       else if (model.startsWith(gpt5_6Prefix))
         ChatCompletionSettingsConversions.gpt5_6(settings)
       else if (model.startsWith(gpt5_5Prefix))

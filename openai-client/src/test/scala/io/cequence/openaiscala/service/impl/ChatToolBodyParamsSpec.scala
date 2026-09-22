@@ -3,8 +3,8 @@ package io.cequence.openaiscala.service.impl
 import io.cequence.openaiscala.JsonFormats.chatCompletionToolFormat
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.openaiscala.domain.{ChatCompletionTool, JsonSchema}
-import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
+import io.cequence.openaiscala.domain.{ChatCompletionTool, JsonSchema, ModelId, UserMessage}
+import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, ReasoningEffort}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.{JsValue, Json}
@@ -23,6 +23,20 @@ class ChatToolBodyParamsSpec extends AnyWordSpec with Matchers {
       createToolBodyParams(tools, choice).collect { case (param, Some(json)) =>
         param.toString -> json
       }.toMap
+
+    def body(settings: CreateChatCompletionSettings): Map[String, JsValue] =
+      createBodyParamsForChatCompletion(
+        Seq(UserMessage("hi")),
+        settings,
+        stream = false
+      ).collect { case (param, Some(json)) =>
+        param.toString -> json
+      }.toMap
+
+    def toolSettings(settings: CreateChatCompletionSettings): CreateChatCompletionSettings =
+      settingsForChatToolCompletion(settings)
+
+    def toolsViaResponses(model: String): Boolean = chatToolsRequireResponsesAPI(model)
 
     def streamOptions(settings: CreateChatCompletionSettings): Map[String, JsValue] =
       createStreamOptionsParams(settings).collect { case (param, Some(json)) =>
@@ -69,6 +83,45 @@ class ChatToolBodyParamsSpec extends AnyWordSpec with Matchers {
         Seq(ChatCompletionTool.SkillTool("pptx")),
         None
       )).getMessage should include("SkillTool(pptx)")
+    }
+  }
+
+  "the GPT-6 dispatch" should {
+
+    "keep reasoning_effort 'none' for gpt-6-luna/sol but lift it to 'low' for gpt-6-astra" in {
+      val none = CreateChatCompletionSettings(
+        model = ModelId.gpt_6_luna,
+        max_tokens = Some(100),
+        temperature = Some(0.2),
+        reasoning_effort = Some(ReasoningEffort.none)
+      )
+
+      val luna = maker.body(none)
+      luna("reasoning_effort") shouldBe Json.toJson("none")
+      luna.get("max_tokens") shouldBe None
+      luna("temperature") shouldBe Json.toJson(1d)
+
+      maker.body(none.copy(model = ModelId.gpt_6_sol))("reasoning_effort") shouldBe
+        Json.toJson("none")
+      maker.body(none.copy(model = "global." + ModelId.bedrock_openai_gpt_6_sol))(
+        "reasoning_effort"
+      ) shouldBe Json.toJson("none")
+      maker.body(none.copy(model = ModelId.gpt_6_astra))("reasoning_effort") shouldBe
+        Json.toJson("low")
+    }
+
+    "force reasoning_effort 'none' for gpt-6-luna/sol function tools on chat completions" in {
+      val high = CreateChatCompletionSettings(
+        model = ModelId.gpt_6_luna,
+        reasoning_effort = Some(ReasoningEffort.high)
+      )
+
+      maker.toolSettings(high).reasoning_effort shouldBe Some(ReasoningEffort.none)
+      maker
+        .toolSettings(high.copy(model = ModelId.gpt_6_sol, reasoning_effort = None))
+        .reasoning_effort shouldBe Some(ReasoningEffort.none)
+      maker.toolsViaResponses(ModelId.gpt_6_luna) shouldBe false
+      maker.toolsViaResponses(ModelId.gpt_6_astra) shouldBe true
     }
   }
 

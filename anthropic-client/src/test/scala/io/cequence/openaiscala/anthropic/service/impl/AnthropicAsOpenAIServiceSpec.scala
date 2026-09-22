@@ -303,6 +303,53 @@ class AnthropicAsOpenAIServiceSpec extends AnyWordSpec with Matchers {
     }
   }
 
+  "Claude Opus 5.5" should {
+
+    "map reasoning_effort=max to adaptive thinking + OutputEffort.max and drop temperature/top_p" in {
+      val out = toAnthropicSettings(
+        CreateChatCompletionSettings(
+          model = NonOpenAIModelId.claude_opus_5_5,
+          reasoning_effort = Some(ReasoningEffort.max),
+          temperature = Some(0.2),
+          top_p = Some(0.9)
+        )
+      )
+
+      out.thinking shouldBe Some(ThinkingSettings.adaptive)
+      out.output_config.flatMap(_.effort) shouldBe Some(OutputEffort.max)
+      out.temperature shouldBe None
+      out.top_p shouldBe None
+      out.max_tokens shouldBe 128000
+    }
+
+    "send no thinking at all for reasoning_effort=none (the API rejects thinking.type=disabled)" in {
+      val out = toAnthropicSettings(
+        CreateChatCompletionSettings(
+          model = NonOpenAIModelId.claude_opus_5_5,
+          reasoning_effort = Some(ReasoningEffort.none)
+        )
+      )
+
+      out.thinking shouldBe None
+      out.output_config.flatMap(_.effort) shouldBe None
+    }
+
+    "downgrade a forced tool_choice to auto plus a system instruction (direct and Bedrock ids)" in {
+      Seq(
+        NonOpenAIModelId.claude_opus_5_5,
+        "eu." + NonOpenAIModelId.bedrock_claude_opus_5_5,
+        "global." + NonOpenAIModelId.bedrock_claude_opus_5_5
+      ).foreach { model =>
+        val (toolChoice, extraSystemMessages) =
+          toAnthropicToolChoice(model, Some("get_weather"), Some(true))
+
+        toolChoice shouldBe ToolChoice.Auto(Some(true))
+        extraSystemMessages should have size 1
+        extraSystemMessages.head.content should include("get_weather")
+      }
+    }
+  }
+
   "toOpenAIAssistantMessage (A3 - tool-only/thinking-only responses must not throw)" should {
 
     "return empty content for a tool-only response (no text block)" in {

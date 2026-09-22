@@ -341,12 +341,13 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
   // NOTE: "claude-fable-5" is a substring of "claude-fable-5-1", so it already matches Fable
   // 5.1 via `contains`; claude_fable_5_1 is still listed explicitly for clarity. The same holds
   // for "claude-mythos-5" / "claude-mythos-5-1" (Mythos = Fable with fewer safeguards, same API
-  // behaviour).
+  // behaviour). Likewise "claude-opus-5" matches "claude-opus-5-5"; Opus 5.5 is listed anyway.
   private val outputEffortModels: Set[String] = Set(
     NonOpenAIModelId.claude_fable_5_1,
     NonOpenAIModelId.claude_fable_5,
     NonOpenAIModelId.claude_mythos_5_1,
     NonOpenAIModelId.claude_mythos_5,
+    NonOpenAIModelId.claude_opus_5_5,
     NonOpenAIModelId.claude_opus_5,
     NonOpenAIModelId.claude_opus_4_8,
     NonOpenAIModelId.claude_opus_4_7,
@@ -362,6 +363,7 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
     NonOpenAIModelId.claude_fable_5,
     NonOpenAIModelId.claude_mythos_5_1,
     NonOpenAIModelId.claude_mythos_5,
+    NonOpenAIModelId.claude_opus_5_5,
     NonOpenAIModelId.claude_opus_5,
     NonOpenAIModelId.claude_opus_4_8,
     NonOpenAIModelId.claude_opus_4_7,
@@ -376,6 +378,7 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
     NonOpenAIModelId.claude_fable_5,
     NonOpenAIModelId.claude_mythos_5_1,
     NonOpenAIModelId.claude_mythos_5,
+    NonOpenAIModelId.claude_opus_5_5,
     NonOpenAIModelId.claude_opus_5,
     NonOpenAIModelId.claude_opus_4_8,
     NonOpenAIModelId.claude_opus_4_7,
@@ -393,10 +396,13 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
   // Same `contains` convention as above so Bedrock/Vertex-prefixed ids match too.
   // NOTE: "claude-fable-5" (Fable 5) is deliberately NOT in this set - Fable 5 still supports
   // forced tool_choice, only its successor Fable 5.1 dropped it. Mythos 5.1 is the same model
-  // as Fable 5.1 (not live-verified here - invite-only), so it is treated identically.
+  // as Fable 5.1 (not live-verified here - invite-only), so it is treated identically. Opus
+  // 5.5 dropped it too (live-verified 2026-09-22 on the Claude API and Bedrock), while Opus 5
+  // still accepts it - "claude-opus-5" is NOT listed, it would match "claude-opus-5-5" only.
   private val forcedToolChoiceUnsupportedModels: Set[String] = Set(
     NonOpenAIModelId.claude_fable_5_1,
-    NonOpenAIModelId.claude_mythos_5_1
+    NonOpenAIModelId.claude_mythos_5_1,
+    NonOpenAIModelId.claude_opus_5_5
   )
 
   def supportsForcedToolChoice(model: String): Boolean = {
@@ -406,10 +412,10 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
 
   /**
    * Maps the OpenAI-style `responseToolChoice` (a forced tool name, or None for auto) to
-   * Anthropic's ToolChoice. On models that reject forced tool use (Fable 5.1) a forced tool
-   * name is downgraded to `auto` plus a system-prompt instruction naming the tool, which is
-   * Anthropic's recommended replacement. Returns the tool choice and any extra system messages
-   * that must be appended to the caller's system messages.
+   * Anthropic's ToolChoice. On models that reject forced tool use (Fable 5.1, Opus 5.5) a
+   * forced tool name is downgraded to `auto` plus a system-prompt instruction naming the tool,
+   * which is Anthropic's recommended replacement. Returns the tool choice and any extra system
+   * messages that must be appended to the caller's system messages.
    */
   def toAnthropicToolChoice(
     model: String,
@@ -458,7 +464,7 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
     case ReasoningEffort.medium => Some(OutputEffort.medium)
     case ReasoningEffort.high   => Some(OutputEffort.high)
     case ReasoningEffort.xhigh  =>
-      // OutputEffort.xhigh is supported only on Opus 4.7+ (Opus 4.7, Opus 4.8, Opus 5), Fable
+      // OutputEffort.xhigh is supported only on Opus 4.7+ (Opus 4.7, 4.8, 5, 5.5), Fable
       // 5/5.1, and Sonnet 5; downgrade to high on Opus 4.6 / Sonnet 4.6 to avoid a remote 400
       // from Anthropic.
       val m = model.toLowerCase

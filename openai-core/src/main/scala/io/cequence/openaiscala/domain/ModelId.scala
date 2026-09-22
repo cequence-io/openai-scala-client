@@ -266,6 +266,15 @@ object ModelId {
   // chat completions API at all - createChatToolCompletion is routed through the Responses API.
   val gpt_6_astra = "gpt-6-astra"
 
+  // GPT-6 Sol/Luna (created 2026-09-14, live-verified 2026-09-22). Unlike Astra they keep
+  // GPT-5.6's rules: all sampling params rejected, max_tokens -> max_completion_tokens,
+  // reasoning_effort none/low/medium/high/xhigh on chat completions ('max' Responses-API-only,
+  // 'minimal' rejected everywhere), and function tools on chat completions only with
+  // reasoning_effort 'none' (any other value, or none at all, is a 400). There is no
+  // `gpt-6-terra` (404) as of 2026-09-22.
+  val gpt_6_sol = "gpt-6-sol"
+  val gpt_6_luna = "gpt-6-luna"
+
   val gpt_5_6_sol = "gpt-5.6-sol"
   val gpt_5_6_terra = "gpt-5.6-terra"
   val gpt_5_6_luna = "gpt-5.6-luna"
@@ -279,6 +288,11 @@ object ModelId {
   // GPT-5.6 Sol/Terra/Luna (Bedrock launch 2026-07-13, 1M context); `openai.gpt-5.6-sol` is
   // verified against the AWS model card, Terra/Luna follow the same naming. On bedrock-runtime
   // use the `us.`/`global.` cross-region inference-profile prefix instead.
+  // GPT-6 (live-verified 2026-09-22): inference profiles `us.`/`global.` only (no `eu.`),
+  // `global.openai.gpt-6-luna` / `-sol` answer in eu-central-1
+  val bedrock_openai_gpt_6_astra = "openai.gpt-6-astra"
+  val bedrock_openai_gpt_6_sol = "openai.gpt-6-sol"
+  val bedrock_openai_gpt_6_luna = "openai.gpt-6-luna"
   val bedrock_openai_gpt_5_6_sol = "openai.gpt-5.6-sol"
   val bedrock_openai_gpt_5_6_terra = "openai.gpt-5.6-terra"
   val bedrock_openai_gpt_5_6_luna = "openai.gpt-5.6-luna"

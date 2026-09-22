@@ -11,6 +11,10 @@ object NonOpenAIModelId {
   val claude_mythos_5_1 = "claude-mythos-5-1"
   val claude_mythos_5 = "claude-mythos-5"
   val claude_fable_5 = "claude-fable-5"
+  // Opus 5.5 (released 2026-09-21, live-verified 2026-09-22): adaptive thinking only (thinking
+  // `enabled` AND `disabled` are 400s - omit thinking instead), no sampling params, no forced
+  // tool_choice (`any`/`tool` are 400s, like Fable 5.1), 128k max output
+  val claude_opus_5_5 = "claude-opus-5-5"
   val claude_opus_5 = "claude-opus-5"
   val claude_opus_4_8 = "claude-opus-4-8"
   val claude_opus_4_7 = "claude-opus-4-7"
@@ -45,6 +49,7 @@ object NonOpenAIModelId {
   val bedrock_claude_mythos_5_1 = "anthropic.claude-mythos-5-1"
   val bedrock_claude_mythos_5 = "anthropic.claude-mythos-5"
   val bedrock_claude_fable_5 = "anthropic.claude-fable-5"
+  val bedrock_claude_opus_5_5 = "anthropic.claude-opus-5-5"
   val bedrock_claude_opus_5 = "anthropic.claude-opus-5"
   val bedrock_claude_opus_4_8 = "anthropic.claude-opus-4-8"
   val bedrock_claude_opus_4_7 = "anthropic.claude-opus-4-7"

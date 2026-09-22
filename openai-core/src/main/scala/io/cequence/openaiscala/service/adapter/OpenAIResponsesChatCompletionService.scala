@@ -300,7 +300,27 @@ private[service] class OpenAIResponsesChatCompletionService(
     }
 
     val reasoning: Option[ReasoningConfig] =
-      settings.reasoning_effort.map(effort => ReasoningConfig(effort = Some(effort)))
+      settings.reasoning_effort.map { effort =>
+        ReasoningConfig(
+          effort = Some(
+            ChatCompletionSettingsConversions.responsesReasoningEffort(settings.model, effort)
+          )
+        )
+      }
+
+    val samplingUnsupported =
+      ChatCompletionSettingsConversions.responsesSamplingUnsupported(settings.model)
+    if (samplingUnsupported) {
+      val dropped = Seq(
+        settings.temperature.filter(_ != 1d).map(_ => "temperature"),
+        settings.top_p.filter(_ != 1d).map(_ => "top_p"),
+        settings.top_logprobs.map(_ => "top_logprobs")
+      ).flatten
+      if (dropped.nonEmpty)
+        logger.warn(
+          s"${settings.model} model doesn't support ${dropped.mkString(", ")} on the Responses API, dropping."
+        )
+    }
 
     CreateModelResponseSettings(
       model = settings.model,
@@ -313,14 +333,14 @@ private[service] class OpenAIResponsesChatCompletionService(
       // not persisting responses server-side (avoids the provider's default 30-day retention),
       // while still honoring an explicit `store` if the caller opts in.
       store = settings.store.orElse(Some(false)),
-      temperature = settings.temperature,
+      temperature = if (samplingUnsupported) None else settings.temperature,
       text = text,
       toolChoice = toolChoice,
       tools = tools,
-      topP = settings.top_p,
+      topP = if (samplingUnsupported) None else settings.top_p,
       user = settings.user,
       serviceTier = settings.service_tier.map(_.toString),
-      topLogprobs = settings.top_logprobs
+      topLogprobs = if (samplingUnsupported) None else settings.top_logprobs
     )
   }
 

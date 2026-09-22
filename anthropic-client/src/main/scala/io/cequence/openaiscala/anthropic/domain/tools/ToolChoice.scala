@@ -30,8 +30,8 @@ object ToolChoice {
    *   Whether to disable parallel tool use. Defaults to false. If set to true, the model will
    *   output exactly one tool use.
    * @note
-   *   Not supported on Claude Fable 5.1 (`claude-fable-5-1`) - the API returns a 400; use
-   *   `Auto` plus a prompt instruction naming the tool instead.
+   *   Not supported on Claude Fable 5.1 (`claude-fable-5-1`) or Opus 5.5 - the API returns a
+   *   400; use `Auto` plus a prompt instruction naming the tool instead.
    */
   case class Any(
     disableParallelToolUse: Option[Boolean] = scala.None
@@ -48,8 +48,8 @@ object ToolChoice {
    *   Whether to disable parallel tool use. Defaults to false. If set to true, the model will
    *   output exactly one tool use.
    * @note
-   *   Not supported on Claude Fable 5.1 (`claude-fable-5-1`) - the API returns a 400; use
-   *   `Auto` plus a prompt instruction naming the tool instead.
+   *   Not supported on Claude Fable 5.1 (`claude-fable-5-1`) or Opus 5.5 - the API returns a
+   *   400; use `Auto` plus a prompt instruction naming the tool instead.
    */
   case class Tool(
     name: String,

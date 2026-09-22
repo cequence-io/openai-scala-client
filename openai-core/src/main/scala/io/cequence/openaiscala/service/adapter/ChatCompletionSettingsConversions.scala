@@ -15,12 +15,20 @@ import io.cequence.openaiscala.domain.settings.Verbosity
 object ChatCompletionSettingsConversions {
 
   /**
-   * Whether function tools for this model are accepted only on the Responses API (GPT-6
+   * Whether function tools for this model are accepted only on the Responses API (GPT-6 Astra
    * rejects them on the chat completions API outright), so tool completions must be routed
-   * through the Responses API.
+   * through the Responses API. GPT-6 Sol/Luna accept them there with reasoning_effort 'none'
+   * (see [[gpt5_6ChatTools]]).
    */
   def chatToolsRequireResponsesAPI(model: String): Boolean =
-    canonicalOpenAIModel(model).startsWith("gpt-6")
+    isGpt6Astra(model)
+
+  /**
+   * GPT-6 Astra - the only GPT-6 tier that rejects reasoning_effort 'none' and function tools
+   * on the chat completions API (Sol/Luna follow the GPT-5.6 rules).
+   */
+  def isGpt6Astra(model: String): Boolean =
+    canonicalOpenAIModel(model).startsWith("gpt-6-astra")
 
   /**
    * [[chatToolsRequireResponsesAPI]] for a concrete tool list: besides the model rule, the
@@ -36,6 +44,34 @@ object ChatCompletionSettingsConversions {
       case _: AssistantTool.FunctionTool => false
       case _                             => true
     }
+
+  /**
+   * Whether function tools for this model are accepted on the chat completions API only with
+   * reasoning_effort 'none' (GPT-5.6 and GPT-6 Sol/Luna - see [[gpt5_6ChatTools]]), so any
+   * reasoning is lost there.
+   */
+  def chatToolsForceNoReasoning(model: String): Boolean = {
+    val bare = canonicalOpenAIModel(model)
+    bare.startsWith("gpt-5.6") || (bare.startsWith("gpt-6") && !isGpt6Astra(model))
+  }
+
+  /**
+   * Whether a tool completion SHOULD go through the Responses API when the service can reach
+   * it: whenever it must ([[chatToolsRequireResponsesAPI]]), and also when the chat
+   * completions API would force reasoning_effort to 'none' ([[chatToolsForceNoReasoning]])
+   * while the caller did not ask for 'none' - the Responses API keeps the requested (or the
+   * model's default) reasoning with tools. A chat-only service falls back to chat completions
+   * with 'none'.
+   */
+  def chatToolsPreferResponsesAPI(
+    settings: CreateChatCompletionSettings,
+    tools: Seq[ChatCompletionTool]
+  ): Boolean =
+    tools.nonEmpty && (
+      chatToolsRequireResponsesAPI(settings.model, tools) ||
+        (chatToolsForceNoReasoning(settings.model) &&
+          !settings.reasoning_effort.contains(ReasoningEffort.none))
+    )
 
   // Amazon Bedrock serves OpenAI models under a provider prefix, optionally behind a
   // cross-region inference profile: `openai.gpt-5.6-luna`, `us.openai.gpt-6-astra`,
@@ -383,7 +419,8 @@ object ChatCompletionSettingsConversions {
     )
   )
 
-  // GPT-6 (Astra) is reasoning-first like GPT-5.6. Verified against the live API 2026-09-05:
+  // GPT-6 Astra is reasoning-first like GPT-5.6. Verified against the live API 2026-09-05 (and
+  // unchanged on 2026-09-22):
   // temperature/top_p/presence_penalty/frequency_penalty/logprobs all return 400, max_tokens
   // must be sent as max_completion_tokens, and reasoning_effort on chat completions accepts
   // only low/medium/high/xhigh - 'max' is Responses-API-only, while 'minimal' AND 'none' are
@@ -402,14 +439,59 @@ object ChatCompletionSettingsConversions {
     )
   )
 
+  // GPT-6 Sol/Luna keep the GPT-5.6 rules exactly (live-verified 2026-09-22): sampling params
+  // and logprobs are 400s, max_tokens must be max_completion_tokens, reasoning_effort accepts
+  // none/low/medium/high/xhigh on chat completions ('max' is Responses-API-only, 'minimal' is
+  // rejected by both APIs).
+  val gpt6SolLuna: SettingsConversion = gpt5_6
+
   // Function tools on the CHAT COMPLETIONS API (createChatToolCompletion) - verified live
   // 2026-09-05: GPT-5.4 and older accept tools with any reasoning_effort; GPT-5.5 rejects an
-  // explicit reasoning_effort when tools are present; GPT-5.6 requires reasoning_effort 'none'
-  // with tools; GPT-6 requires 'none' with tools but rejects 'none' altogether, so on GPT-6
-  // function tools are Responses-API-only (OpenAIChatCompletionServiceImpl routes them there).
+  // explicit reasoning_effort when tools are present; GPT-5.6 and GPT-6 Sol/Luna (2026-09-22)
+  // require reasoning_effort 'none' with tools; GPT-6 Astra requires 'none' with tools but
+  // rejects 'none' altogether, so on Astra function tools are Responses-API-only
+  // (OpenAIChatCompletionServiceImpl routes them there).
   val gpt5_5ChatTools: SettingsConversion = generic(Seq(reasoningEffortUnsupportedWithTools))
 
   val gpt5_6ChatTools: SettingsConversion = generic(Seq(reasoningEffortNoneRequiredWithTools))
+
+  /**
+   * `reasoning_effort` for the RESPONSES API, where the chat-completions conversions above
+   * don't apply. Live-verified 2026-09-22: GPT-5.6 and GPT-6 accept 'max' there (so it is
+   * kept) but reject 'minimal' (-> 'low'); GPT-6 Astra also rejects 'none' (-> 'low'). Other
+   * models are passed through unchanged.
+   */
+  def responsesReasoningEffort(
+    model: String,
+    effort: ReasoningEffort
+  ): ReasoningEffort = {
+    val bare = canonicalOpenAIModel(model)
+    val gpt5_6OrGpt6 = bare.startsWith("gpt-5.6") || bare.startsWith("gpt-6")
+
+    effort match {
+      case ReasoningEffort.minimal if gpt5_6OrGpt6 =>
+        logger.warn(
+          s"$model model doesn't support reasoning_effort 'minimal' on the Responses API, converting to 'low'."
+        )
+        ReasoningEffort.low
+      case ReasoningEffort.none if isGpt6Astra(model) =>
+        logger.warn(
+          s"$model model doesn't support reasoning_effort 'none', converting to 'low'."
+        )
+        ReasoningEffort.low
+      case other => other
+    }
+  }
+
+  /**
+   * Whether the RESPONSES API rejects `temperature` / `top_p` other than the default and
+   * `top_logprobs` for this model - live-verified 2026-09-22 on GPT-5.6 and GPT-6 (Astra, Sol,
+   * Luna): "Unsupported parameter" / "logprobs are not supported with reasoning models".
+   */
+  def responsesSamplingUnsupported(model: String): Boolean = {
+    val bare = canonicalOpenAIModel(model)
+    bare.startsWith("gpt-5.6") || bare.startsWith("gpt-6")
+  }
 
   // 'chat-latest' is a rolling ChatGPT-style alias. Verified against the live API 2026-09-02:
   // max_tokens must be sent as max_completion_tokens; temperature/top_p/presence_penalty/

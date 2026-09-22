@@ -95,6 +95,101 @@ class ChatCompletionSettingsConversionsSpec extends AnyWordSpec with Matchers {
     }
   }
 
+  "ChatCompletionSettingsConversions.gpt6SolLuna" should {
+
+    "keep GPT-5.6's rules: strip sampling params, keep 'none', downgrade 'max' and 'minimal'" in {
+      val settings = CreateChatCompletionSettings(
+        model = ModelId.gpt_6_luna,
+        max_tokens = Some(100),
+        temperature = Some(0.2),
+        top_p = Some(0.5),
+        presence_penalty = Some(0.5),
+        frequency_penalty = Some(0.5),
+        logprobs = Some(true),
+        reasoning_effort = Some(ReasoningEffort.max)
+      )
+
+      val out = ChatCompletionSettingsConversions.gpt6SolLuna(settings)
+
+      out.max_tokens shouldBe None
+      out.extra_params.get("max_completion_tokens") shouldBe Some(100)
+      out.temperature shouldBe Some(1d)
+      out.top_p shouldBe Some(1d)
+      out.presence_penalty shouldBe Some(0d)
+      out.frequency_penalty shouldBe Some(0d)
+      out.logprobs shouldBe None
+      out.reasoning_effort shouldBe Some(ReasoningEffort.xhigh)
+
+      val none =
+        settings.copy(model = ModelId.gpt_6_sol, reasoning_effort = Some(ReasoningEffort.none))
+      ChatCompletionSettingsConversions.gpt6SolLuna(none).reasoning_effort shouldBe Some(
+        ReasoningEffort.none
+      )
+      ChatCompletionSettingsConversions
+        .gpt6SolLuna(
+          none.copy(reasoning_effort = Some(ReasoningEffort.minimal))
+        )
+        .reasoning_effort shouldBe Some(ReasoningEffort.low)
+    }
+
+    "leave function tools on the chat completions API (only Astra needs the Responses API)" in {
+      ChatCompletionSettingsConversions.chatToolsRequireResponsesAPI(
+        ModelId.gpt_6_luna
+      ) shouldBe false
+      ChatCompletionSettingsConversions.chatToolsRequireResponsesAPI(
+        ModelId.gpt_6_sol
+      ) shouldBe false
+      ChatCompletionSettingsConversions.chatToolsRequireResponsesAPI(
+        "global." + ModelId.bedrock_openai_gpt_6_luna
+      ) shouldBe false
+      ChatCompletionSettingsConversions.chatToolsRequireResponsesAPI(
+        ModelId.bedrock_openai_gpt_6_astra
+      ) shouldBe true
+    }
+  }
+
+  "ChatCompletionSettingsConversions.responsesReasoningEffort" should {
+
+    "keep 'max' and 'none' for gpt-6 Sol/Luna and gpt-5.6, downgrade 'minimal' to 'low'" in {
+      Seq(ModelId.gpt_6_luna, ModelId.gpt_6_sol, ModelId.gpt_5_6_terra).foreach { model =>
+        ChatCompletionSettingsConversions.responsesReasoningEffort(
+          model,
+          ReasoningEffort.max
+        ) shouldBe ReasoningEffort.max
+        ChatCompletionSettingsConversions.responsesReasoningEffort(
+          model,
+          ReasoningEffort.none
+        ) shouldBe ReasoningEffort.none
+        ChatCompletionSettingsConversions.responsesReasoningEffort(
+          model,
+          ReasoningEffort.minimal
+        ) shouldBe ReasoningEffort.low
+      }
+    }
+
+    "lift 'none' to 'low' for gpt-6-astra (also on Bedrock) and keep 'max'" in {
+      ChatCompletionSettingsConversions.responsesReasoningEffort(
+        ModelId.gpt_6_astra,
+        ReasoningEffort.none
+      ) shouldBe ReasoningEffort.low
+      ChatCompletionSettingsConversions.responsesReasoningEffort(
+        "us." + ModelId.bedrock_openai_gpt_6_astra,
+        ReasoningEffort.none
+      ) shouldBe ReasoningEffort.low
+      ChatCompletionSettingsConversions.responsesReasoningEffort(
+        ModelId.gpt_6_astra,
+        ReasoningEffort.max
+      ) shouldBe ReasoningEffort.max
+    }
+
+    "leave other models alone" in {
+      ChatCompletionSettingsConversions.responsesReasoningEffort(
+        ModelId.gpt_5_4,
+        ReasoningEffort.minimal
+      ) shouldBe ReasoningEffort.minimal
+    }
+  }
+
   "ChatCompletionSettingsConversions chat-tool conversions" should {
 
     "drop an explicit reasoning_effort for gpt-5.5 and keep everything else" in {
