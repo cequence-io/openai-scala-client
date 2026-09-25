@@ -20,6 +20,13 @@
 
 See `GPT6SolLunaOpus55SmokeTest` for a live walkthrough.
 
+### Deprecated
+
+- **Assistants API** - the 26 `OpenAIService` methods for assistants, threads, thread messages, runs and run steps are
+  `@deprecated`: OpenAI shut the Assistants API down on 2026-08-26 (its endpoints now return 404). Use the Responses API
+  (`createModelResponse`, `createModelResponseStreamed`) instead. Vector stores are unaffected. Streamed runs
+  (`stream = true`, [#87](https://github.com/cequence-io/openai-scala-client/issues/87)) will not be added.
+
 ## 1.3.0 (2026-09-18)
 
 292 commits since v1.2.0 (2025-04-23), 646 files, +69k lines. Three release candidates along the way

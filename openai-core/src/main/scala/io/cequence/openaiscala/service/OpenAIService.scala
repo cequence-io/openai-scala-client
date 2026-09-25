@@ -625,6 +625,10 @@ trait OpenAIService
    *   href="https://platform.openai.com/docs/api-reference/assistants/createAssistant">OpenAI
    *   Doc</a>
    */
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def createAssistant(
     model: String,
     name: Option[String] = None,
@@ -659,6 +663,10 @@ trait OpenAIService
    *   href="https://platform.openai.com/docs/api-reference/assistants/listAssistants">OpenAI
    *   Doc</a>
    */
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def listAssistants(
     pagination: Pagination = Pagination.default,
     order: Option[SortOrder] = None
@@ -672,6 +680,10 @@ trait OpenAIService
    *   href="https://platform.openai.com/docs/api-reference/assistants/retrieveAssistant">OpenAI
    *   Doc</a>
    */
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def retrieveAssistant(assistantId: String): Future[Option[Assistant]]
 
   /**
@@ -702,6 +714,10 @@ trait OpenAIService
    *   href="https://platform.openai.com/docs/api-reference/assistants/modifyAssistant">OpenAI
    *   Doc</a>
    */
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def modifyAssistant(
     assistantId: String,
     model: Option[String] = None,
@@ -721,6 +737,10 @@ trait OpenAIService
    *   href="https://platform.openai.com/docs/api-reference/assistants/deleteAssistant">OpenAI
    *   Doc</a>
    */
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def deleteAssistant(assistantId: String): Future[DeleteResponse]
 
   /**
@@ -733,6 +753,10 @@ trait OpenAIService
    *   href="https://platform.openai.com/docs/api-reference/assistants/deleteAssistantFile">OpenAI
    *   Doc</a>
    */
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def deleteAssistantFile(
     assistantId: String,
     fileId: String
@@ -762,6 +786,10 @@ trait OpenAIService
    *   <a href="https://platform.openai.com/docs/api-reference/threads/createThread">OpenAI
    *   Doc</a>
    */
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def createThread(
     messages: Seq[ThreadMessage] = Nil,
     toolResources: Seq[AssistantToolResource] = Nil,
@@ -779,6 +807,10 @@ trait OpenAIService
    *   <a href="https://platform.openai.com/docs/api-reference/threads/getThread">OpenAI
    *   Doc</a>
    */
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def retrieveThread(threadId: String): Future[Option[Thread]]
 
   /**
@@ -796,6 +828,10 @@ trait OpenAIService
    *   <a href="https://platform.openai.com/docs/api-reference/threads/modifyThread">OpenAI
    *   Doc</a>
    */
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def modifyThread(
     threadId: String,
     metadata: Map[String, String] = Map()
@@ -812,6 +848,10 @@ trait OpenAIService
    *   <a href="https://platform.openai.com/docs/api-reference/threads/deleteThread">OpenAI
    *   Doc</a>
    */
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def deleteThread(threadId: String): Future[DeleteResponse]
 
   ////////////////////
@@ -839,6 +879,10 @@ trait OpenAIService
    *   <a href="https://platform.openai.com/docs/api-reference/messages/createMessage">OpenAI
    *   Doc</a>
    */
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def createThreadMessage(
     threadId: String,
     content: String,
@@ -860,6 +904,10 @@ trait OpenAIService
    *   <a href="https://platform.openai.com/docs/api-reference/messages/getMessage">OpenAI
    *   Doc</a>
    */
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def retrieveThreadMessage(
     threadId: String,
     messageId: String
@@ -882,6 +930,10 @@ trait OpenAIService
    *   <a href="https://platform.openai.com/docs/api-reference/messages/modifyMessage">OpenAI
    *   Doc</a>
    */
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def modifyThreadMessage(
     threadId: String,
     messageId: String,
@@ -915,6 +967,10 @@ trait OpenAIService
    *   <a href="https://platform.openai.com/docs/api-reference/messages/listMessages">OpenAI
    *   Doc</a>
    */
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def listThreadMessages(
     threadId: String,
     pagination: Pagination = Pagination.default,
@@ -934,6 +990,10 @@ trait OpenAIService
    *   <a href="https://platform.openai.com/docs/api-reference/messages/deleteMessage">OpenAI
    *   Doc</a>
    */
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def deleteThreadMessage(
     threadId: String,
     messageId: String
@@ -958,6 +1018,10 @@ trait OpenAIService
    *   <a href="https://platform.openai.com/docs/api-reference/messages/getMessageFile">OpenAI
    *   Doc</a>
    */
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def retrieveThreadMessageFile(
     threadId: String,
     messageId: String,
@@ -994,6 +1058,10 @@ trait OpenAIService
    *   href="https://platform.openai.com/docs/api-reference/messages/listMessageFiles">OpenAI
    *   Doc</a>
    */
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def listThreadMessageFiles(
     threadId: String,
     messageId: String,
@@ -1038,6 +1106,10 @@ trait OpenAIService
    * @see
    *   <a href="https://api.openai.com/v1/threads/{thread_id}/runs">OpenAI API Reference</a>
    */
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def createRun(
     threadId: String,
     assistantId: String,
@@ -1080,6 +1152,10 @@ trait OpenAIService
    * @returns
    *   A run object.
    */
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def createThreadAndRun(
     assistantId: String,
     thread: Option[ThreadAndRun],
@@ -1103,12 +1179,20 @@ trait OpenAIService
    * @return
    *   A list of run objects.
    */
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def listRuns(
     threadId: String,
     pagination: Pagination = Pagination.default,
     order: Option[SortOrder] = None
   ): Future[Seq[Run]]
 
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def retrieveRun(
     threadId: String,
     runId: String
@@ -1128,6 +1212,10 @@ trait OpenAIService
    * @return
    *   The modified run object matching the specified ID.
    */
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def modifyRun(
     threadId: String,
     runId: String,
@@ -1151,6 +1239,10 @@ trait OpenAIService
    * @return
    *   The modified run object matching the specified ID.
    */
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def submitToolOutputs(
     threadId: String,
     runId: String,
@@ -1168,6 +1260,10 @@ trait OpenAIService
    * @return
    *   The modified run object matching the specified ID.
    */
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def cancelRun(
     threadId: String,
     runId: String
@@ -1193,6 +1289,10 @@ trait OpenAIService
    *   A list of run step objects.
    */
 
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def listRunSteps(
     threadId: String,
     runId: String,
@@ -1212,6 +1312,10 @@ trait OpenAIService
    * @return
    *   The run step object matching the specified ID.
    */
+  @deprecated(
+    "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
+    "1.3.1"
+  )
   def retrieveRunStep(
     threadID: String,
     runId: String,
