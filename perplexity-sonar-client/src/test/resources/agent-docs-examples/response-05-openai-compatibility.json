@@ -1,0 +1,213 @@
+{
+ "id": "resp_b58f6b3d-81b1-4324-9df2-428753912f6c",
+ "created_at": 1779391825,
+ "model": "openai/gpt-5.1",
+ "object": "response",
+ "output": [
+  {
+   "results": [
+    {
+     "id": 1,
+     "snippet": "The difference between the price paid for a target company and the target’s assessed market value\nAcquisition premium is the difference between the price paid for a target company in a merger or acquisition and the target’s assessed market value.\nIt represents the excess amount over the fair value of all identifiable assets paid by an acquiring company.\nThe acquisition premium is also known as goodwill and is maintained on the acquirer’s balance sheet as an intangible asset, post-transaction.\n...\nA simpler way to calculate the acquisition premium for a deal is taking the difference between the price paid per share for the target company and the target’s current stock price, and then dividing by the target’s current stock price to get a percentage amount.\n...\nAs mentioned earlier, the acquisition premium is recorded on the acquirer’s balance sheet as goodwill.",
+     "title": "Acquisition Premium - Overview, How To Calculate, Reasons",
+     "url": "https://corporatefinanceinstitute.com/resources/valuation/acquisition-premium/",
+     "date": "2020-02-25",
+     "last_updated": "2026-02-20",
+     "source": "web"
+    },
+    {
+     "id": 2,
+     "snippet": "A strategic buyer values a business based on the synergies they can create, such as cost savings or increased market share, and may be willing to pay a premium.\n...\nStrategic buyers consider the long-term vision and potential synergies, while financial buyers focus on metrics like a business’s EBITDA to determine a fair market price.\n...\nSynergies are the combined benefits that arise from merging two businesses, which are greater than the sum of their individual parts.\n...\nThis potential for enhanced value allows them to justify paying a control premium—a price above what the business is worth on its own—because the total value they receive from the acquisition is higher.\n...\nStrategic buyers, driven by the desire for market expansion and synergy creation, may be willing to pay a premium.\n...\nThey are less likely to offer a premium unless the business presents an exceptional opportunity for rapid growth or operational improvement.",
+     "title": "How Do Strategic vs. Financial Buyers Value a Business Differently?",
+     "url": "https://bradyware.com/strategic-vs-financial-buyers/",
+     "date": "2026-01-22",
+     "last_updated": "2026-05-20",
+     "source": "web"
+    },
+    {
+     "id": 3,
+     "snippet": "is inflated, acquisition premiums are significantly lower than when the market is falling, and that target \n...\nThe synergy hypothesis has been widely quoted as a key driver of acquisition premia, and is supported by \nthe logical reasoning that should new efficiency gains be achieved through a combination of two sets of \nbusiness resources, then the value of the combined entity should outweigh the sum of the parts, leading\nto the idea that acquiring managers are willing to offer a price above market value of the target, as long \nas the price is below the potential gains to be realized through business combination.\n...\nHayward and Hambrick (1997) find that in the context of target firms, agency cost mitigation, where \nmanagers are themselves large shareholders in the firm, can increase the premium paid in an acquisition, \nas the managers hold out for a higher offer price from acquirers so as to gain as a shareholder of the firm.\n...\nacquirer and target, in such a way that improves the efficiency of both sets of resources (Damodaran, \n...\nThe larger benefits attributable to strategic synergies compared to financial synergies imply that the\nacquisition premium paid in strategically motivated mergers will be higher than those paid in mergers \ncharacterized by financial or conglomeration motives.\n...\nthe ratio of bidder free cashflows to assets increases the acquisition premium by a significant 1.05%, and \nthat firms that exhibit both high cashflows and low market to book ratios, are likely to pay, on average, \nan acquisition premium that is 19 percentage points higher than that paid by firms with low free cashflows \nand high market to book ratios.\nRecent acquirer performance increases the premium in acquisitions significantly by 0.004%, media praise \nfor acquirer CEO increases the premium significantly by 0.16%, and acquirer CEO pay relative to peers\n...\nPrevious literature on this topic is clear and suggests a \npositive relationship between a change in control and the acquisition premium paid.\n...\nSynergy is a major motive for acquisition (Berkovitch and Narayanan, 1993), and strategic acquisitions \nhave been shown in previous literature to attract higher premiums than financially motivated acquisitions.",
+     "title": "[PDF] The Determinants of Premiums Paid in Acquisitions - Tilburg University",
+     "url": "http://arno.uvt.nl/show.cgi?fid=153548",
+     "date": "2020-09-25",
+     "last_updated": "2026-03-04",
+     "source": "web"
+    },
+    {
+     "id": 4,
+     "snippet": "Many times, when a business or an entity is looking to buy another business or corporation, they **pay an acquisition premium** or **takeover premium** to purchase it.\nAcquisition premium is the extra price paid by the acquirer in addition to the actual worth of the business on sale to secure the transaction.\nThe difference between the purchase price and the fair market value is considered a **goodwill asset** for the buyer.\n...\nIn a merger or acquisition (M&A) deal, the **additional cost of purchasing the target firm** is referred to as the takeover premium or acquisition premium.\nThe business that pays to take over another is called the acquirer, while the firm that is the subject of the acquisition is called the **target**.\n...\nThe acquisition premium is the amount paid for a firm over its** estimated market worth** in a merger or acquisition.\nThat’s the price an acquiring firm pays over and above the total fair worth of the acquired company’s assets.\nAfter a merger or acquisition is finalized, the premium paid for the target is recorded as an intangible asset on the financial statements of the buyer.\nThe term **“acquisition premium”** may also refer to** “takeover premium”**.\n...\nThe takeover premium or the acquisition premium is the amount by which the purchase price of the target firm exceeds its worth prior to the merger.\nIn other words, it is the amount that the acquiring company paid for each share of the target company.\n...\nTakeover premium is the discrepancy between how much a company was bought for and how much it was worth before the merger.\nThe true worth of the target firm must be estimated by the purchasing company in order to determine the acquisition premium.\nEnterprise value or equity valuation are both viable options to calculate the true worth of the target firm.\nA **transaction’s acquisition premium** may be estimated by dividing the difference between the amount per share spent by the purchasing company and the target company’s existing cost per share by the cost per share of the target firm at the time of the deal.\n**\nAcquisition premium or takeover premium = (amount per share spent by the purchasing - target company existing cost per share) / target company existing cost per share\n**",
+     "title": "What is Acquisition Premium? | Eqvista",
+     "url": "https://eqvista.com/company-valuation/m-a-valuation-methods/acquisition-premium/",
+     "date": "2026-03-24",
+     "last_updated": "2026-05-16",
+     "source": "web"
+    },
+    {
+     "id": 5,
+     "snippet": "A strategic buyer is a company that acquires another business to strengthen its market position or capabilities.\nUnlike financial buyers, who prioritize investment returns, strategic buyers focus on how the acquired company fits into their long-term business strategy.\nThe goal is expansion, efficiency, or synergy that gives them a competitive edge.\n...\nStrategic buyers often pay more when integration creates value through cost savings, better purchasing, or expanded revenue.\nThat premium is not always tied to your current performance.\nStrategic buyers value your business based on what it becomes once integrated into their existing operations.\n...\nA financial buyer is an investor who acquires a business to generate a return.\nThese buyers include private equity firms, family offices, investment groups, and independent sponsors.\nThey plan to grow the company’s value and exit later through resale or recapitalization.",
+     "title": "Financial Buyer vs Strategic Buyer: Key Differences When Selling a ...",
+     "url": "https://advisorlegacy.com/blog/strategic-vs-financial-buyers",
+     "date": "2026-01-09",
+     "last_updated": "2026-05-16",
+     "source": "web"
+    },
+    {
+     "id": 6,
+     "snippet": "In mergers and acquisitions, some buyers are willing to pay more than standard valuation multiples when a target company creates unique strategic value.\nThis is known as the **“strategic fit premium.”** Strategic buyers may offer higher valuations when an acquisition strengthens market position, accelerates growth, creates operational synergies, or eliminates competitive threats.\n...\nIn many transactions, buyers are willing to pay **above market valuation** when the acquisition creates strategic advantages that extend beyond the company’s standalone financial performance.\n...\nStrategic fit refers to how well a target company aligns with a buyer’s broader business strategy.\n...\n**What is a strategic premium in M&A?**\nA strategic premium occurs when a buyer pays more than typical valuation multiples because the acquisition creates additional value beyond the target company’s stand-alone financial performance.",
+     "title": "Why Strategic Buyers Sometimes Pay More Than Market Valuation",
+     "url": "https://horizonmaa.com/insights/why-strategic-buyers-sometimes-pay-more-than-market-valuation/",
+     "date": "2026-03-26",
+     "last_updated": "2026-03-26",
+     "source": "web"
+    },
+    {
+     "id": 7,
+     "snippet": "The acquisition premium, also known as the takeover premium, is the difference between the actual price paid for a target company during a merger or acquisition based on its pre-merger value.\nA premium is commonly paid if the acquirer has identified potential synergies resulting from the transaction that will offset the cost of the premium paid.\n...\nThe takeover premium (acquisition premium) formula is calculated by subtracting the value before merger from the total amount paid by the acquirer.\nHere is the formula\n**TP = ** Amount Paid – Pre Merger Value\n**Where:**\n**Amount Paid:** The total cost of purchasing or merging with the target company.\nIt can be expressed in terms of the equity value of the transaction or the full value paid for both the company’s equity and debt.\n**Pre-Merger Value:** The market value of the firm before the transaction was brought.\n...\nAn acquisition takeover premium refers to the extra amount an acquiring company pays over the current market value of the target company’s shares to purchase and gain control of it.\n...\nThe takeover premium is calculated by subtracting the target company’s stock price before the acquisition announcement from the offer price, then dividing by the pre-announcement stock price and multiplying by 100 to get a percentage.",
+     "title": "Acquisition Premium (Takeover) | Definition & Example Calculation",
+     "url": "https://www.myaccountingcourse.com/acquisition-premium-takeover",
+     "date": "2024-03-04",
+     "last_updated": "2026-04-30",
+     "source": "web"
+    },
+    {
+     "id": 8,
+     "snippet": "When the strategic rationale is strong, buyers may be willing to pay a premium.",
+     "title": "How Strategic and Financial Buyers Differ in Software M&A",
+     "url": "https://softwareequity.com/blog/financial-vs-strategic-buyers",
+     "date": "2026-04-08",
+     "last_updated": "2026-04-18",
+     "source": "web"
+    },
+    {
+     "id": 9,
+     "snippet": "Synergies are often described as situations where “the whole is greater than the sum of its parts.”\nIn corporate M&A, a synergy is generated when a merged company is more valuable than the two separate companies.\n...\nThe amount that a strategic buyer is willing to pay for the synergies is known as the synergy premium.\nSynergy premium is calculated by taking the present value of future synergy benefits generated in the merged entity.\n...\nThe $20.5 million difference in net present value calculated by the strategic buyer compared with the financial buyer is the synergy premium.\nThis amount is equal to the net present value of the after-tax cost synergies.",
+     "title": "How Synergies Impact What a Strategic Buyer Will Pay",
+     "url": "https://www.pcecompanies.com/resources/how-synergies-impact-what-buyers-pay",
+     "date": "2020-08-07",
+     "last_updated": "2026-03-08",
+     "source": "web"
+    },
+    {
+     "id": 10,
+     "snippet": "A **“purchase premium”** in the context of mergers and acquisitions refers to the excess that an acquirer pays over the market trading value of the shares being acquired.\n**“Premiums Paid Analysis”** is the name of a common investment banking analysis that reviews comparable transactions and averages the premiums paid for those transactions.",
+     "title": "Premiums Paid Analysis | M&A Calculation Example - Wall Street Prep",
+     "url": "https://www.wallstreetprep.com/knowledge/premiums-in-ma/",
+     "date": "2023-12-05",
+     "last_updated": "2026-05-17",
+     "source": "web"
+    },
+    {
+     "id": 11,
+     "snippet": "Often, strategic buyers are willing to pay more for companies than financial buyers.\nOne reason is that a strategic buyer is better placed to realize synergistic benefits almost instantly.\nThis is because of the economies of scale that may arise from integrated operations.\nThe more the acquired business fits into the existing company’s structure, the more a strategic buyer will want the business and the higher the premium he will be willing to pay.",
+     "title": "Strategic v. Financial Buyer: Tutorial and Video - Noble Desktop Blog",
+     "url": "https://blog.nobledesktop.com/learn/financial-modeling/strategic-financial-buyer",
+     "date": "2026-04-19",
+     "last_updated": "2026-04-21",
+     "source": "web"
+    },
+    {
+     "id": 12,
+     "snippet": "An acquisition premium is the difference (excess) between the market value of a company and the price paid to acquire it.\nAn acquisition premium represents the increased cost of buying a target company during a merger and acquisition (M&A) transaction.\n...\nNo specific definition exists for acquisition premium, which could reflect the value of both control and synergies.\nOur study is based on all transactions irrespective of the percentage acquired.",
+     "title": "An analysis of acquisition premiums in Australia from 2012 to 2022",
+     "url": "https://www.findex.com.au/insights/article/acquisition-premium-study-an-analysis-of-acquisition-premiums-in-australia-from-2012-to-2022",
+     "date": "2023-03-06",
+     "last_updated": "2026-05-19",
+     "source": "web"
+    },
+    {
+     "id": 13,
+     "snippet": "In the absence of a sufficient control premium, it is unlikely for an acquirer to successfully obtain a majority stake in the target.\nTherefore, a reasonable premium is paid over the current share price in practically all acquisitions.\n**The control premium normally ranges from around 25% to 30%, but it can vary substantially from deal-to-deal and be as high as 50% above the target’s share price.**",
+     "title": "Control Premium | Formula + Calculator - Wall Street Prep",
+     "url": "https://www.wallstreetprep.com/knowledge/control-premium/",
+     "date": "2023-10-12",
+     "last_updated": "2026-05-20",
+     "source": "web"
+    }
+   ],
+   "type": "search_results",
+   "queries": [
+    "acquisition premium definition M&A",
+    "difference strategic vs financial buyers approach to acquisition premium",
+    "determinants of acquisition premium strategic buyers synergies"
+   ]
+  },
+  {
+   "id": "msg_96e89ec9-5a54-43d4-a4b7-658166b59734",
+   "content": [
+    {
+     "text": "An acquisition premium is the excess an acquirer pays over the target’s standalone market or fair value—often reflected as goodwill on the acquirer’s balance sheet. [web:1][web:4][web:7][web:12] Strategic buyers usually justify and pay higher premiums due to synergies and strategic fit, while financial buyers are more constrained by return thresholds and typical market valuations. [web:2][web:3][web:5][web:9][web:11]\n\n## What is an acquisition premium?\n\n- An acquisition (or takeover) premium is the difference between the price paid for a target company and its pre‑deal market or fair value. [web:1][web:4][web:7][web:12]  \n- It is typically measured as a percentage over the target’s unaffected share price before the deal is announced and is recorded as **goodwill** (an intangible asset) on the buyer’s balance sheet. [web:1][web:4][web:7][web:10]\n\n## Why do buyers pay a premium?\n\n- Premiums compensate target shareholders for giving up control and future upside; many control transactions show premiums in the ~20–30% range, though this varies by deal. [web:10][web:13]  \n- Buyers pay premiums when they expect value from synergies (cost savings, revenue growth, tax or financing benefits) that makes the combined business worth more than the sum of the parts. [web:3][web:7][web:9]\n\n## Strategic buyers’ approach\n\nStrategic buyers are operating companies acquiring to enhance their existing business.\n\n- They value the target based on strategic synergies: cost savings, cross‑selling, technology or capability gaps, and stronger market position, often leading them to pay a **strategic** or synergy premium. [web:2][web:5][web:6][web:9]  \n- Because they can often realize synergies quickly (economies of scale, overlapping SG&A, better purchasing power), they are frequently willing to pay higher premiums than financial buyers for the same asset. [web:2][web:5][web:8][web:11]\n\n## Financial buyers’ approach\n\nFinancial buyers (e.g., private equity, investment funds) focus on returns from buying, improving, and later exiting the investment.\n\n- They typically value the target on standalone cash flows and metrics such as EBITDA, applying market multiples and disciplined return (IRR/MOIC) hurdles, which limits how much premium they can pay. [web:2][web:5][web:8]  \n- Because they usually cannot realize large operating synergies themselves, they are less inclined to pay high premiums unless there is an exceptional growth or operational improvement story that still meets their return targets. [web:2][web:3][web:5][web:9]\n\n## Typical pattern: who pays more?\n\n- Empirical and practitioner evidence indicates that strategically motivated acquisitions tend to feature higher premiums than financially motivated or purely conglomerate deals, as strategic synergies usually support larger incremental value. [web:3][web:6][web:11]  \n- In competitive auctions, strategic buyers often outbid financial buyers when the asset has strong strategic fit, because the additional synergy value allows them to justify a higher acquisition premium while still creating shareholder value. [web:2][web:5][web:9][web:11]",
+     "type": "output_text",
+     "annotations": [],
+     "logprobs": []
+    }
+   ],
+   "role": "assistant",
+   "status": "completed",
+   "type": "message"
+  }
+ ],
+ "status": "completed",
+ "error": null,
+ "usage": {
+  "input_tokens": 7230,
+  "output_tokens": 762,
+  "total_tokens": 7992,
+  "cost": {
+   "currency": "USD",
+   "input_cost": 0.00456,
+   "output_cost": 0.00762,
+   "total_cost": 0.01513,
+   "cache_creation_cost": null,
+   "cache_read_cost": 0.00045,
+   "tool_calls_cost": 0.0025
+  },
+  "input_tokens_details": {
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 3584,
+   "cached_tokens": 3584
+  },
+  "tool_calls_details": {
+   "search_web": {
+    "invocation": 1
+   }
+  },
+  "output_tokens_details": {
+   "reasoning_tokens": 0
+  }
+ },
+ "background": false,
+ "completed_at": 1779391825,
+ "frequency_penalty": 0,
+ "incomplete_details": null,
+ "instructions": "## Abstract\n<role>\nYou are an AI assistant developed by Perplexity AI. Given a user's query, your goal is to generate an expert, useful, factually correct, and contextually relevant response by leveraging available tools and conversation history. First, you will receive the tools you can call iteratively to gather the necessary knowledge for your response. You need to use these tools rather than using internal knowledge. Second, you will receive guidelines to format your response for clear and effective presentation. Third, you will receive guidelines for citation practices to maintain factual accuracy and credibility.\n</role>\n\n## Instructions\n<tools_workflow>\nBegin each turn with tool calls to gather information. You must call at least one tool before answering, even if information exists in your knowledge base. Decompose complex user queries into discrete tool calls for accuracy and parallelization. After each tool call, assess if your output fully addresses the query and its subcomponents. Continue until the user query is resolved or until the <tool_call_limit> below is reached. End your turn with a comprehensive response. Never mention tool calls in your final response as it would badly impact user experience.\n\n<tool_call_limit> Make at most three tool calls before concluding.</tool_call_limit>\n</tools_workflow>\n\n## Citation Instructions\n<citation_instructions>\nYour response must include at least 1 citation. Add a citation to every sentence that includes information derived from tool outputs.\nTool results are provided using `id` in the format `type:index`. `type` is the data source or context. `index` is the unique identifier per citation.\n<common_source_types> are included below.\n\n<common_source_types>\n- `web`: Internet sources\n- `page`: Full web page content\n- `conversation_history`: past queries and answers from your interaction with the user\n</common_source_types>\n\n<formatting_citations>\nUse brackets to indicate citations like this: [type:index]. Commas, dashes, or alternate formats are not valid citation formats. If citing multiple sources, write each citation in a separate bracket like [web:1][web:2][web:3].\n\nCorrect: \"The Eiffel Tower is in Paris [web:3].\"\nIncorrect: \"The Eiffel Tower is in Paris [web-3].\"\n</formatting_citations>\n\nYour citations must be inline - not in a separate References or Citations section. Cite the source immediately after each sentence containing referenced information. If your response presents a markdown table with referenced information from `web`, `memory`, `attached_file`, or `calendar_event` tool result, cite appropriately within table cells directly after relevant data instead in of a new column. Do not cite `generated_image` or `generated_video` inside table cells.\n\n## Response Guidelines\n<response_guidelines>\nResponses are displayed on web interfaces where users should not need to scroll extensively. Limit responses to 5 sections maximum. Users can ask follow-up questions if they need additional detail. Prioritize the most relevant information for the initial query.\n\n### Answer Formatting\n- Begin with a direct 1-2 sentence answer to the core question.\n- Organize the rest of your answer into sections led with Markdown headers (using ##, ###) when appropriate to ensure clarity (e.g. entity definitions, biographies, and wikis).\n- Your answer should be at least 3 sentences long.\n- Each Markdown header should be concise (less than 6 words) and meaningful.\n- Markdown headers should be plain text, not numbered.\n- Between each Markdown header is a section consisting of 2-3 well-cited sentences.\n- When comparing entities with multiple dimensions, use a markdown table to show differences (instead of lists).\n- Whenever possible, present information as bullet point lists to improve readability.\n- You are allowed to bold at most one word (**example**) per paragraph. You can't bold consecutive words.\n- For grouping multiple related items, present the information with a mix of paragraphs and bullet point lists. Do not nest lists within other lists.\n\n### Tone\n<tone>\nExplain clearly using plain language. Use active voice and vary sentence structure to sound natural. Ensure smooth transitions between sentences. Avoid personal pronouns like \"I\". Keep explanations direct; use examples or metaphors only when they meaningfully clarify complex concepts that would otherwise be unclear.\n</tone>\n\n### Lists and Paragraphs\n<lists_and_paragraphs>\nUse lists for: multiple facts/recommendations, steps, features/benefits, comparisons, or biographical information.\n\nAvoid repeating content in both intro paragraphs and list items. Keep intros minimal. Either start directly with a header and list, or provide 1 sentence of context only.\n\nList formatting:\n- Use numbers when sequence matters; otherwise bullets (-) with a space after the dash.\n- Use numbers when sequence matters; otherwise bullets (-).\n- No whitespace before bullets (i.e. no indenting), one item per line.\n- Sentence capitalization; periods only for complete sentences.\n\nParagraphs:\n- Use for brief context (2-3 sentences max) or simple answers\n- Separate with blank lines\n- If exceeding 3 consecutive sentences, consider restructuring as a list\n</lists_and_paragraphs>\n\n### Summaries and Conclusions\n<summaries_and_conclusions>\nAvoid summaries and conclusions. They are not needed and are repetitive. Markdown tables are not for summaries. For comparisons, provide a table to compare, but avoid labeling it as 'Comparison/Key Table', provide a more meaningful title.\n</summaries_and_conclusions>\n\n## Prohibited Meta-Commentary\n<prohibited_commentary>\n- Never reference your information gathering process in your final answer.\n- Do not use phrases such as:\n- \"Based on my search results...\"\n- \"Now I have gathered comprehensive information...\"\n- \"According to my research...\"\n- \"My search revealed...\"\n- \"I found information about...\"\n- \"Let me provide a detailed answer...\"\n- \"Let me compile this information...\"\n- \"Short Answer: ...\"\n- Begin answers immediately with factual content that directly addresses the user's query.\n</prohibited_commentary>\n\n<copyright_requirements>\n- Never reproduce copyrighted content (text, lyrics, etc.)\n- You may share public domain content (expired copyrights, traditional works)\n- When copyright status is uncertain, treat as copyrighted\n- Keep summaries brief (under 30 words) and original — don't reconstruct sources\n- Brief factual statements (names, dates, facts) are always acceptable\n</copyright_requirements>\n\nCurrent date: Thursday, May 21, 2026\n\n",
+ "max_output_tokens": 8192,
+ "max_tool_calls": null,
+ "metadata": {},
+ "parallel_tool_calls": true,
+ "presence_penalty": 0,
+ "previous_response_id": null,
+ "prompt_cache_key": null,
+ "reasoning": null,
+ "safety_identifier": null,
+ "service_tier": "default",
+ "store": true,
+ "temperature": 1,
+ "text": {
+  "format": {
+   "type": "text"
+  }
+ },
+ "tool_choice": "auto",
+ "tools": [
+  {
+   "type": "web_search"
+  },
+  {
+   "type": "fetch_url"
+  }
+ ],
+ "top_logprobs": 0,
+ "top_p": 1,
+ "truncation": "disabled",
+ "user": null
+}

@@ -1,0 +1,248 @@
+{
+ "background": false,
+ "completed_at": 1771891641,
+ "created_at": 1771891641,
+ "error": null,
+ "frequency_penalty": 0,
+ "id": "resp_aca2bace-3782-4d81-be45-a82c24cfff9d",
+ "incomplete_details": null,
+ "instructions": "## Abstract\n<role>\nYou are an AI assistant developed by Perplexity AI...\n</role>\n...",
+ "max_output_tokens": 8192,
+ "max_tool_calls": null,
+ "metadata": {},
+ "model": "openai/gpt-5.1",
+ "object": "response",
+ "output": [
+  {
+   "queries": [
+    "2025 open source LLM benchmark performance",
+    "2025 newly released open source LLMs license",
+    "2025 open source LLM real world use cases"
+   ],
+   "results": [
+    {
+     "date": "2025-11-19",
+     "id": 1,
+     "last_updated": "2026-02-23T12:12:34",
+     "snippet": "updated\n\n19 Nov 2025\n\n# Open LLM Leaderboard\n\nThis LLM leaderboard displays...",
+     "source": "web",
+     "title": "Open LLM Leaderboard 2025",
+     "url": "https://www.vellum.ai/open-llm-leaderboard"
+    },
+    {
+     "date": "2023-05-05",
+     "id": 2,
+     "last_updated": "2026-01-06T09:02:43.651546",
+     "snippet": "",
+     "source": "web",
+     "title": "A list of open LLMs available for commercial use.",
+     "url": "https://github.com/eugeneyan/open-llms"
+    },
+    {
+     "date": "2025-05-05",
+     "id": 3,
+     "last_updated": "2026-02-22T19:27:06",
+     "snippet": "# Best Open Source LLMs You Can Run Locally in 2025\n\nRunning large language models on your own hardware is...",
+     "source": "web",
+     "title": "Best Open Source LLMs You Can Run Locally in 2025 - DemoDazzle",
+     "url": "https://demodazzle.com/blog/open-source-llms-2025"
+    },
+    {
+     "date": "2025-12-15",
+     "id": 4,
+     "last_updated": "2026-02-23T21:56:51",
+     "snippet": "updated\n\n15 Dec 2025\n\n# LLM Leaderboard\n\nThis LLM leaderboard displays the latest public benchmark performance for SOTA model versions released after April 2024...",
+     "source": "web",
+     "title": "LLM Leaderboard 2025 - Vellum",
+     "url": "https://www.vellum.ai/llm-leaderboard"
+    },
+    {
+     "date": "2025-11-22",
+     "id": 5,
+     "last_updated": "2026-02-11T02:35:36",
+     "snippet": "Open‑source Large Language Models (LLMs) have moved from niche hobby projects to a full‑blown industry trend in 2025...",
+     "source": "web",
+     "title": "Open‑Source LLMs 2025: GPT‑OSS Models & How ... - Neura AI Blog",
+     "url": "https://blog.meetneura.ai/open-source-llms-2025/"
+    },
+    {
+     "date": "2025-07-23",
+     "id": 6,
+     "last_updated": "2026-02-23T23:43:21",
+     "snippet": "",
+     "source": "web",
+     "title": "55 real-world LLM applications and use cases from top ...",
+     "url": "https://www.evidentlyai.com/blog/llm-applications"
+    },
+    {
+     "date": "2025-10-29",
+     "id": 7,
+     "last_updated": "2026-02-23T21:22:10",
+     "snippet": "",
+     "source": "web",
+     "title": "Top 10 open source LLMs for 2025 - NetApp Instaclustr",
+     "url": "https://www.instaclustr.com/education/open-source-ai/top-10-open-source-llms-for-2025/"
+    },
+    {
+     "date": "2025-05-21",
+     "id": 8,
+     "last_updated": "2026-02-23T14:54:20",
+     "snippet": "Here are the details of OpenLLaMA:\n\n**Parameters:** 3B, 7B and 13B\n\n**License:** Apache 2.0...",
+     "source": "web",
+     "title": "The List of 11 Most Popular Open Source LLMs [2025]",
+     "url": "https://www.lakera.ai/blog/open-source-llms"
+    },
+    {
+     "date": "2026-01-07",
+     "id": 9,
+     "last_updated": "2026-02-23T17:41:06",
+     "snippet": "",
+     "source": "web",
+     "title": "The state of open source AI models in 2025 | Red Hat Developer",
+     "url": "https://developers.redhat.com/articles/2026/01/07/state-open-source-ai-models-2025"
+    },
+    {
+     "date": "2025-10-28",
+     "id": 10,
+     "last_updated": "2026-02-23T07:53:56",
+     "snippet": "- **Open source dominates by volume:** 63% of models in our dataset (59 open source vs 35 proprietary)\n- **Performance...",
+     "source": "web",
+     "title": "Open Source vs Proprietary LLMs: Complete 2025 Benchmark ...",
+     "url": "https://whatllm.org/blog/open-source-vs-proprietary-llms-2025"
+    },
+    {
+     "date": "2025-06-02",
+     "id": 11,
+     "last_updated": "2026-01-18T13:27:38.757741",
+     "snippet": "",
+     "source": "web",
+     "title": "Top 8 Open‑Source LLMs to Watch in 2025 - JetRuby Agency",
+     "url": "https://jetruby.com/blog/top-8-open-source-llms-to-watch-in-2025/"
+    },
+    {
+     "date": "2026-01-26",
+     "id": 12,
+     "last_updated": "2026-02-23T16:49:21",
+     "snippet": "",
+     "source": "web",
+     "title": "Best Open Source LLMs in 2026",
+     "url": "https://www.keywordsai.co/blog/best-open-source-llms"
+    },
+    {
+     "date": "2025-12-10",
+     "id": 13,
+     "last_updated": "2026-02-23T18:38:26",
+     "snippet": "",
+     "source": "web",
+     "title": "Full Benchmark Table For...",
+     "url": "https://skywork.ai/blog/llm/top-10-open-llms-2025-november-ranking-analysis/"
+    },
+    {
+     "date": "2024-09-19",
+     "id": 14,
+     "last_updated": "2025-12-27T09:28:04.559969",
+     "snippet": "## Top Open-Source LLMs of 2025\n\n### 1. LLaMA 3.1\n\n**Developer:**Meta AI **Release Date:**July 23, 2024 **Parameter Size:**405B, 70B, 8B...",
+     "source": "web",
+     "title": "Top 10 Open-Source LLMs in 2025 - Kite Metric",
+     "url": "https://kitemetric.com/blogs/top-10-open-source-llms-in-2025-a-comprehensive-guide"
+    },
+    {
+     "date": "2025-02-26",
+     "id": 15,
+     "last_updated": "2025-09-10T16:36:09.704235",
+     "snippet": "Use Cases:\n\n**Advanced Chatbots:**Responsive customer support bots. **Content Creation for Marketing:**Generating product descriptions and blog posts...",
+     "source": "web",
+     "title": "Top 10 Open-Source LLMs in 2025 and Their Use Cases",
+     "url": "https://capalearning.com/2025/02/26/top-10-open-source-llms-in-2025-and-their-use-cases/"
+    }
+   ],
+   "type": "search_results"
+  },
+  {
+   "contents": [
+    {
+     "snippet": "Hi, Camille’s here! On October 28, 2025, I fell into a small rabbit hole...",
+     "title": "Full Benchmark Table For...",
+     "url": "https://skywork.ai/blog/llm/top-10-open-llms-2025-november-ranking-analysis/"
+    },
+    {
+     "snippet": "# Open source vs proprietary LLMs: complete 2025 benchmark analysis\n\n## TL;DR: The state of LLMs in late 2025\n\n**The landscape has shifted dramatically:**\n\n- **Open source dominates by volume:** 63% of models in our dataset (59 open source vs 35 proprietary)\n- **Performance...",
+     "title": "Open Source vs Proprietary LLMs: Complete 2025 Benchmark ...",
+     "url": "https://whatllm.org/blog/open-source-vs-proprietary-llms-2025"
+    }
+   ],
+   "type": "fetch_url_results"
+  },
+  {
+   "content": [
+    {
+     "annotations": [],
+     "logprobs": [],
+     "text": "In 2025, the strongest open‑source LLMs (Qwen 2.5, Llama 3.3/3.x, DeepSeek V3‑series, Mixtral...",
+     "type": "output_text"
+    }
+   ],
+   "id": "msg_1140f2e2-5bdb-4be8-a4c8-9d56bf61f35f",
+   "role": "assistant",
+   "status": "completed",
+   "type": "message"
+  }
+ ],
+ "parallel_tool_calls": true,
+ "presence_penalty": 0,
+ "previous_response_id": null,
+ "prompt_cache_key": null,
+ "reasoning": null,
+ "safety_identifier": null,
+ "service_tier": "default",
+ "status": "completed",
+ "store": true,
+ "temperature": 1,
+ "text": {
+  "format": {
+   "type": "text"
+  }
+ },
+ "tool_choice": "auto",
+ "tools": [
+  {
+   "type": "web_search"
+  },
+  {
+   "type": "fetch_url"
+  }
+ ],
+ "top_logprobs": 0,
+ "top_p": 1,
+ "truncation": "disabled",
+ "usage": {
+  "cost": {
+   "cache_read_cost": 0.00059,
+   "currency": "USD",
+   "input_cost": 0.00919,
+   "output_cost": 0.02743,
+   "tool_calls_cost": 0.003,
+   "total_cost": 0.04021
+  },
+  "input_tokens": 12088,
+  "input_tokens_details": {
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 4736,
+   "cached_tokens": 4736
+  },
+  "output_tokens": 2743,
+  "output_tokens_details": {
+   "reasoning_tokens": 0
+  },
+  "tool_calls_details": {
+   "fetch_url": {
+    "invocation": 1
+   },
+   "search_web": {
+    "invocation": 1
+   }
+  },
+  "total_tokens": 14831
+ },
+ "user": null
+}

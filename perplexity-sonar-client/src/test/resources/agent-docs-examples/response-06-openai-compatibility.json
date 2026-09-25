@@ -1,0 +1,195 @@
+{
+ "id": "resp_532010e6-2d26-4159-b54b-932e9f553b43",
+ "created_at": 1779391925,
+ "model": "openai/gpt-5.1",
+ "object": "response",
+ "output": [
+  {
+   "results": [
+    {
+     "id": 1,
+     "snippet": "A direct listing allows a company to enter the public market by listing existing shares without issuing new ones.\nUnlike an IPO, there are no underwriters to set the initial share price or facilitate new capital raising.\nInstead, the market determines the share price based on supply and demand.\nDirect listings do not create or sell new shares, meaning no capital is raised through the listing itself.\nThe company avoids hefty underwriter fees, leading to potential cost savings.\nExisting shareholders gain immediate liquidity, as there are no traditional IPO lockup periods.\nPrice discovery is entirely market-driven rather than being set by investment banks.\nThe direct listing process is thorough.\nFirst, the company prepares financial statements and ensures compliance with public company requirements.\nThen, it submits a registration statement to the SEC for direct listings, detailing financial health and risk factors.\nUnlike an IPO, where banks allocate shares, direct listings allow shares to trade freely once listed.\nThe share price is set by market supply and demand rather than pre-determined underwriting.\n...\nIPOs raise new capital through the issuance of additional shares, providing the company with funds for growth, expansion, and operational needs.\nDirect listings, on the other hand, do not raise capital since no new shares are issued.\n...\nChoosing between an IPO and a direct listing depends on a company’s capital needs, market positioning, and strategic goals.\nIPOs provide structured price setting, capital infusion, and investor support but come with higher costs.\nDirect listings offer cost efficiency and liquidity but require market-driven pricing and strong brand recognition.",
+     "title": "IPO vs Direct Listing | DFIN",
+     "url": "https://www.dfinsolutions.com/knowledge-hub/thought-leadership/knowledge-resources/ipo-vs-direct-listing",
+     "date": "2025-02-20",
+     "last_updated": "2026-05-11",
+     "source": "web"
+    },
+    {
+     "id": 2,
+     "snippet": "- The company went public through a direct listing, which means it sold its shares to the public without the usual middlemen, such as investment banks and other underwriters, that typically help with a traditional IPO.\n...\nA direct listing—sometimes called a direct offering—is a way for a company to sell its shares to the public without involving any middle men, or intermediaries.\nIt’s different from an initial public offering (IPO), where the company relies on an investment bank to take it public.\nSuch a bank is called an “underwriter,” because it assumes much of the risk associated with the IPO.\nWith a direct listing, company executives, early investors, and employees who own equity, or shares, are given the option to convert them into a public stock and then sell it to the public through a stock exchange such as the New York Stock Exchange or the Nasdaq.\n(These stakeholders are not obligated to sell their shares, however.)\nWith a direct listing, the stock exchange sets the starting trading price.\nIt’s called an “initial reference price,” and it’s based on new investor demand for the shares.\nIn contrast, the underwriters set what’s known as an “opening price” in a traditional IPO, through a process called a roadshow.",
+     "title": "Highlights from Coinbase's IPO - Stash",
+     "url": "https://www.stash.com/learn/highlights-from-coinbases-ipo/",
+     "date": "2021-04-16",
+     "last_updated": "2026-04-08",
+     "source": "web"
+    },
+    {
+     "id": 3,
+     "snippet": "A private company raises capital by selling newly-issued shares to investment banks (underwriters), which the banks \nthen sell primarily to institutional investors.\n...\nDirect Listing\n...\nA private company becomes public, typically without raising new funds in the process, by allowing existing shareholders \nto sell shares directly to the public.",
+     "title": "[PDF] What are the differences in an IPO, a SPAC, and a direct listing?",
+     "url": "https://www.sec.gov/files/registered-offerings-building-blocks.pdf",
+     "date": null,
+     "last_updated": "2024-09-22",
+     "source": "web"
+    },
+    {
+     "id": 4,
+     "snippet": "Coinbase followed the footsteps of Spotify and Palantir by choosing to go public via a direct listing where existing investors make their shares available for sale to the public, as opposed to a traditional IPO run by investment banks.",
+     "title": "Coinbase's IPO - MergerSight",
+     "url": "https://www.mergersight.com/post/coinbase-s-ipo",
+     "date": "2021-05-06",
+     "last_updated": "2026-05-15",
+     "source": "web"
+    },
+    {
+     "id": 5,
+     "snippet": "**Direct Listing** is the process by which a company goes public by getting listed on an exchange and offering existing shares directly to the open market.\n...\nThe traditional initial public offering (IPO) model has been disrupted by the emergence of direct listings, in which a company starts selling shares directly to the public.\nThe direct listing process is straightforward, as the company’s shares begin trading on an exchange, with no shares pre-negotiated and sold to institutional investors at a designated price.\nCompanies that opt for the direct listing route tend to be already well-funded (i.e. backed by more than enough capital) – therefore, there is no need for these companies to raise further capital through an IPO.\n...\nBut at the end of the day, direct listings and IPOs achieve the same objectives:\n...\n- **Institutional and Retail Investors**→ Equity Ownership Shifts from Insiders (e.g. Management, Employees, Venture Capital Firms, Growth Equity Firms) to the Broader Institutional and Retail Market\n...\nCompanies may choose to go public via a direct listing due to:\n- **Anti-Dilution**– For companies with enough capital and just seeking to get listed, the direct listing route avoids the issuance of new shares (and dilution to existing shareholders)\n- **Immediate Liquidity**– In the traditional IPO, there is a 180-day lock-up period for shareholders before shares can be sold, but in a direct listing, existing shareholders can sell their stake starting on the first day of trading\n- **Supply/Demand Structure**– Rather than establishing a fixed pricing range as done in an IPO, a direct listing resembles an unrestricted auction where the market truly sets the price\nSignificant amounts of money are also saved in a direct listing by not having to pay IPO fees to investment banks – in part due to the shorter, more efficient process.\n...\nThe dilutive impact is kept to a minimum in a direct listing, since no new capital is raised – albeit new regulations have changed the rules regarding new capital raising.\n...\nIn traditional IPOs, the share price is pre-negotiated upon gauging investor appetite before the company goes public.\nBy contrast, direct listings are priced solely on supply and demand on the date of listing – i.e. resulting in an unpredictable reaction and more volatility.",
+     "title": "Direct Listing vs. IPO | Difference + Examples - Wall Street Prep",
+     "url": "https://www.wallstreetprep.com/knowledge/direct-listing/",
+     "date": "2023-10-27",
+     "last_updated": "2026-05-20",
+     "source": "web"
+    },
+    {
+     "id": 6,
+     "snippet": "An Initial Public Offering (IPO) refers to the process by which a private company offers newly issued shares to the public for the first time.\nIn an IPO, the company typically works with one or more underwriters, often investment banks, that assist with pricing, marketing, and distributing shares to investors.\nIPOs generally involve a structured pricing process, where the offering price is set before trading begins based on company financials, market conditions, and investor demand.\nShares are often allocated to institutional investors before becoming available to the broader public once trading starts on a public exchange.\n...\nA Direct Listing allows a company’s existing shares to begin trading on a public exchange without issuing new shares or relying on underwriters in the traditional IPO sense.\nInstead of raising new capital, the primary focus of a Direct Listing is generally on providing liquidity to existing shareholders, such as employees, founders, and early investors.\nIn a Direct Listing, the opening share price is typically determined by market supply and demand rather than being set in advance.\nBecause no new shares are issued, the company generally does not receive proceeds from initial trading activity.\n...\nNot necessarily.\nIPOs and SPAC transactions generally involve raising new capital, while Direct Listings primarily focus on enabling existing shareholders to sell shares without issuing new ones.",
+     "title": "Direct Listing vs IPO vs SPAC Paths to the Public Markets...",
+     "url": "https://www.startengine.com/blog/direct-listing-vs-ipo-vs-spac",
+     "date": "2026-01-28",
+     "last_updated": "2026-05-20",
+     "source": "web"
+    },
+    {
+     "id": 7,
+     "snippet": "This means they simply listed what shares they have instead of issuing new shares via a typical IPO route.\n...\n{ts:157} you may have heard of an initial public offering before or an IPO this is where a company will create and issue new\n{ts:163} shares to the general public at a set price and in doing so raise a ton of cash for its operations however a\n...\n{ts:183} instead coinbase decided to proceed with a direct listing instead of an IPO this is where they simply take all the shares\n{ts:190} that are currently issued and put them on a public Stock Exchange in this case the NASDAQ Stock Exchange Founders and\n{ts:196} early investors can sell their holding and make an exit and new participants can buy shares in speculation that the",
+     "title": "The Coinbase Direct Listing Explained - YouTube",
+     "url": "https://www.youtube.com/watch?v=IGV-eSpcuck",
+     "date": "2021-04-18",
+     "last_updated": "2025-10-11",
+     "source": "web"
+    },
+    {
+     "id": 8,
+     "snippet": "Coinbase, one of the largest cryptocurrency exchanges in the US, has announced plans to go public but it will eschew the traditional initial public offering process, opting instead for a direct listing.\n...\nAs Coinbase opted for a direct listing as opposed to an IPO, retail investors will need to wait for when shares can be publicly bought and sold in order to purchase stocks.",
+     "title": "Blending Crypto and Stocks: What Does Coinbase Direct Listing Mean for Crypto Landscape? - Coinspeaker",
+     "url": "https://www.coinspeaker.com/coinbase-listing-crypto-landscape/",
+     "date": "2021-03-29",
+     "last_updated": "2025-06-09",
+     "source": "web"
+    },
+    {
+     "id": 9,
+     "snippet": "Also called a direct public offering or direct placement, a direct listing allows people who already hold shares to sell them directly.\nIn this model, companies don’t have to deal with (and pay) underwriters.\nIt also lets them avoid creating new shares and diluting ownership.\nThere are no intermediaries involved.^1^\n...\nThe main differences between an IPO and a direct listing include the underwriting process, pricing, and timing.\n...\nIn a direct listing, there are no underwriters involved.\nAn investment bank may provide advice, but it has a limited role.\nShareholders sell their stock directly to the public.^3^\n...\nWith an IPO, existing shares are usually locked up for 180 days.\nThis prevents insiders from selling their shares during this time.\nStocks are typically sold to investment banks initially.\nWith a direct listing, shares can be sold immediately.\nThere’s no lockup period, and existing shareholders have immediate liquidity.^3^\n...\nIPOs are more expensive than direct listings.\nUnderwriters charge a percentage of the gross sales, and there are additional expenses related to roadshows and publicity.",
+     "title": "IPO vs Direct Listing: Understanding the Key Differences",
+     "url": "https://onlinemba.ku.edu/experience-ku/mba-blog/ipo-vs-direct-listing",
+     "date": "2024-12-11",
+     "last_updated": "2026-03-16",
+     "source": "web"
+    },
+    {
+     "id": 10,
+     "snippet": "The event was notable for several reasons: Coinbase, with 56 million registered users, became the first crypto company to list on a US stock exchange; it was also Nasdaq’s first major direct listing.\nThe firm sidestepped a typical IPO and the increasingly popular special purpose acquisition company (SPAC) as routes to the public.\nAs CEO Brian Armstrong told CNBC, “I wanted there to be just a true market on day one that set the price, not something that was set behind closed doors.”\nThe direct listing, which provides greater accessibility to retail investors, is also more “true to the [democratic] ethos of crypto,” he added.",
+     "title": "Coinbase Direct Listing Steadies Crypto Industry",
+     "url": "https://gfmag.com/features/coinbase-direct-listing-steadies-crypto-industry/",
+     "date": "2021-05-05",
+     "last_updated": "2025-10-29",
+     "source": "web"
+    },
+    {
+     "id": 11,
+     "snippet": "A direct listing differs from an IPO in that a company lists its existing stock without hiring underwriters to \nsell new shares and raise fresh money.\n...\nDirect listings can also save companies on underwriting fees.\nRather than hire investment banks to \nmarket and price new shares, companies conducting direct listings hire financial advisers, who play a\nmore limited role of linking buyers and sellers of existing stock at agreed prices.",
+     "title": "Coinbase's Public Listing Plans Shine Spotlight On Crypto",
+     "url": "https://www.crowell.com/a/web/bUWLyhYZmLFmezj8hyV5QX/4Ttk1y/20210129-coinbases-public-listing-plans-shine-spotlight-on-crypto.pdf",
+     "date": null,
+     "last_updated": "2025-03-26",
+     "source": "web"
+    }
+   ],
+   "type": "search_results",
+   "queries": [
+    "IPO vs direct listing differences",
+    "Coinbase direct listing 2021 reasons",
+    "Coinbase why chose direct listing over IPO 2021"
+   ]
+  },
+  {
+   "id": "msg_0d1729b8-2a0e-47a4-97c1-b113b65f80db",
+   "content": [
+    {
+     "text": "An IPO issues new shares through underwriters to raise capital at a predetermined offering price, while a direct listing simply lists existing shares for trading without raising new money or using traditional underwriters, letting the market set the price. [web:1][web:3][web:5] Coinbase chose a direct listing in 2021 because it did not need to raise capital, wanted market-driven price discovery aligned with crypto’s open-market ethos, and could save on IPO fees while giving existing shareholders immediate liquidity. [web:4][web:5][web:10][web:11]  \n\n## IPO vs direct listing  \n\n- In an **IPO**, a company typically sells newly issued shares to the public through investment banks that act as underwriters, which help set the offer price, market the deal, and allocate shares, and the company receives new capital from the proceeds. [web:3][web:6]  \n- In a **direct listing**, the company usually does not issue new shares; instead, existing shareholders (founders, employees, early investors) sell their shares directly on the exchange, and the company generally does not raise new funds in the process. [web:1][web:3][web:5][web:6]  \n\n- IPOs use underwriters who build a book of demand and set an offering price before trading begins, creating a more controlled pricing process. [web:1][web:5][web:6][web:9]  \n- Direct listings do not have traditional underwriting; the opening trading price is set by supply and demand on the exchange (often via a reference price) and can be more volatile and unpredictable. [web:1][web:2][web:5][web:6]  \n\n- IPOs are typically more expensive because underwriters charge a percentage of the offering and there are costs for roadshows and marketing. [web:1][web:5][web:9][web:11]  \n- Direct listings tend to be cheaper because there are no underwriting fees and banks act only as financial advisers with a more limited role. [web:1][web:5][web:9][web:11]  \n\n- In many IPOs, insiders face a lockup period (often around 180 days) before they can sell shares, limiting immediate liquidity. [web:1][web:6][web:9]  \n- In a direct listing, there is typically no lockup, so existing shareholders can sell on day one, providing immediate liquidity. [web:1][web:5][web:6][web:9]  \n\n## Why Coinbase chose direct listing  \n\n- Coinbase was already well funded and did not need to raise additional capital, which made a direct listing attractive since that mechanism focuses on listing and liquidity rather than fundraising. [web:4][web:5][web:11]  \n- A direct listing avoided dilution from issuing new shares, which helped preserve ownership percentages for existing investors and employees. [web:5][web:6][web:11]  \n\n- CEO Brian Armstrong stated that he wanted “a true market on day one” with a price set in the open market rather than “behind closed doors,” so a direct listing’s market-driven pricing fit this goal. [web:10]  \n- This approach was described as more in line with the **democratic** and open ethos of crypto markets, reinforcing Coinbase’s brand positioning in the digital-asset space. [web:10]  \n\n- By choosing a direct listing, Coinbase could save substantial underwriting fees compared with a traditional IPO while still achieving a major listing on Nasdaq. [web:5][web:11]  \n- The structure also gave early investors and employees immediate liquidity on listing day, which is a common reason high-profile tech and fintech firms such as Spotify and Palantir have used direct listings. [web:4][web:5]",
+     "type": "output_text",
+     "annotations": [],
+     "logprobs": []
+    }
+   ],
+   "role": "assistant",
+   "status": "completed",
+   "type": "message"
+  }
+ ],
+ "status": "completed",
+ "error": null,
+ "usage": {
+  "input_tokens": 6821,
+  "output_tokens": 852,
+  "total_tokens": 7673,
+  "cost": {
+   "currency": "USD",
+   "input_cost": 0.00405,
+   "output_cost": 0.00852,
+   "total_cost": 0.01552,
+   "cache_creation_cost": null,
+   "cache_read_cost": 0.00045,
+   "tool_calls_cost": 0.0025
+  },
+  "input_tokens_details": {
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 3584,
+   "cached_tokens": 3584
+  },
+  "tool_calls_details": {
+   "search_web": {
+    "invocation": 1
+   }
+  },
+  "output_tokens_details": {
+   "reasoning_tokens": 0
+  }
+ },
+ "background": false,
+ "completed_at": 1779391925,
+ "frequency_penalty": 0,
+ "incomplete_details": null,
+ "instructions": "## Abstract\n<role>\nYou are an AI assistant developed by Perplexity AI. Given a user's query, your goal is to generate an expert, useful, factually correct, and contextually relevant response by leveraging available tools and conversation history. First, you will receive the tools you can call iteratively to gather the necessary knowledge for your response. You need to use these tools rather than using internal knowledge. Second, you will receive guidelines to format your response for clear and effective presentation. Third, you will receive guidelines for citation practices to maintain factual accuracy and credibility.\n</role>\n\n## Instructions\n<tools_workflow>\nBegin each turn with tool calls to gather information. You must call at least one tool before answering, even if information exists in your knowledge base. Decompose complex user queries into discrete tool calls for accuracy and parallelization. After each tool call, assess if your output fully addresses the query and its subcomponents. Continue until the user query is resolved or until the <tool_call_limit> below is reached. End your turn with a comprehensive response. Never mention tool calls in your final response as it would badly impact user experience.\n\n<tool_call_limit> Make at most three tool calls before concluding.</tool_call_limit>\n</tools_workflow>\n\n## Citation Instructions\n<citation_instructions>\nYour response must include at least 1 citation. Add a citation to every sentence that includes information derived from tool outputs.\nTool results are provided using `id` in the format `type:index`. `type` is the data source or context. `index` is the unique identifier per citation.\n<common_source_types> are included below.\n\n<common_source_types>\n- `web`: Internet sources\n- `page`: Full web page content\n- `conversation_history`: past queries and answers from your interaction with the user\n</common_source_types>\n\n<formatting_citations>\nUse brackets to indicate citations like this: [type:index]. Commas, dashes, or alternate formats are not valid citation formats. If citing multiple sources, write each citation in a separate bracket like [web:1][web:2][web:3].\n\nCorrect: \"The Eiffel Tower is in Paris [web:3].\"\nIncorrect: \"The Eiffel Tower is in Paris [web-3].\"\n</formatting_citations>\n\nYour citations must be inline - not in a separate References or Citations section. Cite the source immediately after each sentence containing referenced information. If your response presents a markdown table with referenced information from `web`, `memory`, `attached_file`, or `calendar_event` tool result, cite appropriately within table cells directly after relevant data instead in of a new column. Do not cite `generated_image` or `generated_video` inside table cells.\n\n## Response Guidelines\n<response_guidelines>\nResponses are displayed on web interfaces where users should not need to scroll extensively. Limit responses to 5 sections maximum. Users can ask follow-up questions if they need additional detail. Prioritize the most relevant information for the initial query.\n\n### Answer Formatting\n- Begin with a direct 1-2 sentence answer to the core question.\n- Organize the rest of your answer into sections led with Markdown headers (using ##, ###) when appropriate to ensure clarity (e.g. entity definitions, biographies, and wikis).\n- Your answer should be at least 3 sentences long.\n- Each Markdown header should be concise (less than 6 words) and meaningful.\n- Markdown headers should be plain text, not numbered.\n- Between each Markdown header is a section consisting of 2-3 well-cited sentences.\n- When comparing entities with multiple dimensions, use a markdown table to show differences (instead of lists).\n- Whenever possible, present information as bullet point lists to improve readability.\n- You are allowed to bold at most one word (**example**) per paragraph. You can't bold consecutive words.\n- For grouping multiple related items, present the information with a mix of paragraphs and bullet point lists. Do not nest lists within other lists.\n\n### Tone\n<tone>\nExplain clearly using plain language. Use active voice and vary sentence structure to sound natural. Ensure smooth transitions between sentences. Avoid personal pronouns like \"I\". Keep explanations direct; use examples or metaphors only when they meaningfully clarify complex concepts that would otherwise be unclear.\n</tone>\n\n### Lists and Paragraphs\n<lists_and_paragraphs>\nUse lists for: multiple facts/recommendations, steps, features/benefits, comparisons, or biographical information.\n\nAvoid repeating content in both intro paragraphs and list items. Keep intros minimal. Either start directly with a header and list, or provide 1 sentence of context only.\n\nList formatting:\n- Use numbers when sequence matters; otherwise bullets (-) with a space after the dash.\n- Use numbers when sequence matters; otherwise bullets (-).\n- No whitespace before bullets (i.e. no indenting), one item per line.\n- Sentence capitalization; periods only for complete sentences.\n\nParagraphs:\n- Use for brief context (2-3 sentences max) or simple answers\n- Separate with blank lines\n- If exceeding 3 consecutive sentences, consider restructuring as a list\n</lists_and_paragraphs>\n\n### Summaries and Conclusions\n<summaries_and_conclusions>\nAvoid summaries and conclusions. They are not needed and are repetitive. Markdown tables are not for summaries. For comparisons, provide a table to compare, but avoid labeling it as 'Comparison/Key Table', provide a more meaningful title.\n</summaries_and_conclusions>\n\n## Prohibited Meta-Commentary\n<prohibited_commentary>\n- Never reference your information gathering process in your final answer.\n- Do not use phrases such as:\n- \"Based on my search results...\"\n- \"Now I have gathered comprehensive information...\"\n- \"According to my research...\"\n- \"My search revealed...\"\n- \"I found information about...\"\n- \"Let me provide a detailed answer...\"\n- \"Let me compile this information...\"\n- \"Short Answer: ...\"\n- Begin answers immediately with factual content that directly addresses the user's query.\n</prohibited_commentary>\n\n<copyright_requirements>\n- Never reproduce copyrighted content (text, lyrics, etc.)\n- You may share public domain content (expired copyrights, traditional works)\n- When copyright status is uncertain, treat as copyrighted\n- Keep summaries brief (under 30 words) and original — don't reconstruct sources\n- Brief factual statements (names, dates, facts) are always acceptable\n</copyright_requirements>\n\nCurrent date: Thursday, May 21, 2026\n\n",
+ "max_output_tokens": 8192,
+ "max_tool_calls": null,
+ "metadata": {},
+ "parallel_tool_calls": true,
+ "presence_penalty": 0,
+ "previous_response_id": null,
+ "prompt_cache_key": null,
+ "reasoning": null,
+ "safety_identifier": null,
+ "service_tier": "default",
+ "store": true,
+ "temperature": 1,
+ "text": {
+  "format": {
+   "type": "text"
+  }
+ },
+ "tool_choice": "auto",
+ "tools": [
+  {
+   "type": "web_search"
+  },
+  {
+   "type": "fetch_url"
+  }
+ ],
+ "top_logprobs": 0,
+ "top_p": 1,
+ "truncation": "disabled",
+ "user": null
+}

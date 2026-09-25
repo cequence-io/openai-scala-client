@@ -6,6 +6,10 @@ sealed abstract class EndPoint(value: String = "") extends NamedEnumValue(value)
 
 object EndPoint {
   case object chatCompletion extends EndPoint("chat/completions")
+  case object agent extends EndPoint("v1/agent")
+  case object models extends EndPoint("v1/models")
+  // Perplexity's OpenAI-compatible alias of v1/agent
+  case object responses extends EndPoint("v1/responses")
 }
 
 sealed trait Param extends EnumValue
@@ -26,4 +30,9 @@ object Param {
   case object temperature extends Param
   case object top_k extends Param
   case object top_p extends Param
+
+  // any body field by its JSON name (the Agent API body is built as JSON in AgentJsonFormats)
+  final case class Raw(name: String) extends Param {
+    override def toString: String = name
+  }
 }

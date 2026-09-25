@@ -586,6 +586,40 @@ object JsonFormats {
   implicit lazy val incompleteDetailsFormat: Format[IncompleteDetails] =
     Json.format[IncompleteDetails]
 
+  private lazy val knownOutputTypes = Set(
+    "message",
+    "file_search_call",
+    "web_search_call",
+    "computer_call",
+    "function_call",
+    "reasoning",
+    "image_generation_call",
+    "code_interpreter_call",
+    "local_shell_call",
+    "mcp_call",
+    "mcp_list_tools",
+    "mcp_approval_request",
+    "custom_tool_call"
+  )
+
+  // output items of an unknown type (e.g. the `search_results` of Responses-compatible
+  // providers such as Perplexity) are skipped with a warning instead of failing the whole
+  // response; a malformed item of a known type still fails
+  private def tolerantOutputs(output: JsLookupResult): JsResult[Seq[Output]] =
+    output.validateOpt[Seq[JsValue]].flatMap { items =>
+      val (known, unknown) = items.getOrElse(Nil).partition { item =>
+        (item \ "type").asOpt[String].exists(knownOutputTypes.contains)
+      }
+      if (unknown.nonEmpty)
+        responsesLogger.warn(
+          s"Responses API: skipping output items of unknown type(s): ${unknown.flatMap(i => (i \ "type").asOpt[String]).distinct.mkString(", ")}"
+        )
+      Json.toJson(known).validate[Seq[Output]]
+    }
+
+  private lazy val responsesLogger =
+    org.slf4j.LoggerFactory.getLogger("io.cequence.openaiscala.responsesapi")
+
   // needed because we exceed 22 parameters limit in case class
   implicit lazy val responseFormat: Format[Response] = new Format[Response] {
     def reads(json: JsValue): JsResult[Response] = {
@@ -602,7 +636,7 @@ object JsonFormats {
         metadata <- (json \ "metadata").validateOpt[Map[String, String]]
         model <- (json \ "model").validate[String]
         objectType <- (json \ "object").validateOpt[String].map(_.getOrElse("response"))
-        output <- (json \ "output").validateOpt[Seq[Output]].map(_.getOrElse(Nil))
+        output <- tolerantOutputs(json \ "output")
         parallelToolCalls <- (json \ "parallel_tool_calls").validate[Boolean]
         previousResponseId <- (json \ "previous_response_id").validateOpt[String]
         prompt <- (json \ "prompt").validateOpt[Prompt]
@@ -617,7 +651,8 @@ object JsonFormats {
         tools <- (json \ "tools").validateOpt[Seq[Tool]].map(_.getOrElse(Nil))
         topLogprobs <- (json \ "top_logprobs").validateOpt[Int]
         topP <- (json \ "top_p").validateOpt[Double]
-        truncation <- (json \ "truncation").validateOpt[TruncationStrategy]
+        // tolerant: an unknown value (e.g. Perplexity's "") is treated as absent
+        truncation <- JsSuccess((json \ "truncation").asOpt[TruncationStrategy])
         usage <- (json \ "usage").validateOpt[UsageInfo]
         user <- (json \ "user").validateOpt[String]
       } yield Response(

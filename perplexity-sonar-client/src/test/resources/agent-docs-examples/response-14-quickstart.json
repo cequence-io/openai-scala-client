@@ -1,0 +1,195 @@
+{
+ "id": "resp_ef76b85e-1a63-4c0f-97ce-9e58dd1d050a",
+ "created_at": 1779391739,
+ "model": "openai/gpt-5.1",
+ "object": "response",
+ "output": [
+  {
+   "results": [
+    {
+     "id": 1,
+     "snippet": "When we program GPUs , we produce sequences of instructions for its Streaming Multiprocessors to carry out.\nStreaming Multiprocessors (SMs) of NVIDIA GPUs are roughly analogous to the\ncores of CPUs.\nThat is, SMs both execute computations and store state available\nfor computation in registers, with associated caches.\nCompared to CPU cores, GPU\nSMs are simple, weak processors.\nExecution in SMs is pipelined within an\ninstruction (as in almost all CPUs since the 1990s) but there is no speculative\nexecution or instruction pointer prediction (unlike all contemporary\nhigh-performance CPUs).\n...\nAn H100 SXM GPU draws at most 700 W and has 132 SMs, each of which has four\nWarp Schedulers that can each issue instructions to 32 threads (aka a warp ) in parallel per clock cycle, for a total of 128 × 132 > 16,000 parallel threads running at about 5 cW apiece.\n...\nGPU SMs also support a large number of *concurrent* threads -- threads of execution whose instructions are interleaved.\nA single SM on an H100 can concurrently execute up to 2048 threads split across\n64 thread groups of 32 threads each.\nWith 132 SMs, that's a total of over\n250,000 concurrent threads.\nCPUs can also run many threads concurrently.\nBut switches between\nwarps happen at the speed of a single clock cycle (over 1000x faster than context switches on a CPU), again powered by the SM's Warp Schedulers . The volume of available warps and the speed of warp switches help hide latency caused by memory reads, thread synchronization, or other expensive instructions, ensuring that the arithmetic bandwidth provided by the CUDA Cores and Tensor Cores is well utilized.",
+     "title": "What is a Streaming Multiprocessor? | GPU Glossary - Modal",
+     "url": "https://modal.com/gpu-glossary/device-hardware/streaming-multiprocessor",
+     "date": null,
+     "last_updated": "2026-05-15",
+     "source": "web"
+    },
+    {
+     "id": 2,
+     "snippet": "NVIDIA doesn’t call these tiles “cores” at all — it calls them Graphics Processing Clusters, or “GPCs”.\n...\nIn this area of the chip, we expect to find 16 load/store units, 4 special function units, 128 CUDA cores, and 4 Tensor cores.\n...\nStarting here on the GPU side, we know that each one of these streaming multiprocessors has 128 CUDA cores and 4 Tensor cores:\n...\nThis gives us a grand total of 8 Zen 4 cores on the CPU, 18,432 CUDA cores and 576 Tenser cores on the GPU:\n...\nSpecifically, we know that an Ada Streaming Multiprocessor has 128 CUDA cores and 4 Tensor cores.",
+     "title": "Zen, CUDA, and Tensor Cores, Part I: The Silicon",
+     "url": "https://www.computerenhance.com/p/zen-cuda-and-tensor-cores-part-i",
+     "date": "2024-09-03",
+     "last_updated": "2026-05-19",
+     "source": "web"
+    },
+    {
+     "id": 3,
+     "snippet": "The terminology section defines a Streaming Multiprocessor (SM) as something that: “executes compute instructions on the GPU.”\n...\nSMs are the GPU’s core units running compute instructions.\nGPU engines include SMs plus other parts like copy or video engines handling various tasks.",
+     "title": "Difference between Streaming Multiprocessor and Compute Engine?",
+     "url": "https://forums.developer.nvidia.com/t/difference-between-streaming-multiprocessor-and-compute-engine/300154",
+     "date": "2024-07-17",
+     "last_updated": "2026-04-28",
+     "source": "web"
+    },
+    {
+     "id": 4,
+     "snippet": "The INT32 units do integer calculations, the FP32 and FP64 units floating-point calculations.\nLD/ST are load-store units, the SFU calculates special functions (e.g. sin/cos).\n...\nAs @rs277 already explained, when people speak of a GPU with *n* “CUDA cores” they mean a GPU with *n* FP32 cores, each of which can perform one single-precision fused multiply-add operation (FMA) per cycle.\nThe number of “CUDA cores” does not indicate anything in particular about the number of 32-bit integer ALUs, or FP64 cores, or multi-function units, or “Tensor cores” (which I would also consider a marketing term).",
+     "title": "Understanding of Tensor Core, Cuda Core and other cores in ...",
+     "url": "https://forums.developer.nvidia.com/t/understanding-of-tensor-core-cuda-core-and-other-cores-in-ampere-architecture/235900",
+     "date": "2022-12-01",
+     "last_updated": "2026-05-10",
+     "source": "web"
+    },
+    {
+     "id": 5,
+     "snippet": "A Streaming Multiprocessor (SM) is a fundamental component of NVIDIA GPUs, consisting of multiple Stream Processors (CUDA Core) responsible for executing instructions in parallel.\nThey are general purpose processors with a low clock rate target and a small cache.\n...\nConsists of:\n- SUPER LARGE Register File - This is how they can context switch quickly with no overhead, by keeping data on registers, see Warp Scheduling\n- Caches and shared memory\n- Warp Scheduler\n- Execution units (SFUs, CUDA Cores and Tensor Cores)\n...\n> SMs execute several thread blocks in parallel.\nAs soon as one of its thread block has completed execution, it takes up the serially next thread block.\nFrom Stephen Jones, I learned that each SM can managed 64 warps, so a total of 2048 threads.\nHowever, it really processes 4 warps at a time (see Warp Scheduling).\n...\n> An SM may contain up to 8 thread blocks in total.\n...\n> In general, SMs support instruction-level parallelism but not branch prediction.\nEach architecture in GPU consists of several SM.",
+     "title": "Streaming Multiprocessor (SM) - Steven Gong",
+     "url": "https://stevengong.co/notes/Streaming-Multiprocessor",
+     "date": "2026-02-07",
+     "last_updated": "2026-05-20",
+     "source": "web"
+    },
+    {
+     "id": 6,
+     "snippet": "By tightly integrating these Tensor Cores with expanded special function units within NVIDIA Rubin’s streaming multiprocessors, the platform significantly accelerates attention mechanisms and sparse compute paths,  boosting both arithmetic density and energy efficiency without compromising model accuracy.",
+     "title": "NVIDIA Tensor Cores",
+     "url": "https://www.nvidia.com/en-us/data-center/tensor-cores/",
+     "date": "2026-03-16",
+     "last_updated": "2026-05-20",
+     "source": "web"
+    },
+    {
+     "id": 7,
+     "snippet": "Nvidia solved the problem of escalating complexity with its \"unified\" Tesla architecture, released in 2006.\nIn the G80 die, there is no more distinction between layers.\nThe Stream Multiprocessor (SM) replaces all previous units thanks to its ability to run vertex, fragment and geometry \"kernel\" without distinction.\nThe load balancing happens automatically by swapping the \"kernel\" run by each SM depending on the need of the pipeline.\nNo longer SIMD capable, \"shaders units\" are now \"core\" capable of one integer or one float32 instruction per clock.\nSM receive threads in groups of 32 called warps.\nIdeally all threads in a warp will execute the same instruction at the same time, only on different data (hence the name SIMT).\nThe Multi-threaded Instruction Unit (MT) takes care of enabling/disabling threads in a warp in case their Instruction Pointer (IP) converge/diverge.\nTwo SFU units are here to help with complex mathematic calculation such as inverse square root, sin, cos, exp, and rcp.\nThese units are also able to execute one instruction per clock but since there are only two of them, warp execution speed is divided by four.\nThere is no hardware support for float64, it is done in software and greatly affects the execution speed.\n...\nThe SM needs to be fed instructions and data which resides in the GPU memory.\nTo avoid stalling, GPUs don't try to avoid memory trips with a lot of cache and speculation like CPUs do.\n...\nThe execution model still revolves around warps of 32 threads scheduled on a SM.\nOnly thanks to a process of 40nm, NVidia doubled/quadrupled everything.\nA SM can now schedule two half-warp (16 threads) simultaneously thanks to two arrays of 16 CUDA cores.\nWith each core executing one instruction per clock, a SM can retire one warp instruction per clock (4x the capacity of Tesla SM).\n...\nThere is a semi-hardware support for float64 where operations are carried by two CUDA core combined.\n...\nWith four warp scheduler able to process a whole warp in one clock (compared to Fermi's half-warp design) the SMX now contains 192 cores.\n...\nWith the release of Turing in 2018, Nvidia operated its \"biggest architectural leap forward in over a decade\"^[13]^.\nNot only the \"Turing SM\" added A.I dedicated Tensor cores, they also gained Raytracing cores.\n...\nBesides the new cores, Turing added three major features.\nFirst, the CUDA core is now a super-scalar able to execute both integer instruction and float instruction in parallel.\n...\nSecond, the new GDDR6X memory sub-system, backed by 16 controllers, can now achieve 14 Gbps.\nLast, threads are no longer sharing their Instruction Pointer in a warp.\nThanks to Independent Thread Scheduling introduced in Volta each thread has its own IP.\nAs a result, SMs are free to fine schedule threads in a warp without the need to make them converge as soon as possible.\n...\nThe next architecture, codenamed Ampere, is rumored to be announced later in 2020.",
+     "title": "A history of NVidia Stream Multiprocessor - Fabien Sanglard",
+     "url": "https://fabiensanglard.net/cuda/",
+     "date": "2020-05-02",
+     "last_updated": "2026-05-18",
+     "source": "web"
+    },
+    {
+     "id": 8,
+     "snippet": "According to Michael Houston from NVIDIA, Tensor Cores are specialized hardware units designed to accelerate mixed precision training.",
+     "title": "Tensor Cores Explained in Simple Terms - DigitalOcean",
+     "url": "https://www.digitalocean.com/community/tutorials/understanding-tensor-cores",
+     "date": "2025-08-04",
+     "last_updated": "2026-05-18",
+     "source": "web"
+    },
+    {
+     "id": 9,
+     "snippet": "2. You’ve already figured out the constant cache is 8kB per SM.\nIt’s not configurable (not sure what you would configure about it, anyway).",
+     "title": "Multiprocessor architecture - CUDA - NVIDIA Developer Forums",
+     "url": "https://forums.developer.nvidia.com/t/multiprocessor-architecture/159951",
+     "date": "2020-11-19",
+     "last_updated": "2026-05-19",
+     "source": "web"
+    },
+    {
+     "id": 10,
+     "snippet": "CUDA Cores are the fundamental processing units inside NVIDIA GPUs, and they handle parallel computations.\n...\nCUDA Cores are the generalists.\nThey handle standard floating-point operations, integer math, and general-purpose parallel computing tasks.\n...\nCUDA Cores handle general parallel computing tasks like data preprocessing and activation functions, while **Tensor Cores** specialize in the matrix multiplications that dominate neural network training.\nBoth work together to accelerate your complete machine learning pipeline.",
+     "title": "NVIDIA CUDA Cores: How They Work and Why They Matter (2026)",
+     "url": "https://www.thundercompute.com/blog/cuda-cores-explained-ai-training",
+     "date": "2026-05-17",
+     "last_updated": "2026-05-14",
+     "source": "web"
+    },
+    {
+     "id": 11,
+     "snippet": "The GPU’s memory bandwidth determines how fast it can move data from/to memory (vRAM) to the computation cores.\nIt’s a more representative indicator than GPU Memory Speed.\nIt is determined by the data transmission speed between memory and computation cores and the number of individual parallel links in the bus between these two parts.\n...\nGPU memory bandwidth refers to the rate at which data can be transferred between the GPU and its memory (VRAM).\nIt is measured in gigabytes per second (GB/s) and plays a critical role in handling large datasets, real-time rendering, and AI/ML workloads.",
+     "title": "GPU Memory Bandwidth and Its Impact on Performance - DigitalOcean",
+     "url": "https://www.digitalocean.com/community/tutorials/gpu-memory-bandwidth",
+     "date": "2025-08-05",
+     "last_updated": "2026-05-18",
+     "source": "web"
+    }
+   ],
+   "type": "search_results",
+   "queries": [
+    "NVIDIA streaming multiprocessor architecture overview",
+    "NVIDIA CUDA cores and tensor cores definition",
+    "NVIDIA HBM memory bandwidth explanation"
+   ]
+  },
+  {
+   "id": "msg_64a3d245-e4a5-494f-85ea-53211b74bf68",
+   "content": [
+    {
+     "text": "NVIDIA’s GPU compute model is built around many simple parallel cores grouped into streaming multiprocessors (SMs), backed by very high memory bandwidth (often HBM) so those cores stay busy. [web:1][web:11] SMs contain CUDA cores for general arithmetic and Tensor Cores for dense matrix math, all fed by wide, fast VRAM links. [web:2][web:5][web:6][web:10]\n\n## Streaming multiprocessors (SMs)\n\nAn SM is the fundamental **compute** block of an NVIDIA GPU, roughly analogous to a CPU core but designed to run thousands of lightweight threads in parallel. [web:1][web:5][web:7] Each SM has its own register file, caches/shared memory, warp schedulers, and execution units (CUDA cores, Tensor Cores, special‑function units, load/store units). [web:1][web:5][web:9]\n\nThe programming model launches many threads that are grouped into warps of 32 threads, and warps are scheduled onto SMs. [web:1][web:7] An SM can keep many warps resident (for example up to 64 warps / 2048 threads on recent parts) and quickly switch between them every cycle to hide memory latency instead of relying on deep caches or speculation. [web:1][web:5][web:7]\n\n## CUDA cores\n\n“CUDA cores” are the scalar FP32 execution units inside an SM that perform general-purpose parallel arithmetic. [web:4][web:10] In common usage, the advertised “N CUDA cores” number means N single‑precision units, each capable of roughly one fused multiply‑add (FMA) per cycle for floating‑point math. [web:4][web:2]\n\nCUDA cores handle the bulk of standard GPU work: floating‑point math, integer math, and general GPGPU tasks like elementwise ops, reductions, and control-heavy kernels. [web:4][web:10] An SM in a modern Ada architecture GPU, for example, might have 128 CUDA cores, and a large GPU aggregates many SMs to reach tens of thousands of CUDA cores in total. [web:2][web:7][web:10]\n\n## Tensor Cores\n\nTensor Cores are specialized matrix‑math units inside SMs designed to accelerate small matrix multiply‑accumulate operations, especially for deep learning. [web:6][web:8] They operate on tiles (e.g., 4×4, 16×16 depending on architecture) in mixed or reduced precision (FP16, BF16, TF32, INT8, etc.), delivering far higher throughput than doing the same operations on CUDA cores. [web:6][web:8]\n\nIn NVIDIA’s architectures since Volta/Turing, each SM includes multiple Tensor Cores alongside its CUDA cores (e.g., one Ada SM has 4 Tensor Cores and 128 CUDA cores). [web:2][web:7] The CUDA programming model or frameworks like cuDNN, TensorRT, and PyTorch map large GEMM/convolution ops into many tile operations, which Tensor Cores execute to accelerate training and inference. [web:6][web:8][web:10]\n\n## HBM and memory bandwidth\n\nGPU memory bandwidth is the rate at which data can be moved between GPU cores (inside SMs) and VRAM, typically measured in GB/s. [web:11] High bandwidth is crucial because massively parallel SMs can consume data extremely quickly and will stall if memory cannot supply operands fast enough. [web:1][web:11]\n\nHigh Bandwidth Memory (HBM) is a 3D‑stacked DRAM technology with a very wide bus that provides much higher bandwidth at lower power than traditional GDDR. [web:11] NVIDIA’s data‑center GPUs pair many SMs and Tensor Cores with HBM so that large models and tensors can be streamed efficiently, ensuring the arithmetic units (CUDA and Tensor Cores) can run near peak utilization rather than waiting on data. [web:1][web:6][web:11]",
+     "type": "output_text",
+     "annotations": [],
+     "logprobs": []
+    }
+   ],
+   "role": "assistant",
+   "status": "completed",
+   "type": "message"
+  }
+ ],
+ "status": "completed",
+ "error": null,
+ "usage": {
+  "input_tokens": 6685,
+  "output_tokens": 915,
+  "total_tokens": 7600,
+  "cost": {
+   "currency": "USD",
+   "input_cost": 0.00388,
+   "output_cost": 0.00915,
+   "total_cost": 0.01598,
+   "cache_creation_cost": null,
+   "cache_read_cost": 0.00045,
+   "tool_calls_cost": 0.0025
+  },
+  "input_tokens_details": {
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 3584,
+   "cached_tokens": 3584
+  },
+  "tool_calls_details": {
+   "search_web": {
+    "invocation": 1
+   }
+  },
+  "output_tokens_details": {
+   "reasoning_tokens": 0
+  }
+ },
+ "background": false,
+ "completed_at": 1779391739,
+ "frequency_penalty": 0,
+ "incomplete_details": null,
+ "instructions": "## Abstract\n<role>\nYou are an AI assistant developed by Perplexity AI. Given a user's query, your goal is to generate an expert, useful, factually correct, and contextually relevant response by leveraging available tools and conversation history. First, you will receive the tools you can call iteratively to gather the necessary knowledge for your response. You need to use these tools rather than using internal knowledge. Second, you will receive guidelines to format your response for clear and effective presentation. Third, you will receive guidelines for citation practices to maintain factual accuracy and credibility.\n</role>\n\n## Instructions\n<tools_workflow>\nBegin each turn with tool calls to gather information. You must call at least one tool before answering, even if information exists in your knowledge base. Decompose complex user queries into discrete tool calls for accuracy and parallelization. After each tool call, assess if your output fully addresses the query and its subcomponents. Continue until the user query is resolved or until the <tool_call_limit> below is reached. End your turn with a comprehensive response. Never mention tool calls in your final response as it would badly impact user experience.\n\n<tool_call_limit> Make at most three tool calls before concluding.</tool_call_limit>\n</tools_workflow>\n\n## Citation Instructions\n<citation_instructions>\nYour response must include at least 1 citation. Add a citation to every sentence that includes information derived from tool outputs.\nTool results are provided using `id` in the format `type:index`. `type` is the data source or context. `index` is the unique identifier per citation.\n<common_source_types> are included below.\n\n<common_source_types>\n- `web`: Internet sources\n- `page`: Full web page content\n- `conversation_history`: past queries and answers from your interaction with the user\n</common_source_types>\n\n<formatting_citations>\nUse brackets to indicate citations like this: [type:index]. Commas, dashes, or alternate formats are not valid citation formats. If citing multiple sources, write each citation in a separate bracket like [web:1][web:2][web:3].\n\nCorrect: \"The Eiffel Tower is in Paris [web:3].\"\nIncorrect: \"The Eiffel Tower is in Paris [web-3].\"\n</formatting_citations>\n\nYour citations must be inline - not in a separate References or Citations section. Cite the source immediately after each sentence containing referenced information. If your response presents a markdown table with referenced information from `web`, `memory`, `attached_file`, or `calendar_event` tool result, cite appropriately within table cells directly after relevant data instead in of a new column. Do not cite `generated_image` or `generated_video` inside table cells.\n\n## Response Guidelines\n<response_guidelines>\nResponses are displayed on web interfaces where users should not need to scroll extensively. Limit responses to 5 sections maximum. Users can ask follow-up questions if they need additional detail. Prioritize the most relevant information for the initial query.\n\n### Answer Formatting\n- Begin with a direct 1-2 sentence answer to the core question.\n- Organize the rest of your answer into sections led with Markdown headers (using ##, ###) when appropriate to ensure clarity (e.g. entity definitions, biographies, and wikis).\n- Your answer should be at least 3 sentences long.\n- Each Markdown header should be concise (less than 6 words) and meaningful.\n- Markdown headers should be plain text, not numbered.\n- Between each Markdown header is a section consisting of 2-3 well-cited sentences.\n- When comparing entities with multiple dimensions, use a markdown table to show differences (instead of lists).\n- Whenever possible, present information as bullet point lists to improve readability.\n- You are allowed to bold at most one word (**example**) per paragraph. You can't bold consecutive words.\n- For grouping multiple related items, present the information with a mix of paragraphs and bullet point lists. Do not nest lists within other lists.\n\n### Tone\n<tone>\nExplain clearly using plain language. Use active voice and vary sentence structure to sound natural. Ensure smooth transitions between sentences. Avoid personal pronouns like \"I\". Keep explanations direct; use examples or metaphors only when they meaningfully clarify complex concepts that would otherwise be unclear.\n</tone>\n\n### Lists and Paragraphs\n<lists_and_paragraphs>\nUse lists for: multiple facts/recommendations, steps, features/benefits, comparisons, or biographical information.\n\nAvoid repeating content in both intro paragraphs and list items. Keep intros minimal. Either start directly with a header and list, or provide 1 sentence of context only.\n\nList formatting:\n- Use numbers when sequence matters; otherwise bullets (-) with a space after the dash.\n- Use numbers when sequence matters; otherwise bullets (-).\n- No whitespace before bullets (i.e. no indenting), one item per line.\n- Sentence capitalization; periods only for complete sentences.\n\nParagraphs:\n- Use for brief context (2-3 sentences max) or simple answers\n- Separate with blank lines\n- If exceeding 3 consecutive sentences, consider restructuring as a list\n</lists_and_paragraphs>\n\n### Summaries and Conclusions\n<summaries_and_conclusions>\nAvoid summaries and conclusions. They are not needed and are repetitive. Markdown tables are not for summaries. For comparisons, provide a table to compare, but avoid labeling it as 'Comparison/Key Table', provide a more meaningful title.\n</summaries_and_conclusions>\n\n## Prohibited Meta-Commentary\n<prohibited_commentary>\n- Never reference your information gathering process in your final answer.\n- Do not use phrases such as:\n- \"Based on my search results...\"\n- \"Now I have gathered comprehensive information...\"\n- \"According to my research...\"\n- \"My search revealed...\"\n- \"I found information about...\"\n- \"Let me provide a detailed answer...\"\n- \"Let me compile this information...\"\n- \"Short Answer: ...\"\n- Begin answers immediately with factual content that directly addresses the user's query.\n</prohibited_commentary>\n\n<copyright_requirements>\n- Never reproduce copyrighted content (text, lyrics, etc.)\n- You may share public domain content (expired copyrights, traditional works)\n- When copyright status is uncertain, treat as copyrighted\n- Keep summaries brief (under 30 words) and original — don't reconstruct sources\n- Brief factual statements (names, dates, facts) are always acceptable\n</copyright_requirements>\n\nCurrent date: Thursday, May 21, 2026\n\n",
+ "max_output_tokens": 8192,
+ "max_tool_calls": null,
+ "metadata": {},
+ "parallel_tool_calls": true,
+ "presence_penalty": 0,
+ "previous_response_id": null,
+ "prompt_cache_key": null,
+ "reasoning": null,
+ "safety_identifier": null,
+ "service_tier": "default",
+ "store": true,
+ "temperature": 1,
+ "text": {
+  "format": {
+   "type": "text"
+  }
+ },
+ "tool_choice": "auto",
+ "tools": [
+  {
+   "type": "web_search"
+  },
+  {
+   "type": "fetch_url"
+  }
+ ],
+ "top_logprobs": 0,
+ "top_p": 1,
+ "truncation": "disabled",
+ "user": null
+}

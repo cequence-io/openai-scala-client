@@ -1,6 +1,10 @@
 package io.cequence.openaiscala.perplexity.service
 
 import io.cequence.openaiscala.domain.NonOpenAIModelId
+import io.cequence.openaiscala.perplexity.domain.agent.{
+  AgentPreset,
+  CreateAgentResponseSettings
+}
 import io.cequence.openaiscala.perplexity.domain.settings.SonarCreateChatCompletionSettings
 import io.cequence.openaiscala.service.ChatProviderSettings
 
@@ -13,6 +17,11 @@ trait SonarServiceConsts extends SonarConsts {
 
     val CreateChatCompletion = SonarCreateChatCompletionSettings(
       model = NonOpenAIModelId.sonar
+    )
+
+    // the Agent API equivalent of the `sonar` model
+    val CreateAgentResponse = CreateAgentResponseSettings(
+      preset = Some(AgentPreset.fast)
     )
   }
 }

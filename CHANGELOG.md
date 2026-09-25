@@ -20,12 +20,69 @@
 
 See `GPT6SolLunaOpus55SmokeTest` for a live walkthrough.
 
+### 🔥 Perplexity Agent API
+
+`SonarService` gains Perplexity's Agent API (`/v1/agent`, `/v1/models`), the successor of the Sonar chat completions API:
+`createAgentResponse` / `createAgentResponseStreamed` (typed `AgentStreamEvent`s; an SSE decoder that accepts LF and CRLF
+framing and surfaces non-SSE error bodies), `retrieveAgentResponse` (404 -> `None`), `resumeAgentResponseStream`
+(`starting_after` reconnect), `cancelAgentResponse`, `listAgentResponseFiles`, `downloadAgentResponseFile` and
+`listAgentModels`. Typed inputs (text, message / function-call replay, image parts), every tool of the spec (web search
+with filters and location, fetch URL, finance / people search, sandbox, custom functions, MCP, connectors, raw), skills,
+profiles, presets, structured output, background mode; unknown output items and events are kept raw, never dropped.
+Verified against Perplexity's OpenAPI document (vendored; every output item and event schema decoded in minimal and
+maximal form, every written request validated) and the documented response examples, plus a local-HTTP wire spec.
+Errors are a native hierarchy (`PerplexityScalaClientException`: `Unauthorized`, `InvalidRequest` / `InvalidModel`,
+`NotFound`, `RateLimit`, `ClientTimeout`, `ServerError` / `EngineOverloaded`, `ClientUnknownHost`), classified by HTTP status
+and Perplexity's `error.type` (bodies collected live), carrying `httpCode` / `errorType` / the `x-request-id` via
+`ProviderErrorDetails`; `PerplexityRetryable` says which to retry, and a streamed request's error body is classified by its
+`code` too. Live-verified 2026-09-25 (`PerplexityAgentApiSmokeTest`: models, web search run, structured output, streaming,
+custom function round trip, multi-turn, background submit / retrieve / cancel, 404).
+`PERPLEXITY_API_KEY` now works next to `SONAR_API_KEY`; `SonarServiceFactory` takes an optional `baseUrl`.
+
+`SonarServiceFactory.agentAsOpenAI()` - an OpenAI chat-completion service (chat, function tools, JSON, typed and legacy
+streaming, web search) on the Agent API through Perplexity's OpenAI-compatible `/v1/responses` alias: a small
+Responses service in the Perplexity module behind the core `OpenAIResponsesChatCompletionService`; errors are the shared
+`OpenAIScala*` exceptions with the Perplexity exception as the cause (so the retry adapters work). Live-verified
+(`PerplexityAgentAsOpenAISmokeTest`).
+
+### Changed
+
+- Responses API reads are tolerant of Responses-compatible providers: output items of an unknown type are skipped with a
+  warning instead of failing the whole response, and an unknown `truncation` value reads as `None` (Perplexity sends
+  `search_results` items and `"truncation": ""`). Malformed items of known types still fail.
+
 ### Deprecated
 
 - **Assistants API** - the 26 `OpenAIService` methods for assistants, threads, thread messages, runs and run steps are
   `@deprecated`: OpenAI shut the Assistants API down on 2026-08-26 (its endpoints now return 404). Use the Responses API
   (`createModelResponse`, `createModelResponseStreamed`) instead. Vector stores are unaffected. Streamed runs
   (`stream = true`, [#87](https://github.com/cequence-io/openai-scala-client/issues/87)) will not be added.
+- **Dead and retiring models** - 225 model-id constants are `@deprecated`, each with its source and date:
+  - OpenAI: every id with a `shutdown_date` in `/v1/models` (past or scheduled - e.g. `gpt-3.5-turbo-instruct`,
+    `davinci-002`, `babbage-002` on 2026-09-28, `gpt-4*` / `gpt-3.5-turbo` / `o1*` / `o3-mini` / `o4-mini` /
+    `gpt-image-1` on 2026-10-23, `whisper-1` on 2027-02-26) plus the ids OpenAI no longer serves at all (ada / babbage /
+    curie / davinci, `dall-e-2/3`, `o1-preview/mini`, `gpt-4-32k`, `gpt-4.5-preview`, `text-moderation-*`, ...)
+  - Anthropic: the retired Claude 2 / Instant / 3 / 3.5 / 3.7 / Opus 4 / Sonnet 4 / Opus 4.1 ids (retirement dates from
+    Anthropic's deprecation page) and the Bedrock ids no longer in its catalog
+  - Gemini API: the 1.0 / 1.5 / 2.0 families and the dated 2.5 preview / experimental ids (404 on 2026-09-25)
+  - Perplexity: `sonar-reasoning`, `r1-1776`, `llama-3.1-sonar-*`
+- **Dead and retiring endpoints** - `createEdit` (gone), `createImageVariation` (gone with dall-e-2),
+  `createAudioTranslation` (whisper-1 only, shuts down 2027-02-26), `createCompletion` on `OpenAIService` (OpenAI's
+  last completions models shut down 2026-09-28; `OpenAICoreService` keeps it for OpenAI-compatible servers), and the
+  Sonar chat completions calls - `SonarService.createChatCompletion(Streamed)` and `SonarServiceFactory.asOpenAI`
+  (Perplexity ends that API on 2026-09-27; use the Agent API above).
+- **dall-e-only image options** - `ImageSizeType.Small` / `Medium` / `LargeLandscape` / `LargePortrait` and
+  `ImageQualityType.standard` / `hd`; new `gpt-image` values `ImageSizeType.Landscape` / `Portrait` / `Auto` and
+  `ImageQualityType.low` / `medium` / `high` / `auto`.
+
+### Changed defaults
+
+- `createImage` / `createImageEdit` default to `gpt-image-2` (the API no longer picks a model, dall-e is shut down).
+- `createChatWebSearchCompletion` defaults to `gpt-5-search-api` (`gpt-4o-search-preview` is shut down).
+- `createAudioSpeech` defaults to `gpt-4o-mini-tts` (was `tts-1-1106`), `createAudioTranscription` to `gpt-transcribe`
+  (was `whisper-1`).
+- Examples moved off every retired model; `CreateEdit` was removed and `CreateChatCompletionWithO1` became
+  `CreateChatCompletionWithO3`.
 
 ## 1.3.0 (2026-09-18)
 

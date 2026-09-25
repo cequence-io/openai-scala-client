@@ -1,0 +1,195 @@
+{
+ "id": "resp_081e7a0a-4087-403b-8e74-a997d28d6fd2",
+ "created_at": 1779391825,
+ "model": "openai/gpt-5.1",
+ "object": "response",
+ "output": [
+  {
+   "results": [
+    {
+     "id": 1,
+     "snippet": "Organizations developing and deploying AI, specifically generative AI, have turned to model cards as one way to promote explainability and achieve that transparency.\n...\nFirst proposed in 2018, model cards are short documents provided with machine learning models that explain the context in which the models are intended to be used, details of the performance evaluation procedures and other relevant information.\nA machine learning model intended to evaluate voter demographics, for example, would be released with a model card providing performance metrics across conditions like culture, race, geographic location, sex and intersectional groups that are relevant to the intended application.\n...\nMost importantly, for the current uses of and innovations in AI, model cards provide details about the construction of the machine learning model, like its architecture and training data.\n...\nSimilarly, the transparency principle in AI governs the extent to which information regarding an AI system is made available to stakeholders, including an understandable explanation of how the system works.\nThis is precisely what model cards do: explain information in the machine learning model to provide transparency into the AI system.\n...\nModel cards are the current tool of choice in providing transparency in large language and machine learning models.",
+     "title": "5 things to know about AI model cards | IAPP",
+     "url": "https://iapp.org/news/a/5-things-to-know-about-ai-model-cards",
+     "date": "2023-08-23",
+     "last_updated": "2026-05-16",
+     "source": "web"
+    },
+    {
+     "id": 2,
+     "snippet": "The term “Model Card” was coined by Mitchell et al. in the 2018 paper Model Cards for Model Reporting.\nAt their core, Model Cards are the nutrition labels of the AI world, providing instructions and warnings for a trained model.\nWhen used, they can inform users about the uses and limitations of a model and support audit and transparency requirements.",
+     "title": "Towards a Standard for Model Cards - Trustible",
+     "url": "https://trustible.ai/post/towards-a-standard-for-model-cards/",
+     "date": "2023-05-05",
+     "last_updated": "2026-05-20",
+     "source": "web"
+    },
+    {
+     "id": 3,
+     "snippet": "This work proposes model cards, a framework that can be used to document any trained machine learning model in the application fields of computer vision and natural language processing, and provides cards for two supervised models: One trained to detect smiling faces in images, and one training to detect toxic comments in text.",
+     "title": "[PDF] Model Cards for Model Reporting - Semantic Scholar",
+     "url": "https://www.semanticscholar.org/paper/Model-Cards-for-Model-Reporting-Mitchell-Wu/7365f887c938ca21a6adbef08b5a520ebbd4638f",
+     "date": null,
+     "last_updated": "2024-07-27",
+     "source": "web"
+    },
+    {
+     "id": 4,
+     "snippet": "A model card is a type of documentation that is created for, and provided with, machine learning models.\nA model card functions as a type of data sheet, similar in principle to the consumer safety labels, food nutritional labels, a material safety data sheet or product spec sheets.\n...\nFirst proposed by Google in 2018, the model card is a means of documenting vital elements of a ML model so users -- including AI designers, business leaders and ML end users -- can readily understand the intended use cases, characteristics, behaviors, ethical considerations, and the biases and limitations of a particular ML model.",
+     "title": "What is a model card in machine learning and what is its purpose?",
+     "url": "https://www.techtarget.com/whatis/definition/model-card-in-machine-learning",
+     "date": "2024-03-25",
+     "last_updated": "2026-05-18",
+     "source": "web"
+    },
+    {
+     "id": 5,
+     "snippet": "Model Cards are a powerful tool that promotes transparency, accountability, and regulatory compliance in Machine Learning & AI development.\n...\n{ts:43} data scientists so let's start with the basics what are model cards they're well described by this research paper model\n{ts:50} cards for model reporting they're a standardized way to document essential information about machine learning\n{ts:57} models providing insights into how a model Works its intended use its performance metrics ethical\n{ts:65} considerations and other things this section of the paper outlines exactly what goes into a model card and the\n{ts:71} things you need to think about for each section such as the model details like the date it was created what type of\n{ts:77} model it is if it has a license the intended use of that model metric such as its performance or decision\n...\n{ts:214} predictions secondly model cards support accountability in the way that these models were trained evaluated and are\n{ts:222} being used in production when issues or biases arise model cards can pinpoint the source of the problem and help guide\n{ts:229} improvements they're essential for responsible machine learning development lastly model cards can be used for\n…",
+     "title": "Model Cards for Model Reporting - YouTube",
+     "url": "https://www.youtube.com/watch?v=saAUB_MG2d0",
+     "date": "2024-02-13",
+     "last_updated": "2025-11-18",
+     "source": "web"
+    },
+    {
+     "id": 6,
+     "snippet": "#### Simple, structured overviews of how an advanced AI model was designed and evaluated.",
+     "title": "Model cards - Google DeepMind",
+     "url": "https://deepmind.google/models/model-cards/",
+     "date": null,
+     "last_updated": "2026-05-20",
+     "source": "web"
+    },
+    {
+     "id": 7,
+     "snippet": "The original framework specified: model details, intended use, factors (relevant demographic or contextual factors), metrics, evaluation data, training data, quantitative analyses, ethical considerations, and caveats and recommendations.\nIn practice, model cards from the major AI labs have evolved beyond this template, but the core purpose remains: honest documentation of a model’s capabilities, limitations, and appropriate use cases, written by the people who know the model best.\n...\nFor every AI deployment at your company, one person should read the model card.\nCompletely.\nNot skimming.\nNot the executive summary.\nThe full document.\nThat person should translate the model card’s technical assessments into three operational documents:\n**A capability assessment** that states, in plain language, what the model can and cannot do for your specific use case, based on the model card’s benchmarks and limitations.\n**A risk register** that maps the model card’s safety evaluations and known limitations to your specific deployment context, identifying which risks are relevant, which mitigations are needed, and which residual risks must be accepted.\n**A monitoring plan** that specifies how you will verify, in production, that the model’s actual performance matches the model card’s documented performance — because models can degrade, use cases can drift, and the only check on the model card’s claims is your own observation.",
+     "title": "The Model Card Nobody Reads — Bluewaves Boutique",
+     "url": "https://bluewaves.boutique/notes/the-model-card-nobody-reads/",
+     "date": "2025-12-23",
+     "last_updated": "2026-04-08",
+     "source": "web"
+    },
+    {
+     "id": 8,
+     "snippet": "This is the paper that started it all.\nMargaret Mitchell and her team at Google Research introduced model cards as a practical solution to the black box problem in machine learning.\nDrawing inspiration from electronics datasheets and nutrition labels, this foundational research presents a standardized framework for documenting ML models that goes far beyond technical specifications.\nThe paper doesn't just propose an abstract concept—it demonstrates model cards in action with real examples from Google's own models, showing how transparent documentation can reveal performance disparities across demographic groups and highlight ethical considerations that might otherwise remain hidden.\n...\nModel cards fill this gap by providing a standardized format that makes critical information accessible to both technical and non-technical stakeholders.",
+     "title": "Model Cards for Model Reporting | KI-Governance-Bibliothek",
+     "url": "https://verifywise.ai/de/ai-governance-library/transparency-and-documentation/model-cards-paper",
+     "date": "2019-01-01",
+     "last_updated": "2026-04-01",
+     "source": "web"
+    },
+    {
+     "id": 9,
+     "snippet": "In this paper, we propose a framework that\nwe call model cards, to encourage such transparent model reporting.\nModel cards are short documents accompanying trained machine\nlearning models that provide benchmarked evaluation in a variety\nof conditions, such as across different cultural, demographic, or phe-\nnotypic groups (e.g., race, geographic location, sex, Fitzpatrick skin\ntype [15]) and intersectional groups (e.g., age and race, or sex and\nFitzpatrick skin type) that are relevant to the intended application\ndomains.\nModel cards also disclose the context in which models\nare intended to be used, details of the performance evaluation pro-\ncedures, and other relevant information.\nWhile we focus primarily\non human-centered machine learning models in the application\nfields of computer vision and natural language processing, this\nframework can be used to document any trained machine learning\nmodel.\n...\nAs a step towards this goal, we propose that released machine\nlearning models be accompanied by short (one to two page) records\nwe call model cards.\nModel cards (for model reporting) are com-\n...\nfocus on trained model characteristics such as the type of model,\nintended use cases, information about attributes for which model\nperformance may vary, and measures of model performance.\n...\nIn addition to model evaluation results, model\ncards should detail the motivation behind chosen performance\nmetrics, group definitions, and other relevant factors.\n...\nModel cards provide a\n...\n4\nMODEL CARD SECTIONS\nModel cards serve to disclose information about a trained machine\nlearning model.\nThis includes how it was built, what assumptions\nwere made during its development, what type of model behavior\ndifferent cultural, demographic, or phenotypic population groups\nmay experience, and an evaluation of how well the model performs\nwith respect to those groups.\n...\n– Relevant factors\n– Evaluation factors\n• Metrics.\nMetrics should be chosen to reflect potential real-\nworld impacts of the model.\n– Model performance measures\n– Decision thresholds\n– Variation approaches\n• Evaluation Data.\nDetails on the dataset(s) used for the\nquantitative analyses in the card.",
+     "title": "[PDF] Model Cards for Model Reporting - arXiv",
+     "url": "https://arxiv.org/pdf/1810.03993",
+     "date": null,
+     "last_updated": "2026-05-19",
+     "source": "web"
+    },
+    {
+     "id": 10,
+     "snippet": "Model cards provides a standardized structure for conveying key information about AI models.\nGrounded in academic literature [7] and official guidelines from Hugging Face [17], model cards conventionally comprise sections such as Training, Evaluation, Uses, Limitations, Environmental Impact, Citation, and How to Start.\nAs illustrated in Fig. 1d, these sections represent the essential constituents of a comprehensive model card.\n...\nFurthermore, model cards also have the potential to assist in regulatory compliance by offering a structured framework for documenting and communicating key information about a model’s performance, training, and evaluation process [9, 6, 60, 61].\n...\nThe structure of model cards plays a crucial role in conveying key information.\nDrawing from academic literature [7] and Hugging Face’s official guidelines, model cards typically include sections such as Training, Evaluation, Uses, Limitations, Environmental Impact, Citation, and How to Start.",
+     "title": "What's documented in AI? Systematic Analysis of 32K AI Model Cards",
+     "url": "https://arxiv.org/html/2402.05160v1",
+     "date": "2020-08-27",
+     "last_updated": "2026-02-18",
+     "source": "web"
+    },
+    {
+     "id": 11,
+     "snippet": "In this paper, we propose a framework that Fairness, Accountability, and Transparency, January 29–31, 2019, Atlanta, GA, we call model cards, to encourage such transparent model reporting.\n…\nModel cards are short documents accompanying trained machine 3287596 learning models that provide benchmarked evaluation in a variety of conditions, such as across different cultural, demographic, or phe- 1 INTRODUCTION notypic groups (e.g., race, geographic location, sex, Fitzpatrick skin Currently, there are no standardized documentation procedures to type [15]) and intersectional groups (e.g., age and race, or sex and communicate the performance characteristics of trained machine Fitzpatrick skin type) that are relevant to the intended application learning (ML) and artificial intelligence (AI) models.\n...\nModel cards also disclose the context in which models documentation is especially problematic when models are used in are intended to be used, details of the performance evaluation pro- applications that have serious impacts on people’s lives, such as in cedures, and other relevant information.\n...\nAs a step towards this goal, we propose that released machine learning models be accompanied by short (one to two page) records Permission to make digital or hard copies of all or part of this work for personal or we call model cards.\n...\n• Quantitative Analyses – Unitary results4 MODEL CARD SECTIONS – Intersectional resultsModel cards serve to disclose information about a trained machine • Ethical Considerationslearning model.\nThis includes how it was built, what assumptions • Caveats and Recommendationswere made during its development, what type of model behaviordifferent cultural, demographic, or phenotypic population groups Figure 1: Summary of model card sections and suggestedmay experience, and an evaluation of how well the model performs prompts for each.with respect to those groups.\n...\nModel cards include information about the contextin the previous sections.",
+     "title": "Model Cards For Model Reporting | PDF | Machine Learning - Scribd",
+     "url": "https://www.scribd.com/document/588702829/1810-03993",
+     "date": "2025-09-06",
+     "last_updated": "2026-01-19",
+     "source": "web"
+    }
+   ],
+   "type": "search_results",
+   "queries": [
+    "model card definition machine learning",
+    "model card intended use limitations evaluation",
+    "Mitchell model cards paper 2019"
+   ]
+  },
+  {
+   "id": "msg_41254287-8054-4973-a3a4-7e5fb617eea4",
+   "content": [
+    {
+     "text": "A model card is a short, structured document that accompanies a trained machine‑learning or large language model and explains how it was built, how it performs, where it should and should not be used, and known risks or limitations.[web:4][web:9][web:10] It plays a similar role to a product spec sheet or nutrition label, but for AI systems.[web:2][web:4]\n\n## What a model card is\n\n- A **model** card is documentation shipped with an AI model that summarizes key technical, ethical, and practical details in a human-readable way.[web:4][web:9]  \n- It is meant for both technical and non‑technical stakeholders, so they can understand intended use cases, behavior, and trade‑offs of the model before deployment.[web:2][web:4][web:8]\n\n## Typical sections: high level\n\nMany templates exist, but most modern model cards for LLMs include recurring sections.[web:7][web:9][web:10]\n\n- Model details (name, version, developer, architecture, date, license).[web:7][web:9]  \n- Uses/intended use and out‑of‑scope uses.[web:4][web:9][web:10]  \n- Training and data sources.[web:9][web:10]  \n- Evaluation setup and metrics.[web:1][web:9][web:10]  \n- Limitations, biases, and ethical considerations.[web:2][web:7][web:9]  \n- Caveats, recommendations, and how to get started (API, examples).[web:7][web:9][web:10]\n\nFor your question, the four core sections are usually: intended use, training data, limitations, and evaluation.[web:9][web:10]\n\n## Intended use section\n\nThis section defines where the model is appropriate and where it is not.[web:2][web:4][web:9]\n\nTypical contents:\n\n- **Intended users and domains**: For example, “researchers and engineers building conversational assistants” or “classification of English news text.”[web:4][web:9]  \n- Supported use cases: Tasks like code generation, summarization, or translation that the model is designed and tested for.[web:1][web:6][web:10]  \n- Out‑of‑scope use: Explicit warnings against high‑risk contexts such as medical diagnosis, legal advice, biometric identification, or automated decision‑making without human review.[web:4][web:7][web:9]\n\nFor large language models, this section helps prevent over‑reliance on the model in safety‑critical or highly regulated settings.[web:1][web:4]\n\n## Training data section\n\nThis section describes what data the model learned from, usually at an aggregate level rather than listing every dataset.[web:9][web:10]\n\nTypical contents:\n\n- **Data sources and types**: High‑level description of web text, code repositories, books, forums, or proprietary corpora used.[web:9][web:10]  \n- Temporal and language coverage: Time span of data collection, languages included, and major domains (e.g., news vs. social media).[web:9][web:10]  \n- Preprocessing and filtering: How data was cleaned, deduplicated, or filtered for safety, hate speech, or personal information.[web:9][web:10]  \n- Known gaps or biases in data: For example, over‑representation of English or certain regions, and under‑representation of minority languages or dialects.[web:8][web:9]\n\nFor LLMs, training data descriptions are crucial to interpret why a model is strong in some languages or topics and weak in others.[web:8][web:10]\n\n## Limitations section\n\nThis section explicitly states what the model cannot reliably do and known failure modes.[web:2][web:7][web:9]\n\nTypical contents:\n\n- **Capability limits**: Issues like hallucinations (fabricated facts), poor reasoning on long chains, weak performance on low‑resource languages, or lack of up‑to‑date knowledge beyond a cutoff date.[web:7][web:9][web:10]  \n- Safety and bias concerns: Propensity to reproduce harmful stereotypes, toxic or unsafe content, or unfair performance across demographic groups.[web:1][web:8][web:9]  \n- Operational limits: Maximum context length, latency considerations, and scenarios where performance degrades (noisy input, adversarial prompts).[web:6][web:10]  \n- Dependency on user behavior: Notes that the model is sensitive to prompt phrasing and may be misused through prompt engineering.[web:7][web:9]\n\nThis section usually pairs limitations with recommendations such as human review, domain‑specific fine‑tuning, or additional guardrails.[web:7][web:9]\n\n## Evaluation section\n\nThe evaluation section documents how performance was measured and what the results were.[web:1][web:9][web:10]\n\nTypical contents:\n\n- **Benchmarks and tasks**: Lists of datasets or benchmark suites, such as question‑answering, reasoning, coding, or toxicity detection tests for LLMs.[web:1][web:9][web:10]  \n- Metrics: Accuracy, F1, BLEU, perplexity, safety scores, robustness metrics, or human evaluation ratings, chosen to reflect real‑world impact.[web:1][web:9][web:10]  \n- Conditions and subgroups: Performance broken down by language, topic domain, demographic attributes, or other relevant factors to reveal disparities.[web:1][web:8][web:9]  \n- Evaluation procedure: How data was split, decision thresholds, and any notable experimental assumptions.[web:9][web:11]\n\nFor large language models, this section often includes both capability benchmarks (e.g., reasoning and coding tests) and safety evaluations (e.g., red‑teaming or harmful content benchmarks).[web:1][web:6][web:10]",
+     "type": "output_text",
+     "annotations": [],
+     "logprobs": []
+    }
+   ],
+   "role": "assistant",
+   "status": "completed",
+   "type": "message"
+  }
+ ],
+ "status": "completed",
+ "error": null,
+ "usage": {
+  "input_tokens": 6852,
+  "output_tokens": 1316,
+  "total_tokens": 8168,
+  "cost": {
+   "currency": "USD",
+   "input_cost": 0.00409,
+   "output_cost": 0.01316,
+   "total_cost": 0.0202,
+   "cache_creation_cost": null,
+   "cache_read_cost": 0.00045,
+   "tool_calls_cost": 0.0025
+  },
+  "input_tokens_details": {
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 3584,
+   "cached_tokens": 3584
+  },
+  "tool_calls_details": {
+   "search_web": {
+    "invocation": 1
+   }
+  },
+  "output_tokens_details": {
+   "reasoning_tokens": 0
+  }
+ },
+ "background": false,
+ "completed_at": 1779391825,
+ "frequency_penalty": 0,
+ "incomplete_details": null,
+ "instructions": "## Abstract\n<role>\nYou are an AI assistant developed by Perplexity AI. Given a user's query, your goal is to generate an expert, useful, factually correct, and contextually relevant response by leveraging available tools and conversation history. First, you will receive the tools you can call iteratively to gather the necessary knowledge for your response. You need to use these tools rather than using internal knowledge. Second, you will receive guidelines to format your response for clear and effective presentation. Third, you will receive guidelines for citation practices to maintain factual accuracy and credibility.\n</role>\n\n## Instructions\n<tools_workflow>\nBegin each turn with tool calls to gather information. You must call at least one tool before answering, even if information exists in your knowledge base. Decompose complex user queries into discrete tool calls for accuracy and parallelization. After each tool call, assess if your output fully addresses the query and its subcomponents. Continue until the user query is resolved or until the <tool_call_limit> below is reached. End your turn with a comprehensive response. Never mention tool calls in your final response as it would badly impact user experience.\n\n<tool_call_limit> Make at most three tool calls before concluding.</tool_call_limit>\n</tools_workflow>\n\n## Citation Instructions\n<citation_instructions>\nYour response must include at least 1 citation. Add a citation to every sentence that includes information derived from tool outputs.\nTool results are provided using `id` in the format `type:index`. `type` is the data source or context. `index` is the unique identifier per citation.\n<common_source_types> are included below.\n\n<common_source_types>\n- `web`: Internet sources\n- `page`: Full web page content\n- `conversation_history`: past queries and answers from your interaction with the user\n</common_source_types>\n\n<formatting_citations>\nUse brackets to indicate citations like this: [type:index]. Commas, dashes, or alternate formats are not valid citation formats. If citing multiple sources, write each citation in a separate bracket like [web:1][web:2][web:3].\n\nCorrect: \"The Eiffel Tower is in Paris [web:3].\"\nIncorrect: \"The Eiffel Tower is in Paris [web-3].\"\n</formatting_citations>\n\nYour citations must be inline - not in a separate References or Citations section. Cite the source immediately after each sentence containing referenced information. If your response presents a markdown table with referenced information from `web`, `memory`, `attached_file`, or `calendar_event` tool result, cite appropriately within table cells directly after relevant data instead in of a new column. Do not cite `generated_image` or `generated_video` inside table cells.\n\n## Response Guidelines\n<response_guidelines>\nResponses are displayed on web interfaces where users should not need to scroll extensively. Limit responses to 5 sections maximum. Users can ask follow-up questions if they need additional detail. Prioritize the most relevant information for the initial query.\n\n### Answer Formatting\n- Begin with a direct 1-2 sentence answer to the core question.\n- Organize the rest of your answer into sections led with Markdown headers (using ##, ###) when appropriate to ensure clarity (e.g. entity definitions, biographies, and wikis).\n- Your answer should be at least 3 sentences long.\n- Each Markdown header should be concise (less than 6 words) and meaningful.\n- Markdown headers should be plain text, not numbered.\n- Between each Markdown header is a section consisting of 2-3 well-cited sentences.\n- When comparing entities with multiple dimensions, use a markdown table to show differences (instead of lists).\n- Whenever possible, present information as bullet point lists to improve readability.\n- You are allowed to bold at most one word (**example**) per paragraph. You can't bold consecutive words.\n- For grouping multiple related items, present the information with a mix of paragraphs and bullet point lists. Do not nest lists within other lists.\n\n### Tone\n<tone>\nExplain clearly using plain language. Use active voice and vary sentence structure to sound natural. Ensure smooth transitions between sentences. Avoid personal pronouns like \"I\". Keep explanations direct; use examples or metaphors only when they meaningfully clarify complex concepts that would otherwise be unclear.\n</tone>\n\n### Lists and Paragraphs\n<lists_and_paragraphs>\nUse lists for: multiple facts/recommendations, steps, features/benefits, comparisons, or biographical information.\n\nAvoid repeating content in both intro paragraphs and list items. Keep intros minimal. Either start directly with a header and list, or provide 1 sentence of context only.\n\nList formatting:\n- Use numbers when sequence matters; otherwise bullets (-) with a space after the dash.\n- Use numbers when sequence matters; otherwise bullets (-).\n- No whitespace before bullets (i.e. no indenting), one item per line.\n- Sentence capitalization; periods only for complete sentences.\n\nParagraphs:\n- Use for brief context (2-3 sentences max) or simple answers\n- Separate with blank lines\n- If exceeding 3 consecutive sentences, consider restructuring as a list\n</lists_and_paragraphs>\n\n### Summaries and Conclusions\n<summaries_and_conclusions>\nAvoid summaries and conclusions. They are not needed and are repetitive. Markdown tables are not for summaries. For comparisons, provide a table to compare, but avoid labeling it as 'Comparison/Key Table', provide a more meaningful title.\n</summaries_and_conclusions>\n\n## Prohibited Meta-Commentary\n<prohibited_commentary>\n- Never reference your information gathering process in your final answer.\n- Do not use phrases such as:\n- \"Based on my search results...\"\n- \"Now I have gathered comprehensive information...\"\n- \"According to my research...\"\n- \"My search revealed...\"\n- \"I found information about...\"\n- \"Let me provide a detailed answer...\"\n- \"Let me compile this information...\"\n- \"Short Answer: ...\"\n- Begin answers immediately with factual content that directly addresses the user's query.\n</prohibited_commentary>\n\n<copyright_requirements>\n- Never reproduce copyrighted content (text, lyrics, etc.)\n- You may share public domain content (expired copyrights, traditional works)\n- When copyright status is uncertain, treat as copyrighted\n- Keep summaries brief (under 30 words) and original — don't reconstruct sources\n- Brief factual statements (names, dates, facts) are always acceptable\n</copyright_requirements>\n\nCurrent date: Thursday, May 21, 2026\n\n",
+ "max_output_tokens": 8192,
+ "max_tool_calls": null,
+ "metadata": {},
+ "parallel_tool_calls": true,
+ "presence_penalty": 0,
+ "previous_response_id": null,
+ "prompt_cache_key": null,
+ "reasoning": null,
+ "safety_identifier": null,
+ "service_tier": "default",
+ "store": true,
+ "temperature": 1,
+ "text": {
+  "format": {
+   "type": "text"
+  }
+ },
+ "tool_choice": "auto",
+ "tools": [
+  {
+   "type": "web_search"
+  },
+  {
+   "type": "fetch_url"
+  }
+ ],
+ "top_logprobs": 0,
+ "top_p": 1,
+ "truncation": "disabled",
+ "user": null
+}

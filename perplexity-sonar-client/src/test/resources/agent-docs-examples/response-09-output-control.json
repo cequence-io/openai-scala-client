@@ -1,0 +1,206 @@
+{
+ "id": "resp_04a4e751-4810-40c2-a92e-ffcab3e11d77",
+ "created_at": 1779391825,
+ "model": "openai/gpt-5.1",
+ "object": "response",
+ "output": [
+  {
+   "results": [
+    {
+     "id": 1,
+     "snippet": "(d) In response to Item l, Business, such registrant only need furnish a brief\ndescription of the business done by the registrant and its subsidiaries during the\nmost recent fiscal year which will, in the opinion of management, indicate the\ngeneral nature and scope of the business of the registrant and its subsidiaries, and\nin response to Item 2, Properties, such registrant only need furnish a brief\ndescription of the material properties of the registrant and its subsidiaries to the\nextent, in the opinion of the management, necessary to an understanding of the\nbusiness done by the registrant and its subsidiaries.\n...\nPART I \n[See General Instruction G(2)] \nItem 1.\nBusiness.\nFurnish the information required by Item 101 of Regulation S-K (§ 229.101 of this chapter) \nexcept that the discussion of the development of the registrant’s business need only include\ndevelopments since the beginning of the fiscal year for which this report is filed.\nItem 1A.\nRisk Factors.\nSet forth, under the caption “Risk Factors,” where appropriate, the risk factors described in \nItem 105 of Regulation S-K (§ 229.105 of this chapter) applicable to the registrant.\nProvide any\ndiscussion of risk factors in plain English in accordance with Rule 421(d) of the Securities Act of \n1933 (§ 230.421(d) of this chapter).\nSmaller reporting companies are not required to provide the \ninformation required by this item.\nItem 1B.",
+     "title": "[PDF] Form 10-K - SEC.gov",
+     "url": "https://www.sec.gov/files/form10-k.pdf",
+     "date": null,
+     "last_updated": "2025-06-03",
+     "source": "web"
+    },
+    {
+     "id": 2,
+     "snippet": "This report provides a comprehensive view of a company’s financial position and additional business disclosures, such as key operational details, audited financial statements, market risks, and corporate governance.",
+     "title": "How to navigate Forms 10-K, 10-Q, 20-F, 40-F, 8-K and 6-K",
+     "url": "https://www.toppanmerrill.com/blog/how-to-navigate-forms-10-k-10-q-20-f-40-f-8-k-and-6-k/",
+     "date": "2025-03-19",
+     "last_updated": "2026-05-16",
+     "source": "web"
+    },
+    {
+     "id": 3,
+     "snippet": "The SEC breaks the Form 10-K down into four parts:\n### Part I\n- Item 1: “Business”\n- Item 1A: “Risk Factors”\n- Item 1B: “Unresolved Staff Comments”\n- Item 2: “Properties”\n...\nTo analyze a company using Form 10-K, always check “Item 1,” which is an overview of business operations.\nAs an example, we’ll look at TSLA.\nThe overview lists all of the car models, potential new models, and other developments within the company, such as potential factories.\nThis gives you a good idea of what’s in store for the company’s future production.",
+     "title": "What Form 10-K Is and How to Understand It to Use It",
+     "url": "https://thecollegeinvestor.com/32956/form-10-k/",
+     "date": "2024-02-27",
+     "last_updated": "2025-04-18",
+     "source": "web"
+    },
+    {
+     "id": 4,
+     "snippet": "#### Item 1 – Business\nThis describes the business of the company: who and what the company does, what subsidiaries it owns, and what markets it operates in.\nIt may also include recent events, competition, regulations, and labor issues.\n(Some industries are heavily regulated, have complex labor requirements, which have significant effects on the business.)\nOther topics in this section may include special operating costs, seasonal factors, or insurance matters.",
+     "title": "Form 10-K - Wikipedia",
+     "url": "https://en.wikipedia.org/wiki/Form_10-K",
+     "date": "2005-02-23",
+     "last_updated": "2026-03-31",
+     "source": "web"
+    },
+    {
+     "id": 5,
+     "snippet": "Regulation S-K, Item 105, requires registrants to provide “a discussion of the\nmaterial factors that make an investment in the registrant or offering\nspeculative or risky.”\nCertain indicators of risk may be present in the\nfootnotes to the financial statements, in MD&A, or elsewhere in investor\npresentations or other periodic filings.",
+     "title": "3.3 Disclosures About Risk | DART – Deloitte Accounting Research ...",
+     "url": "https://dart.deloitte.com/USDART/home/publications/deloitte/additional-deloitte-guidance/roadmap-sec-comment-letter-considerations/chapter-3-sec-disclosure-topics/3-3-disclosures-about-risk",
+     "date": null,
+     "last_updated": "2026-03-31",
+     "source": "web"
+    },
+    {
+     "id": 6,
+     "snippet": "If the registrant or any of its subsidiaries consolidated has completed the acquisition or \ndisposition of a significant amount of assets, otherwise than in the ordinary course of business, or \nthe acquisition or disposition of a significant amount of assets that constitute a real estate \noperation as defined in § 210.3-14(a)(2) disclose the following information:\n(a) the date of completion of the transaction; \n(b) a brief description of the assets involved; \n(c) the identity of the person(s) from whom the assets were acquired or to whom they were \nsold and the nature of any material relationship, other than in respect of the transaction, between \nsuch person(s) and the registrant or any of its affiliates, or any director or officer of the\n...\n(1) \n...\nnature of any recourse provisions that would enable the registrant to recover from third parties; ",
+     "title": "[PDF] Form 8-K - SEC.gov",
+     "url": "https://www.sec.gov/files/form8-k.pdf",
+     "date": null,
+     "last_updated": "2025-04-11",
+     "source": "web"
+    },
+    {
+     "id": 7,
+     "snippet": "#### Part I: Business Overview and Risks\n- Item 1 - Business:\n- Describes the company’s primary business activities, including its main products and services, subsidiaries, and market operations.\n- Discusses the competitive landscape, regulatory environment, and any significant business developments during the year.",
+     "title": "Form 10-K: Explained",
+     "url": "https://unlevered.ai/blog/10-k/",
+     "date": "2024-08-21",
+     "last_updated": "2024-10-17",
+     "source": "web"
+    },
+    {
+     "id": 8,
+     "snippet": "- **Item 1: Business**\n...\n## Item 1 - BusinessneCompanies typically define their business in this opening section of the 10-K report.\nThey describe their various product lines and business segments.\nThey list contracts, raw materials used, and supplier or distribution channels.\nThey talk about the competition and competitive factors in the market.\nIf research and development or intellectual property issues are important to company operations, they are included.\nGovernment regulations are covered.\nFinally, several pages are devoted to outlining risk factors to consider in evaluating the company's business.",
+     "title": "The 10-K - SEC Filings - Research Guides at Baruch College",
+     "url": "https://guides.newman.baruch.cuny.edu/c.php?g=188202&p=1244183",
+     "date": "2009-11-02",
+     "last_updated": "2026-05-09",
+     "source": "web"
+    },
+    {
+     "id": 9,
+     "snippet": "- **Item 1A: Risk Factors:** Absolutely critical reading.\nThis **section** lists the most significant risks and uncertainties that could materially affect the company’s business, **financial condition**, or operating results.\nEffective **10k risk factors analysis** is paramount for **investors**.\nLook for specific, quantifiable risks, not just boilerplate warnings.\nAI tools can be particularly helpful in tracking changes to this section over time.\n- **Item 1B: Unresolved Staff Comments:** Details any outstanding written comments from SEC staff regarding the company’s prior filings.\n- **Item 2: Properties:** Information about the company’s significant physical properties, like manufacturing plants or corporate headquarters.\n- **Item 3: Legal Proceedings:** Describes any significant pending lawsuits or other legal actions involving the company.\n...\nA 10-K report is broadly divided into: Part I (Business Overview, Risk Factors, Legal Proceedings), Part II (Financial Data including MD&A, Income Statement, Balance Sheet, Cash Flow Statement, and Notes), Part III (Corporate Governance, Executive Compensation, Major Shareholders), and Part IV (Exhibits and Financial Statement Schedules).\nEach part offers different but crucial insights into the company’s operations and financial health.",
+     "title": "How to Read a 10-K Report with AI | Complete SEC Analysis Guide",
+     "url": "https://www.v7labs.com/blog/how-to-read-a-10k-report-ai-sec-filings-guide",
+     "date": "2025-06-11",
+     "last_updated": "2026-05-16",
+     "source": "web"
+    },
+    {
+     "id": 10,
+     "snippet": "Additional sections in this Form 10-K which should be helpful to the reading of our discussion and analysis include the following: (i) a description of our services provided, by segment found in Items\n1 and 2 “Business and Properties”—”Services Provided” (ii) a description of our business strategy found in Items 1 and 2 “Business and Properties”—”Our Strategy”; and (iii) a description of\nrisk factors affecting us and our business, found in Item 1A “Risk Factors.”",
+     "title": "Form 10-K Item 7. Management's Discussion and Analysis",
+     "url": "https://www.sec.gov/Archives/edgar/data/1449732/000119312512289206/d374099dex993.htm",
+     "date": "2012-03-29",
+     "last_updated": "2025-09-23",
+     "source": "web"
+    },
+    {
+     "id": 11,
+     "snippet": "In this section of the 10-K, companies will provide a description of the business, including what the company does, its different business lines and customers, competitors, and where it operates, among other things.",
+     "title": "Form 10-K: A Comprehensive Overview - Corporate Finance Institute",
+     "url": "https://corporatefinanceinstitute.com/resources/accounting/form-10-k/",
+     "date": "2024-04-18",
+     "last_updated": "2026-02-04",
+     "source": "web"
+    },
+    {
+     "id": 12,
+     "snippet": "Unlike the quarterly 10-Q, the 10-K includes\n**audited financial statements** and extensive narrative sections covering the business model, competitive landscape, and risk factors.\n...\n#### Item 1: Business\nCore operations, products, competition\n💡 Read this first for company overview\n#### Item 1A: Risk Factors\n...\n💡 Often 20+ pages of worst-case scenarios",
+     "title": "SEC Form 10-K: Complete Guide to Annual Reports",
+     "url": "https://secwhisperer.com/learn/sec-form-10k",
+     "date": "2025-10-28",
+     "last_updated": "2025-12-23",
+     "source": "web"
+    }
+   ],
+   "type": "search_results",
+   "queries": [
+    "SEC Form 10-K item 1 business description",
+    "SEC Form 10-K item 1A risk factors description",
+    "SEC Form 10-K item 7 MD&A contents",
+    "SEC Form 10-K item 8 financial statements contents",
+    "SEC form 10-K item list overview"
+   ]
+  },
+  {
+   "id": "msg_e2eaeb8f-a3ef-47ac-b50a-e5da20409664",
+   "content": [
+    {
+     "text": "An SEC Form 10-K is a standardized annual report with specific “Items” that each serve a distinct purpose; Items 1, 1A, 7, and 8 together explain what the company does, what could go wrong, how management interprets the numbers, and the audited financials themselves.[web:1][web:4] Understanding the typical contents of each of these items makes it much easier to navigate any company’s filing.[web:8]  \n\n## Item 1 – Business  \n\nItem 1 “Business” describes the **core** operations of the registrant and its subsidiaries, including what the company does, its main products and services, and the markets and geographies in which it operates.[web:1][web:4][web:11] It often includes discussion of business segments, major customers, distribution channels, and important contracts or supply arrangements.[web:8][web:11]  \n\nCompanies typically also cover their competitive environment, key competitors, and the basis of competition (price, technology, brand, service).[web:4][web:8] Depending on the industry, this section may address regulatory requirements, seasonality of the business, research and development, intellectual property, dependence on raw materials, and human capital resources such as employees and labor relations.[web:4][web:7][web:8]  \n\n## Item 1A – Risk Factors  \n\nItem 1A “Risk Factors” presents the material risks that could adversely affect the company’s business, financial condition, or results of operations, framed as factors that make an investment speculative or risky.[web:1][web:5][web:9] These risk factors must focus on risks that are specific and material to the registrant, not just generic boilerplate, and are required to be written in plain-English style.[web:1][web:5]  \n\nTypical categories include business and operational risks (e.g., supply chain disruption, competition), financial risks (liquidity, leverage, credit), legal and regulatory risks, cybersecurity and data privacy risks, and macroeconomic or geopolitical risks.[web:7][web:9] The section usually explains how each risk could impact the company (for example, reduced revenue, higher costs, or asset impairment) and may note interdependencies between risks.[web:7][web:9]  \n\n## Item 7 – MD&A  \n\nItem 7 “Management’s Discussion and Analysis of Financial Condition and Results of Operations” (MD&A) is where management explains, in narrative form, the drivers behind the historical financial results and the company’s liquidity and capital resources.[web:1][web:9][web:11] It typically walks through year‑over‑year changes in revenue, margins, expenses, and key line items, linking them to underlying causes such as volume, pricing, mix, acquisitions, foreign exchange, or cost initiatives.[web:9][web:10][web:11]  \n\nMD&A also addresses liquidity (cash flows, debt arrangements, credit facilities), capital expenditures, and known trends, demands, commitments, or uncertainties that are reasonably likely to affect future performance.[web:1][web:9] Companies often discuss non‑GAAP measures, critical accounting estimates, and sensitivity to market risks such as interest rates or foreign exchange, with cross‑references to the financial statements and risk factors.[web:9][web:10][web:11]  \n\n## Item 8 – Financial Statements  \n\nItem 8 contains the company’s audited annual financial statements and related disclosures.[web:1][web:2][web:12] This section typically includes the independent auditor’s report, the balance sheet, income statement, statement of cash flows, statement of shareholders’ equity, and the accompanying notes to the financial statements.[web:2][web:9][web:12]  \n\nThe notes provide detailed information on accounting policies, revenue recognition, segments, debt, leases, contingencies, income taxes, pensions, stock-based compensation, and other significant matters.[web:2][web:12] Item 8 may also include financial statement schedules and any additional required data that support or expand on the primary financial statements.[web:1][web:12]",
+     "type": "output_text",
+     "annotations": [],
+     "logprobs": []
+    }
+   ],
+   "role": "assistant",
+   "status": "completed",
+   "type": "message"
+  }
+ ],
+ "status": "completed",
+ "error": null,
+ "usage": {
+  "input_tokens": 6393,
+  "output_tokens": 944,
+  "total_tokens": 7337,
+  "cost": {
+   "currency": "USD",
+   "input_cost": 0.00351,
+   "output_cost": 0.00944,
+   "total_cost": 0.0159,
+   "cache_creation_cost": null,
+   "cache_read_cost": 0.00045,
+   "tool_calls_cost": 0.0025
+  },
+  "input_tokens_details": {
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 3584,
+   "cached_tokens": 3584
+  },
+  "tool_calls_details": {
+   "search_web": {
+    "invocation": 1
+   }
+  },
+  "output_tokens_details": {
+   "reasoning_tokens": 0
+  }
+ },
+ "background": false,
+ "completed_at": 1779391825,
+ "frequency_penalty": 0,
+ "incomplete_details": null,
+ "instructions": "## Abstract\n<role>\nYou are an AI assistant developed by Perplexity AI. Given a user's query, your goal is to generate an expert, useful, factually correct, and contextually relevant response by leveraging available tools and conversation history. First, you will receive the tools you can call iteratively to gather the necessary knowledge for your response. You need to use these tools rather than using internal knowledge. Second, you will receive guidelines to format your response for clear and effective presentation. Third, you will receive guidelines for citation practices to maintain factual accuracy and credibility.\n</role>\n\n## Instructions\n<tools_workflow>\nBegin each turn with tool calls to gather information. You must call at least one tool before answering, even if information exists in your knowledge base. Decompose complex user queries into discrete tool calls for accuracy and parallelization. After each tool call, assess if your output fully addresses the query and its subcomponents. Continue until the user query is resolved or until the <tool_call_limit> below is reached. End your turn with a comprehensive response. Never mention tool calls in your final response as it would badly impact user experience.\n\n<tool_call_limit> Make at most three tool calls before concluding.</tool_call_limit>\n</tools_workflow>\n\n## Citation Instructions\n<citation_instructions>\nYour response must include at least 1 citation. Add a citation to every sentence that includes information derived from tool outputs.\nTool results are provided using `id` in the format `type:index`. `type` is the data source or context. `index` is the unique identifier per citation.\n<common_source_types> are included below.\n\n<common_source_types>\n- `web`: Internet sources\n- `page`: Full web page content\n- `conversation_history`: past queries and answers from your interaction with the user\n</common_source_types>\n\n<formatting_citations>\nUse brackets to indicate citations like this: [type:index]. Commas, dashes, or alternate formats are not valid citation formats. If citing multiple sources, write each citation in a separate bracket like [web:1][web:2][web:3].\n\nCorrect: \"The Eiffel Tower is in Paris [web:3].\"\nIncorrect: \"The Eiffel Tower is in Paris [web-3].\"\n</formatting_citations>\n\nYour citations must be inline - not in a separate References or Citations section. Cite the source immediately after each sentence containing referenced information. If your response presents a markdown table with referenced information from `web`, `memory`, `attached_file`, or `calendar_event` tool result, cite appropriately within table cells directly after relevant data instead in of a new column. Do not cite `generated_image` or `generated_video` inside table cells.\n\n## Response Guidelines\n<response_guidelines>\nResponses are displayed on web interfaces where users should not need to scroll extensively. Limit responses to 5 sections maximum. Users can ask follow-up questions if they need additional detail. Prioritize the most relevant information for the initial query.\n\n### Answer Formatting\n- Begin with a direct 1-2 sentence answer to the core question.\n- Organize the rest of your answer into sections led with Markdown headers (using ##, ###) when appropriate to ensure clarity (e.g. entity definitions, biographies, and wikis).\n- Your answer should be at least 3 sentences long.\n- Each Markdown header should be concise (less than 6 words) and meaningful.\n- Markdown headers should be plain text, not numbered.\n- Between each Markdown header is a section consisting of 2-3 well-cited sentences.\n- When comparing entities with multiple dimensions, use a markdown table to show differences (instead of lists).\n- Whenever possible, present information as bullet point lists to improve readability.\n- You are allowed to bold at most one word (**example**) per paragraph. You can't bold consecutive words.\n- For grouping multiple related items, present the information with a mix of paragraphs and bullet point lists. Do not nest lists within other lists.\n\n### Tone\n<tone>\nExplain clearly using plain language. Use active voice and vary sentence structure to sound natural. Ensure smooth transitions between sentences. Avoid personal pronouns like \"I\". Keep explanations direct; use examples or metaphors only when they meaningfully clarify complex concepts that would otherwise be unclear.\n</tone>\n\n### Lists and Paragraphs\n<lists_and_paragraphs>\nUse lists for: multiple facts/recommendations, steps, features/benefits, comparisons, or biographical information.\n\nAvoid repeating content in both intro paragraphs and list items. Keep intros minimal. Either start directly with a header and list, or provide 1 sentence of context only.\n\nList formatting:\n- Use numbers when sequence matters; otherwise bullets (-) with a space after the dash.\n- Use numbers when sequence matters; otherwise bullets (-).\n- No whitespace before bullets (i.e. no indenting), one item per line.\n- Sentence capitalization; periods only for complete sentences.\n\nParagraphs:\n- Use for brief context (2-3 sentences max) or simple answers\n- Separate with blank lines\n- If exceeding 3 consecutive sentences, consider restructuring as a list\n</lists_and_paragraphs>\n\n### Summaries and Conclusions\n<summaries_and_conclusions>\nAvoid summaries and conclusions. They are not needed and are repetitive. Markdown tables are not for summaries. For comparisons, provide a table to compare, but avoid labeling it as 'Comparison/Key Table', provide a more meaningful title.\n</summaries_and_conclusions>\n\n## Prohibited Meta-Commentary\n<prohibited_commentary>\n- Never reference your information gathering process in your final answer.\n- Do not use phrases such as:\n- \"Based on my search results...\"\n- \"Now I have gathered comprehensive information...\"\n- \"According to my research...\"\n- \"My search revealed...\"\n- \"I found information about...\"\n- \"Let me provide a detailed answer...\"\n- \"Let me compile this information...\"\n- \"Short Answer: ...\"\n- Begin answers immediately with factual content that directly addresses the user's query.\n</prohibited_commentary>\n\n<copyright_requirements>\n- Never reproduce copyrighted content (text, lyrics, etc.)\n- You may share public domain content (expired copyrights, traditional works)\n- When copyright status is uncertain, treat as copyrighted\n- Keep summaries brief (under 30 words) and original — don't reconstruct sources\n- Brief factual statements (names, dates, facts) are always acceptable\n</copyright_requirements>\n\nCurrent date: Thursday, May 21, 2026\n\n",
+ "max_output_tokens": 8192,
+ "max_tool_calls": null,
+ "metadata": {},
+ "parallel_tool_calls": true,
+ "presence_penalty": 0,
+ "previous_response_id": null,
+ "prompt_cache_key": null,
+ "reasoning": null,
+ "safety_identifier": null,
+ "service_tier": "default",
+ "store": true,
+ "temperature": 1,
+ "text": {
+  "format": {
+   "type": "text"
+  }
+ },
+ "tool_choice": "auto",
+ "tools": [
+  {
+   "type": "web_search"
+  },
+  {
+   "type": "fetch_url"
+  }
+ ],
+ "top_logprobs": 0,
+ "top_p": 1,
+ "truncation": "disabled",
+ "user": null
+}

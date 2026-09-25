@@ -1,0 +1,177 @@
+{
+ "id": "resp_7edd7725-4ae1-49ad-9e96-22c93679363e",
+ "created_at": 1779391454,
+ "model": "openai/gpt-5.1",
+ "object": "response",
+ "output": [
+  {
+   "results": [
+    {
+     "id": 1,
+     "snippet": "- REST follows a resource-based architecture and typically uses multiple endpoints for different resources.\n- GraphQL provides a single endpoint where clients can request exactly the data they need.\n- GraphQL helps reduce over-fetching and under-fetching, which can occur in traditional REST APIs.\n...\nHere are some key differences between GraphQL and REST APIs based on how they handle endpoints, data fetching, and real-time communication.\n|GraphQL|REST API|\n|--|--|\n|GraphQL uses single endpoint for every operation.|REST API uses multiple endpoints for different operations|\n|In GraphQL client defines what data is required.|REST API fetches data using pre-defined rules.|\n|GraphQL reduces over-fetching and under-fetching.|Over-fetching and under-fetching are the common issues with Rest API.|\n|GraphQL supports real-time updates with subscriptions|REST API relies on polling for real-time data|\n|GraphQL is a growing technology with various tools and libraries.|REST APIs are well established ecosystem with multiple libraries and tools.|",
+     "title": "GraphQL vs REST - GeeksforGeeks",
+     "url": "https://www.geeksforgeeks.org/graphql/graphql-vs-rest-which-is-better-for-apis/",
+     "date": "2026-03-11",
+     "last_updated": "2026-05-18",
+     "source": "web"
+    },
+    {
+     "id": 2,
+     "snippet": "GraphQL queries access not just the properties of one resource but also smoothly follow references between them.\nWhile typical REST APIs require loading from multiple URLs, GraphQL APIs get all the data your app needs in a single request.",
+     "title": "GraphQL | The query language for modern APIs",
+     "url": "https://graphql.org",
+     "date": null,
+     "last_updated": "2026-05-06",
+     "source": "web"
+    },
+    {
+     "id": 3,
+     "snippet": "{ts:15} rest let's talk about the fundamental differences between graphql and rest rest stands for representational State\n{ts:22} transfer and it typically has unique URLs it follows the standard HTTP methods of get post put and delete it\n{ts:31} has uses status code standardization so you have the 200 okay the 404 not found Etc and data is typically returned in\n{ts:39} Json or XML format graphql stands for graph query language and it has a single endpoint for all operations you have the\n{ts:48} three primary operations of query mutation and subscription the client specifies exactly what data it needs and\n{ts:56} the API documents itself through introspection with graphql clients have precise control over the data that it\n{ts:63} requires so there's no such thing as over fetching or under fetching and these performance implications are",
+     "title": "GraphQL vs REST: What's the Difference and When Should You ...",
+     "url": "https://www.youtube.com/watch?v=2wz19HOyu1w",
+     "date": "2025-04-01",
+     "last_updated": "2026-04-14",
+     "source": "web"
+    },
+    {
+     "id": 4,
+     "snippet": "- GraphQL is built around the concept of \"getting exactly what you asked for\"without any data under or overfetching.\n- GraphQL makes it easier to aggregate data from multiple sources.\nIt uses a type system rather than multiple endpoints to describe data.\n...\nWhile typical REST APIs require loading from multiple URLs, GraphQL APIs get all the data in a single request - making apps quick even on slow mobile network connections.\n...\nConversely, if you wanted to gather some information from a specific endpoint, you couldn’t limit the fields that the REST API returns; you’ll always get a complete data set - or overfetching.\n...\nHowever, the most commonly stated benefit is that GraphQL solves both over-fetching and under-fetching issues by allowing the client to request only the data that is required.\nSince there is more efficiency associated with working with GraphQL, development is much faster with GraphQL than it would be with REST.\n...\nGraphQL queries themselves are not faster than REST queries, but since you have full control over what you want to query and what the payload should be, GraphQL requests will always be smaller and more efficient.",
+     "title": "What Is GraphQL and How It Works - Hygraph",
+     "url": "https://hygraph.com/learn/graphql",
+     "date": "2025-10-27",
+     "last_updated": "2026-05-13",
+     "source": "web"
+    },
+    {
+     "id": 5,
+     "snippet": "Unlike REST, which typically uses multiple endpoints to fetch data and perform network operations, GraphQL exposes data models by using a single endpoint through which clients send GraphQL requests, regardless of what they’re asking for.\nThe API then accesses resource properties—and follows the references between resources—to get the client all the data they need from a single query to the GraphQL server.\n...\nGraphQL offers an efficient, more flexible addition to REST; GraphQL APIs are often viewed as an upgrade from RESTful environments, especially given their ability to facilitate collaboration between front-end and back-end teams.\n...\nBecause REST relies on multiple endpoints and stateless interactions—where every API request is processed as a new query, independent of any others—clients receive every piece of data that is associated with a resource.\nIf a client needs only a subset of the data, it still receives all the data (over-fetching).\nAnd if the client needs data that spans multiple resources, a RESTful system often makes the client query each resource separately to compensate for inadequate data retrieval from the initial request (under-fetching).\nGraphQL APIs use a single GraphQL endpoint to give clients a precise, comprehensive data response in a one round trip from a single request, eliminating over- and under-fetching issues.\n...\nGraphQL reduces the need for versioning because clients can specify their data requirements in the query.\nThe addition of new fields to the server does not affect clients without a need for those fields.\n...\nREST doesn’t have built-in support for real-time updates.\nIf an app needs real-time functionality, developers usually must implement techniques like long-polling (where the client repeatedly polls the server for new data) and server-sent events, which can add complexity to the application.\nHowever, GraphQL includes built-in support for real-time updates through subscriptions.",
+     "title": "GraphQL vs REST: What's the Difference? - IBM",
+     "url": "https://www.ibm.com/think/topics/graphql-vs-rest-api",
+     "date": "2024-03-29",
+     "last_updated": "2026-01-17",
+     "source": "web"
+    },
+    {
+     "id": 6,
+     "snippet": "As stated in REST API vs GraphQL, “the key difference between GraphQL and REST APIs is that GraphQL is a query language, while REST is an architectural concept for network-based software.”",
+     "title": "The Role and Impact of GraphQL - F5 Networks",
+     "url": "https://www.f5.com/resources/reports/the-role-and-impact-of-graphql-octo-report",
+     "date": null,
+     "last_updated": "2026-05-21",
+     "source": "web"
+    },
+    {
+     "id": 7,
+     "snippet": "The key differences lie in data fetching, schema definition, versioning, and error handling.\nGraphQL uses a single endpoint and allows clients to specify their data requirements, while REST relies on multiple endpoints with fixed data structures.",
+     "title": "GraphQL vs REST: Key Similarities and Differences Explained",
+     "url": "https://konghq.com/blog/learning-center/graphql-vs-rest",
+     "date": "2025-02-28",
+     "last_updated": "2026-05-19",
+     "source": "web"
+    },
+    {
+     "id": 8,
+     "snippet": "Instead of exposing multiple endpoints that return fixed response structures, a GraphQL API typically exposes a **single endpoint**.\nClients send queries that specify exactly what data they need.\n...\nWhile REST and GraphQL ultimately solve the same problem—exposing data through an API—their design philosophies differ in several important ways.\n|Aspect|REST|GraphQL|\n|--|--|--|\n|API structure|Multiple endpoints representing resources|Typically a single endpoint|\n|Data retrieval|Server defines response structure|Client specifies required fields|\n|Network requests|Often multiple requests for related data|Complex data fetched in a single query|\n|Versioning|Often uses versioned endpoints|Uses schema evolution and field deprecation|\n|Caching|Strong support via HTTP caching|Typically handled at the client level|",
+     "title": "REST vs GraphQL: Key Differences, Performance, and When to Use ...",
+     "url": "https://dev.to/riteshkokam/rest-vs-graphql-key-differences-performance-and-when-to-use-each-51n7",
+     "date": "2026-03-09",
+     "last_updated": "2026-05-21",
+     "source": "web"
+    },
+    {
+     "id": 9,
+     "snippet": "Unlike REST, GraphQL allows for requesting specific data that a client needs, departing from the fixed data structure approach.\n...\nIn a nutshell, mainly the progress GraphQL has made is querying in one request, while retrieving only the necessary data instead of the complete set.\nThe main reason for GraphQL being so attractive to developers is its client-driven approach.\n...\nHowever, notable differences start with the conceptual models: While REST is made up of files, GraphQL is constructed of graphs.",
+     "title": "GraphQL: Core Features, Architecture, Pros and Cons - AltexSoft",
+     "url": "https://www.altexsoft.com/blog/graphql-core-features-architecture-pros-and-cons/",
+     "date": "2019-03-23",
+     "last_updated": "2026-03-31",
+     "source": "web"
+    }
+   ],
+   "type": "search_results",
+   "queries": [
+    "REST vs GraphQL key differences",
+    "REST API characteristics",
+    "GraphQL API characteristics"
+   ]
+  },
+  {
+   "id": "msg_d44758f0-ae0f-4d8a-8ded-ceb68d67ab49",
+   "content": [
+    {
+     "text": "REST and GraphQL are both ways to build APIs, but REST is an architectural style built around multiple resource URLs and HTTP semantics, while GraphQL is a query language over a single endpoint where the client specifies exactly which data it needs.[web:5][web:6] GraphQL typically reduces over‑fetching and under‑fetching compared to REST by letting clients shape responses, at the cost of more complexity in schema design and caching.[web:1][web:8]\n\n## Core conceptual difference\n\n- REST is an **architectural** pattern that exposes resources via multiple endpoints, using HTTP verbs (GET, POST, PUT, DELETE, etc.) and status codes to model operations.[web:1][web:5]  \n- GraphQL is a **query** language and runtime that sits behind usually one endpoint and lets clients send structured queries, mutations, and subscriptions against a typed schema.[web:2][web:4][web:6]\n\n## Endpoints and data fetching\n\n- REST typically has many endpoints (e.g., `/users`, `/users/1/posts`) and each endpoint returns a fixed data shape defined by the server.[web:1][web:7]  \n- GraphQL usually has a single endpoint (e.g., `/graphql`), and the client declares exactly which fields and related objects it wants in a single request, often avoiding multiple round trips.[web:2][web:4][web:5]\n\n## Over‑fetching, under‑fetching, and performance\n\n- With REST, clients often receive more data than needed (over‑fetching) or must call several endpoints to collect enough data (under‑fetching), especially for nested relationships.[web:1][web:5][web:9]  \n- GraphQL queries return only requested fields, which reduces payload sizes and the number of requests, though raw query speed is not inherently faster; efficiency comes from tailoring the payload.[web:4][web:8]\n\n## Typing, versioning, and evolution\n\n- REST responses are often JSON without a strict, machine‑enforced schema, and breaking changes are commonly managed with versioned URLs like `/api/v1` and `/api/v2`.[web:5][web:8]  \n- GraphQL uses a strongly typed schema with introspection, enabling tools, self‑documentation, and schema evolution via adding fields and deprecating old ones instead of creating new API versions.[web:2][web:4][web:5][web:8]\n\n## Caching and real‑time features\n\n- REST works naturally with HTTP caching (ETags, Cache‑Control) because resources are tied to URLs and standard methods, making it straightforward for browsers and proxies to cache responses.[web:5][web:8]  \n- GraphQL usually needs custom or client‑side caching strategies (e.g., normalized caches) due to a single endpoint, but it offers built‑in support for real‑time updates via subscriptions, whereas REST relies on techniques like polling or server‑sent events.[web:1][web:4][web:5]",
+     "type": "output_text",
+     "annotations": [],
+     "logprobs": []
+    }
+   ],
+   "role": "assistant",
+   "status": "completed",
+   "type": "message"
+  }
+ ],
+ "status": "completed",
+ "error": null,
+ "usage": {
+  "input_tokens": 5870,
+  "output_tokens": 679,
+  "total_tokens": 6549,
+  "cost": {
+   "currency": "USD",
+   "input_cost": 0.00286,
+   "output_cost": 0.00679,
+   "total_cost": 0.0126,
+   "cache_creation_cost": null,
+   "cache_read_cost": 0.00045,
+   "tool_calls_cost": 0.0025
+  },
+  "input_tokens_details": {
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 3584,
+   "cached_tokens": 3584
+  },
+  "tool_calls_details": {
+   "search_web": {
+    "invocation": 1
+   }
+  },
+  "output_tokens_details": {
+   "reasoning_tokens": 0
+  }
+ },
+ "background": false,
+ "completed_at": 1779391454,
+ "frequency_penalty": 0,
+ "incomplete_details": null,
+ "instructions": "## Abstract\n<role>\nYou are an AI assistant developed by Perplexity AI. Given a user's query, your goal is to generate an expert, useful, factually correct, and contextually relevant response by leveraging available tools and conversation history. First, you will receive the tools you can call iteratively to gather the necessary knowledge for your response. You need to use these tools rather than using internal knowledge. Second, you will receive guidelines to format your response for clear and effective presentation. Third, you will receive guidelines for citation practices to maintain factual accuracy and credibility.\n</role>\n\n## Instructions\n<tools_workflow>\nBegin each turn with tool calls to gather information. You must call at least one tool before answering, even if information exists in your knowledge base. Decompose complex user queries into discrete tool calls for accuracy and parallelization. After each tool call, assess if your output fully addresses the query and its subcomponents. Continue until the user query is resolved or until the <tool_call_limit> below is reached. End your turn with a comprehensive response. Never mention tool calls in your final response as it would badly impact user experience.\n\n<tool_call_limit> Make at most three tool calls before concluding.</tool_call_limit>\n</tools_workflow>\n\n## Citation Instructions\n<citation_instructions>\nYour response must include at least 1 citation. Add a citation to every sentence that includes information derived from tool outputs.\nTool results are provided using `id` in the format `type:index`. `type` is the data source or context. `index` is the unique identifier per citation.\n<common_source_types> are included below.\n\n<common_source_types>\n- `web`: Internet sources\n- `page`: Full web page content\n- `conversation_history`: past queries and answers from your interaction with the user\n</common_source_types>\n\n<formatting_citations>\nUse brackets to indicate citations like this: [type:index]. Commas, dashes, or alternate formats are not valid citation formats. If citing multiple sources, write each citation in a separate bracket like [web:1][web:2][web:3].\n\nCorrect: \"The Eiffel Tower is in Paris [web:3].\"\nIncorrect: \"The Eiffel Tower is in Paris [web-3].\"\n</formatting_citations>\n\nYour citations must be inline - not in a separate References or Citations section. Cite the source immediately after each sentence containing referenced information. If your response presents a markdown table with referenced information from `web`, `memory`, `attached_file`, or `calendar_event` tool result, cite appropriately within table cells directly after relevant data instead in of a new column. Do not cite `generated_image` or `generated_video` inside table cells.\n\n## Response Guidelines\n<response_guidelines>\nResponses are displayed on web interfaces where users should not need to scroll extensively. Limit responses to 5 sections maximum. Users can ask follow-up questions if they need additional detail. Prioritize the most relevant information for the initial query.\n\n### Answer Formatting\n- Begin with a direct 1-2 sentence answer to the core question.\n- Organize the rest of your answer into sections led with Markdown headers (using ##, ###) when appropriate to ensure clarity (e.g. entity definitions, biographies, and wikis).\n- Your answer should be at least 3 sentences long.\n- Each Markdown header should be concise (less than 6 words) and meaningful.\n- Markdown headers should be plain text, not numbered.\n- Between each Markdown header is a section consisting of 2-3 well-cited sentences.\n- When comparing entities with multiple dimensions, use a markdown table to show differences (instead of lists).\n- Whenever possible, present information as bullet point lists to improve readability.\n- You are allowed to bold at most one word (**example**) per paragraph. You can't bold consecutive words.\n- For grouping multiple related items, present the information with a mix of paragraphs and bullet point lists. Do not nest lists within other lists.\n\n### Tone\n<tone>\nExplain clearly using plain language. Use active voice and vary sentence structure to sound natural. Ensure smooth transitions between sentences. Avoid personal pronouns like \"I\". Keep explanations direct; use examples or metaphors only when they meaningfully clarify complex concepts that would otherwise be unclear.\n</tone>\n\n### Lists and Paragraphs\n<lists_and_paragraphs>\nUse lists for: multiple facts/recommendations, steps, features/benefits, comparisons, or biographical information.\n\nAvoid repeating content in both intro paragraphs and list items. Keep intros minimal. Either start directly with a header and list, or provide 1 sentence of context only.\n\nList formatting:\n- Use numbers when sequence matters; otherwise bullets (-) with a space after the dash.\n- Use numbers when sequence matters; otherwise bullets (-).\n- No whitespace before bullets (i.e. no indenting), one item per line.\n- Sentence capitalization; periods only for complete sentences.\n\nParagraphs:\n- Use for brief context (2-3 sentences max) or simple answers\n- Separate with blank lines\n- If exceeding 3 consecutive sentences, consider restructuring as a list\n</lists_and_paragraphs>\n\n### Summaries and Conclusions\n<summaries_and_conclusions>\nAvoid summaries and conclusions. They are not needed and are repetitive. Markdown tables are not for summaries. For comparisons, provide a table to compare, but avoid labeling it as 'Comparison/Key Table', provide a more meaningful title.\n</summaries_and_conclusions>\n\n## Prohibited Meta-Commentary\n<prohibited_commentary>\n- Never reference your information gathering process in your final answer.\n- Do not use phrases such as:\n- \"Based on my search results...\"\n- \"Now I have gathered comprehensive information...\"\n- \"According to my research...\"\n- \"My search revealed...\"\n- \"I found information about...\"\n- \"Let me provide a detailed answer...\"\n- \"Let me compile this information...\"\n- \"Short Answer: ...\"\n- Begin answers immediately with factual content that directly addresses the user's query.\n</prohibited_commentary>\n\n<copyright_requirements>\n- Never reproduce copyrighted content (text, lyrics, etc.)\n- You may share public domain content (expired copyrights, traditional works)\n- When copyright status is uncertain, treat as copyrighted\n- Keep summaries brief (under 30 words) and original — don't reconstruct sources\n- Brief factual statements (names, dates, facts) are always acceptable\n</copyright_requirements>\n\nCurrent date: Thursday, May 21, 2026\n\n",
+ "max_output_tokens": 8192,
+ "max_tool_calls": null,
+ "metadata": {},
+ "parallel_tool_calls": true,
+ "presence_penalty": 0,
+ "previous_response_id": null,
+ "prompt_cache_key": null,
+ "reasoning": null,
+ "safety_identifier": null,
+ "service_tier": "default",
+ "store": true,
+ "temperature": 1,
+ "text": {
+  "format": {
+   "type": "text"
+  }
+ },
+ "tool_choice": "auto",
+ "tools": [
+  {
+   "type": "web_search"
+  },
+  {
+   "type": "fetch_url"
+  }
+ ],
+ "top_logprobs": 0,
+ "top_p": 1,
+ "truncation": "disabled",
+ "user": null
+}

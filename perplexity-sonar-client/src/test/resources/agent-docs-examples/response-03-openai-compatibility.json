@@ -1,0 +1,186 @@
+{
+ "id": "resp_18215035-0ac4-4b27-915c-62399ff87fc0",
+ "created_at": 1779391825,
+ "model": "openai/gpt-5.1",
+ "object": "response",
+ "output": [
+  {
+   "results": [
+    {
+     "id": 1,
+     "snippet": "The *A* series is a family of SoCs used in the iPhone, certain iPad models (including iPad Mini and entry-level iPad), MacBook Neo, and the Apple TV.\n*A*-series chips were also used in the discontinued iPod Touch line and the original HomePod.\nThey integrate one or more ARM-based processing cores (CPU), a graphics processing unit (GPU), cache memory and other electronics necessary to provide mobile computing functions within a single physical package.\n...\nIt combines an ARM Cortex-A8 CPU – also used in Samsung's S5PC110A01 SoC – and a PowerVR SGX 535 graphics processor (GPU), all built on Samsung's 45-nanometer silicon chip fabrication process.\nThe design emphasizes power efficiency.",
+     "title": "Apple silicon - Wikipedia",
+     "url": "https://en.wikipedia.org/wiki/Apple_silicon",
+     "date": "2011-07-06",
+     "last_updated": "2026-05-18",
+     "source": "web"
+    },
+    {
+     "id": 2,
+     "snippet": "{ts:230} Apple's range then we'll go back again to ccom so we're looking now at the M3 family it's a series of arm-based system\n{ts:237} on a chips designed by Apple the M3 process include a central processing unit and a graphics processing GPU and\n{ts:243} they are used in Apple's iMac desktops and its uh MacBook range of laptops and there are a few iPads as well which got\n…\n...\n{ts:467} Core Design needs to be certified and must be 100% compatible with the arm instruction set architecture now apple\n...\n{ts:635} years and now we have this new competitor which is kcomm now the other thing to remember about the M3 and the\n{ts:640} Snapdragon X Elite is that they are systems on a chip they are not just a CPU so maybe if you buy an x86 uh\n{ts:648} processor of some kind you're getting basically just a a CPU but now these things have a GPU for example and the M\n{ts:657} series uses Apple's uh own design GPU with its Heritage coming from imagination Technologies and this latest\n{ts:665} installation includes mesh shaders and Hardware accelerated uh ra tracing again see my previous V videos about those\n{ts:672} things and the Snapdragon X Elite uses corcom adreno GPU which supports direct X12 so here we can see that these gpus\n…\n{ts:703} course both have npus and this of course is something that's becoming very important the ability to be able to run\n{ts:711} uh these uh neural processing units generative AI uh and other kind of stuff on the so so these chips are more than\n{ts:718} just a CPU you've got GPU you've got uh edit encoders and decoders you've got npus all built into the same chip and\n…",
+     "title": "Apple M3 vs Snapdragon X Elite - History, Features, and Software",
+     "url": "https://www.youtube.com/watch?v=V8Rbjwz0dVU",
+     "date": "2023-11-03",
+     "last_updated": "2026-05-16",
+     "source": "web"
+    },
+    {
+     "id": 3,
+     "snippet": "Leveraging a unified memory architecture for CPU and GPU tasks, Mac apps will see amazing performance benefits from Apple silicon tuned frameworks such as Metal and Accelerate.\n...\nNow, the new Apple Silicon Macs combine all these components into a single system on a chip, or SoC.\nBuilding everything into one chip gives the system a unified memory architecture.\nThis means that the GPU and CPU are working over the same memory.\nGraphics resources, such as textures, images and geometry data, can be shared between the CPU and GPU efficiently, with no overhead, as there's no need to copy data across a PCIe bus.",
+     "title": "Explore the new system architecture of Apple silicon Macs - WWDC20",
+     "url": "https://developer.apple.com/videos/play/wwdc2020/10686/",
+     "date": "2020-06-24",
+     "last_updated": "2026-05-14",
+     "source": "web"
+    },
+    {
+     "id": 4,
+     "snippet": "Apple designs its chips specifically for iOS, which allows tight hardware and software integration.\n...\nWe also discuss how Apple Bionic processors focus on high single-core performance, efficient power management, and unified memory architecture, while Snapdragon chips focus heavily on GPU performance through Adreno graphics, higher refresh rate support, and features built for gaming phones.\n...\n{ts:330} Apple के पास ये है कि वो अपने कस्टम सीपीू आर्किटेक्चर बनाता है। ये एआरएम के कोर्स को डायरेक्टली यूज नहीं करते हैं।",
+     "title": "Apple Bionic vs Snapdragon – Which Chip Is Actually Better for ...",
+     "url": "https://www.youtube.com/watch?v=jiDCtvI_MC4",
+     "date": "2026-03-06",
+     "last_updated": "2026-05-21",
+     "source": "web"
+    },
+    {
+     "id": 5,
+     "snippet": "Key Concepts\n- RISC Architecture: Utilizes a simplified instruction set for efficient processing.\n- Pipeline Organization: Enables simultaneous instruction execution for enhanced throughput.\n- Cache Hierarchy: Reduces memory access latency, improving application performance.\n- Multicore Architecture: Integrates various processing units for optimized workload management.\n- Power Optimization: Implements strategies like dynamic voltage scaling to enhance energy efficiency.\n- System on Chip (SoC): Combines CPU, GPU, and other components for seamless data exchange.\n...\nThese processors power iPhones\nand iPads and are built as a System-on-Chip (SoC), integrating the CPU, GPU, Neural Engine, and\nhardware accelerators on a single die.\n...\nApple A-Series processors are based on the ARM (Advanced RISC Machine) architecture, which\nfollows the Reduced Instruction Set Computing (RISC) philosophy.\nRISC uses a small, highly optimized\nset of simple instructions that can each execute in a single clock cycle.\n...\n##### Apple A-Series processors use a deep out-of-order superscalar pipeline.\nThis means the processor can\n...\n##### The Apple A-Series is a complete System-on-Chip.\nAll major processing blocks — CPU, GPU, Neural\n##### Engine, ISP, and media codecs — share a unified memory fabric and the System Level Cache,\n##### enabling low-latency, high-bandwidth data exchange without costly off-chip transfers.",
+     "title": "CASE STUDY 3: Apple A-Series Mobile Processor Architecture",
+     "url": "https://www.studocu.com/in/document/navjeevan-education-societys-polytechnic-bhandup/computer-graphics/case-study-3-apple-a-series-mobile-processor-architecture/157859088",
+     "date": "2026-04-02",
+     "last_updated": "2026-04-12",
+     "source": "web"
+    },
+    {
+     "id": 6,
+     "snippet": "\n6-core GPU (graphics \nprocessor unit)  \n\n2 dual-core CPU \n(central processing\n...\nA13 consists of: \n\nEight-core Neural \nEngine  with\nMachine Learning \n\nFour-core GPU \n(20% faster > A12) \n\nSix-core CPU (20% \nfaster and 35% save \nenergy > A12) \n",
+     "title": "Recent Advances and Outlook for Heterogeneous Integration",
+     "url": "https://ewh.ieee.org/soc/cpmt/presentations/eps2002a.pdf",
+     "date": null,
+     "last_updated": "2025-10-23",
+     "source": "web"
+    },
+    {
+     "id": 7,
+     "snippet": "In contrast, Apple designs its chips—like the A17 Pro and upcoming A18—for vertical integration within iOS.\nThis means the CPU, GPU, memory controller, and Neural Engine are all developed in-house and tightly coupled with the operating system.\nApple’s six-core CPU (two performance, four efficiency) and five-core GPU are built using TSMC’s most advanced node at the time of release, often giving them a process advantage over competing SoCs.\n...\nApple’s unified memory architecture reduces latency between CPU, GPU, and RAM, lowering energy consumption per operation.\n...\nApple’s A17 Pro and future chips generally offer superior sustained performance, better thermal management, and tighter software integration, resulting in smoother gameplay over time.",
+     "title": "Snapdragon Vs Apple Chip Which Powers Smoother ...",
+     "url": "https://www.alibaba.com/product-insights/snapdragon-vs-apple-chip-which-powers-smoother-mobile-gaming-performance.html",
+     "date": "2026-01-08",
+     "last_updated": "2026-01-16",
+     "source": "web"
+    },
+    {
+     "id": 8,
+     "snippet": "A series SoCsThe A series is a family of SoCs used in the iPhone, certain iPad models (including iPad Mini and entry-level iPad), and the Apple TV.\nA-series chips were alsoused in the discontinued iPod Touch line and the original HomePod.\nThey integrate one or more ARM-based processing cores (CPU), a graphics processingunit (GPU), cache memory and other electronics necessary to provide mobile computing functions within a single physical package.[4]",
+     "title": "Apple Silicon - Wikipedia | PDF | I Pad",
+     "url": "https://www.scribd.com/document/909655498/Apple-Silicon-Wikipedia",
+     "date": "2025-09-29",
+     "last_updated": "2026-01-19",
+     "source": "web"
+    },
+    {
+     "id": 9,
+     "snippet": "Snapdragon processors integrate multiple components like the CPU, GPU, NPU, and modem on a single chip.\nThis integration and specific software integrations improves processing efficiency, improves power management, reduces package size and, overall, improves overall performance of the device.\n...\nSnapdragon processors integrate multiple components like the CPU, GPU, NPU, and modem on a single chip.\nThis integration is called heterogenous computing and it improves processing efficiency, improves power management, reduces package size and, overall, improves overall performance of the device.",
+     "title": "What is Snapdragon FAQ | Qualcomm",
+     "url": "https://www.qualcomm.com/snapdragon/what-is-snapdragon",
+     "date": "2024-06-27",
+     "last_updated": "2026-05-21",
+     "source": "web"
+    },
+    {
+     "id": 10,
+     "snippet": "The Apple A15 Bionic is a System on a Chip (SoC) from Apple that is found in the iPhone 13 and iPad Mini (2021) models.\nIt was announced late 2021 and offers 6 cores divided in 2 performance cores and four power efficiency cores.\nThe CPU performance increases only slightly compared to the A14, but GPU (in the higher end models) offers higher gains.\n...\nThe chip also includes a new GPU that is advertised as 50% faster, the M12 Motion co-processor and a Neural Engine with 8 cores for up to 5 trillion operations per second.",
+     "title": "Qualcomm Snapdragon 8 Gen 1 vs Apple A15 Bionic ...",
+     "url": "https://www.notebookcheck.net/SD-8-Gen-1-vs-A15-vs-A12-Bionic_14029_13825_10166.247596.0.html",
+     "date": "2023-07-01",
+     "last_updated": "2025-12-01",
+     "source": "web"
+    }
+   ],
+   "type": "search_results",
+   "queries": [
+    "Apple A-series SoC design philosophy CPU GPU integration",
+    "Qualcomm Snapdragon design philosophy CPU GPU integration",
+    "Apple A-series vs Snapdragon CPU GPU architecture high level"
+   ]
+  },
+  {
+   "id": "msg_6d730289-196f-44c5-9561-11554263bcda",
+   "content": [
+    {
+     "text": "Apple’s A‑series SoCs are vertically optimized, custom CPU/GPU designs built for iOS with tight hardware–software co‑design and aggressive single‑thread efficiency, while Snapdragon SoCs emphasize modularity, semi‑custom ARM CPU cores, Adreno GPUs, and broad OEM feature flexibility, especially around connectivity and gaming. [web:1][web:4][web:7][web:9] At a high level, Apple optimizes one tightly controlled platform end‑to‑end, whereas Qualcomm optimizes a scalable platform that can be configured across many devices, vendors, and price tiers. [web:4][web:7][web:9]\n\n## CPU philosophy\n\n- Apple A‑series uses fully custom ARM‑compatible cores (e.g., “large” performance + “small” efficiency cores) designed in‑house rather than off‑the‑shelf Cortex designs, with a focus on high IPC and strong single‑core performance at mobile power envelopes. [web:4][web:5][web:7]  \n- Snapdragon flagships typically use ARM’s Cortex performance/efficiency cores or semi‑custom derivatives in a big.LITTLE or tri‑cluster layout, tuned for good multi‑core throughput, thermals, and time‑to‑market across many OEMs. [web:9][web:10]  \n- Because Apple controls the OS and app stack, A‑series CPU microarchitecture, cache hierarchy, and power management are co‑designed with iOS and major frameworks, allowing very aggressive per‑core performance without sacrificing battery life. [web:3][web:4][web:5][web:7]  \n- Qualcomm instead exposes a flexible platform: CPU scheduling, DVFS behavior, and thermal limits are co‑tuned with each OEM’s Android skin, form factor, and cooling solution. [web:9]  \n\n## GPU and graphics focus\n\n- Apple integrates its own in‑house GPU designs in recent A‑series generations (heritage from PowerVR, but now branded Apple GPU), tightly tied to Metal and Apple’s graphics stack. [web:1][web:3][web:4][web:7]  \n- Qualcomm’s Snapdragon line uses Adreno GPUs, a long‑running, internally developed GPU family heavily optimized for mobile gaming, high refresh displays, and broad API support (Vulkan, OpenGL ES, often desktop‑style DirectX in PC‑class parts). [web:2][web:4][web:9]  \n- Apple’s design leans toward consistent, thermally stable performance and efficient use of a unified memory architecture, which benefits real‑world rendering and GPU–CPU data sharing even when peak theoretical throughput is not always highest on paper. [web:3][web:5][web:7]  \n- Snapdragon’s philosophy has often highlighted headline GPU features for OEMs (high FPS gaming modes, variable rate shading, advanced display pipelines) to differentiate Android flagships, gaming phones, and XR devices. [web:4][web:7][web:9]  \n\n## System integration and memory\n\n- A‑series chips are classic “all‑in‑one” SoCs: CPU, GPU, Neural Engine, ISP, media codecs, secure enclave, and other accelerators share a high‑bandwidth internal fabric and system‑level cache, reducing off‑chip traffic and latency. [web:1][web:3][web:5][web:6]  \n- Apple strongly emphasizes a **unified** memory architecture and system‑level cache: CPU, GPU, and ML engines access the same physical memory pool without copies, which simplifies software and boosts efficiency for mixed workloads (e.g., compute + graphics + ML in one frame). [web:3][web:5][web:7]  \n- Snapdragon SoCs also integrate CPU, Adreno GPU, Hexagon NPU/DSP, ISP, and media engines, but place special strategic weight on heterogeneous computing: offloading pieces of a workload to the “best” block (CPU, GPU, DSP, NPU) depending on power and latency. [web:9]  \n- Unlike Apple, Qualcomm must support many OS variants and OEM stacks, so its integration strategy stresses standard interfaces and flexible partitioning rather than deep co‑design with a single OS and set of first‑party apps. [web:4][web:7][web:9]  \n\n## Connectivity and platform strategy\n\n- Apple typically pairs A‑series SoCs with separate modems (historically Qualcomm, now sometimes in‑house efforts), prioritizing SoC area and power budget for application‑processor blocks and deferring RF/telecom differentiation to the modem. [web:1][web:7]  \n- Snapdragon flagships usually integrate the cellular modem platform tightly with the SoC family (even when packaged separately), and Qualcomm positions Snapdragon as a full connectivity + compute stack: 5G, Wi‑Fi, BT, GNSS, audio codecs, and camera pipelines are part of the platform story for OEMs. [web:9]  \n- Apple’s vertical model optimizes for a small number of premium devices with long support lifetimes, using the A‑series as a cornerstone of the overall iOS experience. [web:1][web:4][web:7]  \n- Qualcomm’s model optimizes for breadth: multiple Snapdragon tiers, re‑usable IP blocks, and scalable feature sets across phones, tablets, wearables, XR headsets, PCs, and automotive, all built on related CPU/GPU/NPU architectures. [web:2][web:9]",
+     "type": "output_text",
+     "annotations": [],
+     "logprobs": []
+    }
+   ],
+   "role": "assistant",
+   "status": "completed",
+   "type": "message"
+  }
+ ],
+ "status": "completed",
+ "error": null,
+ "usage": {
+  "input_tokens": 6325,
+  "output_tokens": 1210,
+  "total_tokens": 7535,
+  "cost": {
+   "currency": "USD",
+   "input_cost": 0.00343,
+   "output_cost": 0.0121,
+   "total_cost": 0.01848,
+   "cache_creation_cost": null,
+   "cache_read_cost": 0.00045,
+   "tool_calls_cost": 0.0025
+  },
+  "input_tokens_details": {
+   "cache_creation_input_tokens": 0,
+   "cache_read_input_tokens": 3584,
+   "cached_tokens": 3584
+  },
+  "tool_calls_details": {
+   "search_web": {
+    "invocation": 1
+   }
+  },
+  "output_tokens_details": {
+   "reasoning_tokens": 0
+  }
+ },
+ "background": false,
+ "completed_at": 1779391825,
+ "frequency_penalty": 0,
+ "incomplete_details": null,
+ "instructions": "## Abstract\n<role>\nYou are an AI assistant developed by Perplexity AI. Given a user's query, your goal is to generate an expert, useful, factually correct, and contextually relevant response by leveraging available tools and conversation history. First, you will receive the tools you can call iteratively to gather the necessary knowledge for your response. You need to use these tools rather than using internal knowledge. Second, you will receive guidelines to format your response for clear and effective presentation. Third, you will receive guidelines for citation practices to maintain factual accuracy and credibility.\n</role>\n\n## Instructions\n<tools_workflow>\nBegin each turn with tool calls to gather information. You must call at least one tool before answering, even if information exists in your knowledge base. Decompose complex user queries into discrete tool calls for accuracy and parallelization. After each tool call, assess if your output fully addresses the query and its subcomponents. Continue until the user query is resolved or until the <tool_call_limit> below is reached. End your turn with a comprehensive response. Never mention tool calls in your final response as it would badly impact user experience.\n\n<tool_call_limit> Make at most three tool calls before concluding.</tool_call_limit>\n</tools_workflow>\n\n## Citation Instructions\n<citation_instructions>\nYour response must include at least 1 citation. Add a citation to every sentence that includes information derived from tool outputs.\nTool results are provided using `id` in the format `type:index`. `type` is the data source or context. `index` is the unique identifier per citation.\n<common_source_types> are included below.\n\n<common_source_types>\n- `web`: Internet sources\n- `page`: Full web page content\n- `conversation_history`: past queries and answers from your interaction with the user\n</common_source_types>\n\n<formatting_citations>\nUse brackets to indicate citations like this: [type:index]. Commas, dashes, or alternate formats are not valid citation formats. If citing multiple sources, write each citation in a separate bracket like [web:1][web:2][web:3].\n\nCorrect: \"The Eiffel Tower is in Paris [web:3].\"\nIncorrect: \"The Eiffel Tower is in Paris [web-3].\"\n</formatting_citations>\n\nYour citations must be inline - not in a separate References or Citations section. Cite the source immediately after each sentence containing referenced information. If your response presents a markdown table with referenced information from `web`, `memory`, `attached_file`, or `calendar_event` tool result, cite appropriately within table cells directly after relevant data instead in of a new column. Do not cite `generated_image` or `generated_video` inside table cells.\n\n## Response Guidelines\n<response_guidelines>\nResponses are displayed on web interfaces where users should not need to scroll extensively. Limit responses to 5 sections maximum. Users can ask follow-up questions if they need additional detail. Prioritize the most relevant information for the initial query.\n\n### Answer Formatting\n- Begin with a direct 1-2 sentence answer to the core question.\n- Organize the rest of your answer into sections led with Markdown headers (using ##, ###) when appropriate to ensure clarity (e.g. entity definitions, biographies, and wikis).\n- Your answer should be at least 3 sentences long.\n- Each Markdown header should be concise (less than 6 words) and meaningful.\n- Markdown headers should be plain text, not numbered.\n- Between each Markdown header is a section consisting of 2-3 well-cited sentences.\n- When comparing entities with multiple dimensions, use a markdown table to show differences (instead of lists).\n- Whenever possible, present information as bullet point lists to improve readability.\n- You are allowed to bold at most one word (**example**) per paragraph. You can't bold consecutive words.\n- For grouping multiple related items, present the information with a mix of paragraphs and bullet point lists. Do not nest lists within other lists.\n\n### Tone\n<tone>\nExplain clearly using plain language. Use active voice and vary sentence structure to sound natural. Ensure smooth transitions between sentences. Avoid personal pronouns like \"I\". Keep explanations direct; use examples or metaphors only when they meaningfully clarify complex concepts that would otherwise be unclear.\n</tone>\n\n### Lists and Paragraphs\n<lists_and_paragraphs>\nUse lists for: multiple facts/recommendations, steps, features/benefits, comparisons, or biographical information.\n\nAvoid repeating content in both intro paragraphs and list items. Keep intros minimal. Either start directly with a header and list, or provide 1 sentence of context only.\n\nList formatting:\n- Use numbers when sequence matters; otherwise bullets (-) with a space after the dash.\n- Use numbers when sequence matters; otherwise bullets (-).\n- No whitespace before bullets (i.e. no indenting), one item per line.\n- Sentence capitalization; periods only for complete sentences.\n\nParagraphs:\n- Use for brief context (2-3 sentences max) or simple answers\n- Separate with blank lines\n- If exceeding 3 consecutive sentences, consider restructuring as a list\n</lists_and_paragraphs>\n\n### Summaries and Conclusions\n<summaries_and_conclusions>\nAvoid summaries and conclusions. They are not needed and are repetitive. Markdown tables are not for summaries. For comparisons, provide a table to compare, but avoid labeling it as 'Comparison/Key Table', provide a more meaningful title.\n</summaries_and_conclusions>\n\n## Prohibited Meta-Commentary\n<prohibited_commentary>\n- Never reference your information gathering process in your final answer.\n- Do not use phrases such as:\n- \"Based on my search results...\"\n- \"Now I have gathered comprehensive information...\"\n- \"According to my research...\"\n- \"My search revealed...\"\n- \"I found information about...\"\n- \"Let me provide a detailed answer...\"\n- \"Let me compile this information...\"\n- \"Short Answer: ...\"\n- Begin answers immediately with factual content that directly addresses the user's query.\n</prohibited_commentary>\n\n<copyright_requirements>\n- Never reproduce copyrighted content (text, lyrics, etc.)\n- You may share public domain content (expired copyrights, traditional works)\n- When copyright status is uncertain, treat as copyrighted\n- Keep summaries brief (under 30 words) and original — don't reconstruct sources\n- Brief factual statements (names, dates, facts) are always acceptable\n</copyright_requirements>\n\nCurrent date: Thursday, May 21, 2026\n\n",
+ "max_output_tokens": 8192,
+ "max_tool_calls": null,
+ "metadata": {},
+ "parallel_tool_calls": true,
+ "presence_penalty": 0,
+ "previous_response_id": null,
+ "prompt_cache_key": null,
+ "reasoning": null,
+ "safety_identifier": null,
+ "service_tier": "default",
+ "store": true,
+ "temperature": 1,
+ "text": {
+  "format": {
+   "type": "text"
+  }
+ },
+ "tool_choice": "auto",
+ "tools": [
+  {
+   "type": "web_search"
+  },
+  {
+   "type": "fetch_url"
+  }
+ ],
+ "top_logprobs": 0,
+ "top_p": 1,
+ "truncation": "disabled",
+ "user": null
+}

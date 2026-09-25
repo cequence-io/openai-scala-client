@@ -4,13 +4,13 @@
 This is a no-nonsense async Scala client for OpenAI API and multiple LLM providers supporting all the available endpoints and params **including streaming** (with a 🔥 new provider-neutral typed stream of text / thinking / tool-call / tool-result chunks), **chat completion**, **responses API**, **assistants API**, **tools** (including MCP), **graders**, **vision** (with provider-uniform file/image attachments), **batch processing**, and **voice routines** (as defined [here](https://platform.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala) with adapters for Anthropic (incl. Bedrock and Managed Agents), Google Gemini/Vertex AI, Groq, Perplexity, TypeSafe AI (Jev) (🔥 New), and others. The supported calls are:
 
 * **Models**: [listModels](https://platform.openai.com/docs/api-reference/models/list), and [retrieveModel](https://platform.openai.com/docs/api-reference/models/retrieve)
-* **Completions**: [createCompletion](https://platform.openai.com/docs/api-reference/completions/create)
+* **Completions**: [createCompletion](https://platform.openai.com/docs/api-reference/completions/create) (deprecated on `OpenAIService` - OpenAI shuts down its last completions models on 2026-09-28; OpenAI-compatible servers keep it via `OpenAICoreService`)
 * **Chat Completions**: [createChatCompletion](https://platform.openai.com/docs/api-reference/chat/create), [createChatFunCompletion](https://platform.openai.com/docs/api-reference/chat/create) (deprecated), [createChatToolCompletion](https://platform.openai.com/docs/api-reference/chat/create), and [createChatWebSearchCompletion](https://platform.openai.com/docs/guides/tools-web-search?api-mode=chat)
-* **Edits**: [createEdit](https://platform.openai.com/docs/api-reference/edits/create) (deprecated)
-* **Images**: [createImage](https://platform.openai.com/docs/api-reference/images/create), [createImageEdit](https://platform.openai.com/docs/api-reference/images/create-edit), and [createImageVariation](https://platform.openai.com/docs/api-reference/images/create-variation)
+* **Edits**: [createEdit](https://platform.openai.com/docs/api-reference/edits/create) (deprecated - the endpoint is gone)
+* **Images**: [createImage](https://platform.openai.com/docs/api-reference/images/create), [createImageEdit](https://platform.openai.com/docs/api-reference/images/create-edit), and [createImageVariation](https://platform.openai.com/docs/api-reference/images/create-variation) (deprecated - the endpoint is gone with dall-e-2; defaults now use `gpt-image-2`)
 * **Embeddings**: [createEmbeddings](https://platform.openai.com/docs/api-reference/embeddings/create)
 * **Batches**: [createBatch](https://platform.openai.com/docs/api-reference/batch/create), [retrieveBatch](https://platform.openai.com/docs/api-reference/batch/retrieve), [cancelBatch](https://platform.openai.com/docs/api-reference/batch/cancel), and [listBatches](https://platform.openai.com/docs/api-reference/batch/list), plus the helpers `uploadBatchFile`, `buildAndUploadBatchFile`, `buildBatchFileContent`, `retrieveBatchFile`, `retrieveBatchFileContent`, and `retrieveBatchResponses`
-* **Audio**: [createAudioTranscription](https://platform.openai.com/docs/api-reference/audio/createTranscription), [createAudioTranslation](https://platform.openai.com/docs/api-reference/audio/createTranslation), and [createAudioSpeech](https://platform.openai.com/docs/api-reference/audio/createSpeech)
+* **Audio**: [createAudioTranscription](https://platform.openai.com/docs/api-reference/audio/createTranscription), [createAudioTranslation](https://platform.openai.com/docs/api-reference/audio/createTranslation) (deprecated - whisper-1, its only model, shuts down 2027-02-26), and [createAudioSpeech](https://platform.openai.com/docs/api-reference/audio/createSpeech)
 * **Files**: [listFiles](https://platform.openai.com/docs/api-reference/files/list), [uploadFile](https://platform.openai.com/docs/api-reference/files/upload), [deleteFile](https://platform.openai.com/docs/api-reference/files/delete), [retrieveFile](https://platform.openai.com/docs/api-reference/files/retrieve), [retrieveFileContent](https://platform.openai.com/docs/api-reference/files/retrieve-content), and `retrieveFileContentAsSource` (streamed)
 * **Fine-tunes**: [createFineTune](https://platform.openai.com/docs/api-reference/fine-tunes/create), [listFineTunes](https://platform.openai.com/docs/api-reference/fine-tunes/list), [retrieveFineTune](https://platform.openai.com/docs/api-reference/fine-tunes/retrieve), [cancelFineTune](https://platform.openai.com/docs/api-reference/fine-tunes/cancel), [listFineTuneEvents](https://platform.openai.com/docs/api-reference/fine-tunes/events), [listFineTuneCheckpoints](https://platform.openai.com/docs/api-reference/fine-tuning/list-checkpoints), and [deleteFineTuneModel](https://platform.openai.com/docs/api-reference/fine-tunes/delete-model)
 * **Moderations**: [createModeration](https://platform.openai.com/docs/api-reference/moderations/create)
@@ -61,7 +61,7 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 | [Novita](https://novita.ai/) | Full (model-dependent) |                                   |                         | Cloud provider |
 | [Octo AI](https://octo.ai/) | Only JSON object mode  |                                   |                         | Cloud provider (obsolete) |
 | [Ollama](https://ollama.com/) | Varies                 |                                   |                         | Local LLMs |
-| [Perplexity Sonar](https://www.perplexity.ai/) | Only implied           |                                   |                         | Search-based AI (⚠️ Sonar chat completions retire on 2026-09-27, see below) |
+| [Perplexity](https://www.perplexity.ai/) | Only implied           |                                   |                         | Agent API (🔥 1.3.1) + Sonar (⚠️ chat completions retire on 2026-09-27, see below) |
 | [TogetherAI](https://www.together.ai/) | Full (🔥 New, model-dependent)|                                   |                         | Cloud provider |
 | [TypeSafe AI](https://typesafe.ai/) (🔥 New) | Typed by construction  | `json_schema` structured output only (`asOpenAI()`) |                         | Decision model `Jev`: typed answers with calibrated probabilities |
 
@@ -251,11 +251,47 @@ Then you can obtain a service in one of the following ways.
   val service = GeminiServiceFactory.asOpenAI()
 ```
 
-5. [Perplexity Sonar](https://www.perplexity.ai/) - requires `openai-scala-perplexity-client` lib and `SONAR_API_KEY`
+5. [Perplexity](https://www.perplexity.ai/) - requires `openai-scala-perplexity-client` lib and `PERPLEXITY_API_KEY` (or `SONAR_API_KEY`)
+
+   🔥 **Agent API** (`POST /v1/agent`, since 1.3.1) - web-grounded runs on presets (`fast`, `low`, `medium`, `high`, `xhigh`,
+   `wide-research`) or any `provider/model`, with built-in tools (web search, URL fetch, finance / people search, sandbox, MCP,
+   connectors), custom functions, skills, structured output, background runs, typed streaming and sandbox files:
 ```scala
-  val service = SonarServiceFactory.asOpenAI()
+  import io.cequence.openaiscala.perplexity.domain.agent._
+
+  val service = SonarServiceFactory()
+
+  service
+    .createAgentResponse(
+      AgentInput("What changed in the EU AI Act this month?"),
+      CreateAgentResponseSettings(
+        preset = Some(AgentPreset.low),
+        tools = Seq(AgentTool.WebSearch(filters = Some(WebSearchFilters(searchRecencyFilter = Some("month")))))
+      )
+    )
+    .map { response =>
+      println(response.outputText)
+      response.citations.foreach(c => println(c.url))
+    }
 ```
-   ⚠️ Perplexity is [retiring the Sonar Chat Completions endpoint on 2026-09-27](https://docs.perplexity.ai/docs/agent-api/migrate-from-sonar/overview) in favour of its Responses-style **Agent API** (`POST /v1/agent`). This client (and the `ChatProviderSettings.sonar` shortcut) targets the chat-completions contract, so expect it to stop working after that date until an Agent API transport lands.
+   **OpenAI chat-completion adapter** on the Agent API (via Perplexity's OpenAI-compatible `/v1/responses` alias) - chat,
+   function tools, JSON and streaming with `provider/model` ids:
+```scala
+  val chat = SonarServiceFactory.agentAsOpenAI()
+  chat.createChatToolCompletion(messages, tools, settings = CreateChatCompletionSettings("openai/gpt-5.4-mini"))
+```
+   Perplexity answers `json_object` with an empty `{}`, so pass `jsonSchemaModels = Seq(model)` to `createChatCompletionWithJSON`;
+   web search rides on `createChatToolCompletion` / the typed stream with `settings.setResponsesTools(Seq(WebSearchTool()))`.
+
+   Also `createAgentResponseStreamed` (typed `AgentStreamEvent`s), `retrieveAgentResponse`, `resumeAgentResponseStream`
+   (reconnect a background stream after a sequence number), `cancelAgentResponse`, `listAgentResponseFiles` /
+   `downloadAgentResponseFile` and `listAgentModels`. See
+   [PerplexityAgentApiSmokeTest](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/sonar/PerplexityAgentApiSmokeTest.scala).
+
+   ⚠️ Perplexity [retires the Sonar Chat Completions endpoint on 2026-09-27](https://docs.perplexity.ai/docs/agent-api/migrate-from-sonar/overview):
+   `createChatCompletion` / `createChatCompletionStreamed` and the OpenAI adapter built on them (`SonarServiceFactory.asOpenAI()`,
+   `ChatProviderSettings.sonar`) are `@deprecated` since 1.3.1. Sonar model to preset: `sonar` -> `fast`, `sonar-pro` -> `low`,
+   `sonar-reasoning-pro` -> `medium`, `sonar-deep-research` -> `high`.
 
 6. [Novita](https://novita.ai/) - requires `NOVITA_API_KEY`
 ```scala
