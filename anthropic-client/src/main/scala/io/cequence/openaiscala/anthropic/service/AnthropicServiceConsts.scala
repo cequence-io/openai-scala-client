@@ -55,8 +55,7 @@ trait AnthropicServiceConsts {
     NonOpenAIModelId.claude_sonnet_4_6 -> 128000,
     NonOpenAIModelId.claude_opus_4_5 -> 64000,
     NonOpenAIModelId.claude_sonnet_4_5 -> 64000,
-    NonOpenAIModelId.claude_haiku_4_5 -> 64000,
-    NonOpenAIModelId.claude_opus_4_1_20250805 -> 32000
+    NonOpenAIModelId.claude_haiku_4_5 -> 64000
   )
 
   protected def defaultMaxTokens(model: String): Int = {

@@ -31,7 +31,7 @@ object Assistants extends Example {
       )
 
       assistant <- service.createAssistant(
-        model = ModelId.gpt_4o_2024_05_13,
+        model = ModelId.gpt_4o,
         name = Some("Customer Relationship Assistant"),
         description = Some(
           "You are a trustworthy and reliable assistant that helps businesses with their customer relationship agreements."

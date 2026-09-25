@@ -59,7 +59,7 @@ object AnthropicOpus48ReasoningEffortMapping extends ExampleBase[OpenAIChatCompl
     // so xhigh and max map differently here
     report(NonOpenAIModelId.claude_opus_4_6)
 
-    // sanity: an older non-output-effort model still uses the legacy thinking-budget path
-    report(NonOpenAIModelId.claude_3_7_sonnet_latest)
+    // sanity: a non-output-effort model (Sonnet 4.5) still uses the legacy thinking-budget path
+    report(NonOpenAIModelId.claude_sonnet_4_5)
   }
 }

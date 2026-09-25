@@ -9,7 +9,7 @@ object CreateAssistantWithFileSearch extends Example {
   override protected def run: Future[Unit] =
     for {
       assistant <- service.createAssistant(
-        model = ModelId.gpt_4o_2024_05_13,
+        model = ModelId.gpt_4o,
         name = Some("Google 10-K Form"),
         description = Some(
           "You are a trustworthy and reliable assistant that helps businesses with their financial reporting."

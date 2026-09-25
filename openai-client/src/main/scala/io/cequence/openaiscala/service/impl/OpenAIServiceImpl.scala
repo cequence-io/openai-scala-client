@@ -305,6 +305,10 @@ private[service] trait OpenAIServiceImpl
     )
   }
 
+  @deprecated(
+    "The /v1/edits endpoint and its models are gone - use createChatCompletion",
+    "1.3.1"
+  )
   override def createEdit(
     input: String,
     instruction: String,
@@ -365,6 +369,10 @@ private[service] trait OpenAIServiceImpl
       _.asSafeJson[ImageInfo]
     )
 
+  @deprecated(
+    "The /v1/images/variations endpoint is gone (dall-e-2, its only model, was shut down) - use createImageEdit with a gpt-image model",
+    "1.3.1"
+  )
   override def createImageVariation(
     image: File,
     settings: CreateImageEditSettings
@@ -419,6 +427,10 @@ private[service] trait OpenAIServiceImpl
       processAudioTranscriptResponse(settings.response_format)
     )
 
+  @deprecated(
+    "whisper-1, the only model serving /v1/audio/translations, is scheduled for shutdown by OpenAI on 2027-02-26 - transcribe with gpt-transcribe and translate with a chat model",
+    "1.3.1"
+  )
   override def createAudioTranslation(
     file: File,
     prompt: Option[String],

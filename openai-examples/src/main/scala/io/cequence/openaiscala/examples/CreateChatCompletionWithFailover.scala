@@ -18,9 +18,9 @@ object CreateChatCompletionWithFailover extends Example {
       .createChatCompletionWithFailover(
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = ModelId.o3_mini + "x" // initentionally to trigger a failure
+          model = ModelId.gpt_5_6_luna + "x" // initentionally to trigger a failure
         ),
-        failoverModels = Seq(ModelId.gpt_4_5_preview, ModelId.gpt_4o),
+        failoverModels = Seq(ModelId.gpt_5_6_sol, ModelId.gpt_4o),
         retryOnAnyError = true, // if this is what you want
         failureMessage = "Weather assistant failed to provide a response"
       )

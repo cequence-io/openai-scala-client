@@ -33,7 +33,7 @@ object GoogleGeminiGenerateContentCachedWithInlineData extends ExampleBase[Gemin
     finally source.close()
   }
 
-  private val model = NonOpenAIModelId.gemini_1_5_flash_002
+  private val model = NonOpenAIModelId.gemini_2_5_flash
 
   private val knowledgeInlineData: Content =
     Content(

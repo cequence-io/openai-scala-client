@@ -111,32 +111,34 @@ private[service] trait OpenAIChatCompletionServiceImpl
 
 trait ChatCompletionBodyMaker {
 
+  // string literals: these o-series ids are @deprecated (retired or retiring) but calls to them
+  // must keep getting their conversions until OpenAI turns them off
   private val noSystemMessageModels = Set(
-    ModelId.o1_preview,
-    ModelId.o1_preview_2024_09_12,
-    ModelId.o1_mini,
-    ModelId.o1_mini_2024_09_12
+    "o1-preview",
+    "o1-preview-2024-09-12",
+    "o1-mini",
+    "o1-mini-2024-09-12"
   )
 
   private val o1PreviewModels = Set(
-    ModelId.o1_preview,
-    ModelId.o1_preview_2024_09_12,
-    ModelId.o1_mini,
-    ModelId.o1_mini_2024_09_12
+    "o1-preview",
+    "o1-preview-2024-09-12",
+    "o1-mini",
+    "o1-mini-2024-09-12"
   )
 
   private val regularOModels = Set(
-    ModelId.o1,
-    ModelId.o1_2024_12_17,
-    ModelId.o1_pro,
-    ModelId.o1_pro_2025_03_19,
-    ModelId.o3,
-    ModelId.o3_2025_04_16,
-    ModelId.o3_mini,
-    ModelId.o3_mini_2025_01_31,
-    ModelId.o3_mini_high,
-    ModelId.o4_mini,
-    ModelId.o4_mini_2025_04_16
+    "o1",
+    "o1-2024-12-17",
+    "o1-pro",
+    "o1-pro-2025-03-19",
+    "o3",
+    "o3-2025-04-16",
+    "o3-mini",
+    "o3-mini-2025-01-31",
+    "o3-mini-high",
+    "o4-mini",
+    "o4-mini-2025-04-16"
   )
 
   // GPT-5.x/6 model prefixes - order matters (longer prefixes first)

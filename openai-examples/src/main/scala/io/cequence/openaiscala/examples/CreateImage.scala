@@ -12,16 +12,18 @@ object CreateImage extends Example {
       .createImage(
         "a cute baby sea otter",
         settings = CreateImageSettings(
-          model = Some(ModelId.dall_e_3),
+          model = Some(ModelId.gpt_image_2),
           n = Some(1),
           size = Some(ImageSizeType.Large),
-          style = Some(ImageStyleType.natural),
-          quality = Some(ImageQualityType.hd),
-          response_format = Some(ImageResponseFormatType.url)
+          quality = Some(ImageQualityType.medium)
         )
       )
       .map { image =>
-        val urls = image.data.flatMap(_.get("url"))
-        urls.foreach(println)
+        // gpt-image models always return base64 (no URLs)
+        image.data.flatMap(_.get("b64_json")).foreach { b64 =>
+          val file = java.io.File.createTempFile("image", ".png")
+          java.nio.file.Files.write(file.toPath, java.util.Base64.getDecoder.decode(b64))
+          println(s"Saved to ${file.getAbsolutePath}")
+        }
       }
 }

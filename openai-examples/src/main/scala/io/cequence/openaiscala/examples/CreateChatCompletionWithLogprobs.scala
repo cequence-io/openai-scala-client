@@ -17,7 +17,7 @@ object CreateChatCompletionWithLogprobs extends Example {
       .createChatCompletion(
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = ModelId.gpt_3_5_turbo,
+          model = ModelId.gpt_4_1_mini,
           temperature = Some(0),
           max_tokens = Some(100),
           logprobs = Some(true),

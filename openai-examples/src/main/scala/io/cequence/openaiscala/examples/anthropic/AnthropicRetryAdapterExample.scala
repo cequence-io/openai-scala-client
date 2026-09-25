@@ -10,7 +10,7 @@ import scala.concurrent.Future
 
 object AnthropicRetryAdapterExample extends ExampleBase[OpenAIChatCompletionService] {
 
-  private val failingModel = NonOpenAIModelId.claude_3_opus_20240229
+  private val failingModel = NonOpenAIModelId.claude_sonnet_4_5
   private val workingModel = NonOpenAIModelId.claude_haiku_4_5
 
   override protected val service: OpenAIChatCompletionService =

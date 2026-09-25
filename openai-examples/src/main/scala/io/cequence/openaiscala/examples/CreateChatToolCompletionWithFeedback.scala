@@ -10,7 +10,7 @@ import scala.concurrent.Future
 // based on: https://platform.openai.com/docs/guides/function-calling
 object CreateChatToolCompletionWithFeedback extends Example {
 
-  private val modelId = ModelId.gpt_4_turbo_preview
+  private val modelId = ModelId.gpt_5_4_mini
 
   val introMessages = Seq(
     SystemMessage("You are a helpful assistant."),

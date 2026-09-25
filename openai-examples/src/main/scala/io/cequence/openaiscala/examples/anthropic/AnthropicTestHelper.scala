@@ -12,7 +12,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 object AnthropicTestHelper {
 
-  val FailingModel: String = NonOpenAIModelId.claude_3_opus_20240229
+  val FailingModel: String = NonOpenAIModelId.claude_sonnet_4_5
   val WorkingModel: String = NonOpenAIModelId.claude_haiku_4_5
 
   def timoutingService(

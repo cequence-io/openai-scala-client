@@ -28,7 +28,7 @@ object CreateChatCompletionJsonAndRepair
       .createChatCompletionWithJSON[JsObject](
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = ModelId.o3_mini,
+          model = ModelId.gpt_5_6_luna,
           max_tokens = Some(5000),
           response_format_type = Some(ChatCompletionResponseFormatType.text)
         )

@@ -33,7 +33,7 @@ object GoogleGeminiGenerateContentCachedWithOpenAIAdapter
     finally source.close()
   }
 
-  private val model = NonOpenAIModelId.gemini_2_0_flash_lite
+  private val model = NonOpenAIModelId.gemini_2_5_flash_lite
 
   private val systemMessage = SystemMessage(systemPrompt + "\n" + knowledgeContent)
 

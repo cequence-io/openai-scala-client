@@ -30,7 +30,7 @@ object CreateChatCompletionStreamedJson
       .createChatCompletionStreamed(
         messages = messages,
         settings = CreateChatCompletionSettings(
-          model = ModelId.gpt_4_5_preview,
+          model = ModelId.gpt_5_6_sol,
           max_tokens = Some(1000),
           response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
           jsonSchema = Some(capitalsSchemaDef1)

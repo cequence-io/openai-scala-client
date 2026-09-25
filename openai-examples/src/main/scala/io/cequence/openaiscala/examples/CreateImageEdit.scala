@@ -14,14 +14,17 @@ object CreateImageEdit extends Example {
         "A cute baby sea otter wearing a beret",
         image = new java.io.File(localOtterImagePath),
         settings = CreateImageEditSettings(
-          model = Some(ModelId.dall_e_2),
+          model = Some(ModelId.gpt_image_2),
           n = Some(1),
-          size = Some(ImageSizeType.Small),
-          response_format = Some(ImageResponseFormatType.url)
+          size = Some(ImageSizeType.Large)
         )
       )
       .map { image =>
-        val urls = image.data.flatMap(_.get("url"))
-        urls.foreach(println)
+        // gpt-image models always return base64 (no URLs)
+        image.data.flatMap(_.get("b64_json")).foreach { b64 =>
+          val file = java.io.File.createTempFile("image", ".png")
+          java.nio.file.Files.write(file.toPath, java.util.Base64.getDecoder.decode(b64))
+          println(s"Saved to ${file.getAbsolutePath}")
+        }
       }
 }

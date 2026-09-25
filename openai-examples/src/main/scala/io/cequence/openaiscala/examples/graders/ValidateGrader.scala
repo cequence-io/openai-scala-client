@@ -28,7 +28,7 @@ object ValidateGrader extends Example {
           )
         )
       ),
-      model = ModelId.o4_mini_2025_04_16,
+      model = ModelId.gpt_5_4_mini,
       name = "Example score model grader",
       samplingParams = Some(
         SamplingParams(

@@ -56,6 +56,20 @@ trait OpenAIService
     with OpenAIChatCompletionBatchService {
 
   /**
+   * The legacy completions endpoint on OpenAI: its last models (gpt-3.5-turbo-instruct,
+   * davinci-002, babbage-002) shut down on 2026-09-28. OpenAI-compatible servers (vLLM,
+   * Ollama, ...) still serve it through [[OpenAICoreService.createCompletion]].
+   */
+  @deprecated(
+    "OpenAI shuts down its last completions models (gpt-3.5-turbo-instruct, davinci-002, babbage-002) on 2026-09-28 - use createChatCompletion",
+    "1.3.1"
+  )
+  override def createCompletion(
+    prompt: String,
+    settings: CreateCompletionSettings
+  ): Future[TextCompletionResponse]
+
+  /**
    * Retrieves a model instance, providing basic information about the model such as the owner
    * and permissions.
    *
@@ -129,7 +143,10 @@ trait OpenAIService
    * @see
    *   <a href="https://platform.openai.com/docs/api-reference/edits/create">OpenAI Doc</a>
    */
-  @Deprecated
+  @deprecated(
+    "The /v1/edits endpoint and its models are gone - use createChatCompletion",
+    "1.3.1"
+  )
   def createEdit(
     input: String,
     instruction: String,
@@ -194,6 +211,10 @@ trait OpenAIService
    *   <a href="https://platform.openai.com/docs/api-reference/images/createVariation">OpenAI
    *   Doc</a>
    */
+  @deprecated(
+    "The /v1/images/variations endpoint is gone (dall-e-2, its only model, was shut down) - use createImageEdit with a gpt-image model",
+    "1.3.1"
+  )
   def createImageVariation(
     image: File,
     settings: CreateImageEditSettings = DefaultSettings.CreateImageVariation
@@ -258,6 +279,10 @@ trait OpenAIService
    *   <a href="https://platform.openai.com/docs/api-reference/audio/createTranslation">OpenAI
    *   Doc</a>
    */
+  @deprecated(
+    "whisper-1, the only model serving /v1/audio/translations, is scheduled for shutdown by OpenAI on 2027-02-26 - transcribe with gpt-transcribe and translate with a chat model",
+    "1.3.1"
+  )
   def createAudioTranslation(
     file: File,
     prompt: Option[String] = None,

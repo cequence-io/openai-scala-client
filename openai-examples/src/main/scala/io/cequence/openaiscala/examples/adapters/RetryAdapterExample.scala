@@ -53,7 +53,7 @@ object RetryAdapterExample extends ExampleBase[OpenAIService] {
       }
 
       // should complete without retry
-      _ <- runChatCompletionAux(ModelId.o3_mini)
+      _ <- runChatCompletionAux(ModelId.gpt_5_6_luna)
     } yield ()
 
   private def runChatCompletionAux(model: String) = {

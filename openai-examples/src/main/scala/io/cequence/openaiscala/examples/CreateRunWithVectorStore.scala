@@ -22,7 +22,7 @@ object CreateRunWithVectorStore extends Example {
     )
 
   val userId = "123"
-  val model = ModelId.gpt_3_5_turbo
+  val model = ModelId.gpt_5_4_mini
 
   private def createVectorStore(file: FileInfo) = {
     service.createVectorStore(fileIds = Seq(file.id), name = Some("Conference Schedule"))

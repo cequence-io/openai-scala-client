@@ -89,7 +89,7 @@ object ChatCompletionRouterAdapterExample extends ExampleBase[OpenAIService] {
       _ <- runChatCompletionAux(NonOpenAIModelId.claude_haiku_4_5)
 
       // runs on OpenAI
-      _ <- runChatCompletionAux(ModelId.gpt_3_5_turbo)
+      _ <- runChatCompletionAux(ModelId.gpt_5_4_mini)
 
       // runs on OpenAI (non-chat-completion function)
       _ <- service.listModels.map(_.foreach(println))

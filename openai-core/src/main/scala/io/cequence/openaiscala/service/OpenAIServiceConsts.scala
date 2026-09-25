@@ -26,8 +26,10 @@ trait OpenAIServiceConsts {
       max_tokens = Some(4000)
     )
 
+    // OpenAI's last completions models shut down on 2026-09-28 - there is no OpenAI successor, pass
+    // the model of your OpenAI-compatible server (vLLM, Ollama, ...) explicitly
     val CreateCompletion = CreateCompletionSettings(
-      model = ModelId.gpt_3_5_turbo_instruct,
+      model = "gpt-3.5-turbo-instruct",
       temperature = Some(0.7),
       max_tokens = Some(4000)
     )
@@ -47,7 +49,7 @@ trait OpenAIServiceConsts {
     )
 
     val CreateChatWebSearchCompletion = CreateChatCompletionSettings(
-      model = ModelId.gpt_4o_search_preview,
+      model = ModelId.gpt_5_search_api,
       max_tokens = Some(4000)
     )
 
@@ -61,18 +63,24 @@ trait OpenAIServiceConsts {
       max_tokens = Some(4000)
     )
 
+    @deprecated(
+      "The /v1/edits endpoint and its models are gone - use createChatCompletion",
+      "1.3.1"
+    )
     val CreateEdit = CreateEditSettings(
-      model = ModelId.text_davinci_edit_001,
+      model = "text-davinci-edit-001",
       temperature = Some(0.7)
     )
 
-    // keep all OpenAI defaults
-    val CreateImage = CreateImageSettings()
+    // the API no longer defaults the model (dall-e-2/3 are shut down) - otherwise keep OpenAI's defaults
+    val CreateImage = CreateImageSettings(model = Some(ModelId.gpt_image_2))
 
-    // keep all OpenAI defaults
-    val CreateImageEdit = CreateImageEditSettings()
+    val CreateImageEdit = CreateImageEditSettings(model = Some(ModelId.gpt_image_2))
 
-    // keep all OpenAI defaults
+    @deprecated(
+      "The /v1/images/variations endpoint is gone - use createImageEdit with a gpt-image model",
+      "1.3.1"
+    )
     val CreateImageVariation = CreateImageEditSettings()
 
     val CreateEmbeddings = CreateEmbeddingsSettings(
@@ -80,17 +88,21 @@ trait OpenAIServiceConsts {
     )
 
     val CreateSpeech = CreateSpeechSettings(
-      model = ModelId.tts_1_1106,
+      model = ModelId.gpt_4o_mini_tts,
       voice = VoiceType.shimmer
     )
 
     val CreateTranscription = CreateTranscriptionSettings(
-      model = ModelId.whisper_1,
+      model = ModelId.gpt_transcribe,
       language = Some("en")
     )
 
+    @deprecated(
+      "whisper-1, the only translations model, is scheduled for shutdown on 2027-02-26",
+      "1.3.1"
+    )
     val CreateTranslation = CreateTranslationSettings(
-      model = ModelId.whisper_1
+      model = "whisper-1"
     )
 
     val CreateFineTune = CreateFineTuneSettings(

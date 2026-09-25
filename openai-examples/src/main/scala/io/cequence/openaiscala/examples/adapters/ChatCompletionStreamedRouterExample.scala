@@ -135,7 +135,7 @@ object ChatCompletionStreamedRouterExample
       _ <- runChatCompletionAux(NonOpenAIModelId.llama3_70b_8192)
 
       // runs on OpenAI
-      _ <- runChatCompletionAux(ModelId.gpt_3_5_turbo)
+      _ <- runChatCompletionAux(ModelId.gpt_5_4_mini)
     } yield ()).andThen {
       // the routed services on the shared engine don't close it when they close - it's closed
       // exactly once, here

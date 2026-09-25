@@ -3,7 +3,7 @@ package io.cequence.openaiscala.domain.settings
 import io.cequence.wsclient.domain.EnumValue
 
 case class CreateTranscriptionSettings(
-  // ID of the model to use. Only whisper-1 is currently available.
+  // ID of the model to use, e.g. gpt-transcribe (whisper-1 shuts down on 2027-02-26)
   model: String,
 
   // The format of the transcript output, in one of these options: json, text, srt, verbose_json, or vtt.

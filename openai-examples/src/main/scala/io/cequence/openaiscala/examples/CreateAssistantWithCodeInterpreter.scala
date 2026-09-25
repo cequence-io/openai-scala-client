@@ -10,7 +10,7 @@ object CreateAssistantWithCodeInterpreter extends Example {
   override protected def run: Future[Unit] =
     for {
       assistant <- service.createAssistant(
-        model = ModelId.gpt_4o_2024_05_13,
+        model = ModelId.gpt_4o,
         name = Some("Data Interpreter Assistant"),
         description = Some(
           "Helpful assistant that helps users interpret and visualize data and provide handy statistics on demand."

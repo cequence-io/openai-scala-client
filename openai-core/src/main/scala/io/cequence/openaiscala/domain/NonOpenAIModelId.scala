@@ -27,20 +27,80 @@ object NonOpenAIModelId {
   val claude_sonnet_4_5 = "claude-sonnet-4-5"
   val claude_haiku_4_5_20251001 = "claude-haiku-4-5-20251001"
   val claude_haiku_4_5 = "claude-haiku-4-5"
+  @deprecated(
+    "Retired by Anthropic on 2026-08-05 - see https://platform.claude.com/docs/en/about-claude/model-deprecations",
+    "1.3.1"
+  )
   val claude_opus_4_1_20250805 = "claude-opus-4-1-20250805"
+  @deprecated(
+    "Retired by Anthropic on 2026-06-15 - see https://platform.claude.com/docs/en/about-claude/model-deprecations",
+    "1.3.1"
+  )
   val claude_opus_4_20250514 = "claude-opus-4-20250514"
+  @deprecated(
+    "Retired by Anthropic on 2026-06-15 - see https://platform.claude.com/docs/en/about-claude/model-deprecations",
+    "1.3.1"
+  )
   val claude_sonnet_4_20250514 = "claude-sonnet-4-20250514"
+  @deprecated(
+    "Retired by Anthropic on 2026-02-19 - see https://platform.claude.com/docs/en/about-claude/model-deprecations",
+    "1.3.1"
+  )
   val claude_3_7_sonnet_latest = "claude-3-7-sonnet-latest"
+  @deprecated(
+    "Retired by Anthropic on 2026-02-19 - see https://platform.claude.com/docs/en/about-claude/model-deprecations",
+    "1.3.1"
+  )
   val claude_3_7_sonnet_20250219 = "claude-3-7-sonnet-20250219"
+  @deprecated(
+    "Retired by Anthropic on 2026-02-19 - see https://platform.claude.com/docs/en/about-claude/model-deprecations",
+    "1.3.1"
+  )
   val claude_3_5_haiku_latest = "claude-3-5-haiku-latest"
+  @deprecated(
+    "Retired by Anthropic on 2025-10-28 - see https://platform.claude.com/docs/en/about-claude/model-deprecations",
+    "1.3.1"
+  )
   val claude_3_5_sonnet_20241022 = "claude-3-5-sonnet-20241022"
+  @deprecated(
+    "Retired by Anthropic on 2025-10-28 - see https://platform.claude.com/docs/en/about-claude/model-deprecations",
+    "1.3.1"
+  )
   val claude_3_5_sonnet_20240620 = "claude-3-5-sonnet-20240620"
+  @deprecated(
+    "Retired by Anthropic on 2026-02-19 - see https://platform.claude.com/docs/en/about-claude/model-deprecations",
+    "1.3.1"
+  )
   val claude_3_5_haiku_20241022 = "claude-3-5-haiku-20241022"
+  @deprecated(
+    "Retired by Anthropic on 2026-01-05 - see https://platform.claude.com/docs/en/about-claude/model-deprecations",
+    "1.3.1"
+  )
   val claude_3_opus_20240229 = "claude-3-opus-20240229"
+  @deprecated(
+    "Retired by Anthropic on 2025-07-21 - see https://platform.claude.com/docs/en/about-claude/model-deprecations",
+    "1.3.1"
+  )
   val claude_3_sonnet_20240229 = "claude-3-sonnet-20240229"
+  @deprecated(
+    "Retired by Anthropic on 2026-04-20 - see https://platform.claude.com/docs/en/about-claude/model-deprecations",
+    "1.3.1"
+  )
   val claude_3_haiku_20240307 = "claude-3-haiku-20240307"
+  @deprecated(
+    "Retired by Anthropic on 2025-07-21 - see https://platform.claude.com/docs/en/about-claude/model-deprecations",
+    "1.3.1"
+  )
   val claude_2_1 = "claude-2.1"
+  @deprecated(
+    "Retired by Anthropic on 2025-07-21 - see https://platform.claude.com/docs/en/about-claude/model-deprecations",
+    "1.3.1"
+  )
   val claude_2_0 = "claude-2.0"
+  @deprecated(
+    "Retired by Anthropic on 2024-11-06 - see https://platform.claude.com/docs/en/about-claude/model-deprecations",
+    "1.3.1"
+  )
   val claude_instant_1_2 = "claude-instant-1.2"
 
   // Anthropic Bedrock
@@ -60,15 +120,55 @@ object NonOpenAIModelId {
   val bedrock_claude_opus_4_5_20251101_v1_0 = "anthropic.claude-opus-4-5-20251101-v1:0"
   val bedrock_claude_sonnet_4_5_20250929_v1_0 = "anthropic.claude-sonnet-4-5-20250929-v1:0"
   val bedrock_claude_haiku_4_5_20251001_v1_0 = "anthropic.claude-haiku-4-5-20251001-v1:0"
+  @deprecated(
+    "Legacy on Amazon Bedrock and retired on the Claude API - migrate to a Claude 4.5+ model",
+    "1.3.1"
+  )
   val bedrock_claude_opus_4_1_20250805_v1_0 = "anthropic.claude-opus-4-1-20250805-v1:0"
+  @deprecated(
+    "No longer offered on Amazon Bedrock (removed from the model catalog as of 2026-09-25)",
+    "1.3.1"
+  )
   val bedrock_claude_opus_4_20250514_v1_0 = "anthropic.claude-opus-4-20250514-v1:0"
+  @deprecated(
+    "Legacy on Amazon Bedrock and retired on the Claude API - migrate to a Claude 4.5+ model",
+    "1.3.1"
+  )
   val bedrock_claude_sonnet_4_20250514_v1_0 = "anthropic.claude-sonnet-4-20250514-v1:0"
+  @deprecated(
+    "No longer offered on Amazon Bedrock (removed from the model catalog as of 2026-09-25)",
+    "1.3.1"
+  )
   val bedrock_claude_3_7_sonnet_20250219_v1_0 = "anthropic.claude-3-7-sonnet-20250219-v1:0"
+  @deprecated(
+    "No longer offered on Amazon Bedrock (removed from the model catalog as of 2026-09-25)",
+    "1.3.1"
+  )
   val bedrock_claude_3_5_sonnet_20241022_v2_0 = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+  @deprecated(
+    "No longer offered on Amazon Bedrock (removed from the model catalog as of 2026-09-25)",
+    "1.3.1"
+  )
   val bedrock_claude_3_5_sonnet_20240620_v1_0 = "anthropic.claude-3-5-sonnet-20240620-v1:0"
+  @deprecated(
+    "No longer offered on Amazon Bedrock (removed from the model catalog as of 2026-09-25)",
+    "1.3.1"
+  )
   val bedrock_claude_3_5_haiku_20241022_v1_0 = "anthropic.claude-3-5-haiku-20241022-v1:0"
+  @deprecated(
+    "No longer offered on Amazon Bedrock (removed from the model catalog as of 2026-09-25)",
+    "1.3.1"
+  )
   val bedrock_claude_3_opus_20240229_v1_0 = "anthropic.claude-3-opus-20240229-v1:0"
+  @deprecated(
+    "No longer offered on Amazon Bedrock (removed from the model catalog as of 2026-09-25)",
+    "1.3.1"
+  )
   val bedrock_claude_3_sonnet_20240229_v1_0 = "anthropic.claude-3-sonnet-20240229-v1:0"
+  @deprecated(
+    "No longer offered on Amazon Bedrock (removed from the model catalog as of 2026-09-25)",
+    "1.3.1"
+  )
   val bedrock_claude_3_haiku_20240307_v1_0 = "anthropic.claude-3-haiku-20240307-v1:0"
 
   // Other providers (Bedrock - bedrock-mantle endpoint, `/v1/chat/completions`)
@@ -358,13 +458,18 @@ object NonOpenAIModelId {
   val gemini_3_flash_preview = "gemini-3-flash-preview"
   // Input token limit: 1048576; Output token limit: 65536
   val gemini_3_pro = "gemini-3-pro"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_3_pro_preview = "gemini-3-pro-preview"
   val gemini_3_pro_image = "gemini-3-pro-image"
   val gemini_3_pro_image_preview = "gemini-3-pro-image-preview"
   val gemini_2_5_pro = "gemini-2.5-pro"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_2_5_pro_preview_06_05 = "gemini-2.5-pro-preview-06-05"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_2_5_pro_preview_05_06 = "gemini-2.5-pro-preview-05-06"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_2_5_pro_preview_03_25 = "gemini-2.5-pro-preview-03-25"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_2_5_pro_exp_03_25 = "gemini-2.5-pro-exp-03-25"
 
   // Input token limit: 1048576; Output token limit: 65536
@@ -423,48 +528,87 @@ object NonOpenAIModelId {
   val gemini_2_5_flash_lite = "gemini-2.5-flash-lite"
   val gemini_2_5_flash_image = "gemini-2.5-flash-image"
   val gemini_2_5_flash_live_api = "gemini-2.5-flash-live-api"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_2_5_flash_preview_04_17_thinking = "gemini-2.5-flash-preview-04-17-thinking"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_2_5_flash_preview_04_17 = "gemini-2.5-flash-preview-04-17"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_2_5_flash_preview_05_20 = "gemini-2.5-flash-preview-05-20"
 
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_2_0_pro_exp_02_05 = "gemini-2.0-pro-exp-02-05"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_2_0_pro_exp = "gemini-2.0-pro-exp"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_2_0_flash_thinking_exp_01_21 = "gemini-2.0-flash-thinking-exp-01-21"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_2_0_flash_thinking_exp_1219 = "gemini-2.0-flash-thinking-exp-1219"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_2_0_flash_thinking_exp = "gemini-2.0-flash-thinking-exp"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_2_0_flash_lite_preview_02_05 = "gemini-2.0-flash-lite-preview-02-05"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_2_0_flash_lite_preview = "gemini-2.0-flash-lite-preview"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_2_0_flash_lite = "gemini-2.0-flash-lite"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_2_0_flash_001 = "gemini-2.0-flash-001"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_2_0_flash = "gemini-2.0-flash"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_2_0_flash_exp = "gemini-2.0-flash-exp"
 
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_1_5_flash_8b_exp_0924 = "gemini-1.5-flash-8b-exp-0924"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_1_5_flash_8b_exp_0827 = "gemini-1.5-flash-8b-exp-0827"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_1_5_flash_8b_latest = "gemini-1.5-flash-8b-latest"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_1_5_flash_8b_001 = "gemini-1.5-flash-8b-001"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_1_5_flash_8b = "gemini-1.5-flash-8b"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_1_5_flash_002 = "gemini-1.5-flash-002"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_1_5_flash = "gemini-1.5-flash"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_1_5_flash_001_tuning = "gemini-1.5-flash-001-tuning"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_1_5_flash_001 = "gemini-1.5-flash-001"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_1_5_flash_latest = "gemini-1.5-flash-latest"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_1_5_pro = "gemini-1.5-pro"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_1_5_pro_002 = "gemini-1.5-pro-002"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_1_5_pro_001 = "gemini-1.5-pro-001"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_1_5_pro_latest = "gemini-1.5-pro-latest"
 
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_1_0_pro_vision_001 = "gemini-1.0-pro-vision-001"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_1_0_pro_vision_latest = "gemini-1.0-pro-vision-latest"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_1_0_pro_001 = "gemini-1.0-pro-001"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_1_0_pro = "gemini-1.0-pro"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_1_0_pro_latest = "gemini-1.0-pro-latest"
 
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_pro = "gemini-pro"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_pro_vision = "gemini-pro-vision"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_exp_1206 = "gemini-exp-1206"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_flash_experimental = "gemini-flash-experimental"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_pro_experimental = "gemini-pro-experimental"
+  @deprecated("No longer served by the Gemini API (404 as of 2026-09-25)", "1.3.1")
   val gemini_experimental = "gemini-experimental"
   val text_embedding_004 = "text-embedding-004"
   val gemini_embedding_2 = "gemini-embedding-2"
@@ -731,17 +875,37 @@ object NonOpenAIModelId {
   // 128k context length
   val sonar_reasoning_pro = "sonar-reasoning-pro"
   // 128k context length
+  @deprecated(
+    "Removed by Perplexity - see https://docs.perplexity.ai/getting-started/models",
+    "1.3.1"
+  )
   val sonar_reasoning = "sonar-reasoning"
   // 200k context length
   val sonar_pro = "sonar-pro"
   // 128k context length
   val sonar = "sonar"
   // 128k context length
+  @deprecated(
+    "Removed by Perplexity - see https://docs.perplexity.ai/getting-started/models",
+    "1.3.1"
+  )
   val r1_1776 = "r1-1776"
   // These models will be deprecated and will no longer be available to use after 2/22/2025
   // 127k context window
+  @deprecated(
+    "Removed by Perplexity - see https://docs.perplexity.ai/getting-started/models",
+    "1.3.1"
+  )
   val llama_3_1_sonar_small_128k_online = "llama-3.1-sonar-small-128k-online"
+  @deprecated(
+    "Removed by Perplexity - see https://docs.perplexity.ai/getting-started/models",
+    "1.3.1"
+  )
   val llama_3_1_sonar_large_128k_online = "llama-3.1-sonar-large-128k-online"
+  @deprecated(
+    "Removed by Perplexity - see https://docs.perplexity.ai/getting-started/models",
+    "1.3.1"
+  )
   val llama_3_1_sonar_huge_128k_online = "llama-3.1-sonar-huge-128k-online"
 
   // Novita

@@ -31,7 +31,7 @@ object CreateChatCompletionWithRouter extends ExampleBase[OpenAIChatCompletionSe
       octoMLService -> Seq("mixtral-8x7b-instruct"),
       ollamaService -> Seq("llama2"),
       // it's default so no need to specify all the models
-      openAIService -> Seq(ModelId.gpt_3_5_turbo)
+      openAIService -> Seq(ModelId.gpt_5_4_mini)
     ),
     defaultService = openAIService
   )
@@ -45,7 +45,7 @@ object CreateChatCompletionWithRouter extends ExampleBase[OpenAIChatCompletionSe
     for {
       _ <- runChatCompletionAux("mixtral-8x7b-instruct")
       _ <- runChatCompletionAux("llama2")
-      _ <- runChatCompletionAux(ModelId.gpt_3_5_turbo)
+      _ <- runChatCompletionAux(ModelId.gpt_5_4_mini)
     } yield ()
 
   private def runChatCompletionAux(model: String) = {
