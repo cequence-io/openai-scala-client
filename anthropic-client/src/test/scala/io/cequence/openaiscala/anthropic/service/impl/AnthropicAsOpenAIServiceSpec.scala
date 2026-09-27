@@ -303,6 +303,21 @@ class AnthropicAsOpenAIServiceSpec extends AnyWordSpec with Matchers {
     }
   }
 
+  "the max_tokens fallback" should {
+
+    "take the longest matching model id, whatever the table order" in {
+      def maxTokens(model: String) =
+        toAnthropicSettings(CreateChatCompletionSettings(model = model)).max_tokens
+
+      maxTokens(NonOpenAIModelId.claude_opus_5_5) shouldBe 128000
+      maxTokens(NonOpenAIModelId.claude_fable_5_1) shouldBe 128000
+      maxTokens(
+        "global." + NonOpenAIModelId.bedrock_claude_haiku_4_5_20251001_v1_0
+      ) shouldBe 64000
+      maxTokens(NonOpenAIModelId.claude_sonnet_4_5_20250929) shouldBe 64000
+    }
+  }
+
   "Claude Opus 5.5" should {
 
     "map reasoning_effort=max to adaptive thinking + OutputEffort.max and drop temperature/top_p" in {

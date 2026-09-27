@@ -60,7 +60,18 @@ trait AnthropicServiceConsts {
 
   protected def defaultMaxTokens(model: String): Int = {
     val m = model.toLowerCase
-    maxOutputTokensByModel.collectFirst { case (id, maxTokens) if m.contains(id) => maxTokens }
+    // the LONGEST matching id wins, so the table's order does not matter ("claude-opus-5" is a
+    // substring of "claude-opus-5-5", "claude-fable-5" of "claude-fable-5-1")
+    // (a single pass, no intermediate collections - runs on every request)
+    maxOutputTokensByModel
+      .foldLeft(Option.empty[(String, Int)]) {
+        case (best, entry @ (id, _)) if m.contains(id) && best.forall { case (bestId, _) =>
+              id.length > bestId.length
+            } =>
+          Some(entry)
+        case (best, _) => best
+      }
+      .map(_._2)
       .getOrElse(DefaultSettings.CreateMessage.max_tokens)
   }
 }
