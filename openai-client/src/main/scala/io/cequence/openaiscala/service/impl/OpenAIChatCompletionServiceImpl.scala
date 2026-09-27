@@ -56,7 +56,15 @@ private[service] trait OpenAIChatCompletionServiceImpl
     responseToolChoice: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatToolCompletion
   ): Future[ChatToolCompletionResponse] =
-    if (ChatCompletionSettingsConversions.chatToolsPreferResponsesAPI(settings, tools))
+    if (
+      tools.nonEmpty && ChatCompletionSettingsConversions.chatToolsUnsupported(settings.model)
+    )
+      Future.failed(
+        new OpenAIScalaClientException(
+          ChatCompletionBodyMaker.toolsUnsupportedMessage(settings.model)
+        )
+      )
+    else if (ChatCompletionSettingsConversions.chatToolsPreferResponsesAPI(settings, tools))
       responsesBackedChatCompletion match {
         case Some(service) =>
           logger.debug(
@@ -111,40 +119,8 @@ private[service] trait OpenAIChatCompletionServiceImpl
 
 trait ChatCompletionBodyMaker {
 
-  // string literals: these o-series ids are @deprecated (retired or retiring) but calls to them
-  // must keep getting their conversions until OpenAI turns them off
-  private val noSystemMessageModels = Set(
-    "o1-preview",
-    "o1-preview-2024-09-12",
-    "o1-mini",
-    "o1-mini-2024-09-12"
-  )
-
-  private val o1PreviewModels = Set(
-    "o1-preview",
-    "o1-preview-2024-09-12",
-    "o1-mini",
-    "o1-mini-2024-09-12"
-  )
-
-  private val regularOModels = Set(
-    "o1",
-    "o1-2024-12-17",
-    "o1-pro",
-    "o1-pro-2025-03-19",
-    "o3",
-    "o3-2025-04-16",
-    "o3-mini",
-    "o3-mini-2025-01-31",
-    "o3-mini-high",
-    "o4-mini",
-    "o4-mini-2025-04-16"
-  )
-
-  // GPT-5.x/6 model prefixes - order matters (longer prefixes first)
+  // GPT-5.x is dispatched on the parsed minor version (ChatCompletionSettingsConversions.gpt5Minor)
   private val gpt6Prefix = "gpt-6"
-  private val gpt5_6Prefix = "gpt-5.6"
-  private val gpt5_5Prefix = "gpt-5.5"
 
   // Function tools on the chat completions API - see ChatCompletionSettingsConversions.gpt5_5ChatTools
   // & gpt5_6ChatTools. GPT-6 Astra doesn't support them at all (Responses API only).
@@ -163,10 +139,13 @@ trait ChatCompletionBodyMaker {
     // the bare id, so the rules also apply to Bedrock's `openai.` / `us.openai.` ids
     val model = ChatCompletionSettingsConversions.canonicalOpenAIModel(settings.model)
 
+    val gpt5Minor = ChatCompletionSettingsConversions.gpt5Minor(model)
+
     // GPT-6 Astra never gets here (routed to the Responses API); Sol/Luna follow GPT-5.6
-    if (model.startsWith(gpt5_6Prefix) || model.startsWith(gpt6Prefix))
+    if (gpt5Minor.exists(_ >= 6) || model.startsWith(gpt6Prefix))
       ChatCompletionSettingsConversions.gpt5_6ChatTools(settings)
-    else if (model.startsWith(gpt5_5Prefix))
+    else if (ChatCompletionSettingsConversions.chatToolsRejectExplicitReasoning(model))
+      // GPT-5.4 / 5.5: an explicit effort (other than 'none') is rejected with tools
       ChatCompletionSettingsConversions.gpt5_5ChatTools(settings)
     else
       settings
@@ -205,12 +184,6 @@ trait ChatCompletionBodyMaker {
   ): Seq[(Param, Option[JsValue])] =
     if (settings.extra_params.contains("stream_options")) Nil
     else JsonUtil.jsonBodyParams(Param.stream_options -> Some(Map("include_usage" -> true)))
-  private val gpt5_4Prefix = "gpt-5.4"
-  private val gpt5_3Prefix = "gpt-5.3"
-  private val gpt5_2Prefix = "gpt-5.2"
-  private val gpt5_1Prefix = "gpt-5.1"
-  private val gpt5Prefix = "gpt-5"
-
   protected def createBodyParamsForChatCompletion(
     messagesAux: Seq[BaseMessage],
     settings: CreateChatCompletionSettings,
@@ -218,9 +191,9 @@ trait ChatCompletionBodyMaker {
   ): Seq[(Param, Option[JsValue])] = {
     assert(messagesAux.nonEmpty, "At least one message expected.")
 
-    // O1 models needs some special treatment... revisit this later
+    // the retired o1-preview / o1-mini took no system messages
     val messagesFinal =
-      if (noSystemMessageModels.contains(settings.model))
+      if (ChatCompletionSettingsConversions.isO1PreviewOrMini(settings.model))
         MessageConversions.systemToUserMessages(messagesAux)
       else
         messagesAux
@@ -231,34 +204,27 @@ trait ChatCompletionBodyMaker {
     // request itself still carries settings.model untouched
     val model = ChatCompletionSettingsConversions.canonicalOpenAIModel(settings.model)
 
-    // revisit this later
-    val settingsFinal =
-      if (o1PreviewModels.contains(model))
-        ChatCompletionSettingsConversions.o1Preview(settings)
-      else if (regularOModels.contains(model))
-        ChatCompletionSettingsConversions.o(settings)
-      else if (model == ModelId.chat_latest)
-        ChatCompletionSettingsConversions.chatLatest(settings)
-      else if (ChatCompletionSettingsConversions.isGpt6Astra(model))
-        ChatCompletionSettingsConversions.gpt6(settings)
-      else if (model.startsWith(gpt6Prefix))
-        ChatCompletionSettingsConversions.gpt6SolLuna(settings)
-      else if (model.startsWith(gpt5_6Prefix))
-        ChatCompletionSettingsConversions.gpt5_6(settings)
-      else if (model.startsWith(gpt5_5Prefix))
-        ChatCompletionSettingsConversions.gpt5_5(settings)
-      else if (model.startsWith(gpt5_4Prefix))
-        ChatCompletionSettingsConversions.gpt5_4(settings)
-      else if (model.startsWith(gpt5_3Prefix))
-        ChatCompletionSettingsConversions.gpt5_3(settings)
-      else if (model.startsWith(gpt5_2Prefix))
-        ChatCompletionSettingsConversions.gpt5_2(settings)
-      else if (model.startsWith(gpt5_1Prefix))
-        ChatCompletionSettingsConversions.gpt5_1(settings)
-      else if (model.startsWith(gpt5Prefix))
-        ChatCompletionSettingsConversions.gpt5(settings)
+    val settingsFinal = {
+      import ChatCompletionSettingsConversions._
+
+      if (isO1PreviewOrMini(model)) o1Preview(settings)
+      else if (isOSeries(model)) o(settings)
+      else if (model == ModelId.chat_latest) chatLatest(settings)
+      else if (isGpt6Astra(model)) gpt6(settings)
+      else if (model.startsWith(gpt6Prefix)) gpt6SolLuna(settings)
+      else if (isGpt5SearchApi(model)) gpt5SearchApi(settings)
       else
-        settings
+        gpt5Minor(model) match {
+          case Some(0)                   => gpt5(settings)
+          case Some(1)                   => gpt5_1(settings)
+          case Some(2)                   => gpt5_2(settings)
+          case Some(3)                   => gpt5_3(settings)
+          case Some(4)                   => gpt5_4(settings)
+          case Some(5)                   => gpt5_5(settings)
+          case Some(minor) if minor >= 6 => gpt5_6(settings) // 5.6 and any newer minor
+          case _                         => settings
+        }
+    }
 
     JsonUtil.jsonBodyParams(
       Param.messages -> Some(messageJsons),
@@ -361,6 +327,9 @@ trait ChatCompletionBodyMaker {
 }
 
 object ChatCompletionBodyMaker {
+
+  def toolsUnsupportedMessage(model: String): String =
+    s"Model '$model' does not support function tools (on the chat completions API nor the Responses API) - use a tool-capable model."
 
   /** Why a tool list cannot go to the chat completions API. */
   def responsesOnlyToolsMessage(

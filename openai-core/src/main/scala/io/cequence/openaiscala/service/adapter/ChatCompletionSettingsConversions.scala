@@ -47,12 +47,65 @@ object ChatCompletionSettingsConversions {
 
   /**
    * Whether function tools for this model are accepted on the chat completions API only with
-   * reasoning_effort 'none' (GPT-5.6 and GPT-6 Sol/Luna - see [[gpt5_6ChatTools]]), so any
-   * reasoning is lost there.
+   * reasoning_effort 'none' (GPT-5.6 and every newer GPT-5 minor, and GPT-6 Sol/Luna - see
+   * [[gpt5_6ChatTools]]), so any reasoning is lost there.
    */
   def chatToolsForceNoReasoning(model: String): Boolean = {
     val bare = canonicalOpenAIModel(model)
-    bare.startsWith("gpt-5.6") || (bare.startsWith("gpt-6") && !isGpt6Astra(model))
+    gpt5Minor(model).exists(_ >= 6) || (bare.startsWith("gpt-6") && !isGpt6Astra(model))
+  }
+
+  /**
+   * Whether function tools for this model are rejected on the chat completions API together
+   * with an explicit reasoning_effort other than 'none' (GPT-5.4 and GPT-5.5 - live-verified
+   * 2026-09-26; without an effort, or with 'none', they work).
+   */
+  def chatToolsRejectExplicitReasoning(model: String): Boolean =
+    gpt5Minor(model).exists(minor => minor == 4 || minor == 5)
+
+  // the minor, then anything after a '.' or '-' (so `gpt-5.4.1-mini` is minor 4, like the old
+  // `gpt-5.4` prefix match; `gpt-5.10` is minor 10, not 1)
+  private val gpt5VersionRegex = "^gpt-5(?:\\.(\\d+))?(?:[.-].*)?$".r
+
+  /**
+   * The minor version of a GPT-5 model id (`gpt-5.4-mini` -> 4, `gpt-5-mini` -> 0, Bedrock ids
+   * canonicalized), or None for anything else. The per-version rules dispatch on it rather
+   * than on string prefixes, so `gpt-5.10` is not mistaken for `gpt-5.1` and future minors get
+   * the newest rules.
+   */
+  def gpt5Minor(model: String): Option[Int] =
+    canonicalOpenAIModel(model) match {
+      case gpt5VersionRegex(minor) => Some(Option(minor).map(_.toInt).getOrElse(0))
+      case _                       => None
+    }
+
+  /**
+   * Whether this model rejects function tools on the chat completions API outright with no
+   * Responses API alternative (`gpt-5-search-api`: "tools is not supported in this model",
+   * live 2026-09-26) - tool completions fail fast instead of sending a request that must 400.
+   */
+  def chatToolsUnsupported(model: String): Boolean = isGpt5SearchApi(model)
+
+  /**
+   * `gpt-5-search-api(-<date>)` - a search model with its own, much narrower parameter set.
+   */
+  def isGpt5SearchApi(model: String): Boolean =
+    canonicalOpenAIModel(model).startsWith("gpt-5-search-api")
+
+  private val oSeriesRegex = "^o[134](?:-.*)?$".r
+
+  /**
+   * The o-series reasoning models (o1, o3, o4 and their -mini / -pro / dated ids) by pattern,
+   * except the retired o1-preview / o1-mini, which have their own conversion.
+   */
+  def isOSeries(model: String): Boolean = {
+    val bare = canonicalOpenAIModel(model)
+    oSeriesRegex.findFirstIn(bare).isDefined && !isO1PreviewOrMini(bare)
+  }
+
+  def isO1PreviewOrMini(model: String): Boolean = {
+    val bare = canonicalOpenAIModel(model)
+    bare.startsWith("o1-preview") || bare.startsWith("o1-mini")
   }
 
   /**
@@ -60,8 +113,9 @@ object ChatCompletionSettingsConversions {
    * it: whenever it must ([[chatToolsRequireResponsesAPI]]), and also when the chat
    * completions API would force reasoning_effort to 'none' ([[chatToolsForceNoReasoning]])
    * while the caller did not ask for 'none' - the Responses API keeps the requested (or the
-   * model's default) reasoning with tools. A chat-only service falls back to chat completions
-   * with 'none'.
+   * model's default) reasoning with tools; and on GPT-5.4 / 5.5 when an explicit reasoning
+   * effort is set ([[chatToolsRejectExplicitReasoning]]). A chat-only service falls back to
+   * chat completions ('none' forced, or the effort dropped).
    */
   def chatToolsPreferResponsesAPI(
     settings: CreateChatCompletionSettings,
@@ -70,7 +124,9 @@ object ChatCompletionSettingsConversions {
     tools.nonEmpty && (
       chatToolsRequireResponsesAPI(settings.model, tools) ||
         (chatToolsForceNoReasoning(settings.model) &&
-          !settings.reasoning_effort.contains(ReasoningEffort.none))
+          !settings.reasoning_effort.contains(ReasoningEffort.none)) ||
+        (chatToolsRejectExplicitReasoning(settings.model) &&
+          settings.reasoning_effort.exists(_ != ReasoningEffort.none))
     )
 
   // Amazon Bedrock serves OpenAI models under a provider prefix, optionally behind a
@@ -85,7 +141,9 @@ object ChatCompletionSettingsConversions {
    * Bedrock too.
    */
   def canonicalOpenAIModel(model: String): String =
-    bedrockOpenAIPrefix.replaceFirstIn(model, "")
+    // the regex only matters for Bedrock ids - skip it for the common bare id (called several
+    // times per request by the dispatch and the JSON-schema matcher)
+    if (model.contains("openai.")) bedrockOpenAIPrefix.replaceFirstIn(model, "") else model
 
   private val logger = LoggerFactory.getLogger(getClass)
 
@@ -276,6 +334,83 @@ object ChatCompletionSettingsConversions {
       warning = true
     )
 
+    // the dated gpt-5.4 / gpt-5.4-mini snapshots answer logprobs with 403 even without reasoning;
+    // the aliases and gpt-5.4-nano(-2026-03-17) accept it then (live 2026-09-26)
+    private val logprobsForbiddenSnapshots =
+      Set("gpt-5.4-2026-03-05", "gpt-5.4-mini-2026-03-17")
+
+    val logProbsUnsupportedOnForbiddenSnapshots: FieldConversionDef = FieldConversionDef(
+      settings =>
+        settings.logprobs.contains(true) &&
+          logprobsForbiddenSnapshots.contains(canonicalOpenAIModel(settings.model)),
+      _.copy(logprobs = None),
+      Some(settings =>
+        s"${settings.model} snapshot doesn't allow logprobs (403), converting to None."
+      ),
+      warning = true
+    )
+
+    val reasoningEffortNoneToMinimal: FieldConversionDef = FieldConversionDef(
+      settings => settings.reasoning_effort.contains(ReasoningEffort.none),
+      _.copy(reasoning_effort = Some(ReasoningEffort.minimal)),
+      Some(settings =>
+        s"${settings.model} model doesn't support reasoning_effort 'none', converting to 'minimal'."
+      ),
+      warning = true
+    )
+
+    val reasoningEffortXHighToHigh: FieldConversionDef = FieldConversionDef(
+      settings => settings.reasoning_effort.contains(ReasoningEffort.xhigh),
+      _.copy(reasoning_effort = Some(ReasoningEffort.high)),
+      Some(settings =>
+        s"${settings.model} model doesn't support reasoning_effort 'xhigh', converting to 'high'."
+      ),
+      warning = true
+    )
+
+    val reasoningEffortMaxToHigh: FieldConversionDef = FieldConversionDef(
+      settings => settings.reasoning_effort.contains(ReasoningEffort.max),
+      _.copy(reasoning_effort = Some(ReasoningEffort.high)),
+      Some(settings =>
+        s"${settings.model} model doesn't support reasoning_effort 'max', converting to 'high'."
+      ),
+      warning = true
+    )
+
+    // search models reject these outright - even the default values
+    private def unsupported(
+      name: String,
+      isSet: CreateChatCompletionSettings => Boolean,
+      drop: CreateChatCompletionSettings => CreateChatCompletionSettings
+    ): FieldConversionDef = FieldConversionDef(
+      isSet,
+      drop,
+      Some(settings => s"${settings.model} model doesn't support $name, dropping it."),
+      warning = true
+    )
+
+    val temperatureUnsupported: FieldConversionDef =
+      unsupported("temperature", _.temperature.isDefined, _.copy(temperature = None))
+    val topPUnsupported: FieldConversionDef =
+      unsupported("top_p", _.top_p.isDefined, _.copy(top_p = None))
+    val presencePenaltyUnsupported: FieldConversionDef =
+      unsupported(
+        "presence_penalty",
+        _.presence_penalty.isDefined,
+        _.copy(presence_penalty = None)
+      )
+    val frequencyPenaltyUnsupported: FieldConversionDef = unsupported(
+      "frequency_penalty",
+      _.frequency_penalty.isDefined,
+      _.copy(frequency_penalty = None)
+    )
+    val reasoningEffortUnsupported: FieldConversionDef =
+      unsupported(
+        "reasoning_effort",
+        _.reasoning_effort.isDefined,
+        _.copy(reasoning_effort = None)
+      )
+
     val reasoningEffortNoneToLow: FieldConversionDef = FieldConversionDef(
       settings => settings.reasoning_effort.contains(ReasoningEffort.none),
       _.copy(reasoning_effort = Some(ReasoningEffort.low)),
@@ -285,10 +420,11 @@ object ChatCompletionSettingsConversions {
       warning = true
     )
 
-    // Function tools on the chat completions API reject any explicit reasoning_effort on
-    // GPT-5.5 (the model default works) - see the chat-tool conversions below.
+    // Function tools on the chat completions API reject an explicit reasoning_effort (other than
+    // 'none') on GPT-5.4 / 5.5 (the model default works) - see the chat-tool conversions below.
+    // ('none' is accepted with tools - live-verified 2026-09-26 on 5.4 and 5.5)
     val reasoningEffortUnsupportedWithTools: FieldConversionDef = FieldConversionDef(
-      settings => settings.reasoning_effort.isDefined,
+      settings => settings.reasoning_effort.exists(_ != ReasoningEffort.none),
       _.copy(reasoning_effort = None),
       Some(settings =>
         s"${settings.model} model doesn't support an explicit reasoning_effort together with function tools on the chat completions API, converting to None (model default)."
@@ -334,6 +470,18 @@ object ChatCompletionSettingsConversions {
   private val o1PreviewConversions =
     oBaseConversions :+ responseFormatTypeMustBeText
 
+  // o1 / o3 / o3-mini / o4-mini, live-verified 2026-09-26: logprobs is a 403, reasoning_effort
+  // accepts only low / medium / high / xhigh
+  private val oConversions =
+    oBaseConversions ++ Seq(
+      logProbsUnsupported,
+      reasoningEffortNoneToLow,
+      reasoningEffortMinimalToLow,
+      reasoningEffortMaxToXHigh
+    )
+
+  // gpt-5 / -mini / -nano, live-verified 2026-09-26: reasoning_effort accepts only minimal /
+  // low / medium / high
   val gpt5: SettingsConversion = generic(
     Seq(
       maxTokensToMaxCompletionTokens,
@@ -341,29 +489,57 @@ object ChatCompletionSettingsConversions {
       topPOneOnly,
       presencePenaltyZeroOnly,
       frequencyPenaltyZeroOnly,
-      logProbsUnsupported
+      logProbsUnsupported,
+      reasoningEffortNoneToMinimal,
+      reasoningEffortXHighToHigh,
+      reasoningEffortMaxToHigh
     )
   )
 
+  // gpt-5-search-api, live-verified 2026-09-26: temperature / top_p / penalties are rejected
+  // even at their defaults, logprobs and reasoning_effort are unknown, verbosity is 'medium'
+  // only (function tools are not supported at all - left to the API's error)
+  val gpt5SearchApi: SettingsConversion = generic(
+    Seq(
+      maxTokensToMaxCompletionTokens,
+      temperatureUnsupported,
+      topPUnsupported,
+      presencePenaltyUnsupported,
+      frequencyPenaltyUnsupported,
+      logProbsUnsupported,
+      reasoningEffortUnsupported,
+      verbosityMediumOnly
+    )
+  )
+
+  // live-verified 2026-09-26: sampling params, penalties and logprobs work without reasoning
+  // (no effort, or 'none') and are rejected with it; reasoning_effort accepts none / low /
+  // medium / high
   val gpt5_1: SettingsConversion = generic(
     Seq(
       maxTokensToMaxCompletionTokens,
       temperatureOneOnlyWithReasoning,
       topPOneOnlyWithReasoning,
       logProbsUnsupportedWithReasoning,
-      presencePenaltyZeroOnly,
-      frequencyPenaltyZeroOnly
+      presencePenaltyZeroOnlyWithReasoning,
+      frequencyPenaltyZeroOnlyWithReasoning,
+      reasoningEffortMinimalToLow,
+      reasoningEffortXHighToHigh,
+      reasoningEffortMaxToHigh
     )
   )
 
+  // as 5.1, but reasoning_effort also accepts xhigh (live-verified 2026-09-26)
   val gpt5_2: SettingsConversion = generic(
     Seq(
       maxTokensToMaxCompletionTokens,
       temperatureOneOnlyWithReasoning,
       topPOneOnlyWithReasoning,
       logProbsUnsupportedWithReasoning,
-      presencePenaltyZeroOnly,
-      frequencyPenaltyZeroOnly
+      presencePenaltyZeroOnlyWithReasoning,
+      frequencyPenaltyZeroOnlyWithReasoning,
+      reasoningEffortMinimalToLow,
+      reasoningEffortMaxToXHigh
     )
   )
 
@@ -378,6 +554,9 @@ object ChatCompletionSettingsConversions {
     )
   )
 
+  // sampling params, penalties and logprobs work without reasoning and are rejected with it -
+  // except that the dated gpt-5.4 / 5.4-mini snapshots 403 logprobs always (live 2026-09-26);
+  // reasoning_effort accepts none / low / medium / high / xhigh
   val gpt5_4: SettingsConversion = generic(
     Seq(
       maxTokensToMaxCompletionTokens,
@@ -385,7 +564,10 @@ object ChatCompletionSettingsConversions {
       topPOneOnlyWithReasoning,
       presencePenaltyZeroOnlyWithReasoning,
       frequencyPenaltyZeroOnlyWithReasoning,
-      logProbsUnsupported
+      logProbsUnsupportedWithReasoning,
+      logProbsUnsupportedOnForbiddenSnapshots,
+      reasoningEffortMinimalToLow,
+      reasoningEffortMaxToXHigh
     )
   )
 
@@ -397,7 +579,9 @@ object ChatCompletionSettingsConversions {
       topPOneOnly,
       presencePenaltyZeroOnly,
       frequencyPenaltyZeroOnly,
-      logProbsUnsupported
+      logProbsUnsupported,
+      reasoningEffortMinimalToLow,
+      reasoningEffortMaxToXHigh
     )
   )
 
@@ -446,9 +630,10 @@ object ChatCompletionSettingsConversions {
   val gpt6SolLuna: SettingsConversion = gpt5_6
 
   // Function tools on the CHAT COMPLETIONS API (createChatToolCompletion) - verified live
-  // 2026-09-05: GPT-5.4 and older accept tools with any reasoning_effort; GPT-5.5 rejects an
-  // explicit reasoning_effort when tools are present; GPT-5.6 and GPT-6 Sol/Luna (2026-09-22)
-  // require reasoning_effort 'none' with tools; GPT-6 Astra requires 'none' with tools but
+  // 2026-09-26: GPT-5.3 and older accept tools with any reasoning_effort; GPT-5.4 and 5.5
+  // reject an explicit reasoning_effort other than 'none' when tools are present (dropped by
+  // gpt5_5ChatTools, or routed to the Responses API); GPT-5.6+ and GPT-6 Sol/Luna require
+  // reasoning_effort 'none' with tools; GPT-6 Astra requires 'none' with tools but
   // rejects 'none' altogether, so on Astra function tools are Responses-API-only
   // (OpenAIChatCompletionServiceImpl routes them there).
   val gpt5_5ChatTools: SettingsConversion = generic(Seq(reasoningEffortUnsupportedWithTools))
@@ -466,7 +651,7 @@ object ChatCompletionSettingsConversions {
     effort: ReasoningEffort
   ): ReasoningEffort = {
     val bare = canonicalOpenAIModel(model)
-    val gpt5_6OrGpt6 = bare.startsWith("gpt-5.6") || bare.startsWith("gpt-6")
+    val gpt5_6OrGpt6 = gpt5Minor(model).exists(_ >= 6) || bare.startsWith("gpt-6")
 
     effort match {
       case ReasoningEffort.minimal if gpt5_6OrGpt6 =>
@@ -488,10 +673,8 @@ object ChatCompletionSettingsConversions {
    * `top_logprobs` for this model - live-verified 2026-09-22 on GPT-5.6 and GPT-6 (Astra, Sol,
    * Luna): "Unsupported parameter" / "logprobs are not supported with reasoning models".
    */
-  def responsesSamplingUnsupported(model: String): Boolean = {
-    val bare = canonicalOpenAIModel(model)
-    bare.startsWith("gpt-5.6") || bare.startsWith("gpt-6")
-  }
+  def responsesSamplingUnsupported(model: String): Boolean =
+    gpt5Minor(model).exists(_ >= 6) || canonicalOpenAIModel(model).startsWith("gpt-6")
 
   // 'chat-latest' is a rolling ChatGPT-style alias. Verified against the live API 2026-09-02:
   // max_tokens must be sent as max_completion_tokens; temperature/top_p/presence_penalty/
@@ -508,7 +691,7 @@ object ChatCompletionSettingsConversions {
     )
   )
 
-  val o: SettingsConversion = generic(oBaseConversions)
+  val o: SettingsConversion = generic(oConversions)
 
   val o1Preview: SettingsConversion = generic(o1PreviewConversions)
 

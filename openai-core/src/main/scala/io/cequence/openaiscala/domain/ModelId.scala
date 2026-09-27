@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.domain
 
 /**
- * OpenAI models available as of `2026-09-08`.
+ * OpenAI models available as of `2026-09-26` (retired and retiring ones are `@deprecated`).
  *
  * @since Jan
  *   2023
@@ -961,8 +961,16 @@ object ModelId {
 
   // GPT-4
   // web search
+  @deprecated(
+    "Shut down by OpenAI (the alias answers 404 \"deprecated\" as of 2026-09-26) - use gpt-5-search-api",
+    "1.3.1"
+  )
   val gpt_4o_search_preview = "gpt-4o-search-preview"
   // web search
+  @deprecated(
+    "Shut down by OpenAI (the alias answers 404 \"deprecated\" as of 2026-09-26) - use gpt-5-search-api",
+    "1.3.1"
+  )
   val gpt_4o_mini_search_preview = "gpt-4o-mini-search-preview"
   // flagship multimodal model, 128K context, currently points to "gpt-4o-2024-08-06, training data up to Oct 2023
   val gpt_4o = "gpt-4o"

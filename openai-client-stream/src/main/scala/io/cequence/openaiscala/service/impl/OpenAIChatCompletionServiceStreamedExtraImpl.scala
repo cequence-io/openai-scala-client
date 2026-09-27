@@ -3,6 +3,7 @@ package io.cequence.openaiscala.service.impl
 import io.cequence.openaiscala.domain.ChatCompletionTool
 import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.service.ChatChunks
+import io.cequence.openaiscala.service.adapter.ChatCompletionSettingsConversions
 
 import akka.NotUsed
 import io.cequence.openaiscala.service.StreamingConsts
@@ -44,7 +45,15 @@ private[service] trait OpenAIChatCompletionServiceStreamedExtraImpl
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
   ): Source[ChatChunk, NotUsed] =
-    if (tools.nonEmpty && chatToolsRequireResponsesAPI(settings.model, tools))
+    if (
+      tools.nonEmpty && ChatCompletionSettingsConversions.chatToolsUnsupported(settings.model)
+    )
+      Source.failed(
+        new OpenAIScalaClientException(
+          ChatCompletionBodyMaker.toolsUnsupportedMessage(settings.model)
+        )
+      )
+    else if (tools.nonEmpty && chatToolsRequireResponsesAPI(settings.model, tools))
       Source.failed(
         new OpenAIScalaClientException(
           ChatCompletionBodyMaker.responsesOnlyToolsMessage(settings.model, tools) +
