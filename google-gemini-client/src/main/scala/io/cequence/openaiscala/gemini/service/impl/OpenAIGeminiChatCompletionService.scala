@@ -1041,12 +1041,9 @@ private[service] class OpenAIGeminiChatCompletionService(
   }
 
   /**
-   * Converts OpenAI's reasoning_effort to Gemini's ThinkingConfig.
-   *
-   * Gemini 3.x models use `thinkingLevel` (MINIMAL/LOW/MEDIUM/HIGH); MINIMAL is only valid on
-   * Flash variants, not Pro, and not on Gemini 3.7/3.8 Flash (which dropped it). Gemini 2.5
-   * uses `thinkingBudget` (token count) from config. Setting both fields on Gemini 3 can
-   * return an error, so only one is populated.
+   * Converts OpenAI's reasoning_effort to Gemini's ThinkingConfig - `thinkingLevel` or
+   * `thinkingBudget` (never both) or nothing, per [[GeminiThinking]] (live-measured per
+   * model).
    *
    * @return
    *   ThinkingConfig, or None if reasoning_effort is None or model doesn't support thinking
@@ -1055,59 +1052,38 @@ private[service] class OpenAIGeminiChatCompletionService(
     model: String,
     reasoningEffort: Option[ReasoningEffort]
   ): Option[ThinkingConfig] = reasoningEffort.flatMap { effort =>
-    if (isGemini3(model))
-      toThinkingLevelConfig(model, effort)
-    else if (model.startsWith("gemini-2.5"))
-      toThinkingBudgetConfig(model, effort)
-    else {
-      logger.warn(
-        s"Skipping thinking config for model '$model' - thinking is only supported on Gemini 2.5+ and 3.x models. Reasoning effort '${effort.toString.toLowerCase}' will be ignored."
-      )
-      None
+    GeminiThinking.mode(model) match {
+      case GeminiThinking.Levels => toThinkingLevelConfig(model, effort)
+      case GeminiThinking.Budget => toThinkingBudgetConfig(GeminiThinking.bare(model), effort)
+      case GeminiThinking.Unsupported =>
+        logger.warn(
+          s"Skipping thinking config for model '$model' - it takes no thinking configuration. Reasoning effort '${effort.toString.toLowerCase}' will be ignored."
+        )
+        None
     }
   }
-
-  private def isGemini3(model: String): Boolean =
-    model.startsWith("gemini-3-") || model.startsWith("gemini-3.")
-
-  // Gemini 3 Pro does NOT support MINIMAL (min level is LOW). Most Flash variants do, except
-  // Gemini 3.7/3.8 Flash, which also dropped it (see minimalThinkingLevelUnsupportedPrefixes).
-  private def isGemini3Pro(model: String): Boolean =
-    isGemini3(model) && model.contains("-pro") && !model.contains("image")
-
-  // Gemini 3.7 Flash dropped the MINIMAL thinking level (400: "Thinking level MINIMAL is not
-  // supported for this model", live-verified 2026-09-02) and Gemini 3.8 Flash (GA 2026-09-02)
-  // documents only LOW/MEDIUM/HIGH as well; 3.6 Flash and earlier Flash variants still accept
-  // it. Pro never did. Extend this as further releases drop it.
-  private val minimalThinkingLevelUnsupportedPrefixes: Seq[String] =
-    Seq("gemini-3.7", "gemini-3.8")
-
-  private def supportsMinimalThinkingLevel(model: String): Boolean =
-    !isGemini3Pro(model) && !minimalThinkingLevelUnsupportedPrefixes.exists(model.startsWith)
 
   private def toThinkingLevelConfig(
     model: String,
     effort: ReasoningEffort
   ): Option[ThinkingConfig] = {
-    val level: ThinkingLevel = effort match {
-      case ReasoningEffort.none | ReasoningEffort.minimal =>
-        if (supportsMinimalThinkingLevel(model))
-          ThinkingLevel.MINIMAL
-        else {
-          logger.warn(
-            s"Model '$model' does not support thinking level MINIMAL; mapping reasoning_effort '${effort.toString.toLowerCase}' to LOW instead."
-          )
-          ThinkingLevel.LOW
-        }
-      case ReasoningEffort.low    => ThinkingLevel.LOW
-      case ReasoningEffort.medium => ThinkingLevel.MEDIUM
+    val requested: ThinkingLevel = effort match {
+      case ReasoningEffort.none | ReasoningEffort.minimal => ThinkingLevel.MINIMAL
+      case ReasoningEffort.low                            => ThinkingLevel.LOW
+      case ReasoningEffort.medium                         => ThinkingLevel.MEDIUM
       case ReasoningEffort.high | ReasoningEffort.xhigh | ReasoningEffort.max =>
         ThinkingLevel.HIGH
     }
+    val level = GeminiThinking.level(model, requested)
 
-    logger.debug(
-      s"Converting reasoning effort '${effort.toString.toLowerCase}' to Gemini thinking level: $level (model: $model)"
-    )
+    if (level != requested)
+      logger.warn(
+        s"Model '$model' does not support thinking level $requested; mapping reasoning_effort '${effort.toString.toLowerCase}' to $level instead."
+      )
+    else
+      logger.debug(
+        s"Converting reasoning effort '${effort.toString.toLowerCase}' to Gemini thinking level: $level (model: $model)"
+      )
 
     Some(
       ThinkingConfig(

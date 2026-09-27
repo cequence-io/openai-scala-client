@@ -24,7 +24,8 @@ object EndPoint {
   private def stripCachedContentsPrefix(name: String): String =
     name.stripPrefix("cachedContents/")
 
-  private def stripModelsPrefix(name: String): String =
+  // shared with GeminiThinking, so the endpoint and the thinking decision agree on the bare id
+  private[impl] def stripModelsPrefix(name: String): String =
     name.stripPrefix("models/")
 
   private def stripBatchesPrefix(name: String): String =

@@ -371,6 +371,12 @@ package object impl extends io.cequence.openaiscala.service.HasOpenAIConfig {
         s"Skipping reasoning_effort '${effort.toString.toLowerCase}' for model '$model' - Gemini 3.x needs thinkingLevel, which the proto-based VertexAI SDK cannot express (use the Gemini-direct client, or wait for the google-genai SDK switch)."
       )
       None
+    } else if (modelId.startsWith("gemini-2.5-flash-image")) {
+      // rejects any thinking config (live-verified on the Gemini API 2026-09-26)
+      logger.warn(
+        s"Skipping reasoning_effort '${effort.toString.toLowerCase}' for model '$model' - it takes no thinking configuration."
+      )
+      None
     } else if (modelId.startsWith("gemini-2.5")) {
       val effortKey = effort.toString.toLowerCase
       val configPath =
