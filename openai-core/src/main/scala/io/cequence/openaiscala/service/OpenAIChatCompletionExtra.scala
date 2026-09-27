@@ -682,13 +682,21 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
     val jsonSchemaJson = Json.toJson(jsonSchemaDef.structure)
     val jsonSchemaString = Json.prettyPrint(jsonSchemaJson)
 
+    // the Bedrock cross-region spelling of an OpenAI model (`us.openai.gpt-5.6-luna`,
+    // `global.openai.gpt-6-sol`) matches its bare id too - live-verified 2026-09-26 that those
+    // profiles honour json_schema like the direct API
+    val canonicalModel =
+      io.cequence.openaiscala.service.adapter.ChatCompletionSettingsConversions
+        .canonicalOpenAIModel(settings.model)
+
     val (settingsFinal, addJsonToPrompt) = {
       // to be more robust we also match models with a suffix
       if (
         enforceJsonSchemaMode ||
-        jsonSchemaModelsFinal.exists(model =>
-          settings.model.equals(model) || settings.model.endsWith("-" + model)
-        )
+        jsonSchemaModelsFinal.exists { model =>
+          settings.model.equals(model) || settings.model.endsWith("-" + model) ||
+          (canonicalModel != settings.model && canonicalModel.equals(model))
+        }
       ) {
         logger.debug(
           s"Using OpenAI json schema mode for ${taskNameForLogging} and the model '${settings.model}' - name: ${jsonSchemaDef.name}, strict: ${jsonSchemaDef.strict}, structure:\n${jsonSchemaString}"

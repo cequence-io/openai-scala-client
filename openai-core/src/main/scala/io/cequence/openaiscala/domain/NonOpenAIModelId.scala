@@ -507,6 +507,8 @@ object NonOpenAIModelId {
   val gemini_2_5_computer_use_preview_10_2025 = "gemini-2.5-computer-use-preview-10-2025"
 
   // Gemini Omni (native multimodal)
+  // the omni models answer generateContent with 400 "This model only supports Interactions API"
+  // (live 2026-09-26) - the Gemini adapter cannot serve them
   val gemini_omni_1_1_flash = "gemini-omni-1.1-flash"
   val gemini_omni_flash_preview = "gemini-omni-flash-preview"
   // Other models served by the Gemini API (listed 2026-09-10)
@@ -685,6 +687,9 @@ object NonOpenAIModelId {
   val solar_10_7b_instruct_v1_0 = "upstage/SOLAR-10.7B-Instruct-v1.0" // Together AI
 
   // Grok
+  // Grok 4.7 (listed by xAI 2026-09-26): json_schema and reasoning_effort accepted,
+  // presence_penalty rejected
+  val grok_4_7 = "grok-4.7"
   // Grok 4.6 (2026-08-12): 500K context, knowledge cutoff 2026-02-01, reasoning effort
   // low/medium/high/xhigh - xAI's current flagship for coding and agentic work
   val grok_4_6 = "grok-4.6"
