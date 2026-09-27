@@ -46,6 +46,23 @@ Responses service in the Perplexity module behind the core `OpenAIResponsesChatC
 (`PerplexityAgentAsOpenAISmokeTest`).
 
 ### Changed
+- **Model routing and conversions re-measured** against the live chat completions API (41 OpenAI models x 23
+  parameter cases, raw and through the client - `OpenAIConversionsAudit`), fixing every missing conversion found:
+  per-family `reasoning_effort` mappings (gpt-5: `none`->`minimal`, `xhigh`/`max`->`high`; 5.1: `minimal`->`low`,
+  `xhigh`/`max`->`high`; 5.2 / 5.4 / 5.5: `minimal`->`low`, `max`->`xhigh`; o-series: `none`/`minimal`->`low`, `max`->`xhigh`,
+  logprobs dropped); 5.1 / 5.2 penalties now kept without reasoning (they were always zeroed); a `gpt-5-search-api` rule
+  (temperature / top_p / penalties rejected even at defaults, reasoning_effort dropped); GPT-5 dispatched on the parsed
+  minor version (`gpt-5.10` is no longer treated as 5.1, future minors get the 5.6 rules) and the o-series by pattern
+  (future-proofing: the ids the old set missed are Responses-only or shut down); GPT-5.4 / 5.5 tool calls with an explicit
+  effort go through the Responses API on the full service (chat completions rejects the combination), while `none` is
+  kept; GPT-5.4 `logprobs` kept without reasoning except on the two dated snapshots that 403 it; tool calls on
+  `gpt-5-search-api` (which supports none) fail fast with a clear error.
+- **Gemini thinking** re-measured per model (`GeminiThinkingAudit`): the rolling aliases (`gemini-flash-latest` etc.) and
+  `nano-banana-pro*` now get thinking levels (reasoning_effort was dropped for them), the 3.1 Flash image models get only
+  MINIMAL / HIGH, `gemini-2.5-flash-image` gets no thinking config.
+- `models-supporting-json-schema`: added `gpt-4o-mini`, `gpt-5-search-api`, `gemini-2.5-flash-lite`, `grok-4.7`
+  (registered too); the Bedrock cross-region spelling of an OpenAI model matches its bare id. The Anthropic max-output
+  table resolves by the longest matching id. `gpt-4o(-mini)-search-preview` deprecated (404).
 
 - Responses API reads are tolerant of Responses-compatible providers: output items of an unknown type are skipped with a
   warning instead of failing the whole response, and an unknown `truncation` value reads as `None` (Perplexity sends
