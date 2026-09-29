@@ -268,7 +268,12 @@ OpenAI adapter over a native service must also repack errors raised DURING its s
 (`.mapError(toOpenAIException)` - Anthropic and Gemini `impl` package objects), not just the
 setup future. Pinned against a local server by `StreamedHttpErrorsWireSpec` (OpenAI),
 `AnthropicStreamedHttpErrorsWireSpec` (incl. Managed Agents session events),
-`GeminiStreamedHttpErrorsWireSpec` and `SonarAgentWireSpec` (Perplexity).
+`GeminiStreamedHttpErrorsWireSpec` and `SonarAgentWireSpec` (Perplexity). Vertex AI chat never
+touches ws-client (Google SDK, gRPC): its failures are classified by canonical status in
+`vertexai/service/impl/VertexAIErrors` (also used by the batch-prediction REST service's
+`handleErrorCodes` via `error.status`, falling back to the shared `OpenAIErrorCodes` HTTP policy in openai-core) and pinned end
+to end by `VertexAIStreamedErrorsSpec`, which drives the real SDK over a scripted
+`PredictionServiceStub` (`VertexAI.Builder.setPredictionClientSupplier`).
 
 **Akka backend, for now.** This project currently hard-wires its streaming API surface to Akka
 Streams - `createChatCompletionStreamed` etc. return `Source[T, akka.NotUsed]`, and every

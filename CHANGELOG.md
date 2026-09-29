@@ -40,6 +40,18 @@ See `GPT6SolLunaOpus55SmokeTest` for a live walkthrough.
   `StreamedHttpErrorsWireSpec` (OpenAI), `AnthropicStreamedHttpErrorsWireSpec` (direct API, batch results, session
   events, Bedrock, adapter), `GeminiStreamedHttpErrorsWireSpec` (native + adapter) and `SonarAgentWireSpec`
   (Perplexity).
+- **Vertex AI errors classified by canonical status** (`vertexai/service/impl/VertexAIErrors`): the adapter maps every
+  gRPC status (`RESOURCE_EXHAUSTED` -> rate limit, `UNAVAILABLE` -> overloaded, `DEADLINE_EXCEEDED` -> timeout,
+  `INTERNAL` / `UNKNOWN` / `DATA_LOSS` -> server error, `UNAUTHENTICATED` / `PERMISSION_DENIED` -> unauthorized, a
+  token-count `INVALID_ARGUMENT` -> token count exceeded, the rest -> client error) by status rather than by exception
+  class, finds the gax / raw gRPC exception anywhere in the cause chain, and keeps it as the cause. The batch-prediction
+  REST service, which had no error classification at all, now classifies Google's error bodies by `error.status`
+  (falling back to the shared HTTP policy, now `OpenAIErrorCodes` in openai-core - `HandleOpenAIErrorCodes.toException`
+  delegates to it) and maps transport timeouts / unknown hosts, so
+  429 / 503 / 5xx are `Retryable`.
+  Pinned end to end: `VertexAIStreamedErrorsSpec` (the real SDK over a scripted transport stub - failures at stream
+  open, mid-stream after a delivered chunk, wrapped, and unary), `VertexAIBatchHttpErrorsWireSpec` (local server) and
+  `VertexAIErrorsSpec` (every status).
 
 ### 🔥 Perplexity Agent API
 

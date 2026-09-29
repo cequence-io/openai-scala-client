@@ -11,7 +11,13 @@ import io.cequence.openaiscala.vertexai.domain.{
 }
 import io.cequence.openaiscala.vertexai.service.VertexAIBatchPredictionService
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
-import io.cequence.wsclient.domain.{EnumValue, NamedEnumValue, SiteBinding, WsRequestContext}
+import io.cequence.wsclient.domain.{
+  CequenceWSException,
+  EnumValue,
+  NamedEnumValue,
+  SiteBinding,
+  WsRequestContext
+}
 import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithEngine
 import io.cequence.wsclient.service.spi.{TransportSettings, WSClientEngineRegistry}
 import io.cequence.wsclient.service.ws.Timeouts
@@ -85,6 +91,10 @@ private[service] object VertexAIBatchPredictionServiceImpl {
           authHeaders = Seq(("Authorization", s"Bearer ${accessToken()}"))
         )
       ),
+      // transport failures (timeouts, unknown host) as OpenAIScala* too
+      recoverErrors = Some(_ => { case e: CequenceWSException =>
+        throw VertexAIErrors.toOpenAIException(e)
+      }),
       label = Some("vertexai-batch")
     )
   }
@@ -127,6 +137,14 @@ private[service] class VertexAIBatchPredictionServiceImpl(
   // refreshed when expired
   override protected val site: SiteBinding =
     VertexAIBatchPredictionServiceImpl.siteBinding(projectId, location)
+
+  // Google's REST errors ({"error": {"code", "message", "status"}}) classified by their
+  // canonical status, like the SDK's gRPC errors - so 429 / 503 / 5xx are Retryable
+  override protected def handleErrorCodes(
+    httpCode: Int,
+    message: String
+  ): Nothing =
+    throw VertexAIErrors.fromHttp(httpCode, message)
 
   override def createBatchPredictionJob(
     settings: CreateBatchPredictionJobSettings

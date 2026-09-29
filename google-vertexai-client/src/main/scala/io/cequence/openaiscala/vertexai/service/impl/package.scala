@@ -16,27 +16,10 @@ import com.google.cloud.vertexai.api.{
   ToolConfig => VertexToolConfig,
   Type
 }
-import com.google.api.gax.rpc.{
-  ApiException,
-  DeadlineExceededException,
-  InternalException,
-  InvalidArgumentException,
-  PermissionDeniedException,
-  ResourceExhaustedException,
-  UnauthenticatedException,
-  UnavailableException
-}
 import com.google.protobuf.{ByteString, Struct, Value}
 import com.google.protobuf.util.JsonFormat
 import com.typesafe.scalalogging.Logger
-import io.cequence.openaiscala.{
-  OpenAIScalaClientException,
-  OpenAIScalaClientTimeoutException,
-  OpenAIScalaEngineOverloadedException,
-  OpenAIScalaRateLimitException,
-  OpenAIScalaServerErrorException,
-  OpenAIScalaUnauthorizedException
-}
+import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.{
   AssistantMessage,
   AssistantToolMessage,
@@ -80,7 +63,6 @@ import CreateChatCompletionSettingsOps._
 import org.slf4j.LoggerFactory
 
 import java.{util => ju}
-import java.util.concurrent.{CompletionException, ExecutionException}
 import scala.collection.convert.ImplicitConversions.`iterable asJava`
 import scala.collection.convert.ImplicitConversions.`map AsJavaMap`
 import scala.collection.convert.ImplicitConversions.`list asScalaBuffer`
@@ -769,44 +751,13 @@ package object impl extends io.cequence.openaiscala.service.HasOpenAIConfig {
   // -- Exception repacking (Vertex/gax -> OpenAI exceptions) --
 
   /**
-   * Unwraps `CompletionException`/`ExecutionException` (recursively, following non-null
-   * causes) and maps the underlying gax `ApiException` subtypes to their OpenAI equivalents,
-   * so callers of this module can pattern-match on the usual `OpenAIScalaClientException`
-   * hierarchy regardless of the Vertex AI transport in use. An already-
-   * `OpenAIScalaClientException` passes through unchanged; anything unrecognized is returned
-   * as-is.
+   * Maps a Vertex AI failure onto the `OpenAIScalaClientException` hierarchy by its canonical
+   * status (see [[VertexAIErrors]]), so callers of this module can pattern-match on the usual
+   * exceptions regardless of the transport. Total - safe to use directly with
+   * `Source.mapError`.
    */
-  def toOpenAIException: PartialFunction[Throwable, Throwable] = {
-    case e: OpenAIScalaClientException => e
-
-    case e: CompletionException if e.getCause != null => toOpenAIException(e.getCause)
-    case e: ExecutionException if e.getCause != null  => toOpenAIException(e.getCause)
-
-    case e: ResourceExhaustedException =>
-      new OpenAIScalaRateLimitException(e.getMessage, e)
-
-    case e: UnavailableException =>
-      new OpenAIScalaEngineOverloadedException(e.getMessage, e)
-
-    case e: DeadlineExceededException =>
-      new OpenAIScalaClientTimeoutException(e.getMessage, e)
-
-    case e: InternalException =>
-      new OpenAIScalaServerErrorException(e.getMessage, e)
-
-    case e: UnauthenticatedException =>
-      new OpenAIScalaUnauthorizedException(e.getMessage, e)
-
-    case e: PermissionDeniedException =>
-      new OpenAIScalaUnauthorizedException(e.getMessage, e)
-
-    case e: InvalidArgumentException =>
-      new OpenAIScalaClientException(e.getMessage, e)
-
-    case e: ApiException =>
-      new OpenAIScalaClientException(e.getMessage, e)
-
-    case e => e
+  def toOpenAIException: PartialFunction[Throwable, Throwable] = { case e =>
+    VertexAIErrors.toOpenAIException(e)
   }
 
   def repackAsOpenAIException[T]: PartialFunction[Throwable, scala.concurrent.Future[T]] = {
