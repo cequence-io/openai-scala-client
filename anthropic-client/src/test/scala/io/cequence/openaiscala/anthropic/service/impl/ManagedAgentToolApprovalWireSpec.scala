@@ -132,9 +132,14 @@ class ManagedAgentToolApprovalWireSpec
               posted = posted :+ events
               val confirmation =
                 (events.head \ "type").asOpt[String].contains("user.tool_confirmation")
-              if (failConfirmations && confirmation)
+              if (failConfirmations && confirmation) {
+                // the adapter aborts its event stream when the POST fails, so - as on the live
+                // API - that stream is no longer subscribed; drop it at once (its handler would
+                // otherwise sit registered for the full poll and swallow the next POST's events)
+                subscribers.forEach(_.put(Nil))
+                subscribers.clear()
                 respond(exchange, 500, """{"error":{"type":"api_error","message":"boom"}}""")
-              else {
+              } else {
                 // the SSE GET goes out first; give it a moment to register
                 val deadline = System.currentTimeMillis() + 2000
                 while (subscribers.isEmpty && System.currentTimeMillis() < deadline)
