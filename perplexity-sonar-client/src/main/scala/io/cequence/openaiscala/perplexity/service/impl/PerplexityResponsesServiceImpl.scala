@@ -15,7 +15,11 @@ import io.cequence.openaiscala.domain.settings.{
   CreateCompletionSettings
 }
 import io.cequence.openaiscala.perplexity.service._
-import io.cequence.openaiscala.service.{OpenAIResponsesService, OpenAIStreamedServiceExtra}
+import io.cequence.openaiscala.service.{
+  ClassifiedStreamingWSClient,
+  OpenAIResponsesService,
+  OpenAIStreamedServiceExtra
+}
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
 import io.cequence.wsclient.domain.{
@@ -24,7 +28,6 @@ import io.cequence.wsclient.domain.{
   SiteBinding,
   WsRequestContext
 }
-import io.cequence.wsclient.service.WSClientWithEngineStreamTypes.WSClientWithOutputStreamEngine
 import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
 import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtraAkka}
 import play.api.libs.json.{JsObject, Json}
@@ -50,7 +53,7 @@ private[service] class PerplexityResponsesServiceImpl(
   override implicit val ec: ExecutionContext
 ) extends OpenAIResponsesService
     with OpenAIStreamedServiceExtra
-    with WSClientWithOutputStreamEngine {
+    with ClassifiedStreamingWSClient {
 
   override protected type PEP = EndPoint
   override protected type PT = Param
@@ -96,29 +99,23 @@ private[service] class PerplexityResponsesServiceImpl(
     inputs: Inputs,
     settings: CreateModelResponseSettings
   ): Source[ResponseStreamEvent, NotUsed] =
-    engine
-      .execRawStream(
-        site,
-        EndPoint.responses.toString(),
-        "POST",
-        endPointParam = None,
-        params = Nil,
-        bodyParams = requestBody(inputs, settings, stream = true).fields.toList.map {
-          case (name, value) => name -> Some(value)
-        },
-        extraHeaders = Seq("Accept" -> "text/event-stream")
-      )
-      .via(ServerSentEvents.jsonPayloads())
-      .map { json =>
-        if ((json \ "type").isEmpty && (json \ "error").isDefined)
-          throw PerplexityResponsesServiceImpl.toOpenAIException(
-            HandlePerplexityErrorCodes
-              .fromErrorBody(json)
-              .getOrElse(new PerplexityScalaClientException(json.toString()))
-          )
-        else
-          json.asSafe[ResponseStreamEvent]
-      }
+    execRawStream(
+      EndPoint.responses,
+      "POST",
+      bodyParams = requestBody(inputs, settings, stream = true).fields.toList.map {
+        case (name, value) => Param.Raw(name) -> Some(value)
+      },
+      extraHeaders = Seq("Accept" -> "text/event-stream")
+    ).via(ServerSentEvents.jsonPayloads()).map { json =>
+      if ((json \ "type").isEmpty && (json \ "error").isDefined)
+        throw PerplexityResponsesServiceImpl.toOpenAIException(
+          HandlePerplexityErrorCodes
+            .fromErrorBody(json)
+            .getOrElse(new PerplexityScalaClientException(json.toString()))
+        )
+      else
+        json.asSafe[ResponseStreamEvent]
+    }
 
   private def requestBody(
     inputs: Inputs,

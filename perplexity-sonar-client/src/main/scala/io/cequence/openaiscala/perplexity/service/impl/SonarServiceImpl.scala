@@ -3,7 +3,6 @@ package io.cequence.openaiscala.perplexity.service.impl
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.perplexity.AgentJsonFormats
 import io.cequence.openaiscala.perplexity.AgentJsonFormats._
 import io.cequence.openaiscala.perplexity.domain.agent._
@@ -21,7 +20,7 @@ import io.cequence.openaiscala.perplexity.service.{
   PerplexityScalaClientUnknownHostException,
   SonarService
 }
-import io.cequence.openaiscala.service.StreamingConsts
+import io.cequence.openaiscala.service.{ClassifiedStreamingWSClient, StreamingConsts}
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
 import io.cequence.wsclient.StreamResponseImplicits.StreamSafeOps
@@ -34,7 +33,6 @@ import io.cequence.wsclient.domain.{
   WsRequestContext
 }
 import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtraAkka}
-import io.cequence.wsclient.service.WSClientWithEngineStreamTypes.WSClientWithOutputStreamEngine
 import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
 import play.api.libs.json._
 
@@ -49,7 +47,7 @@ private[service] class SonarServiceImpl(
 )(
   override implicit val ec: ExecutionContext
 ) extends SonarService
-    with WSClientWithOutputStreamEngine {
+    with ClassifiedStreamingWSClient {
 
   override protected type PEP = EndPoint
   override protected type PT = Param
@@ -95,27 +93,17 @@ private[service] class SonarServiceImpl(
     messages: Seq[Message],
     settings: SonarCreateChatCompletionSettings
   ): Source[SonarChatCompletionChunkResponse, NotUsed] = {
-    val bodyParams =
-      createBodyParamsForChatCompletion(messages, settings, stream = true)
-    val stringParams = paramTuplesToStrings(bodyParams)
-
-    engine
-      .execJsonStream(
-        site,
-        EndPoint.chatCompletion.toString(),
-        "POST",
-        bodyParams = stringParams,
-        framingDelimiter = "\r\n\r\n",
-        // citation-heavy frames exceed ws-client's 20 000-byte default
-        maxFrameLength = Some(StreamingConsts.DefaultMaxFrameLength)
-      )
-      .map { json =>
-        (json \ "error").toOption.map { error =>
-          throw new OpenAIScalaClientException(error.toString())
-        }.getOrElse {
-          json.asSafe[SonarChatCompletionChunkResponse]
-        }
-      }
+    execJsonStream(
+      EndPoint.chatCompletion,
+      "POST",
+      bodyParams = createBodyParamsForChatCompletion(messages, settings, stream = true),
+      framingDelimiter = "\r\n\r\n",
+      // citation-heavy frames exceed ws-client's 20 000-byte default
+      maxFrameLength = Some(StreamingConsts.DefaultMaxFrameLength)
+    ).map { json =>
+      inBandStreamError(json).foreach(throw _)
+      json.asSafe[SonarChatCompletionChunkResponse]
+    }
   }
 
   // every other call (the Sonar chat completions) goes through ws-client's error hook
@@ -141,13 +129,10 @@ private[service] class SonarServiceImpl(
     settings: CreateAgentResponseSettings
   ): Source[AgentStreamEvent, NotUsed] =
     agentEvents(
-      engine.execRawStream(
-        site,
-        EndPoint.agent.toString(),
+      execRawStream(
+        EndPoint.agent,
         "POST",
-        endPointParam = None,
-        params = Nil,
-        bodyParams = paramTuplesToStrings(agentBodyParams(input, settings, stream = true)),
+        bodyParams = agentBodyParams(input, settings, stream = true),
         extraHeaders = Seq("Accept" -> "text/event-stream")
       )
     )
@@ -163,16 +148,14 @@ private[service] class SonarServiceImpl(
     startingAfter: Option[Int]
   ): Source[AgentStreamEvent, NotUsed] =
     agentEvents(
-      engine.execRawStream(
-        site,
-        EndPoint.agent.toString(),
+      execRawStream(
+        EndPoint.agent,
         "GET",
         endPointParam = Some(responseId),
         params = Seq(
-          "stream" -> Some("true"),
-          "starting_after" -> startingAfter.map(_.toString)
+          Param.stream -> Some("true"),
+          Param.starting_after -> startingAfter.map(_.toString)
         ),
-        bodyParams = Nil,
         extraHeaders = Seq("Accept" -> "text/event-stream")
       )
     )

@@ -174,25 +174,19 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
 
     val extraSkillsHeaders = if (settings.container.isDefined) skillHeaders else Nil
 
-    engine
-      .execRawStream(
-        site,
-        endpoint,
-        "POST",
-        endPointParam = None,
-        params = Nil,
-        bodyParams = stringParams,
-        extraHeaders = extraHeaders ++ extraSkillsHeaders
+    execRawStream(
+      endpoint,
+      "POST",
+      bodyParams = bodyParams,
+      extraHeaders = extraHeaders ++ extraSkillsHeaders
+    ).via(
+      Framing.delimiter(
+        ByteString(":content-type"),
+        maximumFrameLength =
+          StreamingConsts.DefaultMaxFrameLength, // server-tool result blocks can exceed 64 KB
+        FramingTruncation.ALLOW
       )
-      .via(
-        Framing.delimiter(
-          ByteString(":content-type"),
-          maximumFrameLength =
-            StreamingConsts.DefaultMaxFrameLength, // server-tool result blocks can exceed 64 KB
-          FramingTruncation.ALLOW
-        )
-      )
-      .via(AwsEventStreamEventParser.flow) // parse frames into JSON with "bytes"
+    ).via(AwsEventStreamEventParser.flow) // parse frames into JSON with "bytes"
       .collect { case Some(x) => x }
       .via(AwsEventStreamBytesDecoder.flow) // decode the "
       .map(parseStreamEvent)

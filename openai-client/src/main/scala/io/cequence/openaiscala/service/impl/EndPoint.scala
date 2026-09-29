@@ -32,6 +32,9 @@ object EndPoint {
 sealed abstract class Param(value: String = "") extends NamedEnumValue(value)
 
 object Param {
+  // any body field by its JSON name (e.g. the Responses API body, built as JSON)
+  final case class Raw(name: String) extends Param(name)
+
   case object model extends Param
   case object prompt extends Param
   case object suffix extends Param

@@ -1,13 +1,12 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
-import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.anthropic.JsonFormats
 import io.cequence.openaiscala.anthropic.domain.{ChatRole, Content, Message, OutputFormat}
 import io.cequence.openaiscala.anthropic.domain.Message.{SystemMessage, SystemMessageContent}
 import io.cequence.openaiscala.anthropic.domain.response.MessageStreamEvent
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.service.{AnthropicService, HandleAnthropicErrorCodes}
-import io.cequence.wsclient.service.WSClientWithEngineStreamTypes.WSClientWithOutputStreamEngine
+import io.cequence.openaiscala.service.ClassifiedStreamingWSClient
 import org.slf4j.LoggerFactory
 import play.api.libs.json.{JsString, JsValue, Json, Writes}
 import com.typesafe.scalalogging.Logger
@@ -17,7 +16,7 @@ import io.cequence.wsclient.JsonUtil.JsonOps
 
 trait Anthropic
     extends AnthropicService
-    with WSClientWithOutputStreamEngine
+    with ClassifiedStreamingWSClient
     with HandleAnthropicErrorCodes
     with JsonFormats {
 
@@ -153,16 +152,17 @@ trait Anthropic
 
   /**
    * Parses one raw SSE frame of the Anthropic streaming Messages API into a
-   * [[MessageStreamEvent]]. An `{"error": ...}` frame is logged and thrown as an
-   * [[OpenAIScalaClientException]]; any other (including an event type this client doesn't
-   * model yet) is parsed leniently - an unrecognized `type` never throws, it comes back as
+   * [[MessageStreamEvent]]. An `{"error": ...}` frame (e.g. a mid-stream `overloaded_error`)
+   * is logged and thrown classified by its `type`, like the HTTP status it stands for (see
+   * `inBandStreamError`); any other (including an event type this client doesn't model yet) is
+   * parsed leniently - an unrecognized `type` never throws, it comes back as
    * [[MessageStreamEvent.UnknownEvent]].
    */
   protected def parseStreamEvent(json: JsValue): MessageStreamEvent =
-    (json \ "error").toOption match {
+    inBandStreamError(json) match {
       case Some(error) =>
-        logger.error(s"Error in streamed response: ${error.toString()}")
-        throw new OpenAIScalaClientException(error.toString())
+        logger.error(s"Error in streamed response: ${(json \ "error").get}")
+        throw error
 
       case None =>
         val event = json.asSafe[MessageStreamEvent]

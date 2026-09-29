@@ -20,6 +20,27 @@
 
 See `GPT6SolLunaOpus55SmokeTest` for a live walkthrough.
 
+### ws-client 1.1.1 - classified streaming errors
+
+- Upgraded to `io.cequence:ws-client-*:1.1.1`. A streamed request answered with a non-2xx status now fails the stream
+  with a structured `CequenceWSHttpStatusException` (status + bounded body) instead of emitting the error body as stream
+  data. Every streamed service now extends the new `ClassifiedStreamingWSClient` (openai-core) and streams through
+  ws-client's service-level stream methods, which route it through the service's own `handleErrorCodes` - OpenAI chat /
+  completions / Responses, Anthropic messages / batch results / Managed Agents session events / Bedrock, Gemini,
+  Perplexity Sonar / Agent / Responses - so streamed calls fail with the same classified exceptions and `Retryable`
+  verdicts as the non-streamed ones (e.g. a 429 is an `OpenAIScalaRateLimitException`, not an unclassified failure).
+  `StreamErrorMappingConventionSpec` fails the build on any engine-level stream call left without the mapping. The
+  OpenAI streamed services now mix in `HandleOpenAIErrorCodes`.
+- **In-band stream errors classified**: an `{"error": ...}` frame inside a 200 stream (a mid-stream Anthropic
+  `overloaded_error`, an OpenAI `server_error`, a Gemini `UNAVAILABLE`, a Perplexity `code: 429`) used to fail the stream
+  with a plain, never-retried `OpenAIScalaClientException`; it is now classified like the HTTP status it stands for
+  (from its numeric `code`, Google `status` or OpenAI / Anthropic `type` - `InBandStreamErrors`).
+- The Gemini OpenAI adapter now also repacks errors raised DURING its streams onto `OpenAIScala*` (before only the setup
+  future was repacked; Anthropic already did it). Pinned per provider against a local server:
+  `StreamedHttpErrorsWireSpec` (OpenAI), `AnthropicStreamedHttpErrorsWireSpec` (direct API, batch results, session
+  events, Bedrock, adapter), `GeminiStreamedHttpErrorsWireSpec` (native + adapter) and `SonarAgentWireSpec`
+  (Perplexity).
+
 ### 🔥 Perplexity Agent API
 
 `SonarService` gains Perplexity's Agent API (`/v1/agent`, `/v1/models`), the successor of the Sonar chat completions API:

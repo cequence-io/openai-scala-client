@@ -240,9 +240,9 @@ val service = OpenAIServiceFactory() // uses env vars
 val service = OpenAIServiceFactory(apiKey = "sk-...")
 ```
 
-Since the ws-client 1.0 engine-discovery migration (`io.cequence:ws-client-*:1.0.0`, a real
-Maven Central release since 2026-07 - no longer a SNAPSHOT, resolves in CI with no local-ivy
-dependency), EACH service created via the plain factories owns a dedicated ActorSystem (created
+Since the ws-client 1.0 engine-discovery migration (`io.cequence:ws-client-*`, a real Maven
+Central release since 2026-07 - no longer a SNAPSHOT; currently 1.1.1, see
+`project/Dependencies.scala`), EACH service created via the plain factories owns a dedicated ActorSystem (created
 eagerly, ~10 threads; its threads are daemon so a leaked service cannot block JVM exit).
 `service.close()` terminates both the HTTP client and that system. Build services ONCE and
 share the service instance - do NOT construct services per request. A caller-supplied
@@ -250,6 +250,25 @@ Materializer is no longer accepted (or needed) by the factories. Timeouts are cl
 they ride in `TransportSettings` (factories take `timeouts: Option[Timeouts]`), NOT in
 `WsRequestContext` (which since ws-client 1.0 carries only per-request data: authHeaders,
 extraParams).
+
+**Streamed errors (ws-client 1.1.1).** A non-2xx answer to a streamed request fails the stream
+with a structured `CequenceWSHttpStatusException(statusCode, body)` - it is NOT emitted as
+stream data. Every streamed service extends `ClassifiedStreamingWSClient` (openai-core) and
+streams through its SERVICE-level `execJsonStream` / `execRawStream(endPoint, ...)` (ws-client's
+`WSClientWithEngineOutputStreamingBase`), which route that failure through the service's
+`handleErrorCodes` (`mapHttpStatusErrors`); free-form JSON bodies go in as `Param.Raw(name)`.
+Do NOT call `engine.execJsonStream(site, ...)` directly - it fails with the UNCLASSIFIED
+exception that `Retryable` ignores; `StreamErrorMappingConventionSpec` (openai-core tests) scans
+every module's main sources and fails on an engine-level stream call not followed by
+`.mapError(mapHttpStatusErrors)`. An `{"error": ...}` frame inside a 200 stream (e.g. a
+mid-stream `overloaded_error` / `server_error` / Gemini `UNAVAILABLE`) goes through
+`inBandStreamError`, which reads the status from the frame's numeric `code`, Google `status` or
+OpenAI / Anthropic `type` (`InBandStreamErrors`) and classifies it like that HTTP status. An
+OpenAI adapter over a native service must also repack errors raised DURING its streams
+(`.mapError(toOpenAIException)` - Anthropic and Gemini `impl` package objects), not just the
+setup future. Pinned against a local server by `StreamedHttpErrorsWireSpec` (OpenAI),
+`AnthropicStreamedHttpErrorsWireSpec` (incl. Managed Agents session events),
+`GeminiStreamedHttpErrorsWireSpec` and `SonarAgentWireSpec` (Perplexity).
 
 **Akka backend, for now.** This project currently hard-wires its streaming API surface to Akka
 Streams - `createChatCompletionStreamed` etc. return `Source[T, akka.NotUsed]`, and every

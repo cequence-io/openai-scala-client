@@ -6,7 +6,11 @@ import io.cequence.openaiscala.service.ChatChunks
 import io.cequence.openaiscala.service.adapter.ChatCompletionSettingsConversions
 
 import akka.NotUsed
-import io.cequence.openaiscala.service.StreamingConsts
+import io.cequence.openaiscala.service.{
+  ClassifiedStreamingWSClient,
+  HandleOpenAIErrorCodes,
+  StreamingConsts
+}
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.OpenAIScalaClientException
@@ -15,7 +19,6 @@ import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.service.OpenAIChatCompletionStreamedServiceExtra
 import io.cequence.wsclient.JsonUtil.JsonOps
-import io.cequence.wsclient.service.WSClientWithEngineStreamTypes.WSClientWithOutputStreamEngine
 import play.api.libs.json.JsValue
 
 /**
@@ -28,7 +31,8 @@ import play.api.libs.json.JsValue
 private[service] trait OpenAIChatCompletionServiceStreamedExtraImpl
     extends OpenAIChatCompletionStreamedServiceExtra
     with ChatCompletionBodyMaker
-    with WSClientWithOutputStreamEngine {
+    with ClassifiedStreamingWSClient
+    with HandleOpenAIErrorCodes {
 
   override protected type PEP = EndPoint
   override protected type PT = Param
@@ -76,21 +80,15 @@ private[service] trait OpenAIChatCompletionServiceStreamedExtraImpl
   private def execChunkStream(
     bodyParams: Seq[(Param, Option[JsValue])]
   ): Source[ChatCompletionChunkResponse, NotUsed] =
-    engine
-      .execJsonStream(
-        site,
-        EndPoint.chat_completions.toString(),
-        "POST",
-        bodyParams = paramTuplesToStrings(bodyParams),
-        maxFrameLength = Some(OpenAIChatCompletionServiceStreamedExtraImpl.maxFrameLength)
-      )
-      .map { (json: JsValue) =>
-        (json \ "error").toOption.map { error =>
-          throw new OpenAIScalaClientException(error.toString())
-        }.getOrElse(
-          json.asSafe[ChatCompletionChunkResponse]
-        )
-      }
+    execJsonStream(
+      EndPoint.chat_completions,
+      "POST",
+      bodyParams = bodyParams,
+      maxFrameLength = Some(OpenAIChatCompletionServiceStreamedExtraImpl.maxFrameLength)
+    ).map { (json: JsValue) =>
+      inBandStreamError(json).foreach(throw _)
+      json.asSafe[ChatCompletionChunkResponse]
+    }
 }
 
 object OpenAIChatCompletionServiceStreamedExtraImpl {

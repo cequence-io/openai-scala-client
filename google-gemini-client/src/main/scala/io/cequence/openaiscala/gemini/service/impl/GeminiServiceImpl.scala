@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.gemini.service.impl
 
 import akka.NotUsed
-import io.cequence.openaiscala.service.StreamingConsts
+import io.cequence.openaiscala.service.{ClassifiedStreamingWSClient, StreamingConsts}
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.gemini.JsonFormats._
@@ -26,7 +26,6 @@ import io.cequence.openaiscala.gemini.service.{GeminiService, HandleGeminiErrorC
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
 import io.cequence.wsclient.domain.{SiteBinding, WsRequestContext}
-import io.cequence.wsclient.service.WSClientWithEngineStreamTypes.WSClientWithOutputStreamEngine
 import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
 import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtraAkka}
 import play.api.libs.json._
@@ -57,7 +56,7 @@ private[service] class GeminiServiceImpl(
   override implicit val ec: ExecutionContext
 ) extends GeminiService
     with HandleGeminiErrorCodes
-    with WSClientWithOutputStreamEngine {
+    with ClassifiedStreamingWSClient {
 
   override protected type PEP = EndPoint
   override protected type PT = Param
@@ -99,31 +98,23 @@ private[service] class GeminiServiceImpl(
     contents: Seq[Content],
     settings: GenerateContentSettings
   ): Source[GenerateContentResponse, NotUsed] = {
-    val bodyParams = createBodyParams(contents, settings)
-    val stringParams = paramTuplesToStrings(bodyParams)
-
-    engine
-      .execJsonStream(
-        site,
-        EndPoint.streamGenerateContent(settings.model).toString(),
-        "POST",
-        // `alt=sse`: standard `data: {compact json}` server-sent events, as the Google SDKs
-        // request them. Without it Gemini returns one pretty-printed JSON array whose element
-        // separator (`\n,\r\n`) the client had to rely on, which broke on a large MCP
-        // tool-result frame (2026-09-16). Gemini terminates its events with CRLF pairs.
-        params = Seq(("alt", Some("sse"))),
-        bodyParams = stringParams,
-        framingDelimiter = "\r\n\r\n",
-        // one JSON event per frame - grounding metadata / tool results can be large
-        maxFrameLength = Some(StreamingConsts.DefaultMaxFrameLength)
-      )
-      .map { json =>
-        (json \ "error").toOption.map { error =>
-          throw new OpenAIScalaClientException(error.toString())
-        }.getOrElse {
-          json.asSafe[GenerateContentResponse].copy(cachedContent = settings.cachedContent)
-        }
-      }
+    execJsonStream(
+      EndPoint.streamGenerateContent(settings.model),
+      "POST",
+      // `alt=sse`: standard `data: {compact json}` server-sent events, as the Google SDKs
+      // request them. Without it Gemini returns one pretty-printed JSON array whose element
+      // separator (`\n,\r\n`) the client had to rely on, which broke on a large MCP
+      // tool-result frame (2026-09-16). Gemini terminates its events with CRLF pairs.
+      params = Seq(Param.alt -> Some("sse")),
+      bodyParams = createBodyParams(contents, settings),
+      framingDelimiter = "\r\n\r\n",
+      // one JSON event per frame - grounding metadata / tool results can be large
+      maxFrameLength = Some(StreamingConsts.DefaultMaxFrameLength)
+    ).map { json =>
+      // a mid-stream error frame ({"error": {"code", "status", ...}}), classified like its status
+      inBandStreamError(json).foreach(throw _)
+      json.asSafe[GenerateContentResponse].copy(cachedContent = settings.cachedContent)
+    }
   }
 
   private def createBodyParams(

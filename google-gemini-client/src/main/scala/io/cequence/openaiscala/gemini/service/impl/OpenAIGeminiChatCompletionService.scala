@@ -589,6 +589,7 @@ private[service] class OpenAIGeminiChatCompletionService(
             settings
           )
           .map(toOpenAIChunkResponse)
+          .mapError(toOpenAIException)
       )
       .recoverWith(repackAsOpenAIException)
 
@@ -1351,6 +1352,7 @@ private[service] class OpenAIGeminiChatCompletionService(
           .via(
             OpenAIGeminiChatCompletionService.chatChunksFlow(mcpCallRule(settings, tools))
           )
+          .mapError(toOpenAIException)
     }.recoverWith(repackAsOpenAIException)
 
     Source.fromFutureSource(futureSource).mapMaterializedValue(_ => NotUsed)

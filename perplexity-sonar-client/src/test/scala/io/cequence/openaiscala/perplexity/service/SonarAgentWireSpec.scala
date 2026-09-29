@@ -292,6 +292,27 @@ class SonarAgentWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAl
         )
       )
     }
+
+    "classify an in-band error frame of a 200 Sonar chat stream by its code" in {
+      reply = (
+        200,
+        ("data: " +
+          """{"id":"c1","model":"sonar","created":1700000000,"object":"chat.completion.chunk","citations":[],"choices":[{"index":0,"delta":{"role":"assistant","content":"Hel"},"finish_reason":null}]}""" +
+          "\r\n\r\ndata: " +
+          """{"error":{"message":"Rate limit exceeded","type":"request_rate_limit_exceeded","code":429}}""" +
+          "\r\n\r\n").getBytes(StandardCharsets.UTF_8),
+        "text/event-stream"
+      )
+      intercept[PerplexityScalaRateLimitException](
+        await(
+          service
+            .createChatCompletionStreamed(
+              Seq(io.cequence.openaiscala.perplexity.domain.Message.UserMessage("hi"))
+            )
+            .runWith(Sink.seq)
+        )
+      ).errorType shouldBe Some("request_rate_limit_exceeded")
+    }
   }
 
   "createAgentResponseStreamed" should {

@@ -27,6 +27,7 @@ object Param {
   case object search_domain_filter extends Param
   case object search_recency_filter extends Param
   case object stream extends Param
+  case object starting_after extends Param
   case object temperature extends Param
   case object top_k extends Param
   case object top_p extends Param

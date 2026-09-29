@@ -55,4 +55,5 @@ object Param {
   case object expireTime extends Param
   case object updateMask extends Param
   case object cachedContent extends Param
+  case object alt extends Param
 }

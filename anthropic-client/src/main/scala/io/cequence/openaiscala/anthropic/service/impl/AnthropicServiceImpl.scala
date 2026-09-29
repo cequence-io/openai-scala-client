@@ -121,22 +121,15 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings
   ): Source[MessageStreamEvent, NotUsed] = {
-    val bodyParams =
-      createBodyParamsForMessageCreation(messages, settings, stream = Some(true))
-    val stringParams = paramTuplesToStrings(bodyParams)
-
-    engine
-      .execJsonStream(
-        site,
-        EndPoint.messages.toString(),
-        "POST",
-        bodyParams = stringParams,
-        // message-feature betas + skill headers if a container (with skills) is passed
-        extraHeaders =
-          messageBetaHeaders ++ (if (settings.container.isDefined) skillHeaders else Nil),
-        maxFrameLength = Some(messageStreamMaxFrameLength)
-      )
-      .map(parseStreamEvent)
+    execJsonStream(
+      EndPoint.messages,
+      "POST",
+      bodyParams = createBodyParamsForMessageCreation(messages, settings, stream = Some(true)),
+      // message-feature betas + skill headers if a container (with skills) is passed
+      extraHeaders =
+        messageBetaHeaders ++ (if (settings.container.isDefined) skillHeaders else Nil),
+      maxFrameLength = Some(messageStreamMaxFrameLength)
+    ).map(parseStreamEvent)
   }
 
   override def createMessageStreamedEvents(
@@ -208,24 +201,17 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   override def streamMessageBatchResults(
     batchId: String
   ): Source[MessageBatchIndividualResponse, NotUsed] =
-    engine
-      .execRawStream(
-        site,
-        EndPoint.messageBatches.toString(),
-        "GET",
-        endPointParam = Some(s"$batchId/results"),
-        params = Nil,
-        bodyParams = Nil,
-        extraHeaders = Nil
+    execRawStream(
+      EndPoint.messageBatches,
+      "GET",
+      endPointParam = Some(s"$batchId/results")
+    ).via(
+      Framing.delimiter(
+        ByteString("\n"),
+        batchResultMaxFrameLength,
+        allowTruncation = true
       )
-      .via(
-        Framing.delimiter(
-          ByteString("\n"),
-          batchResultMaxFrameLength,
-          allowTruncation = true
-        )
-      )
-      .map(_.utf8String.trim)
+    ).map(_.utf8String.trim)
       .filter(_.nonEmpty)
       .map(line => Json.parse(line).asSafe[MessageBatchIndividualResponse])
 
@@ -910,37 +896,30 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   override def streamSessionEvents(
     sessionId: String
   ): Source[SessionEventEnvelope, NotUsed] =
-    engine
-      // Raw SSE parsing instead of execJsonStream: the managed-agents stream sends frames
-      // without a `data:` line - an initial ": connected." comment and periodic heartbeats -
-      // which the generic JSON stream would reject as malformed JSON.
-      .execRawStream(
-        site,
-        EndPoint.sessions.toString(),
-        "GET",
-        endPointParam = Some(s"$sessionId/events/stream"),
-        params = Nil,
-        bodyParams = Nil,
-        extraHeaders = managedAgentsHeaders
+    // Raw SSE parsing instead of execJsonStream: the managed-agents stream sends frames
+    // without a `data:` line - an initial ": connected." comment and periodic heartbeats -
+    // which the generic JSON stream would reject as malformed JSON.
+    execRawStream(
+      EndPoint.sessions,
+      "GET",
+      endPointParam = Some(s"$sessionId/events/stream"),
+      extraHeaders = managedAgentsHeaders
+    ).via(
+      Framing.delimiter(
+        ByteString("\n\n"),
+        sessionEventMaxFrameLength,
+        allowTruncation = true
       )
-      .via(
-        Framing.delimiter(
-          ByteString("\n\n"),
-          sessionEventMaxFrameLength,
-          allowTruncation = true
-        )
-      )
-      .mapConcat { frameBytes =>
-        // An SSE frame consists of `event:`/`id:` lines, comment lines (starting with ':'),
-        // and one or more `data:` lines (joined with a newline per the SSE spec).
-        val dataLines = frameBytes.utf8String.split("\n").toList.collect {
-          case line if line.startsWith("data:") => line.drop("data:".length).trim
-        }
-
-        if (dataLines.isEmpty) Nil
-        else List(Json.parse(dataLines.mkString("\n")))
+    ).mapConcat { frameBytes =>
+      // An SSE frame consists of `event:`/`id:` lines, comment lines (starting with ':'),
+      // and one or more `data:` lines (joined with a newline per the SSE spec).
+      val dataLines = frameBytes.utf8String.split("\n").toList.collect {
+        case line if line.startsWith("data:") => line.drop("data:".length).trim
       }
-      .map(_.asOpt[SessionEventEnvelope])
+
+      if (dataLines.isEmpty) Nil
+      else List(Json.parse(dataLines.mkString("\n")))
+    }.map(_.asOpt[SessionEventEnvelope])
       .collect { case Some(e) => e }
 
   // -- Resources --

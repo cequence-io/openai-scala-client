@@ -3,7 +3,6 @@ package io.cequence.openaiscala.service.impl
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.JsonFormats._
-import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.responsesapi.JsonFormats.{
@@ -39,23 +38,15 @@ private[service] trait OpenAICoreServiceStreamedExtraImpl
     prompt: String,
     settings: CreateCompletionSettings
   ): Source[TextCompletionResponse, NotUsed] =
-    engine
-      .execJsonStream(
-        site,
-        EndPoint.completions.toString(),
-        "POST",
-        bodyParams = paramTuplesToStrings(
-          createBodyParamsForCompletion(prompt, settings, stream = true)
-        ),
-        maxFrameLength = Some(OpenAIChatCompletionServiceStreamedExtraImpl.maxFrameLength)
-      )
-      .map { (json: JsValue) =>
-        (json \ "error").toOption.map { error =>
-          throw new OpenAIScalaClientException(error.toString())
-        }.getOrElse(
-          json.asSafe[TextCompletionResponse]
-        )
-      }
+    execJsonStream(
+      EndPoint.completions,
+      "POST",
+      bodyParams = createBodyParamsForCompletion(prompt, settings, stream = true),
+      maxFrameLength = Some(OpenAIChatCompletionServiceStreamedExtraImpl.maxFrameLength)
+    ).map { (json: JsValue) =>
+      inBandStreamError(json).foreach(throw _)
+      json.asSafe[TextCompletionResponse]
+    }
 
   override def createModelResponseStreamed(
     inputs: Inputs,
@@ -65,22 +56,18 @@ private[service] trait OpenAICoreServiceStreamedExtraImpl
       Json.toJsObject(settings.copy(stream = Some(true)))(createModelResponseSettingsFormat) ++
         Json.obj("input" -> inputsWrites.writes(inputs))
 
-    engine
-      .execJsonStream(
-        site,
-        EndPoint.responses.toString(),
-        "POST",
-        bodyParams = body.fields.toList.map { case (name, value) => name -> Some(value) },
-        maxFrameLength = Some(OpenAIChatCompletionServiceStreamedExtraImpl.maxFrameLength)
-      )
-      .map { (json: JsValue) =>
-        // a non-streamed error body ({"error": {...}}); streamed `error` events carry the
-        // message at the top level and are modeled as ResponseStreamEvent.ErrorEvent
-        (json \ "error").toOption.map { error =>
-          throw new OpenAIScalaClientException(error.toString())
-        }.getOrElse(
-          json.asSafe[ResponseStreamEvent]
-        )
-      }
+    execJsonStream(
+      EndPoint.responses,
+      "POST",
+      bodyParams = body.fields.toList.map { case (name, value) =>
+        Param.Raw(name) -> Some(value)
+      },
+      maxFrameLength = Some(OpenAIChatCompletionServiceStreamedExtraImpl.maxFrameLength)
+    ).map { (json: JsValue) =>
+      // an error body ({"error": {...}}); streamed `error` events carry the message at the
+      // top level and are modeled as ResponseStreamEvent.ErrorEvent
+      inBandStreamError(json).foreach(throw _)
+      json.asSafe[ResponseStreamEvent]
+    }
   }
 }
