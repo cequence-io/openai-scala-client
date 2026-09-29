@@ -29,6 +29,10 @@
 - **Other providers** (listed 2026-09-29) - Gemini `gemini-3.8-flash-tts` / `-flash-lite-tts`, `gemini-3.8-live` /
   `-live-extended-thinking` (Live API only) and `antigravity-preview-09-2026` / `-latest`; Mistral-hosted GLM 5.3
   (`zai-glm-5-3`) and `labs-leanstral-1-5-1`; Together AI `deepseek-ai/DeepSeek-V4.1-Flash`; Fireworks `ember-1`.
+- **Meta Muse Glimmer 30B** - `NonOpenAIModelId.meta_models_muse_glimmer_30b` (Together AI): Meta's open-weights agentic
+  model, a reasoning model (its reasoning arrives as `Thinking` chunks and counts toward `max_tokens`) with tools, image
+  input and strict `json_schema` (added to `models-supporting-json-schema`). Fireworks lists it as `muse_glimmer_30b` for
+  on-demand deployments only (not serverless). See `togetherai/MuseGlimmer30BSmokeTest`.
 
 See `GPT6SolLunaOpus55SmokeTest` and `anthropic/ClaudeSonnet55SmokeTest` for live walkthroughs.
 

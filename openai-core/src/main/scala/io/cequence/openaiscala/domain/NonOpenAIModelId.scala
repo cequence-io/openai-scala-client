@@ -884,6 +884,15 @@ object NonOpenAIModelId {
   val nvidia_nemotron_3_super_120b_a12b_fp8 =
     "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-FP8" // Together AI
   val nvidia_nemotron_3_ultra_550b_a55b = "nvidia/nemotron-3-ultra-550b-a55b" // Together AI
+  // Meta Muse Glimmer 30B - dense ~30B open-weights (Apache 2.0) multimodal agentic model,
+  // distilled from Muse Spark. A reasoning model: its reasoning comes back as
+  // `message.reasoning` / `delta.reasoning` and counts toward max_tokens (a small budget can
+  // end in empty content); 128k context, tools (auto and forced - a forced call reports
+  // finish_reason "stop"), image input, strict json_schema (live-verified 2026-09-29).
+  val meta_models_muse_glimmer_30b = "meta-models/Muse-Glimmer-30B" // Together AI
+  // Fireworks lists it (accounts/fireworks/models/muse-glimmer-30b) for on-demand deployments
+  // only: `supportsServerless = false`, a plain serverless call is a 404 (2026-09-29)
+  val muse_glimmer_30b = "muse-glimmer-30b" // Fireworks AI (on-demand deployment)
 
   // openai oss
   val gpt_oss_20b = "gpt-oss-20b" // fireworks
