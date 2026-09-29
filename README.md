@@ -1038,9 +1038,11 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
   [GoogleGeminiCreateChatToolCompletionStreamedWithMcpServers](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/googlegemini/GoogleGeminiCreateChatToolCompletionStreamedWithMcpServers.scala).
 
   GPT-5.6 and GPT-6 Sol / Luna accept function tools on the chat completions API only with `reasoning_effort = none`, and GPT-6
-  Astra only on the Responses API - so the full `OpenAIServiceFactory()` / `.withStreaming()` service routes their tool calls and
-  typed tool streams through the Responses API automatically, which keeps the requested reasoning (only an explicit
-  `reasoning_effort = none` stays on chat completions). A chat-only service forces `none` instead (Astra fails fast). Grok, Groq, Cerebras, Fireworks and DeepSeek use the generic mapping (Groq's per-chunk `usage` is
+  Astra and GPT-6.1 Sol only on the Responses API - so the full `OpenAIServiceFactory()` / `.withStreaming()` service routes their
+  tool calls and typed tool streams through the Responses API automatically, which keeps the requested reasoning (only an explicit
+  `reasoning_effort = none` stays on chat completions). A chat-only service forces `none` instead (Astra / 6.1 Sol fail fast).
+  The same routing serves `settings.setResponsesReasoningMode(ReasoningMode.pro)` (GPT-6 pro mode) and
+  `service_tier = ServiceTier.ultrafast` (the Ultrafast tier, which only the Responses API serves) on every chat entry point. Grok, Groq, Cerebras, Fireworks and DeepSeek use the generic mapping (Groq's per-chunk `usage` is
   emitted once); Sonar and Managed Agents stream text / reasoning / finish / usage but reject tools.
 
   **Responses API streaming** (🔥 New) - `createModelResponseStreamed(inputs, settings)` on the streamed OpenAI service returns

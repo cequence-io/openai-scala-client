@@ -510,14 +510,15 @@ private[service] class OpenAIResponsesChatCompletionService(
         }
     }
 
-    val reasoning: Option[ReasoningConfig] =
-      settings.reasoning_effort.map { effort =>
-        ReasoningConfig(
-          effort = Some(
-            ChatCompletionSettingsConversions.responsesReasoningEffort(settings.model, effort)
-          )
-        )
-      }
+    val reasoning: Option[ReasoningConfig] = {
+      val effort = settings.reasoning_effort.map(
+        ChatCompletionSettingsConversions.responsesReasoningEffort(settings.model, _)
+      )
+      val mode = settings.responsesReasoningMode
+
+      if (effort.isEmpty && mode.isEmpty) None
+      else Some(ReasoningConfig(effort = effort, mode = mode))
+    }
 
     val samplingUnsupported =
       ChatCompletionSettingsConversions.responsesSamplingUnsupported(settings.model)

@@ -50,6 +50,8 @@ class JsonSchemaModelMatchingSpec extends AnyWordSpec with Matchers {
     "match the Bedrock cross-region spelling of an OpenAI model by its bare id" in {
       schemaMode("us.openai.gpt-5.6-luna", Seq("gpt-5.6-luna")) shouldBe true
       schemaMode("global.openai.gpt-6-sol", Seq("gpt-6-sol")) shouldBe true
+      // json_schema live-verified on Bedrock's global.openai.gpt-6.1-sol (2026-09-29)
+      schemaMode("global.openai.gpt-6.1-sol", Seq("gpt-6.1-sol")) shouldBe true
       schemaMode("openai.gpt-6-luna", Seq("gpt-6-luna")) shouldBe true
     }
 

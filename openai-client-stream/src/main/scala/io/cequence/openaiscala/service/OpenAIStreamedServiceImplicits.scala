@@ -24,6 +24,8 @@ import io.cequence.openaiscala.domain.settings.{
   CreateChatCompletionSettings,
   CreateCompletionSettings
 }
+import io.cequence.openaiscala.domain.settings.ResponsesChatCompletionSettingsOps._
+import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps._
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIStreamedService
 import io.cequence.openaiscala.service.adapter.{
   OpenAIChatCompletionServiceWrapper,
@@ -383,6 +385,23 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
     protected def responsesBackedTypedToolStream
       : Option[OpenAIChatCompletionStreamedServiceExtra] =
       None
+
+    // the OpenAI-shaped chunks cannot carry approval requests or server-side tool activity -
+    // a call resuming a paused run or carrying Responses-native tools is still refused there;
+    // the rest the Responses API must serve (a reasoning mode, the Ultrafast tier) goes to it
+    override def createChatCompletionStreamed(
+      messages: Seq[BaseMessage],
+      settings: CreateChatCompletionSettings
+    ): Source[ChatCompletionChunkResponse, NotUsed] =
+      responsesBackedTypedToolStream match {
+        case Some(responsesBacked)
+            if ChatCompletionSettingsConversions.chatRequiresResponsesAPI(settings) &&
+              settings.toolApprovalDecisions.isEmpty && settings.responsesTools.isEmpty =>
+          responsesBacked.createChatCompletionStreamed(messages, settings)
+
+        case _ =>
+          streamedServiceExtra.createChatCompletionStreamed(messages, settings)
+      }
 
     override def createChatToolCompletionStreamed(
       messages: Seq[BaseMessage],

@@ -2112,6 +2112,40 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
       )
     }
 
+    "serialize and deserialize ReasoningConfig with a mode and a context" in {
+      testCodec[ReasoningConfig](
+        ReasoningConfig(
+          effort = Some(ReasoningEffort.max),
+          mode = Some(ReasoningMode.pro),
+          context = Some(ReasoningContext.current_turn)
+        ),
+        """{
+          |  "effort" : "max",
+          |  "mode" : "pro",
+          |  "context" : "current_turn"
+          |}""".stripMargin,
+        Pretty
+      )
+    }
+
+    "read a reasoning config echoed back with values it doesn't know as absent" in {
+      // as a GPT-6 Response reports it (live 2026-09-29), plus values this client lacks
+      testDeserialization[ReasoningConfig](
+        ReasoningConfig(
+          effort = Some(ReasoningEffort.medium),
+          mode = Some(ReasoningMode.standard),
+          context = Some(ReasoningContext.all_turns)
+        ),
+        """{"context":"all_turns","effort":"medium","mode":"standard","summary":null}"""
+      )
+      testDeserialization[ReasoningConfig](
+        ReasoningConfig(summary = Some("auto")),
+        """{"context":"some_turns","effort":"extreme","mode":"ultra","summary":"auto"}"""
+      )
+      // a malformed known field still fails
+      Json.parse("""{"summary":1}""").validate[ReasoningConfig].isError shouldBe true
+    }
+
     "serialize and deserialize SummaryText" in {
       testCodec[SummaryText](
         SummaryText(

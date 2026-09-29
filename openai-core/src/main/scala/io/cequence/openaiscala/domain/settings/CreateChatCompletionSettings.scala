@@ -93,11 +93,10 @@ case class CreateChatCompletionSettings(
   // Low verbosity: Best for situations where you want concise answers or simple code generation, such as SQL queries.
   verbosity: Option[Verbosity] = None,
 
-  // Specifies the latency tier to use for processing the request. This parameter is relevant for customers subscribed to the scale tier service:
-  // If set to 'auto', and the Project is Scale tier enabled, the system will utilize scale tier credits until they are exhausted.
-  // If set to 'auto', and the Project is not Scale tier enabled, the request will be processed using the default service tier with a lower uptime SLA and no latency guarentee.
-  // If set to 'default', the request will be processed using the default service tier with a lower uptime SLA and no latency guarantee.
-  // When not set, the default behavior is 'auto'.
+  // Specifies the processing tier of the request (see ServiceTier): 'auto' (the Project's
+  // setting - also the default when not set), 'default', 'flex', 'priority' / 'fast' (Fast
+  // mode) or the access-controlled 'ultrafast' (Responses API only - the full OpenAIService
+  // routes a chat completion asking for it there).
   service_tier: Option[ServiceTier] = None,
 
   // Whether to enable parallel function calling during tool use.
@@ -209,10 +208,30 @@ object Verbosity {
   case object high extends Verbosity
 }
 
+/**
+ * The processing tier of a request (`service_tier`). OpenAI (live-verified 2026-09-29):
+ *   - `auto` - the tier configured in the Project settings (the default)
+ *   - `default` - standard pricing and performance
+ *   - `flex` - cheaper, slower processing
+ *   - `priority` / `fast` - the same Fast mode (a response reports `fast` on GPT-6 models,
+ *     `priority` on older ones)
+ *   - `ultrafast` - about 6x the price for up to 6x the speed, US / global processing only (no
+ *     EU regional endpoints), served on the Responses API only: GPT-6 Astra as of 2026-09-29
+ *     (GPT-5.6 Sol in preview, GPT-6.1 Sol announced), while the chat completions API answers
+ *     every model with 400 "Invalid service_tier argument" - so the full `OpenAIService`
+ *     routes a chat completion asking for it through the Responses API
+ *
+ * Other providers accept their own subsets (e.g. Groq's `flex`).
+ */
 sealed trait ServiceTier extends EnumValue
 
 object ServiceTier {
   case object auto extends ServiceTier
   case object default extends ServiceTier
   case object flex extends ServiceTier
+  case object priority extends ServiceTier
+  case object fast extends ServiceTier
+  case object ultrafast extends ServiceTier
+
+  val values: Seq[ServiceTier] = Seq(auto, default, flex, priority, fast, ultrafast)
 }

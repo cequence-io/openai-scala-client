@@ -182,11 +182,105 @@ class ChatCompletionSettingsConversionsSpec extends AnyWordSpec with Matchers {
       ) shouldBe ReasoningEffort.max
     }
 
+    "lift 'none' and 'minimal' to 'low' for gpt-6.1-sol (also on Bedrock) and keep 'max'" in {
+      Seq(ModelId.gpt_6_1_sol, "global." + ModelId.bedrock_openai_gpt_6_1_sol).foreach {
+        model =>
+          withClue(model) {
+            ChatCompletionSettingsConversions.responsesReasoningEffort(
+              model,
+              ReasoningEffort.none
+            ) shouldBe ReasoningEffort.low
+            ChatCompletionSettingsConversions.responsesReasoningEffort(
+              model,
+              ReasoningEffort.minimal
+            ) shouldBe ReasoningEffort.low
+            ChatCompletionSettingsConversions.responsesReasoningEffort(
+              model,
+              ReasoningEffort.max
+            ) shouldBe ReasoningEffort.max
+          }
+      }
+    }
+
     "leave other models alone" in {
       ChatCompletionSettingsConversions.responsesReasoningEffort(
         ModelId.gpt_5_4,
         ReasoningEffort.minimal
       ) shouldBe ReasoningEffort.minimal
+    }
+  }
+
+  "ChatCompletionSettingsConversions GPT-6.x" should {
+
+    "parse the GPT-6 minor version, with or without a Bedrock prefix" in {
+      import ChatCompletionSettingsConversions.gpt6Minor
+      gpt6Minor(ModelId.gpt_6_sol) shouldBe Some(0)
+      gpt6Minor(ModelId.gpt_6_astra) shouldBe Some(0)
+      gpt6Minor(ModelId.gpt_6_1_sol) shouldBe Some(1)
+      gpt6Minor("global." + ModelId.bedrock_openai_gpt_6_1_sol) shouldBe Some(1)
+      gpt6Minor("gpt-6.12-luna-2027-01-01") shouldBe Some(12)
+      gpt6Minor("gpt-6") shouldBe Some(0)
+      gpt6Minor("gpt-60") shouldBe None
+      gpt6Minor(ModelId.gpt_5_6_sol) shouldBe None
+    }
+
+    "give GPT-6.1 (and any newer minor) the always-reasoning Astra rules" in {
+      import ChatCompletionSettingsConversions._
+      Seq(
+        ModelId.gpt_6_astra,
+        ModelId.gpt_6_1_sol,
+        "global." + ModelId.bedrock_openai_gpt_6_1_sol,
+        "gpt-6.2-luna"
+      ).foreach { model =>
+        withClue(model) {
+          isGpt6ReasoningAlwaysOn(model) shouldBe true
+          chatToolsRequireResponsesAPI(model) shouldBe true
+          chatToolsForceNoReasoning(model) shouldBe false
+        }
+      }
+      Seq(ModelId.gpt_6_sol, ModelId.gpt_6_luna, ModelId.gpt_5_6_sol).foreach { model =>
+        withClue(model) {
+          isGpt6ReasoningAlwaysOn(model) shouldBe false
+          chatToolsRequireResponsesAPI(model) shouldBe false
+          chatToolsForceNoReasoning(model) shouldBe true
+        }
+      }
+    }
+  }
+
+  "ChatCompletionSettingsConversions.chatRequiresResponsesAPI" should {
+    import io.cequence.openaiscala.domain.responsesapi.ReasoningMode
+    import io.cequence.openaiscala.domain.settings.ResponsesChatCompletionSettingsOps._
+    import io.cequence.openaiscala.domain.settings.ServiceTier
+
+    val plain = CreateChatCompletionSettings(model = ModelId.gpt_6_astra)
+
+    "flag the Ultrafast tier and a reasoning mode, with or without tools" in {
+      val ultrafast = plain.copy(service_tier = Some(ServiceTier.ultrafast))
+      val pro = plain.setResponsesReasoningMode(ReasoningMode.pro)
+
+      Seq(ultrafast, pro).foreach { settings =>
+        ChatCompletionSettingsConversions.chatRequiresResponsesAPI(settings) shouldBe true
+        ChatCompletionSettingsConversions.chatToolsPreferResponsesAPI(settings, Nil) shouldBe
+          true
+      }
+      pro.responsesReasoningMode shouldBe Some(ReasoningMode.pro)
+    }
+
+    "leave the other tiers and plain settings to the chat completions API" in {
+      (plain +: Seq(
+        ServiceTier.auto,
+        ServiceTier.default,
+        ServiceTier.flex,
+        ServiceTier.priority,
+        ServiceTier.fast
+      ).map(tier => plain.copy(service_tier = Some(tier)))).foreach { settings =>
+        withClue(settings.service_tier) {
+          ChatCompletionSettingsConversions.chatRequiresResponsesAPI(settings) shouldBe false
+          ChatCompletionSettingsConversions.chatToolsPreferResponsesAPI(settings, Nil) shouldBe
+            false
+        }
+      }
     }
   }
 

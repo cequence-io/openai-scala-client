@@ -108,6 +108,8 @@ class ChatToolBodyParamsSpec extends AnyWordSpec with Matchers {
       ) shouldBe Json.toJson("none")
       maker.body(none.copy(model = ModelId.gpt_6_astra))("reasoning_effort") shouldBe
         Json.toJson("low")
+      maker.body(none.copy(model = ModelId.gpt_6_1_sol))("reasoning_effort") shouldBe
+        Json.toJson("low")
     }
 
     "force reasoning_effort 'none' for gpt-6-luna/sol function tools on chat completions" in {
@@ -122,6 +124,7 @@ class ChatToolBodyParamsSpec extends AnyWordSpec with Matchers {
         .reasoning_effort shouldBe Some(ReasoningEffort.none)
       maker.toolsViaResponses(ModelId.gpt_6_luna) shouldBe false
       maker.toolsViaResponses(ModelId.gpt_6_astra) shouldBe true
+      maker.toolsViaResponses(ModelId.gpt_6_1_sol) shouldBe true
     }
   }
 

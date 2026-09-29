@@ -425,11 +425,8 @@ object JsonFormats {
     Verbosity.high
   )
 
-  implicit val serviceTierFormat: Format[ServiceTier] = enumFormat[ServiceTier](
-    ServiceTier.auto,
-    ServiceTier.default,
-    ServiceTier.flex
-  )
+  implicit val serviceTierFormat: Format[ServiceTier] =
+    enumFormat[ServiceTier](ServiceTier.values: _*)
 
   implicit lazy val topLogprobInfoFormat: Format[TopLogprobInfo] = {
     val reads: Reads[TopLogprobInfo] = (

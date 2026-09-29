@@ -123,6 +123,39 @@ class ModelConversionsRoutingSpec extends AnyWordSpec with Matchers {
       }
     }
 
+    "give GPT-6.1 Sol (also on Bedrock, and newer GPT-6 minors) the Astra rules, not Sol's" in {
+      Seq(
+        ModelId.gpt_6_1_sol,
+        "global." + ModelId.bedrock_openai_gpt_6_1_sol,
+        "gpt-6.2-luna"
+      ).foreach { model =>
+        withClue(model) {
+          // measured 2026-09-29: low / medium / high / xhigh only on chat completions
+          effortSent(model, ReasoningEffort.none) shouldBe Some("low")
+          effortSent(model, ReasoningEffort.minimal) shouldBe Some("low")
+          effortSent(model, ReasoningEffort.max) shouldBe Some("xhigh")
+          effortSent(model, ReasoningEffort.xhigh) shouldBe Some("xhigh")
+
+          val body = maker.body(
+            CreateChatCompletionSettings(
+              model,
+              max_tokens = Some(100),
+              temperature = Some(0.2),
+              top_p = Some(0.5),
+              logprobs = Some(true)
+            )
+          )
+          body.get("max_tokens") shouldBe None
+          // sent through extra_params, flattened into the body by the transport
+          (body(Param.extra_params.toString) \ "max_completion_tokens").as[Int] shouldBe 100
+          body("temperature") shouldBe Json.toJson(1d)
+          body.get("logprobs") shouldBe None
+        }
+      }
+      // GPT-6 Sol itself keeps 'none'
+      effortSent(ModelId.gpt_6_sol, ReasoningEffort.none) shouldBe Some("none")
+    }
+
     "give a future GPT-5 minor the newest (5.6) rules, not the oldest" in {
       effortSent("gpt-5.10", ReasoningEffort.none) shouldBe Some("none")
       effortSent("gpt-5.7-mini", ReasoningEffort.max) shouldBe Some("xhigh")
@@ -282,6 +315,19 @@ class ModelConversionsRoutingSpec extends AnyWordSpec with Matchers {
           ) shouldBe false
         }
       }
+    }
+
+    "route GPT-6.1 Sol function tools to the Responses API even with 'none'" in {
+      Seq(ReasoningEffort.none, ReasoningEffort.high).foreach { effort =>
+        chatToolsPreferResponsesAPI(
+          CreateChatCompletionSettings(ModelId.gpt_6_1_sol, reasoning_effort = Some(effort)),
+          Seq(weather)
+        ) shouldBe true
+      }
+      chatToolsPreferResponsesAPI(
+        CreateChatCompletionSettings(ModelId.gpt_6_1_sol),
+        Nil
+      ) shouldBe false
     }
 
     "leave older models alone and keep the 5.6+ / GPT-6 rules" in {

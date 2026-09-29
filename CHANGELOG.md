@@ -4,6 +4,13 @@
 
 ### New models
 
+- **GPT-6.1 Sol** (DevDay 2026-09-29) - `ModelId.gpt_6_1_sol` plus Bedrock `openai.gpt-6.1-sol` (the `global.`
+  inference profile only), both with `json_schema` structured output. Reasoning is always on, so it gets the GPT-6
+  **Astra** rules, not GPT-6 Sol's (live-verified 2026-09-29): `reasoning_effort` `none` / `minimal` → `low` (both APIs
+  reject them), `max` → `xhigh` on chat completions (kept on the Responses API), sampling params stripped, `max_tokens` →
+  `max_completion_tokens`, and function tools always go through the Responses API (chat completions rejects them with
+  every effort) - a chat-only service fails fast. GPT-6 minors are now dispatched on the parsed version
+  (`ChatCompletionSettingsConversions.gpt6Minor`; any newer GPT-6 minor gets the 6.1 rules). See `GPT61SolSmokeTest`.
 - **GPT-6 Sol / Luna** - `ModelId.gpt_6_sol` / `gpt_6_luna`, plus Bedrock `openai.gpt-6-sol` / `openai.gpt-6-luna` /
   `openai.gpt-6-astra` (`us.` / `global.` inference profiles), all with `json_schema` structured output. Unlike GPT-6
   Astra they keep the GPT-5.6 rules: sampling params stripped, `max_tokens` → `max_completion_tokens`, `reasoning_effort`
@@ -34,7 +41,26 @@
   input and strict `json_schema` (added to `models-supporting-json-schema`). Fireworks lists it as `muse_glimmer_30b` for
   on-demand deployments only (not serverless). See `togetherai/MuseGlimmer30BSmokeTest`.
 
-See `GPT6SolLunaOpus55SmokeTest` and `anthropic/ClaudeSonnet55SmokeTest` for live walkthroughs.
+See `GPT61SolSmokeTest`, `GPT6SolLunaOpus55SmokeTest` and `anthropic/ClaudeSonnet55SmokeTest` for live walkthroughs.
+
+### OpenAI DevDay 2026: service tiers and reasoning mode
+
+- **`ServiceTier.priority` / `fast` / `ultrafast`** - `priority` and `fast` are the same Fast mode (a GPT-6 response
+  reports `fast`, older models `priority`); `ultrafast` is the Ultrafast tier (about 6x the price and up to 6x the speed,
+  US / global processing only), which only the Responses API serves - GPT-6 Astra as of 2026-09-29 (GPT-5.6 Sol in
+  preview, GPT-6.1 Sol announced), while the chat completions API answers every model with 400 "Invalid service_tier
+  argument". The full `OpenAIService` therefore routes a chat
+  completion asking for it through the Responses API (sync, tools, the OpenAI-shaped and the typed stream); a chat-only
+  service leaves it to the API.
+- **Reasoning mode and context on the Responses API** - `ReasoningConfig.mode` (`ReasoningMode.standard` / `pro`: more
+  model work for difficult tasks; GPT-6 models - GPT-5.5 and Bedrock reject it) and `ReasoningConfig.context`
+  (`ReasoningContext.auto` / `current_turn` / `all_turns`). A Response echoing a value this client doesn't know yet
+  (also for `effort`) reads it as absent instead of failing. From the chat interface,
+  `settings.setResponsesReasoningMode(ReasoningMode.pro)` routes the call through the Responses API on the full service;
+  everything that would send it to chat completions refuses it (`ResponsesChatCompletionSettingsOps.unsupportedResponsesSettings`,
+  which also covers `setResponsesTools`).
+- `ChatCompletionSettingsConversions.chatRequiresResponsesAPI(settings)` - the one predicate for settings only the
+  Responses API can serve (approval decisions, Responses-native tools, a reasoning mode, the Ultrafast tier).
 
 ### 🔥 Human approval mid-stream (typed stream)
 

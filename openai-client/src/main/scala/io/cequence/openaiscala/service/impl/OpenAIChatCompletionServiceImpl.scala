@@ -6,7 +6,6 @@ import io.cequence.openaiscala.domain.{AssistantTool, BaseMessage, ChatCompletio
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps._
-import io.cequence.openaiscala.domain.settings.ResponsesChatCompletionSettingsOps._
 import io.cequence.openaiscala.service.adapter.{
   ChatCompletionSettingsConversions,
   MessageConversions
@@ -34,27 +33,46 @@ private[service] trait OpenAIChatCompletionServiceImpl
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
   ): Future[ChatCompletionResponse] =
-    if (settings.toolApprovalDecisions.nonEmpty || settings.responsesTools.nonEmpty)
-      // a run paused for approval, and Responses-native tools, live on the Responses API
-      // (which explains how to resume)
-      responsesBackedChatCompletion
-        .map(_.createChatCompletion(messages, settings))
-        .getOrElse(
-          if (settings.toolApprovalDecisions.nonEmpty)
-            unsupportedToolApprovalDecisions(settings)
-          else Future.failed(new OpenAIScalaClientException(responsesToolsOnChatOnlyMessage))
-        )
-    else
-      execPOST(
-        EndPoint.chat_completions,
-        bodyParams =
-          createBodyParamsForChatCompletion(messages.toList, settings, stream = false).toList
-      ).map(
-        _.asSafeJson[ChatCompletionResponse]
-      )
+    if (ChatCompletionSettingsConversions.chatRequiresResponsesAPI(settings))
+      // a run paused for approval, Responses-native tools, a reasoning mode and the Ultrafast
+      // tier live on the Responses API
+      responsesBackedChatCompletion match {
+        case Some(service) =>
+          service.createChatCompletion(messages, settings)
 
-  private val responsesToolsOnChatOnlyMessage =
-    "Responses-native tools (setResponsesTools) need the Responses API - use the full OpenAIService (OpenAIServiceFactory), which routes them there automatically."
+        case None if settings.toolApprovalDecisions.nonEmpty =>
+          unsupportedToolApprovalDecisions(settings)
+
+        case None =>
+          // refused, never dropped; a chat-only service leaves the tier to the API (another
+          // OpenAI-compatible provider may serve it)
+          unsupportedResponsesSettings(settings)
+            .map(e => Future.failed[ChatCompletionResponse](e))
+            .getOrElse(createChatCompletionAux(messages, settings))
+      }
+    else
+      createChatCompletionAux(messages, settings)
+
+  private def createChatCompletionAux(
+    messages: Seq[BaseMessage],
+    settings: CreateChatCompletionSettings
+  ): Future[ChatCompletionResponse] =
+    execPOST(
+      EndPoint.chat_completions,
+      bodyParams =
+        createBodyParamsForChatCompletion(messages.toList, settings, stream = false).toList
+    ).map(
+      _.asSafeJson[ChatCompletionResponse]
+    )
+
+  // Responses-native tools / a reasoning mode on a chat-only service
+  private def unsupportedResponsesSettings(
+    settings: CreateChatCompletionSettings
+  ): Option[OpenAIScalaClientException] =
+    ResponsesChatCompletionSettingsOps.unsupportedResponsesSettings(
+      settings,
+      "A chat-only OpenAI service (chat completions API)"
+    )
 
   private def unsupportedToolApprovalDecisions[T](
     settings: CreateChatCompletionSettings
@@ -69,9 +87,11 @@ private[service] trait OpenAIChatCompletionServiceImpl
 
   /**
    * The Responses-backed chat completion of this service, when it also serves the Responses
-   * API (the full `OpenAIService` overrides this): tool completions the chat completions API
-   * cannot carry - GPT-6 function tools, the provider-neutral MCPServerTool / SkillTool - are
-   * routed through it. `None` (the default) makes such calls fail fast instead.
+   * API (the full `OpenAIService` overrides this): completions the chat completions API cannot
+   * carry are routed through it - GPT-6 Astra / 6.1 function tools, the provider-neutral
+   * MCPServerTool / SkillTool and the Responses-only settings of
+   * `ChatCompletionSettingsConversions.chatRequiresResponsesAPI`. `None` (the default) makes
+   * such calls fail fast instead, except the Ultrafast tier, which is left to the API.
    */
   protected def responsesBackedChatCompletion: Option[OpenAIChatCompletionService] = None
 
@@ -93,15 +113,15 @@ private[service] trait OpenAIChatCompletionServiceImpl
       responsesBackedChatCompletion match {
         case Some(service) =>
           logger.debug(
-            s"${settings.model} model doesn't support function tools (with reasoning) on the chat completions API, routing createChatToolCompletion through the Responses API."
+            s"Routing createChatToolCompletion (${settings.model}) through the Responses API - the chat completions API cannot serve it (with reasoning)."
           )
           service.createChatToolCompletion(messages, tools, responseToolChoice, settings)
 
         case None if settings.toolApprovalDecisions.nonEmpty =>
           unsupportedToolApprovalDecisions(settings)
 
-        case None if settings.responsesTools.nonEmpty =>
-          Future.failed(new OpenAIScalaClientException(responsesToolsOnChatOnlyMessage))
+        case None if unsupportedResponsesSettings(settings).isDefined =>
+          Future.failed(unsupportedResponsesSettings(settings).get)
 
         // chat-only service: GPT-5.6 / GPT-6 Sol/Luna still work there with reasoning 'none'
         case None if !chatToolsRequireResponsesAPI(settings.model, tools) =>
@@ -150,11 +170,11 @@ private[service] trait OpenAIChatCompletionServiceImpl
 
 trait ChatCompletionBodyMaker {
 
-  // GPT-5.x is dispatched on the parsed minor version (ChatCompletionSettingsConversions.gpt5Minor)
-  private val gpt6Prefix = "gpt-6"
+  // GPT-5.x / GPT-6.x are dispatched on the parsed minor version
+  // (ChatCompletionSettingsConversions.gpt5Minor / gpt6Minor)
 
   // Function tools on the chat completions API - see ChatCompletionSettingsConversions.gpt5_5ChatTools
-  // & gpt5_6ChatTools. GPT-6 Astra doesn't support them at all (Responses API only).
+  // & gpt5_6ChatTools. GPT-6 Astra and GPT-6.1 Sol don't support them at all (Responses API only).
   protected def chatToolsRequireResponsesAPI(model: String): Boolean =
     ChatCompletionSettingsConversions.chatToolsRequireResponsesAPI(model)
 
@@ -172,8 +192,11 @@ trait ChatCompletionBodyMaker {
 
     val gpt5Minor = ChatCompletionSettingsConversions.gpt5Minor(model)
 
-    // GPT-6 Astra never gets here (routed to the Responses API); Sol/Luna follow GPT-5.6
-    if (gpt5Minor.exists(_ >= 6) || model.startsWith(gpt6Prefix))
+    // GPT-6 Astra / 6.1 never get here (routed to the Responses API); GPT-6 Sol/Luna follow
+    // GPT-5.6
+    if (
+      gpt5Minor.exists(_ >= 6) || ChatCompletionSettingsConversions.gpt6Minor(model).isDefined
+    )
       ChatCompletionSettingsConversions.gpt5_6ChatTools(settings)
     else if (ChatCompletionSettingsConversions.chatToolsRejectExplicitReasoning(model))
       // GPT-5.4 / 5.5: an explicit effort (other than 'none') is rejected with tools
@@ -223,7 +246,7 @@ trait ChatCompletionBodyMaker {
     assert(messagesAux.nonEmpty, "At least one message expected.")
     // never dropped silently: the entry points route or refuse them before this point
     ResponsesChatCompletionSettingsOps
-      .unsupportedResponsesTools(settings, "The chat completions API")
+      .unsupportedResponsesSettings(settings, "The chat completions API")
       .foreach(throw _)
 
     // the retired o1-preview / o1-mini took no system messages
@@ -245,8 +268,8 @@ trait ChatCompletionBodyMaker {
       if (isO1PreviewOrMini(model)) o1Preview(settings)
       else if (isOSeries(model)) o(settings)
       else if (model == ModelId.chat_latest) chatLatest(settings)
-      else if (isGpt6Astra(model)) gpt6(settings)
-      else if (model.startsWith(gpt6Prefix)) gpt6SolLuna(settings)
+      else if (isGpt6ReasoningAlwaysOn(model)) gpt6(settings) // Astra, 6.1 Sol and newer
+      else if (gpt6Minor(model).isDefined) gpt6SolLuna(settings)
       else if (isGpt5SearchApi(model)) gpt5SearchApi(settings)
       else
         gpt5Minor(model) match {

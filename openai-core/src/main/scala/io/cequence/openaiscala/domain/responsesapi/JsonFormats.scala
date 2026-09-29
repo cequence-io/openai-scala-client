@@ -5,6 +5,7 @@ import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.JsonUtil.{enumFormat, snakeEnumFormat}
 import io.cequence.openaiscala.domain.responsesapi.{ModelStatus, ResponseStreamEvent}
 import io.cequence.openaiscala.JsonFormats.{jsonSchemaFormat, reasoningEffortFormat}
+import io.cequence.openaiscala.domain.settings.ReasoningEffort
 import io.cequence.openaiscala.domain.responsesapi.{TruncationStrategy, ResponseFormat}
 import io.cequence.openaiscala.domain.responsesapi.tools._
 import io.cequence.openaiscala.domain.responsesapi.InputMessageContent
@@ -86,9 +87,46 @@ object JsonFormats {
   implicit lazy val textResponseConfigFormat: Format[TextResponseConfig] =
     Json.format[TextResponseConfig]
 
-  // reasoning config
-  implicit lazy val reasoningConfigFormat: Format[ReasoningConfig] =
-    Json.format[ReasoningConfig]
+  implicit lazy val reasoningModeFormat: Format[ReasoningMode] =
+    enumFormat[ReasoningMode](ReasoningMode.values: _*)
+
+  implicit lazy val reasoningContextFormat: Format[ReasoningContext] =
+    enumFormat[ReasoningContext](ReasoningContext.values: _*)
+
+  // reasoning config - a Response echoes it, so an effort / mode / context value this client
+  // doesn't know yet is treated as absent (with a warning) instead of failing the response
+  implicit lazy val reasoningConfigFormat: Format[ReasoningConfig] = {
+    val format = Json.format[ReasoningConfig]
+
+    def unknown(
+      field: String,
+      value: JsValue
+    ): Boolean =
+      value != JsNull && (field match {
+        case "effort"  => value.asOpt[ReasoningEffort].isEmpty
+        case "mode"    => value.asOpt[ReasoningMode].isEmpty
+        case "context" => value.asOpt[ReasoningContext].isEmpty
+        case _         => false
+      })
+
+    val tolerantReads: Reads[ReasoningConfig] = {
+      case obj: JsObject =>
+        val (skipped, kept) = obj.fields.partition { case (field, value) =>
+          unknown(field, value)
+        }
+        if (skipped.nonEmpty) {
+          val values = skipped.map { case (field, value) => s"$field=$value" }
+          responsesLogger.warn(
+            s"Responses API: ignoring unknown reasoning value(s): ${values.mkString(", ")}"
+          )
+        }
+        format.reads(JsObject(kept))
+
+      case other => format.reads(other)
+    }
+
+    Format(tolerantReads, format)
+  }
 
   // summary text - custom format to include type field
   private implicit lazy val summaryTextReads: Reads[SummaryText] =

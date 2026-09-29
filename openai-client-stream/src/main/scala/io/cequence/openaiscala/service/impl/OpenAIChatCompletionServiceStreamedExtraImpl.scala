@@ -18,7 +18,6 @@ import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps._
-import io.cequence.openaiscala.domain.settings.ResponsesChatCompletionSettingsOps._
 import io.cequence.openaiscala.service.OpenAIChatCompletionStreamedServiceExtra
 import io.cequence.wsclient.JsonUtil.JsonOps
 import play.api.libs.json.JsValue
@@ -46,7 +45,7 @@ private[service] trait OpenAIChatCompletionServiceStreamedExtraImpl
     unsupportedToolApprovalDecisions(settings)
       .orElse(
         ResponsesChatCompletionSettingsOps
-          .unsupportedResponsesTools(
+          .unsupportedResponsesSettings(
             settings,
             "The OpenAI-shaped createChatCompletionStreamed"
           )
@@ -55,6 +54,16 @@ private[service] trait OpenAIChatCompletionServiceStreamedExtraImpl
       .getOrElse(
         execChunkStream(createBodyParamsForChatCompletion(messages, settings, stream = true))
       )
+
+  // Responses-native tools / a reasoning mode: refused, never dropped (the Ultrafast tier is
+  // left to the API - another OpenAI-compatible provider may serve it)
+  private def unsupportedResponsesSettings(
+    settings: CreateChatCompletionSettings
+  ): Option[OpenAIScalaClientException] =
+    ResponsesChatCompletionSettingsOps.unsupportedResponsesSettings(
+      settings,
+      "A chat-only streamed OpenAI service (chat completions API)"
+    )
 
   // a run paused for approval lives on the Responses API - not reachable from here
   private def unsupportedToolApprovalDecisions(
@@ -75,12 +84,8 @@ private[service] trait OpenAIChatCompletionServiceStreamedExtraImpl
   ): Source[ChatChunk, NotUsed] =
     if (settings.toolApprovalDecisions.nonEmpty)
       unsupportedToolApprovalDecisions(settings).getOrElse(Source.empty)
-    else if (settings.responsesTools.nonEmpty)
-      Source.failed(
-        new OpenAIScalaClientException(
-          "Responses-native tools (setResponsesTools) need the Responses API - use the full streamed OpenAIService (OpenAIServiceFactory.withStreaming()), which routes them there automatically."
-        )
-      )
+    else if (unsupportedResponsesSettings(settings).isDefined)
+      Source.failed(unsupportedResponsesSettings(settings).get)
     else if (
       tools.nonEmpty && ChatCompletionSettingsConversions.chatToolsUnsupported(settings.model)
     )

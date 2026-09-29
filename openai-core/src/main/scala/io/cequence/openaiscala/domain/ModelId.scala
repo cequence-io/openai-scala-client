@@ -777,6 +777,15 @@ object ModelId {
   val gpt_6_sol = "gpt-6-sol"
   val gpt_6_luna = "gpt-6-luna"
 
+  // GPT-6.1 Sol (created 2026-09-27, DevDay 2026-09-29, live-verified 2026-09-29): 1,050,000
+  // context (922k max input), 128,000 max output, knowledge cutoff 2026-04-30, text+image in /
+  // text out, chat completions + Responses + Batch API. Reasoning is always on - it follows
+  // the GPT-6 ASTRA rules, not GPT-6 Sol's: reasoning_effort low/medium (default)/high/xhigh
+  // on chat completions, plus 'max' on the Responses API; 'none' and 'minimal' are rejected
+  // everywhere; all sampling params are rejected; function tools are Responses-API-only
+  // (createChatToolCompletion is routed there). Responses API `reasoning.mode = pro` works.
+  val gpt_6_1_sol = "gpt-6.1-sol"
+
   val gpt_5_6_sol = "gpt-5.6-sol"
   val gpt_5_6_terra = "gpt-5.6-terra"
   val gpt_5_6_luna = "gpt-5.6-luna"
@@ -795,6 +804,12 @@ object ModelId {
   val bedrock_openai_gpt_6_astra = "openai.gpt-6-astra"
   val bedrock_openai_gpt_6_sol = "openai.gpt-6-sol"
   val bedrock_openai_gpt_6_luna = "openai.gpt-6-luna"
+  // GPT-6.1 Sol (live-verified 2026-09-29 on bedrock-runtime `/openai/v1` in eu-central-1 and
+  // us-east-1): the `global.` inference profile only (no `us.`/`eu.`; the bare id is not
+  // on-demand). Same rules as on OpenAI, except that Bedrock's chat completions also accept
+  // effort 'max' (still converted to 'xhigh' here) and Bedrock rejects `reasoning.mode` and
+  // the `fast` service tier.
+  val bedrock_openai_gpt_6_1_sol = "openai.gpt-6.1-sol"
   val bedrock_openai_gpt_5_6_sol = "openai.gpt-5.6-sol"
   val bedrock_openai_gpt_5_6_terra = "openai.gpt-5.6-terra"
   val bedrock_openai_gpt_5_6_luna = "openai.gpt-5.6-luna"

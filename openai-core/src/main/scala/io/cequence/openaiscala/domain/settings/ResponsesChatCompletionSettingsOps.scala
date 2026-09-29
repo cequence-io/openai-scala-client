@@ -1,6 +1,7 @@
 package io.cequence.openaiscala.domain.settings
 
 import io.cequence.openaiscala.OpenAIScalaClientException
+import io.cequence.openaiscala.domain.responsesapi.ReasoningMode
 import io.cequence.openaiscala.domain.responsesapi.tools.Tool
 
 /**
@@ -12,9 +13,11 @@ object ResponsesChatCompletionSettingsOps {
 
   val ResponsesToolsParam = "responses_tools"
   val ResponsesReasoningSummaryParam = "responses_reasoning_summary"
+  val ResponsesReasoningModeParam = "responses_reasoning_mode"
 
   /** The extra-params keys consumed by the Responses adapter (never sent to the API). */
-  val knownParams: Set[String] = Set(ResponsesToolsParam, ResponsesReasoningSummaryParam)
+  val knownParams: Set[String] =
+    Set(ResponsesToolsParam, ResponsesReasoningSummaryParam, ResponsesReasoningModeParam)
 
   implicit class RichResponsesCreateChatCompletionSettings(
     settings: CreateChatCompletionSettings
@@ -51,23 +54,49 @@ object ResponsesChatCompletionSettingsOps {
 
     def responsesReasoningSummary: Option[Boolean] =
       settings.extra_params.get(ResponsesReasoningSummaryParam).map(_.toString == "true")
+
+    /**
+     * `reasoning.mode` of the Responses API - `ReasoningMode.pro` asks the GPT-6 models for
+     * more model work on difficult tasks (higher latency and token usage). The chat
+     * completions API has no such parameter, so the full `OpenAIService` routes a call
+     * carrying it through the Responses API, and anything that cannot refuses it.
+     */
+    def setResponsesReasoningMode(mode: ReasoningMode): CreateChatCompletionSettings =
+      settings.copy(
+        extra_params = settings.extra_params + (ResponsesReasoningModeParam -> mode)
+      )
+
+    def responsesReasoningMode: Option[ReasoningMode] =
+      settings.extra_params.get(ResponsesReasoningModeParam).collect {
+        case mode: ReasoningMode => mode
+      }
   }
 
   /**
-   * The exception for a call carrying Responses-native tools where they cannot be sent (None
-   * when there are none) - they are refused, never dropped.
+   * The exception for a call carrying Responses-only settings - Responses-native tools
+   * (`setResponsesTools`) or a reasoning mode (`setResponsesReasoningMode`) - where they
+   * cannot be sent (None when there are none): they are refused, never dropped.
    */
-  def unsupportedResponsesTools(
+  def unsupportedResponsesSettings(
     settings: CreateChatCompletionSettings,
     entryPoint: String
-  ): Option[OpenAIScalaClientException] =
-    if (settings.responsesTools.isEmpty) None
+  ): Option[OpenAIScalaClientException] = {
+    val responsesOnly = Seq(
+      if (settings.responsesTools.nonEmpty) Some("Responses-native tools (setResponsesTools)")
+      else None,
+      settings.responsesReasoningMode.map(mode =>
+        s"reasoning mode '$mode' (setResponsesReasoningMode)"
+      )
+    ).flatten
+
+    if (responsesOnly.isEmpty) None
     else
       Some(
         new OpenAIScalaClientException(
-          s"$entryPoint cannot send Responses-native tools (setResponsesTools) - they need the " +
+          s"$entryPoint cannot send ${responsesOnly.mkString(" or ")} - they need the " +
             "Responses API: use createChatCompletion / createChatToolCompletion / the typed " +
             "createChatToolCompletionStreamed of the full OpenAIService, which route them there."
         )
       )
+  }
 }
