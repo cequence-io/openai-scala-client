@@ -341,7 +341,8 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
   // NOTE: "claude-fable-5" is a substring of "claude-fable-5-1", so it already matches Fable
   // 5.1 via `contains`; claude_fable_5_1 is still listed explicitly for clarity. The same holds
   // for "claude-mythos-5" / "claude-mythos-5-1" (Mythos = Fable with fewer safeguards, same API
-  // behaviour). Likewise "claude-opus-5" matches "claude-opus-5-5"; Opus 5.5 is listed anyway.
+  // behaviour). Likewise "claude-opus-5" matches "claude-opus-5-5" and "claude-sonnet-5"
+  // matches "claude-sonnet-5-5"; Opus 5.5 and Sonnet 5.5 are listed anyway.
   private val outputEffortModels: Set[String] = Set(
     NonOpenAIModelId.claude_fable_5_1,
     NonOpenAIModelId.claude_fable_5,
@@ -352,6 +353,7 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
     NonOpenAIModelId.claude_opus_4_8,
     NonOpenAIModelId.claude_opus_4_7,
     NonOpenAIModelId.claude_opus_4_6,
+    NonOpenAIModelId.claude_sonnet_5_5,
     NonOpenAIModelId.claude_sonnet_5,
     NonOpenAIModelId.claude_sonnet_4_6
   )
@@ -367,6 +369,7 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
     NonOpenAIModelId.claude_opus_5,
     NonOpenAIModelId.claude_opus_4_8,
     NonOpenAIModelId.claude_opus_4_7,
+    NonOpenAIModelId.claude_sonnet_5_5,
     NonOpenAIModelId.claude_sonnet_5
   )
 
@@ -382,6 +385,7 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
     NonOpenAIModelId.claude_opus_5,
     NonOpenAIModelId.claude_opus_4_8,
     NonOpenAIModelId.claude_opus_4_7,
+    NonOpenAIModelId.claude_sonnet_5_5,
     NonOpenAIModelId.claude_sonnet_5
   )
 
@@ -397,13 +401,28 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
   // NOTE: "claude-fable-5" (Fable 5) is deliberately NOT in this set - Fable 5 still supports
   // forced tool_choice, only its successor Fable 5.1 dropped it. Mythos 5.1 is the same model
   // as Fable 5.1 (not live-verified here - invite-only), so it is treated identically. Opus
-  // 5.5 dropped it too (live-verified 2026-09-22 on the Claude API and Bedrock), while Opus 5
-  // still accepts it - "claude-opus-5" is NOT listed, it would match "claude-opus-5-5" only.
+  // 5.5 and Sonnet 5.5 dropped it too (live-verified 2026-09-22 / 2026-09-29 on the Claude API
+  // and Bedrock), while Opus 5 and Sonnet 5 still accept it - "claude-opus-5" and
+  // "claude-sonnet-5" are NOT listed, they would match their 5.5 successors only.
   private val forcedToolChoiceUnsupportedModels: Set[String] = Set(
     NonOpenAIModelId.claude_fable_5_1,
     NonOpenAIModelId.claude_mythos_5_1,
-    NonOpenAIModelId.claude_opus_5_5
+    NonOpenAIModelId.claude_opus_5_5,
+    NonOpenAIModelId.claude_sonnet_5_5
   )
+
+  // Models whose lowest thinking setting is `between_tools` (no up-front thinking, progress
+  // updates between tool calls only): they reject `disabled`, and omitting thinking means
+  // adaptive thinking at the default effort - so reasoning_effort = none maps to it
+  // (live-verified 2026-09-29).
+  private val betweenToolsThinkingModels: Set[String] = Set(
+    NonOpenAIModelId.claude_sonnet_5_5
+  )
+
+  private def supportsBetweenToolsThinking(model: String): Boolean = {
+    val m = model.toLowerCase
+    betweenToolsThinkingModels.exists(m.contains)
+  }
 
   def supportsForcedToolChoice(model: String): Boolean = {
     val m = model.toLowerCase
@@ -412,10 +431,10 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
 
   /**
    * Maps the OpenAI-style `responseToolChoice` (a forced tool name, or None for auto) to
-   * Anthropic's ToolChoice. On models that reject forced tool use (Fable 5.1, Opus 5.5) a
-   * forced tool name is downgraded to `auto` plus a system-prompt instruction naming the tool,
-   * which is Anthropic's recommended replacement. Returns the tool choice and any extra system
-   * messages that must be appended to the caller's system messages.
+   * Anthropic's ToolChoice. On models that reject forced tool use (Fable 5.1, Opus / Sonnet
+   * 5.5) a forced tool name is downgraded to `auto` plus a system-prompt instruction naming
+   * the tool, which is Anthropic's recommended replacement. Returns the tool choice and any
+   * extra system messages that must be appended to the caller's system messages.
    */
   def toAnthropicToolChoice(
     model: String,
@@ -465,7 +484,7 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
     case ReasoningEffort.high   => Some(OutputEffort.high)
     case ReasoningEffort.xhigh  =>
       // OutputEffort.xhigh is supported only on Opus 4.7+ (Opus 4.7, 4.8, 5, 5.5), Fable
-      // 5/5.1, and Sonnet 5; downgrade to high on Opus 4.6 / Sonnet 4.6 to avoid a remote 400
+      // 5/5.1, and Sonnet 5/5.5; downgrade to high on Opus 4.6 / Sonnet 4.6 to avoid a remote 400
       // from Anthropic.
       val m = model.toLowerCase
       if (xhighOutputEffortModels.exists(m.contains)) {
@@ -554,6 +573,11 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
           (Some(ThinkingSettings.adaptive), None)
         case Some(budget) =>
           (Some(ThinkingSettings.enabled(budget)), None)
+        // no up-front thinking: the lowest setting of a model that cannot turn thinking off
+        case None
+            if settings.reasoning_effort.contains(ReasoningEffort.none) &&
+              supportsBetweenToolsThinking(settings.model) =>
+          (Some(ThinkingSettings.betweenTools), None)
         case None if useOutputEffort =>
           val effort = toOutputEffort(settings.reasoning_effort, settings.model)
           (effort.map(_ => ThinkingSettings.adaptive), effort)

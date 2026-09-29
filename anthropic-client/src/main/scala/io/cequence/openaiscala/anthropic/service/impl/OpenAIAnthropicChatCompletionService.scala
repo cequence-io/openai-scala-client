@@ -27,7 +27,8 @@ import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.settings.{
   AnthropicCreateMessageSettings,
-  ThinkingDisplay
+  ThinkingDisplay,
+  ThinkingType
 }
 import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettingsOps.RichCreateChatCompletionSettings
@@ -176,9 +177,15 @@ private[service] class OpenAIAnthropicChatCompletionService(
     val (anthropicMessages, anthropicSettings) =
       toAnthropicToolRequest(messages, tools, responseToolChoice, settings)
 
+    // summarized thinking text for the Thinking chunks - `disabled` / `between_tools` take no
+    // display (a 400)
     val settingsFinal = anthropicSettings.copy(
       thinking = anthropicSettings.thinking.map(thinking =>
-        thinking.copy(display = thinking.display.orElse(Some(ThinkingDisplay.summarized)))
+        thinking.`type` match {
+          case ThinkingType.adaptive | ThinkingType.enabled =>
+            thinking.copy(display = thinking.display.orElse(Some(ThinkingDisplay.summarized)))
+          case _ => thinking
+        }
       )
     )
 

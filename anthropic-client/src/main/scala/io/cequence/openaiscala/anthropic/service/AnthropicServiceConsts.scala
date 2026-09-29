@@ -51,6 +51,7 @@ trait AnthropicServiceConsts {
     NonOpenAIModelId.claude_opus_4_8 -> 128000,
     NonOpenAIModelId.claude_opus_4_7 -> 128000,
     NonOpenAIModelId.claude_opus_4_6 -> 128000,
+    NonOpenAIModelId.claude_sonnet_5_5 -> 128000,
     NonOpenAIModelId.claude_sonnet_5 -> 128000,
     NonOpenAIModelId.claude_sonnet_4_6 -> 128000,
     NonOpenAIModelId.claude_opus_4_5 -> 64000,

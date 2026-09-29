@@ -19,6 +19,11 @@ object NonOpenAIModelId {
   val claude_opus_4_8 = "claude-opus-4-8"
   val claude_opus_4_7 = "claude-opus-4-7"
   val claude_opus_4_6 = "claude-opus-4-6"
+  // Sonnet 5.5 (released 2026-09-28, live-verified 2026-09-29): adaptive thinking by default
+  // (thinking `enabled` and `disabled` are 400s - its lowest setting is `between_tools`, no
+  // up-front thinking, at effort high or below), no sampling params, no forced tool_choice
+  // (`any`/`tool` are 400s, like Opus 5.5), 128k max output, 1M context
+  val claude_sonnet_5_5 = "claude-sonnet-5-5"
   val claude_sonnet_5 = "claude-sonnet-5"
   val claude_sonnet_4_6 = "claude-sonnet-4-6"
   val claude_opus_4_5_20251101 = "claude-opus-4-5-20251101"
@@ -114,6 +119,8 @@ object NonOpenAIModelId {
   val bedrock_claude_opus_4_8 = "anthropic.claude-opus-4-8"
   val bedrock_claude_opus_4_7 = "anthropic.claude-opus-4-7"
   val bedrock_claude_opus_4_6_v1 = "anthropic.claude-opus-4-6-v1"
+  // served through the `global.` inference profile only (no `eu.` / `us.` one yet, 2026-09-29)
+  val bedrock_claude_sonnet_5_5 = "anthropic.claude-sonnet-5-5"
   val bedrock_claude_sonnet_5 = "anthropic.claude-sonnet-5"
   val bedrock_claude_sonnet_4_6 = "anthropic.claude-sonnet-4-6"
   val bedrock_claude_haiku_4_5 = "anthropic.claude-haiku-4-5"
@@ -351,7 +358,11 @@ object NonOpenAIModelId {
   val mistral_vibe_cli_latest = "mistral-vibe-cli-latest" // Mistral (coding agent)
   val mistral_vibe_cli_fast = "mistral-vibe-cli-fast" // Mistral (coding agent)
   val mistral_vibe_cli_with_tools = "mistral-vibe-cli-with-tools" // Mistral (coding agent)
+  // Mistral-hosted Z.ai GLM 5.3 (listed 2026-09-29; aliases "zai-glm-5", "zai-glm-latest")
+  val mistral_zai_glm_5_3 = "zai-glm-5-3"
   val mistral_zai_glm_5_2 = "zai-glm-5-2" // Mistral-hosted Z.ai GLM 5.2 (also "glm-5-2")
+  // Mistral (Lean 4 proof engineering) - "labs-leanstral-1-5" is now an alias of 1.5.1
+  val labs_leanstral_1_5_1 = "labs-leanstral-1-5-1"
   val labs_leanstral_1_5 =
     "labs-leanstral-1-5" // Mistral (Lean 4 proof engineering; retires 2026-09-30)
   val mistral_ocr_4_1 = "mistral-ocr-4-1" // Mistral OCR 4.1 (GA 2026-08-31)
@@ -488,6 +499,12 @@ object NonOpenAIModelId {
   val gemini_3_1_flash_lite_image = "gemini-3.1-flash-lite-image"
 
   // Gemini TTS / transcription / live (audio)
+  val gemini_3_8_flash_tts = "gemini-3.8-flash-tts" // listed 2026-09-29
+  val gemini_3_8_flash_lite_tts = "gemini-3.8-flash-lite-tts" // listed 2026-09-29
+  // Live API only (bidiGenerateContent) - not usable by the chat adapter
+  val gemini_3_8_live = "gemini-3.8-live" // listed 2026-09-29
+  val gemini_3_8_live_extended_thinking =
+    "gemini-3.8-live-extended-thinking" // listed 2026-09-29
   val gemini_2_5_flash_preview_tts = "gemini-2.5-flash-preview-tts"
   val gemini_2_5_pro_preview_tts = "gemini-2.5-pro-preview-tts"
   val gemini_3_1_flash_tts_preview = "gemini-3.1-flash-tts-preview"
@@ -519,7 +536,9 @@ object NonOpenAIModelId {
     "deep-research-max-preview-04-2026" // Gemini API (agent)
   val deep_research_pro_preview_12_2025 =
     "deep-research-pro-preview-12-2025" // Gemini API (agent)
+  val antigravity_preview_09_2026 = "antigravity-preview-09-2026" // Gemini API (agent)
   val antigravity_preview_05_2026 = "antigravity-preview-05-2026" // Gemini API (agent)
+  val antigravity_preview_latest = "antigravity-preview-latest" // Gemini API (agent, alias)
   val nano_banana_pro_preview = "nano-banana-pro-preview" // Gemini API (image)
   val veo_3_1_generate_preview = "veo-3.1-generate-preview" // Gemini API (video)
   val veo_3_1_fast_generate_preview = "veo-3.1-fast-generate-preview" // Gemini API (video)
@@ -840,9 +859,13 @@ object NonOpenAIModelId {
   // DeepSeek V4.1 Flash - reasoning model, 1M context, tools + image input + strict json_schema
   // (live-verified 2026-09-11). Fireworks spells decimals with "p" (cf. glm-5p2, qwen3p8-max);
   // prepend "accounts/fireworks/models/" as the other Fireworks ids here do. Novita's form is
-  // `novita_deepseek_v4_1_flash` below. Not served by Together AI, DeepSeek's own API,
-  // SambaNova, Cerebras, Groq or Bedrock, whose newest DeepSeek is V3.2.
+  // `novita_deepseek_v4_1_flash` below; Together AI lists it since 2026-09-12. Not served by
+  // DeepSeek's own API, SambaNova, Cerebras, Groq or Bedrock, whose newest DeepSeek is V3.2.
   val deepseek_v4p1_flash = "deepseek-v4p1-flash" // Fireworks
+  val deepseek_ai_deepseek_v4_1_flash = "deepseek-ai/DeepSeek-V4.1-Flash" // Together AI
+  // Fireworks Research's Ember-1: Kimi K3 post-trained for ~40% fewer reasoning tokens; 1M
+  // context, tools, image input (released 2026-09-24 as a two-week research preview)
+  val ember_1 = "ember-1" // Fireworks
   // Together AI - other 2026 open-weight flagships (listed 2026-09-10)
   val qwen_qwen3_8_flash = "Qwen/Qwen3.8-Flash" // Together AI
   val qwen_qwen3_8_2_4t_a95b = "Qwen/Qwen3.8-2.4T-A95B" // Together AI

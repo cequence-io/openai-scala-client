@@ -7,7 +7,7 @@ import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import io.cequence.openaiscala.anthropic.domain.Message.UserMessage
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.service._
-import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
+import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, ReasoningEffort}
 import io.cequence.openaiscala.domain.{UserMessage => OpenAIUserMessage}
 import io.cequence.openaiscala.{
   OpenAIScalaClientException,
@@ -47,6 +47,7 @@ class AnthropicStreamedHttpErrorsWireSpec
   // status, body, content type
   @volatile private var reply: (Int, String, String) = (200, "{}", "application/json")
   @volatile private var lastPath: Option[String] = None
+  @volatile private var lastBody: String = ""
 
   private val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
   private lazy val coreUrl = s"http://localhost:${server.getAddress.getPort}/"
@@ -75,7 +76,7 @@ class AnthropicStreamedHttpErrorsWireSpec
       "/",
       new HttpHandler {
         override def handle(exchange: HttpExchange): Unit = {
-          exchange.getRequestBody.readAllBytes()
+          lastBody = new String(exchange.getRequestBody.readAllBytes(), StandardCharsets.UTF_8)
           lastPath = Some(exchange.getRequestURI.getPath)
           val (status, body, contentType) = reply
           val bytes = body.getBytes(StandardCharsets.UTF_8)
@@ -217,6 +218,31 @@ class AnthropicStreamedHttpErrorsWireSpec
           """{"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}"""
         )(adapter.createChatCompletionStreamed(openAIMessages, openAISettings))
       ) shouldBe true
+    }
+
+    "ask the typed stream for summarized thinking, but never on a setting that takes no display" in {
+      def sentThinking(settings: CreateChatCompletionSettings) = {
+        failure[OpenAIScalaRateLimitException](rateLimited)(
+          adapter.createChatCompletionStreamedTyped(Seq(OpenAIUserMessage("hi")), settings)
+        )
+        (play.api.libs.json.Json.parse(lastBody) \ "thinking").toOption
+      }
+
+      sentThinking(
+        CreateChatCompletionSettings(
+          "claude-sonnet-5",
+          reasoning_effort = Some(ReasoningEffort.high)
+        )
+      ) shouldBe Some(
+        play.api.libs.json.Json.obj("type" -> "adaptive", "display" -> "summarized")
+      )
+      // Sonnet 5.5's lowest setting: no up-front thinking, and a display would be a 400
+      sentThinking(
+        CreateChatCompletionSettings(
+          "claude-sonnet-5-5",
+          reasoning_effort = Some(ReasoningEffort.none)
+        )
+      ) shouldBe Some(play.api.libs.json.Json.obj("type" -> "between_tools"))
     }
   }
 }

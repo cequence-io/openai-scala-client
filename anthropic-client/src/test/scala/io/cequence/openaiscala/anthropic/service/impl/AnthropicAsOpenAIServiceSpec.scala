@@ -365,6 +365,80 @@ class AnthropicAsOpenAIServiceSpec extends AnyWordSpec with Matchers {
     }
   }
 
+  "Claude Sonnet 5.5" should {
+
+    "turn up-front thinking off with between_tools for reasoning_effort=none (it rejects disabled)" in {
+      Seq(
+        NonOpenAIModelId.claude_sonnet_5_5,
+        "global." + NonOpenAIModelId.bedrock_claude_sonnet_5_5
+      ).foreach { model =>
+        val out = toAnthropicSettings(
+          CreateChatCompletionSettings(
+            model = model,
+            reasoning_effort = Some(ReasoningEffort.none)
+          )
+        )
+
+        out.thinking shouldBe Some(ThinkingSettings.betweenTools)
+        // between_tools takes no other field and needs effort high or below (the default)
+        Json.toJson(out.thinking.get)(
+          io.cequence.openaiscala.anthropic.JsonFormats.thinkingSettingsFormat
+        ) shouldBe Json.obj("type" -> "between_tools")
+        out.output_config.flatMap(_.effort) shouldBe None
+      }
+    }
+
+    "keep Sonnet 5 on the plain path: no thinking for none, forced tool_choice kept" in {
+      toAnthropicSettings(
+        CreateChatCompletionSettings(
+          model = NonOpenAIModelId.claude_sonnet_5,
+          reasoning_effort = Some(ReasoningEffort.none)
+        )
+      ).thinking shouldBe None
+      toAnthropicToolChoice(
+        NonOpenAIModelId.claude_sonnet_5,
+        Some("get_weather"),
+        None
+      )._1 shouldBe
+        ToolChoice.Tool("get_weather", None)
+    }
+
+    "map xhigh / max to adaptive thinking + effort, drop sampling params, cap output at 128k" in {
+      Seq(
+        ReasoningEffort.xhigh -> OutputEffort.xhigh,
+        ReasoningEffort.max -> OutputEffort.max
+      ).foreach { case (effort, expected) =>
+        val out = toAnthropicSettings(
+          CreateChatCompletionSettings(
+            model = NonOpenAIModelId.claude_sonnet_5_5,
+            reasoning_effort = Some(effort),
+            temperature = Some(0.2),
+            top_p = Some(0.9)
+          )
+        )
+
+        out.thinking shouldBe Some(ThinkingSettings.adaptive)
+        out.output_config.flatMap(_.effort) shouldBe Some(expected)
+        out.temperature shouldBe None
+        out.top_p shouldBe None
+        out.max_tokens shouldBe 128000
+      }
+    }
+
+    "downgrade a forced tool_choice to auto plus a system instruction (direct and Bedrock ids)" in {
+      Seq(
+        NonOpenAIModelId.claude_sonnet_5_5,
+        "global." + NonOpenAIModelId.bedrock_claude_sonnet_5_5
+      ).foreach { model =>
+        val (toolChoice, extraSystemMessages) =
+          toAnthropicToolChoice(model, Some("get_weather"), Some(true))
+
+        toolChoice shouldBe ToolChoice.Auto(Some(true))
+        extraSystemMessages.head.content should include("get_weather")
+      }
+    }
+  }
+
   "toOpenAIAssistantMessage (A3 - tool-only/thinking-only responses must not throw)" should {
 
     "return empty content for a tool-only response (no text block)" in {

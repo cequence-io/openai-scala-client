@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.domain
 
 /**
- * OpenAI models available as of `2026-09-26` (retired and retiring ones are `@deprecated`).
+ * OpenAI models available as of `2026-09-29` (retired and retiring ones are `@deprecated`).
  *
  * @since Jan
  *   2023
@@ -156,7 +156,7 @@ object ModelId {
   )
   val text_similarity_babbage_001 = "text-similarity-babbage-001"
   @deprecated(
-    "Scheduled for shutdown by OpenAI on 2026-09-28 - see https://platform.openai.com/docs/deprecations",
+    "Shut down by OpenAI on 2026-09-28 - see https://platform.openai.com/docs/deprecations",
     "1.3.1"
   )
   val babbage_002 = "babbage-002"
@@ -267,7 +267,7 @@ object ModelId {
   )
   val davinci_2020_05_03 = "davinci:2020-05-03"
   @deprecated(
-    "Scheduled for shutdown by OpenAI on 2026-09-28 - see https://platform.openai.com/docs/deprecations",
+    "Shut down by OpenAI on 2026-09-28 - see https://platform.openai.com/docs/deprecations",
     "1.3.1"
   )
   val davinci_002 = "davinci-002"
@@ -457,6 +457,8 @@ object ModelId {
   val gpt_4o_mini_tts_2025_12_15 = "gpt-4o-mini-tts-2025-12-15"
   val gpt_transcribe = "gpt-transcribe"
   val gpt_live_transcribe = "gpt-live-transcribe"
+  // full-duplex voice model (API launch 2026-09-08) - Realtime API only, not a chat model
+  val gpt_live_1 = "gpt-live-1"
   @deprecated(
     "Scheduled for shutdown by OpenAI on 2027-01-20 - see https://platform.openai.com/docs/deprecations",
     "1.3.1"
@@ -636,13 +638,13 @@ object ModelId {
 
   val gpt_3_5_turbo_instruct_0914 = "gpt-3.5-turbo-instruct-0914"
   @deprecated(
-    "Scheduled for shutdown by OpenAI on 2026-09-28 - see https://platform.openai.com/docs/deprecations",
+    "Shut down by OpenAI on 2026-09-28 - see https://platform.openai.com/docs/deprecations",
     "1.3.1"
   )
   val gpt_3_5_turbo_instruct = "gpt-3.5-turbo-instruct"
   // 16k context, gpt_3_5_turbo will point to this model from Dec 11, 2023
   @deprecated(
-    "Scheduled for shutdown by OpenAI on 2026-09-28 - see https://platform.openai.com/docs/deprecations",
+    "Shut down by OpenAI on 2026-09-28 - see https://platform.openai.com/docs/deprecations",
     "1.3.1"
   )
   val gpt_3_5_turbo_1106 = "gpt-3.5-turbo-1106"

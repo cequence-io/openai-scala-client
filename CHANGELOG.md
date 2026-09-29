@@ -17,8 +17,20 @@
   `output_config.effort` up to `max`, no sampling params, a 128k output cap, `json_schema` structured output on the Claude
   API (on Bedrock it rejects `output_config.format` like Opus 5, so the JSON helper uses prompt mode there), and no forced
   `tool_choice` - a forced tool is downgraded to `auto` plus a system instruction, as for Fable 5.1.
+- **Claude Sonnet 5.5** - `NonOpenAIModelId.claude_sonnet_5_5` / `bedrock_claude_sonnet_5_5` (Bedrock serves it through
+  the `global.` inference profile only): adaptive thinking with `output_config.effort` up to `max`, no sampling params, a
+  128k output cap, `json_schema` structured output on the Claude API (prompt-mode JSON on Bedrock, which rejects
+  `output_config.format`), and no forced `tool_choice` (downgraded to `auto` plus a system instruction). It rejects
+  `thinking.type = disabled`; its lowest setting is the new `between_tools` (no up-front thinking), which
+  `reasoning_effort = none` now maps to - `ThinkingType` gains `between_tools` and `disabled` (with
+  `ThinkingSettings.betweenTools` / `disabled`), and the typed stream no longer adds a `display` to them.
+- **OpenAI** - `ModelId.gpt_live_1` (the full-duplex voice model; Realtime API only). `gpt-3.5-turbo-instruct`,
+  `gpt-3.5-turbo-1106`, `babbage-002` and `davinci-002` were shut down on 2026-09-28 (their deprecation notes say so now).
+- **Other providers** (listed 2026-09-29) - Gemini `gemini-3.8-flash-tts` / `-flash-lite-tts`, `gemini-3.8-live` /
+  `-live-extended-thinking` (Live API only) and `antigravity-preview-09-2026` / `-latest`; Mistral-hosted GLM 5.3
+  (`zai-glm-5-3`) and `labs-leanstral-1-5-1`; Together AI `deepseek-ai/DeepSeek-V4.1-Flash`; Fireworks `ember-1`.
 
-See `GPT6SolLunaOpus55SmokeTest` for a live walkthrough.
+See `GPT6SolLunaOpus55SmokeTest` and `anthropic/ClaudeSonnet55SmokeTest` for live walkthroughs.
 
 ### 🔥 Human approval mid-stream (typed stream)
 

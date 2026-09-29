@@ -93,15 +93,15 @@ final case class OutputConfig(
 
 sealed trait OutputEffort extends EnumValue
 
-// The effort parameter is supported by Claude Fable 5/5.1, Opus 5/4.8/4.7/4.6, Sonnet 5, and
-// Sonnet 4.6.
+// The effort parameter is supported by Claude Fable 5/5.1, Opus 5.5/5/4.8/4.7/4.6, Sonnet
+// 5.5/5, and Sonnet 4.6.
 object OutputEffort {
   case object low extends OutputEffort
   case object medium extends OutputEffort
   case object high extends OutputEffort
 
   // Claude always thinks deeply with extended exploration.
-  // Fable 5/5.1, Opus 5/4.7+, and Sonnet 5 only - requests using xhigh on other models
+  // Fable 5/5.1, Opus 5.5/5/4.7+, and Sonnet 5.5/5 only - requests using xhigh on other models
   // (e.g. Opus 4.6, Sonnet 4.6) return an error (live-verified 2026-07-11).
   case object xhigh extends OutputEffort
 
@@ -155,6 +155,14 @@ object ThinkingSettings {
   // Convenience constructor for enabled thinking with budget (legacy)
   def enabled(budgetTokens: Int): ThinkingSettings =
     ThinkingSettings(`type` = ThinkingType.enabled, budget_tokens = Some(budgetTokens))
+
+  // Thinking off - on the models that allow it (Sonnet 5, Opus 5 at effort high or below, Opus
+  // 4.6-4.8); the other 5-series models reject it
+  def disabled: ThinkingSettings = ThinkingSettings(`type` = ThinkingType.disabled)
+
+  // No up-front thinking, only the progress updates between tool calls - the lowest setting of
+  // Sonnet 5.5 (which rejects `disabled`), at effort high or below; takes no other field
+  def betweenTools: ThinkingSettings = ThinkingSettings(`type` = ThinkingType.between_tools)
 }
 
 sealed trait ThinkingType extends EnumValue
@@ -162,8 +170,10 @@ sealed trait ThinkingType extends EnumValue
 object ThinkingType {
   case object enabled extends ThinkingType
   case object adaptive extends ThinkingType
+  case object disabled extends ThinkingType
+  case object between_tools extends ThinkingType
 
-  def values: Seq[ThinkingType] = Seq(enabled, adaptive)
+  def values: Seq[ThinkingType] = Seq(enabled, adaptive, disabled, between_tools)
 }
 
 sealed trait ThinkingDisplay extends EnumValue
