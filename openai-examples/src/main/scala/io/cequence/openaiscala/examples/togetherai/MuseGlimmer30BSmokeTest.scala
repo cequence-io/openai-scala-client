@@ -3,8 +3,11 @@ package io.cequence.openaiscala.examples.togetherai
 import akka.actor.ActorSystem
 import akka.stream.Materializer
 import akka.stream.scaladsl.Sink
+import io.cequence.openaiscala.RetryHelpers
+import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain._
+import io.cequence.openaiscala.domain.response.ChatChunk.FinishReason
 import io.cequence.openaiscala.domain.response.ChatToolCompletionResponse
 import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
@@ -30,15 +33,20 @@ import scala.util.{Failure, Success, Try}
  *
  *   - a reasoning model: its reasoning arrives as `message.reasoning` / `delta.reasoning`
  *     (typed stream `Thinking` chunks) and counts toward `max_tokens`
- *   - function tools, auto and forced (a forced call reports finish_reason `stop`), sync and
- *     typed streamed; strict json_schema output; image input
+ *   - function tools, auto and forced, sync and typed streamed - a forced call comes back with
+ *     finish_reason `stop`, which the typed stream reports as `tool_calls`; strict json_schema
+ *     output; image input
  *   - Fireworks lists it (`accounts/fireworks/models/muse-glimmer-30b`) for on-demand
- *     deployments only - the section reports a serverless 404 as a skip, not a failure
+ *     deployments only (not serverless) - its section runs only against a deployment named in
+ *     `FIREWORKS_MUSE_GLIMMER_MODEL` (the model string the deployment is served under)
  *
- * Every section prints PASS/FAIL/SKIP and the run continues; the exit code is 1 if any failed.
- * Requires `TOGETHERAI_API_KEY`; the Fireworks section also `FIREWORKS_API_KEY`.
+ * Every section prints PASS/FAIL and the run continues; a section that hits a transient error
+ * (Together's dynamic rate limits answer back-to-back calls with 429s) is retried twice. The
+ * exit code is 1 if any section failed or the run did not complete. Requires
+ * `TOGETHERAI_API_KEY`; the Fireworks section also `FIREWORKS_API_KEY` and
+ * `FIREWORKS_MUSE_GLIMMER_MODEL`.
  */
-object MuseGlimmer30BSmokeTest {
+object MuseGlimmer30BSmokeTest extends RetryHelpers {
 
   private case class Capital(
     country: String,
@@ -95,6 +103,9 @@ object MuseGlimmer30BSmokeTest {
       case calls => calls + s" finish=${response.choices.head.finish_reason.getOrElse("-")}"
     }
 
+  private def describe(e: Throwable): String =
+    s"${e.getClass.getSimpleName}: ${Option(e.getMessage).getOrElse("(no message)").take(400)}"
+
   def main(args: Array[String]): Unit = {
     implicit val system: ActorSystem = ActorSystem()
     implicit val materializer: Materializer = Materializer(system)
@@ -105,6 +116,8 @@ object MuseGlimmer30BSmokeTest {
     val model = NonOpenAIModelId.meta_models_muse_glimmer_30b
     val settings = CreateChatCompletionSettings(model = model, max_tokens = maxTokens)
     val failures = new AtomicInteger(0)
+    implicit val retrySettings: RetrySettings =
+      RetrySettings(maxRetries = 2, delayOffset = 5.seconds)
 
     def section(
       name: String
@@ -112,15 +125,17 @@ object MuseGlimmer30BSmokeTest {
       f: => Future[String]
     ): Future[Unit] = {
       val start = System.currentTimeMillis()
-      Try(f).fold(Future.failed, identity).transform {
-        case Success(msg) =>
-          println(s"[PASS] $name (${System.currentTimeMillis() - start} ms): $msg")
-          Success(())
-        case Failure(e) =>
-          failures.incrementAndGet()
-          println(s"[FAIL] $name: ${e.getClass.getSimpleName}: ${e.getMessage.take(400)}")
-          Success(())
-      }
+      Try(f.retryOnFailure(failureMessage = Some(name)))
+        .fold(Future.failed, identity)
+        .transform {
+          case Success(msg) =>
+            println(s"[PASS] $name (${System.currentTimeMillis() - start} ms): $msg")
+            Success(())
+          case Failure(e) =>
+            failures.incrementAndGet()
+            println(s"[FAIL] $name: ${describe(e)}")
+            Success(())
+        }
     }
 
     val all = for {
@@ -188,6 +203,26 @@ object MuseGlimmer30BSmokeTest {
           }
       }
 
+      _ <- section(s"$model: typed streamed forced tool call (finishes as tool_calls)") {
+        together
+          .createChatToolCompletionStreamed(
+            weatherQuestion,
+            Seq(weatherTool),
+            Some(weatherTool.name),
+            settings
+          )
+          .assembled
+          .map { a =>
+            if (a.toolCalls.isEmpty) throw new IllegalStateException(s"no tool call: $a")
+            if (!a.finishReason.contains(FinishReason.tool_calls))
+              throw new IllegalStateException(
+                s"finish=${a.finishReason} (provider: ${a.providerFinishReason})"
+              )
+            s"${a.toolCalls.map(_.toolName)} finish=${a.finishReason} (provider: ${a.providerFinishReason
+                .getOrElse("-")})"
+          }
+      }
+
       _ <- section(s"$model: createChatCompletionWithJSON[Capital] (json_schema)") {
         together
           .createChatCompletionWithJSON[Capital](
@@ -220,37 +255,35 @@ object MuseGlimmer30BSmokeTest {
           }
       }
 
-      _ <-
-        if (sys.env.get("FIREWORKS_API_KEY").forall(_.isEmpty)) {
-          println("[SKIP] fireworks: FIREWORKS_API_KEY not set")
-          Future.successful(())
-        } else {
-          val fireworks = ChatCompletionProvider.fireworks
-          val fireworksModel = "accounts/fireworks/models/" + NonOpenAIModelId.muse_glimmer_30b
-          fireworks
-            .createChatCompletion(
-              Seq(UserMessage("Say hi")),
-              CreateChatCompletionSettings(fireworksModel, max_tokens = maxTokens)
+      // Fireworks serves it on on-demand deployments only - test one when it is named
+      _ <- section(s"fireworks ${NonOpenAIModelId.muse_glimmer_30b}: chat completion") {
+        (
+          sys.env.get("FIREWORKS_API_KEY").filter(_.nonEmpty),
+          sys.env.get("FIREWORKS_MUSE_GLIMMER_MODEL").filter(_.nonEmpty)
+        ) match {
+          case (Some(_), Some(deploymentModel)) =>
+            val fireworks = ChatCompletionProvider.fireworks
+            fireworks
+              .createChatCompletion(
+                Seq(UserMessage("Say hi")),
+                CreateChatCompletionSettings(deploymentModel, max_tokens = maxTokens)
+              )
+              .map(r => s"$deploymentModel: content='${r.contentHead}'")
+              .andThen { case _ => fireworks.close() }
+
+          case _ =>
+            Future.successful(
+              "skipped - not serverless on Fireworks; set FIREWORKS_API_KEY and FIREWORKS_MUSE_GLIMMER_MODEL (an on-demand deployment's model string) to test one"
             )
-            .transform {
-              case Success(r) =>
-                println(s"[PASS] $fireworksModel: chat completion: '${r.contentHead}'")
-                Success(())
-              case Failure(e) if e.getMessage.contains("not deployed") =>
-                println(
-                  s"[SKIP] $fireworksModel: not serverless - needs an on-demand deployment"
-                )
-                Success(())
-              case Failure(e) =>
-                failures.incrementAndGet()
-                println(s"[FAIL] $fireworksModel: ${e.getMessage.take(300)}")
-                Success(())
-            }
-            .andThen { case _ => fireworks.close() }
         }
+      }
     } yield ()
 
-    Try(Await.result(all, 15.minutes))
+    // a run that fails or times out before its last section is a failure too
+    Try(Await.result(all, 15.minutes)).failed.foreach { e =>
+      failures.incrementAndGet()
+      println(s"[FAIL] the run did not complete: ${describe(e)}")
+    }
     println(if (failures.get == 0) "ALL PASSED" else s"${failures.get} FAILED")
 
     together.close()

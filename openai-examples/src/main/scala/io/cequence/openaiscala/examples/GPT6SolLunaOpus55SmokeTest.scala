@@ -109,6 +109,9 @@ object GPT6SolLunaOpus55SmokeTest {
       case calls => calls
     }
 
+  private def describe(e: Throwable): String =
+    s"${e.getClass.getSimpleName}: ${Option(e.getMessage).getOrElse("(no message)").take(400)}"
+
   def main(args: Array[String]): Unit = {
     implicit val system: ActorSystem = ActorSystem()
     implicit val materializer: Materializer = Materializer(system)
@@ -134,7 +137,7 @@ object GPT6SolLunaOpus55SmokeTest {
           Success(())
         case Failure(e) =>
           failures.incrementAndGet()
-          println(s"[FAIL] $name: ${e.getClass.getSimpleName}: ${e.getMessage.take(400)}")
+          println(s"[FAIL] $name: ${describe(e)}")
           Success(())
       }
     }
@@ -450,7 +453,11 @@ object GPT6SolLunaOpus55SmokeTest {
       _ <- opus55
     } yield ()
 
-    Try(Await.result(all, 20.minutes))
+    // a run that fails or times out before its last section is a failure too
+    Try(Await.result(all, 20.minutes)).failed.foreach { e =>
+      failures.incrementAndGet()
+      println(s"[FAIL] the run did not complete: ${describe(e)}")
+    }
     println(if (failures.get == 0) "ALL PASSED" else s"${failures.get} FAILED")
 
     openAI.close()
