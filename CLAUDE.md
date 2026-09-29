@@ -121,7 +121,8 @@ Streaming is provided as an extension via the `openai-client-stream` module:
   control events no provider mapper emits - `Retry(attempt, model)` inserted by whoever restarts a stream, which resets
   the assembler, and `Done`, an explicit terminator for transports that cannot signal completion). The trait
   default derives it from the OpenAI chunks via `service/ChatChunks.fromOpenAIChunks` (handles `delta.reasoning_content`
-  / `delta.reasoning`); Anthropic (`impl/package.scala#toChatChunks`, requests `display = summarized` thinking) and
+  / `delta.reasoning`; a turn that streamed tool calls finishes as `tool_calls` even when the provider says `stop`, as
+  OpenAI does for a forced `tool_choice` - the raw value stays in `providerReason`); Anthropic (`impl/package.scala#toChatChunks`, requests `display = summarized` thinking) and
   Gemini (`OpenAIGeminiChatCompletionService.toChatChunks`, turns `includeThoughts` on) and Vertex AI
   (`vertexai/service/impl/VertexAIChatChunks`, protobuf parts; `setVertexAIIncludeThoughts`) override it natively and accept
   provider tools via `setAnthropicTools` / `setGeminiTools` / `setVertexAITools`. Anthropic's MCP connector rides on

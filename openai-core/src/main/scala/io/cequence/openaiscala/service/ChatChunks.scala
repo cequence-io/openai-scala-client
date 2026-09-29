@@ -44,7 +44,10 @@ object ChatChunks {
    * [[ChatChunk.Other]] with kind `choice[<index>]`). Streamed tool-call fragments are
    * assembled per `tool_calls[].index` and flushed as [[ChatChunk.ToolCall]]s when the
    * `finish_reason` arrives; `delta.reasoning_content` / `delta.reasoning` become
-   * [[ChatChunk.Thinking]].
+   * [[ChatChunk.Thinking]]. A turn that streamed tool calls finishes as `tool_calls` even when
+   * the provider says `stop` - OpenAI does so for a forced `tool_choice` (live-verified
+   * 2026-09-29), as do OpenAI-compatible providers such as Together AI; the provider's own
+   * value stays in `providerReason`.
    */
   def fromOpenAIChunks: Flow[ChatCompletionChunkResponse, ChatChunk, NotUsed] =
     Flow[ChatCompletionChunkResponse].statefulMapConcat { () =>
@@ -99,6 +102,7 @@ object ChatChunks {
             }
 
             choice.finish_reason.foreach { reason =>
+              val streamedToolCalls = pending.nonEmpty
               pending.toSeq.sortBy(_._1).foreach { case (index, call) =>
                 out += ToolCall(
                   index,
@@ -109,7 +113,11 @@ object ChatChunks {
                 )
               }
               pending.clear()
-              out += Finish(FinishReason.fromOpenAI(reason), Some(reason))
+              val finishReason = FinishReason.fromOpenAI(reason) match {
+                case FinishReason.stop if streamedToolCalls => FinishReason.tool_calls
+                case other                                  => other
+              }
+              out += Finish(finishReason, Some(reason))
             }
           }
         }

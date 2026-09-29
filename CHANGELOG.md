@@ -148,6 +148,10 @@ Responses service in the Perplexity module behind the core `OpenAIResponsesChatC
 (`PerplexityAgentAsOpenAISmokeTest`).
 
 ### Changed
+- **Typed stream: a turn that streamed tool calls finishes as `tool_calls`** on every OpenAI-compatible provider, also
+  when the provider answers `stop` - OpenAI itself does so for a forced `tool_choice` (live-verified 2026-09-29), as does
+  Together AI's Muse Glimmer. The provider's value stays in `Finish.providerReason`; the non-streamed `finish_reason`
+  is the provider's own text, as before.
 - **Model routing and conversions re-measured** against the live chat completions API (41 OpenAI models x 23
   parameter cases, raw and through the client - `OpenAIConversionsAudit`), fixing every missing conversion found:
   per-family `reasoning_effort` mappings (gpt-5: `none`->`minimal`, `xhigh`/`max`->`high`; 5.1: `minimal`->`low`,

@@ -153,6 +153,29 @@ class ChatChunksSpec
       )
     }
 
+    "finish a turn that streamed tool calls as tool_calls, also when the provider says stop" in {
+      // OpenAI answers a forced tool_choice with finish_reason "stop"
+      val out = run(
+        chunk(
+          toolDelta(0, id = Some("call_a"), name = Some("get_weather"), arguments = Some("{}"))
+        ),
+        chunk(ChunkMessageSpec(role = None, content = None), finishReason = Some("stop"))
+      )
+
+      out.takeRight(2) shouldBe Seq(
+        ToolCall(0, "call_a", "get_weather", "{}", serverSide = false),
+        Finish(FinishReason.tool_calls, Some("stop"))
+      )
+
+      // without tool calls a stop stays a stop, and length / content_filter are kept as they are
+      run(chunk(text("hi"), finishReason = Some("stop"))).last shouldBe
+        Finish(FinishReason.stop, Some("stop"))
+      run(
+        chunk(toolDelta(0, id = Some("call_b"), name = Some("f"), arguments = Some("{"))),
+        chunk(ChunkMessageSpec(role = None, content = None), finishReason = Some("length"))
+      ).last shouldBe Finish(FinishReason.length, Some("length"))
+    }
+
     "map reasoning_content and reasoning deltas to Thinking" in {
       val out = run(
         chunk(ChunkMessageSpec(role = None, content = None, reasoning_content = Some("hmm"))),

@@ -888,7 +888,8 @@ object NonOpenAIModelId {
   // distilled from Muse Spark. A reasoning model: its reasoning comes back as
   // `message.reasoning` / `delta.reasoning` and counts toward max_tokens (a small budget can
   // end in empty content); 128k context, tools (auto and forced - a forced call reports
-  // finish_reason "stop"), image input, strict json_schema (live-verified 2026-09-29).
+  // finish_reason "stop", which the typed stream reports as tool_calls), image input, strict
+  // json_schema (live-verified 2026-09-29).
   val meta_models_muse_glimmer_30b = "meta-models/Muse-Glimmer-30B" // Together AI
   // Fireworks lists it (accounts/fireworks/models/muse-glimmer-30b) for on-demand deployments
   // only: `supportsServerless = false`, a plain serverless call is a 404 (2026-09-29)
