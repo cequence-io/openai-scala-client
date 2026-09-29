@@ -268,6 +268,165 @@ class SchemaQuestionsSpec extends AnyWordSpec with Matchers {
     }
   }
 
+  "confidence fields" should {
+
+    // both spellings, nested objects, every slot kind, and an unmatched confidence-like name
+    val schema = Json.parse(
+      """{"type":"object","properties":{
+        |  "is_urgent":{"type":"boolean"},
+        |  "is_urgent_confidence":{"type":"number"},
+        |  "department":{"type":"string","enum":["billing","technical"]},
+        |  "departmentConfidence":{"type":"number"},
+        |  "department_confidence":{"type":["number","null"]},
+        |  "stars":{"type":"integer","minimum":1,"maximum":3},
+        |  "starsConfidence":{"type":"number"},
+        |  "topics":{"type":"array","items":{"type":"string","enum":["payments","pricing"]}},
+        |  "topics_confidence":{"type":"number"},
+        |  "customer":{"type":"object","properties":{
+        |    "isAngry":{"type":"boolean"},
+        |    "isAngryConfidence":{"type":"number"},
+        |    "tier":{"type":"string","enum":["free","pro"]}
+        |  }},
+        |  "customer_confidence":{"type":"number"}
+        |}}""".stripMargin
+    )
+
+    val score = ScoreAnswer(
+      score = 1.1,
+      confidence = 0.61234,
+      legend = Map(0 -> JsNumber(1), 1 -> JsNumber(2), 2 -> JsNumber(3)),
+      probabilities = Map(0 -> 0.1, 1 -> 0.7, 2 -> 0.2)
+    )
+
+    val answers: Map[String, Answer] = Map(
+      "is_urgent" -> NoulAnswer(0.3),
+      "department" -> ChoiceAnswer(
+        "billing",
+        0.83335,
+        Map("billing" -> 0.9, "technical" -> 0.1)
+      ),
+      "stars" -> score,
+      "topics.[payments]" -> NoulAnswer(0.95),
+      "topics.[pricing]" -> NoulAnswer(0.2),
+      "customer.isAngry" -> NoulAnswer(0.9),
+      "customer.tier" -> ChoiceAnswer("pro", 0.4, Map("free" -> 0.3, "pro" -> 0.7))
+    )
+
+    "be dropped from the questions - at any depth, both spellings" in {
+      SchemaQuestions.plan(schema).questions.keySet shouldBe Set(
+        "is_urgent",
+        "department",
+        "stars",
+        "topics.[payments]",
+        "topics.[pricing]",
+        "customer.isAngry",
+        "customer.tier"
+      )
+    }
+
+    "be filled from the answers, right after their base field" in {
+      val json = SchemaQuestions.assemble(SchemaQuestions.plan(schema), answers, 0.5)
+
+      json.keys.toSeq shouldBe Seq(
+        "is_urgent",
+        "is_urgent_confidence",
+        "department",
+        "departmentConfidence",
+        "department_confidence",
+        "stars",
+        "starsConfidence",
+        "topics",
+        "topics_confidence",
+        "customer",
+        "customer_confidence"
+      )
+
+      // boolean: the probability of the emitted answer (false here, so 1 - 0.3)
+      (json \ "is_urgent").as[Boolean] shouldBe false
+      (json \ "is_urgent_confidence").as[BigDecimal] shouldBe BigDecimal("0.7")
+      // choice / score: their peakedness confidence, rounded half-up to 4 decimals
+      (json \ "departmentConfidence").as[BigDecimal] shouldBe BigDecimal("0.8334")
+      (json \ "department_confidence").as[BigDecimal] shouldBe BigDecimal("0.8334")
+      (json \ "starsConfidence").as[BigDecimal] shouldBe BigDecimal("0.6123")
+      // multi-select: the weakest option decision (pricing: 1 - 0.2)
+      (json \ "topics_confidence").as[BigDecimal] shouldBe BigDecimal("0.8")
+      // object: the minimum over everything underneath (tier: 0.4)
+      (json \ "customer_confidence").as[BigDecimal] shouldBe BigDecimal("0.4")
+      (json \ "customer").as[JsObject].keys.toSeq shouldBe Seq(
+        "isAngry",
+        "isAngryConfidence",
+        "tier"
+      )
+      (json \ "customer" \ "isAngryConfidence").as[BigDecimal] shouldBe BigDecimal("0.9")
+    }
+
+    "follow the noul threshold for booleans" in {
+      val plan = SchemaQuestions.plan(schema)
+      // threshold 0.3: noul 0.3 reads as true, so its confidence is the noul itself
+      val json = SchemaQuestions.assemble(plan, answers, noulThreshold = 0.3)
+      (json \ "is_urgent").as[Boolean] shouldBe true
+      (json \ "is_urgent_confidence").as[BigDecimal] shouldBe BigDecimal("0.3")
+    }
+
+    "work on a legacy map-form schema too" in {
+      val mapSchema: Map[String, Any] = Map(
+        "type" -> "object",
+        "properties" -> Map(
+          "ok" -> Map("type" -> "boolean"),
+          "okConfidence" -> Map("type" -> "number")
+        )
+      )
+      val plan = SchemaQuestions.plan(
+        Json.toJson[Either[JsonSchema, Map[String, Any]]](Right(mapSchema))
+      )
+      plan.questions.keySet shouldBe Set("ok")
+      SchemaQuestions.assemble(plan, Map("ok" -> NoulAnswer(0.91)), 0.5) shouldBe
+        Json.obj("ok" -> true, "okConfidence" -> 0.91)
+    }
+
+    "leave a confidence-like field without a sibling (or of a confidence field) to the planner" in {
+      val e = the[IllegalArgumentException] thrownBy SchemaQuestions.plan(
+        Json.parse(
+          """{"type":"object","properties":{
+            |  "a":{"type":"boolean"},
+            |  "a_confidence":{"type":"number"},
+            |  "a_confidence_confidence":{"type":"number"},
+            |  "orphan_confidence":{"type":"number"}
+            |}}""".stripMargin
+        )
+      )
+      e.getMessage should include("orphan_confidence: a number without an enum")
+      e.getMessage should include("a_confidence_confidence: a number without an enum")
+      e.getMessage should not include ("a_confidence:")
+    }
+
+    "refuse a confidence field that is not a number" in {
+      val e = the[IllegalArgumentException] thrownBy SchemaQuestions.plan(
+        Json.parse(
+          """{"type":"object","properties":{
+            |  "a":{"type":"boolean"},
+            |  "aConfidence":{"type":"string"}
+            |}}""".stripMargin
+        )
+      )
+      e.getMessage should include("aConfidence: a confidence field (of 'a') must be a number")
+    }
+
+    "report the questions without a usable answer instead of a confidence" in {
+      val plan = SchemaQuestions.plan(schema)
+      val customer = plan.root.fields.toMap.apply("customer")
+
+      SchemaQuestions.confidence(customer, answers - "customer.tier", 0.5) shouldBe
+        Left(Seq("customer.tier"))
+      SchemaQuestions.confidence(
+        customer,
+        answers + ("customer.tier" -> UnknownAnswer("bounding_box", Json.obj())),
+        0.5
+      ) shouldBe Left(Seq("customer.tier"))
+      SchemaQuestions.confidence(customer, answers, 0.5) shouldBe Right(BigDecimal("0.4000"))
+    }
+  }
+
   "humanize" should {
     "split snake, kebab and camel case" in {
       humanize("is_urgent") shouldBe "Is urgent"

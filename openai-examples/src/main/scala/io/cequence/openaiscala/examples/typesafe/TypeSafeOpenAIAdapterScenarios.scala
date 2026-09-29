@@ -76,6 +76,48 @@ object TypeSafeOpenAIAdapterScenarios {
 
   private implicit val triageFormat: Format[Triage] = Json.format[Triage]
 
+  // `<field>_confidence` / `<field>Confidence` next to `<field>`: filled from Jev, not asked
+  private val triageWithConfidenceSchema = JsonSchemaDef(
+    name = "triage_with_confidence",
+    strict = true,
+    structure = Left(
+      JsonSchema.Object(
+        properties = Seq(
+          "department" -> JsonSchema.String(
+            description = Some("Which team should handle this"),
+            `enum` = Seq("billing", "technical", "sales")
+          ),
+          "department_confidence" -> JsonSchema.Number(),
+          "is_urgent" -> JsonSchema.Boolean(Some("The message conveys time pressure")),
+          "is_urgent_confidence" -> JsonSchema.Number(),
+          "topics" -> JsonSchema.Array(
+            JsonSchema.String(`enum` = Seq("payments", "integration", "pricing")),
+            description = Some("What the message is about")
+          ),
+          "topics_confidence" -> JsonSchema.Number()
+        ),
+        required = Seq(
+          "department",
+          "department_confidence",
+          "is_urgent",
+          "topics",
+          "topics_confidence"
+        )
+      )
+    )
+  )
+
+  private case class TriageWithConfidence(
+    department: String,
+    department_confidence: Double,
+    is_urgent: Boolean,
+    topics: Seq[String],
+    topics_confidence: Double
+  )
+
+  private implicit val triageWithConfidenceFormat: Format[TriageWithConfidence] =
+    Json.format[TriageWithConfidence]
+
   def main(args: Array[String]): Unit = {
     // the actor system only serves the JSON helper's retry scheduler
     implicit val system: ActorSystem = ActorSystem()
@@ -216,6 +258,26 @@ object TypeSafeOpenAIAdapterScenarios {
                 .withJsonSchema(triageSchema)
             )
             .map(_.toString)
+        }
+      }
+
+      _ <- {
+        val m = Seq(UserMessage(ticket))
+        val s = jsonSchemaSettings(triageWithConfidenceSchema)
+        scenario(
+          "7b. confidence fields (`<field>_confidence` / `<field>Confidence`) are filled from " +
+            "Jev's answers, not asked (note the questions: no *_confidence)",
+          m,
+          s
+        ) {
+          for {
+            raw <- plainCall(m, s)
+            typed <- service.createChatCompletionWithJSON[TriageWithConfidence](
+              m,
+              CreateChatCompletionSettings(TypeSafeModelId.jev_latest)
+                .withJsonSchema(triageWithConfidenceSchema)
+            )
+          } yield s"$raw\n            as a case class -> $typed"
         }
       }
 

@@ -109,6 +109,46 @@ class OpenAITypeSafeChatCompletionServiceSpec extends AnyWordSpec with Matchers 
       stub.lastModel shouldBe Some("jev-preview")
     }
 
+    "fill confidence fields from the answers instead of asking for them" in {
+      val stub = new Stub(answers)
+      val withConfidences = jsonSchemaSettings.copy(
+        jsonSchema = Some(
+          schema.copy(structure =
+            Left(
+              JsonSchema.Object(
+                properties = Seq(
+                  "department" -> JsonSchema.String(`enum` = Seq("billing", "technical")),
+                  "department_confidence" -> JsonSchema.Number(),
+                  "is_urgent" -> JsonSchema.Boolean(Some("Conveys urgency")),
+                  "is_urgentConfidence" -> JsonSchema.Number()
+                ),
+                required = Seq(
+                  "department",
+                  "department_confidence",
+                  "is_urgent",
+                  "is_urgentConfidence"
+                )
+              )
+            )
+          )
+        )
+      )
+
+      val response = await(
+        TypeSafeServiceFactory
+          .asOpenAI(stub)
+          .createChatCompletion(Seq(UserMessage("I was charged twice!")), withConfidences)
+      )
+
+      stub.lastQuestions.keySet shouldBe Set("department", "is_urgent")
+      Json.parse(response.contentHead) shouldBe Json.obj(
+        "department" -> "billing",
+        "department_confidence" -> 0.5,
+        "is_urgent" -> true,
+        "is_urgentConfidence" -> 0.6
+      )
+    }
+
     "put system messages under `instructions` and a lone user message under `message`" in {
       val stub = new Stub(answers)
       await(

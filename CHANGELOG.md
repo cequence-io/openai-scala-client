@@ -20,6 +20,16 @@
 
 See `GPT6SolLunaOpus55SmokeTest` for a live walkthrough.
 
+### TypeSafe (Jev): confidence fields
+
+- The OpenAI adapter (`TypeSafeServiceFactory.asOpenAI`) fills **confidence fields** instead of asking for them: a
+  `number` property named `<field>_confidence` or `<field>Confidence` next to a sibling `<field>` (at any depth; both
+  spellings may be declared) is dropped from the questions and filled with System One's confidence in that field's
+  answer, right after it, rounded to 4 decimals - a boolean's probability of the emitted answer, a choice's / score's
+  `confidence`, the weakest option of a multi-select, the minimum over everything under an object. A confidence field
+  without a sibling is planned (and refused) as usual; a non-number one is refused. See `SchemaQuestions` and
+  `TypeSafeOpenAIAdapterScenarios` (7b).
+
 ### ws-client 1.1.1 - classified streaming errors
 
 - Upgraded to `io.cequence:ws-client-*:1.1.1`. A streamed request answered with a non-2xx status now fails the stream
