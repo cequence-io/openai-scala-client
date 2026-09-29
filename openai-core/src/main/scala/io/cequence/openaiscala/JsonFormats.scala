@@ -685,6 +685,16 @@ object JsonFormats {
         obj("type" -> str("usage"), "usage" -> Some(Json.toJson(usage)))
       case Other(kind, raw) =>
         obj("type" -> str("other"), "kind" -> str(kind), "raw" -> Some(raw))
+      case ToolApprovalRequest(requestId, toolName, arguments, serverName, runId, raw) =>
+        obj(
+          "type" -> str("tool_approval_request"),
+          "request_id" -> str(requestId),
+          "tool_name" -> str(toolName),
+          "arguments" -> str(arguments),
+          "server_name" -> optStr(serverName),
+          "run_id" -> str(runId),
+          "raw" -> Some(raw)
+        )
       // control events get their own `type`, not Other's provider-namespaced `kind`
       case Retry(attempt, model) =>
         obj(
@@ -767,6 +777,18 @@ object JsonFormats {
             .map(reason => Finish(reason, optS("provider_reason")))
         case "usage" => (json \ "usage").validate[UsageInfo].map(Usage(_))
         case "other" => for { kind <- s("kind"); raw <- js("raw") } yield Other(kind, raw)
+        case "tool_approval_request" =>
+          for {
+            requestId <- s("request_id"); toolName <- s("tool_name")
+            arguments <- s("arguments"); runId <- s("run_id"); raw <- js("raw")
+          } yield ToolApprovalRequest(
+            requestId,
+            toolName,
+            arguments,
+            optS("server_name"),
+            runId,
+            raw
+          )
         case "retry" => i("attempt").map(Retry(_, optS("model")))
         case "done"  => JsSuccess(Done)
         case other   => JsError(s"Unknown chat chunk type '$other'.")

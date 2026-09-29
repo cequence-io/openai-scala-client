@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.service.impl
 
+import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.cequence.openaiscala.JsonFormats._
@@ -61,7 +62,10 @@ private[service] trait OpenAIServiceImpl
     functions: Seq[ChatCompletionTool],
     responseFunctionName: Option[String],
     settings: CreateChatCompletionSettings
-  ): Future[ChatFunCompletionResponse] = {
+  ): Future[ChatFunCompletionResponse] = ToolApprovalSettingsOps.refusingDecisions(
+    settings,
+    "createChatFunCompletion (chat completions API)"
+  ) {
     val coreParams =
       createBodyParamsForChatCompletion(messages, settings, stream = false)
 
@@ -291,7 +295,10 @@ private[service] trait OpenAIServiceImpl
     messages: Seq[BaseMessage],
     searchOptions: WebSearchOptions,
     settings: CreateChatCompletionSettings
-  ): Future[ChatWebSearchCompletionResponse] = {
+  ): Future[ChatWebSearchCompletionResponse] = ToolApprovalSettingsOps.refusingDecisions(
+    settings,
+    "createChatWebSearchCompletion (chat completions API)"
+  ) {
     val coreParams =
       createBodyParamsForChatCompletion(messages, settings, stream = false)
 
@@ -1227,41 +1234,42 @@ private[service] trait OpenAIServiceImpl
   override def createChatCompletionBatch(
     requests: Seq[ChatCompletionBatchRequest],
     settings: CreateChatCompletionSettings
-  ): Future[ChatCompletionBatchInfo] = {
-    require(requests.nonEmpty, "At least one batch request expected.")
+  ): Future[ChatCompletionBatchInfo] =
+    ToolApprovalSettingsOps.refusingDecisions(settings, "A chat-completion batch") {
+      require(requests.nonEmpty, "At least one batch request expected.")
 
-    // one full chat-completion request body per JSONL line - route through the shared
-    // `toJsBodyObject` so the blank-named `extra_params` param is spread into the body (exactly
-    // as the synchronous chat-completion path does) instead of being written as a literal " "
-    // key, which OpenAI's Batch API rejects with `unknown_parameter: Unknown parameter: ' '`.
-    val lines = requests.map { request =>
-      val body = toJsBodyObject(
-        createBodyParamsForChatCompletion(request.messages, settings, stream = false).map {
-          case (param, value) => param.toString -> value
-        }
-      )
-
-      Json
-        .obj(
-          "custom_id" -> request.customId,
-          "method" -> "POST",
-          "url" -> BatchEndpoint.`/v1/chat/completions`.toString,
-          "body" -> body
+      // one full chat-completion request body per JSONL line - route through the shared
+      // `toJsBodyObject` so the blank-named `extra_params` param is spread into the body (exactly
+      // as the synchronous chat-completion path does) instead of being written as a literal " "
+      // key, which OpenAI's Batch API rejects with `unknown_parameter: Unknown parameter: ' '`.
+      val lines = requests.map { request =>
+        val body = toJsBodyObject(
+          createBodyParamsForChatCompletion(request.messages, settings, stream = false).map {
+            case (param, value) => param.toString -> value
+          }
         )
-        .toString()
+
+        Json
+          .obj(
+            "custom_id" -> request.customId,
+            "method" -> "POST",
+            "url" -> BatchEndpoint.`/v1/chat/completions`.toString,
+            "body" -> body
+          )
+          .toString()
+      }
+
+      val tempPath = Files.createTempFile("openai-chat-completion-batch-", ".jsonl")
+      Files.write(tempPath, lines.mkString("\n").getBytes(StandardCharsets.UTF_8))
+
+      val result = for {
+        fileInfo <- uploadBatchFile(tempPath.toFile)
+
+        batch <- createBatch(fileInfo.id, BatchEndpoint.`/v1/chat/completions`)
+      } yield toBatchInfo(batch)
+
+      result.andThen { case _ => Try(Files.deleteIfExists(tempPath)) }
     }
-
-    val tempPath = Files.createTempFile("openai-chat-completion-batch-", ".jsonl")
-    Files.write(tempPath, lines.mkString("\n").getBytes(StandardCharsets.UTF_8))
-
-    val result = for {
-      fileInfo <- uploadBatchFile(tempPath.toFile)
-
-      batch <- createBatch(fileInfo.id, BatchEndpoint.`/v1/chat/completions`)
-    } yield toBatchInfo(batch)
-
-    result.andThen { case _ => Try(Files.deleteIfExists(tempPath)) }
-  }
 
   override def getChatCompletionBatch(
     batchId: String,

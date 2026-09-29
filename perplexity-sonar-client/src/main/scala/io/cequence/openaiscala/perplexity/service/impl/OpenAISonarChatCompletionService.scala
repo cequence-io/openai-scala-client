@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.perplexity.service.impl
 
+import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.OpenAIScalaClientException
@@ -53,32 +54,36 @@ private[service] class OpenAISonarChatCompletionService(
   override def createChatCompletion(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
-  ): Future[ChatCompletionResponse] = {
-    val addAHrefToCitations = getAHrefCitationParamValue(settings)
-    val includeCitationsInTextResponse = getIncludeCitationsInTextResponseParamValue(settings)
+  ): Future[ChatCompletionResponse] =
+    ToolApprovalSettingsOps.refusingDecisions(settings, "The Perplexity Sonar adapter") {
+      val addAHrefToCitations = getAHrefCitationParamValue(settings)
+      val includeCitationsInTextResponse =
+        getIncludeCitationsInTextResponseParamValue(settings)
 
-    underlying
-      .createChatCompletion(
-        messages.map(toSonarMessage),
-        toSonarSetting(settings)
-      )
-      .map(toOpenAIResponse(includeCitationsInTextResponse, addAHrefToCitations))
-  }
+      underlying
+        .createChatCompletion(
+          messages.map(toSonarMessage),
+          toSonarSetting(settings)
+        )
+        .map(toOpenAIResponse(includeCitationsInTextResponse, addAHrefToCitations))
+    }
 
   override def createChatCompletionStreamed(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
-  ): Source[ChatCompletionChunkResponse, NotUsed] = {
-    val addAHrefToCitations = getAHrefCitationParamValue(settings)
-    val includeCitationsInTextResponse = getIncludeCitationsInTextResponseParamValue(settings)
+  ): Source[ChatCompletionChunkResponse, NotUsed] =
+    ToolApprovalSettingsOps.refusingDecisionsStream(settings, "The Perplexity Sonar adapter") {
+      val addAHrefToCitations = getAHrefCitationParamValue(settings)
+      val includeCitationsInTextResponse =
+        getIncludeCitationsInTextResponseParamValue(settings)
 
-    underlying
-      .createChatCompletionStreamed(
-        messages.map(toSonarMessage),
-        toSonarSetting(settings)
-      )
-      .map(toOpenAIChunkResponse(includeCitationsInTextResponse, addAHrefToCitations))
-  }
+      underlying
+        .createChatCompletionStreamed(
+          messages.map(toSonarMessage),
+          toSonarSetting(settings)
+        )
+        .map(toOpenAIChunkResponse(includeCitationsInTextResponse, addAHrefToCitations))
+    }
 
   private def getAHrefCitationParamValue(settings: CreateChatCompletionSettings) =
     settings.extra_params.get(aHrefForCitationsParam).exists(_.asInstanceOf[Boolean])

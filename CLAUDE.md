@@ -142,6 +142,86 @@ Streaming is provided as an extension via the `openai-client-stream` module:
   `source.assembled` folds into `AssembledChatCompletion`. Two layers: the tool layer (`ToolCall*`/`ToolResult`, client and
   server tools alike) plus a semantic layer emitted in addition (`CodeExecution`/`CodeExecutionResult`, `WebSearch`/
   `WebSearchResult`, `Image`, `Refusal`, `Citation`); anything unmapped is `Other(kind, raw)`, never dropped.
+- **Human approval mid-stream** (typed stream; live-verified 2026-09-29): a run paused until a tool call is
+  approved emits one `ChatChunk.ToolApprovalRequest(requestId, toolName, arguments, serverName, runId, raw)` per pending
+  call, then `Finish(FinishReason.approval_required)`, and ends (`AssembledChatCompletion.toolApprovalRequests` /
+  `awaitingApproval` / `approveAll` / `denyAll`). Resume with a second call carrying the decisions
+  (`request.approve` / `request.deny(reason)` -> `ToolApprovalDecision`, reason only on deny; one-shot - never on
+  settings reused for later turns) via `ToolApprovalSettingsOps.setToolApprovalDecisions` (an `extra_params` key;
+  stripped from the OpenAI chat body, never sent). A resume must reach the SAME OpenAI project / Anthropic workspace
+  (no round-robin / random-order / parallel-take-first adapters across several; avoid retry adapters around it).
+  Two backends:
+  - **OpenAI** (Responses API, `MCPServerTool(requireApproval = true)` or a raw `MCPTool` via `setResponsesTools` -
+    its `requireApproval = None` means the API default `always`): the pause is a normal `completed` response whose
+    last item is `mcp_approval_request` (arguments already on `output_item.added`; no dedicated stream event),
+    mapped on `output_item.done`, NOT on the tool layer (the approved call arrives as an `mcp_call` in the resumed
+    stream). STATEFUL resume: any call whose tools may ask (or carrying decisions) defaults to `store = true`; the
+    resume continues the paused response by id (`previous_response_id` = the requests' `runId`) sending only the
+    system messages (as instructions), the trailing tool messages that answer the PAUSED response's own function
+    calls (looked up with `getModelResponse(runId)` whenever tool messages trail - outputs the paused call already
+    had, e.g. a tool-loop turn or an earlier resume, are not re-sent: live 2026-09-29, OpenAI silently ACCEPTS a
+    re-sent `function_call_output`, duplicating it in the conversation), the answers and the tools again - so reasoning
+    items and executed `mcp_call`s survive and a run may pause again (live: two pauses with reasoning effort medium).
+    `store` defaults to true only when a tool may ask (`mayAskForApproval`: an unset / `always` raw `MCPTool`, or a
+    filter whose `never` names do not cover every allowed tool) - Zero-Data-Retention orgs must pass `store = false`.
+    An explicit `store = false` falls back to the stateless replay (the answered requests + answers after the
+    history; an unanswered one is dropped) - one pause deep only (warned). Live facts: `store=false` +
+    `previous_response_id` -> 404; a reason with `approve = true` -> 400; a pending request left unanswered -> 400.
+    Decisions and `setResponsesTools` route to the Responses adapter (`chatToolsPreferResponsesAPI`) on
+    `createChatToolCompletion(Streamed)` and `createChatCompletion` of the full service (the Responses view's
+    `createChatCompletion` sends them; a paused run reports `approval_required` there too); every entry point that
+    cannot carry Responses-native tools refuses them (`ResponsesChatCompletionSettingsOps.unsupportedResponsesTools`,
+    with a backstop in the chat body maker) - chat-only services refuse both. Sync `createChatToolCompletion` reports
+    `finish_reason = "approval_required"` + `response.toolApprovalRequests`; the OpenAI-shaped
+    `createChatCompletionStreamed` view reports the finish reason but cannot carry the requests. DeepWiki's tools are
+    `read_wiki_structure` / `read_wiki_contents` / `ask_wiki_question` now (was `ask_question`).
+  - **Anthropic Managed Agents** (`managedAgentAsOpenAI`, a native typed-stream override): tools with an `always_ask` /
+    `auto` permission policy (configured on the agent: `agentTools` / a fixed agent - per-call tools are refused)
+    pause the session: `agent.tool_use` / `agent.mcp_tool_use` with `evaluated_permission = ask` + a `session.status_idle`
+    `requires_action {event_ids}`. The resume posts `user.tool_confirmation {tool_use_id: <event id>, result,
+    deny_message (deny only)}` to the same session (`runId`; messages ignored), reports the answered calls as
+    `ToolCall(serverSide)` first, then `agent.tool_result` (linked by `tool_use_id`, a denial is `is_error`) as
+    `ToolResult`. Session lifecycle: deleted once a turn finishes, fails or is cancelled (BEFORE the stream completes,
+    so `close()` right after cannot race it, and only once the POST's outcome is known); KEPT while paused (never
+    auto-deleted - `deleteSession(runId)` to abandon) and when a resume can be retried with the same decisions - its
+    confirmations were not applied (the POST failed) or its next pause could not be looked up (I/O); an unanswerable
+    pause (`agent.custom_tool_use`, an id missing from the history: `UnanswerablePauseException`) fails and is
+    deleted. A pending id not seen in the stream (partial resume) is looked up via `listSessionEvents`. A
+    `session.error` with `retry_status` retrying is `Other` (the turn goes on); `exhausted` (the SDK: "this turn is
+    dead", then a `retries_exhausted` idle) and `terminal` fail classified (overloaded / rate-limited) on every path,
+    the sync one included. An event stream that closes before a terminal event fails the call
+    (`OpenAIScalaServerErrorException`) instead of ending the turn quietly. The sync / OpenAI-chunk paths still fail
+    on `requires_action`. `PermissionPolicy.auto`
+    added. The session applies the confirmations of ONE POST one at a time and idles in between (`requires_action`
+    listing the still-queued ids - live 2026-09-29, the queued one IS applied without another POST): such an interim
+    idle (all ids confirmed by this resume) is passed through as `Other("session.status_idle")`, not a pause, and a
+    real pause never re-asks a confirmed id. Known gap (TODO): the confirmation POST is not gated on the SSE
+    subscription being live.
+  - Everything else refuses rather than silently misbehaving: adapters / entry points that cannot resume refuse a call
+    carrying decisions (`ToolApprovalSettingsOps.refusingDecisions`: Anthropic Messages / Bedrock, Gemini, Vertex AI,
+    Sonar, TypeSafe, the OpenAI chat-only services, `createChatFunCompletion`, `createChatWebSearchCompletion`,
+    `createChatCompletionBatch`, `ChatToCompletionAdapter`); providers that cannot pause refuse
+    `MCPServerTool(requireApproval = true)` instead of running it unapproved (Anthropic's MCP connector, Gemini,
+    Perplexity `agentAsOpenAI` - its backend is marked `ResponsesToolApprovalsUnsupported` and also refuses a raw
+    `MCPTool` whose EXPLICIT `requireApproval` may ask; unset = the backend's default, auto-run).
+    Pinned by `ToolApprovalWireSpec` (client-stream, replays the live-recorded SSE in `test/resources/tool-approval/`
+    incl. a two-pause stateful run), `ManagedAgentToolApprovalWireSpec` (anthropic, a scripted session API that only
+    delivers to live subscribers), `ToolApprovalSpec` (core) and the per-provider refusal tests; live demo
+    `examples/CreateChatToolCompletionStreamedWithApproval` (`deny` arg to deny).
+  - **Callback helper** (live-verified 2026-09-29 on both backends): the final
+    `createChatToolCompletionStreamedWithApprovals(messages, tools, toolChoice, settings, maxApprovalRounds = 10)(decide:
+    ToolApprovalRequest => Future[ToolApprovalDecision])` on `OpenAIChatCompletionStreamedServiceExtra` (so every
+    streamed service) = core `service/ToolApprovalLoop`: asks `decide` about each pending request (sequentially, in
+    order; a decision must answer its request) and resumes with `settings.setToolApprovalDecisions`, joining the rounds
+    into ONE stream - the first round's `Start` only, the answered requests dropped (the callback saw them), every
+    round's `Finish` / `Usage` / `Done` held back (the stream ends with the last `Finish`, the usage summed via
+    `UsageInfo.sum`, `Done`), tool-call ordinals shifted to continue. Ends PAUSED (requests + `Finish(approval_required)` passed through, like the plain
+    stream) after `maxApprovalRounds` resumes or when a paused round also has client function calls (no local tool
+    execution). Per-round state is per materialization (`Source.lazySource`); the next round starts only after an
+    end-of-round marker is processed (a failed / cancelled round never asks), via `Source.futureSource` (eager concat is
+    harmless). A `Retry` passes in round 0 (resets the round) but fails a resumed round. Tests: `ToolApprovalLoopSpec`
+    (core, fake provider), plus helper cases in both wire specs; live demo
+    `examples/CreateChatToolCompletionStreamedWithApprovalCallback` (`ask` = console prompt, `deny`).
 - **Provider-neutral tools** (1.3.0): `ChatCompletionTool.MCPServerTool` / `ChatCompletionTool.SkillTool` (openai-core
   `domain/AssistantTool.scala`) go in `tools` next to `FunctionTool`. OpenAI: `ChatCompletionSettingsConversions.chatToolsRequireResponsesAPI(model, tools)`
   routes any request carrying them through the Responses API (`OpenAIResponsesChatCompletionService.toResponsesTools`: `mcp`

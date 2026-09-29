@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.service.adapter
 
+import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.{
   AssistantMessage,
@@ -44,17 +45,22 @@ private class ChatToCompletionAdapter[
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
   ): Future[ChatCompletionResponse] =
-    underlying
-      .createCompletion(
-        prompt = messages.map {
-          case m: SystemMessage    => m.content
-          case m: UserMessage      => s"Q: ${m.content}"
-          case m: AssistantMessage => s"A: ${m.content}"
-          case m => throw new OpenAIScalaClientException("Unsupported message type: " + m)
-        }.mkString("\n"),
-        settings = toCompletionSettings(settings)
-      )
-      .map(toChatCompletionResponse)
+    ToolApprovalSettingsOps.refusingDecisions(
+      settings,
+      "The chat-to-completion adapter (legacy completions API)"
+    ) {
+      underlying
+        .createCompletion(
+          prompt = messages.map {
+            case m: SystemMessage    => m.content
+            case m: UserMessage      => s"Q: ${m.content}"
+            case m: AssistantMessage => s"A: ${m.content}"
+            case m => throw new OpenAIScalaClientException("Unsupported message type: " + m)
+          }.mkString("\n"),
+          settings = toCompletionSettings(settings)
+        )
+        .map(toChatCompletionResponse)
+    }
 
   override def createChatToolCompletion(
     messages: Seq[BaseMessage],

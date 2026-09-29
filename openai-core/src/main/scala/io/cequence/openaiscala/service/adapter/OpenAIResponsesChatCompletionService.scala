@@ -3,6 +3,7 @@ package io.cequence.openaiscala.service.adapter
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.settings.ResponsesChatCompletionSettingsOps._
+import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps._
 
 import io.cequence.openaiscala.domain.response.{
   ChatCompletionChoiceInfo,
@@ -28,10 +29,14 @@ import io.cequence.openaiscala.domain.responsesapi.tools.{
 }
 import io.cequence.openaiscala.domain.responsesapi.tools.mcp.{
   MCPAllowedTools,
+  MCPApprovalRequest,
+  MCPApprovalResponse,
   MCPRequireApproval,
-  MCPTool
+  MCPTool,
+  MCPToolFilter
 }
 import io.cequence.openaiscala.service.{
+  ResponsesToolApprovalsUnsupported,
   ChatChunks,
   OpenAIChatCompletionExtra,
   OpenAIChatCompletionService,
@@ -40,18 +45,29 @@ import io.cequence.openaiscala.service.{
   OpenAIStreamedServiceExtra
 }
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.openaiscala.domain.response.{ChatChunk, ChatCompletionChunkResponse}
+import io.cequence.openaiscala.domain.response.{
+  ChatChunk,
+  ChatCompletionChunkResponse,
+  ToolApprovalDecision
+}
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import io.cequence.wsclient.service.CloseableService
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 
 private[service] class OpenAIResponsesChatCompletionService(
   underlying: OpenAIResponsesService with CloseableService,
   // the same service when it also streams (OpenAIStreamedService) - enables the typed stream
-  streamedUnderlying: Option[OpenAIStreamedServiceExtra]
+  streamedUnderlying: Option[OpenAIStreamedServiceExtra],
+  // whether the backend can pause a run for MCP tool approval (OpenAI) - one that cannot
+  // (ResponsesToolApprovalsUnsupported, e.g. Perplexity) refuses approval decisions and
+  // requireApproval tools. No default: Scala 2.12 would put a default getter with this
+  // class's restricted access on the public companion object, making it inaccessible outside
+  // the `service` package
+  toolApprovals: Boolean
 )(
   implicit ec: ExecutionContext
 ) extends OpenAIChatCompletionService
@@ -80,23 +96,22 @@ private[service] class OpenAIResponsesChatCompletionService(
   ): Source[ChatChunk, NotUsed] =
     streamedUnderlying match {
       case Some(streamed) =>
-        val (items, responsesSettings) =
-          toResponsesRequest(messages, tools, responseToolChoice, settings)
-
-        // the typed stream exists to surface thinking - ask for reasoning summaries whenever
-        // reasoning is configured (unless the caller opted out)
-        val withSummaries =
-          if (settings.responsesReasoningSummary.getOrElse(true))
-            responsesSettings.copy(
-              reasoning = responsesSettings.reasoning.map(r =>
-                r.copy(summary = r.summary.orElse(Some("auto")))
+        Try(buildResponsesRequest(messages, tools, responseToolChoice, settings)) match {
+          case Failure(e) => Source.failed(e)
+          case Success(Right((items, responsesSettings))) =>
+            streamResponse(streamed, items, responsesSettings, settings)
+          case Success(Left(lookup)) =>
+            // nothing is sent before the stream is materialized
+            Source
+              .lazySource(() =>
+                Source.futureSource(
+                  completeRequest(lookup).map { case (items, responsesSettings) =>
+                    streamResponse(streamed, items, responsesSettings, settings)
+                  }
+                )
               )
-            )
-          else responsesSettings
-
-        streamed
-          .createModelResponseStreamed(Inputs.Items(items: _*), withSummaries)
-          .via(ChatChunks.fromResponseEvents)
+              .mapMaterializedValue(_ => NotUsed)
+        }
 
       case None =>
         Source.failed(
@@ -106,15 +121,90 @@ private[service] class OpenAIResponsesChatCompletionService(
         )
     }
 
+  private def streamResponse(
+    streamed: OpenAIStreamedServiceExtra,
+    items: Seq[Input],
+    responsesSettings: CreateModelResponseSettings,
+    settings: CreateChatCompletionSettings
+  ): Source[ChatChunk, NotUsed] = {
+    // the typed stream to surface thinking - ask for reasoning summaries whenever
+    // reasoning is configured (unless the caller opted out)
+    val withSummaries =
+      if (settings.responsesReasoningSummary.getOrElse(true))
+        responsesSettings.copy(
+          reasoning = responsesSettings.reasoning.map(r =>
+            r.copy(summary = r.summary.orElse(Some("auto")))
+          )
+        )
+      else responsesSettings
+
+    streamed
+      .createModelResponseStreamed(Inputs.Items(items: _*), withSummaries)
+      .via(ChatChunks.fromResponseEvents)
+  }
+
   private def toResponsesRequest(
     messages: Seq[BaseMessage],
     tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
-  ): (Seq[Input], CreateModelResponseSettings) = {
+  ): Future[(Seq[Input], CreateModelResponseSettings)] =
+    Future
+      .fromTry(Try(buildResponsesRequest(messages, tools, responseToolChoice, settings)))
+      .flatMap {
+        case Right(request) => Future.successful(request)
+        case Left(lookup)   => completeRequest(lookup)
+      }
+
+  // a stateful resume carrying tool outputs: which of them answer the paused response's own
+  // client function calls is known only from that (stored) response
+  private final case class PausedCallsLookup(
+    runId: String,
+    complete: Set[String] => (Seq[Input], CreateModelResponseSettings)
+  )
+
+  private def completeRequest(
+    lookup: PausedCallsLookup
+  ): Future[(Seq[Input], CreateModelResponseSettings)] =
+    underlying
+      .getModelResponse(lookup.runId)
+      .map(paused => lookup.complete(paused.outputFunctionCalls.map(_.callId).toSet))
+
+  private def buildResponsesRequest(
+    messages: Seq[BaseMessage],
+    tools: Seq[ChatCompletionTool],
+    responseToolChoice: Option[String],
+    settings: CreateChatCompletionSettings
+  ): Either[PausedCallsLookup, (Seq[Input], CreateModelResponseSettings)] = {
     val (instructions, items) = convertMessages(messages)
 
     val allTools = OpenAIResponsesChatCompletionService.toResponsesTools(tools, settings)
+    val decisions = settings.toolApprovalDecisions
+
+    if (!toolApprovals) {
+      ToolApprovalSettingsOps.unsupportedDecisions(settings, serviceName).foreach(throw _)
+      tools.collectFirst {
+        case mcp: ChatCompletionTool.MCPServerTool if mcp.requireApproval => mcp
+      }.foreach(mcp =>
+        throw new OpenAIScalaClientException(
+          s"$serviceName cannot pause for tool approval - MCPServerTool '${mcp.name}' has requireApproval = true (its calls would run unapproved)."
+        )
+      )
+      // an explicit approval requirement on a raw MCP tool (unset = the backend's default)
+      allTools.collectFirst {
+        case mcp: MCPTool if mcp.requireApproval.isDefined && mayAskForApproval(mcp) => mcp
+      }.foreach(mcp =>
+        throw new OpenAIScalaClientException(
+          s"$serviceName cannot pause for tool approval - MCPTool '${mcp.serverLabel}' requires approval for some calls (they would run unapproved); set requireApproval = never."
+        )
+      )
+    }
+
+    if (decisions.nonEmpty && allTools.isEmpty)
+      throw new OpenAIScalaClientException(
+        "Resuming a run paused for tool approval requires the same tools as the paused call " +
+          "(tools are not carried over) - pass them to createChatToolCompletion(Streamed)."
+      )
 
     // an explicit forced choice is always sent (without tools the API rejects it loudly rather
     // than the choice being dropped silently); 'auto' only when there are tools to choose from
@@ -129,35 +219,155 @@ private[service] class OpenAIResponsesChatCompletionService(
         if (allTools.isEmpty) None else Some(ToolChoice.Mode.Auto)
     }
 
-    (items, toResponsesSettings(settings, instructions, allTools, responsesToolChoice))
+    val responsesSettings =
+      toResponsesSettings(settings, instructions, allTools, responsesToolChoice)
+
+    // a run that may pause for approval is stored (unless the caller opted out), so its resume
+    // can continue it by id - the server keeps its reasoning and executed MCP calls
+    val approvalCapable =
+      toolApprovals && decisions.nonEmpty || toolApprovals && allTools.exists {
+        case mcp: MCPTool => mayAskForApproval(mcp)
+        case _            => false
+      }
+    val stored = settings.store.getOrElse(approvalCapable)
+
+    if (decisions.isEmpty)
+      Right((items, responsesSettings.copy(store = Some(stored))))
+    else if (stored) {
+      // stateful resume: the paused response is continued by id - send only what is new: the
+      // outputs of the paused response's own client function calls (among the trailing tool
+      // messages - earlier outputs are already part of the stored conversation) and the answers
+      val runId = pausedRunId(decisions)
+      val toolOutputs = trailingToolMessages(messages)
+
+      def resume(pausedCalls: Set[String]) = {
+        val answering = toolOutputs.filter {
+          case tool: ToolMessage => pausedCalls.contains(tool.tool_call_id)
+          case _                 => false
+        }
+        if (answering.size < toolOutputs.size)
+          logger.debug(
+            s"Responses API adapter: ${toolOutputs.size - answering.size} trailing tool output(s) do not answer a function call of the paused response '$runId' - not sent again."
+          )
+        (
+          convertMessages(answering)._2 ++ approvalResponses(decisions),
+          responsesSettings.copy(store = Some(true), previousResponseId = Some(runId))
+        )
+      }
+
+      if (toolOutputs.isEmpty) Right(resume(Set.empty))
+      else Left(PausedCallsLookup(runId, resume))
+    } else {
+      // stateless (store = false): the pending requests are replayed after the history, each
+      // followed by its answer - only one pause deep (a resumed run that pauses again cannot be
+      // continued without the items the server did not keep)
+      logger.warn(
+        "Responses API adapter: resuming a tool-approval pause with store = false replays the pending requests after the history - a run that pauses again cannot be continued; leave `store` unset to resume by response id."
+      )
+      Right(
+        (
+          items ++ decisions.flatMap(decision =>
+            approvalRequestItem(decision.request) +: approvalResponses(Seq(decision))
+          ),
+          responsesSettings.copy(store = Some(false))
+        )
+      )
+    }
   }
 
+  // whether a raw MCP tool may pause a run for approval: unset is the API default (always); a
+  // filter asks unless nothing is 'always' and its 'never' names cover every allowed tool
+  private def mayAskForApproval(mcp: MCPTool): Boolean =
+    mcp.requireApproval match {
+      case None | Some(MCPRequireApproval.Setting.Always) => true
+      case Some(MCPRequireApproval.Setting.Never)         => false
+      case Some(MCPRequireApproval.Filter(always, never)) =>
+        val allowedNames = mcp.allowedTools.collect {
+          case MCPAllowedTools.ToolNames(names)       => names
+          case MCPAllowedTools.Filter(_, Some(names)) => names
+        }
+        val neverCoversAllowed = (allowedNames, never) match {
+          case (Some(names), Some(MCPToolFilter(None, Some(neverNames)))) =>
+            names.forall(neverNames.contains)
+          case _ => false
+        }
+        always.exists(f => f.readOnly.isDefined || f.toolNames.exists(_.nonEmpty)) ||
+        !neverCoversAllowed
+    }
+
+  private def serviceName =
+    "This Responses API backend"
+
+  // the trailing tool messages: the outputs of the paused response's client function calls
+  private def trailingToolMessages(messages: Seq[BaseMessage]): Seq[BaseMessage] =
+    messages.reverse.takeWhile(_.isInstanceOf[ToolMessage]).reverse
+
+  private def openAIApprovalRequest(
+    request: ChatChunk.ToolApprovalRequest
+  ): ChatChunk.ToolApprovalRequest =
+    if (
+      (request.raw \ "type").asOpt[String].contains("mcp_approval_request") &&
+      request.serverName.isDefined
+    ) request
+    else
+      throw new OpenAIScalaClientException(
+        s"Tool approval request '${request.requestId}' is not an OpenAI MCP approval request - it cannot resume an OpenAI Responses run."
+      )
+
+  // every decision must answer the same paused response
+  private def pausedRunId(decisions: Seq[ToolApprovalDecision]): String =
+    decisions.map(d => openAIApprovalRequest(d.request).runId).distinct match {
+      case Seq(single) => single
+      case several =>
+        throw new OpenAIScalaClientException(
+          s"Tool approval decisions must answer one paused response, got: ${several.mkString(", ")}."
+        )
+    }
+
+  private def approvalRequestItem(request: ChatChunk.ToolApprovalRequest): Input = {
+    val openAIRequest = openAIApprovalRequest(request)
+    MCPApprovalRequest(
+      openAIRequest.arguments,
+      openAIRequest.requestId,
+      openAIRequest.toolName,
+      openAIRequest.serverName.get
+    )
+  }
+
+  // a reason only with a denial - OpenAI rejects one on an approval
+  private def approvalResponses(decisions: Seq[ToolApprovalDecision]): Seq[Input] =
+    decisions.map { decision =>
+      MCPApprovalResponse(
+        openAIApprovalRequest(decision.request).requestId,
+        decision.approve,
+        reason = decision.reason.filterNot(_ => decision.approve)
+      )
+    }
+
+  // Responses-native tools (setResponsesTools) are sent here too; function tools are not
   override def createChatCompletion(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
-  ): Future[ChatCompletionResponse] = {
-    val (instructions, items) = convertMessages(messages)
-    val responsesSettings =
-      toResponsesSettings(settings, instructions, tools = Nil, toolChoice = None)
-
-    underlying
-      .createModelResponse(Inputs.Items(items: _*), responsesSettings)
-      .map(toOpenAIChatCompletionResponse)
-  }
+  ): Future[ChatCompletionResponse] =
+    toResponsesRequest(messages, Nil, None, settings).flatMap {
+      case (items, responsesSettings) =>
+        underlying
+          .createModelResponse(Inputs.Items(items: _*), responsesSettings)
+          .map(toOpenAIChatCompletionResponse)
+    }
 
   override def createChatToolCompletion(
     messages: Seq[BaseMessage],
     tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
-  ): Future[ChatToolCompletionResponse] = {
-    val (items, responsesSettings) =
-      toResponsesRequest(messages, tools, responseToolChoice, settings)
-
-    underlying
-      .createModelResponse(Inputs.Items(items: _*), responsesSettings)
-      .map(toOpenAIToolCompletionResponse)
-  }
+  ): Future[ChatToolCompletionResponse] =
+    toResponsesRequest(messages, tools, responseToolChoice, settings).flatMap {
+      case (items, responsesSettings) =>
+        underlying
+          .createModelResponse(Inputs.Items(items: _*), responsesSettings)
+          .map(toOpenAIToolCompletionResponse)
+    }
 
   override def convertMessages(
     messages: Seq[BaseMessage]
@@ -261,7 +471,8 @@ private[service] class OpenAIResponsesChatCompletionService(
     if (settings.verbosity.isDefined)
       logger.warn("Responses API adapter: 'verbosity' parameter is not supported, ignoring")
     if (
-      (settings.extra_params.keySet -- ResponsesChatCompletionSettingsOps.knownParams).nonEmpty
+      (settings.extra_params.keySet -- ResponsesChatCompletionSettingsOps.knownParams --
+        ToolApprovalSettingsOps.knownParams).nonEmpty
     )
       logger.warn(
         "Responses API adapter: 'extra_params' parameter is not supported, ignoring"
@@ -352,7 +563,12 @@ private[service] class OpenAIResponsesChatCompletionService(
     warnUnrepresentableOutputs(response)
 
     val (textOpt, refusalOpt) = extractTextAndRefusal(response)
-    val finishReason = toFinishReason(response, refusalOpt.isDefined && textOpt.isEmpty)
+    val finishReason =
+      toFinishReason(response, refusalOpt.isDefined && textOpt.isEmpty).map {
+        case "stop" if response.output.exists(_.isInstanceOf[MCPApprovalRequest]) =>
+          "approval_required"
+        case other => other
+      }
 
     ChatCompletionResponse(
       id = response.id,
@@ -386,8 +602,12 @@ private[service] class OpenAIResponsesChatCompletionService(
     }
     val (textOpt, refusalOpt) = extractTextAndRefusal(response)
     val refusalOnly = refusalOpt.isDefined && textOpt.isEmpty && toolCalls.isEmpty
-    // chat completions report 'tool_calls' (not 'stop') when the model asked for tool calls
+    // chat completions report 'tool_calls' (not 'stop') when the model asked for tool calls;
+    // a run paused for approval reports 'approval_required' (see toolApprovalRequests)
+    val awaitingApproval =
+      response.output.exists(_.isInstanceOf[MCPApprovalRequest])
     val finishReason = toFinishReason(response, refusalOnly).map {
+      case "stop" if awaitingApproval   => "approval_required"
       case "stop" if toolCalls.nonEmpty => "tool_calls"
       case other                        => other
     }
@@ -427,7 +647,9 @@ private[service] class OpenAIResponsesChatCompletionService(
     val unrepresented = response.output.collect {
       case _: Message.OutputContent => None
       case _: FunctionToolCall      => None
-      case other                    => Some(other.`type`)
+      // surfaced via ToolApprovalSettingsOps (response.toolApprovalRequests)
+      case _: MCPApprovalRequest => None
+      case other                 => Some(other.`type`)
     }.flatten
 
     if (unrepresented.nonEmpty) {
@@ -486,8 +708,9 @@ object OpenAIResponsesChatCompletionService {
 
   /**
    * The Responses tools of a chat-completion request: function tools as `function`, the
-   * provider-neutral [[ChatCompletionTool.MCPServerTool]]s as `mcp` tools (approval never
-   * required unless asked for - the chat shape cannot answer an approval request) and the
+   * provider-neutral [[ChatCompletionTool.MCPServerTool]]s as `mcp` tools (approval required
+   * only when asked for via `requireApproval` - the run then pauses with
+   * `ChatChunk.ToolApprovalRequest`s, answered via `setToolApprovalDecisions`) and the
    * [[ChatCompletionTool.SkillTool]]s as ONE hosted `shell` tool with the skills loaded into
    * its `container_auto` environment, plus the Responses-native tools from
    * `settings.setResponsesTools(...)` (web search, code interpreter, file search, MCP, ...).
@@ -532,6 +755,11 @@ object OpenAIResponsesChatCompletionService {
     functionTools ++ mcpTools ++ shellTool ++ settings.responsesTools
   }
 
+  /**
+   * The chat-completion adapter over a Responses API backend. A backend marked
+   * [[io.cequence.openaiscala.service.ResponsesToolApprovalsUnsupported]] (e.g. Perplexity)
+   * gets one that refuses approval decisions and `MCPServerTool(requireApproval = true)`.
+   */
   def apply(
     underlying: OpenAIResponsesService with CloseableService
   )(
@@ -544,6 +772,7 @@ object OpenAIResponsesChatCompletionService {
       underlying match {
         case streamed: OpenAIStreamedServiceExtra => Some(streamed)
         case _                                    => None
-      }
+      },
+      toolApprovals = !underlying.isInstanceOf[ResponsesToolApprovalsUnsupported]
     )
 }

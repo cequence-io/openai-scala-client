@@ -88,6 +88,34 @@ class AnthropicNeutralToolsSpec extends AnyWordSpec with Matchers {
       e.getMessage should include("x-api-key")
       e.getMessage should include("bearer token only")
     }
+
+    "be refused when it requires approval, which the connector cannot ask for" in {
+      val e = the[OpenAIScalaClientException] thrownBy request(
+        Seq(MCPServerTool("admin", "https://mcp.example.com/mcp", requireApproval = true))
+      )
+      e.getMessage should include("requireApproval")
+    }
+  }
+
+  "tool approval decisions" should {
+
+    "be refused by every entry point instead of starting a fresh run" in {
+      import io.cequence.openaiscala.domain.response.ChatChunk
+      import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps._
+      import play.api.libs.json.Json
+
+      val request =
+        ChatChunk.ToolApprovalRequest("mcpr_1", "t", "{}", Some("s"), "resp_1", Json.obj())
+      val decisions = settings.setToolApprovalDecisions(Seq(request.approve))
+      val messages = Seq(UserMessage("hi"))
+      def failure(f: => scala.concurrent.Future[_]) =
+        scala.concurrent.Await.result(f.failed, scala.concurrent.duration.Duration(5, "s"))
+
+      Seq(
+        failure(adapter.createChatCompletion(messages, decisions)),
+        failure(adapter.createChatToolCompletion(messages, Nil, None, decisions))
+      ).foreach(_.getMessage should include("cannot resume a run paused for tool approval"))
+    }
   }
 
   "SkillTool" should {

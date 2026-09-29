@@ -18,7 +18,8 @@ import io.cequence.openaiscala.perplexity.service._
 import io.cequence.openaiscala.service.{
   ClassifiedStreamingWSClient,
   OpenAIResponsesService,
-  OpenAIStreamedServiceExtra
+  OpenAIStreamedServiceExtra,
+  ResponsesToolApprovalsUnsupported
 }
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
@@ -53,6 +54,7 @@ private[service] class PerplexityResponsesServiceImpl(
   override implicit val ec: ExecutionContext
 ) extends OpenAIResponsesService
     with OpenAIStreamedServiceExtra
+    with ResponsesToolApprovalsUnsupported
     with ClassifiedStreamingWSClient {
 
   override protected type PEP = EndPoint

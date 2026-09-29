@@ -154,9 +154,11 @@ object ChatChunks {
    * ThinkingSignature), function calls -> ToolCallStart / ToolCallDelta / ToolCall,
    * server-side calls (web search, code interpreter, MCP, file search, image generation) ->
    * tool-layer chunks plus WebSearch / CodeExecution / CodeExecutionResult / Image,
-   * annotations -> Citation, completion -> Finish + Usage. A `response.failed` or `error`
-   * event fails the stream with an [[OpenAIScalaClientException]]; lifecycle notifications and
-   * unknown events pass through as [[ChatChunk.Other]].
+   * annotations -> Citation, MCP approval requests (`mcp_approval_request`, the run pauses) ->
+   * ToolApprovalRequest + `Finish(approval_required)`, completion -> Finish + Usage. A
+   * `response.failed` or `error` event fails the stream with an
+   * [[OpenAIScalaClientException]]; lifecycle notifications and unknown events pass through as
+   * [[ChatChunk.Other]].
    */
   def fromResponseEvents: Flow[ResponseStreamEvent, ChatChunk, NotUsed] =
     Flow[ResponseStreamEvent].statefulMapConcat { () =>
@@ -164,6 +166,8 @@ object ChatChunks {
 
       var toolCount = 0
       var sawClientToolCall = false
+      var sawApprovalRequest = false
+      var responseId = ""
       val items = mutable.Map.empty[String, ResponseItem]
 
       def register(
@@ -233,6 +237,7 @@ object ChatChunks {
       (event: ResponseStreamEvent) =>
         event match {
           case ResponseCreated(id, model, _) =>
+            responseId = id
             List(Start(id, model))
 
           case OutputItemAdded(outputIndex, itemType, itemIdOpt, _, raw) =>
@@ -286,8 +291,9 @@ object ChatChunks {
                   (item \ "name").asOpt[String].getOrElse("mcp"),
                   serverSide = true
                 )
-              case "message" | "reasoning" => Nil
-              case other                   => List(Other(s"output_item.$other", raw))
+              // reported once complete, on output_item.done
+              case "message" | "reasoning" | "mcp_approval_request" => Nil
+              case other => List(Other(s"output_item.$other", raw))
             }
 
           case FunctionCallArgumentsDelta(itemId, outputIndex, fragment) =>
@@ -414,6 +420,19 @@ object ChatChunks {
                   result.map(b64 => Image(None, Some(b64), None)).toList
               case "reasoning" =>
                 (item \ "encrypted_content").asOpt[String].map(ThinkingSignature(_)).toList
+              // the run pauses: the approved call runs (as an mcp_call) in the resumed response
+              case "mcp_approval_request" =>
+                sawApprovalRequest = true
+                List(
+                  ToolApprovalRequest(
+                    requestId = itemId,
+                    toolName = (item \ "name").asOpt[String].getOrElse("mcp"),
+                    arguments = (item \ "arguments").asOpt[String].getOrElse("{}"),
+                    serverName = (item \ "server_label").asOpt[String],
+                    runId = responseId,
+                    raw = item
+                  )
+                )
               case "message" => Nil
               case other     => List(Other(s"output_item.$other", raw))
             }
@@ -457,7 +476,9 @@ object ChatChunks {
             pending ++
               List(
                 Finish(
-                  if (sawClientToolCall) FinishReason.tool_calls else FinishReason.stop,
+                  if (sawApprovalRequest) FinishReason.approval_required
+                  else if (sawClientToolCall) FinishReason.tool_calls
+                  else FinishReason.stop,
                   Some("completed")
                 )
               ) ++ usage.map(u => Usage(toChatUsage(u))).toList

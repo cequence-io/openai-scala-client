@@ -107,6 +107,8 @@ object SonarServiceFactory extends SonarServiceConsts with EnvHelper {
   )(
     implicit ec: ExecutionContext
   ): OpenAIChatCompletionService with OpenAIChatCompletionStreamedServiceExtra = {
+    // Perplexity runs every MCP call (require_approval is ignored) - the backend is marked
+    // ResponsesToolApprovalsUnsupported, so the adapter refuses approvals
     OpenAIResponsesChatCompletionService(
       new PerplexityResponsesServiceImpl(apiKey, baseUrl.getOrElse(coreUrl))
     )

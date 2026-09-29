@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
+import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps
 import akka.NotUsed
 import akka.stream.scaladsl.{Flow, Source}
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{
@@ -92,14 +93,15 @@ private[service] class OpenAIAnthropicChatCompletionService(
   override def createChatCompletion(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
-  ): Future[ChatCompletionResponse] = {
-    createMessageWithContinuation(
-      toAnthropicSystemMessages(messages.filter(_.isSystem), settings) ++
-        toAnthropicMessages(messages.filter(!_.isSystem), settings),
-      toAnthropicSettings(settings),
-      maxContinuations(settings)
-    ).map(toOpenAI).recoverWith(repackAsOpenAIException)
-  }
+  ): Future[ChatCompletionResponse] =
+    ToolApprovalSettingsOps.refusingDecisions(settings, "The Anthropic Messages API adapter") {
+      createMessageWithContinuation(
+        toAnthropicSystemMessages(messages.filter(_.isSystem), settings) ++
+          toAnthropicMessages(messages.filter(!_.isSystem), settings),
+        toAnthropicSettings(settings),
+        maxContinuations(settings)
+      ).map(toOpenAI).recoverWith(repackAsOpenAIException)
+    }
 
   /**
    * Creates a completion for the chat message(s) with streamed results.
@@ -116,30 +118,36 @@ private[service] class OpenAIAnthropicChatCompletionService(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
   ): Source[ChatCompletionChunkResponse, NotUsed] =
-    underlying
-      .createMessageStreamedEvents(
-        toAnthropicSystemMessages(messages.filter(_.isSystem), settings) ++
-          toAnthropicMessages(messages.filter(!_.isSystem), settings),
-        toAnthropicSettings(settings)
-      )
-      .via(toOpenAIChunks)
-      .mapError(toOpenAIException)
+    ToolApprovalSettingsOps.refusingDecisionsStream(
+      settings,
+      "The Anthropic Messages API adapter"
+    ) {
+      underlying
+        .createMessageStreamedEvents(
+          toAnthropicSystemMessages(messages.filter(_.isSystem), settings) ++
+            toAnthropicMessages(messages.filter(!_.isSystem), settings),
+          toAnthropicSettings(settings)
+        )
+        .via(toOpenAIChunks)
+        .mapError(toOpenAIException)
+    }
 
   override def createChatToolCompletion(
     messages: Seq[BaseMessage],
     tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatToolCompletion
-  ): Future[ChatToolCompletionResponse] = {
-    val (anthropicMessages, anthropicSettings) =
-      toAnthropicToolRequest(messages, tools, responseToolChoice, settings)
+  ): Future[ChatToolCompletionResponse] =
+    ToolApprovalSettingsOps.refusingDecisions(settings, "The Anthropic Messages API adapter") {
+      val (anthropicMessages, anthropicSettings) =
+        toAnthropicToolRequest(messages, tools, responseToolChoice, settings)
 
-    createMessageWithContinuation(
-      anthropicMessages,
-      anthropicSettings,
-      maxContinuations(settings)
-    ).map(toOpenAIToolResponse).recoverWith(repackAsOpenAIException)
-  }
+      createMessageWithContinuation(
+        anthropicMessages,
+        anthropicSettings,
+        maxContinuations(settings)
+      ).map(toOpenAIToolResponse).recoverWith(repackAsOpenAIException)
+    }
 
   /**
    * Typed streaming with tools. Besides the OpenAI function tools, Anthropic-native tools set
@@ -161,7 +169,10 @@ private[service] class OpenAIAnthropicChatCompletionService(
     tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
-  ): Source[ChatChunk, NotUsed] = {
+  ): Source[ChatChunk, NotUsed] = ToolApprovalSettingsOps.refusingDecisionsStream(
+    settings,
+    "The Anthropic Messages API adapter"
+  ) {
     val (anthropicMessages, anthropicSettings) =
       toAnthropicToolRequest(messages, tools, responseToolChoice, settings)
 
@@ -281,40 +292,6 @@ private[service] class OpenAIAnthropicChatCompletionService(
       case _            => Some(a.getOrElse(0) + b.getOrElse(0))
     }
 
-  private def sumOpenAIUsage(
-    a: OpenAIUsageInfo,
-    b: OpenAIUsageInfo
-  ): OpenAIUsageInfo =
-    OpenAIUsageInfo(
-      prompt_tokens = a.prompt_tokens + b.prompt_tokens,
-      completion_tokens = sumOpt(a.completion_tokens, b.completion_tokens),
-      total_tokens = a.total_tokens + b.total_tokens,
-      prompt_tokens_details = (a.prompt_tokens_details, b.prompt_tokens_details) match {
-        case (Some(x), Some(y)) =>
-          Some(
-            x.copy(
-              cached_tokens = x.cached_tokens + y.cached_tokens,
-              audio_tokens = sumOpt(x.audio_tokens, y.audio_tokens)
-            )
-          )
-        case (x, y) => x.orElse(y)
-      },
-      completion_tokens_details =
-        (a.completion_tokens_details, b.completion_tokens_details) match {
-          case (Some(x), Some(y)) =>
-            Some(
-              x.copy(
-                reasoning_tokens = sumOpt(x.reasoning_tokens, y.reasoning_tokens),
-                accepted_prediction_tokens =
-                  sumOpt(x.accepted_prediction_tokens, y.accepted_prediction_tokens),
-                rejected_prediction_tokens =
-                  sumOpt(x.rejected_prediction_tokens, y.rejected_prediction_tokens)
-              )
-            )
-          case (x, y) => x.orElse(y)
-        }
-    )
-
   // what a finished round hands to the next one
   private final case class ContinueTurn(
     blocks: Seq[ContentBlockBase],
@@ -357,7 +334,7 @@ private[service] class OpenAIAnthropicChatCompletionService(
                 val continueRequested = shouldContinue(delta.stopReason, blocks)
                 val totalUsage =
                   chunks.collectFirst { case ChatChunk.Usage(u) => u }.map { roundUsage =>
-                    priorUsage.fold(roundUsage)(sumOpenAIUsage(_, roundUsage))
+                    priorUsage.fold(roundUsage)(OpenAIUsageInfo.sum(_, roundUsage))
                   }
 
                 if (continueRequested && continuation < maxContinuations) {
@@ -436,6 +413,12 @@ private[service] class OpenAIAnthropicChatCompletionService(
     }
 
     val mcpServers = tools.collect { case mcp: ChatCompletionTool.MCPServerTool =>
+      if (mcp.requireApproval)
+        throw new OpenAIScalaClientException(
+          s"Anthropic's MCP connector runs every call without asking - MCPServerTool '${mcp.name}' " +
+            "has requireApproval = true, which it cannot honour (use the OpenAI Responses API, or a " +
+            "Managed Agent with an always_ask permission policy)."
+        )
       if (mcp.headers.nonEmpty)
         throw new OpenAIScalaClientException(
           s"Anthropic's MCP connector sends a bearer token only - MCPServerTool '${mcp.name}' " +

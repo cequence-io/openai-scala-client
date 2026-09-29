@@ -37,8 +37,12 @@ object ChatCompletionTool {
    * @param timeout
    *   per-request timeout for the server (Gemini only)
    * @param requireApproval
-   *   ask before each call (OpenAI only; the adapters default to never asking, as the
-   *   chat-completion shape has no way to answer an approval request)
+   *   ask before each call - OpenAI (Responses API) only: the run then pauses (the typed
+   *   stream emits `ChatChunk.ToolApprovalRequest`s and `Finish(approval_required)`, a sync
+   *   tool completion reports `finish_reason = approval_required` with
+   *   `response.toolApprovalRequests`) and is resumed by a call carrying the decisions
+   *   (`setToolApprovalDecisions`). Providers that cannot pause (Anthropic's MCP connector,
+   *   Gemini, Perplexity) refuse it instead of running the calls unapproved
    */
   final case class MCPServerTool(
     name: String,

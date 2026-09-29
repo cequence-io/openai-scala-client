@@ -5,6 +5,8 @@ import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.{AssistantTool, BaseMessage, ChatCompletionTool, ModelId}
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
+import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps._
+import io.cequence.openaiscala.domain.settings.ResponsesChatCompletionSettingsOps._
 import io.cequence.openaiscala.service.adapter.{
   ChatCompletionSettingsConversions,
   MessageConversions
@@ -32,12 +34,35 @@ private[service] trait OpenAIChatCompletionServiceImpl
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
   ): Future[ChatCompletionResponse] =
-    execPOST(
-      EndPoint.chat_completions,
-      bodyParams =
-        createBodyParamsForChatCompletion(messages.toList, settings, stream = false).toList
-    ).map(
-      _.asSafeJson[ChatCompletionResponse]
+    if (settings.toolApprovalDecisions.nonEmpty || settings.responsesTools.nonEmpty)
+      // a run paused for approval, and Responses-native tools, live on the Responses API
+      // (which explains how to resume)
+      responsesBackedChatCompletion
+        .map(_.createChatCompletion(messages, settings))
+        .getOrElse(
+          if (settings.toolApprovalDecisions.nonEmpty)
+            unsupportedToolApprovalDecisions(settings)
+          else Future.failed(new OpenAIScalaClientException(responsesToolsOnChatOnlyMessage))
+        )
+    else
+      execPOST(
+        EndPoint.chat_completions,
+        bodyParams =
+          createBodyParamsForChatCompletion(messages.toList, settings, stream = false).toList
+      ).map(
+        _.asSafeJson[ChatCompletionResponse]
+      )
+
+  private val responsesToolsOnChatOnlyMessage =
+    "Responses-native tools (setResponsesTools) need the Responses API - use the full OpenAIService (OpenAIServiceFactory), which routes them there automatically."
+
+  private def unsupportedToolApprovalDecisions[T](
+    settings: CreateChatCompletionSettings
+  ): Future[T] =
+    Future.failed(
+      ToolApprovalSettingsOps
+        .unsupportedDecisions(settings, "A chat-only OpenAI service (chat completions API)")
+        .getOrElse(new OpenAIScalaClientException("No tool approval decisions."))
     )
 
   private val logger = LoggerFactory.getLogger(getClass)
@@ -71,6 +96,12 @@ private[service] trait OpenAIChatCompletionServiceImpl
             s"${settings.model} model doesn't support function tools (with reasoning) on the chat completions API, routing createChatToolCompletion through the Responses API."
           )
           service.createChatToolCompletion(messages, tools, responseToolChoice, settings)
+
+        case None if settings.toolApprovalDecisions.nonEmpty =>
+          unsupportedToolApprovalDecisions(settings)
+
+        case None if settings.responsesTools.nonEmpty =>
+          Future.failed(new OpenAIScalaClientException(responsesToolsOnChatOnlyMessage))
 
         // chat-only service: GPT-5.6 / GPT-6 Sol/Luna still work there with reasoning 'none'
         case None if !chatToolsRequireResponsesAPI(settings.model, tools) =>
@@ -190,6 +221,10 @@ trait ChatCompletionBodyMaker {
     stream: Boolean
   ): Seq[(Param, Option[JsValue])] = {
     assert(messagesAux.nonEmpty, "At least one message expected.")
+    // never dropped silently: the entry points route or refuse them before this point
+    ResponsesChatCompletionSettingsOps
+      .unsupportedResponsesTools(settings, "The chat completions API")
+      .foreach(throw _)
 
     // the retired o1-preview / o1-mini took no system messages
     val messagesFinal =
@@ -267,7 +302,10 @@ trait ChatCompletionBodyMaker {
       Param.metadata -> (if (settingsFinal.metadata.nonEmpty) Some(settingsFinal.metadata)
                          else None),
       Param.extra_params -> {
-        if (settingsFinal.extra_params.nonEmpty) Some(settingsFinal.extra_params) else None
+        // the adapter-only keys (consumed by the Responses adapter, never an API parameter)
+        val extraParams = settingsFinal.extra_params --
+          ResponsesChatCompletionSettingsOps.knownParams -- ToolApprovalSettingsOps.knownParams
+        if (extraParams.nonEmpty) Some(extraParams) else None
       }
     )
   }

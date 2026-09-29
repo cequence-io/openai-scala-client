@@ -76,6 +76,30 @@ class GeminiNeutralToolsSpec extends AnyWordSpec with Matchers with ScalaFutures
       ) shouldBe None
     }
 
+    "refuse an MCPServerTool that requires approval - Gemini cannot ask" in {
+      (the[OpenAIScalaClientException] thrownBy OpenAIGeminiChatCompletionService
+        .toGeminiMcpServersTool(Seq(deepwiki.copy(requireApproval = true)))).getMessage should
+        include("requireApproval")
+    }
+
+    "refuse approval decisions instead of starting a fresh run" in {
+      import io.cequence.openaiscala.domain.response.ChatChunk
+      import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps._
+      import play.api.libs.json.Json
+
+      val request =
+        ChatChunk.ToolApprovalRequest("mcpr_1", "t", "{}", Some("s"), "resp_1", Json.obj())
+      val decisions = CreateChatCompletionSettings(NonOpenAIModelId.gemini_2_5_flash)
+        .setToolApprovalDecisions(Seq(request.approve))
+      val adapter = new OpenAIGeminiChatCompletionService(mock(classOf[GeminiService]))
+
+      adapter
+        .createChatCompletion(Seq(UserMessage("hi")), decisions)
+        .failed
+        .futureValue
+        .getMessage should include("cannot resume a run paused for tool approval")
+    }
+
     "refuse a SkillTool - Gemini has no skills" in {
       (the[OpenAIScalaClientException] thrownBy OpenAIGeminiChatCompletionService
         .toGeminiMcpServersTool(Seq(SkillTool("pptx")))).getMessage should include(

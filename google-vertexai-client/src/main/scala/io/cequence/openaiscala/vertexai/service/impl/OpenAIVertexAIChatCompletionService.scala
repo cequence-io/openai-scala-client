@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.vertexai.service.impl
 
+import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps
 import akka.NotUsed
 import akka.stream.scaladsl.{Source, StreamConverters}
 import com.google.cloud.vertexai.VertexAI
@@ -93,47 +94,49 @@ private[service] class OpenAIVertexAIChatCompletionService(
   override def createChatCompletion(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
-  ): Future[ChatCompletionResponse] = {
-    val model = createModel(messages, settings)
+  ): Future[ChatCompletionResponse] =
+    ToolApprovalSettingsOps.refusingDecisions(settings, "The Vertex AI adapter") {
+      val model = createModel(messages, settings)
 
-    val javaFuture = model.generateContentAsync(
-      toNonSystemVertexAI(
-        messages.filter(message =>
-          message.role != ChatRole.System && message.role != ChatRole.Developer
+      val javaFuture = model.generateContentAsync(
+        toNonSystemVertexAI(
+          messages.filter(message =>
+            message.role != ChatRole.System && message.role != ChatRole.Developer
+          )
         )
       )
-    )
-    val scalaFuture: Future[GenerateContentResponse] =
-      toScala(CompletableFuture.supplyAsync(() => javaFuture.get))
+      val scalaFuture: Future[GenerateContentResponse] =
+        toScala(CompletableFuture.supplyAsync(() => javaFuture.get))
 
-    scalaFuture.map { response =>
-      toOpenAI(response, settings.model)
-    }.recoverWith(repackAsOpenAIException)
-  }
+      scalaFuture.map { response =>
+        toOpenAI(response, settings.model)
+      }.recoverWith(repackAsOpenAIException)
+    }
 
   override def createChatToolCompletion(
     messages: Seq[BaseMessage],
     tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
-  ): Future[ChatToolCompletionResponse] = {
-    val model =
-      createModel(messages, toVertexAIToolSettings(tools, responseToolChoice, settings))
+  ): Future[ChatToolCompletionResponse] =
+    ToolApprovalSettingsOps.refusingDecisions(settings, "The Vertex AI adapter") {
+      val model =
+        createModel(messages, toVertexAIToolSettings(tools, responseToolChoice, settings))
 
-    val javaFuture = model.generateContentAsync(
-      toNonSystemVertexAI(
-        messages.filter(message =>
-          message.role != ChatRole.System && message.role != ChatRole.Developer
+      val javaFuture = model.generateContentAsync(
+        toNonSystemVertexAI(
+          messages.filter(message =>
+            message.role != ChatRole.System && message.role != ChatRole.Developer
+          )
         )
       )
-    )
-    val scalaFuture: Future[GenerateContentResponse] =
-      toScala(CompletableFuture.supplyAsync(() => javaFuture.get))
+      val scalaFuture: Future[GenerateContentResponse] =
+        toScala(CompletableFuture.supplyAsync(() => javaFuture.get))
 
-    scalaFuture.map { response =>
-      toOpenAIToolResponse(response, settings.model)
-    }.recoverWith(repackAsOpenAIException)
-  }
+      scalaFuture.map { response =>
+        toOpenAIToolResponse(response, settings.model)
+      }.recoverWith(repackAsOpenAIException)
+    }
 
   /**
    * Adds the OpenAI function tools (as Vertex function declarations, merged with any tools
@@ -204,17 +207,18 @@ private[service] class OpenAIVertexAIChatCompletionService(
     tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
-  ): Source[ChatChunk, NotUsed] = {
-    val model = createModel(
-      messages,
-      toVertexAIToolSettings(tools, responseToolChoice, settings),
-      includeThoughts = settings.vertexAIIncludeThoughts.getOrElse(true)
-    )
+  ): Source[ChatChunk, NotUsed] =
+    ToolApprovalSettingsOps.refusingDecisionsStream(settings, "The Vertex AI adapter") {
+      val model = createModel(
+        messages,
+        toVertexAIToolSettings(tools, responseToolChoice, settings),
+        includeThoughts = settings.vertexAIIncludeThoughts.getOrElse(true)
+      )
 
-    lazyContentStream(model, messages)
-      .via(VertexAIChatChunks.toChatChunks(settings.model))
-      .mapError(toOpenAIException)
-  }
+      lazyContentStream(model, messages)
+        .via(VertexAIChatChunks.toChatChunks(settings.model))
+        .mapError(toOpenAIException)
+    }
 
   private def toVertexAISchema(jsonSchema: JsonSchema): VertexAISchema =
     jsonSchema match {
@@ -308,31 +312,32 @@ private[service] class OpenAIVertexAIChatCompletionService(
   override def createChatCompletionStreamed(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
-  ): Source[ChatCompletionChunkResponse, NotUsed] = {
-    val model = createModel(messages, settings)
+  ): Source[ChatCompletionChunkResponse, NotUsed] =
+    ToolApprovalSettingsOps.refusingDecisionsStream(settings, "The Vertex AI adapter") {
+      val model = createModel(messages, settings)
 
-    lazyContentStream(model, messages).map { response =>
-      val openAIResponse = toOpenAI(response, settings.model)
+      lazyContentStream(model, messages).map { response =>
+        val openAIResponse = toOpenAI(response, settings.model)
 
-      ChatCompletionChunkResponse(
-        id = openAIResponse.id,
-        created = openAIResponse.created,
-        model = openAIResponse.model,
-        system_fingerprint = openAIResponse.system_fingerprint,
-        choices = openAIResponse.choices.map { info =>
-          ChatCompletionChoiceChunkInfo(
-            delta = ChunkMessageSpec(
-              Some(ChatRole.Assistant),
-              Some(info.message.content)
-            ),
-            index = info.index,
-            finish_reason = info.finish_reason
-          )
-        },
-        usage = openAIResponse.usage
-      )
-    }.mapError(toOpenAIException)
-  }
+        ChatCompletionChunkResponse(
+          id = openAIResponse.id,
+          created = openAIResponse.created,
+          model = openAIResponse.model,
+          system_fingerprint = openAIResponse.system_fingerprint,
+          choices = openAIResponse.choices.map { info =>
+            ChatCompletionChoiceChunkInfo(
+              delta = ChunkMessageSpec(
+                Some(ChatRole.Assistant),
+                Some(info.message.content)
+              ),
+              index = info.index,
+              finish_reason = info.finish_reason
+            )
+          },
+          usage = openAIResponse.usage
+        )
+      }.mapError(toOpenAIException)
+    }
 
   // the Vertex SDK opens the gRPC stream (and fetches credentials) inside generateContentStream,
   // so it is deferred to materialization instead of running on the caller's thread

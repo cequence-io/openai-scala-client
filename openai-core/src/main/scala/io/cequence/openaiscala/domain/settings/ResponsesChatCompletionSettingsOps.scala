@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.domain.settings
 
+import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.responsesapi.tools.Tool
 
 /**
@@ -51,4 +52,22 @@ object ResponsesChatCompletionSettingsOps {
     def responsesReasoningSummary: Option[Boolean] =
       settings.extra_params.get(ResponsesReasoningSummaryParam).map(_.toString == "true")
   }
+
+  /**
+   * The exception for a call carrying Responses-native tools where they cannot be sent (None
+   * when there are none) - they are refused, never dropped.
+   */
+  def unsupportedResponsesTools(
+    settings: CreateChatCompletionSettings,
+    entryPoint: String
+  ): Option[OpenAIScalaClientException] =
+    if (settings.responsesTools.isEmpty) None
+    else
+      Some(
+        new OpenAIScalaClientException(
+          s"$entryPoint cannot send Responses-native tools (setResponsesTools) - they need the " +
+            "Responses API: use createChatCompletion / createChatToolCompletion / the typed " +
+            "createChatToolCompletionStreamed of the full OpenAIService, which route them there."
+        )
+      )
 }

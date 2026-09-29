@@ -1,0 +1,237 @@
+event: response.created
+data: {"type":"response.created","response":{"id":"resp_08f104d4ec2b32e4006abb8d3a70cc87d2bae5c9667caba730","object":"response","created_at":1790676282,"status":"in_progress","access_programs":null,"background":false,"completed_at":null,"error":null,"frequency_penalty":0.0,"incomplete_details":null,"instructions":"You MUST use the deepwiki tools, strictly one call at a time: FIRST call read_wiki_structure, and only after you have its result call ask_wiki_question. Never answer from memory.","max_output_tokens":null,"max_tool_calls":null,"model":"gpt-5.4-mini-2026-03-17","moderation":null,"output":[],"parallel_tool_calls":true,"presence_penalty":0.0,"previous_response_id":"resp_08f104d4ec2b32e4006abb8d38863087d2a684ca4a88576260","prompt_cache_key":null,"prompt_cache_retention":"24h","reasoning":{"context":"current_turn","effort":"medium","mode":"standard","summary":null},"safety_identifier":null,"service_tier":"auto","store":true,"temperature":1.0,"text":{"format":{"type":"text"},"verbosity":"medium"},"tool_choice":"auto","tool_usage":{"image_gen":{"input_tokens":0,"input_tokens_details":{"image_tokens":0,"text_tokens":0},"output_tokens":0,"output_tokens_details":{"image_tokens":0,"text_tokens":0},"total_tokens":0},"web_search":{"num_requests":0}},"tools":[{"type":"mcp","allowed_tools":["read_wiki_structure","ask_wiki_question"],"headers":null,"require_approval":"always","server_description":null,"server_label":"deepwiki","server_url":"https://mcp.deepwiki.com/mcp"}],"top_logprobs":0,"top_p":0.98,"truncation":"disabled","usage":null,"user":null,"metadata":{}},"sequence_number":0}
+
+event: response.in_progress
+data: {"type":"response.in_progress","response":{"id":"resp_08f104d4ec2b32e4006abb8d3a70cc87d2bae5c9667caba730","object":"response","created_at":1790676282,"status":"in_progress","access_programs":null,"background":false,"completed_at":null,"error":null,"frequency_penalty":0.0,"incomplete_details":null,"instructions":"You MUST use the deepwiki tools, strictly one call at a time: FIRST call read_wiki_structure, and only after you have its result call ask_wiki_question. Never answer from memory.","max_output_tokens":null,"max_tool_calls":null,"model":"gpt-5.4-mini-2026-03-17","moderation":null,"output":[],"parallel_tool_calls":true,"presence_penalty":0.0,"previous_response_id":"resp_08f104d4ec2b32e4006abb8d38863087d2a684ca4a88576260","prompt_cache_key":null,"prompt_cache_retention":"24h","reasoning":{"context":"current_turn","effort":"medium","mode":"standard","summary":null},"safety_identifier":null,"service_tier":"auto","store":true,"temperature":1.0,"text":{"format":{"type":"text"},"verbosity":"medium"},"tool_choice":"auto","tool_usage":{"image_gen":{"input_tokens":0,"input_tokens_details":{"image_tokens":0,"text_tokens":0},"output_tokens":0,"output_tokens_details":{"image_tokens":0,"text_tokens":0},"total_tokens":0},"web_search":{"num_requests":0}},"tools":[{"type":"mcp","allowed_tools":["read_wiki_structure","ask_wiki_question"],"headers":null,"require_approval":"always","server_description":null,"server_label":"deepwiki","server_url":"https://mcp.deepwiki.com/mcp"}],"top_logprobs":0,"top_p":0.98,"truncation":"disabled","usage":null,"user":null,"metadata":{}},"sequence_number":1}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","item":{"id":"mcp_08f104d4ec2b32e4006abb8d3aac2c87d2801c2f8bd76d7010","type":"mcp_call","status":"calling","approval_request_id":"mcpr_08f104d4ec2b32e4006abb8d3a067887d289073a0b6410cea5","arguments":"","error":null,"name":"ask_wiki_question","output":null,"server_label":"deepwiki"},"output_index":0,"sequence_number":2}
+
+event: response.mcp_call.in_progress
+data: {"type":"response.mcp_call.in_progress","item_id":"mcp_08f104d4ec2b32e4006abb8d3aac2c87d2801c2f8bd76d7010","output_index":0,"sequence_number":3}
+
+event: response.mcp_call_arguments.delta
+data: {"type":"response.mcp_call_arguments.delta","delta":"{\"repoName\":\"cequence-io/openai-scala-client\",\"question\":\"Which ws-client version does this project depend on?\"}","item_id":"mcp_08f104d4ec2b32e4006abb8d3aac2c87d2801c2f8bd76d7010","obfuscation":"","output_index":0,"sequence_number":4}
+
+event: response.mcp_call_arguments.done
+data: {"type":"response.mcp_call_arguments.done","arguments":"{\"repoName\":\"cequence-io/openai-scala-client\",\"question\":\"Which ws-client version does this project depend on?\"}","item_id":"mcp_08f104d4ec2b32e4006abb8d3aac2c87d2801c2f8bd76d7010","output_index":0,"sequence_number":5}
+
+event: response.mcp_call.completed
+data: {"type":"response.mcp_call.completed","item_id":"mcp_08f104d4ec2b32e4006abb8d3aac2c87d2801c2f8bd76d7010","output_index":0,"sequence_number":6}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","item":{"id":"mcp_08f104d4ec2b32e4006abb8d3aac2c87d2801c2f8bd76d7010","type":"mcp_call","status":"completed","approval_request_id":"mcpr_08f104d4ec2b32e4006abb8d3a067887d289073a0b6410cea5","arguments":"{\"repoName\":\"cequence-io/openai-scala-client\",\"question\":\"Which ws-client version does this project depend on?\"}","error":null,"name":"ask_wiki_question","output":"The project `cequence-io/openai-scala-client` depends on `ws-client` version `1.0.0` . This version is defined in the `Dependencies.scala` file  and used across various modules like `openai-core` , `openai-client` , and `anthropic-client` .\n\n## `ws-client` Version Definition\n\nThe `ws-client` version is centrally defined in `project/Dependencies.scala`  within the `Versions` object  as `val wsClient = \"1.0.0\"` .\n\n## Usage Across Modules\n\nThis `wsClient` version is then imported and used in the `build.sbt` files of different modules:\n*   **`openai-core`**: It depends on `\"io.cequence\" %% \"ws-client-core-akka\" % wsClient`  and `\"io.cequence\" %% \"json-repair\" % wsClient` .\n*   **`openai-client`**: It uses `\"io.cequence\" %% \"ws-client-core\" % wsClient`  and `\"io.cequence\" %% \"ws-client-play-akka\" % wsClient` .\n*   **`anthropic-client`**: This module depends on `\"io.cequence\" %% \"ws-client-core\" % wsClient` , `\"io.cequence\" %% \"ws-client-play-akka\" % wsClient` , and `\"io.cequence\" %% \"ws-client-play-akka-stream\" % wsClient` .\n*   **`google-vertexai-client`**: It includes `\"io.cequence\" %% \"ws-client-core\" % wsClient`  and `\"io.cequence\" %% \"ws-client-play-akka\" % wsClient` .\n*   **`openai-client-stream`**: This module also uses `\"io.cequence\" %% \"ws-client-core\" % wsClient` , `\"io.cequence\" %% \"ws-client-play-akka\" % wsClient` , and `\"io.cequence\" %% \"ws-client-play-akka-stream\" % wsClient` .\n\n## Notes\nThe `CHANGELOG.md` file also mentions the migration to `io.cequence:ws-client-*:1.0.0` , indicating that this version is a significant update with changes to how engines are handled and shared across services . The `.scala-steward.conf` file explicitly ignores updates for `groupId = \"io.cequence\"` , suggesting that `ws-client` is a sibling library managed manually via coordinated releases .\n\nWiki pages you might want to explore:\n- [Module Architecture (cequence-io/openai-scala-client)](/wiki/cequence-io/openai-scala-client#1.2)\n- [Service Factories and Configuration (cequence-io/openai-scala-client)](/wiki/cequence-io/openai-scala-client#4)\n\nView this search on DeepWiki: https://deepwiki.com/search/which-wsclient-version-does-th_28a624d4-780d-476f-a849-59694c9ba371\n","server_label":"deepwiki"},"output_index":0,"sequence_number":7}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","item":{"id":"rs_08f104d4ec2b32e4006abb8d48489887d2b28a3c8d53ff4ba7","type":"reasoning","content":[],"encrypted_content":"gAAAAABqu41IwYEcc1UHtknP15rTv6s4CuhNppjfv18BSebKa3pHP1CH7pNTOh22_OJjLxI5DuRI1bLabNH2U9yvzi0jjkjgrHhFTcVyyO7k-LHJUj_01ID0PFRRu1v1iGwVjMc31fNAUfKf96qbaBlwHScS_j23qGbG5AvNNtl3uxFxGfBALqUOXLHjxl0gfc_4esTwM1XiD9B-DCgcNUkxFYIUPxaZlpTi7w2iU0cdoKkmRXBA-xuhznrHmJwEULPTeJpvc90kG7pujzzTtwzgDcDp3PBvKA7KFS25yPbySvdUF9Rr86MakaN0Myz8JvL_Rj4XFVXRWAfZgBs_8fGyAhe8H5t1MxuUfd1E81g5AM6-7chRhi5RyxqGeRgrem3GpQWxp_H-U7humy_1x2Gl1aW706I9kGS6wjV0fCeCpQexJoKQ36wPXlckh_y7InAm8EB8iiEYBoI9NozheXbcevORabJagwhAOctyuuQFGEGAaFiHEcJPeSndlyy6a3PIoB_aUaLAA0au4AXn0FIIYALjecYyQBmHngYgxveB5qyu4UF6yz5yAaYo2TX4gHwebOwwgyiM5zi2KmRv7-HcSp8yKRTA47YacsCymy15-G6Hnp6IRLK0_zN-qtmbG4AOxDA5oSJwa18VoNCQ3XN-v9G-wZZ7y1LdUuxTHwBeF-PffnvgrPZhMlhUO2jS3criV_3WfyttXRdqlEeS9S4tB_mgWm2tF0Crz_1ieQjUpiBZd5NBugHr3vul4VOh3F9u0ituRGVAcfE_zGXq3XxYXr1bhKN4HyTflrf2UunCdGn4WSat4OoBQOJdZAlqKk66SZEYv_Y5fLnXaDQCmpwQqbI1x8mMhQZcf_4Yj3wUhvORzRoV-sjum212SB2trOrjYTmSuhBGdolwk2OjQB1wEjyjvGQU_zXlvs7JN9c_YrOAIqBLFPaSBdwFyTfdpAy2WzXG1s2L90JBfdSaaK3t_cdZDO90RpuQ2J5nQSJNexoJVq2dKncXz3BBJ7_mQv4WsHKZMwsWKw_HF_g5qnV90efEV0dFtQR0uEtBEzqXTprDolwNfkJ131BXyjWrj0GYc0rPuknYF078_WpF1gMxsuJkK-miupe1j-O6DMkiLwfRp76_38AA4YEYuOsTWSvoXxHdiOjAMG6pcEe-Fk4MyVvRahEmkWtAXKK9lZfzxtpoYM0CxO0=","summary":[]},"output_index":1,"sequence_number":8}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","item":{"id":"rs_08f104d4ec2b32e4006abb8d48489887d2b28a3c8d53ff4ba7","type":"reasoning","content":[],"encrypted_content":"gAAAAABqu41IGzWShyRqv4HWA74AlwCNd1-PB256veSlluFLBnLBjARcWoZbV3I9t8_ZLJmcbF-CMSnBjfzoLmMFqmwISP5bHpaLqYi6rm9zhEKF7Ijq7KpyDpSZT4grX0JBoyVivJcx4vVcWZ8YhlIaJ0XV9BC7hSG7gwrzMOjrTD3STc0ZEu8dKFQRMlxdVA8ghFQDJyOp-2CSBzlFvvQmbNbKGFBDVIzX-IH0onsvq97LF13-uBY5MYXXgSLvFxfkF5I8_Ar4lfWzfLvC6GtamWjKXEI1BQE9Joyq4-POhqGy6runYxT5tRz03d5pUyPWWlMDFqtqJptFgpsKaZ_C9R1y9_9IF8WlJPrDFXqYMrFdmiLWdjPSUmxx6At2pMFEhGltP6Pdu9EAs9qDKj7bExdEh1xcw2w6s2hT0wIT9G-cvpDcivwxYVHUd3FBfu-qvj2moFARvUj5_40v-z8Ux42ck526751CKDykBbolNI5wDXyX3aIsMppuye40haJUTQLuw3Xu6pPFRHof_oRqkXBDwzLem1wHPJZ_HhnPC3K0ycVqz0iPF9QB4ug0dLzUayhkTCCnes76hDABehlHzqHZlz6qneIs5K9dIn0WIEgrwTplgr9Jw0qlxY76IsOYexNmAsPfWvjU23I8gVyyrXm9POwQOPbj5a6Q4puuCjPdv7nVGGtjmQvmt8QVLRRn26QmUF52VzqxiJ9Ky4ie87y_-N385A_vdl2V8sGrzi_7lC0zGt-qg3aBXhM6C219C3Q1XJZbHca_kGZ3p6zjs02OrmwNM5cbrwicVZHF5491qmSGbyL_rXkHsgv-PawYvuLjs8L4iH5xXuZLxaKtwLPW6sXI_X5YsiBt4GceA6R-WfJXdx21w8GD23dt7O7MF8VY1WqyUaYUTSq1Y-gqd9LGSjpJWqvXIMRlefRnz2XeT13t4kaxyo_4TmqVa6dKzeMb-9VYmVWdsHAiI-qkTAz0b6Bjin5-3b58OzeKqRp2k8nDYpbuirrkh5ShWD7MSf-8_6tODyaRlteZevLa8JVyR7oyc03J_R3M0IXFM5769_QloJVAmlS3M9B_VSj-KeLBJE3P--HgGaUotoqrFry-PP8KJGVwzVAfZfXG-XmWinYxqgEVft7QD4algZNAsH5TcR7Hok81Fd800VQ2fN-MFXc3EuG6YpupQ1rk8B1b6e40sudl1M80x98y_3zmJZK_OqRqmeDhHFMoyGjlLNJvF62Wp9j-N_CuntbgFPz6pFgEFms3oBO7RKWEpRzRTCAhv2ksKXkDwJJYzy4Nq-kzBZo9yozgytwD7o0GjPyhwoI_0V4983TiMbxeM_W4VqF6GsPA-mm177Jk2eAIdzXQNO_FB_zMN6a19a3NrQLcF8COlHE=","summary":[]},"output_index":1,"sequence_number":9}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","item":{"id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","type":"message","status":"in_progress","content":[],"phase":"final_answer","role":"assistant"},"output_index":2,"sequence_number":10}
+
+event: response.content_part.added
+data: {"type":"response.content_part.added","content_index":0,"item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","output_index":2,"part":{"type":"output_text","annotations":[],"logprobs":[],"text":""},"sequence_number":11}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"The","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"Z8SsrEKn7HKo6","output_index":2,"sequence_number":12}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" wiki","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"uumyK1W2Cbj","output_index":2,"sequence_number":13}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" topics","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"ItQNC7cXX","output_index":2,"sequence_number":14}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" for","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"eMJMUc01yvp5","output_index":2,"sequence_number":15}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" `","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"ZBgwbHO5uf7zBz","output_index":2,"sequence_number":16}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"ce","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"BAxbJFfRKtD69g","output_index":2,"sequence_number":17}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"quence","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"4RAyPGVwyw","output_index":2,"sequence_number":18}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"-","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"OVzepe7g9UTCDxh","output_index":2,"sequence_number":19}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"io","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"SHT3m0QIdroZkd","output_index":2,"sequence_number":20}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"/open","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"643Krbj9UYJ","output_index":2,"sequence_number":21}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"ai","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"vx5pC5BCEfWQe8","output_index":2,"sequence_number":22}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"-sc","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"8VISHjf4IQZwl","output_index":2,"sequence_number":23}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"ala","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"RelLX20ih3aSe","output_index":2,"sequence_number":24}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"-client","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"r28QWrSlm","output_index":2,"sequence_number":25}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"`","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"pOZMNU3rLS09VXM","output_index":2,"sequence_number":26}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" are","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"tuxQmpVuEqxp","output_index":2,"sequence_number":27}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":":","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"FqQi8sUEWiEAi3P","output_index":2,"sequence_number":28}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" Overview","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"epe1AMd","output_index":2,"sequence_number":29}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":",","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"3G2oWKya8ReAG6Q","output_index":2,"sequence_number":30}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" Getting","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"06YHYbh8","output_index":2,"sequence_number":31}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" Started","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"LZrriNR9","output_index":2,"sequence_number":32}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":",","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"5Rmn2JqyNYD7ziX","output_index":2,"sequence_number":33}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" Core","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"bYF5PZXR8ZL","output_index":2,"sequence_number":34}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" Architecture","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"DEP","output_index":2,"sequence_number":35}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":",","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"462o1760HCJZsJM","output_index":2,"sequence_number":36}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" Multi","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"BQFu1xEJWU","output_index":2,"sequence_number":37}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"-","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"5JQlFXGJgUfIEiE","output_index":2,"sequence_number":38}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"Provider","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"ZnkWKq3u","output_index":2,"sequence_number":39}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" Support","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"icMQ3XHp","output_index":2,"sequence_number":40}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":",","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"WRfzsCXTt3iBNPm","output_index":2,"sequence_number":41}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" Advanced","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"t2VZFWF","output_index":2,"sequence_number":42}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" Features","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"5xK5SDg","output_index":2,"sequence_number":43}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":",","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"R2i9cobFPdFHfem","output_index":2,"sequence_number":44}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" Assist","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"deaDNIcfZ","output_index":2,"sequence_number":45}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"ants","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"8vU302D3mo3E","output_index":2,"sequence_number":46}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" API","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"lNvAgZrAP7HO","output_index":2,"sequence_number":47}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":",","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"4gV9bo3joxDxHHp","output_index":2,"sequence_number":48}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" Examples","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"SBsJdBN","output_index":2,"sequence_number":49}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" and","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"pnpAiXb4zeno","output_index":2,"sequence_number":50}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" Tutorials","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"oT7zgP","output_index":2,"sequence_number":51}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":",","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"6yydy6rYjaQ66GX","output_index":2,"sequence_number":52}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" API","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"iwJos3eiu9w0","output_index":2,"sequence_number":53}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" Reference","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"8APTjG","output_index":2,"sequence_number":54}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":",","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"zqpyZ1HoS7pY7kT","output_index":2,"sequence_number":55}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" and","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"qbUKoRgXJTJD","output_index":2,"sequence_number":56}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" Development","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"A7zK","output_index":2,"sequence_number":57}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" Guide","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"q9n90J1uQA","output_index":2,"sequence_number":58}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":".","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"xyPacveW25U8r8H","output_index":2,"sequence_number":59}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" It","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"p6fB5GFcM0Al2","output_index":2,"sequence_number":60}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" depends","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"jZ9pua4r","output_index":2,"sequence_number":61}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" on","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"GeKf7llVIgREH","output_index":2,"sequence_number":62}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" `","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"8aNOPU9F7EukXF","output_index":2,"sequence_number":63}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"ws","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"3om77D6wgRfHh2","output_index":2,"sequence_number":64}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"-client","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"PjWiD2Itc","output_index":2,"sequence_number":65}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"`","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"g7Y4HX2NQuyEJQi","output_index":2,"sequence_number":66}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" version","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"hbM46776","output_index":2,"sequence_number":67}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" `","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"LOTtKs6z7pchKL","output_index":2,"sequence_number":68}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"1","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"1HzHUzU8aG24WMQ","output_index":2,"sequence_number":69}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":".","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"KnjraAYBvJDx1Lo","output_index":2,"sequence_number":70}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"0","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"NzG0M42Q0ACDKh5","output_index":2,"sequence_number":71}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":".","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"2smm58AyaMWiBm4","output_index":2,"sequence_number":72}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"0","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"4RNuK7lXLHup8hn","output_index":2,"sequence_number":73}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"`.","item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"obfuscation":"zQL1e2wGVYgkD0","output_index":2,"sequence_number":74}
+
+event: response.output_text.done
+data: {"type":"response.output_text.done","content_index":0,"item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","logprobs":[],"output_index":2,"sequence_number":75,"text":"The wiki topics for `cequence-io/openai-scala-client` are: Overview, Getting Started, Core Architecture, Multi-Provider Support, Advanced Features, Assistants API, Examples and Tutorials, API Reference, and Development Guide. It depends on `ws-client` version `1.0.0`."}
+
+event: response.content_part.done
+data: {"type":"response.content_part.done","content_index":0,"item_id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","output_index":2,"part":{"type":"output_text","annotations":[],"logprobs":[],"text":"The wiki topics for `cequence-io/openai-scala-client` are: Overview, Getting Started, Core Architecture, Multi-Provider Support, Advanced Features, Assistants API, Examples and Tutorials, API Reference, and Development Guide. It depends on `ws-client` version `1.0.0`."},"sequence_number":76}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","item":{"id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","type":"message","status":"completed","content":[{"type":"output_text","annotations":[],"logprobs":[],"text":"The wiki topics for `cequence-io/openai-scala-client` are: Overview, Getting Started, Core Architecture, Multi-Provider Support, Advanced Features, Assistants API, Examples and Tutorials, API Reference, and Development Guide. It depends on `ws-client` version `1.0.0`."}],"phase":"final_answer","role":"assistant"},"output_index":2,"sequence_number":77}
+
+event: response.completed
+data: {"type":"response.completed","response":{"id":"resp_08f104d4ec2b32e4006abb8d3a70cc87d2bae5c9667caba730","object":"response","created_at":1790676282,"status":"completed","access_programs":null,"background":false,"completed_at":1790676297,"error":null,"frequency_penalty":0.0,"incomplete_details":null,"instructions":"You MUST use the deepwiki tools, strictly one call at a time: FIRST call read_wiki_structure, and only after you have its result call ask_wiki_question. Never answer from memory.","max_output_tokens":null,"max_tool_calls":null,"model":"gpt-5.4-mini-2026-03-17","moderation":null,"output":[{"id":"mcp_08f104d4ec2b32e4006abb8d3aac2c87d2801c2f8bd76d7010","type":"mcp_call","status":"completed","approval_request_id":"mcpr_08f104d4ec2b32e4006abb8d3a067887d289073a0b6410cea5","arguments":"{\"repoName\":\"cequence-io/openai-scala-client\",\"question\":\"Which ws-client version does this project depend on?\"}","error":null,"name":"ask_wiki_question","output":"The project `cequence-io/openai-scala-client` depends on `ws-client` version `1.0.0` . This version is defined in the `Dependencies.scala` file  and used across various modules like `openai-core` , `openai-client` , and `anthropic-client` .\n\n## `ws-client` Version Definition\n\nThe `ws-client` version is centrally defined in `project/Dependencies.scala`  within the `Versions` object  as `val wsClient = \"1.0.0\"` .\n\n## Usage Across Modules\n\nThis `wsClient` version is then imported and used in the `build.sbt` files of different modules:\n*   **`openai-core`**: It depends on `\"io.cequence\" %% \"ws-client-core-akka\" % wsClient`  and `\"io.cequence\" %% \"json-repair\" % wsClient` .\n*   **`openai-client`**: It uses `\"io.cequence\" %% \"ws-client-core\" % wsClient`  and `\"io.cequence\" %% \"ws-client-play-akka\" % wsClient` .\n*   **`anthropic-client`**: This module depends on `\"io.cequence\" %% \"ws-client-core\" % wsClient` , `\"io.cequence\" %% \"ws-client-play-akka\" % wsClient` , and `\"io.cequence\" %% \"ws-client-play-akka-stream\" % wsClient` .\n*   **`google-vertexai-client`**: It includes `\"io.cequence\" %% \"ws-client-core\" % wsClient`  and `\"io.cequence\" %% \"ws-client-play-akka\" % wsClient` .\n*   **`openai-client-stream`**: This module also uses `\"io.cequence\" %% \"ws-client-core\" % wsClient` , `\"io.cequence\" %% \"ws-client-play-akka\" % wsClient` , and `\"io.cequence\" %% \"ws-client-play-akka-stream\" % wsClient` .\n\n## Notes\nThe `CHANGELOG.md` file also mentions the migration to `io.cequence:ws-client-*:1.0.0` , indicating that this version is a significant update with changes to how engines are handled and shared across services . The `.scala-steward.conf` file explicitly ignores updates for `groupId = \"io.cequence\"` , suggesting that `ws-client` is a sibling library managed manually via coordinated releases .\n\nWiki pages you might want to explore:\n- [Module Architecture (cequence-io/openai-scala-client)](/wiki/cequence-io/openai-scala-client#1.2)\n- [Service Factories and Configuration (cequence-io/openai-scala-client)](/wiki/cequence-io/openai-scala-client#4)\n\nView this search on DeepWiki: https://deepwiki.com/search/which-wsclient-version-does-th_28a624d4-780d-476f-a849-59694c9ba371\n","server_label":"deepwiki"},{"id":"rs_08f104d4ec2b32e4006abb8d48489887d2b28a3c8d53ff4ba7","type":"reasoning","content":[],"encrypted_content":"gAAAAABqu41J2XK6VtI2qwiUE6EGlXw4itOLyzw1Ywxoh2l9D05_3xQD3Ma9Hb85xXsqBnUwv-dsiaWL_MppMerXN7-lsmQJRWbt5jcyLlVSHgXgi3V3z9RYlrCYj4KEJsOaobCOxAKQFLaVu1dfmjhPEhSsxIyqqNxt6LKHfvQBhCMCHcIPwJqp-pvWjnb-2XtnHdZf3fFQ5JEMOdUE8WyKAocnI4nCZuNdzufXfw4HgQDpmndgGssrwzHDWoQNXhK3wB5mW0F_ausYypNVJ1na167pNXRUWVzuCn9bD4Z_U1q7-2a_qYop50ostxOvisPMkVqmci9j9aB8Yic0DGoq6-W95vyISAVjh6ftaJpTs5D4ECnmB5147T3SsoncjeL_nRx6tgHcUCNyWwDiObn3Dk5zFn3iCIv83qIEFxW_U9vkPz98mo9nXuoaQbTJOKFVrSpO6W2taCMCW4g5ehLNiyXqD7nYxapxwKG92D4GLpjijX5SpeWEryfkr-kPU1UqP-nwfK-PBCb6YjK5aLyj0em6BKnZrerpR5m09xS9sqkVllI-A-GHpVR_cpcnqJ92qdxRb_Y8wYaJsq1ijAywGBnyXbN6Qi7a1jrsZzv1BIHQe3dmC_CRHBDXkkrQ8KYiZsIOZjKKiKBbDxFL6R-uLA8dgeo9NWQ-gTHy_cGk8DlOM29-7SqmxDSwN2QrorAQNwMXN8mg7O5iUtN5KGDbY5Lndl4EECi0qoTAZC_ndfPx-W_CJ19F2Lrv9sflikCWDRkxt-uy1ZEK18XpyXMhzrd_cy_SyzZSyzMhV9IBVd2o1h8Y5M8tbHOaxxGP2XfCBpHGnhXa1lEjbwucAFC66IB6yfKmF0nTOG0Qe06vbKQeyD77tP3UI1sNuVQp5Y7Iy0CF_iRQzcB0pLDB7PcFqqHabrapGAlPE3nA41lbovud_Bs2keVviNPsjUSTVCVwTxueGoggsSDN_jXpSIdH3RNvpv08mIDqFxVKCym1ECOB73DZOBUWirrHA6hBkg8jv38-hAnbaZ1is0F7HWnzeg74yT6yZ8FirmpyF6dpKP9_JCXF-3VOvu9f7uZqF4i-VO_2xRFgcDN_P8dGbFQW9wzJ0e7OrYgyOgT7gk-ypFtpsCRczEdVigoIvfQNp4hrpFSwu_n6Ctrkz1ufJdViDBkf2m1VB7m-O8e4AiwGaEf2Ik65rO1KFzb32l_SP102ZQ89OVCuHA6oJz7EpLulbsm3MhKx3id1f_sTA1hA4Kq4y0tmrD_XFsHvJaMQoYg81FKDPJQi08pmZlsrx92HYSks_rwKULMiFfPbcglp4TrvkawnEhLC1M3gbemay67Y-v1pMybREeCm6FSCPQO2jaaibK1FeaRQuLcTYkY5Cc0r4V-pXMY=","summary":[]},{"id":"msg_08f104d4ec2b32e4006abb8d48904c87d2943c55b26c89f94d","type":"message","status":"completed","content":[{"type":"output_text","annotations":[],"logprobs":[],"text":"The wiki topics for `cequence-io/openai-scala-client` are: Overview, Getting Started, Core Architecture, Multi-Provider Support, Advanced Features, Assistants API, Examples and Tutorials, API Reference, and Development Guide. It depends on `ws-client` version `1.0.0`."}],"phase":"final_answer","role":"assistant"}],"parallel_tool_calls":true,"presence_penalty":0.0,"previous_response_id":"resp_08f104d4ec2b32e4006abb8d38863087d2a684ca4a88576260","prompt_cache_key":null,"prompt_cache_retention":"24h","reasoning":{"context":"current_turn","effort":"medium","mode":"standard","summary":null},"safety_identifier":null,"service_tier":"default","store":true,"temperature":1.0,"text":{"format":{"type":"text"},"verbosity":"medium"},"tool_choice":"auto","tool_usage":{"image_gen":{"input_tokens":0,"input_tokens_details":{"image_tokens":0,"text_tokens":0},"output_tokens":0,"output_tokens_details":{"image_tokens":0,"text_tokens":0},"total_tokens":0},"web_search":{"num_requests":0}},"tools":[{"type":"mcp","allowed_tools":["read_wiki_structure","ask_wiki_question"],"headers":null,"require_approval":"always","server_description":null,"server_label":"deepwiki","server_url":"https://mcp.deepwiki.com/mcp"}],"top_logprobs":0,"top_p":0.98,"truncation":"disabled","usage":{"input_tokens":1499,"input_tokens_details":{"cache_write_tokens":0,"cached_tokens":0},"output_tokens":101,"output_tokens_details":{"reasoning_tokens":32},"total_tokens":1600},"user":null,"metadata":{}},"sequence_number":78}
+

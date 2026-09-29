@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.gemini.service.impl
 
+import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.OpenAIScalaClientException
@@ -400,6 +401,11 @@ private[impl] object OpenAIGeminiChatCompletionService {
     }
 
     val servers = tools.collect { case mcp: ChatCompletionTool.MCPServerTool =>
+      if (mcp.requireApproval)
+        throw new OpenAIScalaClientException(
+          s"Gemini runs MCP calls server-side without asking - MCPServerTool '${mcp.name}' has " +
+            "requireApproval = true, which it cannot honour (use the OpenAI Responses API)."
+        )
       if (mcp.allowedTools.nonEmpty)
         logger.warn(
           "Gemini's mcpServers tool cannot restrict a server's tools - offering all tools of " +
@@ -533,19 +539,21 @@ private[service] class OpenAIGeminiChatCompletionService(
   override def createChatCompletion(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
-  ): Future[ChatCompletionResponse] = {
-    val (userMessages, systemMessage) = splitMessage(messages)
-    val mcp = mcpCallRule(settings)
+  ): Future[ChatCompletionResponse] = ToolApprovalSettingsOps
+    .refusingDecisions(settings, "The Gemini adapter") {
+      val (userMessages, systemMessage) = splitMessage(messages)
+      val mcp = mcpCallRule(settings)
 
-    for {
-      geminiSettings <- handleCaching(systemMessage, userMessages, settings)
+      for {
+        geminiSettings <- handleCaching(systemMessage, userMessages, settings)
 
-      response <- underlying.generateContent(
-        userMessages.map(toGeminiContent),
-        geminiSettings
-      )
-    } yield toOpenAIResponse(requireMcpCallsExecuted(response, mcp), mcp)
-  }.recoverWith(repackAsOpenAIException)
+        response <- underlying.generateContent(
+          userMessages.map(toGeminiContent),
+          geminiSettings
+        )
+      } yield toOpenAIResponse(requireMcpCallsExecuted(response, mcp), mcp)
+    }
+    .recoverWith(repackAsOpenAIException)
 
   /**
    * Gemini's `mcpServers` executor fails transiently: `generateContent` then answers with the
@@ -578,24 +586,25 @@ private[service] class OpenAIGeminiChatCompletionService(
   override def createChatCompletionStreamed(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
-  ): Source[ChatCompletionChunkResponse, NotUsed] = {
-    val (userMessages, systemMessage) = splitMessage(messages)
+  ): Source[ChatCompletionChunkResponse, NotUsed] =
+    ToolApprovalSettingsOps.refusingDecisionsStream(settings, "The Gemini adapter") {
+      val (userMessages, systemMessage) = splitMessage(messages)
 
-    val futureSource = handleCaching(systemMessage, userMessages, settings)
-      .map(settings =>
-        underlying
-          .generateContentStreamed(
-            userMessages.map(toGeminiContent),
-            settings
-          )
-          .map(toOpenAIChunkResponse)
-          .mapError(toOpenAIException)
-      )
-      .recoverWith(repackAsOpenAIException)
+      val futureSource = handleCaching(systemMessage, userMessages, settings)
+        .map(settings =>
+          underlying
+            .generateContentStreamed(
+              userMessages.map(toGeminiContent),
+              settings
+            )
+            .map(toOpenAIChunkResponse)
+            .mapError(toOpenAIException)
+        )
+        .recoverWith(repackAsOpenAIException)
 
-    // keep it like this because of the compatibility with older versions of Akka stream
-    Source.fromFutureSource(futureSource).mapMaterializedValue(_ => NotUsed)
-  }
+      // keep it like this because of the compatibility with older versions of Akka stream
+      Source.fromFutureSource(futureSource).mapMaterializedValue(_ => NotUsed)
+    }
 
   // only system message is cached
   private def handleCaching(
@@ -1339,24 +1348,28 @@ private[service] class OpenAIGeminiChatCompletionService(
     tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
-  ): Source[ChatChunk, NotUsed] = {
-    val (userMessages, systemMessage) = splitMessage(messages)
+  ): Source[ChatChunk, NotUsed] =
+    ToolApprovalSettingsOps.refusingDecisionsStream(settings, "The Gemini adapter") {
+      val (userMessages, systemMessage) = splitMessage(messages)
 
-    val futureSource = handleCaching(systemMessage, userMessages, settings).map {
-      baseSettings =>
-        val geminiSettings =
-          withThoughts(withTools(baseSettings, tools, responseToolChoice, settings), settings)
+      val futureSource = handleCaching(systemMessage, userMessages, settings).map {
+        baseSettings =>
+          val geminiSettings =
+            withThoughts(
+              withTools(baseSettings, tools, responseToolChoice, settings),
+              settings
+            )
 
-        underlying
-          .generateContentStreamed(userMessages.map(toGeminiContent), geminiSettings)
-          .via(
-            OpenAIGeminiChatCompletionService.chatChunksFlow(mcpCallRule(settings, tools))
-          )
-          .mapError(toOpenAIException)
-    }.recoverWith(repackAsOpenAIException)
+          underlying
+            .generateContentStreamed(userMessages.map(toGeminiContent), geminiSettings)
+            .via(
+              OpenAIGeminiChatCompletionService.chatChunksFlow(mcpCallRule(settings, tools))
+            )
+            .mapError(toOpenAIException)
+      }.recoverWith(repackAsOpenAIException)
 
-    Source.fromFutureSource(futureSource).mapMaterializedValue(_ => NotUsed)
-  }
+      Source.fromFutureSource(futureSource).mapMaterializedValue(_ => NotUsed)
+    }
 
   private def withTools(
     base: GenerateContentSettings,
@@ -1415,23 +1428,24 @@ private[service] class OpenAIGeminiChatCompletionService(
     tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatToolCompletion
-  ): Future[ChatToolCompletionResponse] = {
-    val (userMessages, systemMessage) = splitMessage(messages)
+  ): Future[ChatToolCompletionResponse] =
+    ToolApprovalSettingsOps.refusingDecisions(settings, "The Gemini adapter") {
+      val (userMessages, systemMessage) = splitMessage(messages)
 
-    // the same tool wiring as the typed stream: function declarations + Gemini-native tools
-    // from `setGeminiTools` (MCP servers, Google search, ...)
-    (for {
-      baseSettings <- handleCaching(systemMessage, userMessages, settings)
-      geminiSettings = withTools(baseSettings, tools, responseToolChoice, settings)
-      response <- underlying.generateContent(
-        userMessages.map(toGeminiContent),
-        geminiSettings
-      )
-    } yield toOpenAIToolResponse(
-      requireMcpCallsExecuted(response, mcpCallRule(settings, tools)),
-      mcpCallRule(settings, tools)
-    )).recoverWith(repackAsOpenAIException)
-  }
+      // the same tool wiring as the typed stream: function declarations + Gemini-native tools
+      // from `setGeminiTools` (MCP servers, Google search, ...)
+      (for {
+        baseSettings <- handleCaching(systemMessage, userMessages, settings)
+        geminiSettings = withTools(baseSettings, tools, responseToolChoice, settings)
+        response <- underlying.generateContent(
+          userMessages.map(toGeminiContent),
+          geminiSettings
+        )
+      } yield toOpenAIToolResponse(
+        requireMcpCallsExecuted(response, mcpCallRule(settings, tools)),
+        mcpCallRule(settings, tools)
+      )).recoverWith(repackAsOpenAIException)
+    }
 
   private def toOpenAIToolResponse(
     response: GenerateContentResponse,

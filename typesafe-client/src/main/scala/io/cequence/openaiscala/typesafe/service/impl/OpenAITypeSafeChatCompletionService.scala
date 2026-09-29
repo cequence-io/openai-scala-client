@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.typesafe.service.impl
 
+import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.response.{
@@ -58,44 +59,46 @@ private[service] class OpenAITypeSafeChatCompletionService(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
   ): Future[ChatCompletionResponse] =
-    Future
-      .fromTry(Try {
-        val schema = settings.response_format_type match {
-          case Some(ChatCompletionResponseFormatType.json_schema) =>
-            settings.jsonSchema.getOrElse(
-              fail("response_format_type is json_schema but no jsonSchema was set.")
-            )
-          case other =>
-            fail(
-              "TypeSafe System One answers structured questions only: set " +
-                s"response_format_type = json_schema and a jsonSchema (got ${other.getOrElse("none")}). With createChatCompletionWithJSON pass the model in " +
-                "jsonSchemaModels, or list it under models-supporting-json-schema."
-            )
-        }
-
-        OpenAITypeSafeChatCompletionService
-          .unsupportedSettingsMessage(settings)
-          .foreach(logger.warn)
-
-        settings.n
-          .filter(_ > 1)
-          .foreach(n => fail(s"n = $n is not supported; System One answers once."))
-
-        val plan = TypeSafeChatMapping.plan(schema)
-
-        (plan, TypeSafeChatMapping.toState(messages), settings.typeSafeNoulThreshold)
-      })
-      .flatMap { case (plan, state, threshold) =>
-        underlying
-          .systemOne(state, plan.questions, settings.model)
-          .map { response =>
-            toChatCompletionResponse(
-              response,
-              SchemaQuestions.assemble(plan, response.answers, threshold)
-            )
+    ToolApprovalSettingsOps.refusingDecisions(settings, "The TypeSafe System One adapter") {
+      Future
+        .fromTry(Try {
+          val schema = settings.response_format_type match {
+            case Some(ChatCompletionResponseFormatType.json_schema) =>
+              settings.jsonSchema.getOrElse(
+                fail("response_format_type is json_schema but no jsonSchema was set.")
+              )
+            case other =>
+              fail(
+                "TypeSafe System One answers structured questions only: set " +
+                  s"response_format_type = json_schema and a jsonSchema (got ${other.getOrElse("none")}). With createChatCompletionWithJSON pass the model in " +
+                  "jsonSchemaModels, or list it under models-supporting-json-schema."
+              )
           }
-          .recoverWith(repackAsOpenAIException)
-      }
+
+          OpenAITypeSafeChatCompletionService
+            .unsupportedSettingsMessage(settings)
+            .foreach(logger.warn)
+
+          settings.n
+            .filter(_ > 1)
+            .foreach(n => fail(s"n = $n is not supported; System One answers once."))
+
+          val plan = TypeSafeChatMapping.plan(schema)
+
+          (plan, TypeSafeChatMapping.toState(messages), settings.typeSafeNoulThreshold)
+        })
+        .flatMap { case (plan, state, threshold) =>
+          underlying
+            .systemOne(state, plan.questions, settings.model)
+            .map { response =>
+              toChatCompletionResponse(
+                response,
+                SchemaQuestions.assemble(plan, response.answers, threshold)
+              )
+            }
+            .recoverWith(repackAsOpenAIException)
+        }
+    }
 
   private def toChatCompletionResponse(
     response: SystemOneResponse,

@@ -39,6 +39,15 @@ import scala.concurrent.Future
  * Anything a provider sends that is not modeled here is passed through as [[ChatChunk.Other]]
  * (never dropped, never an error), so the hierarchy is forward compatible.
  *
+ * '''Human approval.''' When a provider pauses a run until a tool call is approved (OpenAI
+ * Responses API MCP tools with `requireApproval`, Anthropic Managed Agents tools with an
+ * `always_ask` permission policy), the stream emits one [[ChatChunk.ToolApprovalRequest]] per
+ * pending call, then `Finish(FinishReason.approval_required, ...)`, and ends. Resume the run
+ * by calling the typed stream again with the decisions (`request.approve` /
+ * `request.deny(reason)`) set via `ToolApprovalSettingsOps.setToolApprovalDecisions` - or let
+ * `createChatToolCompletionStreamedWithApprovals` ask a callback and resume the run for you,
+ * as one joined stream.
+ *
  * Two '''control events''' are never produced by a provider mapper; they are inserted by
  * whoever owns the stream: [[ChatChunk.Retry]] when a stream is restarted (everything before
  * it is void) and [[ChatChunk.Done]] as an explicit terminator for transports that cannot
@@ -225,6 +234,45 @@ object ChatChunk {
     providerReason: Option[String]
   ) extends ChatChunk
 
+  /**
+   * The run is paused until this tool call is approved or denied - emitted once per pending
+   * call, right before `Finish(FinishReason.approval_required, ...)`. Answer it with
+   * [[approve]] / [[deny]] and resume the run with the decisions (see the scaladoc of
+   * [[ChatChunk]]). The call itself is NOT reported on the tool layer: once approved, it runs
+   * (and is reported) in the resumed stream.
+   *
+   * @param requestId
+   *   the provider's id of the pending call: OpenAI `mcp_approval_request.id` (`mcpr_...`),
+   *   Anthropic Managed Agents `agent.tool_use` / `agent.mcp_tool_use` event id (`sevt_...`)
+   * @param arguments
+   *   the call's JSON-object arguments text
+   * @param serverName
+   *   the MCP server the tool belongs to (OpenAI `server_label`, Anthropic `mcp_server_name`)
+   * @param runId
+   *   the paused run: the OpenAI response id / the Anthropic Managed Agents session id (which
+   *   a resume continues)
+   * @param raw
+   *   the provider's JSON of the pending call
+   */
+  final case class ToolApprovalRequest(
+    requestId: String,
+    toolName: String,
+    arguments: String,
+    serverName: Option[String],
+    runId: String,
+    raw: JsValue
+  ) extends ChatChunk {
+
+    /** Let the call run. */
+    def approve: ToolApprovalDecision = ToolApprovalDecision(this, approve = true)
+
+    /** Refuse the call; the reason (if any) is passed to the model. */
+    def deny(reason: Option[String] = None): ToolApprovalDecision =
+      ToolApprovalDecision(this, approve = false, reason)
+
+    def deny(reason: String): ToolApprovalDecision = deny(Some(reason))
+  }
+
   /** Token usage in OpenAI shape (the cross-provider usage currency of this library). */
   final case class Usage(usage: UsageInfo) extends ChatChunk
 
@@ -277,10 +325,12 @@ object ChatChunk {
     case object content_filter extends FinishReason
     // anything else - see Finish.providerReason
     case object unknown extends FinishReason
+    // the run is paused until the preceding ToolApprovalRequests are answered
+    case object approval_required extends FinishReason
 
-    def values: Seq[FinishReason] = Seq(stop, tool_calls, length, content_filter, unknown)
+    def values: Seq[FinishReason] =
+      Seq(stop, tool_calls, length, content_filter, unknown, approval_required)
 
-    /** Normalizes an OpenAI / OpenAI-compatible `finish_reason`. */
     /**
      * Gemini-family finish reasons (shared by the Gemini and Vertex AI mappers, keyed by the
      * enum name): `STOP` is `tool_calls` when a function call was streamed.
@@ -298,12 +348,14 @@ object ChatChunk {
         case _ => unknown
       }
 
+    /** Normalizes an OpenAI / OpenAI-compatible `finish_reason`. */
     def fromOpenAI(reason: String): FinishReason =
       reason match {
         case "stop"                         => stop
         case "tool_calls" | "function_call" => tool_calls
         case "length"                       => length
         case "content_filter"               => content_filter
+        case "approval_required"            => approval_required
         case _                              => unknown
       }
   }
@@ -349,6 +401,10 @@ object ChatChunk {
     def webSearches: Source[WebSearch, Mat] = source.collect { case w: WebSearch => w }
 
     def images: Source[Image, Mat] = source.collect { case i: Image => i }
+
+    def toolApprovalRequests: Source[ToolApprovalRequest, Mat] = source.collect {
+      case r: ToolApprovalRequest => r
+    }
 
     def assembled(
       implicit materializer: Materializer

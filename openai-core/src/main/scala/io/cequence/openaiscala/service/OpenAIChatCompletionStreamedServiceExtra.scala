@@ -4,9 +4,15 @@ import akka.NotUsed
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.{BaseMessage, ChatCompletionTool}
-import io.cequence.openaiscala.domain.response.{ChatChunk, ChatCompletionChunkResponse}
+import io.cequence.openaiscala.domain.response.{
+  ChatChunk,
+  ChatCompletionChunkResponse,
+  ToolApprovalDecision
+}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.wsclient.service.CloseableService
+
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
  * Service that offers <b>ONLY</b> a streamed version of OpenAI chat completion endpoint.
@@ -69,6 +75,55 @@ trait OpenAIChatCompletionStreamedServiceExtra
           "createChatToolCompletionStreamed with tools is not supported by this service."
         )
       )
+
+  /**
+   * [[createChatToolCompletionStreamed]] with human approval handled by a callback: whenever
+   * the run pauses for approval, `decide` answers each pending
+   * [[ChatChunk.ToolApprovalRequest]] (one at a time, in order) and the run is resumed with
+   * the decisions - all rounds joined into ONE stream that ends with the final answer (one
+   * `Start`, no intermediate `Finish(approval_required)`, tool-call ordinals continuing across
+   * rounds, usage summed). The answered requests are not in the joined stream (`decide` saw
+   * them).
+   *
+   * {{{
+   * service.createChatToolCompletionStreamedWithApprovals(messages, tools, settings = settings) {
+   *   request =>
+   *     if (request.toolName.startsWith("read_")) Future.successful(request.approve)
+   *     else askTheUser(request) // Future[ToolApprovalDecision]
+   * }
+   * }}}
+   *
+   * Resuming is supported by the OpenAI Responses API (the full `OpenAIService`, sync or
+   * `withStreaming`) and the Anthropic Managed Agents adapter; on any other service no run
+   * ever pauses and this is the plain typed stream. The stream ends paused - the pending
+   * requests and `Finish(approval_required)` passed through, as in the plain stream - when the
+   * run pauses again after `maxApprovalRounds` resumes, or pauses together with client-side
+   * function calls (run those, then resume with their tool messages and the decisions).
+   * `decide` may take as long as a human needs; a failed Future fails the stream. See
+   * [[ToolApprovalLoop]] for the details.
+   *
+   * @param settings
+   *   the settings of every round (the first round uses them as they are, so they may carry
+   *   decisions resuming a run paused earlier)
+   * @param maxApprovalRounds
+   *   how many times the run is resumed at most
+   * @param decide
+   *   `request.approve` / `request.deny(reason)` for a pending call
+   */
+  final def createChatToolCompletionStreamedWithApprovals(
+    messages: Seq[BaseMessage],
+    tools: Seq[ChatCompletionTool] = Nil,
+    responseToolChoice: Option[String] = None,
+    settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion,
+    maxApprovalRounds: Int = ToolApprovalLoop.DefaultMaxRounds
+  )(
+    decide: ChatChunk.ToolApprovalRequest => Future[ToolApprovalDecision]
+  )(
+    implicit ec: ExecutionContext
+  ): Source[ChatChunk, NotUsed] =
+    ToolApprovalLoop(settings, decide, maxApprovalRounds)(roundSettings =>
+      createChatToolCompletionStreamed(messages, tools, responseToolChoice, roundSettings)
+    )
 
   /** The typed stream without tools - see [[createChatToolCompletionStreamed]]. */
   final def createChatCompletionStreamedTyped(

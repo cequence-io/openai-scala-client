@@ -53,13 +53,14 @@ object SessionEvent {
    * Approve or deny a tool call awaiting confirmation (`always_ask` policy).
    *
    * @param toolUseId
-   *   The triggering event's id.
+   *   The id of the `agent.tool_use` / `agent.mcp_tool_use` EVENT awaiting confirmation
+   *   (`sevt_...`, listed in the idle event's `stop_reason.event_ids`).
    * @param allow
    *   `true` → result `"allow"`, `false` → result `"deny"`.
    * @param denyMessage
-   *   Optional explanation surfaced to the agent on denial (only valid when denying).
+   *   Optional explanation surfaced to the agent on denial (only sent when denying).
    * @param sessionThreadId
-   *   Routes the confirmation to a subagent thread; echo from the tool-use event.
+   *   Not needed: the server routes a confirmation to its (subagent) thread by `toolUseId`.
    */
   final case class UserToolConfirmation(
     toolUseId: String,

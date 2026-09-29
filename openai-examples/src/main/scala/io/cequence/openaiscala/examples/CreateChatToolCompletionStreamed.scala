@@ -98,6 +98,8 @@ object ChatChunkPrinter {
       case Usage(usage)             => s"usage      : $usage"
       case Retry(attempt, model) =>
         s"retry      : attempt $attempt${model.fold("")(m => s" -> $m")}"
+      case ToolApprovalRequest(requestId, name, args, server, _, _) =>
+        s"approval ? : ${server.fold("")(_ + ".")}$name($args) [$requestId]"
       case Done           => "done"
       case Other(kind, _) => s"other      : $kind"
     }

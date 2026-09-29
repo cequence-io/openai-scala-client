@@ -14,6 +14,10 @@ import scala.collection.mutable.ListBuffer
  * [[ChatChunk.ToolCallDelta]]s are ignored on purpose: the assembled arguments ride on the
  * [[ChatChunk.ToolCall]] every provider emits once per call, so a stream carrying all three
  * tool-call events never double counts.
+ *
+ * A run paused for human approval ends with `finishReason = approval_required` and its pending
+ * calls in `toolApprovalRequests` - answer them (`approveAll` / `denyAll` or one by one) and
+ * resume the run with the decisions (see [[ChatChunk.ToolApprovalRequest]]).
  */
 final case class AssembledChatCompletion(
   id: Option[String] = None,
@@ -35,7 +39,8 @@ final case class AssembledChatCompletion(
   finishReason: Option[ChatChunk.FinishReason] = None,
   providerFinishReason: Option[String] = None,
   usage: Option[UsageInfo] = None,
-  other: Seq[ChatChunk.Other] = Nil
+  other: Seq[ChatChunk.Other] = Nil,
+  toolApprovalRequests: Seq[ChatChunk.ToolApprovalRequest] = Nil
 ) {
 
   def add(chunk: ChatChunk): AssembledChatCompletion =
@@ -67,11 +72,23 @@ final case class AssembledChatCompletion(
         copy(finishReason = Some(reason), providerFinishReason = providerReason)
       case ChatChunk.Usage(u) => copy(usage = Some(u))
       case o: ChatChunk.Other => copy(other = other :+ o)
+      case r: ChatChunk.ToolApprovalRequest =>
+        copy(toolApprovalRequests = toolApprovalRequests :+ r)
       // a restart voids everything accumulated so far; the new attempt's Start overwrites the
       // model seeded here when it arrives
       case ChatChunk.Retry(_, retryModel) => AssembledChatCompletion(model = retryModel)
       case ChatChunk.Done                 => this
     }
+
+  /** True when the run is paused until [[toolApprovalRequests]] are answered. */
+  def awaitingApproval: Boolean = toolApprovalRequests.nonEmpty
+
+  /** Approves every pending call. */
+  def approveAll: Seq[ToolApprovalDecision] = toolApprovalRequests.map(_.approve)
+
+  /** Denies every pending call. */
+  def denyAll(reason: Option[String] = None): Seq[ToolApprovalDecision] =
+    toolApprovalRequests.map(_.deny(reason))
 
   /** Tool calls the caller has to execute (provider-executed ones are excluded). */
   def clientToolCalls: Seq[ChatChunk.ToolCall] = toolCalls.filterNot(_.serverSide)
@@ -118,6 +135,7 @@ object AssembledChatCompletion {
     private var providerFinishReason: Option[String] = None
     private var usage: Option[UsageInfo] = None
     private val other = ListBuffer.empty[ChatChunk.Other]
+    private val toolApprovalRequests = ListBuffer.empty[ChatChunk.ToolApprovalRequest]
 
     def add(chunk: ChatChunk): Builder = {
       chunk match {
@@ -144,8 +162,9 @@ object AssembledChatCompletion {
         case ChatChunk.Finish(reason, providerReason) =>
           finishReason = Some(reason)
           providerFinishReason = providerReason
-        case ChatChunk.Usage(u) => usage = Some(u)
-        case o: ChatChunk.Other => other += o
+        case ChatChunk.Usage(u)               => usage = Some(u)
+        case o: ChatChunk.Other               => other += o
+        case r: ChatChunk.ToolApprovalRequest => toolApprovalRequests += r
         case ChatChunk.Retry(_, retryModel) =>
           reset()
           model = retryModel
@@ -175,6 +194,7 @@ object AssembledChatCompletion {
       providerFinishReason = None
       usage = None
       other.clear()
+      toolApprovalRequests.clear()
     }
 
     def result(): AssembledChatCompletion =
@@ -198,7 +218,8 @@ object AssembledChatCompletion {
         finishReason = finishReason,
         providerFinishReason = providerFinishReason,
         usage = usage,
-        other = other.toList
+        other = other.toList,
+        toolApprovalRequests = toolApprovalRequests.toList
       )
   }
 }

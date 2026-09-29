@@ -20,6 +20,49 @@
 
 See `GPT6SolLunaOpus55SmokeTest` for a live walkthrough.
 
+### 🔥 Human approval mid-stream (typed stream)
+
+- A run the provider pauses until a tool call is approved now surfaces on the typed stream as one
+  `ChatChunk.ToolApprovalRequest` per pending call followed by `Finish(FinishReason.approval_required)`
+  (`AssembledChatCompletion.toolApprovalRequests` / `awaitingApproval` / `approveAll` / `denyAll`), and is resumed by a
+  second call carrying the decisions - `request.approve` / `request.deny(reason)` via
+  `ToolApprovalSettingsOps.setToolApprovalDecisions`:
+  - **OpenAI** (Responses API): `MCPServerTool(requireApproval = true)` (or a raw `MCPTool`) pauses the run. Such a run
+    is stored by default (only when a tool may actually ask - Zero-Data-Retention organisations pass `store = false`)
+    and the resume continues it by `previous_response_id`, sending the same tools and only the answers plus the
+    outputs of the paused response's own client function calls (looked up from the stored response; outputs it already
+    had are not sent again) - so reasoning and executed MCP calls carry over and a run may pause several times. With
+    an explicit `store = false` the adapter replays the answered requests instead (one pause deep). The sync
+    `createChatToolCompletion` and `createChatCompletion` report `finish_reason = "approval_required"` with
+    `response.toolApprovalRequests`.
+  - **Anthropic Managed Agents**: a native typed stream for `managedAgentAsOpenAI` - tools with an `always_ask` / `auto`
+    permission policy pause the session, which is kept until a resume posts the `user.tool_confirmation`s to it (and
+    kept when a resume can be retried: its confirmations were not applied, or its next pause could not be looked up);
+    the typed stream also reports the agent's tool calls and results, usage and a proper finish reason, deletes a
+    finished (or failed) session before completing, rides out `session.error`s the platform retries, and streams on
+    through the idle the session reports between the confirmations of one resume. An `exhausted` session error (the
+    turn is dead) now fails the call classified - on the sync path too - as does an event stream that closes before
+    the turn ended. `PermissionPolicy.auto` added; a confirmation's `deny_message` is only sent with a denial.
+  - Everything that cannot pause or resume now refuses instead of silently misbehaving: a call carrying decisions is
+    refused by every other adapter / entry point (rather than starting a fresh run), and
+    `MCPServerTool(requireApproval = true)` is refused by Anthropic's MCP connector, Gemini and Perplexity's
+    `agentAsOpenAI` (rather than running the calls unapproved - it also refuses a raw `MCPTool` whose explicit
+    `requireApproval` may ask). Responses-native tools (`setResponsesTools`) now route to the Responses API on the
+    full OpenAI service's `createChatCompletion` / `createChatToolCompletion(Streamed)`; every other entry point (and a
+    chat-only service) refuses them instead of dropping them, and the adapter-only `extra_params` keys are no longer
+    sent to the chat completions API.
+  - **Or let a callback answer**: `createChatToolCompletionStreamedWithApprovals(messages, tools, ...) { request => ... }`
+    (on every streamed service) asks the callback (`ToolApprovalRequest => Future[ToolApprovalDecision]`) about each
+    pending call, resumes the run with the answers and joins all rounds into one stream that ends with the final
+    answer - one `Start`, no intermediate `Finish(approval_required)`, tool-call ordinals continuing, usage summed. It
+    stops, paused as before, after `maxApprovalRounds` resumes (default 10) or when a paused round also asks for client
+    function calls. `UsageInfo.sum` adds up usage.
+  - `ChatChunk` gains a case (`ToolApprovalRequest`) and `FinishReason` a value (`approval_required`): exhaustive
+    matches over them need a new branch.
+  - See `CreateChatToolCompletionStreamedWithApproval` (resuming by hand) and
+    `CreateChatToolCompletionStreamedWithApprovalCallback` (the callback), both live-verified on both providers - the
+    latter with a two-pause OpenAI run and two parallel confirmations on Managed Agents.
+
 ### TypeSafe (Jev): confidence fields
 
 - The OpenAI adapter (`TypeSafeServiceFactory.asOpenAI`) fills **confidence fields** instead of asking for them: a

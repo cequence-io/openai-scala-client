@@ -1,5 +1,7 @@
 package io.cequence.openaiscala.service.adapter
 
+import io.cequence.openaiscala.domain.settings.ResponsesChatCompletionSettingsOps
+import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps
 import io.cequence.openaiscala.domain.{AssistantTool, ChatCompletionTool}
 
 import io.cequence.openaiscala.domain.NonOpenAIModelId
@@ -115,19 +117,29 @@ object ChatCompletionSettingsConversions {
    * while the caller did not ask for 'none' - the Responses API keeps the requested (or the
    * model's default) reasoning with tools; and on GPT-5.4 / 5.5 when an explicit reasoning
    * effort is set ([[chatToolsRejectExplicitReasoning]]). A chat-only service falls back to
-   * chat completions ('none' forced, or the effort dropped).
+   * chat completions ('none' forced, or the effort dropped). A call resuming a run paused for
+   * approval (`setToolApprovalDecisions`) or carrying Responses-native tools
+   * (`setResponsesTools`) always goes to the Responses API - the run / the tools are there.
    */
   def chatToolsPreferResponsesAPI(
     settings: CreateChatCompletionSettings,
     tools: Seq[ChatCompletionTool]
   ): Boolean =
-    tools.nonEmpty && (
-      chatToolsRequireResponsesAPI(settings.model, tools) ||
-        (chatToolsForceNoReasoning(settings.model) &&
-          !settings.reasoning_effort.contains(ReasoningEffort.none)) ||
-        (chatToolsRejectExplicitReasoning(settings.model) &&
-          settings.reasoning_effort.exists(_ != ReasoningEffort.none))
-    )
+    ToolApprovalSettingsOps
+      .RichToolApprovalCreateChatCompletionSettings(settings)
+      .toolApprovalDecisions
+      .nonEmpty ||
+      // Responses-native tools (setResponsesTools) exist on the Responses API only
+      ResponsesChatCompletionSettingsOps
+        .RichResponsesCreateChatCompletionSettings(settings)
+        .responsesTools
+        .nonEmpty || tools.nonEmpty && (
+        chatToolsRequireResponsesAPI(settings.model, tools) ||
+          (chatToolsForceNoReasoning(settings.model) &&
+            !settings.reasoning_effort.contains(ReasoningEffort.none)) ||
+          (chatToolsRejectExplicitReasoning(settings.model) &&
+            settings.reasoning_effort.exists(_ != ReasoningEffort.none))
+      )
 
   // Amazon Bedrock serves OpenAI models under a provider prefix, optionally behind a
   // cross-region inference profile: `openai.gpt-5.6-luna`, `us.openai.gpt-6-astra`,

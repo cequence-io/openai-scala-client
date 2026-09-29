@@ -176,3 +176,12 @@ trait OpenAIResponsesService extends OpenAIServiceConsts {
     order: Option[SortOrder] = None
   ): Future[InputItemsResponse]
 }
+
+/**
+ * Marks a Responses API backend that cannot pause a run for MCP tool approval (e.g.
+ * Perplexity's `/v1/responses`, which runs every MCP call and ignores `require_approval`): the
+ * chat-completion adapter over it (`OpenAIResponsesChatCompletionService`) refuses approval
+ * decisions and `MCPServerTool(requireApproval = true)` instead of sending them / running the
+ * calls unapproved.
+ */
+trait ResponsesToolApprovalsUnsupported

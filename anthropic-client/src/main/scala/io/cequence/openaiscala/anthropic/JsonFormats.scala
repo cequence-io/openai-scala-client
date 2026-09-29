@@ -2159,7 +2159,10 @@ trait JsonFormats {
         "tool_use_id" -> e.toolUseId,
         "result" -> (if (e.allow) "allow" else "deny")
       )
-      e.denyMessage.foreach(m => obj = obj + ("deny_message" -> JsString(m)))
+      // the API accepts a deny_message only with a denial
+      e.denyMessage
+        .filterNot(_ => e.allow)
+        .foreach(m => obj = obj + ("deny_message" -> JsString(m)))
       e.sessionThreadId.foreach(id => obj = obj + ("session_thread_id" -> JsString(id)))
       obj
     case e: SessionEvent.UserToolResult =>
