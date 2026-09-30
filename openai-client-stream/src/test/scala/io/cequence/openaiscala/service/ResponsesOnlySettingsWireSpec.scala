@@ -438,4 +438,29 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
       proResponse.reasoning.flatMap(_.mode) shouldBe Some(ReasoningMode.pro)
     }
   }
+
+  "the legacy functions API (createChatFunCompletion)" should {
+
+    "send the function objects themselves, not the tools' wrapper" in {
+      val weather = FunctionTool(
+        name = "get_weather",
+        parameters = JsonSchema.Object(properties = Seq("city" -> JsonSchema.String()))
+      )
+      await(full.createChatFunCompletion(messages, Seq(weather)))
+      last._1 should endWith("/chat/completions")
+      (last._2 \ "functions" \ 0 \ "name").as[String] shouldBe "get_weather"
+      (last._2 \ "functions" \ 0 \ "type").toOption shouldBe None
+    }
+
+    "refuse a non-function tool as a failed Future" in {
+      val call = scala.util.Try(
+        full.createChatFunCompletion(
+          messages,
+          Seq(io.cequence.openaiscala.domain.ChatCompletionTool.SkillTool("pptx"))
+        )
+      )
+      call.isSuccess shouldBe true
+      intercept[OpenAIScalaClientException](await(call.get))
+    }
+  }
 }

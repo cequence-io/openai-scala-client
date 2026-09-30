@@ -70,8 +70,19 @@ private[service] trait OpenAIServiceImpl
     val coreParams =
       createBodyParamsForChatCompletion(messages, settings, stream = false)
 
+    // the legacy `functions` parameter takes the function objects themselves - not the tools'
+    // `{"type": "function", "function": ...}` wrapper, which the API rejects with a 400
+    // ("Missing required parameter: 'functions[0].name'", live 2026-09-30)
+    val functionsJson = functions.map {
+      case function: AssistantTool.FunctionTool => Json.toJson(function)
+      case other =>
+        throw new OpenAIScalaClientException(
+          s"createChatFunCompletion takes function tools only, not ${other.getClass.getSimpleName}."
+        )
+    }
+
     val extraParams = jsonBodyParams(
-      Param.functions -> Some(functions.map(Json.toJson(_)(chatCompletionToolWrites))),
+      Param.functions -> Some(functionsJson),
       Param.function_call -> responseFunctionName.map(name =>
         Map("name" -> name)
       ) // otherwise "auto" is used by default (if functions are present)
