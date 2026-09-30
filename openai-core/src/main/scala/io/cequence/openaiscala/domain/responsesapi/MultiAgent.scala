@@ -4,10 +4,10 @@ import play.api.libs.json.JsObject
 
 /**
  * Server-hosted multi-agent execution for a Responses API call (beta, GPT-6.1 Sol): the model
- * may spawn subagents, message them and wait for them, all on the server. Sending it adds the
- * `OpenAI-Beta: responses_multi_agent=v1` header the API requires (see
- * [[CreateModelResponseSettings.betaHeaders]]). Live-verified 2026-09-30: it cannot be
- * combined with `reasoning.summary` (400).
+ * may spawn subagents, message them and wait for them, all on the server. With `enabled` it
+ * adds the `OpenAI-Beta: responses_multi_agent=v1` header the API then requires (see
+ * [[CreateModelResponseSettings.betaHeaders]]; `enabled = false` needs none). Live-verified
+ * 2026-09-30: it cannot be combined with `reasoning.summary` (400).
  *
  * @param enabled
  *   whether multi-agent execution is on

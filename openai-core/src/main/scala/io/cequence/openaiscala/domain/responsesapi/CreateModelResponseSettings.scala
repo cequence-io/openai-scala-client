@@ -91,8 +91,8 @@ import io.cequence.openaiscala.domain.responsesapi.tools.Tool
  *   An integer between 0 and 20 specifying the number of most likely tokens to return at each
  *   token position, each with an associated log probability. Optional
  * @param multiAgent
- *   Server-hosted multi-agent execution (beta, GPT-6.1 Sol) - adds the required `OpenAI-Beta:
- *   responses_multi_agent=v1` header. Optional
+ *   Server-hosted multi-agent execution (beta, GPT-6.1 Sol) - when enabled, adds the required
+ *   `OpenAI-Beta: responses_multi_agent=v1` header. Optional
  */
 final case class CreateModelResponseSettings(
   model: String,
@@ -129,10 +129,10 @@ object CreateModelResponseSettings {
   private val multiAgentBetaHeader = ("OpenAI-Beta", "responses_multi_agent=v1")
 
   /**
-   * The `OpenAI-Beta` headers a call with these settings needs - multi-agent execution
-   * requires `responses_multi_agent=v1` (without it the API answers 400). OpenAI reads only
-   * the FIRST `OpenAI-Beta` header of a request (live-verified 2026-09-30), so no other one
-   * may precede it.
+   * The `OpenAI-Beta` headers a call with these settings needs - enabled multi-agent execution
+   * requires `responses_multi_agent=v1` (without it the API answers 400; `multi_agent` with
+   * `enabled = false` is accepted without it). OpenAI reads only the FIRST `OpenAI-Beta`
+   * header of a request (all live-verified 2026-09-30), so no other one may precede it.
    */
   def betaHeaders(settings: CreateModelResponseSettings): Seq[(String, String)] =
     if (settings.multiAgent.exists(_.enabled)) Seq(multiAgentBetaHeader) else Nil

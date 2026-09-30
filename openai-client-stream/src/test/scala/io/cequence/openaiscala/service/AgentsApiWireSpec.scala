@@ -267,6 +267,15 @@ class AgentsApiWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll
       bytes.utf8String shouldBe "file-bytes"
     }
 
+    "refuse a turn's items without a subagent as a failed Future, not a synchronous throw" in {
+      val call =
+        scala.util.Try(service.listAgentSessionItems("sess_1", turnId = Some("turn_1")))
+      call.isSuccess shouldBe true
+      intercept[IllegalArgumentException](await(call.get)).getMessage should include(
+        "subagent"
+      )
+    }
+
     "fail a rejected call classified (a 409 deleting a session with an active turn)" in {
       intercept[OpenAIScalaClientException](
         await(service.deleteAgentSession("busy"))

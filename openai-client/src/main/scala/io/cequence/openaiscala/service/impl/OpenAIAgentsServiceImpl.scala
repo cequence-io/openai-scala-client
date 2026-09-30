@@ -140,20 +140,28 @@ trait OpenAIAgentsServiceImpl extends OpenAIAgentsService with OpenAIServiceWSBa
     turnId: Option[String]
   ): Future[AgentsPage[AgentSessionItem]] = {
     val path = (subagentId, turnId) match {
-      case (Some(subagent), Some(turn)) => s"$sessionId/subagents/$subagent/turns/$turn/items"
-      case (Some(subagent), None)       => s"$sessionId/subagents/$subagent/items"
-      case (None, Some(_)) =>
-        throw new IllegalArgumentException(
-          "The items of one turn are listed for a subagent only - pass subagentId too."
-        )
-      case (None, None) => s"$sessionId/items"
+      case (Some(subagent), Some(turn)) =>
+        Some(s"$sessionId/subagents/$subagent/turns/$turn/items")
+      case (Some(subagent), None) => Some(s"$sessionId/subagents/$subagent/items")
+      case (None, Some(_))        => None
+      case (None, None)           => Some(s"$sessionId/items")
     }
-    execGET(
-      EndPoint.agent_sessions,
-      Some(path),
-      params = listParams(limit, order, after),
-      extraHeaders = betaHeaders
-    ).map(_.asSafeJson[AgentsPage[AgentSessionItem]])
+    path match {
+      // a failed Future, never a synchronous throw (it would escape .recover and the adapters)
+      case None =>
+        Future.failed(
+          new IllegalArgumentException(
+            "The items of one turn are listed for a subagent only - pass subagentId too."
+          )
+        )
+      case Some(path) =>
+        execGET(
+          EndPoint.agent_sessions,
+          Some(path),
+          params = listParams(limit, order, after),
+          extraHeaders = betaHeaders
+        ).map(_.asSafeJson[AgentsPage[AgentSessionItem]])
+    }
   }
 
   override def listAgentSessionTurns(
