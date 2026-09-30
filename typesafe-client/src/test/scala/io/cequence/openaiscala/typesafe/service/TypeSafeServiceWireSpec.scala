@@ -175,6 +175,24 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       custom.close()
     }
 
+    "serve Liquid AI's d1 through the liquid preset - its /decisions prefix and d1:free" in {
+      respond(200, quickStartResponse)
+      val liquid =
+        TypeSafeServiceFactory.liquidWithEngine(
+          engine,
+          "liquid_k",
+          baseUrl = baseUrl + "/decisions"
+        )
+
+      await(liquid.systemOne(JsString("x"), questions))
+
+      received.get.path shouldBe "/decisions/v1/systemone"
+      received.get.headers("authorization") shouldBe "Bearer liquid_k"
+      (Json.parse(received.get.body) \ "model")
+        .as[String] shouldBe TypeSafeModelId.liquid_d1_free
+      liquid.close()
+    }
+
     "fail fast on an empty question map, without calling the API" in {
       respond(200, quickStartResponse)
 

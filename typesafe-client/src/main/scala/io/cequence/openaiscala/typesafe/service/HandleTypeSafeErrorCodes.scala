@@ -44,7 +44,9 @@ object HandleTypeSafeErrorCodes {
       case _                   => new TypeSafeScalaClientException(_, null, _, _, _)
     }
 
-    build(errorMessage, Some(httpCode), kind, requestId)
+    // the classification above keys on TypeSafe's own `detail.error_type`; the exception also
+    // carries an OpenAI-style `error.code` / `error.type` (Liquid AI's host answers that way)
+    build(errorMessage, Some(httpCode), kind.orElse(json.flatMap(openAIErrorType)), requestId)
   }
 
   /**
@@ -63,6 +65,10 @@ object HandleTypeSafeErrorCodes {
 
   private def errorType(json: JsValue): Option[String] =
     (json \ "detail" \ "error_type").asOpt[String]
+
+  // `{"error": {"code": "model_unavailable", "type": "rate_limit_error", ...}}`
+  private def openAIErrorType(json: JsValue): Option[String] =
+    (json \ "error" \ "code").asOpt[String].orElse((json \ "error" \ "type").asOpt[String])
 
   private def extractMessage(json: JsValue): Option[String] =
     json match {

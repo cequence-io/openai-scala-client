@@ -1,7 +1,7 @@
 # OpenAI Scala Client 🤖
 [![version](https://img.shields.io/badge/version-1.4.0-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT) ![GitHub Stars](https://img.shields.io/github/stars/cequence-io/openai-scala-client?style=social) [![Follow on X](https://img.shields.io/badge/X-%400xbnd-black?logo=x)](https://x.com/0xbnd) ![GitHub CI](https://github.com/cequence-io/openai-scala-client/actions/workflows/continuous-integration.yml/badge.svg)
 
-This is a no-nonsense async Scala client for OpenAI API and multiple LLM providers supporting all the available endpoints and params **including streaming** (with a provider-neutral typed stream of text / thinking / tool-call / tool-result chunks), **chat completion**, **responses API**, **agents API**, **tools** (including MCP), **graders**, **vision** (with provider-uniform file/image attachments), **batch processing**, and **voice routines** (as defined [here](https://platform.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala) with adapters for Anthropic (incl. Bedrock and Managed Agents), Google Gemini/Vertex AI, Groq, Perplexity, TypeSafe AI (Jev), and others. The supported calls are:
+This is a no-nonsense async Scala client for OpenAI API and multiple LLM providers supporting all the available endpoints and params **including streaming** (with a provider-neutral typed stream of text / thinking / tool-call / tool-result chunks), **chat completion**, **responses API**, **agents API**, **tools** (including MCP), **graders**, **vision** (with provider-uniform file/image attachments), **batch processing**, and **voice routines** (as defined [here](https://platform.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala) with adapters for Anthropic (incl. Bedrock and Managed Agents), Google Gemini/Vertex AI, Groq, Perplexity, TypeSafe AI (Jev), Liquid AI (d1), and others. The supported calls are:
 
 * **Models**: [listModels](https://platform.openai.com/docs/api-reference/models/list), and [retrieveModel](https://platform.openai.com/docs/api-reference/models/retrieve)
 * **Completions**: [createCompletion](https://platform.openai.com/docs/api-reference/completions/create) (deprecated on `OpenAIService` - OpenAI shuts down its last completions models on 2026-09-28; OpenAI-compatible servers keep it via `OpenAICoreService`)
@@ -64,6 +64,7 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 | [Perplexity](https://www.perplexity.ai/) | Only implied           |                                   |                         | Agent API (🔥 1.4.0) + Sonar (⚠️ chat completions retire on 2026-09-27, see below) |
 | [TogetherAI](https://www.together.ai/) | Full (model-dependent)|                                   |                         | Cloud provider |
 | [TypeSafe AI](https://typesafe.ai/)         | Typed by construction  | `json_schema` structured output only (`asOpenAI()`) |                         | Decision model `Jev`: typed answers with calibrated probabilities |
+| [Liquid AI](https://www.liquid.ai/) (🔥 New) | Typed by construction  | `json_schema` structured output only (`liquidAsOpenAI()`) |                         | Decision model `d1` on the same System One API (the TypeSafe lib) |
 
 ---
 
@@ -309,6 +310,13 @@ Then you can obtain a service in one of the following ways.
   val service = TypeSafeServiceFactory.asOpenAI()
 ```
    System One (`jev`) is a decision model, not a chat model - see [TypeSafe AI (Jev)](#typesafe-ai-jev-) below for the questions / answers API and what the OpenAI adapter does.
+
+   🔥 [Liquid AI](https://www.liquid.ai/)'s decision model **d1** (launched 2026-09-30) serves the same System One API, so the same lib reaches it with `LIQUID_API_KEY`:
+```scala
+  val d1 = TypeSafeServiceFactory.liquid()              // native System One service (d1:free)
+  val d1Service = TypeSafeServiceFactory.liquidAsOpenAI() // json_schema structured output
+```
+   See [LiquidD1SmokeTest](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/typesafe/LiquidD1SmokeTest.scala) (d1 and Jev side by side). Liquid's OpenAI-compatible chat surface is `ChatProviderSettings.liquid`; it lists no chat models for a free-tier key yet.
 
 8. [Groq](https://wow.groq.com/) - requires `GROQ_API_KEY"`
 ```scala

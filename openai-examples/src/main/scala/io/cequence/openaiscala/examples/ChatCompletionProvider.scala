@@ -131,6 +131,14 @@ object ChatCompletionProvider {
     implicit ec: ExecutionContext
   ): OpenAIChatCompletionStreamedService = provide(ChatProviderSettings.minimaxChina)
 
+  /**
+   * Requires `LIQUID_API_KEY` (Liquid's OpenAI-compatible surface lists no chat models for a
+   * free-tier key yet - its decision model d1 is served by `TypeSafeServiceFactory.liquid`)
+   */
+  def liquid(
+    implicit ec: ExecutionContext
+  ): OpenAIChatCompletionStreamedService = provide(ChatProviderSettings.liquid)
+
   private def provide(
     settings: ProviderSettings
   )(

@@ -114,6 +114,28 @@ class HandleTypeSafeErrorCodesSpec extends AnyWordSpec with Matchers {
     }
   }
 
+  "Liquid AI's error bodies (the same System One API, OpenAI-style errors)" should {
+
+    // recorded from https://api.liquid.ai/decisions/v1/systemone on 2026-09-30, d1's launch day
+    "be classified by status, carrying their code or type" in {
+      val unavailable = toException(
+        429,
+        """{"error":{"message":"The model `d1:free` is temporarily unable to accept requests. Please try again shortly.","type":"rate_limit_error","param":null,"code":"model_unavailable"}}"""
+      )
+      unavailable shouldBe a[TypeSafeScalaRateLimitException]
+      unavailable.errorType shouldBe Some("model_unavailable")
+      unavailable.getMessage should include("temporarily unable to accept requests")
+
+      val backendsDown = toException(
+        502,
+        """{"error":{"message":"All upstream backends failed for this model.","type":"api_error","param":null,"code":null}}"""
+      )
+      backendsDown shouldBe a[TypeSafeScalaServerErrorException]
+      backendsDown.errorType shouldBe Some("api_error")
+      backendsDown.getMessage should include("All upstream backends failed")
+    }
+  }
+
   "extractMessage / errorType" should {
 
     "unpack the shapes the official SDK unpacks" in {

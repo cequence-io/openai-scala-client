@@ -20,4 +20,10 @@ object TypeSafeModelId {
 
   /** The build `jev-latest` resolved to on 2026-09-16. */
   val jev_1_13_0: String = NonOpenAIModelId.jev_1_13_0
+
+  /**
+   * Liquid AI's decision model d1 (free tier) - the same System One API on Liquid's host (see
+   * `TypeSafeServiceFactory.liquid`).
+   */
+  val liquid_d1_free: String = NonOpenAIModelId.liquid_d1_free
 }

@@ -2,12 +2,12 @@
 
 ## 1.4.0 (2026-09-30)
 
-36 commits since v1.3.0 (2026-09-18), 226 files, +35k lines: GPT-6.1 Sol with the Fast / Ultrafast tiers and the
+37 commits since v1.3.0 (2026-09-18), 235 files, +35k lines: GPT-6.1 Sol with the Fast / Ultrafast tiers and the
 Responses reasoning mode, the OpenAI Agents API and Responses multi-agent execution (both beta), human approval
-mid-stream, Perplexity's Agent API, classified streaming errors (ws-client 1.1.1), Claude Opus 5.5 / Sonnet 5.5, model
-conversions re-measured against the live APIs, and the retirement sweep of dead models and endpoints. Everything below
-is live-verified against the providers unless stated otherwise. 1.3.1 was never released - its changes are part of
-1.4.0.
+mid-stream, Perplexity's Agent API, classified streaming errors (ws-client 1.1.1), Claude Opus 5.5 / Sonnet 5.5, Liquid
+AI's decision model d1, model conversions re-measured against the live APIs, and the retirement sweep of dead models and
+endpoints. Everything below is live-verified against the providers unless stated otherwise. 1.3.1 was never released -
+its changes are part of 1.4.0.
 
 Artifacts (Scala 2.12 / 2.13 / 3): `openai-scala-client`, `openai-scala-client-stream`, `openai-scala-anthropic-client`,
 `openai-scala-google-gemini-client`, `openai-scala-google-vertexai-client`, `openai-scala-perplexity-sonar-client`,
@@ -72,6 +72,13 @@ nothing public was removed. ws-client moves from 1.0.0 to 1.1.1.
 - **Other providers** (listed 2026-09-29) - Gemini `gemini-3.8-flash-tts` / `-flash-lite-tts`, `gemini-3.8-live` /
   `-live-extended-thinking` (Live API only) and `antigravity-preview-09-2026` / `-latest`; Mistral-hosted GLM 5.3
   (`zai-glm-5-3`) and `labs-leanstral-1-5-1`; Together AI `deepseek-ai/DeepSeek-V4.1-Flash`; Fireworks `ember-1`.
+- **Liquid AI d1** (launched 2026-09-30) - Liquid's decision model serves the same System One API as TypeSafe's Jev, so
+  the typesafe-client reaches it: `TypeSafeServiceFactory.liquid()` / `liquidWithEngine` / `liquidAsOpenAI()` (base
+  `https://api.liquid.ai/decisions`, `LIQUID_API_KEY`, model `NonOpenAIModelId.liquid_d1_free` = `d1:free`, listed in
+  `models-supporting-json-schema`). d1 answers with calibrated probabilities and zero output tokens; Liquid's
+  OpenAI-style error bodies are classified by status and carry their code (e.g. `model_unavailable`) as the exception's
+  `errorType`. Liquid's OpenAI-compatible chat surface is `ChatProviderSettings.liquid` (it lists no chat models for a
+  free-tier key yet). See `typesafe/LiquidD1SmokeTest` (d1 and Jev side by side).
 - **Meta Muse Glimmer 30B** - `NonOpenAIModelId.meta_models_muse_glimmer_30b` (Together AI): Meta's open-weights agentic
   model, a reasoning model (its reasoning arrives as `Thinking` chunks and counts toward `max_tokens`) with tools, image
   input and strict `json_schema` (added to `models-supporting-json-schema`). Fireworks lists it as `muse_glimmer_30b` for

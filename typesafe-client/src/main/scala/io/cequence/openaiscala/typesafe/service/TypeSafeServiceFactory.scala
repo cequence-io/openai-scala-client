@@ -32,6 +32,11 @@ import scala.concurrent.ExecutionContext
  *   response.noul("is_urgent").noul        // 0.97
  * }
  * }}}
+ *
+ * Liquid AI's decision model d1 speaks the same System One API: [[liquid]] /
+ * [[liquidAsOpenAI]] point the client at Liquid's host (`LIQUID_API_KEY`, model `d1:free`);
+ * its errors are the same [[TypeSafeScalaClientException]] hierarchy, classified by HTTP
+ * status.
  */
 object TypeSafeServiceFactory extends EnvHelper {
 
@@ -98,6 +103,45 @@ object TypeSafeServiceFactory extends EnvHelper {
     implicit ec: ExecutionContext
   ): OpenAIChatCompletionService =
     new OpenAITypeSafeChatCompletionService(service)
+
+  /**
+   * Liquid AI's decision model d1 on its System One API (`https://api.liquid.ai/decisions`,
+   * `LIQUID_API_KEY`, `d1:free`), on its own PRIVATE engine.
+   */
+  def liquid(
+    apiKey: String = getEnvValue(liquidApiKeyEnvKey),
+    baseUrl: String = liquidBaseUrl,
+    defaultModel: String = liquidDefaultModel,
+    timeouts: Option[Timeouts] = None
+  )(
+    implicit ec: ExecutionContext
+  ): TypeSafeService =
+    apply(apiKey, baseUrl, defaultModel, timeouts)
+
+  /** [[liquid]] on a CALLER-SUPPLIED, shared engine (see [[withEngine]]). */
+  def liquidWithEngine(
+    engine: WSClientEngine,
+    apiKey: String = getEnvValue(liquidApiKeyEnvKey),
+    baseUrl: String = liquidBaseUrl,
+    defaultModel: String = liquidDefaultModel
+  )(
+    implicit ec: ExecutionContext
+  ): TypeSafeService =
+    withEngine(engine, apiKey, baseUrl, defaultModel)
+
+  /**
+   * Liquid AI's d1 behind the OpenAI chat-completion interface - `json_schema` structured
+   * output only, exactly like [[asOpenAI]] (`d1:free` is in `models-supporting-json-schema`).
+   */
+  def liquidAsOpenAI(
+    apiKey: String = getEnvValue(liquidApiKeyEnvKey),
+    baseUrl: String = liquidBaseUrl,
+    defaultModel: String = liquidDefaultModel,
+    timeouts: Option[Timeouts] = None
+  )(
+    implicit ec: ExecutionContext
+  ): OpenAIChatCompletionService =
+    asOpenAI(liquid(apiKey, baseUrl, defaultModel, timeouts))
 
   private def baseUrlFromEnv: String = envOrElse(baseUrlEnvKey, defaultBaseUrl)
 

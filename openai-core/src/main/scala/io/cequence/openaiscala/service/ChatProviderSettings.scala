@@ -22,5 +22,9 @@ object ChatProviderSettings {
   // MiniMax direct API, OpenAI-compatible endpoints (requires MINIMAX_API_KEY).
   // `minimax` is the global endpoint, `minimaxChina` the China (minimaxi.com) endpoint.
   val minimax = ProviderSettings("https://api.minimax.io/v1/", "MINIMAX_API_KEY")
+  // Liquid AI's OpenAI-compatible surface (live 2026-09-30: it answers in OpenAI's format but
+  // lists no chat models for a free-tier key - Liquid's hosted model is the decision model d1,
+  // see the typesafe-client's TypeSafeServiceFactory.liquid)
+  val liquid = ProviderSettings("https://api.liquid.ai/openai/v1/", "LIQUID_API_KEY")
   val minimaxChina = ProviderSettings("https://api.minimaxi.com/v1/", "MINIMAX_API_KEY")
 }

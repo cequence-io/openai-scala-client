@@ -1023,4 +1023,10 @@ object NonOpenAIModelId {
   // pin a dated build to keep answers stable across alias moves (dated builds are accepted
   // by name but not listed by /v1/models; jev-1.12 is already gone)
   val jev_1_13_0 = "jev-1.13.0"
+
+  // Liquid AI's decision model d1 (launched 2026-09-30) - served on the SAME System One API
+  // (`https://api.liquid.ai/decisions/v1/systemone`, `LIQUID_API_KEY`), so the typesafe-client
+  // speaks it: `TypeSafeServiceFactory.liquid` / `liquidAsOpenAI`. `/decisions/v1/models`
+  // lists only `d1:free` (live 2026-09-30)
+  val liquid_d1_free = "d1:free"
 }
