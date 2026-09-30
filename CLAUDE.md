@@ -8,6 +8,8 @@ This is **OpenAI Scala Client** - an async Scala client for OpenAI API and multi
 
 The library is designed to be self-contained with minimal dependencies and uses a Play WS backend for HTTP calls. It's published as `io.cequence:openai-scala-client` on Maven Central.
 
+**Versioning**: the release line is **1.4.0** (the build stays `1.4.0-SNAPSHOT` until the release commit sets `1.4.0`; 1.3.1 was never released). New `@deprecated` annotations use the upcoming release as their `since` value, and the top section of `CHANGELOG.md` is the release notes - it opens with the upgrade notes (API breaks and behavior changes against the previous release, found by comparing the published jars' public signatures with `javap`).
+
 ## Build & Test Commands
 
 The project uses SBT with custom command aliases defined in build.sbt:
@@ -31,6 +33,9 @@ The project cross-compiles for Scala 2.12.18, 2.13.11, and 3.2.2:
 The `Example` trait uses `System.exit()` which sbt's TrapExit mechanism intercepts, causing output to be swallowed. For reliable output when running examples from sbt, either:
 - Run from IntelliJ directly (recommended)
 - Write standalone `main` methods using `Await.result` instead of extending `Example`
+- Or run the compiled class on a plain JVM: `sbt "export examples/Runtime/fullClasspath"` prints the classpath (its last line), then `java -cp "<classpath>" io.cequence.openaiscala.examples.CreateChatCompletion` - an `Example` exits 0 on success and 1 on failure, so a script can sweep many. Run them from a scratch directory (some write files, e.g. `CreateAudioSpeech`).
+
+The router examples (`CreateChatCompletionWithRouter`, `adapters/ChatCompletion*Router*`, `ChatCompletionProvider.octoML`) still route to OctoAI (shut down in 2024), a local Ollama and Azure Cohere, so they fail without those; the routers themselves were live-verified on 2026-09-30 across OpenAI, Groq, Anthropic and Gemini (sync, OpenAI-shaped and typed streams).
 
 ## Module Architecture
 
@@ -264,7 +269,7 @@ Streaming is provided as an extension via the `openai-client-stream` module:
 - **Gemini thinking** (`gemini/service/impl/GeminiThinking`): levels for Gemini 3.x, the rolling aliases (`gemini-flash-latest`, `-flash-lite-latest`, `-pro-latest`) and `nano-banana-pro*`; budgets for 2.5; nothing for `gemini-2.5-flash-image`. MINIMAL is rejected by the Pro models (not 3-pro-image), 3.7 / 3.8 Flash and `gemini-flash-latest`; the 3.1 Flash image models accept only MINIMAL / HIGH. `gemini-omni-*` only serve the Interactions API (not usable by the adapter)
 - **JSON-schema model matching** (`handleOutputJsonSchema`): exact id, `-<id>` suffix, and for OpenAI-on-Bedrock ids the canonical id (`us.openai.gpt-5.6-luna` matches `gpt-5.6-luna`); a Bedrock Anthropic id never matches its bare Claude name (Bedrock rejects `output_config.format` for 4.7+ / 5.x, and so does the mantle short form `anthropic.claude-haiku-4-5`)
 - **Anthropic max-output table**: the LONGEST matching id wins, so the `contains`-matched table's order no longer matters
-- **Groq**: DeepSeek R1 models need `max_completion_tokens` and optional reasoning format
+- **Groq**: DeepSeek R1 models need `max_completion_tokens` and optional reasoning format. Groq's catalog on 2026-09-30: `openai/gpt-oss-120b` / `-20b`, `qwen/qwen3.6-27b` / `qwen3.8-27b`, `allam-2-7b` (plus guard / TTS / whisper models) - the Llama 3.3 / 4 and DeepSeek ids are gone (404)
 
 ### Domain Model Organization
 Domain classes are in openai-core/src/main/scala/io/cequence/openaiscala/domain/:
@@ -469,3 +474,4 @@ Chat adapter: `service.agentsAsChatCompletion(agentId, environment, agentTools, 
 - Provider adapters may have limited feature support - check provider compatibility table in README
 - When working with structured/JSON output, use `JsonSchema` and `JsonSchemaDef` for type-safe schemas. `JsonSchema.Integer` / `Number` carry optional `minimum` / `maximum` / `enum` (added 2026-09-17, for the TypeSafe adapter's score levels). Provider support is uneven (live-verified 2026-09-17): OpenAI honours min/max and enum in STRICT mode only (accepted but ignored when `strict = false`); Anthropic 400s on min/max ("For 'integer' type, properties maximum, minimum are not supported"), so `toAnthropicSettings` strips them from the structured-output schema with a warning (`dropNumericBounds`; TOOL input schemas accept them and are left alone) and honours enum; Gemini / Vertex AI read only the description and drop all three. `enum` is the portable one
 - Gemini errors are repackaged as OpenAI exceptions via `repackAsOpenAIException` for adapter compatibility
+- `createChatFunCompletion` (the deprecated legacy `functions` API) sends the bare function objects - the tools' `{"type": "function", "function": ...}` wrapper is a 400 ("Missing required parameter: 'functions[0].name'", live 2026-09-30); anything but a `FunctionTool` fails the returned Future

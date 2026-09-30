@@ -1,7 +1,7 @@
 # OpenAI Scala Client 🤖
-[![version](https://img.shields.io/badge/version-1.3.0-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT) ![GitHub Stars](https://img.shields.io/github/stars/cequence-io/openai-scala-client?style=social) [![Follow on X](https://img.shields.io/badge/X-%400xbnd-black?logo=x)](https://x.com/0xbnd) ![GitHub CI](https://github.com/cequence-io/openai-scala-client/actions/workflows/continuous-integration.yml/badge.svg)
+[![version](https://img.shields.io/badge/version-1.4.0-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT) ![GitHub Stars](https://img.shields.io/github/stars/cequence-io/openai-scala-client?style=social) [![Follow on X](https://img.shields.io/badge/X-%400xbnd-black?logo=x)](https://x.com/0xbnd) ![GitHub CI](https://github.com/cequence-io/openai-scala-client/actions/workflows/continuous-integration.yml/badge.svg)
 
-This is a no-nonsense async Scala client for OpenAI API and multiple LLM providers supporting all the available endpoints and params **including streaming** (with a 🔥 new provider-neutral typed stream of text / thinking / tool-call / tool-result chunks), **chat completion**, **responses API**, **assistants API**, **tools** (including MCP), **graders**, **vision** (with provider-uniform file/image attachments), **batch processing**, and **voice routines** (as defined [here](https://platform.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala) with adapters for Anthropic (incl. Bedrock and Managed Agents), Google Gemini/Vertex AI, Groq, Perplexity, TypeSafe AI (Jev) (🔥 New), and others. The supported calls are:
+This is a no-nonsense async Scala client for OpenAI API and multiple LLM providers supporting all the available endpoints and params **including streaming** (with a provider-neutral typed stream of text / thinking / tool-call / tool-result chunks), **chat completion**, **responses API**, **agents API**, **tools** (including MCP), **graders**, **vision** (with provider-uniform file/image attachments), **batch processing**, and **voice routines** (as defined [here](https://platform.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala) with adapters for Anthropic (incl. Bedrock and Managed Agents), Google Gemini/Vertex AI, Groq, Perplexity, TypeSafe AI (Jev), and others. The supported calls are:
 
 * **Models**: [listModels](https://platform.openai.com/docs/api-reference/models/list), and [retrieveModel](https://platform.openai.com/docs/api-reference/models/retrieve)
 * **Completions**: [createCompletion](https://platform.openai.com/docs/api-reference/completions/create) (deprecated on `OpenAIService` - OpenAI shuts down its last completions models on 2026-09-28; OpenAI-compatible servers keep it via `OpenAICoreService`)
@@ -14,7 +14,7 @@ This is a no-nonsense async Scala client for OpenAI API and multiple LLM provide
 * **Files**: [listFiles](https://platform.openai.com/docs/api-reference/files/list), [uploadFile](https://platform.openai.com/docs/api-reference/files/upload), [deleteFile](https://platform.openai.com/docs/api-reference/files/delete), [retrieveFile](https://platform.openai.com/docs/api-reference/files/retrieve), [retrieveFileContent](https://platform.openai.com/docs/api-reference/files/retrieve-content), and `retrieveFileContentAsSource` (streamed)
 * **Fine-tunes**: [createFineTune](https://platform.openai.com/docs/api-reference/fine-tunes/create), [listFineTunes](https://platform.openai.com/docs/api-reference/fine-tunes/list), [retrieveFineTune](https://platform.openai.com/docs/api-reference/fine-tunes/retrieve), [cancelFineTune](https://platform.openai.com/docs/api-reference/fine-tunes/cancel), [listFineTuneEvents](https://platform.openai.com/docs/api-reference/fine-tunes/events), [listFineTuneCheckpoints](https://platform.openai.com/docs/api-reference/fine-tuning/list-checkpoints), and [deleteFineTuneModel](https://platform.openai.com/docs/api-reference/fine-tunes/delete-model)
 * **Moderations**: [createModeration](https://platform.openai.com/docs/api-reference/moderations/create)
-* ⚠️ **Assistants, Threads, Thread Messages, Runs and Run Steps** are deprecated since 1.3.1 - OpenAI shut the Assistants API down on 2026-08-26; use the Responses API (`createModelResponse` / `createModelResponseStreamed`) instead
+* ⚠️ **Assistants, Threads, Thread Messages, Runs and Run Steps** are deprecated since 1.4.0 - OpenAI shut the Assistants API down on 2026-08-26; use the Responses API (`createModelResponse` / `createModelResponseStreamed`) instead
 * **Assistants**: [createAssistant](https://platform.openai.com/docs/api-reference/messages/createMessage), [listAssistants](https://platform.openai.com/docs/api-reference/assistants/listAssistants), [retrieveAssistant](https://platform.openai.com/docs/api-reference/assistants/retrieveAssistant), [modifyAssistant](https://platform.openai.com/docs/api-reference/assistants/modifyAssistant), [deleteAssistant](https://platform.openai.com/docs/api-reference/assistants/deleteAssistant), and `deleteAssistantFile`
 * **Threads**: [createThread](https://platform.openai.com/docs/api-reference/threads/createThread), [retrieveThread](https://platform.openai.com/docs/api-reference/threads/getThread), [modifyThread](https://platform.openai.com/docs/api-reference/threads/modifyThread), and [deleteThread](https://platform.openai.com/docs/api-reference/threads/deleteThread)
 * **Thread Messages**: [createThreadMessage](https://platform.openai.com/docs/api-reference/assistants/createAssistant), [retrieveThreadMessage](https://platform.openai.com/docs/api-reference/messages/getMessage), [modifyThreadMessage](https://platform.openai.com/docs/api-reference/messages/modifyMessage), [listThreadMessages](https://platform.openai.com/docs/api-reference/messages/listMessages), [retrieveThreadMessageFile](https://platform.openai.com/docs/api-reference/messages/getMessageFile), [listThreadMessageFiles](https://platform.openai.com/docs/api-reference/messages/listMessageFiles), and [deleteThreadMessage](https://platform.openai.com/docs/api-reference/messages/deleteMessage)
@@ -22,7 +22,7 @@ This is a no-nonsense async Scala client for OpenAI API and multiple LLM provide
 * **Run Steps**: [listRunSteps](https://platform.openai.com/docs/api-reference/run-steps/listRunSteps), and [retrieveRunStep](https://platform.openai.com/docs/api-reference/run-steps/getRunStep) 
 * **Vector Stores**: [createVectorStore](https://platform.openai.com/docs/api-reference/vector-stores/create), [listVectorStores](https://platform.openai.com/docs/api-reference/vector-stores/list), [retrieveVectorStore](https://platform.openai.com/docs/api-reference/vector-stores/retrieve), [modifyVectorStore](https://platform.openai.com/docs/api-reference/vector-stores/modify), and [deleteVectorStore](https://platform.openai.com/docs/api-reference/vector-stores/delete)
 * **Vector Store Files**: [createVectorStoreFile](https://platform.openai.com/docs/api-reference/vector-stores-files/createFile), [listVectorStoreFiles](https://platform.openai.com/docs/api-reference/vector-stores-files/listFiles), [retrieveVectorStoreFile](https://platform.openai.com/docs/api-reference/vector-stores-files/getFile), and [deleteVectorStoreFile](https://platform.openai.com/docs/api-reference/vector-stores-files/deleteFile)  
-* **Responses**: [createModelResponse](https://platform.openai.com/docs/api-reference/responses/create) (🔥 with tools support), [getModelResponse](https://platform.openai.com/docs/api-reference/responses/get), [deleteModelResponse](https://platform.openai.com/docs/api-reference/responses/delete), [cancelModelResponse](https://platform.openai.com/docs/api-reference/responses/cancel), [getModelResponseInputTokenCounts](https://platform.openai.com/docs/api-reference/responses/token-counts), [listModelResponseInputItems](https://platform.openai.com/docs/api-reference/responses/input-items), and [createModelResponseStreamed](https://platform.openai.com/docs/api-reference/responses-streaming) (🔥 new, typed events or `ChatChunk`s)
+* **Responses**: [createModelResponse](https://platform.openai.com/docs/api-reference/responses/create) (with tools support), [getModelResponse](https://platform.openai.com/docs/api-reference/responses/get), [deleteModelResponse](https://platform.openai.com/docs/api-reference/responses/delete), [cancelModelResponse](https://platform.openai.com/docs/api-reference/responses/cancel), [getModelResponseInputTokenCounts](https://platform.openai.com/docs/api-reference/responses/token-counts), [listModelResponseInputItems](https://platform.openai.com/docs/api-reference/responses/input-items), and [createModelResponseStreamed](https://platform.openai.com/docs/api-reference/responses-streaming) (typed events or `ChatChunk`s)
 * **Graders**: [runGrader](https://platform.openai.com/docs/api-reference/graders/run), and [validateGrader](https://platform.openai.com/docs/api-reference/graders/validate)
 
 The Anthropic client additionally covers the native **Messages** (incl. typed stream events), **Message Batches**, **Files**, **Skills**, and the whole **Managed Agents** API surface (agents, environments and their work queue, sessions, deployments, vaults and credentials, memory stores) - see the [Anthropic Managed Agents](#anthropic-managed-agents) section below.
@@ -40,30 +40,30 @@ Also, we aimed for the library to be self-contained with the fewest dependencies
 
 In addition to OpenAI, this library supports many other LLM providers. For providers that aren't natively compatible with the chat completion API, we've implemented adapters to streamline integration (see [examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples)).
 
-| Provider | JSON/Structured Output | Tools Support                     | Batch (🔥 New)          | Description |
+| Provider | JSON/Structured Output | Tools Support                     | Batch                  | Description |
 |----------|------------------------|-----------------------------------|-------------------------|-------------|
 | [OpenAI](https://platform.openai.com) | Full                   | Standard + Responses API          | Yes                     | Full API support |
 | [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) | Full                   | Standard + Responses API          | Yes                     | OpenAI on Azure|
-| [Anthropic](https://www.anthropic.com/api) | Full (🔥 New)          | Yes, also MCP and Skills (🔥 New) | Yes                     | Claude models |
-| [Anthropic Bedrock](https://aws.amazon.com/bedrock/claude/) | Full (🔥 New)          | Yes, also MCP (🔥 New)            | Yes (no prompt caching) | Claude on AWS |
-| [OpenAI Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-mantle.html) | Full (🔥 New)          | Standard + Responses API          |                         | GPT-5.x, gpt-oss, Grok & more on AWS (`bedrock-mantle` / `bedrock-runtime`) |
+| [Anthropic](https://www.anthropic.com/api) | Full                  | Yes, also MCP and Skills         | Yes                     | Claude models |
+| [Anthropic Bedrock](https://aws.amazon.com/bedrock/claude/) | Full                  | Yes, also MCP                    | Yes (no prompt caching) | Claude on AWS |
+| [OpenAI Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-mantle.html) | Full                  | Standard + Responses API          |                         | GPT-5.x, gpt-oss, Grok & more on AWS (`bedrock-mantle` / `bedrock-runtime`) |
 | [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) | Varies                 |                                   |                         | Open-source models |
 | [Cerebras](https://cerebras.ai/) | Full (`gpt-oss-120b`, `qwen-3.8-27b`) | Yes                  |                         | Fast inference |
 | [Deepseek](https://deepseek.com/) | Only JSON object mode  |                                   |                         | Chinese provider |
 | [FastChat](https://github.com/lm-sys/FastChat) | Varies                 |                                   |                         | Local LLMs |
-| [Fireworks AI](https://fireworks.ai/) | Full (🔥 New)           |                                   |                         | Cloud provider |
-| [Google Gemini](https://ai.google.dev/) | Full                   | Yes (🔥 New)                      | Yes                     | Google's models |
+| [Fireworks AI](https://fireworks.ai/) | Full                   |                                   |                         | Cloud provider |
+| [Google Gemini](https://ai.google.dev/) | Full                   | Yes                              | Yes                     | Google's models |
 | [Google Vertex AI](https://cloud.google.com/vertex-ai) | Full                   | Yes                               | Yes                     | Gemini models |
 | [Grok](https://x.ai/) | Full                   | Yes                               |                         | x.AI models |
 | [Groq](https://wow.groq.com/) | Full (`openai/gpt-oss-*`, `qwen/qwen3.x-27b`) | Yes, also MCP and server-side tools | Yes                     | Fast inference |
 | [MiniMax](https://www.minimax.io/) | Varies (`json_schema` on M2.7+ per docs)|                                   |                         | Chinese provider (global & China) |
-| [Mistral](https://mistral.ai/) | Full (🔥 New)           |                                   |                         | Open-source leader |
+| [Mistral](https://mistral.ai/) | Full                   |                                   |                         | Open-source leader |
 | [Novita](https://novita.ai/) | Full (model-dependent) |                                   |                         | Cloud provider |
 | [Octo AI](https://octo.ai/) | Only JSON object mode  |                                   |                         | Cloud provider (obsolete) |
 | [Ollama](https://ollama.com/) | Varies                 |                                   |                         | Local LLMs |
-| [Perplexity](https://www.perplexity.ai/) | Only implied           |                                   |                         | Agent API (🔥 1.3.1) + Sonar (⚠️ chat completions retire on 2026-09-27, see below) |
-| [TogetherAI](https://www.together.ai/) | Full (🔥 New, model-dependent)|                                   |                         | Cloud provider |
-| [TypeSafe AI](https://typesafe.ai/) (🔥 New) | Typed by construction  | `json_schema` structured output only (`asOpenAI()`) |                         | Decision model `Jev`: typed answers with calibrated probabilities |
+| [Perplexity](https://www.perplexity.ai/) | Only implied           |                                   |                         | Agent API (🔥 1.4.0) + Sonar (⚠️ chat completions retire on 2026-09-27, see below) |
+| [TogetherAI](https://www.together.ai/) | Full (model-dependent)|                                   |                         | Cloud provider |
+| [TypeSafe AI](https://typesafe.ai/)         | Typed by construction  | `json_schema` structured output only (`asOpenAI()`) |                         | Decision model `Jev`: typed answers with calibrated probabilities |
 
 ---
 
@@ -80,7 +80,7 @@ The currently supported Scala versions are **2.12, 2.13**, and **3**.
 To install the library, add the following dependency to your *build.sbt*
 
 ```
-"io.cequence" %% "openai-scala-client" % "1.3.0"
+"io.cequence" %% "openai-scala-client" % "1.4.0"
 ```
 
 or to *pom.xml* (if you use maven)
@@ -89,16 +89,16 @@ or to *pom.xml* (if you use maven)
 <dependency>
     <groupId>io.cequence</groupId>
     <artifactId>openai-scala-client_2.12</artifactId>
-    <version>1.3.0</version>
+    <version>1.4.0</version>
 </dependency>
 ```
 
-If you want streaming support, use `"io.cequence" %% "openai-scala-client-stream" % "1.3.0"` instead.
+If you want streaming support, use `"io.cequence" %% "openai-scala-client-stream" % "1.4.0"` instead.
 
 For a single dependency that includes all provider clients (Anthropic, Gemini, Vertex AI, Perplexity, TypeSafe AI, token counting):
 
 ```
-"io.cequence" %% "openai-scala-all" % "1.3.0"
+"io.cequence" %% "openai-scala-all" % "1.4.0"
 ```
 
 ## Config ⚙️
@@ -253,7 +253,7 @@ Then you can obtain a service in one of the following ways.
 
 5. [Perplexity](https://www.perplexity.ai/) - requires `openai-scala-perplexity-client` lib and `PERPLEXITY_API_KEY` (or `SONAR_API_KEY`)
 
-   🔥 **Agent API** (`POST /v1/agent`, since 1.3.1) - web-grounded runs on presets (`fast`, `low`, `medium`, `high`, `xhigh`,
+   🔥 **Agent API** (`POST /v1/agent`, since 1.4.0) - web-grounded runs on presets (`fast`, `low`, `medium`, `high`, `xhigh`,
    `wide-research`) or any `provider/model`, with built-in tools (web search, URL fetch, finance / people search, sandbox, MCP,
    connectors), custom functions, skills, structured output, background runs, typed streaming and sandbox files:
 ```scala
@@ -290,7 +290,7 @@ Then you can obtain a service in one of the following ways.
 
    ⚠️ Perplexity [retires the Sonar Chat Completions endpoint on 2026-09-27](https://docs.perplexity.ai/docs/agent-api/migrate-from-sonar/overview):
    `createChatCompletion` / `createChatCompletionStreamed` and the OpenAI adapter built on them (`SonarServiceFactory.asOpenAI()`,
-   `ChatProviderSettings.sonar`) are `@deprecated` since 1.3.1. Sonar model to preset: `sonar` -> `fast`, `sonar-pro` -> `low`,
+   `ChatProviderSettings.sonar`) are `@deprecated` since 1.4.0. Sonar model to preset: `sonar` -> `fast`, `sonar-pro` -> `low`,
    `sonar-reasoning-pro` -> `medium`, `sonar-deep-research` -> `high`.
 
 6. [Novita](https://novita.ai/) - requires `NOVITA_API_KEY`
@@ -300,7 +300,7 @@ Then you can obtain a service in one of the following ways.
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.novita)
 ```
 
-7. [TypeSafe AI](https://typesafe.ai/) (🔥 New) - requires `openai-scala-typesafe-client` lib and `TYPESAFE_API_KEY`
+7. [TypeSafe AI](https://typesafe.ai/) - requires `openai-scala-typesafe-client` lib and `TYPESAFE_API_KEY`
 ```scala
   import io.cequence.openaiscala.typesafe.service.TypeSafeServiceFactory
 
@@ -997,7 +997,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
   native API; the typed stream does this for you. Streamed frames of up to 1 MB are accepted, so large server-tool result blocks
   (web search, web fetch) no longer break the stream.
 
-- **Typed streaming** (🔥 New) - `createChatToolCompletionStreamed` (and the tool-less alias `createChatCompletionStreamedTyped`)
+- **Typed streaming** - `createChatToolCompletionStreamed` (and the tool-less alias `createChatCompletionStreamedTyped`)
   returns `Source[ChatChunk, NotUsed]`, a provider-neutral sealed hierarchy that OpenAI (and every OpenAI-compatible provider),
   Anthropic (direct and Bedrock) and Google Gemini / Vertex AI all map onto, so the same pattern match works everywhere:
 
@@ -1014,7 +1014,8 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
   | `Image` | generated / returned images (base64 or URL) | image generation partial & final images, code interpreter image outputs (Responses API) | - | inline image parts |
   | `Refusal` | refusal text | `refusal` deltas (Responses API) | - | - |
   | `Citation` | citation / grounding reference | output-text annotations (Responses API) | `citations_delta` | `groundingMetadata` |
-  | `Finish(reason, providerReason)` | normalized stop reason (`stop`, `tool_calls`, `length`, `content_filter`, `unknown`) + the provider's own | `finish_reason` | `message_delta.stop_reason` | `finishReason` |
+  | `ToolApprovalRequest(requestId, toolName, arguments, serverName, runId)` | a tool call the run waits to have approved (see **Human approval** below) | `mcp_approval_request` (Responses API) | Managed Agents tool with an `always_ask` policy | - |
+  | `Finish(reason, providerReason)` | normalized stop reason (`stop`, `tool_calls`, `length`, `content_filter`, `approval_required`, `unknown`) + the provider's own | `finish_reason` | `message_delta.stop_reason` | `finishReason` |
   | `Usage(usage)` | OpenAI-shaped usage | trailing usage chunk (`stream_options.include_usage` is requested unless you set `stream_options` in `extra_params`) | merged `message_start` + `message_delta` usage | `usageMetadata` |
   | `Other(kind, raw)` | anything unmodeled (never dropped) | further choices | `ping`, unknown events / blocks | further candidates, unknown parts |
 
@@ -1047,14 +1048,14 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
 
   Provider-native server-side tools ride along via `setAnthropicTools` / `setGeminiTools` / `setVertexAITools` /
   `setResponsesTools` and come back as `ToolResult`s; `setGeminiIncludeThoughts(false)` and `setVertexAIIncludeThoughts(false)`
-  turn thought summaries off. Anthropic's **MCP connector** (🔥 New) rides along the same way: `setAnthropicMcpServers(Seq(MCPServerURLDefinition(name, url)))`
+  turn thought summaries off. Anthropic's **MCP connector** rides along the same way: `setAnthropicMcpServers(Seq(MCPServerURLDefinition(name, url)))`
   puts remote MCP servers on the request (typed stream and plain calls alike), their `mcp_tool_use` / `mcp_tool_result` arrive as
   server-side `ToolCall`s / `ToolResult`s, and a `pause_turn` (a tool run that outlived the turn budget) is continued transparently
   on the same `Source` - one `Start`, one final `Finish`, one summed `Usage`; `setAnthropicMaxContinuations` caps it (default 6). See
   [AnthropicCreateChatToolCompletionStreamedWithMCPServers](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/anthropic/AnthropicCreateChatToolCompletionStreamedWithMCPServers.scala).
   (Anthropic API only - Bedrock rejects `mcp_servers`.)
 
-  **Provider-neutral MCP servers and skills** (🔥 New) - instead of the provider-specific settings above, pass
+  **Provider-neutral MCP servers and skills** - instead of the provider-specific settings above, pass
   `ChatCompletionTool.MCPServerTool` / `ChatCompletionTool.SkillTool` in `tools` next to your function tools, on
   `createChatToolCompletion` and `createChatToolCompletionStreamed` alike; each adapter maps them onto its native feature or
   fails loudly rather than dropping them:
@@ -1097,7 +1098,7 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
   tier, which only the Responses API serves) on every chat entry point. Grok, Groq, Cerebras, Fireworks and DeepSeek use the generic mapping (Groq's per-chunk `usage` is
   emitted once); Sonar and Managed Agents stream text / reasoning / finish / usage but reject tools.
 
-  **Responses API streaming** (🔥 New) - `createModelResponseStreamed(inputs, settings)` on the streamed OpenAI service returns
+  **Responses API streaming** - `createModelResponseStreamed(inputs, settings)` on the streamed OpenAI service returns
   `Source[ResponseStreamEvent, NotUsed]` with every server-sent event typed (`ResponseCreated`, `OutputItemAdded/Done`,
   `OutputTextDelta`, `ReasoningSummaryTextDelta`, `FunctionCallArgumentsDelta/Done`, `CodeInterpreterCodeDelta/Done`,
   `ImageGenerationPartialImage`, `OutputTextAnnotationAdded`, `ResponseCompleted/Incomplete/Failed`, `ToolCallStatus` for the
@@ -1137,6 +1138,35 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
   See [CreateChatToolCompletionStreamed](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/CreateChatToolCompletionStreamed.scala),
   [AnthropicCreateChatToolCompletionStreamedWithOpenAIAdapter](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/anthropic/AnthropicCreateChatToolCompletionStreamedWithOpenAIAdapter.scala),
   and [GoogleGeminiCreateChatToolCompletionStreamedWithOpenAIAdapter](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/googlegemini/GoogleGeminiCreateChatToolCompletionStreamedWithOpenAIAdapter.scala).
+
+- **Human approval mid-stream** (🔥 New) - a run that pauses until a tool call is approved - an OpenAI MCP tool with
+  `requireApproval` (Responses API) or an Anthropic Managed Agents tool with an `always_ask` permission policy - ends its
+  typed stream with one `ToolApprovalRequest` per pending call and `Finish(approval_required)`. Answer on the next call with
+  `settings.setToolApprovalDecisions(Seq(request.approve))` (or `request.deny(reason)`), or let a callback decide and get
+  ONE stream from the question to the final answer:
+
+```scala
+  val service = OpenAIServiceFactory.withStreaming()
+
+  service
+    .createChatToolCompletionStreamedWithApprovals(
+      messages = Seq(UserMessage("Using deepwiki on repo cequence-io/openai-scala-client: which ws-client version does it use?")),
+      tools = Seq(
+        ChatCompletionTool.MCPServerTool("deepwiki", "https://mcp.deepwiki.com/mcp", requireApproval = true)
+      ),
+      settings = CreateChatCompletionSettings(ModelId.gpt_5_4_mini)
+    ) { request =>
+      println(s"approving ${request.toolName}(${request.arguments})")
+      Future.successful(request.approve)
+    }
+    .runWith(Sink.foreach(println))
+```
+
+  A resumed OpenAI run continues the stored response by id, so reasoning and executed MCP calls carry over and a run may pause
+  several times; everything that cannot pause refuses such a tool instead of running it unapproved. See
+  [CreateChatToolCompletionStreamedWithApproval](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/CreateChatToolCompletionStreamedWithApproval.scala)
+  (resuming by hand) and
+  [CreateChatToolCompletionStreamedWithApprovalCallback](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/CreateChatToolCompletionStreamedWithApprovalCallback.scala).
 
 - **Graders API** - evaluate model outputs
 
@@ -1349,7 +1379,7 @@ class MyCompletionService @Inject() (
 ```
   `chatCompletionRouterMapped` is the same router with `MappedModel` entries (the model name a caller asks for → the model id actually sent to that provider, e.g. to expose a provider-neutral alias), and `chatCompletionBatchRouterMixed(Mapped)` accepts a mix of batch-capable and plain services.
 
-- **Batch processing** (🔥 New) - provider-agnostic, ~50% of standard cost, async (typically a 24h turnaround target).
+- **Batch processing** - provider-agnostic, ~50% of standard cost, async (typically a 24h turnaround target).
   Available on the full OpenAI service and on the Anthropic, Anthropic Bedrock, Gemini, and Vertex AI adapters
   (see the **Batch** column in the provider table above). It is an **opt-in capability**
   ([`OpenAIChatCompletionBatchService`](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIChatCompletionBatchService.scala)),
@@ -1417,7 +1447,7 @@ class MyCompletionService @Inject() (
   On Anthropic Bedrock, batch goes through Bedrock's own S3-staged batch inference and needs
   `AnthropicServiceFactory.bedrockAsOpenAIWithBatchSupport(s3Bucket, roleArn)` (the plain `bedrockAsOpenAI()` is not batch-capable).
 
-- **Batch router** (🔥 New) - the batch-aware sibling of `chatCompletionRouter`, routing the batch endpoints across
+- **Batch router** - the batch-aware sibling of `chatCompletionRouter`, routing the batch endpoints across
   providers by model. Every registered service (and the default) must be batch-capable, and it respects the adapter's
   service type: `forFullService.chatCompletionBatchRouter(...)` returns an `OpenAIService` whose chat completion and
   batch are routed by model while files/assistants/etc. still delegate to the default service. Ideal for a central
@@ -1694,6 +1724,12 @@ the `SystemOneResponse`.
   }
 ```
 
+**Confidence fields** (🔥 New): a `number` property named `<field>_confidence` or `<field>Confidence` next to a field
+`<field>` (at any depth) is not asked but filled with System One's confidence in that field's answer, rounded to 4 decimals -
+a boolean's probability of the emitted answer, a choice's or score's `confidence`, the weakest option of a multi-select, the
+minimum over everything under an object. Add `"is_urgent_confidence" -> JsonSchema.Number()` to the schema above and the
+answer carries it right after `is_urgent`.
+
 `TypeSafeChatMapping.toState(messages)` / `toQuestions(schema)` show what a call will send, and
 `examples/typesafe/TypeSafeOpenAIAdapterWalkthrough` prints the exact System One request an OpenAI-shaped call turns into.
 Of the standard settings only `model`, `response_format_type`, `jsonSchema` and `n` = 1 are honoured; anything else you
@@ -1766,7 +1802,7 @@ directly to Anthropic's Managed Agents REST API instead of spawning a local proc
 Add the dependency:
 
 ```
-"io.cequence" %% "openai-scala-claude-agent-client" % "1.3.0"
+"io.cequence" %% "openai-scala-claude-agent-client" % "1.4.0"
 ```
 
 ```scala

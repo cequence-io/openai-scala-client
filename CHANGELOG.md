@@ -1,6 +1,57 @@
 # Changelog
 
-## Unreleased
+## 1.4.0 (2026-09-30)
+
+Since 1.3.0 (2026-09-18): GPT-6.1 Sol with the Fast / Ultrafast tiers and the Responses reasoning mode, the OpenAI Agents
+API and Responses multi-agent execution (both beta), human approval mid-stream, Perplexity's Agent API, classified
+streaming errors (ws-client 1.1.1), Claude Opus 5.5 / Sonnet 5.5, model conversions re-measured against the live APIs, and
+the retirement sweep of dead models and endpoints. Everything below is live-verified against the providers unless stated
+otherwise. 1.3.1 was never released - its changes are part of 1.4.0.
+
+Artifacts (Scala 2.12 / 2.13 / 3): `openai-scala-client`, `openai-scala-client-stream`, `openai-scala-anthropic-client`,
+`openai-scala-google-gemini-client`, `openai-scala-google-vertexai-client`, `openai-scala-perplexity-sonar-client`,
+`openai-scala-typesafe-client`, `openai-scala-claude-agent-client`, `openai-scala-count-tokens`, `openai-scala-guice` and
+the envelope `openai-scala-all`.
+
+### ⚠️ Upgrading from 1.3.x
+
+**Recompile.** 1.4.0 is not binary compatible with 1.3.0 - a library built against 1.3.0 must be rebuilt: case classes
+gained fields, three service traits gained abstract methods and a factory gained a parameter (found by comparing the
+public signatures of the published 1.3.0 jars with 1.4.0). No public class or method was removed. ws-client moves from
+1.0.0 to 1.1.1.
+
+**Source breaks** - narrow; code that builds settings, calls services and reads results compiles unchanged:
+- Positional pattern matching on case classes that gained a field (construction and named `copy` still compile - every
+  new field has a default): `ReasoningConfig` (`mode`, `context`), `CreateModelResponseSettings` (`multiAgent`),
+  `Message.OutputContent` (`agent`), `AssembledChatCompletion` (`toolApprovalRequests`).
+- `UsageInfo.tupled` / `UsageInfo.curried` are gone (Scala 2 - the companion gained `UsageInfo.sum`, so it is no longer a
+  `Function5`): use `(UsageInfo.apply _).tupled`.
+- Your own implementations of `OpenAIService` (it now includes `OpenAIAgentsService`), `OpenAIStreamedServiceExtra`
+  (`createAgentSessionStreamed`, `streamAgentSessionEvents`) or `SonarService` (the Agent API methods) must add the new
+  methods; the library's implementations and `OpenAIServiceWrapper` have them.
+- Exhaustive matches over sealed types meet new cases: `ChatChunk.ToolApprovalRequest`,
+  `FinishReason.approval_required`, `ServiceTier.priority` / `fast` / `ultrafast`, `ThinkingType.between_tools` /
+  `disabled`, and the gpt-image values of `ImageSizeType` / `ImageQualityType`.
+
+**Behavior changes** - the same code, a different result (details in the sections below):
+- Errors: a streamed request answered with a non-2xx status fails the stream with a classified exception (the error body
+  used to arrive as stream data), and an in-band `{"error": ...}` frame is classified like its HTTP status - the retry
+  adapters now retry them; Vertex AI errors are classified by gRPC status; native `SonarService` calls fail with the new
+  `PerplexityScalaClientException` hierarchy (no longer `OpenAIScalaClientException`).
+- OpenAI requests: per-model conversions re-measured (reasoning-effort mappings, sampling / penalty / logprobs rules,
+  `stop` and `logit_bias` dropped with a warning where the API rejects them); on the full service, tool calls that keep
+  reasoning on GPT-5.4+ / GPT-6 go through the Responses API (GPT-6 Astra and 6.1 Sol always); tool calls on
+  `gpt-5-search-api` fail fast; the factories no longer send `OpenAI-Beta: assistants=v2` on every request.
+- Refusals instead of silent drops or unapproved runs: `setResponsesTools` wherever the Responses API cannot serve them,
+  and `MCPServerTool(requireApproval = true)` on Anthropic's MCP connector and Gemini.
+- Defaults: image generation / edits use `gpt-image-2`, web search `gpt-5-search-api`, speech `gpt-4o-mini-tts` and
+  transcription `gpt-transcribe` (the former defaults are shut down).
+- Model config: Gemini thinking set per model; `createChatCompletionWithJSON` stays in schema mode for more models; the
+  Anthropic max-output fallback resolves by the longest matching model id.
+- Results: the typed stream finishes as `tool_calls` whenever the turn streamed tool calls; Responses reads skip unknown
+  output items and read unknown reasoning values as absent; the TypeSafe adapter fills `<field>_confidence` fields (it
+  refused them).
+- Fixed: `createChatFunCompletion` (the deprecated legacy `functions` API) works again - see Changed.
 
 ### New models
 
@@ -61,7 +112,7 @@ See `GPT61SolSmokeTest`, `GPT6SolLunaOpus55SmokeTest` and `anthropic/ClaudeSonne
   which also covers `setResponsesTools`).
 - **Multi-agent execution (beta, GPT-6.1 Sol)** - `CreateModelResponseSettings.multiAgent = Some(MultiAgentConfig(...))`
   lets the model spawn, message and wait for subagents on the server; the client adds the required
-  `OpenAI-Beta: responses_multi_agent=v1` header (sync and streamed). The run's items - `MultiAgentCall`,
+  `OpenAI-Beta: responses_multi_agent=v1` header when it is enabled (sync and streamed; `enabled = false` needs none). The run's items - `MultiAgentCall`,
   `MultiAgentCallOutput`, `AgentMessage` - and every message carry the producing agent (`AgentTag`, `/root` or
   `/root/<task>`), valid as input for a stateless follow-up too; `Response.outputText` / `outputMessageContents` are the
   root agent's answer only (the subagents' messages, which the API interleaves with it, are in `subagentMessages`). From
@@ -110,11 +161,14 @@ See `GPT61SolSmokeTest`, `GPT6SolLunaOpus55SmokeTest` and `anthropic/ClaudeSonne
   (plus `CodeExecution*`), MCP calls, web searches and subagent calls as server-side tool calls / results. Client function
   tools work as a chat tool loop: a call pauses the session (`Finish(tool_calls)`, the session kept), and the next call
   carrying the `ToolMessage`s resumes it - subscribe, post the results once the subscription is live, skip the replayed
-  items. A turn's session is settled before its stream completes (a pause registered, a finished session deleted), so
-  a resume or `close()` right after cannot overtake it; a turn that failed or was abandoned mid-way is cancelled, then
-  deleted; a session stays paused - and resumable - until a resume has posted its results; `close()` cancels and
-  deletes paused ones. History is folded into
-  one labeled user message (the API takes user messages only). Live: `OpenAIAgentsApiSmokeTest`, five adapter sections.
+  items. A turn's session is settled at the turn's end, before its final chunks go out (a pause registered, a finished
+  session's DELETE started and tracked), so neither a resume nor `close()` - which waits for cleanups still in flight -
+  can overtake it, even after a consumer that stopped reading at the `Finish`; a turn that failed or was abandoned
+  mid-way is cancelled, then deleted; a session stays paused - and resumable - until a resume has posted its results;
+  `close()` cancels and deletes paused ones. History is folded into one labeled user message (the API takes user
+  messages only; a deprecated `MessageSpec` by its role); a json_schema is always closed, the map form too; `error`
+  session events are classified by their code (transient ones retryable); file content parts are refused. Live:
+  `OpenAIAgentsApiSmokeTest`, five adapter sections.
 - `io.cequence.openaiscala.service.ServerSentEvents` - the SSE decoder over a raw byte stream (comment heartbeats, CRLF
   framing, multi-line data, a non-SSE error body surfaced), moved to core from the Perplexity module, which now uses it.
 
@@ -230,6 +284,10 @@ Responses service in the Perplexity module behind the core `OpenAIResponsesChatC
 (`PerplexityAgentAsOpenAISmokeTest`).
 
 ### Changed
+- **`createChatFunCompletion` works again** - the deprecated legacy `functions` API sends the function objects
+  themselves; it sent the tools' `{"type": "function", "function": ...}` wrapper, which the API now rejects with a 400
+  ("Missing required parameter: 'functions[0].name'", found by the 2026-09-30 example sweep). A non-function tool fails
+  the returned Future.
 - **Typed stream: a turn that streamed tool calls finishes as `tool_calls`** on every OpenAI-compatible provider, also
   when the provider answers `stop` - OpenAI itself does so for a forced `tool_choice` (live-verified 2026-09-29), as does
   Together AI's Muse Glimmer. The provider's value stays in `Finish.providerReason`; the non-streamed `finish_reason`
