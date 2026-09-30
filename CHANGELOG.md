@@ -110,9 +110,10 @@ See `GPT61SolSmokeTest`, `GPT6SolLunaOpus55SmokeTest` and `anthropic/ClaudeSonne
   (plus `CodeExecution*`), MCP calls, web searches and subagent calls as server-side tool calls / results. Client function
   tools work as a chat tool loop: a call pauses the session (`Finish(tool_calls)`, the session kept), and the next call
   carrying the `ToolMessage`s resumes it - subscribe, post the results once the subscription is live, skip the replayed
-  items. Sessions are deleted once their turn ends (a turn that failed or was abandoned mid-way is cancelled first);
-  a session stays paused - and resumable - until a resume has posted its results; `close()` cancels and deletes paused
-  ones. History is folded into
+  items. A turn's session is settled before its stream completes (a pause registered, a finished session deleted), so
+  a resume or `close()` right after cannot overtake it; a turn that failed or was abandoned mid-way is cancelled, then
+  deleted; a session stays paused - and resumable - until a resume has posted its results; `close()` cancels and
+  deletes paused ones. History is folded into
   one labeled user message (the API takes user messages only). Live: `OpenAIAgentsApiSmokeTest`, five adapter sections.
 - `io.cequence.openaiscala.service.ServerSentEvents` - the SSE decoder over a raw byte stream (comment heartbeats, CRLF
   framing, multi-line data, a non-SSE error body surfaced), moved to core from the Perplexity module, which now uses it.

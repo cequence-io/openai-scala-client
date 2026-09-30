@@ -169,6 +169,20 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
     condition shouldBe true
   }
 
+  // a session is deleted asynchronously once its stream completed - every test waits for its
+  // own, so no cleanup lands in the next test's requests
+  private def awaitDeleted(
+    sessionId: String,
+    since: Int
+  ): Unit =
+    eventually(requests.drop(since).exists(r => r._1 == "DELETE" && r._2.endsWith(sessionId)))
+
+  // the requests about one session since a test's start
+  private def sessionRequests(
+    sessionId: String,
+    since: Int
+  ) = requests.drop(since).filter(_._2.startsWith(s"/agents/sessions/$sessionId"))
+
   private val weather = FunctionTool(
     name = "get_weather",
     description = Some("Get the current weather in a city"),
@@ -211,10 +225,11 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
         Seq(Json.obj("type" -> "input_text", "text" -> "Say hi in two words."))
       (create \ "stream").as[Boolean] shouldBe true
 
-      eventually(requests.exists(r => r._1 == "DELETE" && r._2.endsWith(sessionId)))
+      awaitDeleted(sessionId, since = 0)
     }
 
     "fold a history into one labeled message, images kept" in {
+      val before = requests.size
       await(
         adapter.createChatCompletion(
           Seq(
@@ -237,12 +252,14 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
         Json.obj("type" -> "input_text", "text" -> "What is on it?"),
         Json.obj("type" -> "input_image", "image_url" -> "data:image/png;base64,AAA")
       )
+      awaitDeleted(sessionIdOf(plainTurn), before)
     }
   }
 
   "structured output" should {
 
     "send a json_schema as the agent's text format, its objects closed" in {
+      val before = requests.size
       await(
         adapter.createChatCompletion(
           Seq(UserMessage("Capital of Norway?")),
@@ -279,6 +296,7 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
         ),
         "verbosity" -> "low"
       )
+      awaitDeleted(sessionIdOf(plainTurn), before)
     }
   }
 
@@ -302,7 +320,7 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
       (create \ "agent" \ "tools" \ 0 \ "name").as[String] shouldBe "get_weather"
       Thread.sleep(300)
       // the paused session is kept
-      requests.drop(before).exists(_._1 == "DELETE") shouldBe false
+      sessionRequests(toolSessionId, before) shouldBe empty
 
       val resumed = await(
         adapter
@@ -328,7 +346,7 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
       resumed.collect { case c: ChatChunk.ToolCall => c } shouldBe empty
       resumed.collect { case f: ChatChunk.Finish => f.reason } shouldBe Seq(FinishReason.stop)
 
-      val resumeRequests = requests.drop(before).dropWhile(_._1 != "GET")
+      val resumeRequests = sessionRequests(toolSessionId, before)
       resumeRequests.map(r => (r._1, r._2.split("/").last)).take(2) shouldBe
         Seq(("GET", "events"), ("POST", "events"))
       (resumeRequests(1)._3.get \ "events").as[Seq[JsObject]] shouldBe Seq(
@@ -340,7 +358,7 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
           "output" -> "Sunny, 22 C"
         )
       )
-      eventually(requests.exists(r => r._1 == "DELETE" && r._2.endsWith(toolSessionId)))
+      awaitDeleted(toolSessionId, before)
     }
   }
 
@@ -359,15 +377,12 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
       ) shouldBe Seq(ChatChunk.Start(sessionIdOf(plainTurn), "gpt-6-luna"))
 
       // the turn is cancelled first (a session mid-turn cannot be deleted), then deleted
-      val sessionPath = s"/agents/sessions/${sessionIdOf(plainTurn)}"
-      def cleanup = requests.drop(before).filter(_._2.startsWith(sessionPath))
-      eventually(
-        cleanup
-          .dropWhile(r => !(r._1 == "POST" && r._2 == s"$sessionPath/events"))
-          .exists(_._1 == "DELETE")
-      )
-      val cancel = cleanup.find(_._1 == "POST").get
-      (cancel._3.get \ "events").as[Seq[JsObject]] shouldBe
+      val sessionId = sessionIdOf(plainTurn)
+      awaitDeleted(sessionId, before)
+      val cleanup = sessionRequests(sessionId, before)
+      cleanup.map(r => (r._1, r._2.split("/").last)) shouldBe
+        Seq(("POST", "events"), ("DELETE", sessionId))
+      (cleanup.head._3.get \ "events").as[Seq[JsObject]] shouldBe
         Seq(Json.obj("type" -> "agent.session.input.cancel"))
     }
 
@@ -394,15 +409,17 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
       val failedAt = System.currentTimeMillis()
       failNextSubscription = true
       intercept[Exception](await(resume()))
-      requests.drop(before).map(_._1) shouldBe Seq("GET") // nothing posted, nothing deleted
+      // nothing posted, nothing deleted
+      sessionRequests(toolSessionId, before).map(_._1) shouldBe Seq("GET")
 
       // retried right away: the same session is resumed, not a new one started
       await(resume()).choices.head.message.content shouldBe Some("It’s sunny in Paris, 22°C.")
       requests.drop(before).exists(_._2 == "/agents/sessions") shouldBe false
 
       // the failed attempt never posts its results later (after its grace period)
+      awaitDeleted(toolSessionId, before)
       Thread.sleep(math.max(0L, failedAt + 3500 - System.currentTimeMillis()))
-      requests.drop(before).count(r => r._1 == "POST" && r._2.endsWith("/events")) shouldBe 1
+      sessionRequests(toolSessionId, before).count(_._1 == "POST") shouldBe 1
     }
   }
 

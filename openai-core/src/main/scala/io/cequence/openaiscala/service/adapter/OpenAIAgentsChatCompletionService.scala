@@ -62,6 +62,7 @@ import io.cequence.wsclient.JsonUtil
 import org.slf4j.LoggerFactory
 import play.api.libs.json.{JsObject, JsValue, Json}
 
+import java.util.concurrent.atomic.AtomicBoolean
 import java.{util => ju}
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
@@ -465,13 +466,13 @@ final class OpenAIAgentsChatCompletionService(
       val state = new TurnState(create.model, None, Set.empty, Set.empty, 0)
       underlying
         .createAgentSessionStreamed(create.settings, create.input)
-        .via(turnFlow(state))
+        .via(turnFlow(state, resumedFrom = None, posted = Future.successful(())))
         .watchTermination() {
           (
             _,
             done
           ) =>
-            done.onComplete(result => settle(state, result.isSuccess, resumedFrom = None))
+            done.onComplete(_ => settleOnTermination(state, resumedFrom = None))
             NotUsed
         }
     }.mapMaterializedValue(_ => NotUsed)
@@ -519,7 +520,7 @@ final class OpenAIAgentsChatCompletionService(
           underlying
             .streamAgentSessionEvents(paused.sessionId)
             .map { event => live.trySuccess(true); event }
-            .via(turnFlow(state))
+            .via(turnFlow(state, resumedFrom = Some(paused), posted))
             .merge(Source.future(posted).flatMapConcat(_ => Source.empty[ChatChunk]))
         )
         .watchTermination() {
@@ -527,46 +528,67 @@ final class OpenAIAgentsChatCompletionService(
             _,
             done
           ) =>
-            done.onComplete { result =>
+            done.onComplete { _ =>
               live.trySuccess(false)
               // an in-flight POST decides whether the session is still paused
-              posted
-                .onComplete(_ => settle(state, result.isSuccess, resumedFrom = Some(paused)))
+              posted.onComplete(_ => settleOnTermination(state, resumedFrom = Some(paused)))
             }
             NotUsed
         }
     }.mapMaterializedValue(_ => NotUsed)
 
-  // keeps a session paused on client calls, deletes the rest - a turn that did not reach its
-  // end (failed, or the consumer cancelled) is cancelled first; a resume that ended before its
-  // results were posted leaves the session paused (still registered - resumable with the same
-  // results)
-  private def settle(
+  // at the turn's end, BEFORE the stream completes (a caller acting on the result - a resume,
+  // close() - cannot overtake it): keeps a session paused on client calls, deletes the rest (a
+  // turn that ended cancelled is cancelled first - it may still be winding down)
+  private def finishTurn(
     state: TurnState,
-    succeeded: Boolean,
+    resumedFrom: Option[PausedSession]
+  ): Future[Unit] =
+    state.sessionId match {
+      case Some(sessionId) if state.settled.compareAndSet(false, true) =>
+        if (state.pausedOn.nonEmpty) {
+          pausedSessions.put(
+            sessionId,
+            PausedSession(
+              sessionId,
+              state.model,
+              state.pausedOn,
+              state.reported.toSet,
+              state.nextIndex
+            )
+          )
+          Future.successful(())
+        } else {
+          resumedFrom.foreach(paused => pausedSessions.remove(sessionId, paused))
+          if (!deleteSessionsAfterUse) Future.successful(())
+          else if (state.idle)
+            underlying.deleteAgentSession(sessionId).map(_ => ()).recover { case e =>
+              logger.warn(s"Agents API chat adapter: could not delete session $sessionId: $e")
+            }
+          else cancelAndDelete(sessionId)
+        }
+      case _ => Future.successful(())
+    }
+
+  // once the stream has terminated: a turn that reached its end was settled in the stream (or
+  // is settled here, when the consumer cancelled right at the end); one that did not (failed,
+  // or the consumer cancelled) is cancelled and deleted - except a resume whose results were
+  // never posted: that session is still paused (still registered - resumable with the same
+  // results)
+  private def settleOnTermination(
+    state: TurnState,
     resumedFrom: Option[PausedSession]
   ): Unit =
-    state.sessionId.foreach { sessionId =>
-      if (succeeded && state.pausedOn.nonEmpty)
-        pausedSessions.put(
-          sessionId,
-          PausedSession(
-            sessionId,
-            state.model,
-            state.pausedOn,
-            state.reported.toSet,
-            state.nextIndex
-          )
-        )
-      else if (resumedFrom.isEmpty || state.ended || state.posted) {
-        resumedFrom.foreach(paused => pausedSessions.remove(sessionId, paused))
-        if (deleteSessionsAfterUse)
-          (if (succeeded && state.idle) underlying.deleteAgentSession(sessionId).map(_ => ())
-           else cancelAndDelete(sessionId)).recover { case e =>
-            logger.warn(s"Agents API chat adapter: could not delete session $sessionId: $e")
-          }
+    if (state.ended) finishTurn(state, resumedFrom)
+    else
+      state.sessionId.foreach { sessionId =>
+        if (
+          (resumedFrom.isEmpty || state.posted) && state.settled.compareAndSet(false, true)
+        ) {
+          resumedFrom.foreach(paused => pausedSessions.remove(sessionId, paused))
+          if (deleteSessionsAfterUse) cancelAndDelete(sessionId)
+        }
       }
-    }
 
   private def cancelAndDelete(sessionId: String): Future[Unit] =
     underlying
@@ -578,10 +600,15 @@ final class OpenAIAgentsChatCompletionService(
         logger.warn(s"Agents API chat adapter: could not delete session $sessionId: $e")
       }
 
-  // ends the turn's chunks at its end marker; an event stream that completes before it fails
-  // (a sentinel after the upstream - `concat` demands its second source eagerly, so a lazy
-  // check there would run up front)
-  private def turnFlow(state: TurnState): Flow[AgentSessionEvent, ChatChunk, NotUsed] =
+  // ends the turn's chunks at its end marker, settling the session before completing - a
+  // resume once its POST's outcome is known (its DELETE must not overtake the results); an
+  // event stream that completes before the end fails (a sentinel after the upstream - `concat`
+  // demands its second source eagerly, so a lazy check there would run up front)
+  private def turnFlow(
+    state: TurnState,
+    resumedFrom: Option[PausedSession],
+    posted: Future[Unit]
+  ): Flow[AgentSessionEvent, ChatChunk, NotUsed] =
     Flow[AgentSessionEvent]
       .map(Option(_))
       .concat(Source.single(None))
@@ -594,8 +621,15 @@ final class OpenAIAgentsChatCompletionService(
               "The Agents API session event stream closed before the turn ended."
             )
       }
-      .takeWhile(_.isLeft)
-      .collect { case Left(chunk) => chunk }
+      .takeWhile(_.isLeft, inclusive = true)
+      .mapAsync(1) {
+        case Left(chunk) => Future.successful(Option(chunk))
+        case Right(_) =>
+          posted
+            .transformWith(_ => finishTurn(state, resumedFrom))
+            .map(_ => Option.empty[ChatChunk])
+      }
+      .collect { case Some(chunk) => chunk }
 }
 
 object OpenAIAgentsChatCompletionService {
@@ -663,6 +697,7 @@ object OpenAIAgentsChatCompletionService {
     @volatile var ended = false
     @volatile var idle = false // ended at the session idling after the turn
     @volatile var posted = false
+    val settled = new AtomicBoolean(false)
     @volatile var pausedOn: Map[String, String] = Map.empty
     val reported: mutable.Set[String] = mutable.Set.empty ++ alreadyReported
     private var started = sessionId.isDefined // a resume emits its own Start
