@@ -7,7 +7,7 @@ val scala3 = "3.2.2"
 
 ThisBuild / organization := "io.cequence"
 ThisBuild / scalaVersion := scala213
-ThisBuild / version := "1.3.1-SNAPSHOT"
+ThisBuild / version := "1.4.0-SNAPSHOT"
 ThisBuild / isSnapshot := true
 
 lazy val commonSettings = Seq(
