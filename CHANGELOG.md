@@ -2,7 +2,7 @@
 
 ## 1.4.0 (2026-09-30)
 
-37 commits since v1.3.0 (2026-09-18), 235 files, +35k lines: GPT-6.1 Sol with the Fast / Ultrafast tiers and the
+38 commits since v1.3.0 (2026-09-18), 235 files, +35k lines: GPT-6.1 Sol with the Fast / Ultrafast tiers and the
 Responses reasoning mode, the OpenAI Agents API and Responses multi-agent execution (both beta), human approval
 mid-stream, Perplexity's Agent API, classified streaming errors (ws-client 1.1.1), Claude Opus 5.5 / Sonnet 5.5, Liquid
 AI's decision model d1, model conversions re-measured against the live APIs, and the retirement sweep of dead models and
@@ -72,13 +72,6 @@ nothing public was removed. ws-client moves from 1.0.0 to 1.1.1.
 - **Other providers** (listed 2026-09-29) - Gemini `gemini-3.8-flash-tts` / `-flash-lite-tts`, `gemini-3.8-live` /
   `-live-extended-thinking` (Live API only) and `antigravity-preview-09-2026` / `-latest`; Mistral-hosted GLM 5.3
   (`zai-glm-5-3`) and `labs-leanstral-1-5-1`; Together AI `deepseek-ai/DeepSeek-V4.1-Flash`; Fireworks `ember-1`.
-- **Liquid AI d1** (launched 2026-09-30) - Liquid's decision model serves the same System One API as TypeSafe's Jev, so
-  the typesafe-client reaches it: `TypeSafeServiceFactory.liquid()` / `liquidWithEngine` / `liquidAsOpenAI()` (base
-  `https://api.liquid.ai/decisions`, `LIQUID_API_KEY`, model `NonOpenAIModelId.liquid_d1_free` = `d1:free`, listed in
-  `models-supporting-json-schema`). d1 answers with calibrated probabilities and zero output tokens; Liquid's
-  OpenAI-style error bodies are classified by status and carry their code (e.g. `model_unavailable`) as the exception's
-  `errorType`. Liquid's OpenAI-compatible chat surface is `ChatProviderSettings.liquid` (it lists no chat models for a
-  free-tier key yet). See `typesafe/LiquidD1SmokeTest` (d1 and Jev side by side).
 - **Meta Muse Glimmer 30B** - `NonOpenAIModelId.meta_models_muse_glimmer_30b` (Together AI): Meta's open-weights agentic
   model, a reasoning model (its reasoning arrives as `Thinking` chunks and counts toward `max_tokens`) with tools, image
   input and strict `json_schema` (added to `models-supporting-json-schema`). Fireworks lists it as `muse_glimmer_30b` for
@@ -216,6 +209,25 @@ See `GPT61SolSmokeTest`, `GPT6SolLunaOpus55SmokeTest` and `anthropic/ClaudeSonne
   `confidence`, the weakest option of a multi-select, the minimum over everything under an object. A confidence field
   without a sibling is planned (and refused) as usual; a non-number one is refused. See `SchemaQuestions` and
   `TypeSafeOpenAIAdapterScenarios` (7b).
+
+### 🔥 Liquid AI d1 - a second System One provider
+
+Liquid AI's first decision model **d1** (launched 2026-09-30) is served on the same System One API as TypeSafe's Jev, so
+the typesafe-client reaches it unchanged - only the host, the key and the model differ:
+- **Works - decisions**: `TypeSafeServiceFactory.liquid()` / `liquidWithEngine(engine)` for the native `systemOne` /
+  `listModels`, and `liquidAsOpenAI()` - the Jev OpenAI adapter, `json_schema` structured output only (base
+  `https://api.liquid.ai/decisions`, `LIQUID_API_KEY`, model `NonOpenAIModelId.liquid_d1_free` = `d1:free`, listed in
+  `models-supporting-json-schema`).
+- **Not yet - chat**: Liquid's OpenAI-compatible surface is `ChatProviderSettings.liquid`
+  (`https://api.liquid.ai/openai/v1/`); it answers in OpenAI's format but lists no chat models for a free-tier key.
+- **d1 vs Jev** (live 2026-09-30, the free tier): the answers agree and d1 bills no output tokens; d1 takes ~340 ms per
+  call plus ~30 ms per question beyond three (1,517 ms at 40 questions), Jev a flat ~240-270 ms. The free tier was
+  intermittently unavailable on launch day (stretches of 429 `model_unavailable`, seconds-long answers right after one) -
+  `TypeSafeServiceAdapters.retry` treats a 429 as transient.
+- Liquid's error bodies come in OpenAI's shape; they are classified by status into the same `TypeSafeScala*Exception`s,
+  and the exception's `errorType` now falls back to the body's `error.code` / `error.type` (e.g. `model_unavailable`).
+- See `typesafe/LiquidD1SmokeTest`: the models, a native call, the OpenAI adapter, Jev side by side and a latency
+  benchmark.
 
 ### ws-client 1.1.1 - classified streaming errors
 

@@ -7,6 +7,7 @@ import io.cequence.openaiscala.domain.{JsonSchema, UserMessage}
 import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
 import io.cequence.openaiscala.typesafe.domain._
 import io.cequence.openaiscala.typesafe.service.{
+  TypeSafeService,
   TypeSafeServiceAdapters,
   TypeSafeServiceFactory
 }
@@ -27,9 +28,35 @@ import scala.util.control.NonFatal
  *   - the same questions as a JSON schema through the OpenAI interface (`asOpenAI` +
  *     `createChatCompletionWithJSON[T]`)
  *   - with `TYPESAFE_API_KEY` set, the same native call on TypeSafe's Jev, side by side
+ *   - a latency benchmark: the same request with 1, 3, 10, 20 and 40 questions, eight timed
+ *     calls each (after a warm-up, 250 ms apart) on the services' pooled connections - d1 and,
+ *     with `TYPESAFE_API_KEY`, Jev (pass `nobench` to skip it)
+ *
+ * Live results (2026-09-30, d1's launch day, the free tier `d1:free`):
+ *
+ *   - answers: d1 and Jev agree - complaint 0.995 / 0.990, department billing 0.73 / 0.79
+ *     (shipping 0.27 / 0.21), frustration 2.27 / 2.33 of 0..3; d1 bills 0 output tokens (284
+ *     input), Jev 73 (415 input)
+ *   - median latency per call (min - max), a kept-alive connection:
+ *     {{{
+ *     questions   d1                     Jev
+ *       1          356 ms (338 - 822)     236 ms (225 - 258)
+ *       3          346 ms (338 - 423)     244 ms (221 - 268)
+ *      10          559 ms (543 - 645)     239 ms (200 - 318)
+ *      20          853 ms (819 - 1417)    243 ms (213 - 356)
+ *      40         1517 ms (1403 - 2511)   273 ms (226 - 303)
+ *     }}}
+ *     d1 takes ~340 ms plus ~30 ms per question beyond three (it seems to answer them one by
+ *     one); Jev stays flat whatever the count. A new connection per call adds ~90 ms to both.
+ *   - the free tier was intermittently unavailable on launch day: stretches of 429
+ *     `model_unavailable` (at times for ten minutes, even at one call every two minutes), and
+ *     after one, back-to-back calls took seconds (up to ~9 s) or failed - hence the pause
+ *     between the benchmark's calls and the bounded retries (a run fails in about a minute and
+ *     a half when d1 is unavailable).
  *
  * Requires `LIQUID_API_KEY`. On its launch day d1 answered 429 `model_unavailable` for a
- * while, so the calls go through the retry adapter (a 429 is transient there).
+ * while, so the functional calls go through the retry adapter (a 429 is transient there); the
+ * benchmark times the plain service and counts failed calls instead.
  */
 object LiquidD1SmokeTest {
 
@@ -88,6 +115,77 @@ object LiquidD1SmokeTest {
     )
   )
 
+  // the three questions above plus (n - 3) more nouls, or the first n of them
+  private def questionsOf(n: Int): Map[String, Question] =
+    questions.take(n) ++ (0 until math.max(0, n - questions.size)).map { i =>
+      s"mentions_$i" -> NoulQuestion(
+        s"Does the message mention aspect number $i of the order (delivery time, money, e-mails, ...)?"
+      )
+    }
+
+  // sequential calls 250 ms apart (d1's free tier throttles bursts: back-to-back calls ran
+  // into seconds-long answers and 429 `model_unavailable`) - the first one warms the
+  // connection up and is not counted; a failed call is counted, not timed
+  private def timeCalls(
+    service: TypeSafeService,
+    questions: Map[String, Question],
+    runs: Int
+  )(
+    implicit ec: ExecutionContext,
+    scheduler: Scheduler
+  ): Future[(Seq[Long], Int)] =
+    (0 to runs).foldLeft(Future.successful((Seq.empty[Long], 0))) { case (acc, call) =>
+      acc.flatMap { case (times, failures) =>
+        akka.pattern.after(250.millis, scheduler)(Future.successful(())).flatMap { _ =>
+          val start = System.nanoTime()
+          service
+            .systemOne(state, questions)
+            .map { _ =>
+              val ms = (System.nanoTime() - start) / 1000000
+              (if (call == 0) times else times :+ ms, failures)
+            }
+            .recover { case NonFatal(_) => (times, failures + 1) }
+        }
+      }
+    }
+
+  private def summary(result: (Seq[Long], Int)): String = {
+    val (times, failures) = result
+    val sorted = times.sorted
+    val failed = if (failures > 0) s", $failures failed" else ""
+    if (sorted.isEmpty) s"no successful call$failed"
+    else
+      f"${sorted(sorted.size / 2)}%5d ms (${sorted.head}%d - ${sorted.last}%d)$failed"
+  }
+
+  private def benchmark(
+    d1: TypeSafeService,
+    jev: Option[TypeSafeService]
+  )(
+    implicit ec: ExecutionContext,
+    scheduler: Scheduler
+  ): Future[Unit] = {
+    println("[latency] median per call (min - max), 8 timed calls each")
+    println("  questions   d1                          Jev")
+    Seq(1, 3, 10, 20, 40).foldLeft(Future.successful(())) {
+      (
+        acc,
+        n
+      ) =>
+        acc.flatMap { _ =>
+          for {
+            d1Times <- timeCalls(d1, questionsOf(n), runs = 8)
+            jevTimes <- jev.fold(Future.successful((Seq.empty[Long], 0)))(
+              timeCalls(_, questionsOf(n), runs = 8)
+            )
+          } yield println(
+            f"  $n%9d   ${summary(d1Times)}%-26s  ${if (jev.isDefined) summary(jevTimes)
+              else "-"}"
+          )
+        }
+    }
+  }
+
   private def show(
     label: String,
     response: SystemOneResponse
@@ -110,10 +208,11 @@ object LiquidD1SmokeTest {
     implicit val ec: ExecutionContext = system.dispatcher
     implicit val scheduler: Scheduler = system.scheduler
     implicit val retrySettings: RetrySettings =
-      RetrySettings(maxRetries = 6, delayOffset = 5.seconds)
+      RetrySettings(maxRetries = 3, delayOffset = 5.seconds)
 
+    val liquid = TypeSafeServiceFactory.liquid()
     val d1 = TypeSafeServiceAdapters.retry(
-      TypeSafeServiceFactory.liquid(),
+      liquid,
       log = Some(message => println(s"[retry] $message"))
     )
     val d1AsOpenAI = TypeSafeServiceFactory.asOpenAI(d1)
@@ -137,6 +236,10 @@ object LiquidD1SmokeTest {
       _ <- jev.fold(Future.successful(println("[jev] skipped - no TYPESAFE_API_KEY")))(
         _.systemOne(state, questions).map(show("jev", _))
       )
+
+      _ <-
+        if (args.contains("nobench")) Future.successful(())
+        else benchmark(liquid, jev)
     } yield ()
 
     val passed =

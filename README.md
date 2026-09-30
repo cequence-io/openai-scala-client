@@ -64,7 +64,7 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 | [Perplexity](https://www.perplexity.ai/) | Only implied           |                                   |                         | Agent API (🔥 1.4.0) + Sonar (⚠️ chat completions retire on 2026-09-27, see below) |
 | [TogetherAI](https://www.together.ai/) | Full (model-dependent)|                                   |                         | Cloud provider |
 | [TypeSafe AI](https://typesafe.ai/)         | Typed by construction  | `json_schema` structured output only (`asOpenAI()`) |                         | Decision model `Jev`: typed answers with calibrated probabilities |
-| [Liquid AI](https://www.liquid.ai/) (🔥 New) | Typed by construction  | `json_schema` structured output only (`liquidAsOpenAI()`) |                         | Decision model `d1` on the same System One API (the TypeSafe lib) |
+| [Liquid AI](https://www.liquid.ai/) (🔥 New) | Typed by construction  | `json_schema` structured output only (`liquidAsOpenAI()`) |                         | Decision model `d1` - Jev-compatible (System One API, the TypeSafe lib); no chat models yet |
 
 ---
 
@@ -316,7 +316,7 @@ Then you can obtain a service in one of the following ways.
   val d1 = TypeSafeServiceFactory.liquid()              // native System One service (d1:free)
   val d1Service = TypeSafeServiceFactory.liquidAsOpenAI() // json_schema structured output
 ```
-   See [LiquidD1SmokeTest](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/typesafe/LiquidD1SmokeTest.scala) (d1 and Jev side by side). Liquid's OpenAI-compatible chat surface is `ChatProviderSettings.liquid`; it lists no chat models for a free-tier key yet.
+   See [Liquid AI (d1)](#liquid-ai-d1-) below - what works, and d1 vs Jev.
 
 8. [Groq](https://wow.groq.com/) - requires `GROQ_API_KEY"`
 ```scala
@@ -1751,6 +1751,65 @@ instructions, multi-turn, thresholds, `originalResponse`, dropped settings, and 
 `TypeSafeSemanticFind` ports the [semantic search cookbook](https://docs.typesafe.ai/cookbooks/semantic_find) to the
 adapter: the 218 tagged lines of GitHub's Terms of Service are the state, a string enum over the line ids ranks every
 line by relevance and a boolean tells whether the document answers the query at all, in one ~200 ms request.
+
+## Liquid AI (d1) 💧
+
+[Liquid AI](https://www.liquid.ai/)'s first decision model **d1** (launched 2026-09-30) is served on the **same System One
+API as TypeSafe's Jev** - the same `state` + typed `questions` in, calibrated probabilities out - so the TypeSafe lib
+(`openai-scala-typesafe-client`) talks to it unchanged; only the host, the key and the model differ:
+
+| | Status |
+|---|---|
+| Decisions - native `systemOne`, `listModels` (`TypeSafeServiceFactory.liquid()`) | ✅ works (`d1:free`) |
+| Decisions as structured output - the OpenAI adapter (`TypeSafeServiceFactory.liquidAsOpenAI()`, `json_schema` only) | ✅ works |
+| Chat - Liquid's OpenAI-compatible surface (`ChatProviderSettings.liquid`, `https://api.liquid.ai/openai/v1/`) | ❌ answers, but lists no chat models for a free-tier key (the LFM chat models are on OpenRouter) |
+
+```scala
+  import io.cequence.openaiscala.typesafe.domain.{ChoiceQuestion, NoulQuestion}
+  import io.cequence.openaiscala.typesafe.service.TypeSafeServiceFactory
+
+  val d1 = TypeSafeServiceFactory.liquid()   // LIQUID_API_KEY, https://api.liquid.ai/decisions, d1:free
+
+  d1.systemOne(
+    state = "I have been waiting over three weeks for my order and nobody answers my emails. I want my money back.",
+    questions = Map(
+      "is_complaint" -> NoulQuestion("Is this message a complaint from the customer?"),
+      "department" -> ChoiceQuestion(
+        "Which team should handle it?",
+        "billing" -> "payments, refunds and invoices",
+        "shipping" -> "deliveries and orders"
+      )
+    )
+  ).map { response =>
+    response.noul("is_complaint").noul     // 0.995
+    response.choice("department").ranked   // List((billing, 0.73), (shipping, 0.27))
+    response.usage                         // no output tokens are billed
+  }
+
+  // as an OpenAIChatCompletionService for json_schema structured output - the same adapter as Jev's
+  val service = TypeSafeServiceFactory.liquidAsOpenAI()
+```
+
+**d1 vs Jev** (live 2026-09-30, d1's launch day, the free tier): the answers agree (complaint 0.995 / 0.990, department
+billing 0.73 / 0.79, frustration 2.27 / 2.33 of 0..3) and d1 bills no output tokens (Jev: 73). Median latency per call on a
+kept-alive connection:
+
+| Questions per call | d1 | Jev |
+|---|---|---|
+| 1 | 356 ms | 236 ms |
+| 3 | 346 ms | 244 ms |
+| 10 | 559 ms | 239 ms |
+| 20 | 853 ms | 243 ms |
+| 40 | 1,517 ms | 273 ms |
+
+d1 takes ~340 ms plus ~30 ms per question beyond three; Jev stays flat whatever the count. The free tier (`d1:free`) was
+intermittently unavailable on launch day - stretches of 429 `model_unavailable`, at times for ten minutes, and seconds-long
+answers right after one - so pace your calls and wrap the service in `TypeSafeServiceAdapters.retry`, which treats a 429 as
+transient.
+Liquid's errors come in OpenAI's shape; they arrive as the same `TypeSafeScala*Exception`s, classified by status, with
+Liquid's code (e.g. `model_unavailable`) in `errorType`. See
+[LiquidD1SmokeTest](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/typesafe/LiquidD1SmokeTest.scala)
+(the models, a native call, the OpenAI adapter, Jev side by side, and the latency benchmark).
 
 ## Anthropic Managed Agents 🤝
 
