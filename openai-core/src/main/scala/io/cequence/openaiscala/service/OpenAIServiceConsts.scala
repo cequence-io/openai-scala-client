@@ -65,7 +65,7 @@ trait OpenAIServiceConsts {
 
     @deprecated(
       "The /v1/edits endpoint and its models are gone - use createChatCompletion",
-      "1.3.1"
+      "1.4.0"
     )
     val CreateEdit = CreateEditSettings(
       model = "text-davinci-edit-001",
@@ -79,7 +79,7 @@ trait OpenAIServiceConsts {
 
     @deprecated(
       "The /v1/images/variations endpoint is gone - use createImageEdit with a gpt-image model",
-      "1.3.1"
+      "1.4.0"
     )
     val CreateImageVariation = CreateImageEditSettings()
 
@@ -99,7 +99,7 @@ trait OpenAIServiceConsts {
 
     @deprecated(
       "whisper-1, the only translations model, is scheduled for shutdown on 2027-02-26",
-      "1.3.1"
+      "1.4.0"
     )
     val CreateTranslation = CreateTranslationSettings(
       model = "whisper-1"

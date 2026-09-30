@@ -36,13 +36,13 @@ object ImageSizeType {
   case object Portrait extends ImageSizeType("1024x1536")
   case object Auto extends ImageSizeType("auto")
 
-  @deprecated("dall-e-2 / dall-e-3 only - both shut down; gpt-image models reject it", "1.3.1")
+  @deprecated("dall-e-2 / dall-e-3 only - both shut down; gpt-image models reject it", "1.4.0")
   case object Small extends ImageSizeType("256x256")
-  @deprecated("dall-e-2 / dall-e-3 only - both shut down; gpt-image models reject it", "1.3.1")
+  @deprecated("dall-e-2 / dall-e-3 only - both shut down; gpt-image models reject it", "1.4.0")
   case object Medium extends ImageSizeType("512x512")
-  @deprecated("dall-e-2 / dall-e-3 only - both shut down; gpt-image models reject it", "1.3.1")
+  @deprecated("dall-e-2 / dall-e-3 only - both shut down; gpt-image models reject it", "1.4.0")
   case object LargeLandscape extends ImageSizeType("1792x1024")
-  @deprecated("dall-e-2 / dall-e-3 only - both shut down; gpt-image models reject it", "1.3.1")
+  @deprecated("dall-e-2 / dall-e-3 only - both shut down; gpt-image models reject it", "1.4.0")
   case object LargePortrait extends ImageSizeType("1024x1792")
 }
 
@@ -61,9 +61,9 @@ object ImageQualityType {
   case object high extends ImageQualityType
   case object auto extends ImageQualityType
 
-  @deprecated("dall-e-2 / dall-e-3 only - both shut down; gpt-image models reject it", "1.3.1")
+  @deprecated("dall-e-2 / dall-e-3 only - both shut down; gpt-image models reject it", "1.4.0")
   case object standard extends ImageQualityType
-  @deprecated("dall-e-2 / dall-e-3 only - both shut down; gpt-image models reject it", "1.3.1")
+  @deprecated("dall-e-2 / dall-e-3 only - both shut down; gpt-image models reject it", "1.4.0")
   case object hd extends ImageQualityType
 }
 

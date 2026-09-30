@@ -41,7 +41,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 @deprecated(
   "Built on the Sonar chat completions API, which Perplexity supports only until 2026-09-27",
-  "1.3.1"
+  "1.4.0"
 )
 private[service] class OpenAISonarChatCompletionService(
   underlying: SonarService

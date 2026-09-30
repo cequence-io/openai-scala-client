@@ -73,7 +73,7 @@ object SonarServiceFactory extends SonarServiceConsts with EnvHelper {
    */
   @deprecated(
     "Built on the Sonar chat completions API, which Perplexity supports only until 2026-09-27 - use agentAsOpenAI (or the Agent API: createAgentResponse)",
-    "1.3.1"
+    "1.4.0"
   )
   def asOpenAI(
     apiKey: String = defaultApiKey

@@ -34,7 +34,7 @@ trait SonarService extends CloseableService with SonarServiceConsts {
    */
   @deprecated(
     "Perplexity ends support for the Sonar chat completions API on 2026-09-27 - use the Agent API: createAgentResponse / createAgentResponseStreamed",
-    "1.3.1"
+    "1.4.0"
   )
   def createChatCompletion(
     messages: Seq[Message],
@@ -55,7 +55,7 @@ trait SonarService extends CloseableService with SonarServiceConsts {
    */
   @deprecated(
     "Perplexity ends support for the Sonar chat completions API on 2026-09-27 - use the Agent API: createAgentResponse / createAgentResponseStreamed",
-    "1.3.1"
+    "1.4.0"
   )
   def createChatCompletionStreamed(
     messages: Seq[Message],
