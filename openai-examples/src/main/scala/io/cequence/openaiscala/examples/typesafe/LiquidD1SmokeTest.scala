@@ -48,6 +48,8 @@ import scala.util.control.NonFatal
  *     }}}
  *     d1 takes ~340 ms plus ~30 ms per question beyond three (it seems to answer them one by
  *     one); Jev stays flat whatever the count. A new connection per call adds ~90 ms to both.
+ *     A later run the same evening, d1 under load: medians 459 / 1016 / 1292 / 6667 / 1562 ms
+ *     (outliers up to 16 s), Jev unchanged at 246 - 259 ms.
  *   - the free tier was intermittently unavailable on launch day: stretches of 429
  *     `model_unavailable` (at times for ten minutes, even at one call every two minutes), and
  *     after one, back-to-back calls took seconds (up to ~9 s) or failed - hence the pause

@@ -2,7 +2,7 @@
 
 ## 1.4.0 (2026-09-30)
 
-38 commits since v1.3.0 (2026-09-18), 235 files, +35k lines: GPT-6.1 Sol with the Fast / Ultrafast tiers and the
+39 commits since v1.3.0 (2026-09-18), 235 files, +35k lines: GPT-6.1 Sol with the Fast / Ultrafast tiers and the
 Responses reasoning mode, the OpenAI Agents API and Responses multi-agent execution (both beta), human approval
 mid-stream, Perplexity's Agent API, classified streaming errors (ws-client 1.1.1), Claude Opus 5.5 / Sonnet 5.5, Liquid
 AI's decision model d1, model conversions re-measured against the live APIs, and the retirement sweep of dead models and
@@ -221,7 +221,8 @@ the typesafe-client reaches it unchanged - only the host, the key and the model 
 - **Not yet - chat**: Liquid's OpenAI-compatible surface is `ChatProviderSettings.liquid`
   (`https://api.liquid.ai/openai/v1/`); it answers in OpenAI's format but lists no chat models for a free-tier key.
 - **d1 vs Jev** (live 2026-09-30, the free tier): the answers agree and d1 bills no output tokens; d1 takes ~340 ms per
-  call plus ~30 ms per question beyond three (1,517 ms at 40 questions), Jev a flat ~240-270 ms. The free tier was
+  call plus ~30 ms per question beyond three (1,517 ms at 40 questions) - and far more under load (medians up to 6.7 s
+  in a later run) - Jev a flat ~240-270 ms. The free tier was
   intermittently unavailable on launch day (stretches of 429 `model_unavailable`, seconds-long answers right after one) -
   `TypeSafeServiceAdapters.retry` treats a 429 as transient.
 - Liquid's error bodies come in OpenAI's shape; they are classified by status into the same `TypeSafeScala*Exception`s,

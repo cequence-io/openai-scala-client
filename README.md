@@ -1802,7 +1802,9 @@ kept-alive connection:
 | 20 | 853 ms | 243 ms |
 | 40 | 1,517 ms | 273 ms |
 
-d1 takes ~340 ms plus ~30 ms per question beyond three; Jev stays flat whatever the count. The free tier (`d1:free`) was
+d1 takes ~340 ms plus ~30 ms per question beyond three; Jev stays flat whatever the count. Under load d1 varies a lot: a
+later run the same evening measured medians of 459 / 1,016 / 1,292 / 6,667 / 1,562 ms (outliers up to 16 s), Jev
+unchanged at ~250 ms. The free tier (`d1:free`) was
 intermittently unavailable on launch day - stretches of 429 `model_unavailable`, at times for ten minutes, and seconds-long
 answers right after one - so pace your calls and wrap the service in `TypeSafeServiceAdapters.retry`, which treats a 429 as
 transient.
