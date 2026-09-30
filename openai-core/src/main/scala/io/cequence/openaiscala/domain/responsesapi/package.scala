@@ -16,14 +16,17 @@ package object responsesapi {
   def toTracedBlocks(response: Response): Seq[TracedBlock] =
     response.output.map { output =>
       val (content, trace) = output match {
-        case Message.OutputContent(msgContent, _, _) =>
+        case Message.OutputContent(msgContent, _, _, agent) =>
           val texts = msgContent.collect { case OutputText(_, text) => text }
           val refusals = msgContent.collect { case Refusal(refusal) => refusal }
           val joinedText = texts.mkString("\n")
+          // a subagent's message in a multi-agent run is labeled with the agent
+          val agentLabel =
+            agent.filterNot(_.isRoot).map(a => s"[${a.agentName}] ").getOrElse("")
           val traceText = if (refusals.nonEmpty) {
-            s"${truncate(joinedText)} [${refusals.size} refusal(s)]"
+            s"$agentLabel${truncate(joinedText)} [${refusals.size} refusal(s)]"
           } else {
-            truncate(joinedText)
+            agentLabel + truncate(joinedText)
           }
           (if (joinedText.nonEmpty) Some(joinedText) else None, traceText)
 
@@ -87,6 +90,19 @@ package object responsesapi {
 
         case MCPApprovalRequest(arguments, id, name, serverLabel) =>
           (Some(arguments), s"$name @ $serverLabel (id: $id)")
+
+        case call: MultiAgentCall =>
+          (Some(call.arguments), s"${call.action} (callId: ${call.callId})")
+
+        case result: MultiAgentCallOutput =>
+          val text = result.outputText
+          (
+            if (text.nonEmpty) Some(text) else None,
+            s"${result.action} result: ${truncate(text)}"
+          )
+
+        case message: AgentMessage =>
+          (None, s"${message.author.getOrElse("?")} -> ${message.recipient.getOrElse("?")}")
 
         case _ =>
           (None, output.`type`)

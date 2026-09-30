@@ -16,6 +16,7 @@ import io.cequence.openaiscala.domain.response.{
 }
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.responsesapi.{
+  AgentTag,
   Annotation,
   ResponseStreamEvent,
   UsageInfo => ResponsesUsageInfo
@@ -177,6 +178,15 @@ object ChatChunks {
       var sawApprovalRequest = false
       var responseId = ""
       val items = mutable.Map.empty[String, ResponseItem]
+      // the items a subagent of a multi-agent run wrote - their text is not the answer
+      val subagentItems = mutable.Set.empty[String]
+
+      def agentName(raw: JsValue): Option[String] =
+        (raw \ "item" \ "agent" \ "agent_name")
+          .asOpt[String]
+          .orElse((raw \ "agent" \ "agent_name").asOpt[String])
+
+      def fromSubagent(itemId: String): Boolean = subagentItems.contains(itemId)
 
       def register(
         itemId: String,
@@ -251,6 +261,7 @@ object ChatChunks {
           case OutputItemAdded(outputIndex, itemType, itemIdOpt, _, raw) =>
             val item = itemJson(raw)
             val itemId = itemKey(itemIdOpt, outputIndex)
+            if (agentName(raw).exists(_ != AgentTag.RootName)) subagentItems += itemId
             itemType match {
               case "function_call" =>
                 register(
@@ -299,8 +310,18 @@ object ChatChunks {
                   (item \ "name").asOpt[String].getOrElse("mcp"),
                   serverSide = true
                 )
+              // multi-agent execution: the delegation runs on the server
+              case "multi_agent_call" =>
+                register(
+                  itemId,
+                  (item \ "call_id").asOpt[String].getOrElse(itemId),
+                  "multi_agent." + (item \ "action").asOpt[String].getOrElse("call"),
+                  serverSide = true
+                )
               // reported once complete, on output_item.done
-              case "message" | "reasoning" | "mcp_approval_request" => Nil
+              case "message" | "reasoning" | "mcp_approval_request" |
+                  "multi_agent_call_output" | "agent_message" =>
+                Nil
               case other => List(Other(s"output_item.$other", raw))
             }
 
@@ -321,7 +342,29 @@ object ChatChunks {
           case OutputItemDone(outputIndex, itemType, itemIdOpt, _, raw) =>
             val item = itemJson(raw)
             val itemId = itemKey(itemIdOpt, outputIndex)
+            if (agentName(raw).exists(_ != AgentTag.RootName)) subagentItems += itemId
             itemType match {
+              // a subagent's message / reasoning is internal to the run, not the answer
+              case "message" | "reasoning" if fromSubagent(itemId) =>
+                List(Other(s"subagent.$itemType", raw))
+              case "multi_agent_call" =>
+                complete(itemId, outputIndex, (item \ "arguments").asOpt[String])
+              case "multi_agent_call_output" =>
+                val callId = (item \ "call_id").asOpt[String].getOrElse(itemId)
+                val output = (item \ "output").toOption.getOrElse(JsNull)
+                val text = (item \ "output")
+                  .asOpt[Seq[JsValue]]
+                  .map(_.flatMap(part => (part \ "text").asOpt[String]).mkString)
+                  .filter(_.nonEmpty)
+                List(
+                  ToolResult(
+                    callId,
+                    "multi_agent." + (item \ "action").asOpt[String].getOrElse("call"),
+                    output,
+                    text,
+                    isError = false
+                  )
+                )
               case "function_call" | "custom_tool_call" =>
                 complete(
                   itemId,
@@ -444,6 +487,13 @@ object ChatChunks {
               case "message" => Nil
               case other     => List(Other(s"output_item.$other", raw))
             }
+
+          // a subagent's deltas are reported with its whole item on output_item.done
+          case OutputTextDelta(itemId, _, _, _) if fromSubagent(itemId)                 => Nil
+          case RefusalDelta(itemId, _, _, _) if fromSubagent(itemId)                    => Nil
+          case ReasoningSummaryTextDelta(itemId, _, _, _) if fromSubagent(itemId)       => Nil
+          case ReasoningTextDelta(itemId, _, _, _) if fromSubagent(itemId)              => Nil
+          case OutputTextAnnotationAdded(itemId, _, _, _, _, _) if fromSubagent(itemId) => Nil
 
           case OutputTextDelta(_, _, _, text)            => List(Text(text))
           case RefusalDelta(_, _, _, text)               => List(Refusal(text))

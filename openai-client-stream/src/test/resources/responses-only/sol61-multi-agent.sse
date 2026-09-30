@@ -1,0 +1,216 @@
+event: response.created
+data: {"type":"response.created","response":{"id":"resp_0ba44a8899bb2a5f016abca5b68b8087d18cbf1efc6c1d08ba","object":"response","created_at":1790748086,"status":"in_progress","access_programs":null,"background":false,"completed_at":null,"error":null,"frequency_penalty":0.0,"incomplete_details":null,"instructions":null,"max_output_tokens":null,"max_tool_calls":null,"model":"gpt-6.1-sol","moderation":null,"output":[],"parallel_tool_calls":true,"presence_penalty":0.0,"previous_response_id":null,"prompt_cache_key":null,"prompt_cache_retention":"24h","reasoning":{"context":"all_turns","effort":"low","mode":"standard","summary":null},"safety_identifier":null,"service_tier":"auto","store":false,"temperature":1.0,"text":{"format":{"type":"text"},"verbosity":"medium"},"tool_choice":"auto","tool_usage":{"image_gen":{"input_tokens":0,"input_tokens_details":{"image_tokens":0,"text_tokens":0},"output_tokens":0,"output_tokens_details":{"image_tokens":0,"text_tokens":0},"total_tokens":0},"web_search":{"num_requests":0}},"tools":[],"top_logprobs":0,"top_p":0.98,"truncation":"disabled","usage":null,"user":null,"metadata":{}},"sequence_number":0}
+
+event: response.in_progress
+data: {"type":"response.in_progress","response":{"id":"resp_0ba44a8899bb2a5f016abca5b68b8087d18cbf1efc6c1d08ba","object":"response","created_at":1790748086,"status":"in_progress","access_programs":null,"background":false,"completed_at":null,"error":null,"frequency_penalty":0.0,"incomplete_details":null,"instructions":null,"max_output_tokens":null,"max_tool_calls":null,"model":"gpt-6.1-sol","moderation":null,"output":[],"parallel_tool_calls":true,"presence_penalty":0.0,"previous_response_id":null,"prompt_cache_key":null,"prompt_cache_retention":"24h","reasoning":{"context":"all_turns","effort":"low","mode":"standard","summary":null},"safety_identifier":null,"service_tier":"auto","store":false,"temperature":1.0,"text":{"format":{"type":"text"},"verbosity":"medium"},"tool_choice":"auto","tool_usage":{"image_gen":{"input_tokens":0,"input_tokens_details":{"image_tokens":0,"text_tokens":0},"output_tokens":0,"output_tokens_details":{"image_tokens":0,"text_tokens":0},"total_tokens":0},"web_search":{"num_requests":0}},"tools":[],"top_logprobs":0,"top_p":0.98,"truncation":"disabled","usage":null,"user":null,"metadata":{}},"sequence_number":1}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","item":{"id":"mac_0ba44a8899bb2a5f016abca5b8167887d1ad8dc21b129b8820","type":"multi_agent_call","action":"spawn_agent","agent":{"agent_name":"/root"},"arguments":"","call_id":"call_K2xmg0PQsnPqpNYlEL4uEQUO"},"output_index":0,"sequence_number":2,"agent":{"agent_name":"/root"}}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","item":{"id":"mac_0ba44a8899bb2a5f016abca5b8167887d1ad8dc21b129b8820","type":"multi_agent_call","action":"spawn_agent","agent":{"agent_name":"/root"},"arguments":"{\"task_name\":\"fruits\",\"message\":\"gAAAAABqvKW4ZPx_zrqFPkMWSqECSA7MdVdwopBhovG6wej-kKoeyRPBfnwwhn4qI_2eXPwciYoK7GeCSYbPyFoKg-kjytGSOeqBnkyhm3R9ID2mQjw6Rc0c0v8qrRC6LmzID2VsUt_FMHMswMJqDzcpjoj7Y46sDfJ3_A3CeAiqfea6Er5oaHLGTwm37qWyVl-Ps6XqKz2C\",\"fork_turns\":\"none\"}","call_id":"call_K2xmg0PQsnPqpNYlEL4uEQUO"},"output_index":0,"sequence_number":3,"agent":{"agent_name":"/root"}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","item":{"id":"amsg_0ba44a8899bb2a5f016abca5b884f087d18a26cae98412a1a4","type":"agent_message","agent":{"agent_name":"/root/fruits"},"author":"/root","content":[],"recipient":"/root/fruits"},"output_index":1,"sequence_number":4,"agent":{"agent_name":"/root/fruits"}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","item":{"id":"maco_0ba44a8899bb2a5f016abca5b8951887d1ba457b8e3ab8338e","type":"multi_agent_call_output","action":"spawn_agent","agent":{"agent_name":"/root"},"call_id":"call_K2xmg0PQsnPqpNYlEL4uEQUO","output":[]},"output_index":2,"sequence_number":5,"agent":{"agent_name":"/root"}}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","item":{"id":"maco_0ba44a8899bb2a5f016abca5b8951887d1ba457b8e3ab8338e","type":"multi_agent_call_output","action":"spawn_agent","agent":{"agent_name":"/root"},"call_id":"call_K2xmg0PQsnPqpNYlEL4uEQUO","output":[{"type":"output_text","annotations":[],"logprobs":[],"text":"{\"task_name\": \"/root/fruits\"}"}]},"output_index":2,"sequence_number":6,"agent":{"agent_name":"/root"}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","item":{"id":"msg_0ba44a8899bb2a5f016abca5b9464087d19703f83fe123fca3","type":"message","status":"in_progress","agent":{"agent_name":"/root/fruits"},"content":[],"phase":"final_answer","role":"assistant"},"output_index":3,"sequence_number":7,"agent":{"agent_name":"/root/fruits"}}
+
+event: response.content_part.added
+data: {"type":"response.content_part.added","content_index":0,"item_id":"msg_0ba44a8899bb2a5f016abca5b9464087d19703f83fe123fca3","output_index":3,"part":{"type":"output_text","annotations":[],"logprobs":[],"text":""},"sequence_number":8,"agent":{"agent_name":"/root/fruits"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"Apple","item_id":"msg_0ba44a8899bb2a5f016abca5b9464087d19703f83fe123fca3","logprobs":[],"obfuscation":"RyqNGUAjwF3","output_index":3,"sequence_number":9,"agent":{"agent_name":"/root/fruits"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":",","item_id":"msg_0ba44a8899bb2a5f016abca5b9464087d19703f83fe123fca3","logprobs":[],"obfuscation":"LfVtubo9nRrcKMW","output_index":3,"sequence_number":10,"agent":{"agent_name":"/root/fruits"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" banana","item_id":"msg_0ba44a8899bb2a5f016abca5b9464087d19703f83fe123fca3","logprobs":[],"obfuscation":"VTV91L97H","output_index":3,"sequence_number":11,"agent":{"agent_name":"/root/fruits"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":",","item_id":"msg_0ba44a8899bb2a5f016abca5b9464087d19703f83fe123fca3","logprobs":[],"obfuscation":"PcKLEptfTptp89j","output_index":3,"sequence_number":12,"agent":{"agent_name":"/root/fruits"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" orange","item_id":"msg_0ba44a8899bb2a5f016abca5b9464087d19703f83fe123fca3","logprobs":[],"obfuscation":"cnJ23QqiV","output_index":3,"sequence_number":13,"agent":{"agent_name":"/root/fruits"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":".","item_id":"msg_0ba44a8899bb2a5f016abca5b9464087d19703f83fe123fca3","logprobs":[],"obfuscation":"R4zYVCtDL2DukVG","output_index":3,"sequence_number":14,"agent":{"agent_name":"/root/fruits"}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","item":{"id":"amsg_0ba44a8899bb2a5f016abca5b9a56087d185cdff84201cba96","type":"agent_message","agent":{"agent_name":"/root"},"author":"/root/fruits","content":[],"recipient":"/root"},"output_index":4,"sequence_number":15,"agent":{"agent_name":"/root"}}
+
+event: response.content_part.done
+data: {"type":"response.content_part.done","content_index":0,"item_id":"amsg_0ba44a8899bb2a5f016abca5b9a56087d185cdff84201cba96","output_index":4,"part":{"type":"encrypted_content","encrypted_content":"gAAAAABqvKW52bK-q4m9U38RcQ8kOLh0loQ1CTxXUdxx58qBXw9c4jWla_oAVKkULbu1Ipb-Qh0AlT_nZ6s3N0Hc4sm7ecTv6sS_67ksxkEUy5BWlLfcAHkdv9cDXuRVGmGsh-9Epppej2-xzTrIhGXawMekpzwYI1cispNUKrfVi1LUDKUAAVLDzPS1I83Z57a1ZUYX4Li3CE1Zr2ABN1dRBEpv9AHd1NLyY8vam84gXZumZEOHI4Q="},"sequence_number":16,"agent":{"agent_name":"/root"}}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","item":{"id":"amsg_0ba44a8899bb2a5f016abca5b9a56087d185cdff84201cba96","type":"agent_message","agent":{"agent_name":"/root"},"author":"/root/fruits","content":[{"type":"encrypted_content","encrypted_content":"gAAAAABqvKW52bK-q4m9U38RcQ8kOLh0loQ1CTxXUdxx58qBXw9c4jWla_oAVKkULbu1Ipb-Qh0AlT_nZ6s3N0Hc4sm7ecTv6sS_67ksxkEUy5BWlLfcAHkdv9cDXuRVGmGsh-9Epppej2-xzTrIhGXawMekpzwYI1cispNUKrfVi1LUDKUAAVLDzPS1I83Z57a1ZUYX4Li3CE1Zr2ABN1dRBEpv9AHd1NLyY8vam84gXZumZEOHI4Q="}],"recipient":"/root"},"output_index":4,"sequence_number":17,"agent":{"agent_name":"/root"}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","item":{"id":"mac_0ba44a8899bb2a5f016abca5b9d4d087d1b4a20f6763093e84","type":"multi_agent_call","action":"spawn_agent","agent":{"agent_name":"/root"},"arguments":"","call_id":"call_iAPLGgiRtWwrChSu5K6sqkxQ"},"output_index":5,"sequence_number":18,"agent":{"agent_name":"/root"}}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","item":{"id":"mac_0ba44a8899bb2a5f016abca5b9d4d087d1b4a20f6763093e84","type":"multi_agent_call","action":"spawn_agent","agent":{"agent_name":"/root"},"arguments":"{\"task_name\":\"vegetables\",\"message\":\"gAAAAABqvKW6M-2Y94NgZ2UpNxkp4ooGtTWWdqv8NhGRUPn77n_fAHTKgd7lGzGDDaxqqItTnTQoMqKDkMfzhmToynI2sG669-D7h07APDkAPQTvSqRKXQp2llsaq8ozjbe7yUwpf2Lg_tORoSPMQ50_ckNNXKfBu5wZbVASPUIgZMrvEkRo_ql7e5cY5R06Z0mB9RXtsq-u\",\"fork_turns\":\"none\"}","call_id":"call_iAPLGgiRtWwrChSu5K6sqkxQ"},"output_index":5,"sequence_number":19,"agent":{"agent_name":"/root"}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","item":{"id":"amsg_0ba44a8899bb2a5f016abca5ba3c0087d18fcbaf8eb0f13735","type":"agent_message","agent":{"agent_name":"/root/vegetables"},"author":"/root","content":[],"recipient":"/root/vegetables"},"output_index":6,"sequence_number":20,"agent":{"agent_name":"/root/vegetables"}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","item":{"id":"maco_0ba44a8899bb2a5f016abca5ba46c087d1a1aee7311dee70b0","type":"multi_agent_call_output","action":"spawn_agent","agent":{"agent_name":"/root"},"call_id":"call_iAPLGgiRtWwrChSu5K6sqkxQ","output":[]},"output_index":7,"sequence_number":21,"agent":{"agent_name":"/root"}}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","item":{"id":"maco_0ba44a8899bb2a5f016abca5ba46c087d1a1aee7311dee70b0","type":"multi_agent_call_output","action":"spawn_agent","agent":{"agent_name":"/root"},"call_id":"call_iAPLGgiRtWwrChSu5K6sqkxQ","output":[{"type":"output_text","annotations":[],"logprobs":[],"text":"{\"task_name\": \"/root/vegetables\"}"}]},"output_index":7,"sequence_number":22,"agent":{"agent_name":"/root"}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","item":{"id":"mac_0ba44a8899bb2a5f016abca5bbaa2c87d1a00cb26490dba19c","type":"multi_agent_call","action":"wait_agent","agent":{"agent_name":"/root"},"arguments":"","call_id":"call_33CLSlXlbYvDdbjuaQujTwCE"},"output_index":8,"sequence_number":23,"agent":{"agent_name":"/root"}}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","item":{"id":"mac_0ba44a8899bb2a5f016abca5bbaa2c87d1a00cb26490dba19c","type":"multi_agent_call","action":"wait_agent","agent":{"agent_name":"/root"},"arguments":"{\"timeout_ms\":10000}","call_id":"call_33CLSlXlbYvDdbjuaQujTwCE"},"output_index":8,"sequence_number":24,"agent":{"agent_name":"/root"}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","item":{"id":"msg_0ba44a8899bb2a5f016abca5bc15ec87d19fd3d60db0429d60","type":"message","status":"in_progress","agent":{"agent_name":"/root/vegetables"},"content":[],"phase":"final_answer","role":"assistant"},"output_index":9,"sequence_number":25,"agent":{"agent_name":"/root/vegetables"}}
+
+event: response.content_part.added
+data: {"type":"response.content_part.added","content_index":0,"item_id":"msg_0ba44a8899bb2a5f016abca5bc15ec87d19fd3d60db0429d60","output_index":9,"part":{"type":"output_text","annotations":[],"logprobs":[],"text":""},"sequence_number":26,"agent":{"agent_name":"/root/vegetables"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"Car","item_id":"msg_0ba44a8899bb2a5f016abca5bc15ec87d19fd3d60db0429d60","logprobs":[],"obfuscation":"nCAdK523xIyuJ","output_index":9,"sequence_number":27,"agent":{"agent_name":"/root/vegetables"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"rot","item_id":"msg_0ba44a8899bb2a5f016abca5bc15ec87d19fd3d60db0429d60","logprobs":[],"obfuscation":"v3L0GQgKIvZY0","output_index":9,"sequence_number":28,"agent":{"agent_name":"/root/vegetables"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":",","item_id":"msg_0ba44a8899bb2a5f016abca5bc15ec87d19fd3d60db0429d60","logprobs":[],"obfuscation":"rVfix9ZOM45ZMad","output_index":9,"sequence_number":29,"agent":{"agent_name":"/root/vegetables"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" broccoli","item_id":"msg_0ba44a8899bb2a5f016abca5bc15ec87d19fd3d60db0429d60","logprobs":[],"obfuscation":"yfvele5","output_index":9,"sequence_number":30,"agent":{"agent_name":"/root/vegetables"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":",","item_id":"msg_0ba44a8899bb2a5f016abca5bc15ec87d19fd3d60db0429d60","logprobs":[],"obfuscation":"yCI2Fz5DEkC22j3","output_index":9,"sequence_number":31,"agent":{"agent_name":"/root/vegetables"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" spinach","item_id":"msg_0ba44a8899bb2a5f016abca5bc15ec87d19fd3d60db0429d60","logprobs":[],"obfuscation":"yMyLdzxI","output_index":9,"sequence_number":32,"agent":{"agent_name":"/root/vegetables"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":".","item_id":"msg_0ba44a8899bb2a5f016abca5bc15ec87d19fd3d60db0429d60","logprobs":[],"obfuscation":"g2GaQuGRS6Xpfjw","output_index":9,"sequence_number":33,"agent":{"agent_name":"/root/vegetables"}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","item":{"id":"amsg_0ba44a8899bb2a5f016abca5bc798087d1847519fbb0bc1258","type":"agent_message","agent":{"agent_name":"/root"},"author":"/root/vegetables","content":[],"recipient":"/root"},"output_index":10,"sequence_number":34,"agent":{"agent_name":"/root"}}
+
+event: response.content_part.done
+data: {"type":"response.content_part.done","content_index":0,"item_id":"amsg_0ba44a8899bb2a5f016abca5bc798087d1847519fbb0bc1258","output_index":10,"part":{"type":"encrypted_content","encrypted_content":"gAAAAABqvKW8qmS9rWl_8pTt2SBtRug7Jz8f7kbe5PZKMkKZ2wyfsM6hYaLlavD02jTWoqwrDYM0V6P1bX5gB0XS_Xs1_naB2_Y2Zuh5Rr1GUy1VCft064yiVnDAv__yL_81_BfmzSLTfeENtF-jJjdZYdta0WIEZovFNFoZvSk03oqALkNESjocLNHW8vyaKmWhG2UrmT8N0r6dga5g0wbav2w22sr0NOfcRQK-7414j0MoSJwIWU-NgHTOtqcJhwKRXpdhXM1B"},"sequence_number":35,"agent":{"agent_name":"/root"}}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","item":{"id":"amsg_0ba44a8899bb2a5f016abca5bc798087d1847519fbb0bc1258","type":"agent_message","agent":{"agent_name":"/root"},"author":"/root/vegetables","content":[{"type":"encrypted_content","encrypted_content":"gAAAAABqvKW8qmS9rWl_8pTt2SBtRug7Jz8f7kbe5PZKMkKZ2wyfsM6hYaLlavD02jTWoqwrDYM0V6P1bX5gB0XS_Xs1_naB2_Y2Zuh5Rr1GUy1VCft064yiVnDAv__yL_81_BfmzSLTfeENtF-jJjdZYdta0WIEZovFNFoZvSk03oqALkNESjocLNHW8vyaKmWhG2UrmT8N0r6dga5g0wbav2w22sr0NOfcRQK-7414j0MoSJwIWU-NgHTOtqcJhwKRXpdhXM1B"}],"recipient":"/root"},"output_index":10,"sequence_number":36,"agent":{"agent_name":"/root"}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","item":{"id":"maco_0ba44a8899bb2a5f016abca5bc7fc487d19d87bf12dd3091a2","type":"multi_agent_call_output","action":"wait_agent","agent":{"agent_name":"/root"},"call_id":"call_33CLSlXlbYvDdbjuaQujTwCE","output":[]},"output_index":11,"sequence_number":37,"agent":{"agent_name":"/root"}}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","item":{"id":"maco_0ba44a8899bb2a5f016abca5bc7fc487d19d87bf12dd3091a2","type":"multi_agent_call_output","action":"wait_agent","agent":{"agent_name":"/root"},"call_id":"call_33CLSlXlbYvDdbjuaQujTwCE","output":[{"type":"output_text","annotations":[],"logprobs":[],"text":"{\"message\": \"Wait completed.\", \"timed_out\": false}"}]},"output_index":11,"sequence_number":38,"agent":{"agent_name":"/root"}}
+
+event: response.output_item.added
+data: {"type":"response.output_item.added","item":{"id":"msg_0ba44a8899bb2a5f016abca5bd650c87d1858eaffb08f6c14e","type":"message","status":"in_progress","agent":{"agent_name":"/root"},"content":[],"phase":"final_answer","role":"assistant"},"output_index":12,"sequence_number":39,"agent":{"agent_name":"/root"}}
+
+event: response.content_part.added
+data: {"type":"response.content_part.added","content_index":0,"item_id":"msg_0ba44a8899bb2a5f016abca5bd650c87d1858eaffb08f6c14e","output_index":12,"part":{"type":"output_text","annotations":[],"logprobs":[],"text":""},"sequence_number":40,"agent":{"agent_name":"/root"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"F","item_id":"msg_0ba44a8899bb2a5f016abca5bd650c87d1858eaffb08f6c14e","logprobs":[],"obfuscation":"HIROwLQWFeoXjT5","output_index":12,"sequence_number":41,"agent":{"agent_name":"/root"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":"ruits","item_id":"msg_0ba44a8899bb2a5f016abca5bd650c87d1858eaffb08f6c14e","logprobs":[],"obfuscation":"Tp4250cLFpN","output_index":12,"sequence_number":42,"agent":{"agent_name":"/root"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":":","item_id":"msg_0ba44a8899bb2a5f016abca5bd650c87d1858eaffb08f6c14e","logprobs":[],"obfuscation":"506gLNdQGUgld2a","output_index":12,"sequence_number":43,"agent":{"agent_name":"/root"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" apple","item_id":"msg_0ba44a8899bb2a5f016abca5bd650c87d1858eaffb08f6c14e","logprobs":[],"obfuscation":"voNWxOqwKz","output_index":12,"sequence_number":44,"agent":{"agent_name":"/root"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":",","item_id":"msg_0ba44a8899bb2a5f016abca5bd650c87d1858eaffb08f6c14e","logprobs":[],"obfuscation":"RVHpJ8Okz1JKreu","output_index":12,"sequence_number":45,"agent":{"agent_name":"/root"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" banana","item_id":"msg_0ba44a8899bb2a5f016abca5bd650c87d1858eaffb08f6c14e","logprobs":[],"obfuscation":"noCEa3JeV","output_index":12,"sequence_number":46,"agent":{"agent_name":"/root"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":",","item_id":"msg_0ba44a8899bb2a5f016abca5bd650c87d1858eaffb08f6c14e","logprobs":[],"obfuscation":"1EZGRKpDleCaHIN","output_index":12,"sequence_number":47,"agent":{"agent_name":"/root"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" orange","item_id":"msg_0ba44a8899bb2a5f016abca5bd650c87d1858eaffb08f6c14e","logprobs":[],"obfuscation":"081hrUcdZ","output_index":12,"sequence_number":48,"agent":{"agent_name":"/root"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":";","item_id":"msg_0ba44a8899bb2a5f016abca5bd650c87d1858eaffb08f6c14e","logprobs":[],"obfuscation":"1jYyJ4BI0vOeq2s","output_index":12,"sequence_number":49,"agent":{"agent_name":"/root"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" vegetables","item_id":"msg_0ba44a8899bb2a5f016abca5bd650c87d1858eaffb08f6c14e","logprobs":[],"obfuscation":"Wwf1m","output_index":12,"sequence_number":50,"agent":{"agent_name":"/root"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":":","item_id":"msg_0ba44a8899bb2a5f016abca5bd650c87d1858eaffb08f6c14e","logprobs":[],"obfuscation":"81wCRsL2qvZzTZZ","output_index":12,"sequence_number":51,"agent":{"agent_name":"/root"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" carrot","item_id":"msg_0ba44a8899bb2a5f016abca5bd650c87d1858eaffb08f6c14e","logprobs":[],"obfuscation":"BuGXfxI1w","output_index":12,"sequence_number":52,"agent":{"agent_name":"/root"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":",","item_id":"msg_0ba44a8899bb2a5f016abca5bd650c87d1858eaffb08f6c14e","logprobs":[],"obfuscation":"AnZaXe6sebCVyg7","output_index":12,"sequence_number":53,"agent":{"agent_name":"/root"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" broccoli","item_id":"msg_0ba44a8899bb2a5f016abca5bd650c87d1858eaffb08f6c14e","logprobs":[],"obfuscation":"VQdHa2M","output_index":12,"sequence_number":54,"agent":{"agent_name":"/root"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":",","item_id":"msg_0ba44a8899bb2a5f016abca5bd650c87d1858eaffb08f6c14e","logprobs":[],"obfuscation":"O3f5PGSeIPZNWDU","output_index":12,"sequence_number":55,"agent":{"agent_name":"/root"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":" spinach","item_id":"msg_0ba44a8899bb2a5f016abca5bd650c87d1858eaffb08f6c14e","logprobs":[],"obfuscation":"mDBcowSA","output_index":12,"sequence_number":56,"agent":{"agent_name":"/root"}}
+
+event: response.output_text.delta
+data: {"type":"response.output_text.delta","content_index":0,"delta":".","item_id":"msg_0ba44a8899bb2a5f016abca5bd650c87d1858eaffb08f6c14e","logprobs":[],"obfuscation":"3BFUu8cglU6DnRe","output_index":12,"sequence_number":57,"agent":{"agent_name":"/root"}}
+
+event: response.content_part.done
+data: {"type":"response.content_part.done","content_index":0,"item_id":"amsg_0ba44a8899bb2a5f016abca5b884f087d18a26cae98412a1a4","output_index":1,"part":{"type":"encrypted_content","encrypted_content":"gAAAAABqvKW4xqtpLN6NN_AUeyDhUM40GPLBrRnbaY5YDuTE8P_xYXyzsq3vlpaC9-8p_ztCsl_FbKvE9L6cSJ6kD73JVmBkwPrKS2vZqKwRcNr7pJaziiookUJngiB_XerYmJd-wzZsmSCLSTluCNtr_8iYI1u8LKh0RD4Zytclg7Cf4yzDc3svwfxW1b4fzvVuYMeE60eLCF5yO0l9Vjk8od8Ug5XpHO0WCm6IPgYEKN6DH4KYBPQ1MWCKUXXsaqtHiStwJK7bU63Wd5xBvm1zfilceb81Xg=="},"sequence_number":58,"agent":{"agent_name":"/root/fruits"}}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","item":{"id":"amsg_0ba44a8899bb2a5f016abca5b884f087d18a26cae98412a1a4","type":"agent_message","agent":{"agent_name":"/root/fruits"},"author":"/root","content":[{"type":"encrypted_content","encrypted_content":"gAAAAABqvKW4xqtpLN6NN_AUeyDhUM40GPLBrRnbaY5YDuTE8P_xYXyzsq3vlpaC9-8p_ztCsl_FbKvE9L6cSJ6kD73JVmBkwPrKS2vZqKwRcNr7pJaziiookUJngiB_XerYmJd-wzZsmSCLSTluCNtr_8iYI1u8LKh0RD4Zytclg7Cf4yzDc3svwfxW1b4fzvVuYMeE60eLCF5yO0l9Vjk8od8Ug5XpHO0WCm6IPgYEKN6DH4KYBPQ1MWCKUXXsaqtHiStwJK7bU63Wd5xBvm1zfilceb81Xg=="}],"recipient":"/root/fruits"},"output_index":1,"sequence_number":59,"agent":{"agent_name":"/root/fruits"}}
+
+event: response.output_text.done
+data: {"type":"response.output_text.done","content_index":0,"item_id":"msg_0ba44a8899bb2a5f016abca5b9464087d19703f83fe123fca3","logprobs":[],"output_index":3,"sequence_number":60,"text":"Apple, banana, orange.","agent":{"agent_name":"/root/fruits"}}
+
+event: response.content_part.done
+data: {"type":"response.content_part.done","content_index":0,"item_id":"msg_0ba44a8899bb2a5f016abca5b9464087d19703f83fe123fca3","output_index":3,"part":{"type":"output_text","annotations":[],"logprobs":[],"text":"Apple, banana, orange."},"sequence_number":61,"agent":{"agent_name":"/root/fruits"}}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","item":{"id":"msg_0ba44a8899bb2a5f016abca5b9464087d19703f83fe123fca3","type":"message","status":"completed","agent":{"agent_name":"/root/fruits"},"content":[{"type":"output_text","annotations":[],"logprobs":[],"text":"Apple, banana, orange."}],"phase":"final_answer","role":"assistant"},"output_index":3,"sequence_number":62,"agent":{"agent_name":"/root/fruits"}}
+
+event: response.content_part.done
+data: {"type":"response.content_part.done","content_index":0,"item_id":"amsg_0ba44a8899bb2a5f016abca5ba3c0087d18fcbaf8eb0f13735","output_index":6,"part":{"type":"encrypted_content","encrypted_content":"gAAAAABqvKW68ZPk3iihwPmGBkmtTKGHJeRvN1p-29b0ISZ-jhVPAh90j2DtmVsFKwA6MJ3TZH-e5hFuMGX23S7CkipZ96Up-qec1eISOKYV7alg6VwrbGROCPm-I26NUY71H8o23_gpNhqbIdt0X_zqYV3QRutyfnMGdxzrWfOPMhfGjyhliUYqWGGAQ3rwkK_9u2G6Lsd5Hdm1xUNZJLdOxeOUHA3Ka3VXidLGo7RDsTkP6XA6E4yvFnycI4rNoZzBt2ED093Mz4yQOb_xbfQ7OoGSng7CFFr4gDTE_Uoyoi3whviCKV8="},"sequence_number":63,"agent":{"agent_name":"/root/vegetables"}}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","item":{"id":"amsg_0ba44a8899bb2a5f016abca5ba3c0087d18fcbaf8eb0f13735","type":"agent_message","agent":{"agent_name":"/root/vegetables"},"author":"/root","content":[{"type":"encrypted_content","encrypted_content":"gAAAAABqvKW68ZPk3iihwPmGBkmtTKGHJeRvN1p-29b0ISZ-jhVPAh90j2DtmVsFKwA6MJ3TZH-e5hFuMGX23S7CkipZ96Up-qec1eISOKYV7alg6VwrbGROCPm-I26NUY71H8o23_gpNhqbIdt0X_zqYV3QRutyfnMGdxzrWfOPMhfGjyhliUYqWGGAQ3rwkK_9u2G6Lsd5Hdm1xUNZJLdOxeOUHA3Ka3VXidLGo7RDsTkP6XA6E4yvFnycI4rNoZzBt2ED093Mz4yQOb_xbfQ7OoGSng7CFFr4gDTE_Uoyoi3whviCKV8="}],"recipient":"/root/vegetables"},"output_index":6,"sequence_number":64,"agent":{"agent_name":"/root/vegetables"}}
+
+event: response.output_text.done
+data: {"type":"response.output_text.done","content_index":0,"item_id":"msg_0ba44a8899bb2a5f016abca5bc15ec87d19fd3d60db0429d60","logprobs":[],"output_index":9,"sequence_number":65,"text":"Carrot, broccoli, spinach.","agent":{"agent_name":"/root/vegetables"}}
+
+event: response.content_part.done
+data: {"type":"response.content_part.done","content_index":0,"item_id":"msg_0ba44a8899bb2a5f016abca5bc15ec87d19fd3d60db0429d60","output_index":9,"part":{"type":"output_text","annotations":[],"logprobs":[],"text":"Carrot, broccoli, spinach."},"sequence_number":66,"agent":{"agent_name":"/root/vegetables"}}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","item":{"id":"msg_0ba44a8899bb2a5f016abca5bc15ec87d19fd3d60db0429d60","type":"message","status":"completed","agent":{"agent_name":"/root/vegetables"},"content":[{"type":"output_text","annotations":[],"logprobs":[],"text":"Carrot, broccoli, spinach."}],"phase":"final_answer","role":"assistant"},"output_index":9,"sequence_number":67,"agent":{"agent_name":"/root/vegetables"}}
+
+event: response.output_text.done
+data: {"type":"response.output_text.done","content_index":0,"item_id":"msg_0ba44a8899bb2a5f016abca5bd650c87d1858eaffb08f6c14e","logprobs":[],"output_index":12,"sequence_number":68,"text":"Fruits: apple, banana, orange; vegetables: carrot, broccoli, spinach.","agent":{"agent_name":"/root"}}
+
+event: response.content_part.done
+data: {"type":"response.content_part.done","content_index":0,"item_id":"msg_0ba44a8899bb2a5f016abca5bd650c87d1858eaffb08f6c14e","output_index":12,"part":{"type":"output_text","annotations":[],"logprobs":[],"text":"Fruits: apple, banana, orange; vegetables: carrot, broccoli, spinach."},"sequence_number":69,"agent":{"agent_name":"/root"}}
+
+event: response.output_item.done
+data: {"type":"response.output_item.done","item":{"id":"msg_0ba44a8899bb2a5f016abca5bd650c87d1858eaffb08f6c14e","type":"message","status":"completed","agent":{"agent_name":"/root"},"content":[{"type":"output_text","annotations":[],"logprobs":[],"text":"Fruits: apple, banana, orange; vegetables: carrot, broccoli, spinach."}],"phase":"final_answer","role":"assistant"},"output_index":12,"sequence_number":70,"agent":{"agent_name":"/root"}}
+
+event: response.completed
+data: {"type":"response.completed","response":{"id":"resp_0ba44a8899bb2a5f016abca5b68b8087d18cbf1efc6c1d08ba","object":"response","created_at":1790748086,"status":"completed","access_programs":null,"background":false,"completed_at":1790748093,"error":null,"frequency_penalty":0.0,"incomplete_details":null,"instructions":null,"max_output_tokens":null,"max_tool_calls":null,"model":"gpt-6.1-sol","moderation":null,"output":[{"id":"mac_0ba44a8899bb2a5f016abca5b8167887d1ad8dc21b129b8820","type":"multi_agent_call","action":"spawn_agent","agent":{"agent_name":"/root"},"arguments":"{\"task_name\":\"fruits\",\"message\":\"gAAAAABqvKW4ZPx_zrqFPkMWSqECSA7MdVdwopBhovG6wej-kKoeyRPBfnwwhn4qI_2eXPwciYoK7GeCSYbPyFoKg-kjytGSOeqBnkyhm3R9ID2mQjw6Rc0c0v8qrRC6LmzID2VsUt_FMHMswMJqDzcpjoj7Y46sDfJ3_A3CeAiqfea6Er5oaHLGTwm37qWyVl-Ps6XqKz2C\",\"fork_turns\":\"none\"}","call_id":"call_K2xmg0PQsnPqpNYlEL4uEQUO"},{"id":"amsg_0ba44a8899bb2a5f016abca5b884f087d18a26cae98412a1a4","type":"agent_message","agent":{"agent_name":"/root/fruits"},"author":"/root","content":[{"type":"encrypted_content","encrypted_content":"gAAAAABqvKW4xqtpLN6NN_AUeyDhUM40GPLBrRnbaY5YDuTE8P_xYXyzsq3vlpaC9-8p_ztCsl_FbKvE9L6cSJ6kD73JVmBkwPrKS2vZqKwRcNr7pJaziiookUJngiB_XerYmJd-wzZsmSCLSTluCNtr_8iYI1u8LKh0RD4Zytclg7Cf4yzDc3svwfxW1b4fzvVuYMeE60eLCF5yO0l9Vjk8od8Ug5XpHO0WCm6IPgYEKN6DH4KYBPQ1MWCKUXXsaqtHiStwJK7bU63Wd5xBvm1zfilceb81Xg=="}],"recipient":"/root/fruits"},{"id":"maco_0ba44a8899bb2a5f016abca5b8951887d1ba457b8e3ab8338e","type":"multi_agent_call_output","action":"spawn_agent","agent":{"agent_name":"/root"},"call_id":"call_K2xmg0PQsnPqpNYlEL4uEQUO","output":[{"type":"output_text","annotations":[],"logprobs":[],"text":"{\"task_name\": \"/root/fruits\"}"}]},{"id":"msg_0ba44a8899bb2a5f016abca5b9464087d19703f83fe123fca3","type":"message","status":"completed","agent":{"agent_name":"/root/fruits"},"content":[{"type":"output_text","annotations":[],"logprobs":[],"text":"Apple, banana, orange."}],"phase":"final_answer","role":"assistant"},{"id":"amsg_0ba44a8899bb2a5f016abca5b9a56087d185cdff84201cba96","type":"agent_message","agent":{"agent_name":"/root"},"author":"/root/fruits","content":[{"type":"encrypted_content","encrypted_content":"gAAAAABqvKW52bK-q4m9U38RcQ8kOLh0loQ1CTxXUdxx58qBXw9c4jWla_oAVKkULbu1Ipb-Qh0AlT_nZ6s3N0Hc4sm7ecTv6sS_67ksxkEUy5BWlLfcAHkdv9cDXuRVGmGsh-9Epppej2-xzTrIhGXawMekpzwYI1cispNUKrfVi1LUDKUAAVLDzPS1I83Z57a1ZUYX4Li3CE1Zr2ABN1dRBEpv9AHd1NLyY8vam84gXZumZEOHI4Q="}],"recipient":"/root"},{"id":"mac_0ba44a8899bb2a5f016abca5b9d4d087d1b4a20f6763093e84","type":"multi_agent_call","action":"spawn_agent","agent":{"agent_name":"/root"},"arguments":"{\"task_name\":\"vegetables\",\"message\":\"gAAAAABqvKW6M-2Y94NgZ2UpNxkp4ooGtTWWdqv8NhGRUPn77n_fAHTKgd7lGzGDDaxqqItTnTQoMqKDkMfzhmToynI2sG669-D7h07APDkAPQTvSqRKXQp2llsaq8ozjbe7yUwpf2Lg_tORoSPMQ50_ckNNXKfBu5wZbVASPUIgZMrvEkRo_ql7e5cY5R06Z0mB9RXtsq-u\",\"fork_turns\":\"none\"}","call_id":"call_iAPLGgiRtWwrChSu5K6sqkxQ"},{"id":"amsg_0ba44a8899bb2a5f016abca5ba3c0087d18fcbaf8eb0f13735","type":"agent_message","agent":{"agent_name":"/root/vegetables"},"author":"/root","content":[{"type":"encrypted_content","encrypted_content":"gAAAAABqvKW68ZPk3iihwPmGBkmtTKGHJeRvN1p-29b0ISZ-jhVPAh90j2DtmVsFKwA6MJ3TZH-e5hFuMGX23S7CkipZ96Up-qec1eISOKYV7alg6VwrbGROCPm-I26NUY71H8o23_gpNhqbIdt0X_zqYV3QRutyfnMGdxzrWfOPMhfGjyhliUYqWGGAQ3rwkK_9u2G6Lsd5Hdm1xUNZJLdOxeOUHA3Ka3VXidLGo7RDsTkP6XA6E4yvFnycI4rNoZzBt2ED093Mz4yQOb_xbfQ7OoGSng7CFFr4gDTE_Uoyoi3whviCKV8="}],"recipient":"/root/vegetables"},{"id":"maco_0ba44a8899bb2a5f016abca5ba46c087d1a1aee7311dee70b0","type":"multi_agent_call_output","action":"spawn_agent","agent":{"agent_name":"/root"},"call_id":"call_iAPLGgiRtWwrChSu5K6sqkxQ","output":[{"type":"output_text","annotations":[],"logprobs":[],"text":"{\"task_name\": \"/root/vegetables\"}"}]},{"id":"mac_0ba44a8899bb2a5f016abca5bbaa2c87d1a00cb26490dba19c","type":"multi_agent_call","action":"wait_agent","agent":{"agent_name":"/root"},"arguments":"{\"timeout_ms\":10000}","call_id":"call_33CLSlXlbYvDdbjuaQujTwCE"},{"id":"msg_0ba44a8899bb2a5f016abca5bc15ec87d19fd3d60db0429d60","type":"message","status":"completed","agent":{"agent_name":"/root/vegetables"},"content":[{"type":"output_text","annotations":[],"logprobs":[],"text":"Carrot, broccoli, spinach."}],"phase":"final_answer","role":"assistant"},{"id":"amsg_0ba44a8899bb2a5f016abca5bc798087d1847519fbb0bc1258","type":"agent_message","agent":{"agent_name":"/root"},"author":"/root/vegetables","content":[{"type":"encrypted_content","encrypted_content":"gAAAAABqvKW8qmS9rWl_8pTt2SBtRug7Jz8f7kbe5PZKMkKZ2wyfsM6hYaLlavD02jTWoqwrDYM0V6P1bX5gB0XS_Xs1_naB2_Y2Zuh5Rr1GUy1VCft064yiVnDAv__yL_81_BfmzSLTfeENtF-jJjdZYdta0WIEZovFNFoZvSk03oqALkNESjocLNHW8vyaKmWhG2UrmT8N0r6dga5g0wbav2w22sr0NOfcRQK-7414j0MoSJwIWU-NgHTOtqcJhwKRXpdhXM1B"}],"recipient":"/root"},{"id":"maco_0ba44a8899bb2a5f016abca5bc7fc487d19d87bf12dd3091a2","type":"multi_agent_call_output","action":"wait_agent","agent":{"agent_name":"/root"},"call_id":"call_33CLSlXlbYvDdbjuaQujTwCE","output":[{"type":"output_text","annotations":[],"logprobs":[],"text":"{\"message\": \"Wait completed.\", \"timed_out\": false}"}]},{"id":"msg_0ba44a8899bb2a5f016abca5bd650c87d1858eaffb08f6c14e","type":"message","status":"completed","agent":{"agent_name":"/root"},"content":[{"type":"output_text","annotations":[],"logprobs":[],"text":"Fruits: apple, banana, orange; vegetables: carrot, broccoli, spinach."}],"phase":"final_answer","role":"assistant"}],"parallel_tool_calls":true,"presence_penalty":0.0,"previous_response_id":null,"prompt_cache_key":null,"prompt_cache_retention":"24h","reasoning":{"context":"all_turns","effort":"low","mode":"standard","summary":null},"safety_identifier":null,"service_tier":"default","store":false,"temperature":1.0,"text":{"format":{"type":"text"},"verbosity":"medium"},"tool_choice":"auto","tool_usage":{"image_gen":{"input_tokens":0,"input_tokens_details":{"image_tokens":0,"text_tokens":0},"output_tokens":0,"output_tokens_details":{"image_tokens":0,"text_tokens":0},"total_tokens":0},"web_search":{"num_requests":0}},"tools":[],"top_logprobs":0,"top_p":0.98,"truncation":"disabled","usage":{"input_tokens":3643,"input_tokens_details":{"cache_write_tokens":0,"cached_tokens":2228},"output_tokens":147,"output_tokens_details":{"reasoning_tokens":0},"total_tokens":3790},"user":null,"metadata":{}},"sequence_number":71}
+

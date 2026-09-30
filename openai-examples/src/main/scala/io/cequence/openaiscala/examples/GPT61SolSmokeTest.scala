@@ -9,6 +9,8 @@ import io.cequence.openaiscala.domain.response.ChatToolCompletionResponse
 import io.cequence.openaiscala.domain.responsesapi.{
   CreateModelResponseSettings,
   Inputs,
+  MultiAgentCall,
+  MultiAgentConfig,
   ReasoningConfig,
   ReasoningMode
 }
@@ -45,6 +47,10 @@ import scala.util.{Failure, Success, Try}
  *   - the `fast` / `priority` tier (Fast mode - a GPT-6 response reports `fast`) and the
  *     access-controlled `ultrafast` tier, which only the Responses API serves (GPT-6 Astra) -
  *     the full service routes it there
+ *   - server-hosted multi-agent execution (beta): `CreateModelResponseSettings.multiAgent` on
+ *     the Responses API and `setResponsesMultiAgent` from the chat interface (the typed stream
+ *     shows the delegation as `multi_agent.*` server-side tool calls, the text is the root
+ *     agent's answer only)
  *   - Bedrock's `global.openai.gpt-6.1-sol` (bedrock-runtime), incl. its tool routing
  *
  * Every section prints PASS/FAIL and the run continues; the exit code is 1 if any failed or
@@ -85,6 +91,10 @@ object GPT61SolSmokeTest {
   )
 
   private val weatherQuestion = Seq(UserMessage("What's the weather in Paris right now?"))
+
+  private val multiAgentTask =
+    "Use two subagents in parallel: one lists three fruits, the other three vegetables (one " +
+      "short line each). Then reply with a single combined line."
 
   private def functionCalls(response: ChatToolCompletionResponse): String =
     response.choices.head.message.tool_calls.collect { case (_, fc: FunctionCallSpec) =>
@@ -256,6 +266,40 @@ object GPT61SolSmokeTest {
             if (!r.reasoning.flatMap(_.mode).contains(ReasoningMode.pro))
               throw new IllegalStateException(s"mode not echoed: ${r.reasoning}")
             s"reasoning=${r.reasoning} text='${r.outputText.getOrElse("").take(60)}'"
+          }
+      }
+
+      _ <- section(s"$model: multi-agent execution (Responses API, beta)") {
+        openAI
+          .createModelResponse(
+            Inputs.Text(multiAgentTask),
+            CreateModelResponseSettings(
+              model = model,
+              multiAgent = Some(MultiAgentConfig(maxConcurrentSubagents = Some(2))),
+              store = Some(false)
+            )
+          )
+          .map { r =>
+            val actions = r.output.collect { case call: MultiAgentCall => call.action }
+            if (actions.isEmpty) throw new IllegalStateException(s"no delegation: ${r.output}")
+            s"actions=$actions subagents=${r.subagentMessages.flatMap(_.agent).map(_.agentName)} answer='${r.outputText
+                .getOrElse("")}'"
+          }
+      }
+
+      _ <- section(s"$model: setResponsesMultiAgent - typed stream (root answer only)") {
+        openAI
+          .createChatCompletionStreamedTyped(
+            Seq(UserMessage(multiAgentTask)),
+            CreateChatCompletionSettings(model, reasoning_effort = Some(ReasoningEffort.low))
+              .setResponsesMultiAgent(MultiAgentConfig(maxConcurrentSubagents = Some(2)))
+          )
+          .assembled
+          .map { a =>
+            val delegation = a.toolCalls.filter(_.toolName.startsWith("multi_agent."))
+            if (delegation.isEmpty) throw new IllegalStateException(s"no delegation: $a")
+            s"delegation=${delegation.map(_.toolName)} results=${a.toolResults.size} " +
+              s"subagent messages=${a.other.count(_.kind == "subagent.message")} text='${a.text}'"
           }
       }
 

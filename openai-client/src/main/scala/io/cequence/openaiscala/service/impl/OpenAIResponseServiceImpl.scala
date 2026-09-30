@@ -28,7 +28,8 @@ trait OpenAIResponseServiceImpl extends OpenAIResponsesService with OpenAIServic
 
     execPOSTBody(
       EndPoint.responses,
-      body = body ++ Json.obj("input" -> input)
+      body = body ++ Json.obj("input" -> input),
+      extraHeaders = CreateModelResponseSettings.betaHeaders(settings)
     ).map(_.asSafeJson[Response])
   }
 

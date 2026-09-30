@@ -290,6 +290,36 @@ object JsonFormats {
   implicit lazy val inputContentMessageFormat: OFormat[Message.InputContent] =
     Json.format[Message.InputContent]
 
+  // multi-agent execution (beta) - the agent tag every item of such a run carries, the config
+  // and its three item types
+  implicit lazy val agentTagFormat: OFormat[AgentTag] = Json.format[AgentTag]
+
+  implicit lazy val multiAgentConfigFormat: OFormat[MultiAgentConfig] =
+    Json.format[MultiAgentConfig]
+
+  implicit lazy val multiAgentCallFormat: OFormat[MultiAgentCall] = Json.format[MultiAgentCall]
+
+  implicit lazy val multiAgentCallOutputFormat: OFormat[MultiAgentCallOutput] =
+    Json.format[MultiAgentCallOutput]
+
+  implicit lazy val agentMessageFormat: OFormat[AgentMessage] = {
+    val reads: Reads[AgentMessage] = (
+      (__ \ "id").read[String] and
+        (__ \ "content").readWithDefault[Seq[JsObject]](Nil) and
+        (__ \ "author").readNullable[String] and
+        (__ \ "recipient").readNullable[String] and
+        (__ \ "agent").readNullable[AgentTag]
+    )(AgentMessage.apply _)
+    val writes: OWrites[AgentMessage] = (
+      (__ \ "id").write[String] and
+        (__ \ "content").write[Seq[JsObject]] and
+        (__ \ "author").writeNullable[String] and
+        (__ \ "recipient").writeNullable[String] and
+        (__ \ "agent").writeNullable[AgentTag]
+    )((x: AgentMessage) => (x.id, x.content, x.author, x.recipient, x.agent))
+    OFormat(reads, writes)
+  }
+
   implicit lazy val outputContentMessageFormat: OFormat[Message.OutputContent] =
     Json.format[Message.OutputContent]
 
@@ -325,6 +355,9 @@ object JsonFormats {
       case input: MCPApprovalResponse      => mcpApprovalResponseFormat.writes(input)
       case input: CustomToolCallOutput     => customToolCallOutputFormat.writes(input)
       case input: CustomToolCall           => customToolCallFormat.writes(input)
+      case input: MultiAgentCall           => multiAgentCallFormat.writes(input)
+      case input: MultiAgentCallOutput     => multiAgentCallOutputFormat.writes(input)
+      case input: AgentMessage             => agentMessageFormat.writes(input)
     }
     jsObject + ("type" -> JsString(input.`type`))
   }
@@ -369,6 +402,9 @@ object JsonFormats {
       case "mcp_approval_response"   => mcpApprovalResponseFormat.reads(json)
       case "custom_tool_call_output" => customToolCallOutputFormat.reads(json)
       case "custom_tool_call"        => customToolCallFormat.reads(json)
+      case "multi_agent_call"        => multiAgentCallFormat.reads(json)
+      case "multi_agent_call_output" => multiAgentCallOutputFormat.reads(json)
+      case "agent_message"           => agentMessageFormat.reads(json)
       case _                         => JsError("Missing type field for Input")
     }
   }
@@ -403,20 +439,23 @@ object JsonFormats {
   implicit lazy val outputFormat: Format[Output] = new Format[Output] {
     override def reads(json: JsValue): JsResult[Output] = {
       (json \ "type").as[String] match {
-        case "message"               => outputContentMessageFormat.reads(json)
-        case "file_search_call"      => fileSearchToolCallFormat.reads(json)
-        case "web_search_call"       => webSearchToolCallFormat.reads(json)
-        case "computer_call"         => computerToolCallFormat.reads(json)
-        case "function_call"         => functionToolCallFormat.reads(json)
-        case "reasoning"             => reasoningFormat.reads(json)
-        case "image_generation_call" => imageGenerationToolCallFormat.reads(json)
-        case "code_interpreter_call" => codeInterpreterToolCallFormat.reads(json)
-        case "local_shell_call"      => localShellToolCallFormat.reads(json)
-        case "mcp_call"              => mcpToolCallFormat.reads(json)
-        case "mcp_list_tools"        => mcpListToolsFormat.reads(json)
-        case "mcp_approval_request"  => mcpApprovalRequestFormat.reads(json)
-        case "custom_tool_call"      => customToolCallFormat.reads(json)
-        case unknown                 => JsError(s"Unknown Output type: $unknown")
+        case "message"                 => outputContentMessageFormat.reads(json)
+        case "file_search_call"        => fileSearchToolCallFormat.reads(json)
+        case "web_search_call"         => webSearchToolCallFormat.reads(json)
+        case "computer_call"           => computerToolCallFormat.reads(json)
+        case "function_call"           => functionToolCallFormat.reads(json)
+        case "reasoning"               => reasoningFormat.reads(json)
+        case "image_generation_call"   => imageGenerationToolCallFormat.reads(json)
+        case "code_interpreter_call"   => codeInterpreterToolCallFormat.reads(json)
+        case "local_shell_call"        => localShellToolCallFormat.reads(json)
+        case "mcp_call"                => mcpToolCallFormat.reads(json)
+        case "mcp_list_tools"          => mcpListToolsFormat.reads(json)
+        case "mcp_approval_request"    => mcpApprovalRequestFormat.reads(json)
+        case "custom_tool_call"        => customToolCallFormat.reads(json)
+        case "multi_agent_call"        => multiAgentCallFormat.reads(json)
+        case "multi_agent_call_output" => multiAgentCallOutputFormat.reads(json)
+        case "agent_message"           => agentMessageFormat.reads(json)
+        case unknown                   => JsError(s"Unknown Output type: $unknown")
       }
     }
 
@@ -435,6 +474,9 @@ object JsonFormats {
         case output: MCPListTools            => mcpListToolsFormat.writes(output)
         case output: MCPApprovalRequest      => mcpApprovalRequestFormat.writes(output)
         case output: CustomToolCall          => customToolCallFormat.writes(output)
+        case output: MultiAgentCall          => multiAgentCallFormat.writes(output)
+        case output: MultiAgentCallOutput    => multiAgentCallOutputFormat.writes(output)
+        case output: AgentMessage            => agentMessageFormat.writes(output)
       }
 
       jsObject + ("type" -> JsString(output.`type`))
@@ -527,7 +569,8 @@ object JsonFormats {
         (__ \ "safety_identifier").readNullable[String] and
         (__ \ "service_tier").readNullable[String] and
         (__ \ "stream_options").readNullable[StreamOptions] and
-        (__ \ "top_logprobs").readNullable[Int]
+        (__ \ "top_logprobs").readNullable[Int] and
+        (__ \ "multi_agent").readNullable[MultiAgentConfig]
     )(CreateModelResponseSettingsAuxPart2.apply _)
 
   private implicit lazy val createModelResponseSettingsAuxPart2Writes
@@ -545,7 +588,8 @@ object JsonFormats {
         (__ \ "safety_identifier").writeNullable[String] and
         (__ \ "service_tier").writeNullable[String] and
         (__ \ "stream_options").writeNullable[StreamOptions] and
-        (__ \ "top_logprobs").writeNullable[Int]
+        (__ \ "top_logprobs").writeNullable[Int] and
+        (__ \ "multi_agent").writeNullable[MultiAgentConfig]
     )(
       // somehow FineTuneJob.unapply is not working in Scala3
       (x: CreateModelResponseSettingsAuxPart2) =>
@@ -562,7 +606,8 @@ object JsonFormats {
           x.safetyIdentifier,
           x.serviceTier,
           x.streamOptions,
-          x.topLogprobs
+          x.topLogprobs,
+          x.multiAgent
         )
     )
 
@@ -596,7 +641,8 @@ object JsonFormats {
       safetyIdentifier = part2.safetyIdentifier,
       serviceTier = part2.serviceTier,
       streamOptions = part2.streamOptions,
-      topLogprobs = part2.topLogprobs
+      topLogprobs = part2.topLogprobs,
+      multiAgent = part2.multiAgent
     )
 
   implicit lazy val createModelResponseSettingsWrites: OWrites[CreateModelResponseSettings] =
@@ -637,7 +683,10 @@ object JsonFormats {
     "mcp_call",
     "mcp_list_tools",
     "mcp_approval_request",
-    "custom_tool_call"
+    "custom_tool_call",
+    "multi_agent_call",
+    "multi_agent_call_output",
+    "agent_message"
   )
 
   // output items of an unknown type (e.g. the `search_results` of Responses-compatible

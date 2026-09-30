@@ -137,11 +137,12 @@ object ChatCompletionSettingsConversions {
   /**
    * Whether a chat completion with these settings must be served by the Responses API,
    * whatever its tools: a call resuming a run paused for approval (the run is there -
-   * `setToolApprovalDecisions`), carrying Responses-native tools (`setResponsesTools`) or a
-   * reasoning mode (`setResponsesReasoningMode`, a parameter the chat completions API doesn't
-   * have), or asking for the Ultrafast service tier, which the chat completions API rejects
-   * for every model (400 "Invalid service_tier argument", live-verified 2026-09-29 - GPT-6
-   * Astra serves it on the Responses API).
+   * `setToolApprovalDecisions`), carrying Responses-native tools (`setResponsesTools`), a
+   * reasoning mode (`setResponsesReasoningMode`) or multi-agent execution
+   * (`setResponsesMultiAgent`) - parameters the chat completions API doesn't have - or asking
+   * for the Ultrafast service tier, which the chat completions API rejects for every model
+   * (400 "Invalid service_tier argument", live-verified 2026-09-29 - GPT-6 Astra serves it on
+   * the Responses API).
    */
   def chatRequiresResponsesAPI(settings: CreateChatCompletionSettings): Boolean = {
     val responsesSettings =
@@ -153,6 +154,7 @@ object ChatCompletionSettingsConversions {
       .nonEmpty ||
     responsesSettings.responsesTools.nonEmpty ||
     responsesSettings.responsesReasoningMode.nonEmpty ||
+    responsesSettings.responsesMultiAgent.nonEmpty ||
     settings.service_tier.contains(ServiceTier.ultrafast)
   }
 

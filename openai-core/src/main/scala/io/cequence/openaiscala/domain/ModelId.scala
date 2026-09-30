@@ -805,10 +805,10 @@ object ModelId {
   val bedrock_openai_gpt_6_sol = "openai.gpt-6-sol"
   val bedrock_openai_gpt_6_luna = "openai.gpt-6-luna"
   // GPT-6.1 Sol (live-verified 2026-09-29 on bedrock-runtime `/openai/v1` in eu-central-1 and
-  // us-east-1): the `global.` inference profile only (no `us.`/`eu.`; the bare id is not
-  // on-demand). Same rules as on OpenAI, except that Bedrock's chat completions also accept
-  // effort 'max' (still converted to 'xhigh' here) and Bedrock rejects `reasoning.mode` and
-  // the `fast` service tier.
+  // us-east-1): the `global.` inference profile, plus `us.` since 2026-09-30 (us-east-1,
+  // us-west-2); no `eu.`, and the bare id is not on-demand. Same rules as on OpenAI, except
+  // that Bedrock's chat completions also accept effort 'max' (still converted to 'xhigh'
+  // here) and Bedrock rejects `reasoning.mode` and the `fast` service tier.
   val bedrock_openai_gpt_6_1_sol = "openai.gpt-6.1-sol"
   val bedrock_openai_gpt_5_6_sol = "openai.gpt-5.6-sol"
   val bedrock_openai_gpt_5_6_terra = "openai.gpt-5.6-terra"

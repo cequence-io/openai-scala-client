@@ -128,9 +128,11 @@ private[service] class OpenAIResponsesChatCompletionService(
     settings: CreateChatCompletionSettings
   ): Source[ChatChunk, NotUsed] = {
     // the typed stream to surface thinking - ask for reasoning summaries whenever
-    // reasoning is configured (unless the caller opted out)
+    // reasoning is configured (unless the caller opted out, or runs multi-agent: the API
+    // rejects summaries with it - live 2026-09-30)
+    val multiAgent = responsesSettings.multiAgent.exists(_.enabled)
     val withSummaries =
-      if (settings.responsesReasoningSummary.getOrElse(true))
+      if (settings.responsesReasoningSummary.getOrElse(!multiAgent))
         responsesSettings.copy(
           reasoning = responsesSettings.reasoning.map(r =>
             r.copy(summary = r.summary.orElse(Some("auto")))
@@ -552,7 +554,8 @@ private[service] class OpenAIResponsesChatCompletionService(
       topP = if (samplingUnsupported) None else settings.top_p,
       user = settings.user,
       serviceTier = settings.service_tier.map(_.toString),
-      topLogprobs = if (samplingUnsupported) None else settings.top_logprobs
+      topLogprobs = if (samplingUnsupported) None else settings.top_logprobs,
+      multiAgent = settings.responsesMultiAgent
     )
   }
 
@@ -650,7 +653,9 @@ private[service] class OpenAIResponsesChatCompletionService(
       case _: FunctionToolCall      => None
       // surfaced via ToolApprovalSettingsOps (response.toolApprovalRequests)
       case _: MCPApprovalRequest => None
-      case other                 => Some(other.`type`)
+      // a multi-agent run's internal delegation traffic
+      case _: MultiAgentCall | _: MultiAgentCallOutput | _: AgentMessage => None
+      case other                                                         => Some(other.`type`)
     }.flatten
 
     if (unrepresented.nonEmpty) {

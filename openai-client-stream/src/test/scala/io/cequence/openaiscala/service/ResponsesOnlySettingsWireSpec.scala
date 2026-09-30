@@ -9,6 +9,7 @@ import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain.responsesapi.{
   CreateModelResponseSettings,
   Inputs,
+  MultiAgentConfig,
   ReasoningConfig,
   ReasoningContext,
   ReasoningMode
@@ -56,6 +57,8 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
   private val ultrafastSse = resource("astra-ultrafast.sse")
   private val proJson = resource("sol61-pro.json")
   private val proSse = resource("sol61-pro.sse")
+  private val multiAgentJson = resource("sol61-multi-agent.json")
+  private val multiAgentSse = resource("sol61-multi-agent.sse")
 
   private val chatBody =
     """{"id":"chatcmpl_1","object":"chat.completion","created":1700000000,"model":"gpt-6-astra",
@@ -73,8 +76,11 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
 
   // every request received, in order
   @volatile private var requests: Vector[(String, JsObject)] = Vector.empty
+  // the OpenAI-Beta headers of each request, in the order sent
+  @volatile private var betaHeaders: Vector[Seq[String]] = Vector.empty
 
   private def last: (String, JsObject) = requests.lastOption.getOrElse(fail("no request"))
+  private def lastBetaHeaders: Seq[String] = betaHeaders.lastOption.getOrElse(Nil)
 
   private val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
   private val engine = StreamedEngineRegistry.outputStreamed(TransportSettings())
@@ -98,16 +104,31 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
             .parse(new String(exchange.getRequestBody.readAllBytes(), StandardCharsets.UTF_8))
             .as[JsObject]
           val path = exchange.getRequestURI.getPath
-          synchronized { requests = requests :+ (path -> body) }
+          val beta = Option(exchange.getRequestHeaders.get("OpenAI-Beta"))
+            .map(values => values.toArray(Array.empty[String]).toSeq)
+            .getOrElse(Nil)
+          synchronized {
+            requests = requests :+ (path -> body)
+            betaHeaders = betaHeaders :+ beta
+          }
 
           val streamed = (body \ "stream").asOpt[Boolean].contains(true)
           val pro = (body \ "reasoning" \ "mode").asOpt[String].contains("pro")
+          val multiAgent = (body \ "multi_agent").isDefined
 
           val (contentType, response) =
             if (!path.endsWith("/responses"))
               if (streamed) ("text/event-stream", chatSse) else ("application/json", chatBody)
-            else if (streamed) ("text/event-stream", if (pro) proSse else ultrafastSse)
-            else ("application/json", if (pro) proJson else ultrafastJson)
+            else if (streamed)
+              (
+                "text/event-stream",
+                if (multiAgent) multiAgentSse else if (pro) proSse else ultrafastSse
+              )
+            else
+              (
+                "application/json",
+                if (multiAgent) multiAgentJson else if (pro) proJson else ultrafastJson
+              )
 
           exchange.getResponseHeaders.add("Content-Type", contentType)
           val bytes = response.getBytes(StandardCharsets.UTF_8)
@@ -295,6 +316,85 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
       (last._2 \ "max_completion_tokens").as[Int] shouldBe 100
       (last._2 \ "max_tokens").toOption shouldBe None
       (last._2 \ "temperature").asOpt[Double].forall(_ == 1d) shouldBe true
+    }
+  }
+
+  "multi-agent execution (beta)" should {
+    val multiAgentSettings = CreateModelResponseSettings(
+      model = ModelId.gpt_6_1_sol,
+      multiAgent = Some(MultiAgentConfig(maxConcurrentSubagents = Some(2)))
+    )
+    val rootAnswer = "Fruits: apple, banana, orange; vegetables: carrots, broccoli, spinach."
+
+    "send the beta header - as the only OpenAI-Beta one - with multi_agent, sync and streamed" in {
+      val response =
+        await(
+          full.createModelResponse(Inputs.Text("Fruits and vegetables?"), multiAgentSettings)
+        )
+      lastBetaHeaders shouldBe Seq("responses_multi_agent=v1")
+      (last._2 \ "multi_agent").as[JsObject] shouldBe
+        Json.obj("enabled" -> true, "max_concurrent_subagents" -> 2)
+      response.outputText shouldBe Some(rootAnswer)
+
+      await(
+        fullStreamed
+          .createModelResponseStreamed(
+            Inputs.Text("Fruits and vegetables?"),
+            multiAgentSettings
+          )
+          .runWith(Sink.seq)
+      ).size should be > 10
+      lastBetaHeaders shouldBe Seq("responses_multi_agent=v1")
+    }
+
+    "send no OpenAI-Beta header at all without a beta feature" in {
+      await(
+        full.createModelResponse(Inputs.Text("hi"), multiAgentSettings.copy(multiAgent = None))
+      )
+      lastBetaHeaders shouldBe Nil
+      await(
+        full.createChatCompletion(messages, CreateChatCompletionSettings(ModelId.gpt_6_sol))
+      )
+      last._1 should endWith("/chat/completions")
+      lastBetaHeaders shouldBe Nil
+    }
+
+    "route setResponsesMultiAgent through the Responses API, answering with the root agent" in {
+      val settings = CreateChatCompletionSettings(
+        ModelId.gpt_6_1_sol,
+        reasoning_effort = Some(ReasoningEffort.low)
+      ).setResponsesMultiAgent()
+
+      await(full.createChatCompletion(messages, settings)).contentHead shouldBe rootAnswer
+      last._1 should endWith("/responses")
+      (last._2 \ "multi_agent" \ "enabled").as[Boolean] shouldBe true
+      lastBetaHeaders shouldBe Seq("responses_multi_agent=v1")
+
+      // the typed stream asks for no reasoning summary (the API rejects it with multi-agent)
+      val typed =
+        await(fullStreamed.createChatCompletionStreamedTyped(messages, settings).assembled)
+      last._1 should endWith("/responses")
+      (last._2 \ "reasoning").as[JsObject] shouldBe Json.obj("effort" -> "low")
+      typed.text shouldBe "Fruits: apple, banana, orange; vegetables: carrot, broccoli, spinach."
+      typed.toolCalls.map(_.toolName) shouldBe
+        Seq("multi_agent.spawn_agent", "multi_agent.spawn_agent", "multi_agent.wait_agent")
+      typed.toolCalls.forall(_.serverSide) shouldBe true
+    }
+
+    "be refused where the chat completions API would serve the call" in {
+      val settings = CreateChatCompletionSettings(ModelId.gpt_6_1_sol).setResponsesMultiAgent()
+      val before = requests.size
+      Seq[() => Future[_]](
+        () => chatOnly.createChatCompletion(messages, settings),
+        () =>
+          chatOnlyStreamed
+            .createChatCompletionStreamed(messages, settings)
+            .runWith(Sink.ignore)
+      ).foreach { call =>
+        intercept[OpenAIScalaClientException](await(call())).getMessage should
+          include("setResponsesMultiAgent")
+      }
+      requests.size shouldBe before
     }
   }
 

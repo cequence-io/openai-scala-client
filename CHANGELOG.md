@@ -4,8 +4,8 @@
 
 ### New models
 
-- **GPT-6.1 Sol** (DevDay 2026-09-29) - `ModelId.gpt_6_1_sol` plus Bedrock `openai.gpt-6.1-sol` (the `global.`
-  inference profile only), both with `json_schema` structured output. Reasoning is always on, so it gets the GPT-6
+- **GPT-6.1 Sol** (DevDay 2026-09-29) - `ModelId.gpt_6_1_sol` plus Bedrock `openai.gpt-6.1-sol` (the `global.` and,
+  since 2026-09-30, `us.` inference profiles), both with `json_schema` structured output. Reasoning is always on, so it gets the GPT-6
   **Astra** rules, not GPT-6 Sol's (live-verified 2026-09-29): `reasoning_effort` `none` / `minimal` → `low` (both APIs
   reject them), `max` → `xhigh` on chat completions (kept on the Responses API), sampling params stripped, `max_tokens` →
   `max_completion_tokens`, and function tools always go through the Responses API (chat completions rejects them with
@@ -43,7 +43,7 @@
 
 See `GPT61SolSmokeTest`, `GPT6SolLunaOpus55SmokeTest` and `anthropic/ClaudeSonnet55SmokeTest` for live walkthroughs.
 
-### OpenAI DevDay 2026: service tiers and reasoning mode
+### OpenAI DevDay 2026: service tiers, reasoning mode and multi-agent execution
 
 - **`ServiceTier.priority` / `fast` / `ultrafast`** - `priority` and `fast` are the same Fast mode (a GPT-6 response
   reports `fast`, older models `priority`); `ultrafast` is the Ultrafast tier (about 6x the price and up to 6x the speed,
@@ -59,8 +59,22 @@ See `GPT61SolSmokeTest`, `GPT6SolLunaOpus55SmokeTest` and `anthropic/ClaudeSonne
   `settings.setResponsesReasoningMode(ReasoningMode.pro)` routes the call through the Responses API on the full service;
   everything that would send it to chat completions refuses it (`ResponsesChatCompletionSettingsOps.unsupportedResponsesSettings`,
   which also covers `setResponsesTools`).
+- **Multi-agent execution (beta, GPT-6.1 Sol)** - `CreateModelResponseSettings.multiAgent = Some(MultiAgentConfig(...))`
+  lets the model spawn, message and wait for subagents on the server; the client adds the required
+  `OpenAI-Beta: responses_multi_agent=v1` header (sync and streamed). The run's items - `MultiAgentCall`,
+  `MultiAgentCallOutput`, `AgentMessage` - and every message carry the producing agent (`AgentTag`, `/root` or
+  `/root/<task>`), valid as input for a stateless follow-up too; `Response.outputText` / `outputMessageContents` are the
+  root agent's answer only (the subagents' messages, which the API interleaves with it, are in `subagentMessages`). From
+  the chat interface `settings.setResponsesMultiAgent()` routes the call through the Responses API (refused on chat-only
+  services); the typed stream shows the delegation as server-side `multi_agent.<action>` tool calls / results, the
+  subagents' messages as `Other("subagent.message", ...)`, and never asks for reasoning summaries, which the API rejects
+  with multi-agent (live-verified 2026-09-30). See `responsesapi/CreateModelResponseMultiAgent`.
 - `ChatCompletionSettingsConversions.chatRequiresResponsesAPI(settings)` - the one predicate for settings only the
-  Responses API can serve (approval decisions, Responses-native tools, a reasoning mode, the Ultrafast tier).
+  Responses API can serve (approval decisions, Responses-native tools, a reasoning mode, multi-agent execution, the
+  Ultrafast tier).
+- **No always-on `OpenAI-Beta: assistants=v2` header any more** - the Assistants API it opted into is shut down (vector
+  stores answer without it), and OpenAI reads only the FIRST `OpenAI-Beta` header of a request (live-verified
+  2026-09-30), so the global header masked per-call betas such as `responses_multi_agent=v1` (a 400).
 
 ### 🔥 Human approval mid-stream (typed stream)
 

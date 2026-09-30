@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.domain.settings
 
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.openaiscala.domain.responsesapi.ReasoningMode
+import io.cequence.openaiscala.domain.responsesapi.{MultiAgentConfig, ReasoningMode}
 import io.cequence.openaiscala.domain.responsesapi.tools.Tool
 
 /**
@@ -14,10 +14,15 @@ object ResponsesChatCompletionSettingsOps {
   val ResponsesToolsParam = "responses_tools"
   val ResponsesReasoningSummaryParam = "responses_reasoning_summary"
   val ResponsesReasoningModeParam = "responses_reasoning_mode"
+  val ResponsesMultiAgentParam = "responses_multi_agent"
 
   /** The extra-params keys consumed by the Responses adapter (never sent to the API). */
-  val knownParams: Set[String] =
-    Set(ResponsesToolsParam, ResponsesReasoningSummaryParam, ResponsesReasoningModeParam)
+  val knownParams: Set[String] = Set(
+    ResponsesToolsParam,
+    ResponsesReasoningSummaryParam,
+    ResponsesReasoningModeParam,
+    ResponsesMultiAgentParam
+  )
 
   implicit class RichResponsesCreateChatCompletionSettings(
     settings: CreateChatCompletionSettings
@@ -70,12 +75,35 @@ object ResponsesChatCompletionSettingsOps {
       settings.extra_params.get(ResponsesReasoningModeParam).collect {
         case mode: ReasoningMode => mode
       }
+
+    /**
+     * Server-hosted multi-agent execution of the Responses API (beta, GPT-6.1 Sol): the model
+     * may delegate to subagents it spawns, messages and waits for, all on the server. Only the
+     * root agent's answer becomes the completion's text; the delegation shows up on the typed
+     * stream as server-side `multi_agent.<action>` tool calls / results and the subagents'
+     * messages as `Other("subagent.message", ...)`. The chat completions API has no such
+     * parameter, so the full `OpenAIService` routes a call carrying it through the Responses
+     * API, and anything that cannot refuses it. Reasoning summaries are not requested with it
+     * (the API rejects the combination).
+     */
+    def setResponsesMultiAgent(
+      config: MultiAgentConfig = MultiAgentConfig()
+    ): CreateChatCompletionSettings =
+      settings.copy(
+        extra_params = settings.extra_params + (ResponsesMultiAgentParam -> config)
+      )
+
+    def responsesMultiAgent: Option[MultiAgentConfig] =
+      settings.extra_params.get(ResponsesMultiAgentParam).collect {
+        case config: MultiAgentConfig => config
+      }
   }
 
   /**
    * The exception for a call carrying Responses-only settings - Responses-native tools
-   * (`setResponsesTools`) or a reasoning mode (`setResponsesReasoningMode`) - where they
-   * cannot be sent (None when there are none): they are refused, never dropped.
+   * (`setResponsesTools`), a reasoning mode (`setResponsesReasoningMode`) or multi-agent
+   * execution (`setResponsesMultiAgent`) - where they cannot be sent (None when there are
+   * none): they are refused, never dropped.
    */
   def unsupportedResponsesSettings(
     settings: CreateChatCompletionSettings,
@@ -86,7 +114,8 @@ object ResponsesChatCompletionSettingsOps {
       else None,
       settings.responsesReasoningMode.map(mode =>
         s"reasoning mode '$mode' (setResponsesReasoningMode)"
-      )
+      ),
+      settings.responsesMultiAgent.map(_ => "multi-agent execution (setResponsesMultiAgent)")
     ).flatten
 
     if (responsesOnly.isEmpty) None

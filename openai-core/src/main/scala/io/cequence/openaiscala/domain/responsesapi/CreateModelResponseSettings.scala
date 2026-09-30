@@ -90,6 +90,9 @@ import io.cequence.openaiscala.domain.responsesapi.tools.Tool
  * @param topLogprobs
  *   An integer between 0 and 20 specifying the number of most likely tokens to return at each
  *   token position, each with an associated log probability. Optional
+ * @param multiAgent
+ *   Server-hosted multi-agent execution (beta, GPT-6.1 Sol) - adds the required `OpenAI-Beta:
+ *   responses_multi_agent=v1` header. Optional
  */
 final case class CreateModelResponseSettings(
   model: String,
@@ -117,10 +120,22 @@ final case class CreateModelResponseSettings(
   safetyIdentifier: Option[String] = None,
   serviceTier: Option[String] = None,
   streamOptions: Option[StreamOptions] = None,
-  topLogprobs: Option[Int] = None
+  topLogprobs: Option[Int] = None,
+  multiAgent: Option[MultiAgentConfig] = None
 )
 
 object CreateModelResponseSettings {
+
+  private val multiAgentBetaHeader = ("OpenAI-Beta", "responses_multi_agent=v1")
+
+  /**
+   * The `OpenAI-Beta` headers a call with these settings needs - multi-agent execution
+   * requires `responses_multi_agent=v1` (without it the API answers 400). OpenAI reads only
+   * the FIRST `OpenAI-Beta` header of a request (live-verified 2026-09-30), so no other one
+   * may precede it.
+   */
+  def betaHeaders(settings: CreateModelResponseSettings): Seq[(String, String)] =
+    if (settings.multiAgent.exists(_.enabled)) Seq(multiAgentBetaHeader) else Nil
 
   def toAuxPart1(x: CreateModelResponseSettings): CreateModelResponseSettingsAuxPart1 =
     CreateModelResponseSettingsAuxPart1(
@@ -152,7 +167,8 @@ object CreateModelResponseSettings {
       safetyIdentifier = x.safetyIdentifier,
       serviceTier = x.serviceTier,
       streamOptions = x.streamOptions,
-      topLogprobs = x.topLogprobs
+      topLogprobs = x.topLogprobs,
+      multiAgent = x.multiAgent
     )
 
   private def fromParts(
@@ -184,7 +200,8 @@ object CreateModelResponseSettings {
       safetyIdentifier = part2.safetyIdentifier,
       serviceTier = part2.serviceTier,
       streamOptions = part2.streamOptions,
-      topLogprobs = part2.topLogprobs
+      topLogprobs = part2.topLogprobs,
+      multiAgent = part2.multiAgent
     )
 }
 
@@ -216,5 +233,6 @@ final case class CreateModelResponseSettingsAuxPart2(
   safetyIdentifier: Option[String],
   serviceTier: Option[String],
   streamOptions: Option[StreamOptions],
-  topLogprobs: Option[Int]
+  topLogprobs: Option[Int],
+  multiAgent: Option[MultiAgentConfig]
 )

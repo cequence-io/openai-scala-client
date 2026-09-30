@@ -62,6 +62,7 @@ private[service] trait OpenAICoreServiceStreamedExtraImpl
       bodyParams = body.fields.toList.map { case (name, value) =>
         Param.Raw(name) -> Some(value)
       },
+      extraHeaders = CreateModelResponseSettings.betaHeaders(settings),
       maxFrameLength = Some(OpenAIChatCompletionServiceStreamedExtraImpl.maxFrameLength)
     ).map { (json: JsValue) =>
       // an error body ({"error": {...}}); streamed `error` events carry the message at the

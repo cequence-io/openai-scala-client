@@ -1,0 +1,275 @@
+{
+  "id": "resp_004bf4ab2cc28fc6016abca590f06887d1a625895c78b24981",
+  "object": "response",
+  "created_at": 1790748048,
+  "status": "completed",
+  "access_programs": null,
+  "background": false,
+  "billing": {
+    "payer": "developer"
+  },
+  "completed_at": 1790748057,
+  "error": null,
+  "frequency_penalty": 0.0,
+  "incomplete_details": null,
+  "instructions": null,
+  "max_output_tokens": null,
+  "max_tool_calls": null,
+  "model": "gpt-6.1-sol",
+  "moderation": null,
+  "output": [
+    {
+      "id": "mac_004bf4ab2cc28fc6016abca5926c2087d18f16c0d7a70484ea",
+      "type": "multi_agent_call",
+      "action": "spawn_agent",
+      "agent": {
+        "agent_name": "/root"
+      },
+      "arguments": "{\"task_name\":\"fruits\",\"message\":\"gAAAAABqvKWSr8KZaM5cQ3SUJgLEDl5OZwcBb5Ul6xSnFUXchqMbqTWxyt3ChIDSbC030cjWY-2mrxY2RrQ5l26jQzVTzcQtXbP3zz8bDjfXowm2lQbd3GGZW8IX-Ik5YwIpiArXLJBvUJzfTbb4jwb7VUeVN6uhvjEhDNUZ2vWOFzINKoqJARI=\",\"fork_turns\":\"none\"}",
+      "call_id": "call_xYKCGQfIedoafwXVPbtNc75U"
+    },
+    {
+      "id": "amsg_004bf4ab2cc28fc6016abca592d0fc87d188ac81779cc3f409",
+      "type": "agent_message",
+      "agent": {
+        "agent_name": "/root/fruits"
+      },
+      "author": "/root",
+      "content": [
+        {
+          "type": "encrypted_content",
+          "encrypted_content": "gAAAAABqvKWS8v01ntXQfiEPgYZFErY-1vdb-0OnejB7gn2K8BMpAk8VnaOax-DKCvl_1-kbKo4DtzZ5MbgDYwq5jpUcYsVl3rzE81zLWoiRGUS9H3VTkVmG-LKvcmSDNp-XMWy2KumXRjNZSNy_pTciXuFFCMhZFHn3Qf4NruqYyAt9S4gIbKVmgFQIIw951y0ir7Ip_YZiCCh1B5Q5aFjL13qnJa8m5jtByFefSAzczMAtsyUo-ZaZ8vs3n2EokOFOaqv3-Vz0"
+        }
+      ],
+      "recipient": "/root/fruits"
+    },
+    {
+      "id": "maco_004bf4ab2cc28fc6016abca592dc0c87d1b8e78999d96893be",
+      "type": "multi_agent_call_output",
+      "action": "spawn_agent",
+      "agent": {
+        "agent_name": "/root"
+      },
+      "call_id": "call_xYKCGQfIedoafwXVPbtNc75U",
+      "output": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\"task_name\": \"/root/fruits\"}"
+        }
+      ]
+    },
+    {
+      "id": "msg_004bf4ab2cc28fc6016abca593fbfc87d199fc8d578d98fa3e",
+      "type": "message",
+      "status": "completed",
+      "agent": {
+        "agent_name": "/root/fruits"
+      },
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "Apple, banana, orange."
+        }
+      ],
+      "phase": "final_answer",
+      "role": "assistant"
+    },
+    {
+      "id": "mac_004bf4ab2cc28fc6016abca594230087d180b309e688ad6103",
+      "type": "multi_agent_call",
+      "action": "spawn_agent",
+      "agent": {
+        "agent_name": "/root"
+      },
+      "arguments": "{\"task_name\":\"vegetables\",\"message\":\"gAAAAABqvKWUiGgNS9AItF8TQOX7CA1waGTLrq753-XCUKWyfbOZqLEdsJRFSQFvkgc2FfDVbkeAlSA9CanQS8nuiK5mGygsO1rmnlJJ4zM3sYwVz7goD8g6Y4wpTiDLl618E9mzK5jWP0ONNUJ4GCIElLW8kCDjbQyRJakqZNusCmBQ5ey1uw0=\",\"fork_turns\":\"none\"}",
+      "call_id": "call_wamOEDNcusBNYd8bQNFTRjUo"
+    },
+    {
+      "id": "amsg_004bf4ab2cc28fc6016abca594719887d1a0fd9d1badf1b3c8",
+      "type": "agent_message",
+      "agent": {
+        "agent_name": "/root/vegetables"
+      },
+      "author": "/root",
+      "content": [
+        {
+          "type": "encrypted_content",
+          "encrypted_content": "gAAAAABqvKWUrN0IbYaXbTSS5NfNRx5uqvuDxBOes3iX7FOwFknncC9c16wn-Qa1kFt7RGH8zlfPIUsHvugQsbliQir-bQjlPBtoiQXV6lWgKK0pM2Ykh5g9T1dv-pYMV1Pdn6Ds7t1FfqTZBz1ujuHaQKQMDjlEEpOtwE3stdqWrTygb0GNpIB6c8FohSqH0Yw0kP8kqlpFW01ao264QnnJK_8TFIeFP79T_rU2makazLcOywb-Oj-EbqMhnRenWm8xvJS9GWoiFacn93CTy3j-vtcBN1zbcg=="
+        }
+      ],
+      "recipient": "/root/vegetables"
+    },
+    {
+      "id": "maco_004bf4ab2cc28fc6016abca5947e8487d1a593edda77d43beb",
+      "type": "multi_agent_call_output",
+      "action": "spawn_agent",
+      "agent": {
+        "agent_name": "/root"
+      },
+      "call_id": "call_wamOEDNcusBNYd8bQNFTRjUo",
+      "output": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\"task_name\": \"/root/vegetables\"}"
+        }
+      ]
+    },
+    {
+      "id": "amsg_004bf4ab2cc28fc6016abca594d25887d1878eff10882c0d33",
+      "type": "agent_message",
+      "agent": {
+        "agent_name": "/root"
+      },
+      "author": "/root/fruits",
+      "content": [
+        {
+          "type": "encrypted_content",
+          "encrypted_content": "gAAAAABqvKWUbTGvnbHI1ydvqouVTi76gfU66ZR-4ofZ7KZiSxcO9rgykdz8x78Tz4ZqM-30ra6QYqQN2T-L74YY6m3S_Jg6xaZp9MqZRlJ_Nz6GP6h8Cs4_QMTykBgC6mzpRO0L-oT2KsYeH6EH75U6wz3_yk_HltqTfF7TQqE2-nIqYC5RqMO3M0cMziYTY3qcZuwQT6iQHGS3dCu4eSmfrsBEg6NW9DP0vcYkjY6mvEPclxms1h8="
+        }
+      ],
+      "recipient": "/root"
+    },
+    {
+      "id": "msg_004bf4ab2cc28fc6016abca5956e8087d1b611005ee8ad8eba",
+      "type": "message",
+      "status": "completed",
+      "agent": {
+        "agent_name": "/root/vegetables"
+      },
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "Carrots, broccoli, spinach."
+        }
+      ],
+      "phase": "final_answer",
+      "role": "assistant"
+    },
+    {
+      "id": "mac_004bf4ab2cc28fc6016abca595bca487d18e69ee9a9a340d5d",
+      "type": "multi_agent_call",
+      "action": "wait_agent",
+      "agent": {
+        "agent_name": "/root"
+      },
+      "arguments": "{\"timeout_ms\":10000}",
+      "call_id": "call_sULnk69i9T9msMgi7PI4T0yu"
+    },
+    {
+      "id": "amsg_004bf4ab2cc28fc6016abca5962e0087d19201500d4e9cb6b8",
+      "type": "agent_message",
+      "agent": {
+        "agent_name": "/root"
+      },
+      "author": "/root/vegetables",
+      "content": [
+        {
+          "type": "encrypted_content",
+          "encrypted_content": "gAAAAABqvKWWMxQy03EI2ofiT3Uozm7bBwQJJfN9zCKo0CzJ6xk5sU7hmOHevbp9BJjOGpsOwyrdi__iNVseZhH30wqK2ZZRmflH9CX666Lic0ud8J0wnNasf5b8ZimdgSqk5REspGe23ybeTblMs4NHDC5WrKa449k87NOBaozTqQ-p4KnYkpYsNK7wI7OvFAYUEH9B0g5R9D_bMy2fhBfOTbNOquJE4AWNSVbYGO6IhOCJSDqN-fil-opfk9-F_7M4t87Fzqau"
+        }
+      ],
+      "recipient": "/root"
+    },
+    {
+      "id": "maco_004bf4ab2cc28fc6016abca596379c87d19efd7d18f39ca0a0",
+      "type": "multi_agent_call_output",
+      "action": "wait_agent",
+      "agent": {
+        "agent_name": "/root"
+      },
+      "call_id": "call_sULnk69i9T9msMgi7PI4T0yu",
+      "output": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "{\"message\": \"Wait completed.\", \"timed_out\": false}"
+        }
+      ]
+    },
+    {
+      "id": "msg_004bf4ab2cc28fc6016abca598aadc87d18053b3ebd371daef",
+      "type": "message",
+      "status": "completed",
+      "agent": {
+        "agent_name": "/root"
+      },
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "Fruits: apple, banana, orange; vegetables: carrots, broccoli, spinach."
+        }
+      ],
+      "phase": "final_answer",
+      "role": "assistant"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0.0,
+  "previous_response_id": null,
+  "prompt_cache_key": null,
+  "prompt_cache_retention": "24h",
+  "reasoning": {
+    "context": "all_turns",
+    "effort": "low",
+    "mode": "standard",
+    "summary": null
+  },
+  "safety_identifier": null,
+  "service_tier": "default",
+  "store": false,
+  "temperature": 1.0,
+  "text": {
+    "format": {
+      "type": "text"
+    },
+    "verbosity": "medium"
+  },
+  "tool_choice": "auto",
+  "tool_usage": {
+    "image_gen": {
+      "input_tokens": 0,
+      "input_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 0
+      },
+      "output_tokens": 0,
+      "output_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 0
+      },
+      "total_tokens": 0
+    },
+    "web_search": {
+      "num_requests": 0
+    }
+  },
+  "tools": [],
+  "top_logprobs": 0,
+  "top_p": 0.98,
+  "truncation": "disabled",
+  "usage": {
+    "input_tokens": 3627,
+    "input_tokens_details": {
+      "cache_write_tokens": 1126,
+      "cached_tokens": 0
+    },
+    "output_tokens": 139,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 3766
+  },
+  "user": null,
+  "metadata": {}
+}

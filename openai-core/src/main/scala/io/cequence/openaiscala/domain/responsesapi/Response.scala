@@ -131,7 +131,19 @@ final case class Response(
    * @return
    */
   def outputMessageContents: Seq[OutputMessageContent] =
-    output.collect { case output: Message.OutputContent => output.content }.flatten
+    output.collect {
+      // in a multi-agent run the subagents' messages are internal - the root agent answers
+      case output: Message.OutputContent if output.isFromRootAgent => output.content
+    }.flatten
+
+  /**
+   * The messages the subagents of a multi-agent run wrote (see [[MultiAgentConfig]]) -
+   * internal to the run, so not part of [[outputMessageContents]] / [[outputText]].
+   */
+  def subagentMessages: Seq[Message.OutputContent] =
+    output.collect {
+      case message: Message.OutputContent if !message.isFromRootAgent => message
+    }
 
   /**
    * Shortcut that returns the function calls from the response.

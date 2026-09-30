@@ -895,6 +895,28 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
     }
 ```
 
+- **Responses API** - server-hosted multi-agent execution (🔥 New, beta, GPT-6.1 Sol): the model spawns, messages and
+  waits for subagents on the server. The client sends the required `OpenAI-Beta: responses_multi_agent=v1` header;
+  `outputText` is the root agent's answer, the delegation is in `MultiAgentCall` / `MultiAgentCallOutput` / `AgentMessage`
+  items and the subagents' own messages in `subagentMessages`. From the chat interface use
+  `settings.setResponsesMultiAgent()` (the typed stream shows the delegation as server-side `multi_agent.*` tool calls).
+  Reasoning summaries cannot be combined with it.
+
+```scala
+  service
+    .createModelResponse(
+      Inputs.Text("Use two subagents: one lists three fruits, the other three vegetables. Then combine."),
+      settings = CreateModelResponseSettings(
+        model = ModelId.gpt_6_1_sol,
+        multiAgent = Some(MultiAgentConfig(maxConcurrentSubagents = Some(2)))
+      )
+    )
+    .map { response =>
+      response.output.collect { case call: MultiAgentCall => println(call.action) } // spawn_agent, wait_agent, ...
+      println(response.outputText.getOrElse("N/A"))
+    }
+```
+
 - **Anthropic** - tool use (requires `openai-scala-anthropic-client` lib). Supports tools such as
   `Tool.bash()`, `Tool.webSearch()`, `Tool.webFetch()`, `Tool.codeExecution()`, `Tool.computer()`,
   `Tool.custom()`, and MCP servers via `MCPServerURLDefinition`.
@@ -1041,8 +1063,9 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
   Astra and GPT-6.1 Sol only on the Responses API - so the full `OpenAIServiceFactory()` / `.withStreaming()` service routes their
   tool calls and typed tool streams through the Responses API automatically, which keeps the requested reasoning (only an explicit
   `reasoning_effort = none` stays on chat completions). A chat-only service forces `none` instead (Astra / 6.1 Sol fail fast).
-  The same routing serves `settings.setResponsesReasoningMode(ReasoningMode.pro)` (GPT-6 pro mode) and
-  `service_tier = ServiceTier.ultrafast` (the Ultrafast tier, which only the Responses API serves) on every chat entry point. Grok, Groq, Cerebras, Fireworks and DeepSeek use the generic mapping (Groq's per-chunk `usage` is
+  The same routing serves `settings.setResponsesReasoningMode(ReasoningMode.pro)` (GPT-6 pro mode),
+  `settings.setResponsesMultiAgent()` (multi-agent execution) and `service_tier = ServiceTier.ultrafast` (the Ultrafast
+  tier, which only the Responses API serves) on every chat entry point. Grok, Groq, Cerebras, Fireworks and DeepSeek use the generic mapping (Groq's per-chunk `usage` is
   emitted once); Sonar and Managed Agents stream text / reasoning / finish / usage but reject tools.
 
   **Responses API streaming** (🔥 New) - `createModelResponseStreamed(inputs, settings)` on the streamed OpenAI service returns

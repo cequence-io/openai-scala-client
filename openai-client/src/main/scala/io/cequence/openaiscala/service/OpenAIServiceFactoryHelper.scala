@@ -23,10 +23,10 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts with HasOpenAICo
     implicit ec: ExecutionContext
   ): F = {
     val orgIdHeader = orgId.map(("OpenAI-Organization", _))
-    val authHeaders = orgIdHeader ++: Seq(
-      ("Authorization", s"Bearer $apiKey"),
-      ("OpenAI-Beta", "assistants=v2")
-    )
+    // no always-on OpenAI-Beta header: the Assistants API it opted into (assistants=v2) is shut
+    // down, and OpenAI reads only the FIRST OpenAI-Beta header of a request, so a global one
+    // would mask the per-call betas (responses_multi_agent=v1, agents=v1)
+    val authHeaders = orgIdHeader ++: Seq(("Authorization", s"Bearer $apiKey"))
 
     customInstance(defaultCoreUrl, WsRequestContext(authHeaders, Nil), timeouts)
   }
@@ -394,10 +394,10 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts with HasOpenAICo
     implicit ec: ExecutionContext
   ): F = {
     val orgIdHeader = orgId.map(("OpenAI-Organization", _))
-    val authHeaders = orgIdHeader ++: Seq(
-      ("Authorization", s"Bearer $apiKey"),
-      ("OpenAI-Beta", "assistants=v2")
-    )
+    // no always-on OpenAI-Beta header: the Assistants API it opted into (assistants=v2) is shut
+    // down, and OpenAI reads only the FIRST OpenAI-Beta header of a request, so a global one
+    // would mask the per-call betas (responses_multi_agent=v1, agents=v1)
+    val authHeaders = orgIdHeader ++: Seq(("Authorization", s"Bearer $apiKey"))
 
     customEngineInstance(engine, defaultCoreUrl, WsRequestContext(authHeaders, Nil))
   }

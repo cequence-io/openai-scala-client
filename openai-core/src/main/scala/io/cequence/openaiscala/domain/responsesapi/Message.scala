@@ -92,17 +92,24 @@ object Message {
    *   The role of the output message. Always assistant
    * @param status
    *   The status of the message input
+   * @param agent
+   *   The agent that wrote it in a multi-agent run (`/root` or a subagent) - see
+   *   [[MultiAgentConfig]]
    * @param `type`
    *   The type of the output message. Always message
    */
   final case class OutputContent(
     content: Seq[OutputMessageContent] = Nil,
     id: String,
-    status: ModelStatus // in_progress, completed, or incomplete
+    status: ModelStatus, // in_progress, completed, or incomplete
+    agent: Option[AgentTag] = None
   ) extends Message
       with Input
       with Output {
 
     val role: ChatRole = ChatRole.Assistant
+
+    /** Whether the root agent wrote it (always true outside a multi-agent run). */
+    def isFromRootAgent: Boolean = agent.forall(_.isRoot)
   }
 }
