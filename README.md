@@ -892,7 +892,11 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
   A client function tool (`AgentTool.Function`) pauses the session (`SessionUpdated.requiresAction`) - answer its
   `session.pendingFunctionCalls` with `sendAgentSessionEvents(sessionId, Seq(AgentSessionInput.toolResult(call, output)))`
   and keep consuming the same stream. Follow-up turns: subscribe with `streamAgentSessionEvents(sessionId).via(AgentSessionEvents.untilSettled())`,
-  then `sendAgentSessionEvents(sessionId, Seq(AgentSessionInput.text("...")))`. See
+  then `sendAgentSessionEvents(sessionId, Seq(AgentSessionInput.text("...")))`. As a chat-completion service:
+  `service.agentsAsChatCompletion(environment = AgentEnvironment.OpenAIHosted())` - each call runs one session turn (the
+  final answer as the text, the agent's commentary as thinking, commands / MCP / web search / subagents as server-side
+  tool calls), and client function tools work as the usual chat tool loop (the session pauses and the call carrying the
+  tool results resumes it). See
   [OpenAIAgentsApiSmokeTest](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/agents/OpenAIAgentsApiSmokeTest.scala).
 
 - **Responses API** - tool use (MCP)

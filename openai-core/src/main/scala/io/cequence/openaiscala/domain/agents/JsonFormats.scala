@@ -331,13 +331,20 @@ object JsonFormats {
 
   // ---- resources ----
 
-  implicit lazy val agentTokenUsageReads: Reads[AgentTokenUsage] = (
-    (__ \ "input_tokens").readWithDefault[Int](0) and
-      (__ \ "output_tokens").readWithDefault[Int](0) and
-      (__ \ "total_tokens").readWithDefault[Int](0) and
-      (__ \ "input_tokens_details").readNullable[JsObject] and
-      (__ \ "output_tokens_details").readNullable[JsObject]
-  )(AgentTokenUsage.apply _)
+  // an object only - a null usage (the API sends it often) is absent, not all zeros
+  implicit lazy val agentTokenUsageReads: Reads[AgentTokenUsage] = {
+    val fields: Reads[AgentTokenUsage] = (
+      (__ \ "input_tokens").readWithDefault[Int](0) and
+        (__ \ "output_tokens").readWithDefault[Int](0) and
+        (__ \ "total_tokens").readWithDefault[Int](0) and
+        (__ \ "input_tokens_details").readNullable[JsObject] and
+        (__ \ "output_tokens_details").readNullable[JsObject]
+    )(AgentTokenUsage.apply _)
+    Reads {
+      case obj: JsObject => fields.reads(obj)
+      case other         => JsError(s"Expected a usage object, got: $other")
+    }
+  }
 
   // lenient: an absent / null / malformed optional sub-object reads as None
   private def lenient[T: Reads](path: JsPath): Reads[Option[T]] =

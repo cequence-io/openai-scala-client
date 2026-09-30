@@ -101,6 +101,19 @@ See `GPT61SolSmokeTest`, `GPT6SolLunaOpus55SmokeTest` and `anthropic/ClaudeSonne
   opened on an idle session delivers the next turn (subscribe first, then send), one opened mid-turn replays the turn's
   items without text deltas; a session paused mid-turn cannot be deleted before it is cancelled (409). See
   `agents/OpenAIAgentsApiSmokeTest` (six live sections incl. a hosted sandbox command and a multi-agent session).
+- **`service.agentsAsChatCompletion(...)`** (`OpenAIAgentsChatCompletionService`): the OpenAI chat-completion view of the
+  Agents API - each call runs one session turn with an inline agent (`settings.model`, system messages as instructions,
+  reasoning effort, verbosity, service tier, json_schema output as the agent's text format - closed objects, the API
+  validates strictly - the call's function / MCP tools plus the adapter's `agentTools`, optional multi-agent) or a
+  reusable `agentId`, in the adapter's `environment` (none by default, or an OpenAI-hosted sandbox). The typed stream
+  reports the `final_answer` messages as `Text`, the agent's `commentary` and reasoning summaries as `Thinking`, commands
+  (plus `CodeExecution*`), MCP calls, web searches and subagent calls as server-side tool calls / results. Client function
+  tools work as a chat tool loop: a call pauses the session (`Finish(tool_calls)`, the session kept), and the next call
+  carrying the `ToolMessage`s resumes it - subscribe, post the results once the subscription is live, skip the replayed
+  items. Sessions are deleted once their turn ends (a turn that failed or was abandoned mid-way is cancelled first);
+  a session stays paused - and resumable - until a resume has posted its results; `close()` cancels and deletes paused
+  ones. History is folded into
+  one labeled user message (the API takes user messages only). Live: `OpenAIAgentsApiSmokeTest`, five adapter sections.
 - `io.cequence.openaiscala.service.ServerSentEvents` - the SSE decoder over a raw byte stream (comment heartbeats, CRLF
   framing, multi-line data, a non-SSE error body surfaced), moved to core from the Perplexity module, which now uses it.
 

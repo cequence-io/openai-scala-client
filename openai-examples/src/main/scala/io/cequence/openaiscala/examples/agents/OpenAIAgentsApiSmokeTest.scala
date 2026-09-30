@@ -3,14 +3,28 @@ package io.cequence.openaiscala.examples.agents
 import akka.actor.ActorSystem
 import akka.stream.Materializer
 import akka.stream.scaladsl.Sink
-import io.cequence.openaiscala.domain.ModelId
+import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
+import io.cequence.openaiscala.domain.settings.{
+  ChatCompletionResponseFormatType,
+  CreateChatCompletionSettings,
+  JsonSchemaDef
+}
+import io.cequence.openaiscala.domain.{
+  AssistantToolMessage,
+  JsonSchema,
+  ModelId,
+  SystemMessage,
+  ToolMessage,
+  UserMessage
+}
+import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
 import io.cequence.openaiscala.domain.agents.AgentSessionEvent._
 import io.cequence.openaiscala.domain.agents._
 import io.cequence.openaiscala.domain.responsesapi.MultiAgentConfig
 import io.cequence.openaiscala.service.OpenAIServiceFactory
 import io.cequence.openaiscala.service.AgentSessionEvents
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
-import play.api.libs.json.Json
+import play.api.libs.json.{Format, Json}
 
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
@@ -22,8 +36,11 @@ import scala.util.{Failure, Success, Try}
  * call answered mid-stream, a follow-up turn over the event subscription (subscribe first,
  * then send), the session's items / turns, a reusable agent, a multi-agent session and (with
  * `hosted` as an argument) an OpenAI-hosted sandbox running a command. Every session is
- * deleted afterwards. Requires `OPENAI_SCALA_CLIENT_API_KEY`; the exit code is 1 if any
- * section failed or the run did not complete.
+ * deleted afterwards. Then the chat-completion adapter (`agentsAsChatCompletion`): a plain
+ * completion, the client function tool loop (a pause, then a resume with the tool result),
+ * json_schema output, a multi-agent typed stream and (with `hosted`) a command on the typed
+ * stream. Requires `OPENAI_SCALA_CLIENT_API_KEY`; the exit code is 1 if any section failed or
+ * the run did not complete.
  */
 object OpenAIAgentsApiSmokeTest {
 
@@ -39,6 +56,22 @@ object OpenAIAgentsApiSmokeTest {
     )
   )
 
+  private case class Capital(
+    country: String,
+    capital: String
+  )
+
+  private implicit val capitalFormat: Format[Capital] = Json.format[Capital]
+
+  private val chatWeatherTool = FunctionTool(
+    name = "get_weather",
+    description = Some("Get the current weather in a city"),
+    parameters = JsonSchema.Object(
+      properties = Seq("city" -> JsonSchema.String()),
+      required = Seq("city")
+    )
+  )
+
   private def describe(e: Throwable): String =
     s"${e.getClass.getSimpleName}: ${Option(e.getMessage).getOrElse("(no message)").take(400)}"
 
@@ -49,6 +82,7 @@ object OpenAIAgentsApiSmokeTest {
     implicit val system: ActorSystem = ActorSystem()
     implicit val materializer: Materializer = Materializer(system)
     implicit val ec: ExecutionContext = system.dispatcher
+    implicit val scheduler: akka.actor.Scheduler = system.scheduler
 
     val service = OpenAIServiceFactory.withStreaming()
     val failures = new AtomicInteger(0)
@@ -86,6 +120,8 @@ object OpenAIAgentsApiSmokeTest {
     def sessionIdOf(events: Seq[AgentSessionEvent]): String =
       events.collectFirst { case s: SessionUpdated => s.session.id }
         .getOrElse(throw new IllegalStateException("no session event"))
+
+    val adapter = service.agentsAsChatCompletion()
 
     val inline = CreateAgentSessionSettings(
       agent = Some(AgentConfig(model = Some(model), instructions = Some("Be brief.")))
@@ -272,6 +308,120 @@ object OpenAIAgentsApiSmokeTest {
                       .finalAnswer(events)}'"
                 }
               }
+            }
+      }
+
+      // ---- the chat-completion adapter ----
+
+      _ <- section("agentsAsChatCompletion - createChatCompletion") {
+        adapter
+          .createChatCompletion(
+            Seq(SystemMessage("Be brief."), UserMessage("Capital of Norway? One word.")),
+            CreateChatCompletionSettings(model)
+          )
+          .map { r =>
+            if (!r.contentHead.contains("Oslo"))
+              throw new IllegalStateException(s"answer: '${r.contentHead}'")
+            s"content='${r.contentHead}' finish=${r.choices.head.finish_reason} session=${r.id.take(12)}..."
+          }
+      }
+
+      _ <- section("agentsAsChatCompletion - client function tool loop (pause, resume)") {
+        val question = Seq(UserMessage("What's the weather in Paris right now?"))
+        val settings = CreateChatCompletionSettings(model)
+        for {
+          paused <- adapter.createChatToolCompletion(
+            question,
+            Seq(chatWeatherTool),
+            settings = settings
+          )
+          calls = paused.choices.head.message.tool_calls
+          _ = if (calls.isEmpty) throw new IllegalStateException(s"no tool call: $paused")
+          resumed <- adapter.createChatToolCompletion(
+            question ++ Seq(
+              AssistantToolMessage(tool_calls = calls)
+            ) ++ calls.map { case (id, _) =>
+              ToolMessage(Some("Sunny, 22 C"), id, "get_weather")
+            },
+            Seq(chatWeatherTool),
+            settings = settings
+          )
+        } yield {
+          val answer = resumed.choices.head.message.content.getOrElse("")
+          if (!answer.contains("22")) throw new IllegalStateException(s"answer: '$answer'")
+          s"paused=${paused.choices.head.finish_reason} calls=${calls.map(_._2)} resumed=${resumed.choices.head.finish_reason} answer='$answer'"
+        }
+      }
+
+      _ <- section("agentsAsChatCompletion - createChatCompletionWithJSON (json_schema)") {
+        adapter
+          .createChatCompletionWithJSON[Capital](
+            Seq(UserMessage("Capital of Norway?")),
+            CreateChatCompletionSettings(
+              model,
+              response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
+              jsonSchema = Some(
+                JsonSchemaDef(
+                  name = "capital",
+                  strict = true,
+                  structure = Left(
+                    JsonSchema.Object(
+                      properties = Seq(
+                        "country" -> JsonSchema.String(),
+                        "capital" -> JsonSchema.String()
+                      ),
+                      required = Seq("country", "capital")
+                    )
+                  )
+                )
+              )
+            )
+          )
+          .map { capital =>
+            if (capital.capital != "Oslo") throw new IllegalStateException(s"parsed: $capital")
+            s"parsed=$capital"
+          }
+      }
+
+      _ <- section(
+        s"agentsAsChatCompletion - multi-agent typed stream (${ModelId.gpt_6_1_sol})"
+      ) {
+        service
+          .agentsAsChatCompletion(
+            multiAgent = Some(MultiAgentConfig(maxConcurrentSubagents = Some(2)))
+          )
+          .createChatCompletionStreamedTyped(
+            Seq(
+              UserMessage(
+                "Use two subagents in parallel: one lists three fruits, the other three " +
+                  "vegetables (one short line each). Then reply with one combined line."
+              )
+            ),
+            CreateChatCompletionSettings(ModelId.gpt_6_1_sol)
+          )
+          .assembled
+          .map { a =>
+            val delegation = a.toolCalls.filter(_.serverSide).map(_.toolName)
+            if (delegation.isEmpty) throw new IllegalStateException(s"no delegation: $a")
+            s"delegation=${delegation.distinct} thinking='${a.thinking.take(60)}' text='${a.text}'"
+          }
+      }
+
+      _ <- section("agentsAsChatCompletion - hosted command on the typed stream") {
+        if (!args.contains("hosted"))
+          Future.successful("skipped - pass `hosted` to run it (provisions a sandbox)")
+        else
+          service
+            .agentsAsChatCompletion(environment = AgentEnvironment.OpenAIHosted())
+            .createChatCompletionStreamedTyped(
+              Seq(UserMessage("Run `echo hello-agents` in the shell and report its output.")),
+              CreateChatCompletionSettings(model)
+            )
+            .assembled
+            .map { a =>
+              if (a.codeExecutions.isEmpty) throw new IllegalStateException(s"no command: $a")
+              s"commands=${a.codeExecutions
+                  .map(_.code)} results=${a.codeExecutionResults.map(_.output)} text='${a.text.take(60)}'"
             }
       }
     } yield ()

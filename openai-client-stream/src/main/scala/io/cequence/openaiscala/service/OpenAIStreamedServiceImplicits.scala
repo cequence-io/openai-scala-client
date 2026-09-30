@@ -1,10 +1,14 @@
 package io.cequence.openaiscala.service
 
+import akka.stream.Materializer
 import io.cequence.openaiscala.domain.agents.{
+  AgentEnvironment,
   AgentInput,
   AgentSessionEvent,
+  AgentTool,
   CreateAgentSessionSettings
 }
+import io.cequence.openaiscala.domain.responsesapi.MultiAgentConfig
 import io.cequence.openaiscala.domain.responsesapi.{
   CreateModelResponseSettings,
   Inputs,
@@ -12,6 +16,7 @@ import io.cequence.openaiscala.domain.responsesapi.{
 }
 import io.cequence.openaiscala.service.adapter.{
   ChatCompletionSettingsConversions,
+  OpenAIAgentsChatCompletionService,
   OpenAIResponsesChatCompletionService
 }
 
@@ -182,6 +187,34 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
    * served by `createModelResponseStreamed` and rendered as [[ChatChunk]]s - the OpenAI
    * counterpart of what the Anthropic / Gemini `asOpenAI()` adapters expose natively.
    */
+  implicit class AgentsChatCompletionStreamExt(service: OpenAIStreamedService) {
+
+    /**
+     * A chat-completion-shaped (sync + typed streamed) view of the OpenAI Agents API (beta):
+     * each call runs one session turn - see [[OpenAIAgentsChatCompletionService]] for the
+     * mapping, the client function tool loop and the session lifecycle. Closing the view
+     * closes `service`.
+     */
+    def agentsAsChatCompletion(
+      agentId: Option[String] = None,
+      environment: AgentEnvironment = AgentEnvironment.NoEnvironment,
+      agentTools: Seq[AgentTool] = Nil,
+      multiAgent: Option[MultiAgentConfig] = None,
+      deleteSessionsAfterUse: Boolean = true
+    )(
+      implicit ec: ExecutionContext,
+      materializer: Materializer
+    ): OpenAIAgentsChatCompletionService =
+      OpenAIAgentsChatCompletionService(
+        service,
+        agentId,
+        environment,
+        agentTools,
+        multiAgent,
+        deleteSessionsAfterUse
+      )
+  }
+
   implicit class ResponsesChatCompletionStreamExt(service: OpenAIStreamedService) {
 
     /** A chat-completion-shaped (sync + typed streamed) view served by the Responses API. */
