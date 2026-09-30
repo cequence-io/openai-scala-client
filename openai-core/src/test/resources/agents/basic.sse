@@ -1,0 +1,44 @@
+event: agent.session.created
+data: {"type":"agent.session.created","event_id":"evt_a8604b79b1b9432186f18f45ca73c37666c2b0f44d7448228f","session":{"metadata":{},"id":"sess_0b514e84ed4f30f1006abcacbcea3c819bb071ebcc9e7954f7","object":"agent.session","created_at":1790749885,"last_active_at":1790749885,"status":"in_progress","required_actions":[],"error":null,"agent":{"id":"agent_3cf37de5cc554c9694347173cec0e0979fd75e5990de4e3f87","name":null,"model":"gpt-6-luna","reasoning":{"effort":"medium","summary":null},"text":{"format":{"type":"text"},"verbosity":"medium"},"service_tier":"auto","instructions":"Be brief.","tools":[],"multi_agent":{"enabled":false,"max_concurrent_subagents":null}},"environment":{"type":"none"},"vault_ids":[],"usage":null}}
+
+event: agent.session.turn.created
+data: {"type":"agent.session.turn.created","event_id":"evt_98d223828d1440a38382dd781b39d8aa19649a2e76344e448e","session_id":"sess_0b514e84ed4f30f1006abcacbcea3c819bb071ebcc9e7954f7","turn_id":"turn_0b514e84ed4f30f1006abcacc0c06c819babcb9088e8651c00","turn":{"id":"turn_0b514e84ed4f30f1006abcacc0c06c819babcb9088e8651c00","object":"agent.session.turn","session_id":"sess_0b514e84ed4f30f1006abcacbcea3c819bb071ebcc9e7954f7","agent_id":"agent_3cf37de5cc554c9694347173cec0e0979fd75e5990de4e3f87","subagent_id":null,"status":"queued","created_at":1790749887,"started_at":null,"completed_at":null,"error":null,"usage":null}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_bb3a41c6c105481f81c3360f2fe22aea2fd004b815794a9ea7","session_id":"sess_0b514e84ed4f30f1006abcacbcea3c819bb071ebcc9e7954f7","turn_id":"turn_0b514e84ed4f30f1006abcacc0c06c819babcb9088e8651c00","output_index":null,"item":{"type":"message","id":"msg_cbedbbee956bb1ca615a83374ec2ce468a63ecbee7bbe09ce7","turn_id":"turn_0b514e84ed4f30f1006abcacc0c06c819babcb9088e8651c00","role":"user","content":[{"type":"input_text","text":"Say hi in two words."}],"status":"completed","phase":null}}
+
+event: agent.session.in_progress
+data: {"type":"agent.session.in_progress","event_id":"evt_265b6a2630124ca5bef2e52032c93ac6e6807a2713c946e383","session":{"metadata":{},"id":"sess_0b514e84ed4f30f1006abcacbcea3c819bb071ebcc9e7954f7","object":"agent.session","created_at":1790749885,"last_active_at":1790749885,"status":"in_progress","required_actions":[],"error":null,"agent":{"id":"agent_3cf37de5cc554c9694347173cec0e0979fd75e5990de4e3f87","name":null,"model":"gpt-6-luna","reasoning":{"effort":"medium","summary":null},"text":{"format":{"type":"text"},"verbosity":"medium"},"service_tier":"auto","instructions":"Be brief.","tools":[],"multi_agent":{"enabled":false,"max_concurrent_subagents":null}},"environment":{"type":"none"},"vault_ids":[],"usage":null}}
+
+event: agent.session.turn.in_progress
+data: {"type":"agent.session.turn.in_progress","event_id":"evt_e31ce4e92c624eed96057cda33326e2cbafcedf7c82d44fda0","session_id":"sess_0b514e84ed4f30f1006abcacbcea3c819bb071ebcc9e7954f7","turn_id":"turn_0b514e84ed4f30f1006abcacc0c06c819babcb9088e8651c00","turn":{"id":"turn_0b514e84ed4f30f1006abcacc0c06c819babcb9088e8651c00","object":"agent.session.turn","session_id":"sess_0b514e84ed4f30f1006abcacbcea3c819bb071ebcc9e7954f7","agent_id":"agent_3cf37de5cc554c9694347173cec0e0979fd75e5990de4e3f87","subagent_id":null,"status":"in_progress","created_at":1790749887,"started_at":1790749887,"completed_at":null,"error":null,"usage":null}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_9b8797d1f1fa43c3bf11983e3f831cceb767bbff26aa4b599c","session_id":"sess_0b514e84ed4f30f1006abcacbcea3c819bb071ebcc9e7954f7","turn_id":"turn_0b514e84ed4f30f1006abcacc0c06c819babcb9088e8651c00","output_index":0,"item":{"type":"message","id":"msg_0e7aec5856dae89f016abcacbf819887d0aa85380c89821380","turn_id":"turn_0b514e84ed4f30f1006abcacc0c06c819babcb9088e8651c00","role":"assistant","content":[],"status":"in_progress","phase":"final_answer"}}
+
+event: agent.session.turn.content_part.added
+data: {"type":"agent.session.turn.content_part.added","event_id":"evt_4b8280b79f6c47598096de29b83cd480423f647515e54e7eb6","session_id":"sess_0b514e84ed4f30f1006abcacbcea3c819bb071ebcc9e7954f7","turn_id":"turn_0b514e84ed4f30f1006abcacc0c06c819babcb9088e8651c00","item_id":"msg_0e7aec5856dae89f016abcacbf819887d0aa85380c89821380","output_index":0,"content_index":0,"part":{"type":"output_text","text":""}}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_8cb62e1bc0954a2c9f66d275cff04ebef5a318f2824e49d79f","session_id":"sess_0b514e84ed4f30f1006abcacbcea3c819bb071ebcc9e7954f7","turn_id":"turn_0b514e84ed4f30f1006abcacc0c06c819babcb9088e8651c00","item_id":"msg_0e7aec5856dae89f016abcacbf819887d0aa85380c89821380","output_index":0,"content_index":0,"delta":"Hi"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_7f6718cc38b64d8fa1101f9c6b533ed9babf93e144a84017a6","session_id":"sess_0b514e84ed4f30f1006abcacbcea3c819bb071ebcc9e7954f7","turn_id":"turn_0b514e84ed4f30f1006abcacc0c06c819babcb9088e8651c00","item_id":"msg_0e7aec5856dae89f016abcacbf819887d0aa85380c89821380","output_index":0,"content_index":0,"delta":" there"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_49d01217c8ea440b8b7cc05ddcf3cf31dc04b771927f4d4eb6","session_id":"sess_0b514e84ed4f30f1006abcacbcea3c819bb071ebcc9e7954f7","turn_id":"turn_0b514e84ed4f30f1006abcacc0c06c819babcb9088e8651c00","item_id":"msg_0e7aec5856dae89f016abcacbf819887d0aa85380c89821380","output_index":0,"content_index":0,"delta":"!"}
+
+event: agent.session.turn.output_text.done
+data: {"type":"agent.session.turn.output_text.done","event_id":"evt_4ad4c6d5118847f1a0d460a4c63a72243d4696f862904c7283","session_id":"sess_0b514e84ed4f30f1006abcacbcea3c819bb071ebcc9e7954f7","turn_id":"turn_0b514e84ed4f30f1006abcacc0c06c819babcb9088e8651c00","item_id":"msg_0e7aec5856dae89f016abcacbf819887d0aa85380c89821380","output_index":0,"content_index":0,"text":"Hi there!"}
+
+event: agent.session.turn.content_part.done
+data: {"type":"agent.session.turn.content_part.done","event_id":"evt_8e212eb11b674f33aa2d7b228e7a011eb693c009cb9e428b84","session_id":"sess_0b514e84ed4f30f1006abcacbcea3c819bb071ebcc9e7954f7","turn_id":"turn_0b514e84ed4f30f1006abcacc0c06c819babcb9088e8651c00","item_id":"msg_0e7aec5856dae89f016abcacbf819887d0aa85380c89821380","output_index":0,"content_index":0,"part":{"type":"output_text","text":"Hi there!"}}
+
+event: agent.session.turn.item.done
+data: {"type":"agent.session.turn.item.done","event_id":"evt_b2b112442ba8488dab3bd3e5905dc24605f776345a3543399d","session_id":"sess_0b514e84ed4f30f1006abcacbcea3c819bb071ebcc9e7954f7","turn_id":"turn_0b514e84ed4f30f1006abcacc0c06c819babcb9088e8651c00","output_index":0,"item":{"type":"message","id":"msg_0e7aec5856dae89f016abcacbf819887d0aa85380c89821380","turn_id":"turn_0b514e84ed4f30f1006abcacc0c06c819babcb9088e8651c00","role":"assistant","status":"completed","content":[{"type":"output_text","text":"Hi there!"}],"phase":"final_answer"}}
+
+event: agent.session.turn.completed
+data: {"type":"agent.session.turn.completed","event_id":"evt_aee14baec6634015ba27c396625d0687887d8ec494ea4f4490","session_id":"sess_0b514e84ed4f30f1006abcacbcea3c819bb071ebcc9e7954f7","turn_id":"turn_0b514e84ed4f30f1006abcacc0c06c819babcb9088e8651c00","turn":{"id":"turn_0b514e84ed4f30f1006abcacc0c06c819babcb9088e8651c00","object":"agent.session.turn","session_id":"sess_0b514e84ed4f30f1006abcacbcea3c819bb071ebcc9e7954f7","agent_id":"agent_3cf37de5cc554c9694347173cec0e0979fd75e5990de4e3f87","subagent_id":null,"status":"completed","created_at":1790749887,"started_at":1790749887,"completed_at":1790749889,"error":null,"usage":null},"usage":null}
+
+event: agent.session.idle
+data: {"type":"agent.session.idle","event_id":"evt_aae4c8b2388d407a8106791c2e387f3bd6d0db6b7a8044348f","session":{"metadata":{},"id":"sess_0b514e84ed4f30f1006abcacbcea3c819bb071ebcc9e7954f7","object":"agent.session","created_at":1790749885,"last_active_at":1790749885,"status":"idle","required_actions":[],"error":null,"agent":{"id":"agent_3cf37de5cc554c9694347173cec0e0979fd75e5990de4e3f87","name":null,"model":"gpt-6-luna","reasoning":{"effort":"medium","summary":null},"text":{"format":{"type":"text"},"verbosity":"medium"},"service_tier":"auto","instructions":"Be brief.","tools":[],"multi_agent":{"enabled":false,"max_concurrent_subagents":null}},"environment":{"type":"none"},"vault_ids":[],"usage":null}}

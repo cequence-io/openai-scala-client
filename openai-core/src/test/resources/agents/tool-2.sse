@@ -1,0 +1,44 @@
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_b4ad4689ddcf4dbca8dbdb1688d6b57660f9882561594ee9b1","session_id":"sess_08ddf0fad934b78c006abcacc797e4819aae75b64ad6e18902","turn_id":"turn_08ddf0fad934b78c006abcaccb3938819a97669de29fc1d221","output_index":null,"item":{"type":"message","id":"msg_9f3904dcdae0e826788d2d619a9e4995c52346a0cb6e1d765f","turn_id":"turn_08ddf0fad934b78c006abcaccb3938819a97669de29fc1d221","role":"user","content":[{"type":"input_text","text":"What's the weather in Paris right now?"}],"status":"completed","phase":null}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_0aa4157f95c346a0a052f5ee79b96fc40188cdfd859e4f7ba5","session_id":"sess_08ddf0fad934b78c006abcacc797e4819aae75b64ad6e18902","turn_id":"turn_08ddf0fad934b78c006abcaccb3938819a97669de29fc1d221","output_index":0,"item":{"type":"message","id":"msg_01a84bdda1fdc16f016abcacca829087d0baaea290ffd438f3","turn_id":"turn_08ddf0fad934b78c006abcaccb3938819a97669de29fc1d221","role":"assistant","content":[],"status":"in_progress","phase":"commentary"}}
+
+event: agent.session.turn.content_part.added
+data: {"type":"agent.session.turn.content_part.added","event_id":"evt_6a72752757224a2bb2b59705ab2aa74365cff9b9369d4137a9","session_id":"sess_08ddf0fad934b78c006abcacc797e4819aae75b64ad6e18902","turn_id":"turn_08ddf0fad934b78c006abcaccb3938819a97669de29fc1d221","item_id":"msg_01a84bdda1fdc16f016abcacca829087d0baaea290ffd438f3","output_index":0,"content_index":0,"part":{"type":"output_text","text":""}}
+
+event: agent.session.turn.output_text.done
+data: {"type":"agent.session.turn.output_text.done","event_id":"evt_6c86899c2b3c4924a986e6061dddea26ac7782d4abcb452980","session_id":"sess_08ddf0fad934b78c006abcacc797e4819aae75b64ad6e18902","turn_id":"turn_08ddf0fad934b78c006abcaccb3938819a97669de29fc1d221","item_id":"msg_01a84bdda1fdc16f016abcacca829087d0baaea290ffd438f3","output_index":0,"content_index":0,"text":"I’ll check the current conditions in Paris."}
+
+event: agent.session.turn.content_part.done
+data: {"type":"agent.session.turn.content_part.done","event_id":"evt_8b4433b0ec4c4fb088d99c9d60f943b4b0d7b0f4785d4477b0","session_id":"sess_08ddf0fad934b78c006abcacc797e4819aae75b64ad6e18902","turn_id":"turn_08ddf0fad934b78c006abcaccb3938819a97669de29fc1d221","item_id":"msg_01a84bdda1fdc16f016abcacca829087d0baaea290ffd438f3","output_index":0,"content_index":0,"part":{"type":"output_text","text":"I’ll check the current conditions in Paris."}}
+
+event: agent.session.turn.item.done
+data: {"type":"agent.session.turn.item.done","event_id":"evt_5a212f01e9374e69abdce47a77085bae7f809bd14da4410e8c","session_id":"sess_08ddf0fad934b78c006abcacc797e4819aae75b64ad6e18902","turn_id":"turn_08ddf0fad934b78c006abcaccb3938819a97669de29fc1d221","output_index":0,"item":{"type":"message","id":"msg_01a84bdda1fdc16f016abcacca829087d0baaea290ffd438f3","turn_id":"turn_08ddf0fad934b78c006abcaccb3938819a97669de29fc1d221","role":"assistant","status":"completed","content":[{"type":"output_text","text":"I’ll check the current conditions in Paris."}],"phase":"commentary"}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_54e331c3435144a9a6fe8a7305ede54b8981d3df9f3549ab88","session_id":"sess_08ddf0fad934b78c006abcacc797e4819aae75b64ad6e18902","turn_id":"turn_08ddf0fad934b78c006abcaccb3938819a97669de29fc1d221","output_index":null,"item":{"id":"fco_ea1e0e0e2b3ea371ad3c34e9ce7179815668f30d75f60dfcd8","turn_id":"turn_08ddf0fad934b78c006abcaccb3938819a97669de29fc1d221","type":"function_call_output","call_id":"exec_3baddd9cf5b69a4273711de544e7993cea88feebeba1c891f0","status":"completed","output":[{"type":"input_text","text":"Sunny, 22 C"}],"error":null}}
+
+event: agent.session.turn.item.done
+data: {"type":"agent.session.turn.item.done","event_id":"evt_d957fbc7d89b465487daa3dd972c252d31131f9c0beb464a95","session_id":"sess_08ddf0fad934b78c006abcacc797e4819aae75b64ad6e18902","turn_id":"turn_08ddf0fad934b78c006abcaccb3938819a97669de29fc1d221","output_index":1,"item":{"type":"function_call","id":"exec_3baddd9cf5b69a4273711de544e7993cea88feebeba1c891f0","turn_id":"turn_08ddf0fad934b78c006abcaccb3938819a97669de29fc1d221","call_id":"exec_3baddd9cf5b69a4273711de544e7993cea88feebeba1c891f0","name":"get_weather","arguments":{"city":"Paris"},"status":"completed"}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_fa6a903cb977488a8e7b1ecfe85960ec29d1643b585b4e4d89","session_id":"sess_08ddf0fad934b78c006abcacc797e4819aae75b64ad6e18902","turn_id":"turn_08ddf0fad934b78c006abcaccb3938819a97669de29fc1d221","output_index":2,"item":{"type":"message","id":"msg_01a84bdda1fdc16f016abcaccdae4c87d0903a1ebe745d8fa0","turn_id":"turn_08ddf0fad934b78c006abcaccb3938819a97669de29fc1d221","role":"assistant","content":[],"status":"in_progress","phase":"final_answer"}}
+
+event: agent.session.turn.content_part.added
+data: {"type":"agent.session.turn.content_part.added","event_id":"evt_25509461cb2648a68249850aca6845066957683127f742bc96","session_id":"sess_08ddf0fad934b78c006abcacc797e4819aae75b64ad6e18902","turn_id":"turn_08ddf0fad934b78c006abcaccb3938819a97669de29fc1d221","item_id":"msg_01a84bdda1fdc16f016abcaccdae4c87d0903a1ebe745d8fa0","output_index":2,"content_index":0,"part":{"type":"output_text","text":""}}
+
+event: agent.session.turn.output_text.done
+data: {"type":"agent.session.turn.output_text.done","event_id":"evt_ba705190bf9843aa992835c2801a417783ac11223e9a48d88f","session_id":"sess_08ddf0fad934b78c006abcacc797e4819aae75b64ad6e18902","turn_id":"turn_08ddf0fad934b78c006abcaccb3938819a97669de29fc1d221","item_id":"msg_01a84bdda1fdc16f016abcaccdae4c87d0903a1ebe745d8fa0","output_index":2,"content_index":0,"text":"It’s sunny in Paris, 22°C."}
+
+event: agent.session.turn.content_part.done
+data: {"type":"agent.session.turn.content_part.done","event_id":"evt_5df4033b73b347e6bb7ce54525450f31ff50c121db4241b4a2","session_id":"sess_08ddf0fad934b78c006abcacc797e4819aae75b64ad6e18902","turn_id":"turn_08ddf0fad934b78c006abcaccb3938819a97669de29fc1d221","item_id":"msg_01a84bdda1fdc16f016abcaccdae4c87d0903a1ebe745d8fa0","output_index":2,"content_index":0,"part":{"type":"output_text","text":"It’s sunny in Paris, 22°C."}}
+
+event: agent.session.turn.item.done
+data: {"type":"agent.session.turn.item.done","event_id":"evt_ceae741e23d44ceca1c51b9710daf364c571d5edffe3409bad","session_id":"sess_08ddf0fad934b78c006abcacc797e4819aae75b64ad6e18902","turn_id":"turn_08ddf0fad934b78c006abcaccb3938819a97669de29fc1d221","output_index":2,"item":{"type":"message","id":"msg_01a84bdda1fdc16f016abcaccdae4c87d0903a1ebe745d8fa0","turn_id":"turn_08ddf0fad934b78c006abcaccb3938819a97669de29fc1d221","role":"assistant","status":"completed","content":[{"type":"output_text","text":"It’s sunny in Paris, 22°C."}],"phase":"final_answer"}}
+
+event: agent.session.turn.completed
+data: {"type":"agent.session.turn.completed","event_id":"evt_aaa3329926784ad388bfbb9625a69f5a72b1d0c1e6de41629c","session_id":"sess_08ddf0fad934b78c006abcacc797e4819aae75b64ad6e18902","turn_id":"turn_08ddf0fad934b78c006abcaccb3938819a97669de29fc1d221","turn":{"id":"turn_08ddf0fad934b78c006abcaccb3938819a97669de29fc1d221","object":"agent.session.turn","session_id":"sess_08ddf0fad934b78c006abcacc797e4819aae75b64ad6e18902","agent_id":"agent_2145a731c07d494dbec1546994a9f1948b2fba79773a4c08b3","subagent_id":null,"status":"completed","created_at":1790749898,"started_at":1790749898,"completed_at":1790749903,"error":null,"usage":null},"usage":null}
+
+event: agent.session.idle
+data: {"type":"agent.session.idle","event_id":"evt_ff366f70348f418288b8c3484e5873b41f4982f07d054b9db1","session":{"metadata":{},"id":"sess_08ddf0fad934b78c006abcacc797e4819aae75b64ad6e18902","object":"agent.session","created_at":1790749896,"last_active_at":1790749901,"status":"idle","required_actions":[],"error":null,"agent":{"id":"agent_2145a731c07d494dbec1546994a9f1948b2fba79773a4c08b3","name":null,"model":"gpt-6-luna","reasoning":{"effort":"medium","summary":null},"text":{"format":{"type":"text"},"verbosity":"medium"},"service_tier":"auto","instructions":"Use the tools.","tools":[{"type":"function","name":"get_weather","description":"Get the current weather in a city","parameters":{"type":"object","properties":{"city":{"type":"string"}},"required":["city"]},"defer_loading":false}],"multi_agent":{"enabled":false,"max_concurrent_subagents":null}},"environment":{"type":"none"},"vault_ids":[],"usage":null}}

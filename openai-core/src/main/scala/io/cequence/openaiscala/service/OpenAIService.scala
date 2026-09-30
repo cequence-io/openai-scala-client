@@ -52,6 +52,7 @@ import scala.concurrent.Future
 trait OpenAIService
     extends OpenAICoreService
     with OpenAIResponsesService
+    with OpenAIAgentsService
     with OpenAIGraderService
     with OpenAIChatCompletionBatchService {
 

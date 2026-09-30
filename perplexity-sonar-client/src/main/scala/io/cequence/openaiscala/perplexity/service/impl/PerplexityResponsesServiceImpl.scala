@@ -1,5 +1,10 @@
 package io.cequence.openaiscala.perplexity.service.impl
 
+import io.cequence.openaiscala.domain.agents.{
+  AgentInput,
+  AgentSessionEvent,
+  CreateAgentSessionSettings
+}
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala._
@@ -174,6 +179,17 @@ private[service] class PerplexityResponsesServiceImpl(
     settings: CreateChatCompletionSettings
   ): Source[ChatCompletionChunkResponse, NotUsed] =
     Source.failed(unsupported("createChatCompletionStreamed on the raw Responses service"))
+
+  override def createAgentSessionStreamed(
+    settings: CreateAgentSessionSettings,
+    input: AgentInput
+  ): Source[AgentSessionEvent, NotUsed] =
+    Source.failed(unsupported("the OpenAI Agents API (createAgentSessionStreamed)"))
+
+  override def streamAgentSessionEvents(
+    sessionId: String
+  ): Source[AgentSessionEvent, NotUsed] =
+    Source.failed(unsupported("the OpenAI Agents API (streamAgentSessionEvents)"))
 }
 
 private[service] object PerplexityResponsesServiceImpl {

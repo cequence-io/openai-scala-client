@@ -1,0 +1,41 @@
+event: agent.session.turn.created
+data: {"type":"agent.session.turn.created","event_id":"evt_85bcecb565094eb3aceab572f540214d21be8dcb505c419286","session_id":"sess_05b3ac33997e1e88006abcac9a82888199807869e77784990d","turn_id":"turn_05b3ac33997e1e88006abcacaa3c54819980b2caa44f4082f5","turn":{"id":"turn_05b3ac33997e1e88006abcacaa3c54819980b2caa44f4082f5","object":"agent.session.turn","session_id":"sess_05b3ac33997e1e88006abcac9a82888199807869e77784990d","agent_id":"agent_5673cdf8b766456c99062e2388a2780cac8fef383fba481292","subagent_id":null,"status":"queued","created_at":1790749865,"started_at":null,"completed_at":null,"error":null,"usage":null}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_c860ed2b7cc94ae8b3aefc03db52836aa913e05c1174443f89","session_id":"sess_05b3ac33997e1e88006abcac9a82888199807869e77784990d","turn_id":"turn_05b3ac33997e1e88006abcacaa3c54819980b2caa44f4082f5","output_index":null,"item":{"type":"message","id":"msg_91d3709e5e80c7e4a5d2dd36e2ee737e6e2be86d54b1ce2140","turn_id":"turn_05b3ac33997e1e88006abcacaa3c54819980b2caa44f4082f5","role":"user","content":[{"type":"input_text","text":"Which number? Digits only."}],"status":"completed","phase":null}}
+
+event: agent.session.in_progress
+data: {"type":"agent.session.in_progress","event_id":"evt_d3c8fd8c3c304271aeadc582efbb4a301331e12ccf364d6cbb","session":{"metadata":{},"id":"sess_05b3ac33997e1e88006abcac9a82888199807869e77784990d","object":"agent.session","created_at":1790749850,"last_active_at":1790749850,"status":"in_progress","required_actions":[],"error":null,"agent":{"id":"agent_5673cdf8b766456c99062e2388a2780cac8fef383fba481292","name":null,"model":"gpt-6-luna","reasoning":{"effort":"medium","summary":null},"text":{"format":{"type":"text"},"verbosity":"medium"},"service_tier":"auto","instructions":"Be brief.","tools":[],"multi_agent":{"enabled":false,"max_concurrent_subagents":null}},"environment":{"type":"none"},"vault_ids":[],"usage":null}}
+
+event: agent.session.turn.in_progress
+data: {"type":"agent.session.turn.in_progress","event_id":"evt_11c10cdc933445b79e5516e75f4d48242eac3e9a8c2e49cc8b","session_id":"sess_05b3ac33997e1e88006abcac9a82888199807869e77784990d","turn_id":"turn_05b3ac33997e1e88006abcacaa3c54819980b2caa44f4082f5","turn":{"id":"turn_05b3ac33997e1e88006abcacaa3c54819980b2caa44f4082f5","object":"agent.session.turn","session_id":"sess_05b3ac33997e1e88006abcac9a82888199807869e77784990d","agent_id":"agent_5673cdf8b766456c99062e2388a2780cac8fef383fba481292","subagent_id":null,"status":"in_progress","created_at":1790749865,"started_at":1790749865,"completed_at":null,"error":null,"usage":null}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_8d5a7d29ca964b62a652741d84cc65397dcc84420e9a4c17ab","session_id":"sess_05b3ac33997e1e88006abcac9a82888199807869e77784990d","turn_id":"turn_05b3ac33997e1e88006abcacaa3c54819980b2caa44f4082f5","output_index":0,"item":{"type":"reasoning","id":"rs_0e2efcb0d01afb71016abcaca9194487d0a63b9e99d965d287","turn_id":"turn_05b3ac33997e1e88006abcacaa3c54819980b2caa44f4082f5","summary":[],"status":"in_progress"}}
+
+event: agent.session.turn.item.done
+data: {"type":"agent.session.turn.item.done","event_id":"evt_45bbea279fa44632aec81f5ed90a58b9ae048a24ab6f437783","session_id":"sess_05b3ac33997e1e88006abcac9a82888199807869e77784990d","turn_id":"turn_05b3ac33997e1e88006abcacaa3c54819980b2caa44f4082f5","output_index":0,"item":{"type":"reasoning","id":"rs_0e2efcb0d01afb71016abcaca9194487d0a63b9e99d965d287","turn_id":"turn_05b3ac33997e1e88006abcacaa3c54819980b2caa44f4082f5","summary":[],"status":"completed"}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_9258235d6fe544299c7a2a6be956d3411db00acc74244fb3ab","session_id":"sess_05b3ac33997e1e88006abcac9a82888199807869e77784990d","turn_id":"turn_05b3ac33997e1e88006abcacaa3c54819980b2caa44f4082f5","output_index":1,"item":{"type":"message","id":"msg_0e2efcb0d01afb71016abcaca953b887d0b407d9bfbc853200","turn_id":"turn_05b3ac33997e1e88006abcacaa3c54819980b2caa44f4082f5","role":"assistant","content":[],"status":"in_progress","phase":"final_answer"}}
+
+event: agent.session.turn.content_part.added
+data: {"type":"agent.session.turn.content_part.added","event_id":"evt_1e6f0fd6d581461fb318de2e51164d03d4df98a4277f4eac83","session_id":"sess_05b3ac33997e1e88006abcac9a82888199807869e77784990d","turn_id":"turn_05b3ac33997e1e88006abcacaa3c54819980b2caa44f4082f5","item_id":"msg_0e2efcb0d01afb71016abcaca953b887d0b407d9bfbc853200","output_index":1,"content_index":0,"part":{"type":"output_text","text":""}}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_3b7993ed9f364c4db7ec713f818b7fae8490acceab08447da1","session_id":"sess_05b3ac33997e1e88006abcac9a82888199807869e77784990d","turn_id":"turn_05b3ac33997e1e88006abcacaa3c54819980b2caa44f4082f5","item_id":"msg_0e2efcb0d01afb71016abcaca953b887d0b407d9bfbc853200","output_index":1,"content_index":0,"delta":"7"}
+
+event: agent.session.turn.output_text.done
+data: {"type":"agent.session.turn.output_text.done","event_id":"evt_5aa4835e40184caa932c9a3e524b289ddc1274b9172840b0ba","session_id":"sess_05b3ac33997e1e88006abcac9a82888199807869e77784990d","turn_id":"turn_05b3ac33997e1e88006abcacaa3c54819980b2caa44f4082f5","item_id":"msg_0e2efcb0d01afb71016abcaca953b887d0b407d9bfbc853200","output_index":1,"content_index":0,"text":"7"}
+
+event: agent.session.turn.content_part.done
+data: {"type":"agent.session.turn.content_part.done","event_id":"evt_6cd235c73cc3491fa1e07378763c0696e9651dc5b6fe4aac88","session_id":"sess_05b3ac33997e1e88006abcac9a82888199807869e77784990d","turn_id":"turn_05b3ac33997e1e88006abcacaa3c54819980b2caa44f4082f5","item_id":"msg_0e2efcb0d01afb71016abcaca953b887d0b407d9bfbc853200","output_index":1,"content_index":0,"part":{"type":"output_text","text":"7"}}
+
+event: agent.session.turn.item.done
+data: {"type":"agent.session.turn.item.done","event_id":"evt_085a884535f04c0ca6348c97043bfa361da99cdf94b94a8ca0","session_id":"sess_05b3ac33997e1e88006abcac9a82888199807869e77784990d","turn_id":"turn_05b3ac33997e1e88006abcacaa3c54819980b2caa44f4082f5","output_index":1,"item":{"type":"message","id":"msg_0e2efcb0d01afb71016abcaca953b887d0b407d9bfbc853200","turn_id":"turn_05b3ac33997e1e88006abcacaa3c54819980b2caa44f4082f5","role":"assistant","status":"completed","content":[{"type":"output_text","text":"7"}],"phase":"final_answer"}}
+
+event: agent.session.turn.completed
+data: {"type":"agent.session.turn.completed","event_id":"evt_1cda033fa5b6468e9b88ccb83855858ac450ddb984b64376a3","session_id":"sess_05b3ac33997e1e88006abcac9a82888199807869e77784990d","turn_id":"turn_05b3ac33997e1e88006abcacaa3c54819980b2caa44f4082f5","turn":{"id":"turn_05b3ac33997e1e88006abcacaa3c54819980b2caa44f4082f5","object":"agent.session.turn","session_id":"sess_05b3ac33997e1e88006abcac9a82888199807869e77784990d","agent_id":"agent_5673cdf8b766456c99062e2388a2780cac8fef383fba481292","subagent_id":null,"status":"completed","created_at":1790749865,"started_at":1790749865,"completed_at":1790749867,"error":null,"usage":null},"usage":null}
+
+event: agent.session.idle
+data: {"type":"agent.session.idle","event_id":"evt_6ff890ded14b440386cf7e5685f88be092fdb3fbcdcd4a8b8c","session":{"metadata":{},"id":"sess_05b3ac33997e1e88006abcac9a82888199807869e77784990d","object":"agent.session","created_at":1790749850,"last_active_at":1790749850,"status":"idle","required_actions":[],"error":null,"agent":{"id":"agent_5673cdf8b766456c99062e2388a2780cac8fef383fba481292","name":null,"model":"gpt-6-luna","reasoning":{"effort":"medium","summary":null},"text":{"format":{"type":"text"},"verbosity":"medium"},"service_tier":"auto","instructions":"Be brief.","tools":[],"multi_agent":{"enabled":false,"max_concurrent_subagents":null}},"environment":{"type":"none"},"vault_ids":[],"usage":null}}

@@ -1,0 +1,160 @@
+event: agent.session.created
+data: {"type":"agent.session.created","event_id":"evt_0b3d45729d0442bcb5d42cfb14dad35c43ef77e3503145aa8e","session":{"metadata":{},"id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","object":"agent.session","created_at":1790749933,"last_active_at":1790749933,"status":"idle","required_actions":[],"error":null,"agent":{"id":"agent_25ba9919aa9f4008b8129dc569d15d2e40daa43da0fd45deb7","name":null,"model":"gpt-6-luna","reasoning":{"effort":"medium","summary":null},"text":{"format":{"type":"text"},"verbosity":"medium"},"service_tier":"auto","instructions":"Be brief.","tools":[],"multi_agent":{"enabled":false,"max_concurrent_subagents":null}},"environment":{"type":"openai_hosted","id":"ccarenv_b64_Y2NhcmVudl82YWJjYWNlZDQ4YTg4MTkxYmU1M2I4YjQwMWI5NDFlYg","container_size":"medium","packages":{"python":[],"system":[],"npm":[]},"network":{"access":"enabled","allowed_domains":[]},"desktop":{"enabled":false},"capability_directories":[],"skills":[],"plugins":[],"files":[]},"vault_ids":[],"usage":null}}
+
+event: agent.session.turn.created
+data: {"type":"agent.session.turn.created","event_id":"evt_15370cba12ed4017b988772571a3287121bef80cce4b4c628a","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","turn":{"id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","object":"agent.session.turn","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","agent_id":"agent_25ba9919aa9f4008b8129dc569d15d2e40daa43da0fd45deb7","subagent_id":null,"status":"queued","created_at":1790749937,"started_at":null,"completed_at":null,"error":null,"usage":null}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_53015d3fd8a044108047bd290a79af32582d874b69a942d2a9","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","output_index":null,"item":{"type":"message","id":"msg_fba97eb8d4a2e6df944edaa70ffa3be04f9460a1b57cd7f381","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","role":"user","content":[{"type":"input_text","text":"Run the shell command `echo hello-agents && uname -s` and report its output."}],"status":"completed","phase":null}}
+
+event: agent.session.in_progress
+data: {"type":"agent.session.in_progress","event_id":"evt_5ea0d2f370914a93ac52b5e9d0fe8ec45e29b622e8e94814b0","session":{"metadata":{},"id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","object":"agent.session","created_at":1790749933,"last_active_at":1790749933,"status":"in_progress","required_actions":[],"error":null,"agent":{"id":"agent_25ba9919aa9f4008b8129dc569d15d2e40daa43da0fd45deb7","name":null,"model":"gpt-6-luna","reasoning":{"effort":"medium","summary":null},"text":{"format":{"type":"text"},"verbosity":"medium"},"service_tier":"auto","instructions":"Be brief.","tools":[],"multi_agent":{"enabled":false,"max_concurrent_subagents":null}},"environment":{"type":"openai_hosted","id":"ccarenv_b64_Y2NhcmVudl82YWJjYWNlZDQ4YTg4MTkxYmU1M2I4YjQwMWI5NDFlYg","container_size":"medium","packages":{"python":[],"system":[],"npm":[]},"network":{"access":"enabled","allowed_domains":[]},"desktop":{"enabled":false},"capability_directories":[],"skills":[],"plugins":[],"files":[]},"vault_ids":[],"usage":null}}
+
+event: agent.session.turn.in_progress
+data: {"type":"agent.session.turn.in_progress","event_id":"evt_cfa3c692d0234a24b0d682b372976be88c4dbd3c098f481191","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","turn":{"id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","object":"agent.session.turn","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","agent_id":"agent_25ba9919aa9f4008b8129dc569d15d2e40daa43da0fd45deb7","subagent_id":null,"status":"in_progress","created_at":1790749937,"started_at":1790749937,"completed_at":null,"error":null,"usage":null}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_9e6199efa8c84c31a5fe775404aefcda75f9d7d24b364bc8b2","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","output_index":0,"item":{"type":"reasoning","id":"rs_044d6c69133e32bd016abcacf14fbc87d0be4e6b83468fb5d2","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","summary":[],"status":"in_progress"}}
+
+event: agent.session.turn.item.done
+data: {"type":"agent.session.turn.item.done","event_id":"evt_55c04e392edb434b9ca157aa0025b3890ee5e15c93f34ae2b3","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","output_index":0,"item":{"type":"reasoning","id":"rs_044d6c69133e32bd016abcacf14fbc87d0be4e6b83468fb5d2","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","summary":[],"status":"completed"}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_fbe52fed7baf498ab1a86d918d82512c665344eb272641f98a","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","output_index":1,"item":{"type":"message","id":"msg_044d6c69133e32bd016abcacf188b887d0a04a78ab52851bf1","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","role":"assistant","content":[],"status":"in_progress","phase":"commentary"}}
+
+event: agent.session.turn.content_part.added
+data: {"type":"agent.session.turn.content_part.added","event_id":"evt_17df5a95aa624275b3d47c7932d5f95e9f7fa2bdce6049669c","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcacf188b887d0a04a78ab52851bf1","output_index":1,"content_index":0,"part":{"type":"output_text","text":""}}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_134eec3e65644f78b82ed452c894e28b8d6ced19e6ee4cb298","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcacf188b887d0a04a78ab52851bf1","output_index":1,"content_index":0,"delta":"I"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_95c2914cac1d403a8aa6548827cdcba514cc07e9ba1643dcaf","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcacf188b887d0a04a78ab52851bf1","output_index":1,"content_index":0,"delta":"’m"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_f52b19503c3a41abb0f81a4675293cb3eb3c455dbb1349d7ab","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcacf188b887d0a04a78ab52851bf1","output_index":1,"content_index":0,"delta":" waiting"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_48e0169b37ad4c51bdefec37e4dedadf7b775fe4303a4a1dbf","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcacf188b887d0a04a78ab52851bf1","output_index":1,"content_index":0,"delta":" for"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_d2b18d20b2824939844bb6aa08bb2394bb3b57d9d6d04e108e","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcacf188b887d0a04a78ab52851bf1","output_index":1,"content_index":0,"delta":" the"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_083212761bcb49c589ed43a07419de45d666726d65424429ad","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcacf188b887d0a04a78ab52851bf1","output_index":1,"content_index":0,"delta":" workspace"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_992b44b822db4556994e234b7ae8f15af1708659de334ea986","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcacf188b887d0a04a78ab52851bf1","output_index":1,"content_index":0,"delta":" shell"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_3df0610cb37d436b844dbd09009da25c0acb4a414fe744c881","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcacf188b887d0a04a78ab52851bf1","output_index":1,"content_index":0,"delta":" to"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_d68e811150d54588a8809a6dade4125de1462b39fbc849119e","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcacf188b887d0a04a78ab52851bf1","output_index":1,"content_index":0,"delta":" become"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_18b9f90c1cf64b949d30d896978fc3d4146f039661b74070a9","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcacf188b887d0a04a78ab52851bf1","output_index":1,"content_index":0,"delta":" available"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_c3cf6f0d49ef4faf896a024d71cc976a2151c80e53504c988d","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcacf188b887d0a04a78ab52851bf1","output_index":1,"content_index":0,"delta":","}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_3d0f1ad01850416a8df83e90f82ef9fcbb3582866c1d47eea5","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcacf188b887d0a04a78ab52851bf1","output_index":1,"content_index":0,"delta":" then"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_c1d4894fae8047f490ea644bd7699c2a9a9bf7a44afe457cbf","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcacf188b887d0a04a78ab52851bf1","output_index":1,"content_index":0,"delta":" I"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_b550fa1ec3414cc1b971e65fef7d8967adb4712416fb42b785","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcacf188b887d0a04a78ab52851bf1","output_index":1,"content_index":0,"delta":"’ll"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_81e6c8da3b6141bdb1ff0d2666c1a26446ef94a507a14cecb7","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcacf188b887d0a04a78ab52851bf1","output_index":1,"content_index":0,"delta":" run"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_976d09e08611468fb4d564e6f2205482a0d873a1211f45159a","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcacf188b887d0a04a78ab52851bf1","output_index":1,"content_index":0,"delta":" the"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_f65b392e328c4e568d191baf558b0fc06aa5c589fd4a40d690","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcacf188b887d0a04a78ab52851bf1","output_index":1,"content_index":0,"delta":" command"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_86e3eb2b494d4883a20dcbb176a623629df4b06e2a984005bb","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcacf188b887d0a04a78ab52851bf1","output_index":1,"content_index":0,"delta":"."}
+
+event: agent.session.turn.output_text.done
+data: {"type":"agent.session.turn.output_text.done","event_id":"evt_925a56eb2a0d4a46bfc66a4e3d18715fc6050526a9e9403c81","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcacf188b887d0a04a78ab52851bf1","output_index":1,"content_index":0,"text":"I’m waiting for the workspace shell to become available, then I’ll run the command."}
+
+event: agent.session.turn.content_part.done
+data: {"type":"agent.session.turn.content_part.done","event_id":"evt_3717a00230ff470e80393a80140f78dd0e883033e4914a9fa8","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcacf188b887d0a04a78ab52851bf1","output_index":1,"content_index":0,"part":{"type":"output_text","text":"I’m waiting for the workspace shell to become available, then I’ll run the command."}}
+
+event: agent.session.turn.item.done
+data: {"type":"agent.session.turn.item.done","event_id":"evt_59fb780482da4c74a7967dce382a0b70c182f51830fa4ad49f","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","output_index":1,"item":{"type":"message","id":"msg_044d6c69133e32bd016abcacf188b887d0a04a78ab52851bf1","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","role":"assistant","status":"completed","content":[{"type":"output_text","text":"I’m waiting for the workspace shell to become available, then I’ll run the command."}],"phase":"commentary"}}
+
+:
+
+event: agent.session.environment.ready
+data: {"type":"agent.session.environment.ready","event_id":"evt_d8d57cb0a6f844e89c350ef586e1a87bb9a1dee08733482c9b","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":null,"environment":{"id":"ccarenv_b64_Y2NhcmVudl82YWJjYWNlZDQ4YTg4MTkxYmU1M2I4YjQwMWI5NDFlYg","type":"openai_hosted","status":"ready","error":null}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_9471933bf4ab45e2a56f88926079f52960cf4471a5bc477fb3","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","output_index":2,"item":{"type":"reasoning","id":"rs_044d6c69133e32bd016abcad0ba3b887d09a0f446e6f667abe","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","summary":[],"status":"in_progress"}}
+
+event: agent.session.turn.item.done
+data: {"type":"agent.session.turn.item.done","event_id":"evt_0d46e4cdc2dc4088b23bac02469b4f2100d975708fb14cb6a9","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","output_index":2,"item":{"type":"reasoning","id":"rs_044d6c69133e32bd016abcad0ba3b887d09a0f446e6f667abe","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","summary":[],"status":"completed"}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_4ee7b40a13ea4d65b8b48300a2a81acf51d25bf7a79b43f6ba","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","output_index":3,"item":{"type":"command_execution","id":"exec_bddc17281d521d21904b6e007d1a9feba7a61ce3b02e2fbbaf","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","command":"/bin/bash -lc 'echo hello-agents && uname -s'","cwd":"/workspace","status":"in_progress","output":null,"exit_code":null,"duration_ms":null}}
+
+event: agent.session.turn.item.done
+data: {"type":"agent.session.turn.item.done","event_id":"evt_bcc1249c3d0c433fa90e8476f9b554225a822d5c932141738b","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","output_index":3,"item":{"type":"command_execution","id":"exec_bddc17281d521d21904b6e007d1a9feba7a61ce3b02e2fbbaf","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","command":"/bin/bash -lc 'echo hello-agents && uname -s'","cwd":"/workspace","status":"completed","output":"hello-agents\nLinux\n","exit_code":0,"duration_ms":0}}
+
+event: agent.session.environment.connected
+data: {"type":"agent.session.environment.connected","event_id":"evt_b6ef0a8499cc423ebf76c86fe9557966df267d81e16b47a9b2","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":null,"environment":{"id":"ccarenv_b64_Y2NhcmVudl82YWJjYWNlZDQ4YTg4MTkxYmU1M2I4YjQwMWI5NDFlYg","type":"openai_hosted","status":"connected","error":null}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_51b2d5196dd34edeafdeb17fbd2026c55136110b8674489085","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","output_index":4,"item":{"type":"message","id":"msg_044d6c69133e32bd016abcad0c8b0087d08c44508ada7e85e0","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","role":"assistant","content":[],"status":"in_progress","phase":"final_answer"}}
+
+event: agent.session.turn.content_part.added
+data: {"type":"agent.session.turn.content_part.added","event_id":"evt_512038039c204716bb90db58c49a996851d5af37ba124718b0","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcad0c8b0087d08c44508ada7e85e0","output_index":4,"content_index":0,"part":{"type":"output_text","text":""}}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_8a80d0f5e9de409d9758c5ba08f7f16894a40ee602b2437388","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcad0c8b0087d08c44508ada7e85e0","output_index":4,"content_index":0,"delta":"```"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_b887f3bd7c104f94b2852d9fe2ea81532ecd72b442a14a71b3","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcad0c8b0087d08c44508ada7e85e0","output_index":4,"content_index":0,"delta":"text"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_5be4b934a65b4a73a3fa3ffa1ec7710d47f5e9c1fc254070ab","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcad0c8b0087d08c44508ada7e85e0","output_index":4,"content_index":0,"delta":"\n"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_a6d0b4b0daa24cfc9e0d5b02a4ace5f6d93de2d396494b8990","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcad0c8b0087d08c44508ada7e85e0","output_index":4,"content_index":0,"delta":"hello"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_03bfb111446240f79b5c27255e706579ce9a272a81c544448d","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcad0c8b0087d08c44508ada7e85e0","output_index":4,"content_index":0,"delta":"-ag"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_8ff77d6eabde4c4fb4d66ff09e05183d4103f6e9a16d41698a","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcad0c8b0087d08c44508ada7e85e0","output_index":4,"content_index":0,"delta":"ents"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_1b86f53df9644f0d9de8bea4226c4699988e548247dd48498b","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcad0c8b0087d08c44508ada7e85e0","output_index":4,"content_index":0,"delta":"\n"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_e0df21551ca14f79a9a225754877b26ca491bf0a598341a9bb","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcad0c8b0087d08c44508ada7e85e0","output_index":4,"content_index":0,"delta":"Linux"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_6702ce9b50224051855d37e872e778cbcd59c1abf47042609c","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcad0c8b0087d08c44508ada7e85e0","output_index":4,"content_index":0,"delta":"\n"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_8716866910504d978dbfae3c6d02e1169211d74e77744ec8ae","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcad0c8b0087d08c44508ada7e85e0","output_index":4,"content_index":0,"delta":"```"}
+
+event: agent.session.turn.output_text.done
+data: {"type":"agent.session.turn.output_text.done","event_id":"evt_677b6f0f92c94368a08b7a690e7249b40757a61b0afb46719e","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcad0c8b0087d08c44508ada7e85e0","output_index":4,"content_index":0,"text":"```text\nhello-agents\nLinux\n```"}
+
+event: agent.session.turn.content_part.done
+data: {"type":"agent.session.turn.content_part.done","event_id":"evt_3d7873a9f6914ff9b976324317411aef33bc9cac595d4c628d","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","item_id":"msg_044d6c69133e32bd016abcad0c8b0087d08c44508ada7e85e0","output_index":4,"content_index":0,"part":{"type":"output_text","text":"```text\nhello-agents\nLinux\n```"}}
+
+event: agent.session.turn.item.done
+data: {"type":"agent.session.turn.item.done","event_id":"evt_bd632ac279204515b78987c75785ebdab399e186dcf3435dbc","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","output_index":4,"item":{"type":"message","id":"msg_044d6c69133e32bd016abcad0c8b0087d08c44508ada7e85e0","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","role":"assistant","status":"completed","content":[{"type":"output_text","text":"```text\nhello-agents\nLinux\n```"}],"phase":"final_answer"}}
+
+event: agent.session.turn.completed
+data: {"type":"agent.session.turn.completed","event_id":"evt_9f8d439dca844b71960559de4ac11a3fc8a70511888a47ab9d","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","turn_id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","turn":{"id":"turn_0aa7fe474c0e2523006abcacf1e4f0819b93b2bb4e251b9a29","object":"agent.session.turn","session_id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","agent_id":"agent_25ba9919aa9f4008b8129dc569d15d2e40daa43da0fd45deb7","subagent_id":null,"status":"completed","created_at":1790749937,"started_at":1790749937,"completed_at":1790749966,"error":null,"usage":null},"usage":null}
+
+event: agent.session.idle
+data: {"type":"agent.session.idle","event_id":"evt_f6148eb209664e20822464d49d9782ee96f720175d9c4732b9","session":{"metadata":{},"id":"sess_0aa7fe474c0e2523006abcaceccdf0819b8b4444ec43c79562","object":"agent.session","created_at":1790749933,"last_active_at":1790749933,"status":"idle","required_actions":[],"error":null,"agent":{"id":"agent_25ba9919aa9f4008b8129dc569d15d2e40daa43da0fd45deb7","name":null,"model":"gpt-6-luna","reasoning":{"effort":"medium","summary":null},"text":{"format":{"type":"text"},"verbosity":"medium"},"service_tier":"auto","instructions":"Be brief.","tools":[],"multi_agent":{"enabled":false,"max_concurrent_subagents":null}},"environment":{"type":"openai_hosted","id":"ccarenv_b64_Y2NhcmVudl82YWJjYWNlZDQ4YTg4MTkxYmU1M2I4YjQwMWI5NDFlYg","container_size":null,"packages":{"python":[],"system":[],"npm":[]},"network":{"access":"enabled","allowed_domains":[]},"desktop":{"enabled":false},"capability_directories":[],"skills":[],"plugins":[],"files":[]},"vault_ids":[],"usage":null}}

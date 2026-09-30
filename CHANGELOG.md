@@ -76,6 +76,34 @@ See `GPT61SolSmokeTest`, `GPT6SolLunaOpus55SmokeTest` and `anthropic/ClaudeSonne
   stores answer without it), and OpenAI reads only the FIRST `OpenAI-Beta` header of a request (live-verified
   2026-09-30), so the global header masked per-call betas such as `responses_multi_agent=v1` (a 400).
 
+### 🔥 OpenAI Agents API (beta)
+
+- **`OpenAIAgentsService`**, part of the full `OpenAIService` (every call sends `OpenAI-Beta: agents=v1`): durable cloud
+  agents on a managed Codex harness - reusable agents (`createAgent` / `listAgents` / `getAgent` / `updateAgent` /
+  `deleteAgent`), sessions (`createAgentSession` / `getAgentSession` / `listAgentSessions` / `updateAgentSession` /
+  `deleteAgentSession`), input events (`sendAgentSessionEvents`: messages, client function results, cancellation,
+  computer-use approvals; `Idempotency-Key`), a session's items / turns / subagents (incl. a subagent's items and turns),
+  artifacts (incl. their content as a byte stream) and environments (templates, files - as JSON).
+- **Streaming** on the streamed service: `createAgentSessionStreamed(settings, input)` - the create call's own stream,
+  which the server closes once the session idles - and `streamAgentSessionEvents(sessionId)`, the subscription the server
+  holds open (heartbeats every 15 s; end it with `.via(AgentSessionEvents.untilSettled())`). Typed `AgentSessionEvent`s
+  (`SessionUpdated`, `TurnUpdated`, `ItemAdded` / `ItemDone`, text / reasoning-summary deltas, command output, `Error`)
+  and `AgentSessionItem`s (messages with their `commentary` / `final_answer` phase, reasoning, client function calls and
+  outputs, MCP calls, commands, web searches); everything else - content parts, environment and subagent events, subagent
+  call items, computer use - arrives raw (`Other`), never failing a stream. `AgentSessionEvents.finalAnswer` collects the
+  answer.
+- Domain: `AgentConfig` (model, instructions, reasoning, text, service tier incl. `ultrafast`, tools, multi-agent),
+  `AgentTool` (`Function`, `Mcp` over `Http` / `Stdio`, `WebSearch`, `ComputerUse`, `ToolSearch`,
+  `ProgrammaticToolCalling`, `Raw` for anything else), `AgentEnvironment` (`NoEnvironment`, `OpenAIHosted`,
+  `SelfHosted`), `AgentSessionInput`, `AgentRequiredAction` (a pending function call's arguments are a JSON object).
+- Live facts (2026-09-30), also in the scaladoc: a client function call pauses the session (`requires_action`) until its
+  result is posted - the created session's stream stays open, so post the result and keep consuming; a subscription
+  opened on an idle session delivers the next turn (subscribe first, then send), one opened mid-turn replays the turn's
+  items without text deltas; a session paused mid-turn cannot be deleted before it is cancelled (409). See
+  `agents/OpenAIAgentsApiSmokeTest` (six live sections incl. a hosted sandbox command and a multi-agent session).
+- `io.cequence.openaiscala.service.ServerSentEvents` - the SSE decoder over a raw byte stream (comment heartbeats, CRLF
+  framing, multi-line data, a non-SSE error body surfaced), moved to core from the Perplexity module, which now uses it.
+
 ### 🔥 Human approval mid-stream (typed stream)
 
 - A run the provider pauses until a tool call is approved now surfaces on the typed stream as one

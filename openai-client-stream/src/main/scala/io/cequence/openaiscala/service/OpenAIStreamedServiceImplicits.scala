@@ -1,5 +1,10 @@
 package io.cequence.openaiscala.service
 
+import io.cequence.openaiscala.domain.agents.{
+  AgentInput,
+  AgentSessionEvent,
+  CreateAgentSessionSettings
+}
 import io.cequence.openaiscala.domain.responsesapi.{
   CreateModelResponseSettings,
   Inputs,
@@ -372,6 +377,17 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
       settings: CreateModelResponseSettings
     ): Source[ResponseStreamEvent, NotUsed] =
       streamedServiceExtra.createModelResponseStreamed(inputs, settings)
+
+    override def createAgentSessionStreamed(
+      settings: CreateAgentSessionSettings,
+      input: AgentInput
+    ): Source[AgentSessionEvent, NotUsed] =
+      streamedServiceExtra.createAgentSessionStreamed(settings, input)
+
+    override def streamAgentSessionEvents(
+      sessionId: String
+    ): Source[AgentSessionEvent, NotUsed] =
+      streamedServiceExtra.streamAgentSessionEvents(sessionId)
 
     /**
      * The Responses-backed typed tool stream of this service, when it also serves the

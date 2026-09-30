@@ -27,6 +27,10 @@ object EndPoint {
   case object runs extends EndPoint
   case object responses extends EndPoint
   case object graders extends EndPoint("fine_tuning/alpha/graders")
+  case object agents extends EndPoint
+  case object agent_sessions extends EndPoint("agents/sessions")
+  case object agent_environments extends EndPoint("agents/environments")
+  case object agent_environment_templates extends EndPoint("agents/environments/templates")
 }
 
 sealed abstract class Param(value: String = "") extends NamedEnumValue(value)
@@ -103,6 +107,10 @@ object Param {
   case object attachments extends Param
   case object order extends Param
   case object before extends Param
+  case object agent_id extends Param
+  case object environment_id extends Param
+  case object path extends Param
+  case object page extends Param
   case object top_logprobs extends Param
   case object name extends Param
   case object description extends Param

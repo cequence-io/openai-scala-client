@@ -1,5 +1,10 @@
 package io.cequence.openaiscala.service
 
+import io.cequence.openaiscala.domain.agents.{
+  AgentInput,
+  AgentSessionEvent,
+  CreateAgentSessionSettings
+}
 import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.domain.responsesapi.{
   CreateModelResponseSettings,
@@ -90,4 +95,31 @@ trait OpenAIStreamedServiceExtra
     settings: CreateModelResponseSettings = DefaultSettings.CreateModelResponse
   ): Source[ChatChunk, NotUsed] =
     createModelResponseStreamed(inputs, settings).via(ChatChunks.fromResponseEvents)
+
+  /**
+   * Creates an Agents API session (beta) and streams its events: the first turn runs on
+   * `input`, and the server closes the stream once the session idles. While the session waits
+   * for a client function's result (`agent.session.requires_action`) the stream stays open -
+   * post the result with `sendAgentSessionEvents` and keep consuming (live-verified
+   * 2026-09-30).
+   *
+   * @see
+   *   <a href="https://developers.openai.com/api/docs/guides/agents-api/sessions">OpenAI
+   *   Doc</a>
+   */
+  def createAgentSessionStreamed(
+    settings: CreateAgentSessionSettings,
+    input: AgentInput
+  ): Source[AgentSessionEvent, NotUsed]
+
+  /**
+   * Subscribes to a session's events (`GET /agents/sessions/{id}/events`). The server holds
+   * the subscription open (heartbeats every 15 s) - end it with
+   * `.via(AgentSessionEvents.untilSettled())`. Opened on an idle session it delivers the
+   * events of the next turn (subscribe first, then send the input); opened mid-turn it first
+   * replays the turn's items - without text deltas (live-verified 2026-09-30).
+   */
+  def streamAgentSessionEvents(
+    sessionId: String
+  ): Source[AgentSessionEvent, NotUsed]
 }

@@ -1,0 +1,36 @@
+{
+ "object": "list",
+ "data": [
+  {
+   "type": "message",
+   "id": "msg_0e7aec5856dae89f016abcacbf819887d0aa85380c89821380",
+   "turn_id": "turn_0b514e84ed4f30f1006abcacc0c06c819babcb9088e8651c00",
+   "role": "assistant",
+   "content": [
+    {
+     "type": "output_text",
+     "text": "Hi there!"
+    }
+   ],
+   "status": "completed",
+   "phase": "final_answer"
+  },
+  {
+   "type": "message",
+   "id": "msg_cbedbbee956bb1ca615a83374ec2ce468a63ecbee7bbe09ce7",
+   "turn_id": "turn_0b514e84ed4f30f1006abcacc0c06c819babcb9088e8651c00",
+   "role": "user",
+   "content": [
+    {
+     "type": "input_text",
+     "text": "Say hi in two words."
+    }
+   ],
+   "status": "completed",
+   "phase": null
+  }
+ ],
+ "first_id": "msg_0e7aec5856dae89f016abcacbf819887d0aa85380c89821380",
+ "last_id": "msg_cbedbbee956bb1ca615a83374ec2ce468a63ecbee7bbe09ce7",
+ "has_more": false
+}

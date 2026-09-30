@@ -1,0 +1,212 @@
+event: agent.session.created
+data: {"type":"agent.session.created","event_id":"evt_4180d3b9169940328a5b2ece3b0170ce4585f32f28db4be997","session":{"metadata":{},"id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","object":"agent.session","created_at":1790749908,"last_active_at":1790749908,"status":"in_progress","required_actions":[],"error":null,"agent":{"id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","name":null,"model":"gpt-6.1-sol","reasoning":{"effort":"medium","summary":null},"text":{"format":{"type":"text"},"verbosity":"medium"},"service_tier":"auto","instructions":"Be brief.","tools":[],"multi_agent":{"enabled":true,"max_concurrent_subagents":2}},"environment":{"type":"none"},"vault_ids":[],"usage":null}}
+
+event: agent.session.turn.created
+data: {"type":"agent.session.turn.created","event_id":"evt_104de45a43e741d0999205ad7c3160e172309d313f734a91a4","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","turn":{"id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","object":"agent.session.turn","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","subagent_id":null,"status":"queued","created_at":1790749911,"started_at":null,"completed_at":null,"error":null,"usage":null}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_e1c2c9a92743497fa12e1e4c7c848c310b34f231d4b743a6b1","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","output_index":null,"item":{"type":"message","id":"msg_c8af355d72d2a2030dd2465f23eadd3dc4fcfecb153a44bf7a","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","role":"user","content":[{"type":"input_text","text":"Use two subagents in parallel: one lists three fruits, the other three vegetables (one short line each). Then reply with one combined line."}],"status":"completed","phase":null}}
+
+event: agent.session.subagent.created
+data: {"type":"agent.session.subagent.created","event_id":"evt_6af874c5c78b45c1badbfd8e89fb17c71bc4c8d440be4ec293","subagent":{"id":"subagent_c549b6029b613b542b13e3b804d80090","object":"agent.session.subagent","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","name":null,"instructions":[{"type":"output_text","text":"List exactly three vegetables in one short line. No other text."}],"parent_agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","status":"active","opened_at":1790749913,"closed_at":null}}
+
+event: agent.session.subagent.created
+data: {"type":"agent.session.subagent.created","event_id":"evt_6328b14bb4e740c3bb18f6e4d5bbab683c6b6163f11046a491","subagent":{"id":"subagent_c549b6029b613b542b13e3b804d80090","object":"agent.session.subagent","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","name":"Ampere","instructions":[{"type":"output_text","text":"List exactly three vegetables in one short line. No other text."}],"parent_agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","status":"active","opened_at":1790749913,"closed_at":null}}
+
+event: agent.session.subagent.created
+data: {"type":"agent.session.subagent.created","event_id":"evt_2dbeb682c50b418ca3141692a1f18a4e1d954f194a8d49b9ae","subagent":{"id":"subagent_7b9579f2874843a3f209093aa42bd1a5","object":"agent.session.subagent","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","name":null,"instructions":[{"type":"output_text","text":"List exactly three fruits in one short line. No other text."}],"parent_agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","status":"active","opened_at":1790749914,"closed_at":null}}
+
+event: agent.session.in_progress
+data: {"type":"agent.session.in_progress","event_id":"evt_f09560ea6db34d3990a2768b033dacf350607de65b29430e8d","session":{"metadata":{},"id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","object":"agent.session","created_at":1790749908,"last_active_at":1790749908,"status":"in_progress","required_actions":[],"error":null,"agent":{"id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","name":null,"model":"gpt-6.1-sol","reasoning":{"effort":"medium","summary":null},"text":{"format":{"type":"text"},"verbosity":"medium"},"service_tier":"auto","instructions":"Be brief.","tools":[],"multi_agent":{"enabled":true,"max_concurrent_subagents":2}},"environment":{"type":"none"},"vault_ids":[],"usage":null}}
+
+event: agent.session.turn.in_progress
+data: {"type":"agent.session.turn.in_progress","event_id":"evt_27bf06ab223744c8883f4192544f7018ecd61da6bf264f7c9b","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","turn":{"id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","object":"agent.session.turn","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","subagent_id":null,"status":"in_progress","created_at":1790749911,"started_at":1790749911,"completed_at":null,"error":null,"usage":null}}
+
+event: agent.session.subagent.created
+data: {"type":"agent.session.subagent.created","event_id":"evt_cc3bfd7bdbd24f49b35e7b18c495c83b509fc561c3014ad68e","subagent":{"id":"subagent_7b9579f2874843a3f209093aa42bd1a5","object":"agent.session.subagent","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","name":"Pasteur","instructions":[{"type":"output_text","text":"List exactly three fruits in one short line. No other text."}],"parent_agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","status":"active","opened_at":1790749914,"closed_at":null}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_063809a947e24a30b8b3fe0c81ac88f29bbee630267547749e","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","output_index":0,"item":{"type":"message","id":"msg_0acec9b17222205c016abcacd7ee5487d0a8021c9a52798a94","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","role":"assistant","content":[],"status":"in_progress","phase":"commentary"}}
+
+event: agent.session.turn.content_part.added
+data: {"type":"agent.session.turn.content_part.added","event_id":"evt_e7531d9e6d2e4e0587077ca985d2b75875c9e044cf1346a88f","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcacd7ee5487d0a8021c9a52798a94","output_index":0,"content_index":0,"part":{"type":"output_text","text":""}}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_0ed94aa14bf64e3ebf32bf41b149addfa81416dda720450cbc","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcacd7ee5487d0a8021c9a52798a94","output_index":0,"content_index":0,"delta":"I"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_e222c40169a54e128c4fc6968b4b82e77e35b7f40ee44d15a1","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcacd7ee5487d0a8021c9a52798a94","output_index":0,"content_index":0,"delta":"’ll"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_b3c2e5f9d288436ca33bdc5bfa942d91d4cd1bfd5be2406cb0","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcacd7ee5487d0a8021c9a52798a94","output_index":0,"content_index":0,"delta":" ask"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_59c6c2ba35db442d94235562dcbefa4191e28ed9ae094987ae","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcacd7ee5487d0a8021c9a52798a94","output_index":0,"content_index":0,"delta":" both"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_480c3f58d06f473b9a8da7601a45bc3a3f5f0159942a42a196","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcacd7ee5487d0a8021c9a52798a94","output_index":0,"content_index":0,"delta":" agents"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_d678d669e88f4de49f41bd1f1644e38e0cc1e63ea1874bbd94","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcacd7ee5487d0a8021c9a52798a94","output_index":0,"content_index":0,"delta":" in"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_8f61ad48cfc7419287eff242d58a5e4a63c073284209462284","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcacd7ee5487d0a8021c9a52798a94","output_index":0,"content_index":0,"delta":" parallel"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_40c8f6f39e47428a9a6a58a393eed82cb77d35749a9f40f491","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcacd7ee5487d0a8021c9a52798a94","output_index":0,"content_index":0,"delta":","}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_94d75ce0812343c4a52ab73867dc95166b4300bd1477467baf","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcacd7ee5487d0a8021c9a52798a94","output_index":0,"content_index":0,"delta":" then"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_5a701877fdf84d4eb471a7cda30eb165d2d8e98e630e42cd84","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcacd7ee5487d0a8021c9a52798a94","output_index":0,"content_index":0,"delta":" combine"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_6dbdef1d366e4146b4d61e569a8d50e53b8e4543601b49c88b","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcacd7ee5487d0a8021c9a52798a94","output_index":0,"content_index":0,"delta":" their"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_c0c74a8af1d84d42a58bec1b904f3422c19ec43d402e4afa8e","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcacd7ee5487d0a8021c9a52798a94","output_index":0,"content_index":0,"delta":" lists"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_8f26bf62dea94a419bea92da3c1828d2bd12fc52277a4365a6","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcacd7ee5487d0a8021c9a52798a94","output_index":0,"content_index":0,"delta":".\n"}
+
+event: agent.session.turn.output_text.done
+data: {"type":"agent.session.turn.output_text.done","event_id":"evt_3c7438bec9f24b088a8c71c9940e4921f48f543c9ddc4a238a","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcacd7ee5487d0a8021c9a52798a94","output_index":0,"content_index":0,"text":"I’ll ask both agents in parallel, then combine their lists.\n"}
+
+event: agent.session.turn.content_part.done
+data: {"type":"agent.session.turn.content_part.done","event_id":"evt_02e315b74cb44ed8980ff33354a813d2cff47e80ece4449381","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcacd7ee5487d0a8021c9a52798a94","output_index":0,"content_index":0,"part":{"type":"output_text","text":"I’ll ask both agents in parallel, then combine their lists.\n"}}
+
+event: agent.session.turn.item.done
+data: {"type":"agent.session.turn.item.done","event_id":"evt_2760faab751647ab807c5e9c6904f94cde91732f32024a9f91","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","output_index":0,"item":{"type":"message","id":"msg_0acec9b17222205c016abcacd7ee5487d0a8021c9a52798a94","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","role":"assistant","status":"completed","content":[{"type":"output_text","text":"I’ll ask both agents in parallel, then combine their lists.\n"}],"phase":"commentary"}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_968d02f3f81141fea817569f08dfca44ebacef5caa9046c6a7","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","output_index":1,"item":{"type":"create_subagent_call","id":"exec_05ac3d7dc196dd96666619710fd5ed5bd49b84f7e52a2dc2a2","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","status":"in_progress","agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","reasoning_effort":"medium","model":"","content":[{"type":"output_text","text":"List exactly three vegetables in one short line. No other text."}]}}
+
+event: agent.session.turn.item.done
+data: {"type":"agent.session.turn.item.done","event_id":"evt_6ee41a9b300b4b5594d05169dea6a60dfcf1c7507e28434caa","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","output_index":1,"item":{"type":"create_subagent_call","id":"exec_05ac3d7dc196dd96666619710fd5ed5bd49b84f7e52a2dc2a2","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","status":"completed","agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","reasoning_effort":"medium","model":"gpt-6.1-sol","content":[{"type":"output_text","text":"List exactly three vegetables in one short line. No other text."}]}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_b8509fd55a8e4e458d612369233b2e75b83823292ac3418db3","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","output_index":null,"item":{"id":"amsg_b64288524305a2172066462ec1aa0d89d8ae56d1734e596ffe","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","type":"agent_message","sender_agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","content":[{"type":"output_text","text":"List exactly three vegetables in one short line. No other text."}],"recipient_agent_id":"subagent_c549b6029b613b542b13e3b804d80090"}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_cbdf406c1c8a4b1f994d7b6f77d490f25f387f006fa84ace98","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","output_index":2,"item":{"type":"create_subagent_call","id":"exec_5b8637ea2baf97174169d68f57c8c16b6e09f019ee46ccb917","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","status":"in_progress","agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","reasoning_effort":"medium","model":"","content":[{"type":"output_text","text":"List exactly three fruits in one short line. No other text."}]}}
+
+event: agent.session.turn.item.done
+data: {"type":"agent.session.turn.item.done","event_id":"evt_5180d041e8dc42bb9ae583c3ff0d30fb94f485528db9440080","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","output_index":2,"item":{"type":"create_subagent_call","id":"exec_5b8637ea2baf97174169d68f57c8c16b6e09f019ee46ccb917","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","status":"completed","agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","reasoning_effort":"medium","model":"gpt-6.1-sol","content":[{"type":"output_text","text":"List exactly three fruits in one short line. No other text."}]}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_8f3cb6edd1e6413ab9a672d16f490b4cf03163d31f55477bb4","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","output_index":null,"item":{"id":"amsg_e2c68c74967c081b10c768341cb10381075b5ff4e35d4e3f30","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","type":"agent_message","sender_agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","content":[{"type":"output_text","text":"List exactly three fruits in one short line. No other text."}],"recipient_agent_id":"subagent_7b9579f2874843a3f209093aa42bd1a5"}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_6df2ee353f274d249c749731c17f9c3dfb62785468c64d06a7","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","output_index":3,"item":{"type":"wait_for_subagents_call","id":"call_SsmAqQOX0V3HFDUkExw3HYlF","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","status":"in_progress","sender_agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","recipient_agent_ids":["subagent_7b9579f2874843a3f209093aa42bd1a5","subagent_c549b6029b613b542b13e3b804d80090"]}}
+
+event: agent.session.turn.item.done
+data: {"type":"agent.session.turn.item.done","event_id":"evt_b67232c1a67048c48eafcfb35ed990e38e1b217de5614cd389","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","output_index":3,"item":{"type":"wait_for_subagents_call","id":"call_SsmAqQOX0V3HFDUkExw3HYlF","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","status":"completed","sender_agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","recipient_agent_ids":["subagent_c549b6029b613b542b13e3b804d80090"]}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_0227f6f6a9f04ebaaae7199231c8ef58451327b50b174f2b85","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","output_index":null,"item":{"id":"amsg_fc3d9ce00a67507c676ba3ff652e85c9abbd2c76c7c597c9c0","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","type":"agent_message","sender_agent_id":"subagent_c549b6029b613b542b13e3b804d80090","content":[{"type":"output_text","text":"Carrot, broccoli, spinach"}],"recipient_agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296"}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_e0c2f588c2544ad4bd68c18b9f09a2ed40540c41a4bb4157a9","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","output_index":4,"item":{"type":"wait_for_subagents_call","id":"call_8iuk121cHbbIuzvRZ0qYJ9vQ","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","status":"in_progress","sender_agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","recipient_agent_ids":["subagent_7b9579f2874843a3f209093aa42bd1a5"]}}
+
+event: agent.session.turn.item.done
+data: {"type":"agent.session.turn.item.done","event_id":"evt_a9fe1b1ff1394b05845eb644881b0d50748ff94c302e4f5d82","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","output_index":4,"item":{"type":"wait_for_subagents_call","id":"call_8iuk121cHbbIuzvRZ0qYJ9vQ","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","status":"completed","sender_agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","recipient_agent_ids":["subagent_7b9579f2874843a3f209093aa42bd1a5"]}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_30508623e62e4dd6a7c17dfb8c9a78cecf105b59fb3d44b4a6","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","output_index":null,"item":{"id":"amsg_af340889a2047ce5f06b6d0b04681a53e00a64dbe69b9e4e18","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","type":"agent_message","sender_agent_id":"subagent_7b9579f2874843a3f209093aa42bd1a5","content":[{"type":"output_text","text":"Apple, banana, orange"}],"recipient_agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296"}}
+
+event: agent.session.subagent.closed
+data: {"type":"agent.session.subagent.closed","event_id":"evt_722c0690f01b4b82b16f699b5ef9c72e1d920f80b7f24a059a","subagent":{"id":"subagent_c549b6029b613b542b13e3b804d80090","object":"agent.session.subagent","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","name":"Ampere","instructions":[{"type":"output_text","text":"List exactly three vegetables in one short line. No other text."}],"parent_agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","status":"closed","opened_at":1790749913,"closed_at":1790749919}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_38f2cf15a57c40948f0805312f3795098c5cefa3fed744ecb2","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","output_index":5,"item":{"type":"close_subagent_call","id":"exec_c74392e1484bdecf1cb36729e20ef4fe9d803cdfcefb69eee7","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","status":"in_progress","sender_agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","recipient_agent_id":"subagent_c549b6029b613b542b13e3b804d80090"}}
+
+event: agent.session.subagent.closed
+data: {"type":"agent.session.subagent.closed","event_id":"evt_50ff4b6efb484efbabbbb8e40dc5331f63828d7fefb142cfbb","subagent":{"id":"subagent_7b9579f2874843a3f209093aa42bd1a5","object":"agent.session.subagent","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","name":"Pasteur","instructions":[{"type":"output_text","text":"List exactly three fruits in one short line. No other text."}],"parent_agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","status":"closed","opened_at":1790749914,"closed_at":1790749919}}
+
+event: agent.session.turn.item.done
+data: {"type":"agent.session.turn.item.done","event_id":"evt_e5c0617358b74c09b0e01ccb9813a60cc7d75100791f4643ae","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","output_index":5,"item":{"type":"close_subagent_call","id":"exec_c74392e1484bdecf1cb36729e20ef4fe9d803cdfcefb69eee7","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","status":"completed","sender_agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","recipient_agent_id":"subagent_c549b6029b613b542b13e3b804d80090"}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_0d0d94bbecde46318505aac6ef65aac1855ece29927943839a","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","output_index":null,"item":{"id":"amsg_0af63c2834576a80190ef8811c6ddb947029fddf795f2db0bd","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","type":"agent_message","sender_agent_id":"subagent_c549b6029b613b542b13e3b804d80090","content":[{"type":"output_text","text":"Carrot, broccoli, spinach"}],"recipient_agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296"}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_c914e227b7934f8bbeef87660f28416bfd10a203aae24ee3bf","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","output_index":6,"item":{"type":"close_subagent_call","id":"exec_59048fbfc73e911cdc0651577d1d76a7fe35a32bd19e1d8fb6","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","status":"in_progress","sender_agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","recipient_agent_id":"subagent_7b9579f2874843a3f209093aa42bd1a5"}}
+
+event: agent.session.turn.item.done
+data: {"type":"agent.session.turn.item.done","event_id":"evt_2559e37777e7439a965a8ba74be2d5367b7165af1c234f1cb3","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","output_index":6,"item":{"type":"close_subagent_call","id":"exec_59048fbfc73e911cdc0651577d1d76a7fe35a32bd19e1d8fb6","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","status":"completed","sender_agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","recipient_agent_id":"subagent_7b9579f2874843a3f209093aa42bd1a5"}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_ab2ed0f2a213470495a2d2fd2f604433d71ddee481d74c129b","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","output_index":null,"item":{"id":"amsg_9fa7b1b64de4895a30a1381ea8cffdefa2cb03cfb60b70841c","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","type":"agent_message","sender_agent_id":"subagent_7b9579f2874843a3f209093aa42bd1a5","content":[{"type":"output_text","text":"Apple, banana, orange"}],"recipient_agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296"}}
+
+event: agent.session.turn.item.added
+data: {"type":"agent.session.turn.item.added","event_id":"evt_512309858c1d43c180017df2307e7aab193adb79c1c54be4b4","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","output_index":7,"item":{"type":"message","id":"msg_0acec9b17222205c016abcace148f087d0bfb03761ea5f53de","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","role":"assistant","content":[],"status":"in_progress","phase":"final_answer"}}
+
+event: agent.session.turn.content_part.added
+data: {"type":"agent.session.turn.content_part.added","event_id":"evt_9012db49322b4a6c96673b0aee10e8f0ce5ae1c7d99f4425a9","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcace148f087d0bfb03761ea5f53de","output_index":7,"content_index":0,"part":{"type":"output_text","text":""}}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_673f6359a31748028bc8e00a2b09437018e450934c3542be9e","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcace148f087d0bfb03761ea5f53de","output_index":7,"content_index":0,"delta":"F"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_1c7c3b504fd946968a5980b1894d9ea9dde3e551c5934f51a5","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcace148f087d0bfb03761ea5f53de","output_index":7,"content_index":0,"delta":"ruits"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_603483e5e1694d7f8c2fe096001bb6f75390d5b38f67477fbd","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcace148f087d0bfb03761ea5f53de","output_index":7,"content_index":0,"delta":":"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_981c3f0baf6f498eaf5e7c4690c8e0fcc4f7abaf35aa41f093","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcace148f087d0bfb03761ea5f53de","output_index":7,"content_index":0,"delta":" apple"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_092a5203643f4effaafe5182373e514ee495a27da19e49aa8a","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcace148f087d0bfb03761ea5f53de","output_index":7,"content_index":0,"delta":","}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_4e73f7517a23475388e698e31ee6019a2bdcd23a335641bf83","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcace148f087d0bfb03761ea5f53de","output_index":7,"content_index":0,"delta":" banana"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_9d2fb3eda8d24b6889b20e570248ea9ef459a015d1f04513af","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcace148f087d0bfb03761ea5f53de","output_index":7,"content_index":0,"delta":","}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_c35a36a75455418cb6e178140cf8d6e30242b2c0979c4b9ca6","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcace148f087d0bfb03761ea5f53de","output_index":7,"content_index":0,"delta":" orange"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_9ff25f34ab0d48c982313bb2aa7123a304141fb658d442a893","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcace148f087d0bfb03761ea5f53de","output_index":7,"content_index":0,"delta":";"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_374490a4694b4521be186d472122a55868f866aca22c456d99","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcace148f087d0bfb03761ea5f53de","output_index":7,"content_index":0,"delta":" vegetables"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_eb89500b1b6b4b0ca6720ce964d73b42c6519c6a75d64fd09d","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcace148f087d0bfb03761ea5f53de","output_index":7,"content_index":0,"delta":":"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_0d46ec7481df4273af5c9cd99e07102f4dd4e88efe74417f94","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcace148f087d0bfb03761ea5f53de","output_index":7,"content_index":0,"delta":" carrot"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_b9d5ed0b7d014d04bb9c21d9a5f65bc47ad365f6683449bc85","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcace148f087d0bfb03761ea5f53de","output_index":7,"content_index":0,"delta":","}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_4957825fca7c499b8be96787fd67bf1c3eba1e37906949be80","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcace148f087d0bfb03761ea5f53de","output_index":7,"content_index":0,"delta":" broccoli"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_08d658987f654a10af5f3fb2c374d1b4109bf3dc1c7546c68f","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcace148f087d0bfb03761ea5f53de","output_index":7,"content_index":0,"delta":","}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_026b3dfa58aa435aae3dc59e3bac2dc3de03a408bca448909e","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcace148f087d0bfb03761ea5f53de","output_index":7,"content_index":0,"delta":" spinach"}
+
+event: agent.session.turn.output_text.delta
+data: {"type":"agent.session.turn.output_text.delta","event_id":"evt_6c6da92daece41bfadf051bc9912de1df285247ced5f4f1fbd","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcace148f087d0bfb03761ea5f53de","output_index":7,"content_index":0,"delta":"."}
+
+event: agent.session.turn.output_text.done
+data: {"type":"agent.session.turn.output_text.done","event_id":"evt_eb978a2e3d9f4d6b9269a119c5d2de331852060696de46f5a6","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcace148f087d0bfb03761ea5f53de","output_index":7,"content_index":0,"text":"Fruits: apple, banana, orange; vegetables: carrot, broccoli, spinach."}
+
+event: agent.session.turn.content_part.done
+data: {"type":"agent.session.turn.content_part.done","event_id":"evt_6b2c32960ece43f6baef5e1672973e0333b3a75235a849d7b4","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","item_id":"msg_0acec9b17222205c016abcace148f087d0bfb03761ea5f53de","output_index":7,"content_index":0,"part":{"type":"output_text","text":"Fruits: apple, banana, orange; vegetables: carrot, broccoli, spinach."}}
+
+event: agent.session.turn.item.done
+data: {"type":"agent.session.turn.item.done","event_id":"evt_a5bfeca7a0bb4d9694930c878ee37acc633175945b574b54a6","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","output_index":7,"item":{"type":"message","id":"msg_0acec9b17222205c016abcace148f087d0bfb03761ea5f53de","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","role":"assistant","status":"completed","content":[{"type":"output_text","text":"Fruits: apple, banana, orange; vegetables: carrot, broccoli, spinach."}],"phase":"final_answer"}}
+
+event: agent.session.turn.completed
+data: {"type":"agent.session.turn.completed","event_id":"evt_daf3e4c7c3a8440e8fc119a0c8313ab3a11c21e4bbdd499e96","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","turn_id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","turn":{"id":"turn_0c17fd1b97863e91006abcacd86818819b80bef9983980dcfa","object":"agent.session.turn","session_id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","agent_id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","subagent_id":null,"status":"completed","created_at":1790749911,"started_at":1790749911,"completed_at":1790749923,"error":null,"usage":null},"usage":null}
+
+event: agent.session.idle
+data: {"type":"agent.session.idle","event_id":"evt_07d002bd7cdd42068495fb91662668f61a4d85ac319241f5b7","session":{"metadata":{},"id":"sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69","object":"agent.session","created_at":1790749908,"last_active_at":1790749908,"status":"idle","required_actions":[],"error":null,"agent":{"id":"agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296","name":null,"model":"gpt-6.1-sol","reasoning":{"effort":"medium","summary":null},"text":{"format":{"type":"text"},"verbosity":"medium"},"service_tier":"auto","instructions":"Be brief.","tools":[],"multi_agent":{"enabled":true,"max_concurrent_subagents":2}},"environment":{"type":"none"},"vault_ids":[],"usage":null}}

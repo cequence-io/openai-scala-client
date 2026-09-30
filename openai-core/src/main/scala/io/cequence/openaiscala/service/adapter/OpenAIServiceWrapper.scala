@@ -29,6 +29,25 @@ import io.cequence.openaiscala.domain.responsesapi.{
   DeleteResponse => ResponsesAPIDeleteResponse
 }
 
+import io.cequence.openaiscala.domain.agents.{
+  Agent,
+  AgentConfig,
+  AgentEnvironmentTemplate,
+  AgentInput,
+  AgentSession,
+  AgentSessionArtifact,
+  AgentSessionInput,
+  AgentSessionItem,
+  AgentSubagent,
+  AgentTurn,
+  AgentsDeleted,
+  AgentsPage,
+  CreateAgentSessionSettings,
+  CreateAgentSettings,
+  UpdateAgentSettings
+}
+import play.api.libs.json.JsObject
+
 import java.io.File
 import scala.concurrent.Future
 
@@ -709,6 +728,163 @@ trait OpenAIServiceWrapper
     order: Option[SortOrder]
   ): Future[Seq[Batch]] =
     wrap(_.listBatches(pagination, order))
+
+  ////////////////
+  // Agents API //
+  ////////////////
+
+  override def createAgent(settings: CreateAgentSettings): Future[Agent] =
+    wrap(_.createAgent(settings))
+
+  override def listAgents(
+    limit: Option[Int],
+    order: Option[SortOrder],
+    after: Option[String]
+  ): Future[AgentsPage[Agent]] = wrap(_.listAgents(limit, order, after))
+
+  override def getAgent(agentId: String): Future[Agent] = wrap(_.getAgent(agentId))
+
+  override def updateAgent(
+    agentId: String,
+    settings: UpdateAgentSettings
+  ): Future[Agent] = wrap(_.updateAgent(agentId, settings))
+
+  override def deleteAgent(agentId: String): Future[AgentsDeleted] =
+    wrap(_.deleteAgent(agentId))
+
+  override def createAgentSession(
+    settings: CreateAgentSessionSettings,
+    input: Option[AgentInput]
+  ): Future[AgentSession] = wrap(_.createAgentSession(settings, input))
+
+  override def listAgentSessions(
+    limit: Option[Int],
+    order: Option[SortOrder],
+    after: Option[String],
+    agentId: Option[String]
+  ): Future[AgentsPage[AgentSession]] = wrap(_.listAgentSessions(limit, order, after, agentId))
+
+  override def getAgentSession(sessionId: String): Future[AgentSession] =
+    wrap(_.getAgentSession(sessionId))
+
+  override def updateAgentSession(
+    sessionId: String,
+    agent: Option[AgentConfig],
+    metadata: Option[Map[String, String]]
+  ): Future[AgentSession] = wrap(_.updateAgentSession(sessionId, agent, metadata))
+
+  override def deleteAgentSession(sessionId: String): Future[AgentsDeleted] =
+    wrap(_.deleteAgentSession(sessionId))
+
+  override def sendAgentSessionEvents(
+    sessionId: String,
+    events: Seq[AgentSessionInput],
+    idempotencyKey: Option[String]
+  ): Future[Unit] = wrap(_.sendAgentSessionEvents(sessionId, events, idempotencyKey))
+
+  override def listAgentSessionItems(
+    sessionId: String,
+    limit: Option[Int],
+    order: Option[SortOrder],
+    after: Option[String],
+    subagentId: Option[String],
+    turnId: Option[String]
+  ): Future[AgentsPage[AgentSessionItem]] =
+    wrap(_.listAgentSessionItems(sessionId, limit, order, after, subagentId, turnId))
+
+  override def listAgentSessionTurns(
+    sessionId: String,
+    limit: Option[Int],
+    order: Option[SortOrder],
+    after: Option[String],
+    subagentId: Option[String]
+  ): Future[AgentsPage[AgentTurn]] =
+    wrap(_.listAgentSessionTurns(sessionId, limit, order, after, subagentId))
+
+  override def getAgentSessionTurn(
+    sessionId: String,
+    turnId: String,
+    subagentId: Option[String]
+  ): Future[AgentTurn] = wrap(_.getAgentSessionTurn(sessionId, turnId, subagentId))
+
+  override def listAgentSessionSubagents(
+    sessionId: String,
+    limit: Option[Int],
+    order: Option[SortOrder],
+    after: Option[String]
+  ): Future[AgentsPage[AgentSubagent]] =
+    wrap(_.listAgentSessionSubagents(sessionId, limit, order, after))
+
+  override def getAgentSessionSubagent(
+    sessionId: String,
+    subagentId: String
+  ): Future[AgentSubagent] = wrap(_.getAgentSessionSubagent(sessionId, subagentId))
+
+  override def listAgentSessionArtifacts(
+    sessionId: String,
+    limit: Option[Int],
+    order: Option[SortOrder],
+    after: Option[String],
+    environmentId: Option[String]
+  ): Future[AgentsPage[AgentSessionArtifact]] =
+    wrap(_.listAgentSessionArtifacts(sessionId, limit, order, after, environmentId))
+
+  override def getAgentSessionArtifact(
+    sessionId: String,
+    artifactId: String
+  ): Future[AgentSessionArtifact] = wrap(_.getAgentSessionArtifact(sessionId, artifactId))
+
+  override def getAgentSessionArtifactContent(
+    sessionId: String,
+    artifactId: String
+  ): Future[Source[ByteString, _]] =
+    wrap(_.getAgentSessionArtifactContent(sessionId, artifactId))
+
+  override def deleteAgentSessionArtifact(
+    sessionId: String,
+    artifactId: String
+  ): Future[AgentsDeleted] = wrap(_.deleteAgentSessionArtifact(sessionId, artifactId))
+
+  override def createAgentEnvironmentTemplate(
+    settings: JsObject
+  ): Future[AgentEnvironmentTemplate] = wrap(_.createAgentEnvironmentTemplate(settings))
+
+  override def listAgentEnvironmentTemplates(
+    limit: Option[Int],
+    order: Option[SortOrder],
+    after: Option[String]
+  ): Future[AgentsPage[AgentEnvironmentTemplate]] =
+    wrap(_.listAgentEnvironmentTemplates(limit, order, after))
+
+  override def getAgentEnvironmentTemplate(
+    templateId: String
+  ): Future[AgentEnvironmentTemplate] = wrap(_.getAgentEnvironmentTemplate(templateId))
+
+  override def updateAgentEnvironmentTemplate(
+    templateId: String,
+    settings: JsObject
+  ): Future[AgentEnvironmentTemplate] =
+    wrap(_.updateAgentEnvironmentTemplate(templateId, settings))
+
+  override def deleteAgentEnvironmentTemplate(templateId: String): Future[AgentsDeleted] =
+    wrap(_.deleteAgentEnvironmentTemplate(templateId))
+
+  override def getAgentEnvironment(environmentId: String): Future[JsObject] =
+    wrap(_.getAgentEnvironment(environmentId))
+
+  override def listAgentEnvironmentFiles(
+    environmentId: String,
+    path: Option[String],
+    limit: Option[Int],
+    order: Option[SortOrder],
+    page: Option[String]
+  ): Future[JsObject] =
+    wrap(_.listAgentEnvironmentFiles(environmentId, path, limit, order, page))
+
+  override def addAgentEnvironmentFile(
+    environmentId: String,
+    file: JsObject
+  ): Future[JsObject] = wrap(_.addAgentEnvironmentFile(environmentId, file))
 
   ///////////////////
   // Responses API //

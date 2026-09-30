@@ -870,6 +870,31 @@ There is a new project [openai-scala-client-examples](./openai-examples/src/main
     }
 ```
 
+- **Agents API** (🔥 New, beta) - durable cloud agents: a session runs an agent (inline config or a reusable agent) with
+  an optional environment (an OpenAI-hosted sandbox, your own machine, or none); the full service covers agents, sessions,
+  input events, items / turns / subagents, artifacts and environments, and the streamed service the session events.
+
+```scala
+  import io.cequence.openaiscala.domain.agents._
+
+  service // OpenAIServiceFactory.withStreaming()
+    .createAgentSessionStreamed(
+      CreateAgentSessionSettings(
+        agent = Some(AgentConfig(model = Some(ModelId.gpt_6_luna), instructions = Some("Be brief."))),
+        environment = AgentEnvironment.OpenAIHosted() // or NoEnvironment (the default)
+      ),
+      AgentInput.Text("Run `uname -s` and report the output.")
+    )
+    .runWith(Sink.seq) // the stream ends once the session idles
+    .map(events => println(AgentSessionEvents.finalAnswer(events)))
+```
+
+  A client function tool (`AgentTool.Function`) pauses the session (`SessionUpdated.requiresAction`) - answer its
+  `session.pendingFunctionCalls` with `sendAgentSessionEvents(sessionId, Seq(AgentSessionInput.toolResult(call, output)))`
+  and keep consuming the same stream. Follow-up turns: subscribe with `streamAgentSessionEvents(sessionId).via(AgentSessionEvents.untilSettled())`,
+  then `sendAgentSessionEvents(sessionId, Seq(AgentSessionInput.text("...")))`. See
+  [OpenAIAgentsApiSmokeTest](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/agents/OpenAIAgentsApiSmokeTest.scala).
+
 - **Responses API** - tool use (MCP)
 
 ```scala

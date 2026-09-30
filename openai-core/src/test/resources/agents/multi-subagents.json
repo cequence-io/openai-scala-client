@@ -1,0 +1,40 @@
+{
+ "object": "list",
+ "data": [
+  {
+   "id": "subagent_7b9579f2874843a3f209093aa42bd1a5",
+   "object": "agent.session.subagent",
+   "session_id": "sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69",
+   "name": "Pasteur",
+   "instructions": [
+    {
+     "type": "output_text",
+     "text": "List exactly three fruits in one short line. No other text."
+    }
+   ],
+   "parent_agent_id": "agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296",
+   "status": "closed",
+   "opened_at": 1790749914,
+   "closed_at": 1790749919
+  },
+  {
+   "id": "subagent_c549b6029b613b542b13e3b804d80090",
+   "object": "agent.session.subagent",
+   "session_id": "sess_0c17fd1b97863e91006abcacd3c620819ba414fcd765d41f69",
+   "name": "Ampere",
+   "instructions": [
+    {
+     "type": "output_text",
+     "text": "List exactly three vegetables in one short line. No other text."
+    }
+   ],
+   "parent_agent_id": "agent_0bb1f020d5514afdb5485229972eeb7a0282d9250a9040f296",
+   "status": "closed",
+   "opened_at": 1790749913,
+   "closed_at": 1790749919
+  }
+ ],
+ "first_id": "subagent_7b9579f2874843a3f209093aa42bd1a5",
+ "last_id": "subagent_c549b6029b613b542b13e3b804d80090",
+ "has_more": false
+}

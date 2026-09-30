@@ -15,7 +15,14 @@ import io.cequence.openaiscala.domain.responsesapi.{
   Inputs,
   ResponseStreamEvent
 }
-import io.cequence.openaiscala.service.OpenAIStreamedServiceExtra
+import akka.util.ByteString
+import io.cequence.openaiscala.domain.agents.{
+  AgentInput,
+  AgentSessionEvent,
+  CreateAgentSessionSettings,
+  JsonFormats => AgentsJsonFormats
+}
+import io.cequence.openaiscala.service.{OpenAIStreamedServiceExtra, ServerSentEvents}
 import io.cequence.wsclient.JsonUtil.JsonOps
 import play.api.libs.json.{JsValue, Json}
 
@@ -46,6 +53,45 @@ private[service] trait OpenAICoreServiceStreamedExtraImpl
     ).map { (json: JsValue) =>
       inBandStreamError(json).foreach(throw _)
       json.asSafe[TextCompletionResponse]
+    }
+
+  override def createAgentSessionStreamed(
+    settings: CreateAgentSessionSettings,
+    input: AgentInput
+  ): Source[AgentSessionEvent, NotUsed] =
+    agentSessionEvents(
+      execRawStream(
+        EndPoint.agent_sessions,
+        "POST",
+        bodyParams = AgentsJsonFormats
+          .createAgentSessionBody(settings, Some(input), stream = true)
+          .fields
+          .toList
+          .map { case (name, value) => Param.Raw(name) -> Some(value) },
+        extraHeaders = OpenAIAgentsServiceImpl.betaHeaders
+      )
+    )
+
+  override def streamAgentSessionEvents(
+    sessionId: String
+  ): Source[AgentSessionEvent, NotUsed] =
+    agentSessionEvents(
+      execRawStream(
+        EndPoint.agent_sessions,
+        "GET",
+        endPointParam = Some(s"$sessionId/events"),
+        extraHeaders = OpenAIAgentsServiceImpl.betaHeaders
+      )
+    )
+
+  // the session streams carry comment-only heartbeat frames - decoded by the SSE decoder, not
+  // the JSON framing; an error body answering the request fails the stream classified
+  private def agentSessionEvents(
+    bytes: Source[ByteString, NotUsed]
+  ): Source[AgentSessionEvent, NotUsed] =
+    bytes.via(ServerSentEvents.jsonPayloads()).map { json =>
+      if ((json \ "type").isEmpty) inBandStreamError(json).foreach(throw _)
+      json.asSafe[AgentSessionEvent](AgentsJsonFormats.agentSessionEventReads)
     }
 
   override def createModelResponseStreamed(

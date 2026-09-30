@@ -1,0 +1,37 @@
+{
+ "metadata": {},
+ "id": "sess_0b514e84ed4f30f1006abcacbcea3c819bb071ebcc9e7954f7",
+ "object": "agent.session",
+ "created_at": 1790749885,
+ "last_active_at": 1790749885,
+ "status": "idle",
+ "required_actions": [],
+ "error": null,
+ "agent": {
+  "id": "agent_3cf37de5cc554c9694347173cec0e0979fd75e5990de4e3f87",
+  "name": null,
+  "model": "gpt-6-luna",
+  "reasoning": {
+   "effort": "medium",
+   "summary": null
+  },
+  "text": {
+   "format": {
+    "type": "text"
+   },
+   "verbosity": "medium"
+  },
+  "service_tier": "auto",
+  "instructions": "Be brief.",
+  "tools": [],
+  "multi_agent": {
+   "enabled": false,
+   "max_concurrent_subagents": null
+  }
+ },
+ "environment": {
+  "type": "none"
+ },
+ "vault_ids": [],
+ "usage": null
+}

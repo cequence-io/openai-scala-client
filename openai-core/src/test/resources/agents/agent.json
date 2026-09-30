@@ -1,0 +1,28 @@
+{
+ "id": "agent_b46e9d05fcf247b5864ec6aae2753931c629b26d0f7f41abbd",
+ "object": "agent",
+ "created_at": 1790749690,
+ "updated_at": 1790749690,
+ "name": "probe-agent",
+ "metadata": {
+  "created_by": "probe"
+ },
+ "model": "gpt-6-luna",
+ "reasoning": {
+  "effort": "medium",
+  "summary": null
+ },
+ "text": {
+  "format": {
+   "type": "text"
+  },
+  "verbosity": "medium"
+ },
+ "service_tier": "auto",
+ "instructions": "Be brief.",
+ "tools": [],
+ "multi_agent": {
+  "enabled": false,
+  "max_concurrent_subagents": null
+ }
+}
