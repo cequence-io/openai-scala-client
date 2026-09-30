@@ -462,6 +462,32 @@ object ChatCompletionSettingsConversions {
         _.copy(reasoning_effort = None)
       )
 
+    // Live-verified 2026-09-30 ("Unsupported parameter: 'stop' / 'logit_bias' is not supported
+    // with this model"): every GPT-5.x and GPT-6 model rejects both - with any reasoning_effort,
+    // 'none' included - and so do chat-latest and gpt-5-search-api; the o-series rejects
+    // logit_bias, and stop too except o1 / o3-mini. Bedrock's OpenAI models reject stop as well
+    // and accept logit_bias but IGNORE it (a +100 bias changes nothing), so it is dropped there
+    // too rather than silently lost.
+    val stopUnsupported: FieldConversionDef =
+      unsupported("stop", _.stop.nonEmpty, _.copy(stop = Nil))
+    val logitBiasUnsupported: FieldConversionDef =
+      unsupported("logit_bias", _.logit_bias.nonEmpty, _.copy(logit_bias = Map()))
+
+    // o1 and o3-mini (and their dated snapshots) still accept stop; o3 / o4-mini (and any newer
+    // o-model) reject it
+    private val oSeriesAcceptingStop = "^o(?:1|3-mini)(?:-\\d{4}-\\d{2}-\\d{2})?$".r
+
+    val stopUnsupportedOnNewerOSeries: FieldConversionDef = FieldConversionDef(
+      settings =>
+        settings.stop.nonEmpty &&
+          !oSeriesAcceptingStop.pattern
+            .matcher(canonicalOpenAIModel(settings.model))
+            .matches(),
+      _.copy(stop = Nil),
+      Some(settings => s"${settings.model} model doesn't support stop, dropping it."),
+      warning = true
+    )
+
     val reasoningEffortNoneToLow: FieldConversionDef = FieldConversionDef(
       settings => settings.reasoning_effort.contains(ReasoningEffort.none),
       _.copy(reasoning_effort = Some(ReasoningEffort.low)),
@@ -522,10 +548,13 @@ object ChatCompletionSettingsConversions {
     oBaseConversions :+ responseFormatTypeMustBeText
 
   // o1 / o3 / o3-mini / o4-mini, live-verified 2026-09-26: logprobs is a 403, reasoning_effort
-  // accepts only low / medium / high / xhigh
+  // accepts only low / medium / high / xhigh; 2026-09-30: logit_bias is rejected by all of
+  // them, stop by o3 / o4-mini
   private val oConversions =
     oBaseConversions ++ Seq(
       logProbsUnsupported,
+      logitBiasUnsupported,
+      stopUnsupportedOnNewerOSeries,
       reasoningEffortNoneToLow,
       reasoningEffortMinimalToLow,
       reasoningEffortMaxToXHigh
@@ -541,6 +570,8 @@ object ChatCompletionSettingsConversions {
       presencePenaltyZeroOnly,
       frequencyPenaltyZeroOnly,
       logProbsUnsupported,
+      stopUnsupported,
+      logitBiasUnsupported,
       reasoningEffortNoneToMinimal,
       reasoningEffortXHighToHigh,
       reasoningEffortMaxToHigh
@@ -558,6 +589,8 @@ object ChatCompletionSettingsConversions {
       presencePenaltyUnsupported,
       frequencyPenaltyUnsupported,
       logProbsUnsupported,
+      stopUnsupported,
+      logitBiasUnsupported,
       reasoningEffortUnsupported,
       verbosityMediumOnly
     )
@@ -574,6 +607,8 @@ object ChatCompletionSettingsConversions {
       logProbsUnsupportedWithReasoning,
       presencePenaltyZeroOnlyWithReasoning,
       frequencyPenaltyZeroOnlyWithReasoning,
+      stopUnsupported,
+      logitBiasUnsupported,
       reasoningEffortMinimalToLow,
       reasoningEffortXHighToHigh,
       reasoningEffortMaxToHigh
@@ -589,6 +624,8 @@ object ChatCompletionSettingsConversions {
       logProbsUnsupportedWithReasoning,
       presencePenaltyZeroOnlyWithReasoning,
       frequencyPenaltyZeroOnlyWithReasoning,
+      stopUnsupported,
+      logitBiasUnsupported,
       reasoningEffortMinimalToLow,
       reasoningEffortMaxToXHigh
     )
@@ -601,7 +638,9 @@ object ChatCompletionSettingsConversions {
       topPOneOnly,
       presencePenaltyZeroOnly,
       frequencyPenaltyZeroOnly,
-      logProbsUnsupported
+      logProbsUnsupported,
+      stopUnsupported,
+      logitBiasUnsupported
     )
   )
 
@@ -617,6 +656,8 @@ object ChatCompletionSettingsConversions {
       frequencyPenaltyZeroOnlyWithReasoning,
       logProbsUnsupportedWithReasoning,
       logProbsUnsupportedOnForbiddenSnapshots,
+      stopUnsupported,
+      logitBiasUnsupported,
       reasoningEffortMinimalToLow,
       reasoningEffortMaxToXHigh
     )
@@ -631,6 +672,8 @@ object ChatCompletionSettingsConversions {
       presencePenaltyZeroOnly,
       frequencyPenaltyZeroOnly,
       logProbsUnsupported,
+      stopUnsupported,
+      logitBiasUnsupported,
       reasoningEffortMinimalToLow,
       reasoningEffortMaxToXHigh
     )
@@ -649,6 +692,8 @@ object ChatCompletionSettingsConversions {
       presencePenaltyZeroOnly,
       frequencyPenaltyZeroOnly,
       logProbsUnsupported,
+      stopUnsupported,
+      logitBiasUnsupported,
       reasoningEffortMaxToXHigh,
       reasoningEffortMinimalToLow
     )
@@ -670,6 +715,8 @@ object ChatCompletionSettingsConversions {
       presencePenaltyZeroOnly,
       frequencyPenaltyZeroOnly,
       logProbsUnsupported,
+      stopUnsupported,
+      logitBiasUnsupported,
       reasoningEffortMaxToXHigh,
       reasoningEffortMinimalToLow,
       reasoningEffortNoneToLow
@@ -742,6 +789,8 @@ object ChatCompletionSettingsConversions {
       presencePenaltyZeroOnly,
       frequencyPenaltyZeroOnly,
       logProbsUnsupported,
+      stopUnsupported,
+      logitBiasUnsupported,
       reasoningEffortMediumOnly
     )
   )

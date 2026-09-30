@@ -249,6 +249,82 @@ class ModelConversionsRoutingSpec extends AnyWordSpec with Matchers {
     }
   }
 
+  "stop / logit_bias" should {
+
+    // (stop sent, logit_bias sent) - measured 2026-09-30 on the chat completions API with and
+    // without reasoning_effort ('none' included), Bedrock's OpenAI models for the ids below
+    def sent(
+      model: String,
+      effort: Option[ReasoningEffort]
+    ): (Boolean, Boolean) = {
+      val body = maker.body(
+        CreateChatCompletionSettings(
+          model,
+          stop = Seq("zzqq"),
+          logit_bias = Map("1734" -> -100),
+          reasoning_effort = effort
+        )
+      )
+      (body.contains("stop"), body.contains("logit_bias"))
+    }
+
+    "be dropped on every GPT-5.x / GPT-6 model, chat-latest, the search model, o3 and o4-mini" in {
+      Seq(
+        "chat-latest",
+        ModelId.gpt_5,
+        ModelId.gpt_5_mini,
+        ModelId.gpt_5_nano,
+        ModelId.gpt_5_search_api,
+        "gpt-5-search-api-2025-10-14",
+        ModelId.gpt_5_1,
+        ModelId.gpt_5_2,
+        ModelId.gpt_5_4,
+        "gpt-5.4-2026-03-05",
+        ModelId.gpt_5_4_mini,
+        ModelId.gpt_5_4_nano,
+        ModelId.gpt_5_5,
+        "gpt-5.6-luna",
+        "gpt-5.6-terra",
+        "gpt-5.6-sol",
+        "gpt-6-luna",
+        "gpt-6-sol",
+        "gpt-6-astra",
+        ModelId.gpt_6_1_sol,
+        "global.openai.gpt-6.1-sol",
+        "global.openai.gpt-6-astra",
+        "us.openai.gpt-5.6-sol",
+        "o3",
+        "o3-2025-04-16",
+        "o4-mini"
+      ).foreach { model =>
+        withClue(model) {
+          sent(model, None) shouldBe ((false, false))
+          sent(model, Some(ReasoningEffort.none)) shouldBe ((false, false))
+          sent(model, Some(ReasoningEffort.low)) shouldBe ((false, false))
+        }
+      }
+    }
+
+    "keep stop on o1 / o3-mini (logit_bias dropped) and both on the non-reasoning models" in {
+      Seq("o1", "o1-2024-12-17", "o3-mini", "o3-mini-2025-01-31").foreach { model =>
+        withClue(model) {
+          sent(model, None) shouldBe ((true, false))
+          sent(model, Some(ReasoningEffort.low)) shouldBe ((true, false))
+        }
+      }
+      Seq(
+        "gpt-3.5-turbo",
+        "gpt-4",
+        "gpt-4o",
+        "gpt-4o-mini",
+        "gpt-4.1",
+        "gpt-4.1-nano"
+      ).foreach { model =>
+        withClue(model)(sent(model, None) shouldBe ((true, true)))
+      }
+    }
+  }
+
   "gpt-5-search-api" should {
 
     "drop what it rejects even at the default values, and keep the rest" in {

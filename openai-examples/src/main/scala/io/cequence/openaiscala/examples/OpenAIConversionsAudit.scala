@@ -19,8 +19,9 @@ import scala.util.{Success, Try}
 /**
  * Audits the per-model parameter conversions (`ChatCompletionSettingsConversions` and the
  * routing in `ChatCompletionBodyMaker`) against the live chat completions API: for every model
- * and every "hostile" settings case (sampling params, `max_tokens`, every `reasoning_effort`,
- * tools, verbosity, JSON schema, system / developer messages) it records
+ * and every "hostile" settings case (sampling params, `max_tokens`, `stop`, `logit_bias`,
+ * every `reasoning_effort`, tools, verbosity, JSON schema, system / developer messages) it
+ * records
  *
  *   - the body the client builds AFTER its conversions (`sent`), and
  *   - whether the real client call succeeds (`ok` / the error).
@@ -31,7 +32,7 @@ import scala.util.{Success, Try}
  *
  * Run: `OpenAIConversionsAudit out.jsonl gpt-5.4 gpt-5.5 o3 ...` (needs
  * `OPENAI_SCALA_CLIENT_API_KEY`; every call is a few tokens; `AUDIT_PARALLELISM` caps the
- * concurrent calls, default 8).
+ * concurrent calls, default 8; `AUDIT_CASES` - comma-separated case names - runs only those).
  */
 object OpenAIConversionsAudit {
 
@@ -82,6 +83,23 @@ object OpenAIConversionsAudit {
       ("presence_0.5", user, base.copy(presence_penalty = Some(0.5)), false),
       ("frequency_0.5", user, base.copy(frequency_penalty = Some(0.5)), false),
       ("logprobs", user, base.copy(logprobs = Some(true)), false),
+      ("stop", user, base.copy(stop = Seq("zzqq")), false),
+      (
+        "stop+re_low",
+        user,
+        base.copy(stop = Seq("zzqq"), reasoning_effort = Some(ReasoningEffort.low)),
+        false
+      ),
+      ("logit_bias", user, base.copy(logit_bias = Map("1734" -> -100)), false),
+      (
+        "logit_bias+re_low",
+        user,
+        base.copy(
+          logit_bias = Map("1734" -> -100),
+          reasoning_effort = Some(ReasoningEffort.low)
+        ),
+        false
+      ),
       ("re_none", user, effort(ReasoningEffort.none), false),
       ("re_minimal", user, effort(ReasoningEffort.minimal), false),
       ("re_low", user, effort(ReasoningEffort.low), false),
@@ -152,7 +170,10 @@ object OpenAIConversionsAudit {
 
     // bounded parallelism (the API rate-limits bursts; a 429 would read as a missing conversion)
     val parallelism = sys.env.get("AUDIT_PARALLELISM").map(_.toInt).getOrElse(8)
-    val allCases = models.flatMap(model => cases(model).map(model -> _))
+    val onlyCases = sys.env.get("AUDIT_CASES").map(_.split(",").map(_.trim).toSet)
+    val allCases = models.flatMap(model =>
+      cases(model).filter(c => onlyCases.forall(_.contains(c._1))).map(model -> _)
+    )
 
     val all = Source(allCases.toList)
       .mapAsyncUnordered(parallelism) { case (model, (name, messages, settings, withTools)) =>

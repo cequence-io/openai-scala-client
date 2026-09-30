@@ -245,6 +245,13 @@ Responses service in the Perplexity module behind the core `OpenAIResponsesChatC
   effort go through the Responses API on the full service (chat completions rejects the combination), while `none` is
   kept; GPT-5.4 `logprobs` kept without reasoning except on the two dated snapshots that 403 it; tool calls on
   `gpt-5-search-api` (which supports none) fail fast with a clear error.
+- **`stop` / `logit_bias` dropped where OpenAI rejects them** (measured 2026-09-30 on 37 chat models, raw and through the
+  client): every GPT-5.x and GPT-6 model (with any `reasoning_effort`, `none` included), `chat-latest` and
+  `gpt-5-search-api` reject both ("Unsupported parameter"), the o-series rejects `logit_bias` and - except `o1` /
+  `o3-mini` - `stop`; they are now dropped with a warning instead of failing the call. Bedrock's OpenAI models reject
+  `stop` too and accept `logit_bias` but ignore it (a +100 bias changes nothing), so it is dropped there as well. The
+  non-reasoning models (gpt-3.5 / 4 / 4o / 4.1) keep both. `OpenAIConversionsAudit` gained the cases and an
+  `AUDIT_CASES` filter.
 - **Gemini thinking** re-measured per model (`GeminiThinkingAudit`): the rolling aliases (`gemini-flash-latest` etc.) and
   `nano-banana-pro*` now get thinking levels (reasoning_effort was dropped for them), the 3.1 Flash image models get only
   MINIMAL / HIGH, `gemini-2.5-flash-image` gets no thinking config.
