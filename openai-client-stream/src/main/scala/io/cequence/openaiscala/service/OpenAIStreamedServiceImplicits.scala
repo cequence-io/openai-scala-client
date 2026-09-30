@@ -182,10 +182,7 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
   }
 
   /**
-   * Chat-completion-shaped access to the Responses API on a streamed OpenAI service: the same
-   * messages + `CreateChatCompletionSettings` inputs as `createChatToolCompletionStreamed`,
-   * served by `createModelResponseStreamed` and rendered as [[ChatChunk]]s - the OpenAI
-   * counterpart of what the Anthropic / Gemini `asOpenAI()` adapters expose natively.
+   * The OpenAI Agents API (beta) as a chat-completion service on a streamed OpenAI service.
    */
   implicit class AgentsChatCompletionStreamExt(service: OpenAIStreamedService) {
 
@@ -215,6 +212,12 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
       )
   }
 
+  /**
+   * Chat-completion-shaped access to the Responses API on a streamed OpenAI service: the same
+   * messages + `CreateChatCompletionSettings` inputs as `createChatToolCompletionStreamed`,
+   * served by `createModelResponseStreamed` and rendered as [[ChatChunk]]s - the OpenAI
+   * counterpart of what the Anthropic / Gemini `asOpenAI()` adapters expose natively.
+   */
   implicit class ResponsesChatCompletionStreamExt(service: OpenAIStreamedService) {
 
     /** A chat-completion-shaped (sync + typed streamed) view served by the Responses API. */

@@ -4,7 +4,10 @@ import akka.actor.ActorSystem
 import akka.stream.Materializer
 import akka.stream.scaladsl.Sink
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
-import io.cequence.openaiscala.OpenAIScalaClientException
+import io.cequence.openaiscala.{
+  OpenAIScalaClientException,
+  OpenAIScalaEngineOverloadedException
+}
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.domain.response.ChatChunk.FinishReason
@@ -20,9 +23,12 @@ import io.cequence.openaiscala.domain.{
   AssistantToolMessage,
   BaseMessage,
   ChatCompletionTool,
+  ChatRole,
+  FileContent,
   FunctionCallSpec,
   ImageURLContent,
   JsonSchema,
+  MessageSpec,
   SystemMessage,
   TextContent,
   ToolMessage,
@@ -84,6 +90,16 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
 
   @volatile private var requests: Vector[(String, String, Option[JsValue])] = Vector.empty
   @volatile private var failNextSubscription = false
+  // the stream the next session create answers with, instead of a recorded one
+  @volatile private var nextSessionStream: Option[String] = None
+
+  private def sseEvents(sse: String): Seq[String] =
+    sse.split("\n\n").toSeq.filter(_.trim.nonEmpty)
+  private def sseData(event: String): JsValue =
+    Json.parse(event.split("\n").find(_.startsWith("data:")).get.drop(5))
+  private def sseEvent(json: JsObject): String =
+    s"event: ${(json \ "type").as[String]}\ndata: ${Json.stringify(json)}"
+  private def sse(events: Seq[String]): String = events.mkString("", "\n\n", "\n\n")
 
   private val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
   private val engine = StreamedEngineRegistry.outputStreamed(TransportSettings())
@@ -126,7 +142,9 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
           val withTools = body.exists(b => (b \ "agent" \ "tools").isDefined)
           (method, path) match {
             case ("POST", "/agents/sessions") =>
-              respond(201, "text/event-stream", if (withTools) toolPause else plainTurn)
+              val stream = nextSessionStream.getOrElse(if (withTools) toolPause else plainTurn)
+              nextSessionStream = None
+              respond(201, "text/event-stream", stream)
             case ("GET", p) if p.endsWith("/events") && failNextSubscription =>
               failNextSubscription = false
               respond(
@@ -256,6 +274,31 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
     }
   }
 
+  "a MessageSpec history" should {
+
+    "be folded by role - developer ones as the instructions" in {
+      val before = requests.size
+      await(
+        adapter.createChatCompletion(
+          Seq(
+            MessageSpec(ChatRole.Developer, "Be brief."),
+            MessageSpec(ChatRole.User, "When is the meeting?"),
+            MessageSpec(ChatRole.Assistant, "At 3pm"),
+            UserMessage("Move it to 4")
+          ),
+          CreateChatCompletionSettings("gpt-6-luna")
+        )
+      )
+      val create = requests.drop(before).find(_._2 == "/agents/sessions").get._3.get
+      (create \ "agent" \ "instructions").as[String] shouldBe "Be brief."
+      (create \ "input" \ 0 \ "content")
+        .as[Seq[JsObject]]
+        .map(c => (c \ "text").as[String]) shouldBe
+        Seq("User: When is the meeting?", "Assistant: At 3pm", "User: Move it to 4")
+      awaitDeleted(sessionIdOf(plainTurn), before)
+    }
+  }
+
   "structured output" should {
 
     "send a json_schema as the agent's text format, its objects closed" in {
@@ -296,6 +339,114 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
         ),
         "verbosity" -> "low"
       )
+      awaitDeleted(sessionIdOf(plainTurn), before)
+    }
+
+    "close every object whatever strict says - the map form too" in {
+      def sentSchema(schemaDef: JsonSchemaDef): JsValue = {
+        val before = requests.size
+        await(
+          adapter.createChatCompletion(
+            Seq(UserMessage("Capital of Norway?")),
+            CreateChatCompletionSettings(
+              "gpt-6-luna",
+              response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
+              jsonSchema = Some(schemaDef)
+            )
+          )
+        )
+        awaitDeleted(sessionIdOf(plainTurn), before)
+        val create = requests.drop(before).find(_._2 == "/agents/sessions").get._3.get
+        (create \ "agent" \ "text" \ "format" \ "schema").as[JsValue]
+      }
+
+      val open = sentSchema(
+        JsonSchemaDef(
+          name = "capital",
+          strict = false,
+          structure = Left(
+            JsonSchema.Object(
+              properties = Seq("capital" -> JsonSchema.String()),
+              required = Seq("capital"),
+              additionalProperties = Some(true)
+            )
+          )
+        )
+      )
+      (open \ "additionalProperties").as[Boolean] shouldBe false
+
+      val mapForm = sentSchema(
+        JsonSchemaDef(
+          name = "capital",
+          strict = true,
+          structure = Right(
+            Map(
+              "type" -> "object",
+              "properties" -> Map("capital" -> Map("type" -> "string")),
+              "required" -> Seq("capital")
+            )
+          )
+        )
+      )
+      (mapForm \ "additionalProperties").as[Boolean] shouldBe false
+      (mapForm \ "properties" \ "capital" \ "type").as[String] shouldBe "string"
+    }
+  }
+
+  "the session events" should {
+
+    "turn a reasoning summary replayed without deltas into thinking" in {
+      val events = sseEvents(plainTurn)
+      val turnId = events.map(sseData).flatMap(e => (e \ "turn_id").asOpt[String]).head
+      val summaryDone = sseEvent(
+        Json.obj(
+          "type" -> "agent.session.turn.reasoning_summary_text.done",
+          "event_id" -> "evt_rs",
+          "session_id" -> sessionIdOf(plainTurn),
+          "turn_id" -> turnId,
+          "item_id" -> "rs_1",
+          "output_index" -> 0,
+          "summary_index" -> 0,
+          "text" -> "Thinking it over."
+        )
+      )
+      nextSessionStream = Some(sse(events.take(2) ++ Seq(summaryDone) ++ events.drop(2)))
+
+      val before = requests.size
+      val chunks = await(
+        adapter
+          .createChatCompletionStreamedTyped(
+            Seq(UserMessage("Say hi in two words.")),
+            CreateChatCompletionSettings("gpt-6-luna")
+          )
+          .runWith(Sink.seq)
+      )
+      chunks.collect { case ChatChunk.Thinking(t) => t } shouldBe Seq("Thinking it over.")
+      chunks.collect { case ChatChunk.Text(t) => t }.mkString shouldBe "Hi there!"
+      awaitDeleted(sessionIdOf(plainTurn), before)
+    }
+
+    "fail on an error event classified by its code - a transient one retryable" in {
+      val error = sseEvent(
+        Json.obj(
+          "type" -> "error",
+          "event_id" -> "evt_err",
+          "session_id" -> sessionIdOf(plainTurn),
+          "error" -> Json.obj("message" -> "Overloaded", "code" -> "server_overloaded")
+        )
+      )
+      nextSessionStream = Some(sse(sseEvents(plainTurn).take(1) :+ error))
+
+      val before = requests.size
+      intercept[OpenAIScalaEngineOverloadedException](
+        await(
+          adapter.createChatCompletion(
+            Seq(UserMessage("Say hi.")),
+            CreateChatCompletionSettings("gpt-6-luna")
+          )
+        )
+      ).getMessage should include("Overloaded")
+      // the failed turn's session is cancelled, then deleted
       awaitDeleted(sessionIdOf(plainTurn), before)
     }
   }
@@ -386,6 +537,63 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
         Seq(Json.obj("type" -> "agent.session.input.cancel"))
     }
 
+    "register a pause before its Finish goes out - a resume right after one finds it" in {
+      val before = requests.size
+      val (callId, _) = pendingCall
+      await(
+        adapter
+          .createChatToolCompletionStreamed(
+            weatherQuestion,
+            Seq(weather),
+            None,
+            CreateChatCompletionSettings("gpt-6-luna")
+          )
+          .takeWhile(chunk => !chunk.isInstanceOf[ChatChunk.Finish], inclusive = true)
+          .runWith(Sink.seq)
+      ).last shouldBe a[ChatChunk.Finish]
+
+      // resumed at once: the paused session, not a new one
+      await(
+        adapter.createChatToolCompletion(
+          weatherQuestion ++ Seq(
+            AssistantToolMessage(tool_calls =
+              Seq((callId, FunctionCallSpec("get_weather", """{"city":"Paris"}""")))
+            ),
+            ToolMessage(Some("Sunny, 22 C"), callId, "get_weather")
+          ),
+          Seq(weather),
+          settings = CreateChatCompletionSettings("gpt-6-luna")
+        )
+      ).choices.head.message.content shouldBe Some("It’s sunny in Paris, 22°C.")
+      requests.drop(before).count(_._2 == "/agents/sessions") shouldBe 1
+      awaitDeleted(toolSessionId, before)
+    }
+
+    "close only after the DELETE of a turn whose consumer stopped at its Finish" in {
+      val ownService = OpenAIServiceFactory.withStreaming.customEngineInstance(
+        engine,
+        coreUrl,
+        WsRequestContext(authHeaders = Seq("Authorization" -> "Bearer k"))
+      )
+      val ownAdapter = ownService.agentsAsChatCompletion()
+      val before = requests.size
+      await(
+        ownAdapter
+          .createChatCompletionStreamedTyped(
+            Seq(UserMessage("Say hi in two words.")),
+            CreateChatCompletionSettings("gpt-6-luna")
+          )
+          .takeWhile(chunk => !chunk.isInstanceOf[ChatChunk.Finish], inclusive = true)
+          .runWith(Sink.seq)
+      ).last shouldBe a[ChatChunk.Finish]
+
+      ownAdapter.close()
+      // no waiting: close() returns only after the session's DELETE
+      requests
+        .drop(before)
+        .exists(r => r._1 == "DELETE" && r._2.endsWith(sessionIdOf(plainTurn))) shouldBe true
+    }
+
     "keep a session paused when its resume failed before posting the results" in {
       val paused = await(
         adapter.createChatToolCompletion(
@@ -449,7 +657,19 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
         () =>
           service
             .agentsAsChatCompletion(agentId = Some("agent_1"))
-            .createChatToolCompletion(weatherQuestion, Seq(weather), settings = settings)
+            .createChatToolCompletion(weatherQuestion, Seq(weather), settings = settings),
+        () =>
+          adapter.createChatCompletion(
+            Seq(
+              UserSeqMessage(
+                Seq(
+                  TextContent("Summarize the attached"),
+                  FileContent(fileId = Some("file-1"))
+                )
+              )
+            ),
+            settings
+          )
       ).foreach(call => intercept[OpenAIScalaClientException](await(call())))
       requests.size shouldBe before
     }

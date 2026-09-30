@@ -10,6 +10,7 @@ import io.cequence.openaiscala.domain.agents.AgentSessionEvent.{
   OutputTextDelta,
   OutputTextDone,
   ReasoningSummaryTextDelta,
+  ReasoningSummaryTextDone,
   SessionUpdated,
   TurnCancelled,
   TurnCompleted,
@@ -46,6 +47,7 @@ import io.cequence.openaiscala.domain.{
 import io.cequence.openaiscala.service.{
   ChatChunks,
   OpenAIAgentsService,
+  OpenAIChatCompletionExtra,
   OpenAIChatCompletionService,
   OpenAIChatCompletionStreamedServiceExtra,
   OpenAIStreamedServiceExtra
@@ -138,6 +140,9 @@ final class OpenAIAgentsChatCompletionService(
   // the sessions paused on client function calls, by session id
   private val pausedSessions = TrieMap.empty[String, PausedSession]
 
+  // session cleanups (DELETE, cancel + DELETE) still running - close() waits for them
+  private val cleanupsInFlight = TrieMap.empty[Future[Unit], Unit]
+
   override def createChatCompletion(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
@@ -214,10 +219,14 @@ final class OpenAIAgentsChatCompletionService(
       case Success(Right(create)) => startTurn(create)
     }
 
-  /** Cancels and deletes the sessions paused on client function calls, then the service. */
+  /**
+   * Cancels and deletes the sessions paused on client function calls, waits (up to 30 s) for
+   * every session cleanup still running - e.g. the DELETE of a turn whose consumer stopped
+   * reading at its `Finish` - then closes the service.
+   */
   override def close(): Unit = {
-    val cleanups = pausedSessions.keys.toSeq.map(id => cancelAndDelete(id))
-    Try(Await.ready(Future.sequence(cleanups), 30.seconds))
+    pausedSessions.keys.toSeq.foreach(cancelAndDelete)
+    Try(Await.ready(Future.sequence(cleanupsInFlight.keys.toSeq), 30.seconds))
     pausedSessions.clear()
     underlying.close()
   }
@@ -269,8 +278,8 @@ final class OpenAIAgentsChatCompletionService(
 
     val (systemMessages, conversation) = messages.partition {
       case _: SystemMessage | _: DeveloperMessage => true
-      case MessageSpec(role, _, _)                => role.toString == "system"
-      case _                                      => false
+      case MessageSpec(role, _, _) => Set("system", "developer").contains(role.toString)
+      case _                       => false
     }
     val systemTexts = systemMessages.collect {
       case SystemMessage(content, _)    => content
@@ -332,16 +341,18 @@ final class OpenAIAgentsChatCompletionService(
             )
           )
             settings.jsonSchema.map { schemaDef =>
-              // the Agents API validates every schema as strict (closed objects - live 2026-09-30)
+              // the Agents API validates every schema as strict (closed objects - live
+              // 2026-09-30), whatever `strict` says: every object is closed, the map form too
               val schema = schemaDef.structure match {
                 case Left(jsonSchema) =>
                   Json.toJson(
-                    JsonSchema.setAdditionalPropertiesToFalse(
-                      jsonSchema,
-                      overrideExisting = schemaDef.strict
-                    )
+                    JsonSchema
+                      .setAdditionalPropertiesToFalse(jsonSchema, overrideExisting = true)
                   )
-                case Right(map) => JsonUtil.StringAnyMapFormat.writes(map)
+                case Right(map) =>
+                  JsonUtil.StringAnyMapFormat.writes(
+                    OpenAIChatCompletionExtra.toStrictSchema(Right(map))
+                  )
               }
               Json.obj("type" -> "json_schema", "schema" -> schema)
             }
@@ -431,12 +442,23 @@ final class OpenAIAgentsChatCompletionService(
           case UserMessage(content, _) =>
             Seq(AgentInputContent.Text(label("User") + content))
           case UserSeqMessage(contents, _) =>
-            (if (lone) Nil else Seq(AgentInputContent.Text("User:"))) ++ contents.collect {
+            (if (lone) Nil else Seq(AgentInputContent.Text("User:"))) ++ contents.map {
               case TextContent(text)    => AgentInputContent.Text(text): AgentInputContent
               case ImageURLContent(url) => AgentInputContent.Image(url): AgentInputContent
+              case other =>
+                throw new OpenAIScalaClientException(
+                  s"${other.getClass.getSimpleName} is not supported by the Agents API chat adapter - a message carries text and images only."
+                )
             }
-          case MessageSpec(_, content, _) =>
-            Seq(AgentInputContent.Text(label("User") + content))
+          // the deprecated generic message, labeled by its role (system / developer ones are
+          // the instructions)
+          case MessageSpec(role, content, _) =>
+            val text = role.toString match {
+              case "assistant"         => s"Assistant: $content"
+              case "tool" | "function" => s"Tool result: $content"
+              case _                   => label("User") + content
+            }
+            Seq(AgentInputContent.Text(text))
           case AssistantMessage(content, _, _) =>
             Seq(AgentInputContent.Text(s"Assistant: $content"))
           case AssistantToolMessage(content, _, toolCalls) =>
@@ -466,13 +488,13 @@ final class OpenAIAgentsChatCompletionService(
       val state = new TurnState(create.model, None, Set.empty, Set.empty, 0)
       underlying
         .createAgentSessionStreamed(create.settings, create.input)
-        .via(turnFlow(state, resumedFrom = None, posted = Future.successful(())))
+        .via(turnFlow(state, resumedFrom = None, posted = noPost))
         .watchTermination() {
           (
             _,
             done
           ) =>
-            done.onComplete(_ => settleOnTermination(state, resumedFrom = None))
+            done.onComplete(_ => settleOnTermination(state, resumedFrom = None, noPost))
             NotUsed
         }
     }.mapMaterializedValue(_ => NotUsed)
@@ -531,55 +553,67 @@ final class OpenAIAgentsChatCompletionService(
             done.onComplete { _ =>
               live.trySuccess(false)
               // an in-flight POST decides whether the session is still paused
-              posted.onComplete(_ => settleOnTermination(state, resumedFrom = Some(paused)))
+              posted.onComplete(_ =>
+                settleOnTermination(state, resumedFrom = Some(paused), posted)
+              )
             }
             NotUsed
         }
     }.mapMaterializedValue(_ => NotUsed)
 
-  // at the turn's end, BEFORE the stream completes (a caller acting on the result - a resume,
-  // close() - cannot overtake it): keeps a session paused on client calls, deletes the rest (a
-  // turn that ended cancelled is cancelled first - it may still be winding down)
+  private val noPost = Future.successful(())
+
+  // at the turn's end marker - synchronously, BEFORE the turn's final chunks go out, so neither
+  // a resume nor close() issued by a caller who has seen them can overtake it: a session paused
+  // on client calls is registered at once; a finished one is deleted (a turn that ended
+  // cancelled is cancelled first - it may still be winding down), after a resume's POST outcome
+  // is known (the DELETE must not overtake the results) and tracked for close(). The stream
+  // completes only once this settlement has.
   private def finishTurn(
     state: TurnState,
-    resumedFrom: Option[PausedSession]
-  ): Future[Unit] =
-    state.sessionId match {
-      case Some(sessionId) if state.settled.compareAndSet(false, true) =>
-        if (state.pausedOn.nonEmpty) {
-          pausedSessions.put(
-            sessionId,
-            PausedSession(
+    resumedFrom: Option[PausedSession],
+    posted: Future[Unit]
+  ): Future[Unit] = {
+    if (state.settled.compareAndSet(false, true))
+      state.settlement.completeWith(
+        state.sessionId match {
+          case Some(sessionId) if state.pausedOn.nonEmpty =>
+            pausedSessions.put(
               sessionId,
-              state.model,
-              state.pausedOn,
-              state.reported.toSet,
-              state.nextIndex
+              PausedSession(
+                sessionId,
+                state.model,
+                state.pausedOn,
+                state.reported.toSet,
+                state.nextIndex
+              )
             )
-          )
-          Future.successful(())
-        } else {
-          resumedFrom.foreach(paused => pausedSessions.remove(sessionId, paused))
-          if (!deleteSessionsAfterUse) Future.successful(())
-          else if (state.idle)
-            underlying.deleteAgentSession(sessionId).map(_ => ()).recover { case e =>
-              logger.warn(s"Agents API chat adapter: could not delete session $sessionId: $e")
-            }
-          else cancelAndDelete(sessionId)
-        }
-      case _ => Future.successful(())
-    }
+            Future.successful(())
 
-  // once the stream has terminated: a turn that reached its end was settled in the stream (or
-  // is settled here, when the consumer cancelled right at the end); one that did not (failed,
-  // or the consumer cancelled) is cancelled and deleted - except a resume whose results were
-  // never posted: that session is still paused (still registered - resumable with the same
-  // results)
+          case Some(sessionId) =>
+            tracked(posted.transformWith { _ =>
+              resumedFrom.foreach(paused => pausedSessions.remove(sessionId, paused))
+              if (!deleteSessionsAfterUse) Future.successful(())
+              else if (state.idle) deleteSession(sessionId)
+              else cancelAndDelete(sessionId)
+            })
+
+          case None => Future.successful(())
+        }
+      )
+    state.settlement.future
+  }
+
+  // once the stream has terminated: a turn that reached its end was settled at its end marker
+  // (a no-op here); one that did not (failed, or the consumer cancelled) is cancelled and
+  // deleted - except a resume whose results were never posted: that session is still paused
+  // (still registered - resumable with the same results)
   private def settleOnTermination(
     state: TurnState,
-    resumedFrom: Option[PausedSession]
+    resumedFrom: Option[PausedSession],
+    posted: Future[Unit]
   ): Unit =
-    if (state.ended) finishTurn(state, resumedFrom)
+    if (state.ended) finishTurn(state, resumedFrom, posted)
     else
       state.sessionId.foreach { sessionId =>
         if (
@@ -590,20 +624,35 @@ final class OpenAIAgentsChatCompletionService(
         }
       }
 
-  private def cancelAndDelete(sessionId: String): Future[Unit] =
-    underlying
-      .sendAgentSessionEvents(sessionId, Seq(AgentSessionInput.Cancel))
-      .recover { case _ => () }
-      .flatMap(_ => underlying.deleteAgentSession(sessionId))
-      .map(_ => ())
-      .recover { case e =>
+  private def deleteSession(sessionId: String): Future[Unit] =
+    tracked(
+      underlying.deleteAgentSession(sessionId).map(_ => ()).recover { case e =>
         logger.warn(s"Agents API chat adapter: could not delete session $sessionId: $e")
       }
+    )
 
-  // ends the turn's chunks at its end marker, settling the session before completing - a
-  // resume once its POST's outcome is known (its DELETE must not overtake the results); an
-  // event stream that completes before the end fails (a sentinel after the upstream - `concat`
-  // demands its second source eagerly, so a lazy check there would run up front)
+  private def cancelAndDelete(sessionId: String): Future[Unit] =
+    tracked(
+      underlying
+        .sendAgentSessionEvents(sessionId, Seq(AgentSessionInput.Cancel))
+        .recover { case _ => () }
+        .flatMap(_ => underlying.deleteAgentSession(sessionId))
+        .map(_ => ())
+        .recover { case e =>
+          logger.warn(s"Agents API chat adapter: could not delete session $sessionId: $e")
+        }
+    )
+
+  private def tracked(cleanup: Future[Unit]): Future[Unit] = {
+    cleanupsInFlight.put(cleanup, ())
+    cleanup.onComplete(_ => cleanupsInFlight.remove(cleanup))
+    cleanup
+  }
+
+  // ends the turn's chunks at its end marker, where the session is settled (see finishTurn) -
+  // the stream completes once that has; an event stream that completes before the end fails
+  // (a sentinel after the upstream - `concat` demands its second source eagerly, so a lazy
+  // check there would run up front)
   private def turnFlow(
     state: TurnState,
     resumedFrom: Option[PausedSession],
@@ -613,7 +662,10 @@ final class OpenAIAgentsChatCompletionService(
       .map(Option(_))
       .concat(Source.single(None))
       .mapConcat {
-        case Some(event) => state.onEvent(event)
+        case Some(event) =>
+          val chunks = state.onEvent(event)
+          if (state.ended) finishTurn(state, resumedFrom, posted)
+          chunks
         case None =>
           if (state.ended) Nil
           else
@@ -624,10 +676,7 @@ final class OpenAIAgentsChatCompletionService(
       .takeWhile(_.isLeft, inclusive = true)
       .mapAsync(1) {
         case Left(chunk) => Future.successful(Option(chunk))
-        case Right(_) =>
-          posted
-            .transformWith(_ => finishTurn(state, resumedFrom))
-            .map(_ => Option.empty[ChatChunk])
+        case Right(_)    => state.settlement.future.map(_ => Option.empty[ChatChunk])
       }
       .collect { case Some(chunk) => chunk }
 }
@@ -698,6 +747,7 @@ object OpenAIAgentsChatCompletionService {
     @volatile var idle = false // ended at the session idling after the turn
     @volatile var posted = false
     val settled = new AtomicBoolean(false)
+    val settlement: Promise[Unit] = Promise[Unit]()
     @volatile var pausedOn: Map[String, String] = Map.empty
     val reported: mutable.Set[String] = mutable.Set.empty ++ alreadyReported
     private var started = sessionId.isDefined // a resume emits its own Start
@@ -705,6 +755,7 @@ object OpenAIAgentsChatCompletionService {
     private var usage: Option[UsageInfo] = None
     private val phases = mutable.Map.empty[String, Option[String]]
     private val streamedText = mutable.Set.empty[String]
+    private val streamedSummaries = mutable.Set.empty[(String, Int)]
     private val toolIndex = mutable.Map.empty[String, Int]
     private val calledClient = mutable.Set.empty[String]
 
@@ -768,8 +819,16 @@ object OpenAIAgentsChatCompletionService {
             if fresh(Some(itemId)) && !streamedText.contains(itemId) =>
           streamedText += itemId
           textOf(itemId, text).map(Left(_)).toList
-        case ReasoningSummaryTextDelta(_, _, _, itemId, _, _, delta) if fresh(Some(itemId)) =>
+        case ReasoningSummaryTextDelta(_, _, _, itemId, _, summaryIndex, delta)
+            if fresh(Some(itemId)) =>
+          streamedSummaries += ((itemId, summaryIndex))
           List(Left(Thinking(delta)))
+        // a replayed summary part (no deltas) carries its whole text
+        case ReasoningSummaryTextDone(_, _, _, itemId, _, summaryIndex, text)
+            if fresh(Some(itemId)) && text.nonEmpty &&
+              !streamedSummaries.contains((itemId, summaryIndex)) =>
+          streamedSummaries += ((itemId, summaryIndex))
+          List(Left(Thinking(text)))
 
         // ---- the turn / session ----
         case turn: TurnUpdated if turn.eventType == TurnCompleted =>
@@ -817,7 +876,9 @@ object OpenAIAgentsChatCompletionService {
           )
 
         case error: AgentSessionEvent.Error =>
-          throw new OpenAIScalaClientException(s"Agents API session error: ${error.message}")
+          val code =
+            (error.error \ "code").asOpt[String].orElse((error.error \ "type").asOpt[String])
+          throw classifiedError(code, s"Agents API session error: ${error.message}")
 
         case AgentSessionEvent.Other(eventType, raw)
             if eventType.startsWith("agent.session.environment.") ||
@@ -933,10 +994,19 @@ object OpenAIAgentsChatCompletionService {
       }
   }
 
-  private def turnError(error: Option[AgentTurnError]): Throwable = {
-    val message =
+  private def turnError(error: Option[AgentTurnError]): Throwable =
+    classifiedError(
+      error.map(_.code),
       s"The agent turn failed: ${error.map(e => s"${e.code}: ${e.message}").getOrElse("(no detail)")}"
-    error.map(_.code) match {
+    )
+
+  // a failed turn or an error event, by the Agents API error code - so the retry adapters
+  // retry the transient ones
+  private def classifiedError(
+    code: Option[String],
+    message: String
+  ): Throwable =
+    code match {
       case Some("rate_limit_exceeded" | "usage_limit_exceeded" | "credit_balance_exhausted") =>
         new OpenAIScalaRateLimitException(message)
       case Some("server_overloaded" | "flex_unavailable") =>
@@ -952,5 +1022,4 @@ object OpenAIAgentsChatCompletionService {
         new OpenAIScalaServerErrorException(message)
       case _ => new OpenAIScalaClientException(message)
     }
-  }
 }
