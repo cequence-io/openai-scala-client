@@ -2,11 +2,12 @@
 
 ## 1.4.0 (2026-09-30)
 
-Since 1.3.0 (2026-09-18): GPT-6.1 Sol with the Fast / Ultrafast tiers and the Responses reasoning mode, the OpenAI Agents
-API and Responses multi-agent execution (both beta), human approval mid-stream, Perplexity's Agent API, classified
-streaming errors (ws-client 1.1.1), Claude Opus 5.5 / Sonnet 5.5, model conversions re-measured against the live APIs, and
-the retirement sweep of dead models and endpoints. Everything below is live-verified against the providers unless stated
-otherwise. 1.3.1 was never released - its changes are part of 1.4.0.
+36 commits since v1.3.0 (2026-09-18), 226 files, +35k lines: GPT-6.1 Sol with the Fast / Ultrafast tiers and the
+Responses reasoning mode, the OpenAI Agents API and Responses multi-agent execution (both beta), human approval
+mid-stream, Perplexity's Agent API, classified streaming errors (ws-client 1.1.1), Claude Opus 5.5 / Sonnet 5.5, model
+conversions re-measured against the live APIs, and the retirement sweep of dead models and endpoints. Everything below
+is live-verified against the providers unless stated otherwise. 1.3.1 was never released - its changes are part of
+1.4.0.
 
 Artifacts (Scala 2.12 / 2.13 / 3): `openai-scala-client`, `openai-scala-client-stream`, `openai-scala-anthropic-client`,
 `openai-scala-google-gemini-client`, `openai-scala-google-vertexai-client`, `openai-scala-perplexity-sonar-client`,
@@ -15,43 +16,27 @@ the envelope `openai-scala-all`.
 
 ### ⚠️ Upgrading from 1.3.x
 
-**Recompile.** 1.4.0 is not binary compatible with 1.3.0 - a library built against 1.3.0 must be rebuilt: case classes
-gained fields, three service traits gained abstract methods and a factory gained a parameter (found by comparing the
-public signatures of the published 1.3.0 jars with 1.4.0). No public class or method was removed. ws-client moves from
-1.0.0 to 1.1.1.
+**Recompile** - 1.4.0 is not binary compatible with 1.3.0 (case classes gained fields, service traits gained methods);
+nothing public was removed. ws-client moves from 1.0.0 to 1.1.1.
 
-**Source breaks** - narrow; code that builds settings, calls services and reads results compiles unchanged:
-- Positional pattern matching on case classes that gained a field (construction and named `copy` still compile - every
-  new field has a default): `ReasoningConfig` (`mode`, `context`), `CreateModelResponseSettings` (`multiAgent`),
-  `Message.OutputContent` (`agent`), `AssembledChatCompletion` (`toolApprovalRequests`).
-- `UsageInfo.tupled` / `UsageInfo.curried` are gone (Scala 2 - the companion gained `UsageInfo.sum`, so it is no longer a
-  `Function5`): use `(UsageInfo.apply _).tupled`.
-- Your own implementations of `OpenAIService` (it now includes `OpenAIAgentsService`), `OpenAIStreamedServiceExtra`
-  (`createAgentSessionStreamed`, `streamAgentSessionEvents`) or `SonarService` (the Agent API methods) must add the new
-  methods; the library's implementations and `OpenAIServiceWrapper` have them.
-- Exhaustive matches over sealed types meet new cases: `ChatChunk.ToolApprovalRequest`,
-  `FinishReason.approval_required`, `ServiceTier.priority` / `fast` / `ultrafast`, `ThinkingType.between_tools` /
-  `disabled`, and the gpt-image values of `ImageSizeType` / `ImageQualityType`.
+**Source breaks** - typical code (building settings, calling services, reading results) compiles unchanged:
+- positional pattern matches on `ReasoningConfig`, `CreateModelResponseSettings`, `Message.OutputContent` and
+  `AssembledChatCompletion` (new fields, all defaulted);
+- `UsageInfo.tupled` / `curried` are gone (Scala 2) - use `(UsageInfo.apply _).tupled`;
+- your own implementations of `OpenAIService`, `OpenAIStreamedServiceExtra` or `SonarService` need the new methods;
+- exhaustive matches meet new cases (`ChatChunk.ToolApprovalRequest`, `FinishReason.approval_required`, new
+  `ServiceTier`, `ThinkingType` and image size / quality values).
 
-**Behavior changes** - the same code, a different result (details in the sections below):
-- Errors: a streamed request answered with a non-2xx status fails the stream with a classified exception (the error body
-  used to arrive as stream data), and an in-band `{"error": ...}` frame is classified like its HTTP status - the retry
-  adapters now retry them; Vertex AI errors are classified by gRPC status; native `SonarService` calls fail with the new
-  `PerplexityScalaClientException` hierarchy (no longer `OpenAIScalaClientException`).
-- OpenAI requests: per-model conversions re-measured (reasoning-effort mappings, sampling / penalty / logprobs rules,
-  `stop` and `logit_bias` dropped with a warning where the API rejects them); on the full service, tool calls that keep
-  reasoning on GPT-5.4+ / GPT-6 go through the Responses API (GPT-6 Astra and 6.1 Sol always); tool calls on
-  `gpt-5-search-api` fail fast; the factories no longer send `OpenAI-Beta: assistants=v2` on every request.
-- Refusals instead of silent drops or unapproved runs: `setResponsesTools` wherever the Responses API cannot serve them,
-  and `MCPServerTool(requireApproval = true)` on Anthropic's MCP connector and Gemini.
-- Defaults: image generation / edits use `gpt-image-2`, web search `gpt-5-search-api`, speech `gpt-4o-mini-tts` and
-  transcription `gpt-transcribe` (the former defaults are shut down).
-- Model config: Gemini thinking set per model; `createChatCompletionWithJSON` stays in schema mode for more models; the
-  Anthropic max-output fallback resolves by the longest matching model id.
-- Results: the typed stream finishes as `tool_calls` whenever the turn streamed tool calls; Responses reads skip unknown
-  output items and read unknown reasoning values as absent; the TypeSafe adapter fills `<field>_confidence` fields (it
-  refused them).
-- Fixed: `createChatFunCompletion` (the deprecated legacy `functions` API) works again - see Changed.
+**Behavior changes** (details below):
+- streamed HTTP errors and in-band error frames fail classified (so the retry adapters retry them); Vertex AI errors are
+  classified by gRPC status; native Sonar calls fail with `PerplexityScalaClientException`;
+- per-model settings re-measured - the OpenAI conversions (now also dropping `stop` / `logit_bias` where rejected),
+  Gemini thinking, the JSON-schema model list; OpenAI tool calls that keep reasoning go through the Responses API; no
+  global `OpenAI-Beta: assistants=v2` header;
+- refusals instead of silent drops: `setResponsesTools` outside the Responses API, `MCPServerTool(requireApproval)` on
+  Anthropic and Gemini;
+- new default models for image generation, web search, speech and transcription (the old ones are shut down);
+- the typed stream finishes as `tool_calls` after tool calls; Responses reads are more lenient.
 
 ### New models
 
@@ -362,7 +347,7 @@ providers unless stated otherwise.
 
 Artifacts (Scala 2.12 / 2.13 / 3): `openai-scala-client`, `openai-scala-client-stream`,
 `openai-scala-anthropic-client`, `openai-scala-google-gemini-client`, `openai-scala-google-vertexai-client`,
-`openai-scala-perplexity-client`, `openai-scala-typesafe-client` (new), `openai-scala-claude-agent-client` (new),
+`openai-scala-perplexity-sonar-client`, `openai-scala-typesafe-client` (new), `openai-scala-claude-agent-client` (new),
 `openai-scala-count-tokens`, `openai-scala-guice`, and the new envelope `openai-scala-all`.
 
 ---
