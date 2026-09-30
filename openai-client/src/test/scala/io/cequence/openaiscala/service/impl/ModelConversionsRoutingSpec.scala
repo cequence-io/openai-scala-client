@@ -63,6 +63,7 @@ class ModelConversionsRoutingSpec extends AnyWordSpec with Matchers {
       gpt5Minor("gpt-5.6.2") shouldBe Some(6)
       gpt5Minor("gpt-5.12-mini") shouldBe Some(12)
       gpt5Minor("gpt-50") shouldBe None
+      gpt5Minor("gpt-5o") shouldBe Some(0)
       gpt5Minor("gpt-6-luna") shouldBe None
       gpt5Minor("gpt-4.1") shouldBe None
     }

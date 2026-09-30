@@ -34,18 +34,11 @@ object ChatCompletionSettingsConversions {
   def isGpt6Astra(model: String): Boolean =
     canonicalOpenAIModel(model).startsWith("gpt-6-astra")
 
-  // the minor, then anything after a '.' or '-' (`gpt-6-sol` is minor 0, `gpt-6.1-sol` 1)
-  private val gpt6VersionRegex = "^gpt-6(?:\\.(\\d+))?(?:[.-].*)?$".r
-
   /**
    * The minor version of a GPT-6 model id (`gpt-6-sol` -> 0, `gpt-6.1-sol` -> 1, Bedrock ids
    * canonicalized), or None for anything else.
    */
-  def gpt6Minor(model: String): Option[Int] =
-    canonicalOpenAIModel(model) match {
-      case gpt6VersionRegex(minor) => Some(Option(minor).map(_.toInt).getOrElse(0))
-      case _                       => None
-    }
+  def gpt6Minor(model: String): Option[Int] = minorVersion(gpt6VersionRegex, model)
 
   /**
    * The GPT-6 models whose reasoning is always on: GPT-6 Astra and GPT-6.1 (Sol - and, like
@@ -89,9 +82,21 @@ object ChatCompletionSettingsConversions {
   def chatToolsRejectExplicitReasoning(model: String): Boolean =
     gpt5Minor(model).exists(minor => minor == 4 || minor == 5)
 
-  // the minor, then anything after a '.' or '-' (so `gpt-5.4.1-mini` is minor 4, like the old
-  // `gpt-5.4` prefix match; `gpt-5.10` is minor 10, not 1)
-  private val gpt5VersionRegex = "^gpt-5(?:\\.(\\d+))?(?:[.-].*)?$".r
+  // `gpt-<major>`, the minor, an optional letter suffix (like 4o), then anything after a '.'
+  // or '-' (so `gpt-5.4.1-mini` is minor 4, like the old `gpt-5.4` prefix match; `gpt-5.10` is
+  // minor 10, not 1; `gpt-6-sol` is minor 0, `gpt-6.1-sol` 1; `gpt-60` is not GPT-6)
+  private def versionRegex(major: Int) = s"^gpt-$major(?:\\.(\\d+))?[a-z]*(?:[.-].*)?$$".r
+  private val gpt5VersionRegex = versionRegex(5)
+  private val gpt6VersionRegex = versionRegex(6)
+
+  private def minorVersion(
+    pattern: scala.util.matching.Regex,
+    model: String
+  ): Option[Int] =
+    canonicalOpenAIModel(model) match {
+      case pattern(minor) => Some(Option(minor).map(_.toInt).getOrElse(0))
+      case _              => None
+    }
 
   /**
    * The minor version of a GPT-5 model id (`gpt-5.4-mini` -> 4, `gpt-5-mini` -> 0, Bedrock ids
@@ -99,11 +104,7 @@ object ChatCompletionSettingsConversions {
    * than on string prefixes, so `gpt-5.10` is not mistaken for `gpt-5.1` and future minors get
    * the newest rules.
    */
-  def gpt5Minor(model: String): Option[Int] =
-    canonicalOpenAIModel(model) match {
-      case gpt5VersionRegex(minor) => Some(Option(minor).map(_.toInt).getOrElse(0))
-      case _                       => None
-    }
+  def gpt5Minor(model: String): Option[Int] = minorVersion(gpt5VersionRegex, model)
 
   /**
    * Whether this model rejects function tools on the chat completions API outright with no
@@ -751,8 +752,7 @@ object ChatCompletionSettingsConversions {
     model: String,
     effort: ReasoningEffort
   ): ReasoningEffort = {
-    val bare = canonicalOpenAIModel(model)
-    val gpt5_6OrGpt6 = gpt5Minor(model).exists(_ >= 6) || bare.startsWith("gpt-6")
+    val gpt5_6OrGpt6 = gpt5Minor(model).exists(_ >= 6) || gpt6Minor(model).isDefined
 
     effort match {
       case ReasoningEffort.minimal if gpt5_6OrGpt6 =>
@@ -776,7 +776,7 @@ object ChatCompletionSettingsConversions {
    * with reasoning models".
    */
   def responsesSamplingUnsupported(model: String): Boolean =
-    gpt5Minor(model).exists(_ >= 6) || canonicalOpenAIModel(model).startsWith("gpt-6")
+    gpt5Minor(model).exists(_ >= 6) || gpt6Minor(model).isDefined
 
   // 'chat-latest' is a rolling ChatGPT-style alias. Verified against the live API 2026-09-02:
   // max_tokens must be sent as max_completion_tokens; temperature/top_p/presence_penalty/

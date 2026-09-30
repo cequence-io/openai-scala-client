@@ -222,6 +222,21 @@ class ChatCompletionSettingsConversionsSpec extends AnyWordSpec with Matchers {
       gpt6Minor("gpt-6") shouldBe Some(0)
       gpt6Minor("gpt-60") shouldBe None
       gpt6Minor(ModelId.gpt_5_6_sol) shouldBe None
+      // a letter suffix (like 4o) is still GPT-6
+      gpt6Minor("gpt-6o") shouldBe Some(0)
+      gpt6Minor("gpt-6.1o-mini") shouldBe Some(1)
+    }
+
+    "detect GPT-6 the same way on the Responses side" in {
+      import ChatCompletionSettingsConversions._
+      responsesSamplingUnsupported("gpt-6o") shouldBe true
+      responsesSamplingUnsupported("global.openai.gpt-6-sol") shouldBe true
+      responsesSamplingUnsupported("gpt-60") shouldBe false
+      responsesReasoningEffort("gpt-6o", ReasoningEffort.minimal) shouldBe ReasoningEffort.low
+      responsesReasoningEffort(
+        "gpt-60",
+        ReasoningEffort.minimal
+      ) shouldBe ReasoningEffort.minimal
     }
 
     "give GPT-6.1 (and any newer minor) the always-reasoning Astra rules" in {
