@@ -8,7 +8,7 @@ This is **OpenAI Scala Client** - an async Scala client for OpenAI API and multi
 
 The library is designed to be self-contained with minimal dependencies and uses a Play WS backend for HTTP calls. It's published as `io.cequence:openai-scala-client` on Maven Central.
 
-**Versioning**: the release line is **1.4.0** (the build stays `1.4.0-SNAPSHOT` until the release commit sets `1.4.0`; 1.3.1 was never released). New `@deprecated` annotations use the upcoming release as their `since` value, and the top section of `CHANGELOG.md` is the release notes - it opens with the upgrade notes (API breaks and behavior changes against the previous release, found by comparing the published jars' public signatures with `javap`).
+**Versioning**: the latest release is **1.4.0** (Maven Central 2026-09-30, tag `v1.4.0`); the build is `1.4.1-SNAPSHOT`. If the changes since the last release are not binary compatible with it (new case-class fields, new abstract methods on the service traits, new factory parameters - compare the published jars' public signatures with `javap`), the next release is a minor one: 1.3.1-SNAPSHOT shipped as 1.4.0. New `@deprecated` annotations use the upcoming release as their `since` value. `CHANGELOG.md` has one section per release, newest on top, written when the release is prepared; it opens with the upgrade notes (API breaks and behavior changes against the previous release). The GitHub release (tag `vX.Y.Z` on the published commit) carries a shorter form of the same notes.
 
 ## Build & Test Commands
 
