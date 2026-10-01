@@ -1740,6 +1740,8 @@ answer carries it right after `is_urgent`.
 
 `TypeSafeChatMapping.toState(messages)` / `toQuestions(schema)` show what a call will send, and
 `examples/typesafe/TypeSafeOpenAIAdapterWalkthrough` prints the exact System One request an OpenAI-shaped call turns into.
+Questions are named by their property paths (`customer.is_angry`, a multi-select option as `topics.[payments]`, a `.` or
+`\` inside a name escaped with a backslash), and the answers in `originalResponse` carry the same names.
 Of the standard settings only `model`, `response_format_type`, `jsonSchema` and `n` = 1 are honoured; anything else you
 set (temperature, `max_tokens`, `seed`, `reasoning_effort`, ...) is dropped with one warning naming it, since System One
 does not sample. A free-form string in the schema, a plain (non-`json_schema`) request, `n > 1`, tools, streaming and

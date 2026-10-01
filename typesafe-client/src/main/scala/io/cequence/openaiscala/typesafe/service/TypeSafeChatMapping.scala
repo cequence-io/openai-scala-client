@@ -80,7 +80,13 @@ object TypeSafeChatMapping {
     }
   }
 
-  /** The `questions` the adapter sends for this schema. */
+  /**
+   * The `questions` the adapter sends for this schema, named by their paths:
+   * `customer.is_angry` is `is_angry` inside `customer`, `topics.[payments]` the option
+   * `payments` of the multi-select `topics`, and a `.` or `\` inside a property name or an
+   * option is escaped with a backslash (the property `a.b` is `a\.b`). The answers in
+   * `originalResponse` carry the same names.
+   */
   def toQuestions(schema: JsonSchemaDef): Map[String, Question] = plan(schema).questions
 
   // the adapter's own plan (it also needs the slots to assemble the answers); a schema System

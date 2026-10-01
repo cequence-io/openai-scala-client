@@ -204,6 +204,92 @@ class SchemaQuestionsSpec extends AnyWordSpec with Matchers {
     }
   }
 
+  "question names" should {
+
+    "keep a dotted property apart from the nested path it spells (issue #128)" in {
+      val plan = SchemaQuestions.plan(
+        Json.parse(
+          """{"type":"object","properties":{
+            |  "a.b":{"type":"boolean"},
+            |  "a.b_confidence":{"type":"number"},
+            |  "a":{"type":"object","properties":{"b":{"type":"boolean"}}}
+            |}}""".stripMargin
+        )
+      )
+      plan.questions.keySet shouldBe Set("a\\.b", "a.b")
+
+      // each field reads its own answer
+      val json = SchemaQuestions.assemble(
+        plan,
+        Map("a\\.b" -> NoulAnswer(0.9), "a.b" -> NoulAnswer(0.2)),
+        0.5
+      )
+      (json \ "a.b").as[Boolean] shouldBe true
+      (json \ "a.b_confidence").as[BigDecimal] shouldBe BigDecimal("0.9")
+      (json \ "a" \ "b").as[Boolean] shouldBe false
+    }
+
+    "escape the escape character too, and dots inside multi-select options" in {
+      val plan = SchemaQuestions.plan(
+        Json.parse(
+          """{"type":"object","properties":{
+            |  "a.b":{"type":"boolean"},
+            |  "a\\":{"type":"object","properties":{"b":{"type":"boolean"}}},
+            |  "tags":{"type":"array","items":{"type":"string","enum":["v1.0","v2.0"]}}
+            |}}""".stripMargin
+        )
+      )
+      // escaping only the dots would name both of the first two `a\.b`
+      plan.questions.keySet shouldBe Set("a\\.b", "a\\\\.b", "tags.[v1\\.0]", "tags.[v2\\.0]")
+
+      SchemaQuestions.assemble(
+        plan,
+        Map(
+          "a\\.b" -> NoulAnswer(0.1),
+          "a\\\\.b" -> NoulAnswer(0.9),
+          "tags.[v1\\.0]" -> NoulAnswer(0.8),
+          "tags.[v2\\.0]" -> NoulAnswer(0.3)
+        ),
+        0.5
+      ) shouldBe Json.obj(
+        "a.b" -> false,
+        "a\\" -> Json.obj("b" -> true),
+        "tags" -> Json.arr("v1.0")
+      )
+    }
+
+    "refuse a top-level property with an empty name, which the API cannot take" in {
+      val e = the[IllegalArgumentException] thrownBy SchemaQuestions.plan(
+        Json.parse("""{"type":"object","properties":{"":{"type":"boolean"}}}""")
+      )
+      e.getMessage should include("<root>: a property with an empty name")
+
+      // deeper down the name is not empty (`a.`), and the API takes it
+      SchemaQuestions
+        .plan(
+          Json.parse(
+            """{"type":"object","properties":{"a":{"type":"object","properties":{"":{"type":"boolean"}}}}}"""
+          )
+        )
+        .questions
+        .keySet shouldBe Set("a.")
+    }
+
+    "never give distinct paths the same name" in {
+      // every path of one to three segments of up to two characters out of `a`, `.` and `\`
+      val alphabet = Seq("a", ".", "\\")
+      val segments = Seq("") ++ alphabet ++ (for { x <- alphabet; y <- alphabet } yield x + y)
+      val paths = (1 to 3).flatMap { length =>
+        (1 to length).foldLeft(Seq(Seq.empty[String])) { case (prefixes, _) =>
+          for { prefix <- prefixes; segment <- segments } yield prefix :+ segment
+        }
+      }
+
+      paths.size shouldBe 13 + 13 * 13 + 13 * 13 * 13
+      paths.map(questionName).distinct.size shouldBe paths.size
+    }
+  }
+
   "assemble" should {
 
     "fold the answers into a document of the schema" in {

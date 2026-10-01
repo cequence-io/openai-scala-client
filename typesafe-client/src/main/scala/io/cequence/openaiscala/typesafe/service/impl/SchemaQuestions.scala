@@ -16,7 +16,9 @@ import play.api.libs.json._
  *     values; an integer gets the most likely value, a number the probability-weighted
  *     expected value
  *   - `array` whose `items` are a string `enum` -> one noul per option (multi-select)
- *   - `object` -> its properties, recursively (question names are the dotted paths)
+ *   - `object` -> its properties, recursively
+ *
+ * Questions are named by their paths (`questionName`).
  *
  * The property `description` is the question's instructions (a humanised property name when
  * there is none); `required` is moot since every question is answered. A nullable type
@@ -93,7 +95,7 @@ private[typesafe] object SchemaQuestions {
       path: Seq[String],
       reason: String
     ): Slot = {
-      problems += s"${if (path.isEmpty) "<root>" else path.mkString(".")}: $reason"
+      problems += s"${if (path.isEmpty) "<root>" else questionName(path)}: $reason"
       ObjectSlot(Nil)
     }
 
@@ -101,7 +103,13 @@ private[typesafe] object SchemaQuestions {
       path: Seq[String],
       question: Question
     ): String = {
-      val name = path.mkString(".")
+      val name = questionName(path)
+      // questionName is injective, so this never fires - but an overwrite would leave two
+      // fields reading one answer
+      require(!questions.contains(name), s"Two schema paths are named '$name'")
+      // only a top-level property named "" gets an empty name, which the API refuses
+      if (name.isEmpty)
+        problems += "<root>: a property with an empty name - System One needs a question name"
       questions += name -> question
       name
     }
@@ -286,7 +294,7 @@ private[typesafe] object SchemaQuestions {
                     )
                   case Left(unanswered) =>
                     logger.warn(
-                      s"Leaving out ${confidenceNames.map(c => (path :+ c).mkString(".")).mkString(", ")}: " +
+                      s"Leaving out ${confidenceNames.map(c => questionName(path :+ c)).mkString(", ")}: " +
                         s"no usable answer for ${unanswered.mkString(", ")}; " +
                         s"answered: ${answers.keys.toSeq.sorted.mkString(", ")}"
                     )
@@ -299,6 +307,15 @@ private[typesafe] object SchemaQuestions {
 
     value(plan.root, Nil).as[JsObject]
   }
+
+  /**
+   * A question's name: its path joined with `.` - `customer.is_angry` is `is_angry` inside
+   * `customer`, `topics.[payments]` the option `payments` of the multi-select `topics`. A `.`
+   * or `\` inside a property name or an option is escaped with a backslash, so distinct paths
+   * never share a name: the property `a.b` is `a\.b`, apart from `b` inside `a` (`a.b`).
+   */
+  private[impl] def questionName(path: Seq[String]): String =
+    path.map(_.replace("\\", "\\\\").replace(".", "\\.")).mkString(".")
 
   /**
    * The confidence in a slot's answer (see the object scaladoc) rounded to 4 decimals, or the
