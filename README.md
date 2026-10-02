@@ -1,7 +1,7 @@
 # OpenAI Scala Client 🤖
 [![version](https://img.shields.io/badge/version-1.4.0-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT) ![GitHub Stars](https://img.shields.io/github/stars/cequence-io/openai-scala-client?style=social) [![Follow on X](https://img.shields.io/badge/X-%400xbnd-black?logo=x)](https://x.com/0xbnd) ![GitHub CI](https://github.com/cequence-io/openai-scala-client/actions/workflows/continuous-integration.yml/badge.svg)
 
-This is a no-nonsense async Scala client for OpenAI API and multiple LLM providers supporting all the available endpoints and params **including streaming** (with a provider-neutral typed stream of text / thinking / tool-call / tool-result chunks), **chat completion**, **responses API**, **agents API**, **tools** (including MCP), **graders**, **vision** (with provider-uniform file/image attachments), **batch processing**, and **voice routines** (as defined [here](https://platform.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala) with adapters for Anthropic (incl. Bedrock and Managed Agents), Google Gemini/Vertex AI, Groq, Perplexity (incl. its decision model), TypeSafe AI (Jev), Liquid AI (d1), and others. The supported calls are:
+This is a no-nonsense async Scala client for OpenAI API and multiple LLM providers supporting all the available endpoints and params **including streaming** (with a provider-neutral typed stream of text / thinking / tool-call / tool-result chunks), **chat completion**, **responses API**, **agents API**, **tools** (including MCP), **graders**, **vision** (with provider-uniform file/image attachments), **batch processing**, and **voice routines** (as defined [here](https://platform.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala) with adapters for Anthropic (incl. Bedrock and Managed Agents), Google Gemini/Vertex AI, Groq, Perplexity (incl. its decision model), TypeSafe AI (Jev), Liquid AI (d1), the decision models on OpenRouter, and others. The supported calls are:
 
 * **Models**: [listModels](https://platform.openai.com/docs/api-reference/models/list), and [retrieveModel](https://platform.openai.com/docs/api-reference/models/retrieve)
 * **Completions**: [createCompletion](https://platform.openai.com/docs/api-reference/completions/create) (deprecated on `OpenAIService` - OpenAI shuts down its last completions models on 2026-09-28; OpenAI-compatible servers keep it via `OpenAICoreService`)
@@ -66,6 +66,7 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 | [TypeSafe AI](https://typesafe.ai/)         | Typed by construction  | `json_schema` structured output only (`asOpenAI()`) |                         | Decision model `Jev`: typed answers with calibrated probabilities |
 | [Liquid AI](https://www.liquid.ai/) (🔥 New) | Typed by construction  | `json_schema` structured output only (`liquidAsOpenAI()`) |                         | Decision model `d1` - Jev-compatible (System One API, the TypeSafe lib); no chat models yet |
 | [Perplexity Decisions](https://docs.perplexity.ai/docs/decisions/quickstart) (🔥 New) | Typed by construction  | `json_schema` structured output only (`perplexityAsOpenAI()`), images too |                         | Decision model `pplx-decider-v1-27b` - Jev-compatible questions, multimodal (the TypeSafe lib) |
+| [OpenRouter decision models](https://openrouter.ai/models?output_modalities=decisions) (🔥 New) | Typed by construction  | `json_schema` structured output only (`asOpenAI(DecisionProviderSettings.openRouter)`) |                         | Jev, d1, Solar Decide, Mercury Decide, Tev1, Kev 4B and Span-01 through one key - see [Decision-model providers](#decision-model-providers-) |
 
 ---
 
@@ -325,6 +326,13 @@ Then you can obtain a service in one of the following ways.
   val deciderService = TypeSafeServiceFactory.perplexityAsOpenAI()  // json_schema structured output, images in user messages
 ```
    See [Perplexity Decisions API (pplx-decider)](#perplexity-decisions-api-pplx-decider-) below - images, limits, and the decider vs Jev vs d1.
+
+   🔥 Any host of decision models goes through `DecisionProviderSettings`, like `ChatProviderSettings` for chat - e.g. OpenRouter's ten (`OPENROUTER_API_KEY`):
+```scala
+  val openRouter = TypeSafeServiceFactory(DecisionProviderSettings.openRouter)
+  val openRouterService = TypeSafeServiceFactory.asOpenAI(DecisionProviderSettings.openRouter)
+```
+   See [Decision-model providers](#decision-model-providers-) below.
 
 8. [Groq](https://wow.groq.com/) - requires `GROQ_API_KEY"`
 ```scala
@@ -1911,6 +1919,63 @@ with `error.type` in `errorType` and the `x-request-id` as the request id. See
 [PerplexityDeciderSmokeTest](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/typesafe/PerplexityDeciderSmokeTest.scala)
 (a native call, an image, an oversized image refused, the OpenAI adapter with and without an image, Jev and d1 side by side,
 and the latency benchmark).
+
+## Decision-model providers 🧩
+
+Decision models are spreading fast, and most hosts copy TypeSafe's System One protocol - so the TypeSafe lib reaches them all
+through **`DecisionProviderSettings`**, the decision-model counterpart of `ChatProviderSettings`:
+
+```scala
+  import io.cequence.openaiscala.typesafe.domain.{DecisionProvider, TypeSafeModelId}
+  import io.cequence.openaiscala.typesafe.service.{DecisionProviderSettings, TypeSafeServiceFactory}
+
+  val openRouter = TypeSafeServiceFactory(DecisionProviderSettings.openRouter)   // OPENROUTER_API_KEY
+  openRouter.listModels                                                         // its ten decision models
+  openRouter.systemOne(state, questions, TypeSafeModelId.openrouter_liquid_d1)
+
+  // behind the OpenAI interface (json_schema structured output); image content goes into the state where the host reads it
+  val decider = TypeSafeServiceFactory.asOpenAI(DecisionProviderSettings.perplexity)
+
+  // any other host that speaks the protocol
+  val upstage = TypeSafeServiceFactory(DecisionProvider("https://api.upstage.ai/", "UPSTAGE_API_KEY", "solar-decide"))
+```
+
+| Preset | Key | Models | Notes |
+|---|---|---|---|
+| `typeSafe` | `TYPESAFE_API_KEY` | `jev-latest` | the default of `TypeSafeServiceFactory()` |
+| `liquid` | `LIQUID_API_KEY` | `d1:free` | at most 128 questions |
+| `perplexity` | `PERPLEXITY_API_KEY` (or `SONAR_API_KEY`) | `pplx-decider-v1-27b` | `POST /v1/decisions`, images, at most 128 questions |
+| `openRouter` | `OPENROUTER_API_KEY` | Jev, d1, Solar Decide, Mercury Decide (free), Tev1, Kev 4B, Span-01 (+ Lite) | listed with `output_modalities=decisions`; Span-01 takes noul questions only |
+
+A `DecisionProvider` carries what differs between hosts: the base URL, key variable and default model, the decisions path
+(`v1/systemone`, Perplexity's `v1/decisions`), how `listModels` finds the models (TypeSafe's `{"models"}` list, an OpenAI-style
+`{"data"}` list with query parameters, or a fixed list), a question cap and whether the host reads images (both checked before
+sending), the request id headers and fallback key variables. `forProvider(provider, apiKey, timeouts)` and
+`withEngine(engine, provider)` take an explicit key or a shared engine. OpenRouter's ids are in `models-supporting-json-schema`;
+for another host's ids pass `enforceJsonSchemaMode = true` to `createChatCompletionWithJSON`.
+
+**OpenRouter's decision models** (live 2026-10-02, `examples/typesafe/OpenRouterDecisionsSmokeTest`): the docs' review example,
+and the median latency per call by the number of questions:
+
+| Model | defect | sentiment | severity (0..2) | 1 question | 10 | 40 |
+|---|---|---|---|---|---|---|
+| `~typesafe/jev-latest` | 0.940 | mixed 0.93 | 1.99 | 244 ms | 243 ms | 283 ms |
+| `liquid/d1` | 0.976 | mixed 0.78 | 1.86 | 358 ms | 336 ms | 460 ms |
+| `inception/mercury-decide:free` | 0.989 | mixed 0.96 | 1.93 | 517 ms | 642 ms | 966 ms |
+| `togethercomputer/tev1-4b-experimental` | 0.755 | mixed 0.93 | 1.62 | 274 ms | 506 ms | 1,723 ms |
+| `jaredpalmer/kev-4b` | 0.703 | mixed 0.75 | 1.46 | 451 ms | 659 ms | 795 ms |
+| `upstage/solar-decide` | 0.981 | mixed 0.99 | 1.06 | 985 ms | 10.6 s | 46.9 s |
+
+Respan's Span-01 (and its Lite / free variants) judges with noul questions only, over a text state or a conversation trace
+(`{"input": [messages], "output": message}`) - defect 0.965 on the same review, and 0.016 for "is the summary faithful" on a
+trace whose answer misreports it. Through OpenRouter the response names the dated build (`liquid/d1-20260930`), the request
+id is OpenRouter's `x-generation-id`, and an upstream refusal comes back wrapped (`HTTP 422: {...}`).
+
+Other hosts that speak the protocol, from their docs (not live-verified here - build a `DecisionProvider`): Upstage
+(`https://api.upstage.ai/`, `solar-decide`), Vercel's AI Gateway (`https://ai-gateway.vercel.sh/typesafe/`, Jev / d1 / Laya),
+meraGPT, milliseconds.ai, SiliconFlow (`Kev-4B`), Berget, Opper, Featherless, and local runtimes such as Ollama 0.35+
+(`http://localhost:11434/`). OpenAI's and xAI's `/v1/decisions` exist but are gated (a limited preview / a per-key
+permission).
 
 ## Anthropic Managed Agents 🤝
 

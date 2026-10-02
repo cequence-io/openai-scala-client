@@ -3,18 +3,19 @@ package io.cequence.openaiscala.typesafe.service.impl
 import io.cequence.openaiscala.typesafe.JsonFormats._
 import io.cequence.openaiscala.typesafe.domain.{
   DecisionImage,
+  DecisionModelListing,
+  DecisionProvider,
   ModelMetadata,
   Question,
   SystemOneRequest,
-  SystemOneResponse,
-  TypeSafeModelId
+  SystemOneResponse
 }
 import io.cequence.openaiscala.typesafe.service.{
+  DecisionProviderSettings,
   HandleTypeSafeErrorCodes,
   TypeSafeScalaClientTimeoutException,
   TypeSafeScalaClientUnknownHostException,
-  TypeSafeService,
-  TypeSafeServiceConsts
+  TypeSafeService
 }
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.domain.{
@@ -29,9 +30,10 @@ import io.cequence.wsclient.service.WSClientEngine
 import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithEngine
 import io.cequence.wsclient.service.spi.{TransportSettings, WSClientEngineRegistry}
 import io.cequence.wsclient.service.ws.Timeouts
-import play.api.libs.json.{JsValue, Json}
+import play.api.libs.json.{JsObject, JsValue, Json}
 
 import java.net.UnknownHostException
+import java.time.{Instant, ZoneOffset}
 import java.util.concurrent.TimeoutException
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -44,8 +46,9 @@ import scala.concurrent.{ExecutionContext, Future}
  *   engine use `engine.copy(TransportSettings(timeouts = ...))` instead
  * @param externalEngine
  *   a caller-supplied, site-stateless engine; not closed by this service
- * @param api
- *   what the host does differently - the endpoint, the model listing, images
+ * @param provider
+ *   the host - its decisions path, model listing, question cap, images, request id headers
+ *   (the key, base URL and default model come separately, so they can be overridden)
  */
 private[service] class TypeSafeServiceImpl(
   apiKey: String,
@@ -53,7 +56,7 @@ private[service] class TypeSafeServiceImpl(
   override val defaultModel: String,
   timeouts: Option[Timeouts] = None,
   externalEngine: Option[WSClientEngine] = None,
-  api: DecisionApi = DecisionApi.typeSafe
+  provider: DecisionProvider = DecisionProviderSettings.typeSafe
 )(
   implicit val ec: ExecutionContext
 ) extends TypeSafeService
@@ -77,7 +80,7 @@ private[service] class TypeSafeServiceImpl(
     SiteBinding(
       TypeSafeServiceImpl.normalizeBaseUrl(baseUrl),
       WsRequestContext(authHeaders = Seq(("Authorization", s"Bearer ${apiKey}"))),
-      label = Some(api.label)
+      label = Some(provider.label)
     )
 
   override def systemOne(
@@ -88,15 +91,15 @@ private[service] class TypeSafeServiceImpl(
     // fails fast (IllegalArgumentException) before any I/O
     val request = SystemOneRequest(state, model, questions)
 
-    api.maxQuestions.foreach { max =>
+    provider.maxQuestions.foreach { max =>
       require(
         questions.size <= max,
-        s"${api.label} takes at most $max questions per request (got ${questions.size}) - " +
+        s"${provider.label} takes at most $max questions per request (got ${questions.size}) - " +
           "split them over several requests."
       )
     }
 
-    if (api.images) {
+    if (provider.images) {
       val problems = DecisionImage.problems(state)
       require(
         problems.isEmpty,
@@ -105,20 +108,35 @@ private[service] class TypeSafeServiceImpl(
     }
 
     execPOSTBodyRich(
-      api.decisions,
+      EndPoint.custom(provider.decisionsPath),
       body = Json.toJson(request)
     ).map { rich =>
       val response = responseOrError(rich).json.asSafe[SystemOneResponse]
-      response.copy(requestId = TypeSafeServiceImpl.requestId(rich))
+      response.copy(requestId = requestId(rich))
     }.recoverWith(transportErrors)
   }
 
   override def listModels: Future[Seq[ModelMetadata]] =
-    api.models.fold(
-      execGETRich(EndPoint.models).map { rich =>
-        (responseOrError(rich).json \ "models").get.asSafe[Seq[ModelMetadata]]
-      }.recoverWith(transportErrors)
-    )(Future.successful)
+    provider.models match {
+      case DecisionModelListing.TypeSafe =>
+        execGETRich(EndPoint.models).map { rich =>
+          (responseOrError(rich).json \ "models").get.asSafe[Seq[ModelMetadata]]
+        }.recoverWith(transportErrors)
+
+      case DecisionModelListing.OpenAIStyle(query) =>
+        execGETRich(
+          EndPoint.models,
+          params = query.map { case (name, value) => Param.query(name) -> Some(value) }
+        ).map { rich =>
+          (responseOrError(rich).json \ "data")
+            .asOpt[Seq[JsObject]]
+            .getOrElse(Nil)
+            .flatMap(TypeSafeServiceImpl.openAIStyleModel)
+        }.recoverWith(transportErrors)
+
+      case DecisionModelListing.Fixed(models) =>
+        Future.successful(models)
+    }
 
   // like ws-client's getResponseOrError, but the exception also carries the request id
   private def responseOrError(rich: RichResponse): Response =
@@ -126,9 +144,13 @@ private[service] class TypeSafeServiceImpl(
       throw HandleTypeSafeErrorCodes.toException(
         rich.status.code,
         rich.status.message,
-        TypeSafeServiceImpl.requestId(rich)
+        requestId(rich)
       )
     )
+
+  // the host's request id headers by priority, not by their order in the response
+  private def requestId(rich: RichResponse): Option[String] =
+    TypeSafeServiceImpl.requestId(rich, provider.requestIdHeaders)
 
   private def transportErrors[T]: PartialFunction[Throwable, Future[T]] = {
     case e @ (_: CequenceWSTimeoutException | _: TimeoutException) =>
@@ -146,67 +168,27 @@ private[service] object TypeSafeServiceImpl {
   def normalizeBaseUrl(baseUrl: String): String =
     baseUrl.trim.stripSuffix("/") + "/"
 
-  // TypeSafe's own header first, then the `x-request-id` of Perplexity (and most other hosts) -
-  // by priority, not by their order in the response
-  private val requestIdHeaders =
-    Seq(TypeSafeServiceConsts.requestIdHeader, TypeSafeServiceConsts.genericRequestIdHeader)
-
-  private[impl] def requestId(rich: RichResponse): Option[String] =
-    requestIdHeaders.map { header =>
+  private[impl] def requestId(
+    rich: RichResponse,
+    headers: Seq[String]
+  ): Option[String] =
+    headers.map { header =>
       rich.headers.collectFirst {
         case (name, values) if name.equalsIgnoreCase(header) => values.headOption
       }.flatten
     }.collectFirst { case Some(id) => id }
-}
 
-/**
- * What differs between the hosts of the System One question / answer format.
- *
- * @param label
- *   the site's label (logs)
- * @param decisions
- *   the endpoint that answers the questions
- * @param models
- *   the models [[TypeSafeServiceImpl.listModels]] returns without a request, for a host that
- *   lists none of its own
- * @param images
- *   whether the host reads image parts in the state - their URLs and sizes are then checked
- *   before sending ([[DecisionImage]])
- * @param maxQuestions
- *   the most questions the host takes per request, checked before sending
- */
-private[service] final case class DecisionApi(
-  label: String,
-  decisions: EndPoint,
-  models: Option[Seq[ModelMetadata]] = None,
-  images: Boolean = false,
-  maxQuestions: Option[Int] = None
-)
-
-private[service] object DecisionApi {
-
-  // Jev took 129 questions in one request (live 2026-10-02) - no cap known
-  val typeSafe: DecisionApi = DecisionApi("typesafe", EndPoint.systemOne)
-
-  // 422 "A request accepts at most 128 questions." (live 2026-10-02)
-  val liquid: DecisionApi = DecisionApi("liquid", EndPoint.systemOne, maxQuestions = Some(128))
-
-  // Perplexity's `GET /v1/models` lists its Agent API models, not the decider (live
-  // 2026-10-02); the Decisions API has this one model
-  val perplexity: DecisionApi = DecisionApi(
-    "perplexity",
-    EndPoint.decisions,
-    models = Some(
-      Seq(
-        ModelMetadata(
-          TypeSafeModelId.pplx_decider_v1_27b,
-          "Perplexity's multimodal decision model, the one model of its Decisions API.",
-          "2026-10-01"
-        )
+  // an entry of an OpenAI-style model list (`{"id", "description", "created"}`) as TypeSafe's
+  // metadata - the release date from the creation time, if any
+  private[impl] def openAIStyleModel(json: JsObject): Option[ModelMetadata] =
+    (json \ "id").asOpt[String].map { id =>
+      ModelMetadata(
+        id,
+        (json \ "description").asOpt[String].getOrElse(""),
+        (json \ "created")
+          .asOpt[Long]
+          .map(Instant.ofEpochSecond(_).atZone(ZoneOffset.UTC).toLocalDate.toString)
+          .getOrElse("")
       )
-    ),
-    images = true,
-    // 400 "Each request needs between 1 and 128 questions" (live 2026-10-02)
-    maxQuestions = Some(128)
-  )
+    }
 }

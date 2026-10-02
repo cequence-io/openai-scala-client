@@ -1034,4 +1034,20 @@ object NonOpenAIModelId {
   // https://api.perplexity.ai/v1/decisions`, the System One question / answer format plus
   // images in the state) - `TypeSafeServiceFactory.perplexity` / `perplexityAsOpenAI`
   val pplx_decider_v1_27b = "pplx-decider-v1-27b"
+
+  // decision models on OpenRouter - TypeSafe's protocol at `POST
+  // https://openrouter.ai/api/v1/systemone` (typesafe-client's
+  // `DecisionProviderSettings.openRouter`), listed only by `GET
+  // /api/v1/models?output_modalities=decisions` (live 2026-10-02; the Span-01 ones judge with
+  // noul questions only, over a text state or a conversation trace)
+  val openrouter_jev_latest = "~typesafe/jev-latest"
+  val openrouter_jev_1_13 = "typesafe/jev-1.13"
+  val openrouter_liquid_d1 = "liquid/d1"
+  val openrouter_solar_decide = "upstage/solar-decide"
+  val openrouter_mercury_decide_free = "inception/mercury-decide:free"
+  val openrouter_tev1_4b_experimental = "togethercomputer/tev1-4b-experimental"
+  val openrouter_kev_4b = "jaredpalmer/kev-4b"
+  val openrouter_span_01 = "respan/span-01"
+  val openrouter_span_01_lite = "respan/span-01-lite"
+  val openrouter_span_01_lite_free = "respan/span-01-lite:free"
 }

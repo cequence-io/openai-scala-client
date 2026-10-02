@@ -31,18 +31,4 @@ object TypeSafeServiceConsts {
   val liquidApiKeyEnvKey = "LIQUID_API_KEY"
 
   val liquidDefaultModel: String = TypeSafeModelId.liquid_d1_free
-
-  /**
-   * Perplexity serves the same questions and answers as its Decisions API, `POST
-   * https://api.perplexity.ai/v1/decisions` (images allowed in the state).
-   */
-  val perplexityBaseUrl = "https://api.perplexity.ai/"
-
-  /** The key Perplexity's docs use; `SONAR_API_KEY` is read when it is not set. */
-  val perplexityApiKeyEnvKey = "PERPLEXITY_API_KEY"
-
-  val perplexityDefaultModel: String = TypeSafeModelId.pplx_decider_v1_27b
-
-  /** The request id header of Perplexity and most hosts other than TypeSafe. */
-  val genericRequestIdHeader = "x-request-id"
 }

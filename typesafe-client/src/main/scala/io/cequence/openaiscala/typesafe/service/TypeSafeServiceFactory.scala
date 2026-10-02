@@ -1,9 +1,9 @@
 package io.cequence.openaiscala.typesafe.service
 
 import io.cequence.openaiscala.EnvHelper
-import io.cequence.openaiscala.service.{ChatProviderSettings, OpenAIChatCompletionService}
+import io.cequence.openaiscala.service.OpenAIChatCompletionService
+import io.cequence.openaiscala.typesafe.domain.DecisionProvider
 import io.cequence.openaiscala.typesafe.service.impl.{
-  DecisionApi,
   OpenAITypeSafeChatCompletionService,
   TypeSafeServiceImpl
 }
@@ -34,11 +34,20 @@ import scala.concurrent.ExecutionContext
  * }
  * }}}
  *
- * Liquid AI's decision model d1 speaks the same System One API: [[liquid]] /
- * [[liquidAsOpenAI]] point the client at Liquid's host (`LIQUID_API_KEY`, model `d1:free`);
- * its errors are the same [[TypeSafeScalaClientException]] hierarchy, classified by HTTP
- * status. So does Perplexity's Decisions API ([[perplexity]] / [[perplexityAsOpenAI]],
- * `PERPLEXITY_API_KEY`, model `pplx-decider-v1-27b`), which also reads images in the state.
+ * Other hosts of decision models speak the same protocol - pass one of the
+ * [[DecisionProviderSettings]] (like `ChatProviderSettings` for chat providers), or a
+ * [[io.cequence.openaiscala.typesafe.domain.DecisionProvider]] of your own:
+ *
+ * {{{
+ * val openRouter = TypeSafeServiceFactory(DecisionProviderSettings.openRouter) // OPENROUTER_API_KEY
+ * openRouter.systemOne(state, questions, TypeSafeModelId.openrouter_liquid_d1)
+ *
+ * val decider = TypeSafeServiceFactory.asOpenAI(DecisionProviderSettings.perplexity)
+ * }}}
+ *
+ * Their errors are the same [[TypeSafeScalaClientException]] hierarchy, classified by HTTP
+ * status. [[liquid]] and [[perplexity]] (and their `WithEngine` / `AsOpenAI` forms) are
+ * shorthands for the Liquid AI and Perplexity providers.
  */
 object TypeSafeServiceFactory extends EnvHelper {
 
@@ -122,6 +131,74 @@ object TypeSafeServiceFactory extends EnvHelper {
     new OpenAITypeSafeChatCompletionService(service, imageInput)
 
   /**
+   * A service for a host of decision models - one of the [[DecisionProviderSettings]] or a
+   * [[io.cequence.openaiscala.typesafe.domain.DecisionProvider]] of your own - the key from
+   * its environment variable, on its own PRIVATE engine.
+   */
+  def apply(
+    provider: DecisionProvider
+  )(
+    implicit ec: ExecutionContext
+  ): TypeSafeService =
+    forProvider(provider)
+
+  /**
+   * `apply(provider)` with an explicit key (instead of the provider's environment variable)
+   * and client-level timeouts (milliseconds).
+   */
+  def forProvider(
+    provider: DecisionProvider,
+    apiKey: Option[String] = None,
+    timeouts: Option[Timeouts] = None
+  )(
+    implicit ec: ExecutionContext
+  ): TypeSafeService =
+    new TypeSafeServiceImpl(
+      apiKey.getOrElse(provider.apiKeyFromEnv),
+      provider.baseUrl,
+      provider.defaultModel,
+      timeouts,
+      provider = provider
+    )
+
+  /** A service for a host of decision models on a CALLER-SUPPLIED, shared engine. */
+  def withEngine(
+    engine: WSClientEngine,
+    provider: DecisionProvider
+  )(
+    implicit ec: ExecutionContext
+  ): TypeSafeService =
+    withEngine(engine, provider, provider.apiKeyFromEnv)
+
+  /** `withEngine(engine, provider)` with an explicit key. */
+  def withEngine(
+    engine: WSClientEngine,
+    provider: DecisionProvider,
+    apiKey: String
+  )(
+    implicit ec: ExecutionContext
+  ): TypeSafeService =
+    new TypeSafeServiceImpl(
+      apiKey,
+      provider.baseUrl,
+      provider.defaultModel,
+      externalEngine = Some(engine),
+      provider = provider
+    )
+
+  /**
+   * A host of decision models behind the OpenAI chat-completion interface - `json_schema`
+   * structured output only, like [[asOpenAI]]; image content goes into the state when the host
+   * reads images (`provider.images`).
+   */
+  def asOpenAI(
+    provider: DecisionProvider
+  )(
+    implicit ec: ExecutionContext
+  ): OpenAIChatCompletionService =
+    asOpenAI(apply(provider), provider.images)
+
+  /**
    * Liquid AI's decision model d1 on its System One API (`https://api.liquid.ai/decisions`,
    * `LIQUID_API_KEY`, `d1:free`), on its own PRIVATE engine.
    */
@@ -133,7 +210,13 @@ object TypeSafeServiceFactory extends EnvHelper {
   )(
     implicit ec: ExecutionContext
   ): TypeSafeService =
-    new TypeSafeServiceImpl(apiKey, baseUrl, defaultModel, timeouts, api = DecisionApi.liquid)
+    new TypeSafeServiceImpl(
+      apiKey,
+      baseUrl,
+      defaultModel,
+      timeouts,
+      provider = DecisionProviderSettings.liquid
+    )
 
   /** [[liquid]] on a CALLER-SUPPLIED, shared engine (see [[withEngine]]). */
   def liquidWithEngine(
@@ -149,7 +232,7 @@ object TypeSafeServiceFactory extends EnvHelper {
       baseUrl,
       defaultModel,
       externalEngine = Some(engine),
-      api = DecisionApi.liquid
+      provider = DecisionProviderSettings.liquid
     )
 
   /**
@@ -177,9 +260,9 @@ object TypeSafeServiceFactory extends EnvHelper {
    * the one model without a request (Perplexity's `/v1/models` lists its Agent API models).
    */
   def perplexity(
-    apiKey: String = perplexityApiKey,
-    baseUrl: String = perplexityBaseUrl,
-    defaultModel: String = perplexityDefaultModel,
+    apiKey: String = DecisionProviderSettings.perplexity.apiKeyFromEnv,
+    baseUrl: String = DecisionProviderSettings.perplexity.baseUrl,
+    defaultModel: String = DecisionProviderSettings.perplexity.defaultModel,
     timeouts: Option[Timeouts] = None
   )(
     implicit ec: ExecutionContext
@@ -189,15 +272,15 @@ object TypeSafeServiceFactory extends EnvHelper {
       baseUrl,
       defaultModel,
       timeouts,
-      api = DecisionApi.perplexity
+      provider = DecisionProviderSettings.perplexity
     )
 
   /** [[perplexity]] on a CALLER-SUPPLIED, shared engine (see [[withEngine]]). */
   def perplexityWithEngine(
     engine: WSClientEngine,
-    apiKey: String = perplexityApiKey,
-    baseUrl: String = perplexityBaseUrl,
-    defaultModel: String = perplexityDefaultModel
+    apiKey: String = DecisionProviderSettings.perplexity.apiKeyFromEnv,
+    baseUrl: String = DecisionProviderSettings.perplexity.baseUrl,
+    defaultModel: String = DecisionProviderSettings.perplexity.defaultModel
   )(
     implicit ec: ExecutionContext
   ): TypeSafeService =
@@ -206,7 +289,7 @@ object TypeSafeServiceFactory extends EnvHelper {
       baseUrl,
       defaultModel,
       externalEngine = Some(engine),
-      api = DecisionApi.perplexity
+      provider = DecisionProviderSettings.perplexity
     )
 
   /**
@@ -216,28 +299,14 @@ object TypeSafeServiceFactory extends EnvHelper {
    * `models-supporting-json-schema`).
    */
   def perplexityAsOpenAI(
-    apiKey: String = perplexityApiKey,
-    baseUrl: String = perplexityBaseUrl,
-    defaultModel: String = perplexityDefaultModel,
+    apiKey: String = DecisionProviderSettings.perplexity.apiKeyFromEnv,
+    baseUrl: String = DecisionProviderSettings.perplexity.baseUrl,
+    defaultModel: String = DecisionProviderSettings.perplexity.defaultModel,
     timeouts: Option[Timeouts] = None
   )(
     implicit ec: ExecutionContext
   ): OpenAIChatCompletionService =
     asOpenAI(perplexity(apiKey, baseUrl, defaultModel, timeouts), imageInput = true)
-
-  // like the Perplexity module: the name Perplexity's docs use, else `SONAR_API_KEY`
-  private def perplexityApiKey: String = {
-    val keys = Seq(perplexityApiKeyEnvKey, ChatProviderSettings.sonar.apiKeyEnvVariable)
-    keys
-      .flatMap(key => Option(System.getenv(key)).map(_.trim).filter(_.nonEmpty))
-      .headOption
-      .getOrElse(
-        throw new IllegalStateException(
-          s"${keys.mkString(" or ")} environment variable expected but not set. Alternatively, " +
-            "you can pass the value explicitly to the factory method."
-        )
-      )
-  }
 
   private def baseUrlFromEnv: String = envOrElse(baseUrlEnvKey, defaultBaseUrl)
 

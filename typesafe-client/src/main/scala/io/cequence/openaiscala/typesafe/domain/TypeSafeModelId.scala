@@ -32,4 +32,17 @@ object TypeSafeModelId {
    * images in the state (see `TypeSafeServiceFactory.perplexity`).
    */
   val pplx_decider_v1_27b: String = NonOpenAIModelId.pplx_decider_v1_27b
+
+  // decision models on OpenRouter (`DecisionProviderSettings.openRouter`)
+  val openrouter_jev_latest: String = NonOpenAIModelId.openrouter_jev_latest
+  val openrouter_jev_1_13: String = NonOpenAIModelId.openrouter_jev_1_13
+  val openrouter_liquid_d1: String = NonOpenAIModelId.openrouter_liquid_d1
+  val openrouter_solar_decide: String = NonOpenAIModelId.openrouter_solar_decide
+  val openrouter_mercury_decide_free: String = NonOpenAIModelId.openrouter_mercury_decide_free
+  val openrouter_tev1_4b_experimental: String =
+    NonOpenAIModelId.openrouter_tev1_4b_experimental
+  val openrouter_kev_4b: String = NonOpenAIModelId.openrouter_kev_4b
+  val openrouter_span_01: String = NonOpenAIModelId.openrouter_span_01
+  val openrouter_span_01_lite: String = NonOpenAIModelId.openrouter_span_01_lite
+  val openrouter_span_01_lite_free: String = NonOpenAIModelId.openrouter_span_01_lite_free
 }

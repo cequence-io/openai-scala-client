@@ -51,7 +51,8 @@ class PerplexityDecisionsOpenApiConformanceSpec extends AnyWordSpec with Matcher
     "be the preset's base URL plus the decisions path, with bearer auth" in {
       val server = ((spec \ "servers")(0) \ "url").as[String]
       s"$server/decisions" shouldBe
-        TypeSafeServiceConsts.perplexityBaseUrl + EndPoint.decisions.toString
+        DecisionProviderSettings.perplexity.baseUrl + DecisionProviderSettings.perplexity.decisionsPath
+      DecisionProviderSettings.perplexity.decisionsPath shouldBe EndPoint.decisions.toString
 
       val scheme = (spec \ "components" \ "securitySchemes" \ "HTTPBearer").as[JsObject]
       (scheme \ "type").as[String] shouldBe "http"

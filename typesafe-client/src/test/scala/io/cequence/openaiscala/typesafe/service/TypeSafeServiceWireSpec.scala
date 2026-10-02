@@ -28,7 +28,8 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
     method: String,
     path: String,
     headers: Map[String, String],
-    body: String
+    body: String,
+    query: Option[String] = None
   )
 
   @volatile private var received: Option[Received] = None
@@ -60,7 +61,8 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
                   key.toString.toLowerCase -> exchange.getRequestHeaders.getFirst(key.toString)
                 }
                 .toMap,
-              body
+              body,
+              Option(exchange.getRequestURI.getRawQuery)
             )
           )
 
@@ -430,6 +432,88 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
 
       onRequest = null
       await(system.terminate())
+    }
+  }
+
+  "a decision provider" should {
+
+    // recorded from https://openrouter.ai/api/v1/models?output_modalities=decisions (2026-10-02),
+    // two of the ten entries, trimmed
+    val openRouterModels =
+      """{"data":[
+        |  {"id":"liquid/d1","canonical_slug":"liquid/d1-20260930","name":"LiquidAI: D1","created":1790878711,"description":"d1 is Liquid AI's first decision model.","context_length":65536,"architecture":{"input_modalities":["text"],"output_modalities":["decisions"]},"pricing":{"prompt":"0.00000004"}},
+        |  {"id":"~typesafe/jev-latest","name":"TypeSafe: Jev Latest","created":1789689685,"description":"The latest Jev.","architecture":{"output_modalities":["decisions"]}}
+        |]}""".stripMargin
+
+    "serve OpenRouter's decision models - its /api base, the x-generation-id, the listing query" in {
+      val openRouter = TypeSafeServiceFactory.withEngine(
+        engine,
+        DecisionProviderSettings.openRouter.copy(baseUrl = baseUrl + "/api"),
+        "or_k"
+      )
+
+      respond(200, quickStartResponse, Map("x-generation-id" -> "gen-dec-1790947149-W0Aj"))
+      val response = await(openRouter.systemOne("x", questions))
+      received.get.path shouldBe "/api/v1/systemone"
+      received.get.headers("authorization") shouldBe "Bearer or_k"
+      (Json.parse(received.get.body) \ "model").as[String] shouldBe
+        TypeSafeModelId.openrouter_jev_latest
+      response.requestId shouldBe Some("gen-dec-1790947149-W0Aj")
+
+      respond(200, openRouterModels)
+      await(openRouter.listModels) shouldBe Seq(
+        ModelMetadata("liquid/d1", "d1 is Liquid AI's first decision model.", "2026-10-01"),
+        ModelMetadata("~typesafe/jev-latest", "The latest Jev.", "2026-09-18")
+      )
+      received.get.path shouldBe "/api/v1/models"
+      received.get.query shouldBe Some("output_modalities=decisions")
+      openRouter.close()
+    }
+
+    "take a host of its own - path, question cap, fixed models and request id header" in {
+      val custom = TypeSafeServiceFactory.withEngine(
+        engine,
+        DecisionProvider(
+          baseUrl,
+          "NO_SUCH_DECISIONS_KEY",
+          "custom-decider",
+          decisionsPath = "v2/decide",
+          models = DecisionModelListing.Fixed(Seq(ModelMetadata("custom-decider", "", ""))),
+          maxQuestions = Some(2),
+          requestIdHeaders = Seq("x-trace-id"),
+          name = Some("custom")
+        ),
+        "c_k"
+      )
+
+      respond(200, quickStartResponse, Map("x-trace-id" -> "t-1", "x-request-id" -> "r-1"))
+      await(custom.systemOne("x", questions)).requestId shouldBe Some("t-1")
+      received.get.path shouldBe "/v2/decide"
+      (Json.parse(received.get.body) \ "model").as[String] shouldBe "custom-decider"
+
+      respond(200, quickStartResponse)
+      the[IllegalArgumentException]
+        .thrownBy(custom.systemOne("x", questions + ("third" -> NoulQuestion("Third?"))))
+        .getMessage should include("custom takes at most 2 questions")
+      received shouldBe None
+
+      await(custom.listModels).map(_.name) shouldBe Seq("custom-decider")
+      received shouldBe None
+      custom.close()
+    }
+
+    "name every variable it reads for a missing key, and default its label to the host" in {
+      val provider = DecisionProvider(
+        "https://decisions.example.com/",
+        "NO_SUCH_DECISIONS_KEY",
+        "m",
+        apiKeyEnvFallbacks = Seq("NOR_THIS_ONE")
+      )
+      the[IllegalStateException].thrownBy(provider.apiKeyFromEnv).getMessage should include(
+        "NO_SUCH_DECISIONS_KEY or NOR_THIS_ONE"
+      )
+      provider.label shouldBe "decisions.example.com"
+      DecisionProviderSettings.openRouter.label shouldBe "openrouter"
     }
   }
 
