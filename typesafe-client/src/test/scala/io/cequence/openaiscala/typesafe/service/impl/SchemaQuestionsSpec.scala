@@ -115,11 +115,38 @@ class SchemaQuestionsSpec extends AnyWordSpec with Matchers {
 
       e.getMessage should include("summary: a free-form string")
       e.getMessage should include("count: a number without an enum")
-      e.getMessage should include("wide: a minimum..maximum range wider than 32")
+      e.getMessage should include("wide: a minimum..maximum range wider than 10 values")
       e.getMessage should include("items: an array whose items are not a string enum")
       e.getMessage should include("nested.ref: anyOf / oneOf / allOf / $ref")
       e.getMessage should include("empty: an object without properties")
       e.getMessage should not include "nested.ok"
+    }
+
+    "cap a score at 10 levels like every System One host - ranges and numeric enums alike" in {
+      SchemaQuestions
+        .plan(
+          Json.parse(
+            """{"type":"object","properties":{"ten":{"type":"integer","minimum":1,"maximum":10}}}"""
+          )
+        )
+        .questions("ten") shouldBe ScoreQuestion("Ten", (1 to 10).map(_.toString): _*)
+
+      val e = the[IllegalArgumentException] thrownBy SchemaQuestions.plan(
+        Json.parse(
+          """{"type":"object","properties":{
+            |  "eleven":{"type":"integer","minimum":0,"maximum":10},
+            |  "levels":{"type":"number","enum":[1,2,3,4,5,6,7,8,9,10,11,11]}
+            |}}""".stripMargin
+        )
+      )
+      e.getMessage should include("eleven: a minimum..maximum range wider than 10 values")
+      e.getMessage should include(
+        "levels: a numeric enum with 11 values - a score allows at most 10 levels"
+      )
+
+      // the domain refuses more too - Jev, d1 and Perplexity answer 400 / 422
+      an[IllegalArgumentException] should be thrownBy
+        ScoreQuestion("Rate it", (0 to 10).map(_.toString): _*)
     }
 
     "refuse a string enum wider than a choice allows, naming the path" in {

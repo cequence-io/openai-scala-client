@@ -12,7 +12,7 @@ import play.api.libs.json._
  *   - `boolean` -> a noul question (true when the probability reaches the threshold)
  *   - `string` with `enum` -> a choice question (the winning option)
  *   - `integer` / `number` with a numeric `enum`, or with `minimum` and `maximum` spanning at
- *     most [[SchemaQuestions.MaxRangeLevels]] whole numbers -> a score question over those
+ *     most [[SchemaQuestions.MaxScoreLevels]] whole numbers -> a score question over those
  *     values; an integer gets the most likely value, a number the probability-weighted
  *     expected value
  *   - `array` whose `items` are a string `enum` -> one noul per option (multi-select)
@@ -49,8 +49,8 @@ private[typesafe] object SchemaQuestions {
 
   private val ConfidenceSuffixes = Seq("_confidence", "Confidence")
 
-  /** The widest `minimum`..`maximum` range turned into score levels. */
-  val MaxRangeLevels = 32
+  /** The most levels of a score question - a wider numeric enum or range is refused. */
+  val MaxScoreLevels: Int = ScoreQuestion.MaxLevels
 
   sealed trait Slot
 
@@ -394,8 +394,13 @@ private[typesafe] object SchemaQuestions {
     (schema \ "enum").asOpt[JsArray] match {
       case Some(values) =>
         val numbers = values.value.toSeq.collect { case JsNumber(n) => n }
-        if (numbers.size == values.value.size) Right(numbers.distinct.sorted)
-        else Left("a numeric enum with non-numeric values")
+        if (numbers.size != values.value.size) Left("a numeric enum with non-numeric values")
+        else if (numbers.distinct.size > MaxScoreLevels)
+          Left(
+            s"a numeric enum with ${numbers.distinct.size} values - a score allows at most " +
+              s"$MaxScoreLevels levels"
+          )
+        else Right(numbers.distinct.sorted)
 
       case None =>
         (
@@ -406,8 +411,11 @@ private[typesafe] object SchemaQuestions {
             Left("minimum / maximum must be whole numbers")
           case (Some(min), Some(max)) if max < min =>
             Left("maximum is below minimum")
-          case (Some(min), Some(max)) if max - min + 1 > MaxRangeLevels =>
-            Left(s"a minimum..maximum range wider than $MaxRangeLevels values")
+          case (Some(min), Some(max)) if max - min + 1 > MaxScoreLevels =>
+            Left(
+              s"a minimum..maximum range wider than $MaxScoreLevels values - a score allows at " +
+                s"most $MaxScoreLevels levels"
+            )
           case (Some(min), Some(max)) =>
             // iterate in BigDecimal - the bounds may sit anywhere on the number line
             Right(Iterator.iterate(min)(_ + 1).takeWhile(_ <= max).toVector)

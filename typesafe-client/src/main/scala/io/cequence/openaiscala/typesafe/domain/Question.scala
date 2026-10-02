@@ -141,6 +141,11 @@ final case class ScoreQuestion(
   instructions: Option[JsValue] = None
 ) extends Question {
   require(criteria.nonEmpty, "A score question needs at least one level.")
+  // TypeSafe answers 400 "Too many score levels", Liquid's d1 and Perplexity refuse it too
+  require(
+    criteria.size <= ScoreQuestion.MaxLevels,
+    s"A score question allows at most ${ScoreQuestion.MaxLevels} levels (got ${criteria.size})."
+  )
   // the API answers 422 for a level that is not text, an object or an array
   require(
     criteria.forall {
@@ -152,6 +157,9 @@ final case class ScoreQuestion(
 }
 
 object ScoreQuestion {
+
+  /** The most levels a score question takes (TypeSafe, Liquid and Perplexity alike). */
+  val MaxLevels = 10
 
   /** `ScoreQuestion("How urgent?", "Can wait", "This week", "Today")` - levels 0, 1, 2. */
   def apply(
