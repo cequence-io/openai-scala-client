@@ -26,4 +26,10 @@ object TypeSafeModelId {
    * `TypeSafeServiceFactory.liquid`).
    */
   val liquid_d1_free: String = NonOpenAIModelId.liquid_d1_free
+
+  /**
+   * Perplexity's multimodal decision model - its Decisions API takes the same questions and
+   * images in the state (see `TypeSafeServiceFactory.perplexity`).
+   */
+  val pplx_decider_v1_27b: String = NonOpenAIModelId.pplx_decider_v1_27b
 }

@@ -317,7 +317,7 @@ class OpenAITypeSafeChatCompletionServiceSpec extends AnyWordSpec with Matchers 
           Seq(UserSeqMessage(Seq(ImageURLContent("data:image/png;base64,AAA")))),
           jsonSchemaSettings
         )
-      ).getMessage should include("Only text content")
+      ).getMessage should include("Image content is read only by Perplexity's Decisions API")
 
       failure(
         service.createChatCompletion(
@@ -334,6 +334,87 @@ class OpenAITypeSafeChatCompletionServiceSpec extends AnyWordSpec with Matchers 
           jsonSchemaSettings
         )
       ).getMessage should include("At least one user")
+    }
+
+    "put the images of a user message into the state for a host that reads them" in {
+      val stub = new Stub(answers)
+      val service = TypeSafeServiceFactory.asOpenAI(stub, imageInput = true)
+      val image = "data:image/png;base64," + java.util.Base64.getEncoder.encodeToString {
+        val out = new java.io.ByteArrayOutputStream()
+        javax.imageio.ImageIO.write(
+          new java.awt.image.BufferedImage(8, 8, java.awt.image.BufferedImage.TYPE_INT_RGB),
+          "png",
+          out
+        )
+        out.toByteArray
+      }
+
+      await(
+        service.createChatCompletion(
+          Seq(
+            SystemMessage("Judge the photo."),
+            UserSeqMessage(
+              Seq(
+                TextContent("Which team?"),
+                TextContent("Ticket #7."),
+                ImageURLContent(image)
+              )
+            )
+          ),
+          jsonSchemaSettings
+        )
+      )
+
+      // consecutive text parts joined, the image an OpenAI-style part
+      stub.lastState shouldBe Some(
+        Json.obj(
+          "instructions" -> "Judge the photo.",
+          "message" -> Json.arr(
+            "Which team?\nTicket #7.",
+            Json.obj("type" -> "image_url", "image_url" -> Json.obj("url" -> image))
+          )
+        )
+      )
+    }
+
+    "report a request the service refuses before sending as the library's client exception" in {
+      val refusing = new Stub(answers) {
+        override def systemOne(
+          state: JsValue,
+          questions: Map[String, Question],
+          model: String
+        ): Future[SystemOneResponse] =
+          throw new IllegalArgumentException(
+            "perplexity takes at most 128 questions per request"
+          )
+      }
+
+      val e = failure(
+        TypeSafeServiceFactory
+          .asOpenAI(refusing)
+          .createChatCompletion(
+            Seq(UserMessage("x")),
+            jsonSchemaSettings
+          )
+      )
+      e shouldBe an[OpenAIScalaClientException]
+      e.getMessage should include("at most 128 questions")
+      e.getCause shouldBe an[IllegalArgumentException]
+    }
+
+    "refuse an image the host would not take, before calling it" in {
+      val stub = new Stub(answers)
+      val service = TypeSafeServiceFactory.asOpenAI(stub, imageInput = true)
+
+      failure(
+        service.createChatCompletion(
+          Seq(
+            UserSeqMessage(Seq(TextContent("x"), ImageURLContent("https://example.com/a.png")))
+          ),
+          jsonSchemaSettings
+        )
+      ).getMessage should include("never fetches")
+      stub.lastState shouldBe None
     }
 
     "name every dropped setting in one warning, and warn about nothing else" in {

@@ -6,10 +6,12 @@ import io.cequence.wsclient.service.spi.{TransportSettings, WSClientEngineRegist
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import play.api.libs.json.{JsObject, JsString, Json}
+import play.api.libs.json.{JsArray, JsObject, JsString, Json}
 
 import java.net.InetSocketAddress
+import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
+import java.util.Base64
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
@@ -103,6 +105,45 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       |  "usage": {"input_tokens": 312, "output_tokens": 48}
       |}""".stripMargin
 
+  // recorded from https://api.perplexity.ai/v1/decisions on 2026-10-02 (the docs' example)
+  private val perplexityResponse =
+    """{"model":"pplx-decider-v1-27b","answers":{"defect":{"type":"noul","noul":0.9424522889347015},"sentiment":{"type":"choice","choice":"mixed","confidence":0.92724236393624,"probabilities":{"positive":0.020674765614559172,"mixed":0.9514949092908267,"negative":0.02783032509461421}},"severity":{"type":"score","score":1.7875857287150294,"confidence":0.7875857287150292,"legend":{"0":"Cosmetic","1":"Inconvenient","2":"Product unusable"},"probabilities":{"0":0.0082215259908096,"1":0.19597121930335157,"2":0.7958072547058389}}},"usage":{"input_tokens":367,"output_tokens":3}}"""
+
+  private val review =
+    "The headphones sound great, but the battery stopped charging after two weeks."
+
+  private val reviewQuestions: Map[String, Question] = Map(
+    "defect" -> NoulQuestion("Does the review report a product defect?"),
+    "sentiment" -> ChoiceQuestion(
+      "What is the overall sentiment of the review?",
+      "positive" -> "Mostly satisfied",
+      "mixed" -> "Praise and complaints in one review",
+      "negative" -> "Mostly dissatisfied"
+    ),
+    "severity" -> ScoreQuestion(
+      "How severe is the reported problem?",
+      "Cosmetic",
+      "Inconvenient",
+      "Product unusable"
+    )
+  )
+
+  // a PNG data URL whose header says width x height - the size is all the check reads
+  private def pngDataUrl(
+    width: Int,
+    height: Int
+  ): String =
+    "data:image/png;base64," + Base64.getEncoder.encodeToString(
+      Array(0x89, 'P', 'N', 'G', 0x0d, 0x0a, 0x1a, 0x0a).map(_.toByte) ++
+        ByteBuffer
+          .allocate(16)
+          .putInt(13)
+          .put("IHDR".getBytes(StandardCharsets.US_ASCII))
+          .putInt(width)
+          .putInt(height)
+          .array()
+    )
+
   private val questions: Map[String, Question] = Map(
     "department" -> ChoiceQuestion(
       "Which team should handle this",
@@ -191,6 +232,91 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       (Json.parse(received.get.body) \ "model")
         .as[String] shouldBe TypeSafeModelId.liquid_d1_free
       liquid.close()
+    }
+
+    "serve Perplexity's decider through the perplexity preset - /v1/decisions, x-request-id" in {
+      respond(
+        200,
+        perplexityResponse,
+        Map("x-request-id" -> "7a1504a6-a884-48e6-af6e-0c3140aeb6db")
+      )
+      val perplexity =
+        TypeSafeServiceFactory.perplexityWithEngine(engine, "pplx_k", baseUrl = baseUrl)
+
+      val response = await(perplexity.systemOne(Json.obj("review" -> review), reviewQuestions))
+
+      received.get.path shouldBe "/v1/decisions"
+      received.get.headers("authorization") shouldBe "Bearer pplx_k"
+      val body = Json.parse(received.get.body).as[JsObject]
+      // the Decisions API answers 400 to any other field
+      body.keys shouldBe Set("model", "state", "questions")
+      (body \ "model").as[String] shouldBe TypeSafeModelId.pplx_decider_v1_27b
+      (body \ "state" \ "review").as[String] shouldBe review
+
+      response.requestId shouldBe Some("7a1504a6-a884-48e6-af6e-0c3140aeb6db")
+      response.noul("defect").noul shouldBe 0.9424522889347015
+      response.choice("sentiment").choice shouldBe "mixed"
+      response.score("severity").mostLikelyLevel shouldBe 2
+      perplexity.close()
+    }
+
+    "check the images in a Perplexity state before sending - an oversized one never leaves" in {
+      respond(200, perplexityResponse)
+      val perplexity =
+        TypeSafeServiceFactory.perplexityWithEngine(engine, "pplx_k", baseUrl = baseUrl)
+      val photo =
+        Json.arr("Is the device damaged?", DecisionImage.part(pngDataUrl(4032, 3024)))
+
+      the[IllegalArgumentException]
+        .thrownBy(
+          perplexity.systemOne(photo, reviewQuestions)
+        )
+        .getMessage should include("4032 x 3024")
+      received shouldBe None
+
+      // one that fits goes out as it is
+      val fits =
+        Json.arr("Is the device damaged?", DecisionImage.part(pngDataUrl(1440, 1440)))
+      await(perplexity.systemOne(fits, reviewQuestions))
+      (Json.parse(received.get.body) \ "state").as[JsArray] shouldBe fits
+
+      // TypeSafe's Jev does not read images, so its state is not checked
+      respond(200, quickStartResponse)
+      await(service.systemOne(photo, questions))
+      received shouldBe defined
+      perplexity.close()
+    }
+
+    "take TypeSafe's own request id over a generic x-request-id, whatever their order" in {
+      respond(
+        200,
+        quickStartResponse,
+        Map("x-request-id" -> "proxy-1", "x-typesafe-request-id" -> "ts-1")
+      )
+
+      await(service.systemOne("x", questions)).requestId shouldBe Some("ts-1")
+    }
+
+    "refuse more than 128 questions up front for Perplexity and Liquid, not for Jev" in {
+      val many: Map[String, Question] =
+        (1 to 129).map(i => s"q$i" -> (NoulQuestion(s"Is point $i raised?"): Question)).toMap
+
+      Seq(
+        TypeSafeServiceFactory.perplexityWithEngine(engine, "pplx_k", baseUrl = baseUrl),
+        TypeSafeServiceFactory.liquidWithEngine(engine, "liquid_k", baseUrl = baseUrl)
+      ).foreach { host =>
+        respond(200, quickStartResponse)
+        the[IllegalArgumentException]
+          .thrownBy(host.systemOne("x", many))
+          .getMessage should include("at most 128 questions")
+        received shouldBe None
+        host.close()
+      }
+
+      // Jev took 129 live - its request goes out
+      respond(200, quickStartResponse)
+      await(service.systemOne("x", many))
+      received shouldBe defined
     }
 
     "fail fast on an empty question map, without calling the API" in {
@@ -308,6 +434,18 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
   }
 
   "listModels" should {
+
+    "return Perplexity's one decision model without a request" in {
+      respond(200, "{}")
+      val perplexity =
+        TypeSafeServiceFactory.perplexityWithEngine(engine, "pplx_k", baseUrl = baseUrl)
+
+      await(perplexity.listModels).map(_.name) shouldBe Seq(
+        TypeSafeModelId.pplx_decider_v1_27b
+      )
+      received shouldBe None
+      perplexity.close()
+    }
 
     "GET /v1/models with the bearer key" in {
       respond(

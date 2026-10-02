@@ -20,19 +20,21 @@ object HandleTypeSafeErrorCodes {
   ): TypeSafeScalaClientException = {
     val json = Try(Json.parse(body)).toOption
     val kind = json.flatMap(errorType)
+    val message = json.flatMap(extractMessage).getOrElse(plainBody(body))
     val errorMessage =
-      s"Code ${httpCode} : ${json.flatMap(extractMessage).getOrElse(body)}" +
-        requestId.fold("")(id => s" [request $id]")
+      s"Code ${httpCode} : ${message}" + requestId.fold("")(id => s" [request $id]")
 
     // (message, httpCode, errorType, requestId) -> the exception of the right kind
     type Build =
       (String, Option[Int], Option[String], Option[String]) => TypeSafeScalaClientException
 
     val build: Build = httpCode match {
-      case 400 if kind.contains("max_tokens_exceeded") =>
+      // Perplexity: "Input length (262144) exceeds or equals model's maximum context length"
+      case 400 if kind.contains("max_tokens_exceeded") || exceedsContext(message) =>
         new TypeSafeScalaTokenCountExceededException(_, null, _, _, _)
       case 400 if kind.isDefined => new TypeSafeScalaApiUsageException(_, null, _, _, _)
-      case 400 | 422 =>
+      // 413: Perplexity's body limit (32 MiB)
+      case 400 | 413 | 422 =>
         val violations = json.map(HandleTypeSafeErrorCodes.violations).getOrElse(Nil)
         new TypeSafeScalaInvalidRequestException(_, null, _, _, _, violations)
       case 401 | 403           => new TypeSafeScalaUnauthorizedException(_, null, _, _, _)
@@ -45,9 +47,19 @@ object HandleTypeSafeErrorCodes {
     }
 
     // the classification above keys on TypeSafe's own `detail.error_type`; the exception also
-    // carries an OpenAI-style `error.code` / `error.type` (Liquid AI's host answers that way)
+    // carries an OpenAI-style `error.code` / `error.type` (Liquid AI's and Perplexity's hosts
+    // answer that way)
     build(errorMessage, Some(httpCode), kind.orElse(json.flatMap(openAIErrorType)), requestId)
   }
+
+  private def exceedsContext(message: String) =
+    message.contains("maximum context length")
+
+  // a body that is not JSON - empty (Perplexity's 404 / 405) or an HTML page (a gateway's 504)
+  private def plainBody(body: String) =
+    if (body.trim.isEmpty) "(empty body)"
+    else if (body.length > 300) body.take(300) + "..."
+    else body
 
   /**
    * The human-readable part of an error body - `{"detail": {"message": ...}}` for auth and
@@ -66,9 +78,13 @@ object HandleTypeSafeErrorCodes {
   private def errorType(json: JsValue): Option[String] =
     (json \ "detail" \ "error_type").asOpt[String]
 
-  // `{"error": {"code": "model_unavailable", "type": "rate_limit_error", ...}}`
+  // `{"error": {"code": "model_unavailable", "type": "rate_limit_error", ...}}` - the code when
+  // it names the error (Liquid), else the type (Perplexity's code is the status: "400", 401)
   private def openAIErrorType(json: JsValue): Option[String] =
-    (json \ "error" \ "code").asOpt[String].orElse((json \ "error" \ "type").asOpt[String])
+    (json \ "error" \ "code")
+      .asOpt[String]
+      .filterNot(_.forall(_.isDigit))
+      .orElse((json \ "error" \ "type").asOpt[String])
 
   private def extractMessage(json: JsValue): Option[String] =
     json match {

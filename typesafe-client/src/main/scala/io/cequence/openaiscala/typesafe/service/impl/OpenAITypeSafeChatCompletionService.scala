@@ -45,10 +45,16 @@ import scala.util.Try
  * (`setTypeSafeNoulThreshold`). Everything else - the sampling knobs, penalties, `max_tokens`,
  * `stop`, `seed`, `logprobs`, `reasoning_effort`, `user` / `store` / `metadata` and so on - is
  * DROPPED with a warning naming it, because System One does not sample text. `n > 1`, tools,
- * streaming and non-text message content are refused outright.
+ * streaming and non-text message content are refused outright - image content too, unless
+ * `imageInput` says the host reads it (Perplexity's Decisions API).
+ *
+ * @param imageInput
+ *   whether the image parts of user messages go into the state
+ *   ([[TypeSafeChatMapping.toState]])
  */
 private[service] class OpenAITypeSafeChatCompletionService(
-  underlying: TypeSafeService
+  underlying: TypeSafeService,
+  imageInput: Boolean = false
 )(
   implicit ec: ExecutionContext
 ) extends OpenAIChatCompletionService {
@@ -85,19 +91,22 @@ private[service] class OpenAITypeSafeChatCompletionService(
 
           val plan = TypeSafeChatMapping.plan(schema)
 
-          (plan, TypeSafeChatMapping.toState(messages), settings.typeSafeNoulThreshold)
+          (
+            plan,
+            TypeSafeChatMapping.toState(messages, imageInput),
+            settings.typeSafeNoulThreshold
+          )
         })
         .flatMap { case (plan, state, threshold) =>
-          underlying
-            .systemOne(state, plan.questions, settings.model)
-            .map { response =>
-              toChatCompletionResponse(
-                response,
-                SchemaQuestions.assemble(plan, response.answers, threshold)
-              )
-            }
-            .recoverWith(repackAsOpenAIException)
+          underlying.systemOne(state, plan.questions, settings.model).map { response =>
+            toChatCompletionResponse(
+              response,
+              SchemaQuestions.assemble(plan, response.answers, threshold)
+            )
+          }
         }
+        // outside the flatMap: systemOne may also refuse a request before sending, by throwing
+        .recoverWith(repackAsOpenAIException)
     }
 
   private def toChatCompletionResponse(

@@ -136,6 +136,69 @@ class HandleTypeSafeErrorCodesSpec extends AnyWordSpec with Matchers {
     }
   }
 
+  "Perplexity's Decisions API error bodies (OpenAI-style, the code a mere status)" should {
+
+    // recorded from https://api.perplexity.ai/v1/decisions on 2026-10-02
+    "be classified by status and message, carrying the type rather than the status code" in {
+      val badKey = toException(
+        401,
+        """{"error":{"message":"Invalid API key provided. Ensure your API key is correct and active.","type":"invalid_api_key","code":401}}"""
+      )
+      badKey shouldBe a[TypeSafeScalaUnauthorizedException]
+      badKey.errorType shouldBe Some("invalid_api_key")
+
+      val noInstructions = toException(
+        400,
+        """{"error":{"message":"Noul question must have criteria or instructions","type":"invalid_request","code":"400"}}""",
+        Some("7a1504a6-a884-48e6-af6e-0c3140aeb6db")
+      )
+      noInstructions shouldBe a[TypeSafeScalaInvalidRequestException]
+      noInstructions.errorType shouldBe Some("invalid_request")
+      noInstructions.getMessage shouldBe
+        "Code 400 : Noul question must have criteria or instructions [request 7a1504a6-a884-48e6-af6e-0c3140aeb6db]"
+
+      val unknownModel = toException(
+        400,
+        """{"error":{"code":null,"message":"Invalid model 'pplx-decider-v1-27b-latest'. Permitted models can be found in the documentation at https://docs.perplexity.ai/docs/getting-started/models.","param":null,"type":"invalid_request_error"}}"""
+      )
+      unknownModel shouldBe a[TypeSafeScalaInvalidRequestException]
+      unknownModel.errorType shouldBe Some("invalid_request_error")
+
+      val tooLong = toException(
+        400,
+        """{"error":{"message":"Input length (262144) exceeds or equals model's maximum context length (262144)","type":"invalid_request","code":"400","model":"pplx-decider-v1-27b"}}"""
+      )
+      tooLong shouldBe a[TypeSafeScalaTokenCountExceededException]
+      tooLong.errorType shouldBe Some("invalid_request")
+    }
+
+    "describe an empty or HTML body briefly, and take 413 as an invalid request" in {
+      val wrongPath = toException(404, "")
+      wrongPath shouldBe a[TypeSafeScalaNotFoundException]
+      wrongPath.getMessage shouldBe "Code 404 : (empty body)"
+
+      val tooBig = toException(
+        413,
+        """{"error":{"code":null,"message":"request body exceeds the maximum allowed size of 33554432 bytes","param":null,"type":"invalid_request_error"}}"""
+      )
+      tooBig shouldBe a[TypeSafeScalaInvalidRequestException]
+      tooBig.getMessage should include("33554432 bytes")
+
+      val gatewayPage = "<html><body>" + ("504 Gateway Time-out " * 40) + "</body></html>"
+      val timedOut = toException(504, gatewayPage)
+      timedOut shouldBe a[TypeSafeScalaServerErrorException]
+      timedOut.getMessage.length should be < 330
+      timedOut.getMessage should endWith("...")
+    }
+
+    "keep Liquid's naming code over its type" in {
+      toException(
+        429,
+        """{"error":{"message":"The model `d1:free` is receiving too many requests.","type":"rate_limit_error","param":null,"code":"model_rate_limited"}}"""
+      ).errorType shouldBe Some("model_rate_limited")
+    }
+  }
+
   "extractMessage / errorType" should {
 
     "unpack the shapes the official SDK unpacks" in {

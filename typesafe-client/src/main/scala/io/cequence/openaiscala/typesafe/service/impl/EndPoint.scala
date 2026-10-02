@@ -6,6 +6,8 @@ sealed abstract class EndPoint(value: String = "") extends NamedEnumValue(value)
 
 object EndPoint {
   case object systemOne extends EndPoint("v1/systemone")
+  // Perplexity's Decisions API - the same questions and answers under another path
+  case object decisions extends EndPoint("v1/decisions")
   case object models extends EndPoint("v1/models")
 }
 

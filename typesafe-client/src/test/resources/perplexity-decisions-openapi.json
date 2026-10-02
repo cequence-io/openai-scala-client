@@ -1,0 +1,954 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Decisions API",
+    "description": "Ask yes/no, multiple-choice, and rating questions about your content and get probabilities back. Input tokens are billed at $0.04 per million; output tokens are free. Authenticate with your Perplexity API key as `Authorization: Bearer <key>`.",
+    "version": "0.1.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.perplexity.ai/v1"
+    }
+  ],
+  "paths": {
+    "/decisions": {
+      "post": {
+        "operationId": "decisions_v1_decisions_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionsRequest"
+              },
+              "examples": {
+                "mixed-questions": {
+                  "summary": "Three question types about one product review",
+                  "value": {
+                    "model": "pplx-decider-v1-27b",
+                    "state": {
+                      "title": "Battery died after two weeks",
+                      "review": "The headphones sound great, but the battery stopped charging after two weeks."
+                    },
+                    "questions": {
+                      "defect": {
+                        "type": "noul",
+                        "instructions": "Does the review report a product defect?"
+                      },
+                      "sentiment": {
+                        "type": "choice",
+                        "instructions": "What is the overall sentiment of the review?",
+                        "criteria": {
+                          "positive": "Mostly satisfied",
+                          "mixed": "Praise and complaints in one review",
+                          "negative": "Mostly dissatisfied"
+                        }
+                      },
+                      "severity": {
+                        "type": "score",
+                        "instructions": "How severe is the reported problem?",
+                        "criteria": [
+                          "Cosmetic",
+                          "Inconvenient",
+                          "Product unusable"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "headers": {
+              "x-request-id": {
+                "$ref": "#/components/headers/x-request-id"
+              },
+              "x-ratelimit-limit": {
+                "$ref": "#/components/headers/x-ratelimit-limit"
+              },
+              "x-ratelimit-remaining": {
+                "$ref": "#/components/headers/x-ratelimit-remaining"
+              },
+              "x-ratelimit-used": {
+                "$ref": "#/components/headers/x-ratelimit-used"
+              },
+              "x-ratelimit-reset": {
+                "$ref": "#/components/headers/x-ratelimit-reset"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionsResponse"
+                },
+                "examples": {
+                  "answers": {
+                    "summary": "One answer per question, typed like its question",
+                    "value": {
+                      "model": "pplx-decider-v1-27b",
+                      "answers": {
+                        "defect": {
+                          "type": "noul",
+                          "noul": 0.9424522889347015
+                        },
+                        "sentiment": {
+                          "type": "choice",
+                          "choice": "mixed",
+                          "confidence": 0.9255246944002182,
+                          "probabilities": {
+                            "positive": 0.020649883775315993,
+                            "mixed": 0.9503497962668123,
+                            "negative": 0.02900031995787183
+                          }
+                        },
+                        "severity": {
+                          "type": "score",
+                          "score": 1.7838686319784252,
+                          "confidence": 0.7838686319784252,
+                          "legend": {
+                            "0": "Cosmetic",
+                            "1": "Inconvenient",
+                            "2": "Product unusable"
+                          },
+                          "probabilities": {
+                            "0": 0.008423954913615923,
+                            "1": 0.199283458194343,
+                            "2": 0.7922925868920411
+                          }
+                        }
+                      },
+                      "usage": {
+                        "input_tokens": 367,
+                        "output_tokens": 3
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "description": "One answer per question, under the question's name."
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "405": {
+            "$ref": "#/components/responses/MethodNotAllowed"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          },
+          "502": {
+            "$ref": "#/components/responses/BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/ServiceUnavailable"
+          },
+          "504": {
+            "$ref": "#/components/responses/GatewayTimeout"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Answer questions",
+        "x-mint": {
+          "href": "/api-reference/decisions-post"
+        },
+        "description": "Evaluate one or more named questions against the content in `state`. Mix `noul`, `choice`, and `score` questions in one request; the response returns one answer per question under the same name, plus the model name and token usage. Set `model` to `pplx-decider-v1-27b`; a missing or unknown model returns `400`."
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Your Perplexity API key, sent as `Authorization: Bearer <key>`. The `x-api-key` header is not read."
+      }
+    },
+    "headers": {
+      "x-request-id": {
+        "description": "A UUID that identifies the request. Quote it in support requests.",
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "example": "7a1504a6-a884-48e6-af6e-0c3140aeb6db"
+      },
+      "Retry-After": {
+        "schema": {
+          "type": "integer"
+        },
+        "description": "Seconds to wait before retrying."
+      },
+      "x-ratelimit-limit": {
+        "schema": {
+          "type": "integer"
+        },
+        "description": "Requests allowed per second for your organization."
+      },
+      "x-ratelimit-remaining": {
+        "schema": {
+          "type": "integer"
+        },
+        "description": "Requests left in the current second."
+      },
+      "x-ratelimit-used": {
+        "schema": {
+          "type": "integer"
+        },
+        "description": "Requests used in the current second."
+      },
+      "x-ratelimit-reset": {
+        "schema": {
+          "type": "integer"
+        },
+        "description": "When the window resets, in Unix seconds."
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "The body is not valid JSON, `model` is missing or unknown, a field is unknown or the wrong type, a request limit is exceeded, or an image is not a supported data URL.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "error": {
+                "message": "Invalid model 'pplx-decider-v1-27b-latest'. Permitted models can be found in the documentation at https://docs.perplexity.ai/docs/getting-started/models.",
+                "type": "invalid_request_error",
+                "param": null,
+                "code": null
+              }
+            }
+          }
+        },
+        "headers": {
+          "x-request-id": {
+            "$ref": "#/components/headers/x-request-id"
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "The API key is missing or invalid, or it was sent in `x-api-key`. No request id header.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "error": {
+                "message": "Invalid API key provided. You can find your API key at https://console.perplexity.ai.",
+                "type": "invalid_api_key",
+                "code": 401
+              }
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Wrong path, including a trailing slash. Empty body, no request id."
+      },
+      "MethodNotAllowed": {
+        "description": "Wrong method. Empty body.",
+        "headers": {
+          "Allow": {
+            "description": "Always `POST`.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "POST"
+          },
+          "x-request-id": {
+            "$ref": "#/components/headers/x-request-id"
+          }
+        }
+      },
+      "PayloadTooLarge": {
+        "description": "The request body is over 32 MiB.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "error": {
+                "code": null,
+                "message": "request body exceeds the maximum allowed size of 33554432 bytes",
+                "param": null,
+                "type": "invalid_request_error"
+              }
+            }
+          }
+        },
+        "headers": {
+          "x-request-id": {
+            "$ref": "#/components/headers/x-request-id"
+          }
+        }
+      },
+      "TooManyRequests": {
+        "description": "Over the request or token limit. Wait `Retry-After` seconds, then retry.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "error": {
+                "code": null,
+                "message": "Request rate limit exceeded, please try again later.",
+                "param": null,
+                "type": "too_many_requests"
+              }
+            }
+          }
+        },
+        "headers": {
+          "Retry-After": {
+            "$ref": "#/components/headers/Retry-After"
+          },
+          "x-request-id": {
+            "$ref": "#/components/headers/x-request-id"
+          }
+        }
+      },
+      "InternalServerError": {
+        "description": "The service failed. Retry with backoff."
+      },
+      "BadGateway": {
+        "description": "The model service was unreachable. Retry with backoff."
+      },
+      "ServiceUnavailable": {
+        "description": "The model service is temporarily unavailable. Retry with backoff."
+      },
+      "GatewayTimeout": {
+        "description": "The model did not answer in time, after about a minute. The body may be HTML rather than JSON. Retry, or send less input."
+      }
+    },
+    "schemas": {
+      "Answer": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/NoulAnswer"
+          },
+          {
+            "$ref": "#/components/schemas/ScoreAnswer"
+          },
+          {
+            "$ref": "#/components/schemas/ChoiceAnswer"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "choice": "#/components/schemas/ChoiceAnswer",
+            "noul": "#/components/schemas/NoulAnswer",
+            "score": "#/components/schemas/ScoreAnswer"
+          }
+        },
+        "description": "One answer. Its `type` matches the question's `type`."
+      },
+      "ChoiceAnswer": {
+        "type": "object",
+        "title": "ChoiceAnswer",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "choice"
+            ],
+            "title": "Type",
+            "description": "Always `choice`.",
+            "example": "choice"
+          },
+          "choice": {
+            "type": "string",
+            "title": "Choice",
+            "description": "The option with the highest probability.",
+            "example": "mixed"
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence",
+            "description": "Confidence in the selected option, from 0 to 1. Higher means more certainty.",
+            "example": 0.9255246944002182
+          },
+          "probabilities": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Probabilities",
+            "description": "Probability of each option, keyed by option name. Values are between 0 and 1 and sum to approximately 1.",
+            "example": {
+              "positive": 0.020649883775315993,
+              "mixed": 0.9503497962668123,
+              "negative": 0.02900031995787183
+            }
+          }
+        },
+        "required": [
+          "choice",
+          "confidence",
+          "probabilities",
+          "type"
+        ],
+        "description": "Answer to a `choice` question: the selected option, a confidence value, and the probability of each option."
+      },
+      "ChoiceQuestion": {
+        "type": "object",
+        "title": "ChoiceQuestion",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "choice"
+            ],
+            "title": "Type",
+            "description": "Always `choice`.",
+            "example": "choice"
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "string",
+                "nullable": true
+              },
+              {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              {
+                "type": "array",
+                "items": {},
+                "nullable": true
+              }
+            ],
+            "title": "Instructions",
+            "description": "What to decide when choosing between the options.",
+            "example": "What is the overall sentiment of the review?"
+          },
+          "criteria": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "nullable": true
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "nullable": true
+                },
+                {
+                  "type": "array",
+                  "items": {},
+                  "nullable": true
+                }
+              ]
+            },
+            "title": "Criteria",
+            "description": "Option names mapped to a description of when each applies. Use `null` to let the name speak for itself. 1 to 255 options.",
+            "example": {
+              "positive": "Mostly satisfied",
+              "mixed": "Praise and complaints in one review",
+              "negative": "Mostly dissatisfied"
+            },
+            "minProperties": 1,
+            "maxProperties": 255
+          }
+        },
+        "required": [
+          "criteria",
+          "type"
+        ],
+        "description": "A question that picks one of the options you define."
+      },
+      "NoulAnswer": {
+        "type": "object",
+        "title": "NoulAnswer",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "noul"
+            ],
+            "title": "Type",
+            "description": "Always `noul`.",
+            "example": "noul"
+          },
+          "noul": {
+            "type": "number",
+            "title": "Noul",
+            "description": "Probability of yes or true, from 0 to 1. Values near 0.5 mean the model is unsure.",
+            "example": 0.9424522889347015
+          }
+        },
+        "required": [
+          "noul",
+          "type"
+        ],
+        "description": "Answer to a `noul` question: the probability that the answer is yes or the statement is true."
+      },
+      "NoulCriteria": {
+        "type": "object",
+        "nullable": true,
+        "title": "NoulCriteria",
+        "properties": {
+          "true": {
+            "anyOf": [
+              {
+                "type": "string",
+                "nullable": true
+              },
+              {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              {
+                "type": "array",
+                "items": {},
+                "nullable": true
+              }
+            ],
+            "title": "True",
+            "description": "What a yes answer means for this question.",
+            "example": "The review describes something broken or not working."
+          },
+          "false": {
+            "anyOf": [
+              {
+                "type": "string",
+                "nullable": true
+              },
+              {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              {
+                "type": "array",
+                "items": {},
+                "nullable": true
+              }
+            ],
+            "title": "False",
+            "description": "What a no answer means for this question.",
+            "example": "The review describes normal wear or personal preference."
+          }
+        },
+        "description": "Optional definitions of what counts as yes and what counts as no."
+      },
+      "NoulQuestion": {
+        "type": "object",
+        "title": "NoulQuestion",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "noul"
+            ],
+            "title": "Type",
+            "description": "Always `noul`.",
+            "example": "noul"
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "string",
+                "nullable": true
+              },
+              {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              {
+                "type": "array",
+                "items": {},
+                "nullable": true
+              }
+            ],
+            "title": "Instructions",
+            "description": "The question to answer or the statement to check. Required unless `criteria` is set.",
+            "example": "Does the review report a product defect?"
+          },
+          "criteria": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NoulCriteria"
+              }
+            ],
+            "description": "Optional definitions of yes and no. Required unless `instructions` is set.",
+            "example": {
+              "true": "Something is broken or not working.",
+              "false": "Normal wear or personal preference."
+            }
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "description": "A yes/no question, or a statement to check, answered with the probability of yes or true."
+      },
+      "Question": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/NoulQuestion"
+          },
+          {
+            "$ref": "#/components/schemas/ChoiceQuestion"
+          },
+          {
+            "$ref": "#/components/schemas/ScoreQuestion"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "choice": "#/components/schemas/ChoiceQuestion",
+            "noul": "#/components/schemas/NoulQuestion",
+            "score": "#/components/schemas/ScoreQuestion"
+          }
+        },
+        "description": "A named question about `state`. Discriminated by `type`."
+      },
+      "ScoreAnswer": {
+        "type": "object",
+        "title": "ScoreAnswer",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "score"
+            ],
+            "title": "Type",
+            "description": "Always `score`.",
+            "example": "score"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score",
+            "description": "Probability-weighted average of the level indices. Can fall between two levels.",
+            "example": 1.7838686319784252
+          },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence",
+            "description": "Confidence in the score, from 0 to 1. Higher means more certainty.",
+            "example": 0.7838686319784252
+          },
+          "legend": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": true
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            },
+            "title": "Legend",
+            "description": "Level index, as a string, mapped back to the `criteria` entry it stands for.",
+            "example": {
+              "0": "Cosmetic",
+              "1": "Inconvenient",
+              "2": "Product unusable"
+            }
+          },
+          "probabilities": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Probabilities",
+            "description": "Probability of each level, keyed like `legend`. Values sum to approximately 1.",
+            "example": {
+              "0": 0.008423954913615923,
+              "1": 0.199283458194343,
+              "2": 0.7922925868920411
+            }
+          }
+        },
+        "required": [
+          "score",
+          "confidence",
+          "legend",
+          "probabilities",
+          "type"
+        ],
+        "description": "Answer to a `score` question: the expected score, the rubric, a confidence value, and the probability of each level."
+      },
+      "ScoreQuestion": {
+        "type": "object",
+        "title": "ScoreQuestion",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "score"
+            ],
+            "title": "Type",
+            "description": "Always `score`.",
+            "example": "score"
+          },
+          "instructions": {
+            "anyOf": [
+              {
+                "type": "string",
+                "nullable": true
+              },
+              {
+                "type": "object",
+                "additionalProperties": true,
+                "nullable": true
+              },
+              {
+                "type": "array",
+                "items": {},
+                "nullable": true
+              }
+            ],
+            "title": "Instructions",
+            "description": "What to rate.",
+            "example": "How severe is the reported problem?"
+          },
+          "criteria": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": true
+                },
+                {
+                  "type": "array",
+                  "items": {}
+                }
+              ]
+            },
+            "title": "Criteria",
+            "description": "Ordered level descriptions. The index in this array is the level's score, starting at 0. 1 to 10 levels; use at least two.",
+            "example": [
+              "Cosmetic",
+              "Inconvenient",
+              "Product unusable"
+            ],
+            "maxItems": 10
+          }
+        },
+        "required": [
+          "criteria",
+          "type"
+        ],
+        "description": "A question that rates the content on an ordered rubric."
+      },
+      "DecisionsRequest": {
+        "type": "object",
+        "title": "DecisionsRequest",
+        "properties": {
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "description": "The model to use: `pplx-decider-v1-27b`. A missing or unknown model returns `400`.",
+            "example": "pplx-decider-v1-27b"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "additionalProperties": true
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ],
+            "title": "State",
+            "description": "The content every question in the request refers to: a string, an object, or an array. Images go in an array as OpenAI-style `image_url` parts with base64 PNG, JPEG, or WebP data URLs.",
+            "example": "The headphones sound great, but the battery stopped charging after two weeks."
+          },
+          "questions": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Question"
+            },
+            "minProperties": 1,
+            "title": "Questions",
+            "description": "Questions keyed by a non-empty name you choose. The response uses the same names. 1 to 128 questions.",
+            "example": {
+              "defect": {
+                "type": "noul",
+                "instructions": "Does the review report a product defect?"
+              }
+            },
+            "maxProperties": 128
+          }
+        },
+        "required": [
+          "model",
+          "state",
+          "questions"
+        ],
+        "description": "The content to evaluate and the named questions to ask about it. Unknown fields return `400`. Input must stay under 262,144 tokens and the body under 32 MiB.",
+        "additionalProperties": false
+      },
+      "DecisionsResponse": {
+        "type": "object",
+        "title": "DecisionsResponse",
+        "properties": {
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "description": "The model name you sent, echoed back.",
+            "example": "pplx-decider-v1-27b"
+          },
+          "answers": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Answer"
+            },
+            "minProperties": 1,
+            "title": "Answers",
+            "description": "One answer per question, under the question's name.",
+            "example": {
+              "defect": {
+                "type": "noul",
+                "noul": 0.9424522889347015
+              }
+            }
+          },
+          "usage": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Usage"
+              }
+            ],
+            "description": "Token counts for this request.",
+            "example": {
+              "input_tokens": 367,
+              "output_tokens": 3
+            }
+          }
+        },
+        "required": [
+          "model",
+          "answers",
+          "usage"
+        ],
+        "description": "Answers keyed by question name, plus the model that answered and token usage."
+      },
+      "Usage": {
+        "type": "object",
+        "title": "Usage",
+        "properties": {
+          "input_tokens": {
+            "type": "integer",
+            "title": "Input Tokens",
+            "description": "Input tokens processed for the request.",
+            "example": 367
+          },
+          "output_tokens": {
+            "type": "integer",
+            "title": "Output Tokens",
+            "description": "Output tokens generated for the answers.",
+            "example": 3
+          }
+        },
+        "required": [
+          "input_tokens",
+          "output_tokens"
+        ],
+        "description": "Token counts for the request. Input tokens are billed at $0.04 per million; output tokens are free."
+      },
+      "Error": {
+        "type": "object",
+        "title": "Error",
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "What went wrong.",
+            "example": "Noul question must have criteria or instructions"
+          },
+          "type": {
+            "type": "string",
+            "description": "The error category, for example `invalid_request_error`, `invalid_request`, `invalid_api_key`, or `too_many_requests`.",
+            "example": "invalid_request"
+          },
+          "code": {
+            "description": "A status code as a string or a number, or `null`. Do not branch on it; use the HTTP status.",
+            "anyOf": [
+              {
+                "type": "string",
+                "nullable": true
+              },
+              {
+                "type": "integer",
+                "nullable": true
+              }
+            ]
+          },
+          "param": {
+            "type": "string",
+            "nullable": true,
+            "description": "Present on some errors; `null` when present."
+          }
+        },
+        "required": [
+          "message",
+          "type"
+        ],
+        "description": "Details of the error."
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "title": "ErrorResponse",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/Error"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "description": "The body of an error response."
+      }
+    }
+  }
+}

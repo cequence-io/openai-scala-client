@@ -1029,4 +1029,9 @@ object NonOpenAIModelId {
   // speaks it: `TypeSafeServiceFactory.liquid` / `liquidAsOpenAI`. `/decisions/v1/models`
   // lists only `d1:free` (live 2026-09-30)
   val liquid_d1_free = "d1:free"
+
+  // Perplexity's multimodal decision model (2026-10-01), served by its Decisions API (`POST
+  // https://api.perplexity.ai/v1/decisions`, the System One question / answer format plus
+  // images in the state) - `TypeSafeServiceFactory.perplexity` / `perplexityAsOpenAI`
+  val pplx_decider_v1_27b = "pplx-decider-v1-27b"
 }

@@ -30,5 +30,8 @@ package object impl {
     // api usage, invalid request, not found and the base: plain client errors
     case e: TypeSafeScalaClientException =>
       Future.failed(new OpenAIScalaClientException(e.getMessage, e))
+    // a request the service refuses before sending (a host limit, an image it cannot take)
+    case e: IllegalArgumentException =>
+      Future.failed(new OpenAIScalaClientException(e.getMessage, e))
   }
 }

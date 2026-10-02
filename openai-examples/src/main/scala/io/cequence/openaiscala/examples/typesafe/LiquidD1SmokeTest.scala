@@ -7,7 +7,6 @@ import io.cequence.openaiscala.domain.{JsonSchema, UserMessage}
 import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
 import io.cequence.openaiscala.typesafe.domain._
 import io.cequence.openaiscala.typesafe.service.{
-  TypeSafeService,
   TypeSafeServiceAdapters,
   TypeSafeServiceFactory
 }
@@ -117,77 +116,6 @@ object LiquidD1SmokeTest {
     )
   )
 
-  // the three questions above plus (n - 3) more nouls, or the first n of them
-  private def questionsOf(n: Int): Map[String, Question] =
-    questions.take(n) ++ (0 until math.max(0, n - questions.size)).map { i =>
-      s"mentions_$i" -> NoulQuestion(
-        s"Does the message mention aspect number $i of the order (delivery time, money, e-mails, ...)?"
-      )
-    }
-
-  // sequential calls 250 ms apart (d1's free tier throttles bursts: back-to-back calls ran
-  // into seconds-long answers and 429 `model_unavailable`) - the first one warms the
-  // connection up and is not counted; a failed call is counted, not timed
-  private def timeCalls(
-    service: TypeSafeService,
-    questions: Map[String, Question],
-    runs: Int
-  )(
-    implicit ec: ExecutionContext,
-    scheduler: Scheduler
-  ): Future[(Seq[Long], Int)] =
-    (0 to runs).foldLeft(Future.successful((Seq.empty[Long], 0))) { case (acc, call) =>
-      acc.flatMap { case (times, failures) =>
-        akka.pattern.after(250.millis, scheduler)(Future.successful(())).flatMap { _ =>
-          val start = System.nanoTime()
-          service
-            .systemOne(state, questions)
-            .map { _ =>
-              val ms = (System.nanoTime() - start) / 1000000
-              (if (call == 0) times else times :+ ms, failures)
-            }
-            .recover { case NonFatal(_) => (times, failures + 1) }
-        }
-      }
-    }
-
-  private def summary(result: (Seq[Long], Int)): String = {
-    val (times, failures) = result
-    val sorted = times.sorted
-    val failed = if (failures > 0) s", $failures failed" else ""
-    if (sorted.isEmpty) s"no successful call$failed"
-    else
-      f"${sorted(sorted.size / 2)}%5d ms (${sorted.head}%d - ${sorted.last}%d)$failed"
-  }
-
-  private def benchmark(
-    d1: TypeSafeService,
-    jev: Option[TypeSafeService]
-  )(
-    implicit ec: ExecutionContext,
-    scheduler: Scheduler
-  ): Future[Unit] = {
-    println("[latency] median per call (min - max), 8 timed calls each")
-    println("  questions   d1                          Jev")
-    Seq(1, 3, 10, 20, 40).foldLeft(Future.successful(())) {
-      (
-        acc,
-        n
-      ) =>
-        acc.flatMap { _ =>
-          for {
-            d1Times <- timeCalls(d1, questionsOf(n), runs = 8)
-            jevTimes <- jev.fold(Future.successful((Seq.empty[Long], 0)))(
-              timeCalls(_, questionsOf(n), runs = 8)
-            )
-          } yield println(
-            f"  $n%9d   ${summary(d1Times)}%-26s  ${if (jev.isDefined) summary(jevTimes)
-              else "-"}"
-          )
-        }
-    }
-  }
-
   private def show(
     label: String,
     response: SystemOneResponse
@@ -241,7 +169,12 @@ object LiquidD1SmokeTest {
 
       _ <-
         if (args.contains("nobench")) Future.successful(())
-        else benchmark(liquid, jev)
+        else
+          DecisionModelBenchmark.run(
+            Seq("d1" -> liquid) ++ jev.map("Jev" -> _),
+            state,
+            questions
+          )
     } yield ()
 
     val passed =

@@ -4,7 +4,7 @@ import io.cequence.openaiscala.JsonFormats.eitherJsonSchemaWrites
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.JsonSchemaDef
-import io.cequence.openaiscala.typesafe.domain.Question
+import io.cequence.openaiscala.typesafe.domain.{DecisionImage, Question}
 import io.cequence.openaiscala.typesafe.service.impl.SchemaQuestions
 import play.api.libs.json._
 
@@ -26,7 +26,11 @@ import scala.util.Try
  *   - one user message with instructions -> `{"instructions": ..., "message": ...}`
  *   - several turns -> `{"instructions": ..., "conversation": [{"role", "content"}, ...]}`
  *
- * Image content, tool messages and an empty conversation are refused. Everything this object
+ * Tool messages and an empty conversation are refused, and so is image content - unless the
+ * host reads images (`toState(messages, images = true)`, Perplexity's Decisions API): a user
+ * message with images then becomes an array of its parts, text as above and each image an
+ * OpenAI-style `{"type": "image_url", "image_url": {"url": ...}}` part, which may be a base64
+ * PNG, JPEG or WebP data URL of at most 2,048 tiles of 32 x 32 pixels. Everything this object
  * cannot map fails with an `OpenAIScalaClientException` - it is the OpenAI adapter's mapping,
  * so its errors wear the OpenAI adapter's type.
  *
@@ -38,8 +42,20 @@ import scala.util.Try
  */
 object TypeSafeChatMapping {
 
-  /** The `state` the adapter sends for these messages. */
-  def toState(messages: Seq[BaseMessage]): JsValue = {
+  /** The `state` the adapter sends for these messages (image content refused). */
+  def toState(messages: Seq[BaseMessage]): JsValue = toState(messages, images = false)
+
+  /**
+   * The `state` the adapter sends for these messages.
+   *
+   * @param images
+   *   whether the host reads images in the state (Perplexity's Decisions API does; TypeSafe's
+   *   Jev and Liquid's d1 read an image part as text, so for them image content is refused)
+   */
+  def toState(
+    messages: Seq[BaseMessage],
+    images: Boolean
+  ): JsValue = {
     val instructions = messages.collect {
       case SystemMessage(content, _)    => content
       case DeveloperMessage(content, _) => content
@@ -48,13 +64,7 @@ object TypeSafeChatMapping {
     val turns: Seq[(String, JsValue)] = messages.collect {
       case UserMessage(content, _) => "user" -> userContent(content)
       case UserSeqMessage(content, _) =>
-        "user" -> userContent(content.map {
-          case TextContent(text) => text
-          case other =>
-            fail(
-              s"Only text content is supported; got ${other.getClass.getSimpleName}."
-            )
-        }.mkString("\n"))
+        "user" -> userSeqContent(content, images)
       case AssistantMessage(content, _, _) => "assistant" -> JsString(content)
       case other
           if !other.isInstanceOf[SystemMessage] && !other.isInstanceOf[DeveloperMessage] =>
@@ -94,6 +104,47 @@ object TypeSafeChatMapping {
   private[typesafe] def plan(schema: JsonSchemaDef): SchemaQuestions.Plan =
     try SchemaQuestions.plan(Json.toJson(schema.structure))
     catch { case e: IllegalArgumentException => fail(e.getMessage) }
+
+  // text parts are joined into one text; with images (allowed) the message is an array of its
+  // parts in order - consecutive text parts joined, each image an `image_url` part
+  private def userSeqContent(
+    content: Seq[Content],
+    images: Boolean
+  ): JsValue = {
+    val parts: Seq[Either[String, String]] = content.map {
+      case TextContent(text)    => Left(text)
+      case ImageURLContent(url) => Right(url)
+      case other =>
+        fail(
+          s"Only text and image content are supported; got ${other.getClass.getSimpleName}."
+        )
+    }
+
+    val imageUrls = parts.collect { case Right(url) => url }
+
+    if (imageUrls.isEmpty)
+      userContent(parts.collect { case Left(text) => text }.mkString("\n"))
+    else if (!images)
+      fail(
+        "Image content is read only by Perplexity's Decisions API " +
+          "(TypeSafeServiceFactory.perplexityAsOpenAI, or asOpenAI(service, imageInput = true)) - " +
+          "TypeSafe's Jev and Liquid's d1 would read it as text."
+      )
+    else {
+      val problems = imageUrls.flatMap(DecisionImage.problem)
+      if (problems.nonEmpty)
+        fail(s"The message carries an image the API cannot take: ${problems.mkString("; ")}.")
+
+      val grouped = parts.foldLeft(Vector.empty[Either[String, String]]) {
+        case (acc :+ Left(previous), Left(text)) => acc :+ Left(previous + "\n" + text)
+        case (acc, part)                         => acc :+ part
+      }
+      JsArray(grouped.map {
+        case Left(text) => userContent(text)
+        case Right(url) => DecisionImage.part(url)
+      })
+    }
+  }
 
   // a user message that IS a JSON object or array goes in as structured state; a number, a
   // quoted string or plain prose stays text

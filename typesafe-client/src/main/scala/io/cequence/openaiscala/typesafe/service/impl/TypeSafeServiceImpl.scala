@@ -2,10 +2,12 @@ package io.cequence.openaiscala.typesafe.service.impl
 
 import io.cequence.openaiscala.typesafe.JsonFormats._
 import io.cequence.openaiscala.typesafe.domain.{
+  DecisionImage,
   ModelMetadata,
   Question,
   SystemOneRequest,
-  SystemOneResponse
+  SystemOneResponse,
+  TypeSafeModelId
 }
 import io.cequence.openaiscala.typesafe.service.{
   HandleTypeSafeErrorCodes,
@@ -42,13 +44,16 @@ import scala.concurrent.{ExecutionContext, Future}
  *   engine use `engine.copy(TransportSettings(timeouts = ...))` instead
  * @param externalEngine
  *   a caller-supplied, site-stateless engine; not closed by this service
+ * @param api
+ *   what the host does differently - the endpoint, the model listing, images
  */
 private[service] class TypeSafeServiceImpl(
   apiKey: String,
   baseUrl: String,
   override val defaultModel: String,
   timeouts: Option[Timeouts] = None,
-  externalEngine: Option[WSClientEngine] = None
+  externalEngine: Option[WSClientEngine] = None,
+  api: DecisionApi = DecisionApi.typeSafe
 )(
   implicit val ec: ExecutionContext
 ) extends TypeSafeService
@@ -72,7 +77,7 @@ private[service] class TypeSafeServiceImpl(
     SiteBinding(
       TypeSafeServiceImpl.normalizeBaseUrl(baseUrl),
       WsRequestContext(authHeaders = Seq(("Authorization", s"Bearer ${apiKey}"))),
-      label = Some("typesafe")
+      label = Some(api.label)
     )
 
   override def systemOne(
@@ -83,8 +88,24 @@ private[service] class TypeSafeServiceImpl(
     // fails fast (IllegalArgumentException) before any I/O
     val request = SystemOneRequest(state, model, questions)
 
+    api.maxQuestions.foreach { max =>
+      require(
+        questions.size <= max,
+        s"${api.label} takes at most $max questions per request (got ${questions.size}) - " +
+          "split them over several requests."
+      )
+    }
+
+    if (api.images) {
+      val problems = DecisionImage.problems(state)
+      require(
+        problems.isEmpty,
+        s"The state carries an image the API cannot take: ${problems.mkString("; ")}."
+      )
+    }
+
     execPOSTBodyRich(
-      EndPoint.systemOne,
+      api.decisions,
       body = Json.toJson(request)
     ).map { rich =>
       val response = responseOrError(rich).json.asSafe[SystemOneResponse]
@@ -93,9 +114,11 @@ private[service] class TypeSafeServiceImpl(
   }
 
   override def listModels: Future[Seq[ModelMetadata]] =
-    execGETRich(EndPoint.models).map { rich =>
-      (responseOrError(rich).json \ "models").get.asSafe[Seq[ModelMetadata]]
-    }.recoverWith(transportErrors)
+    api.models.fold(
+      execGETRich(EndPoint.models).map { rich =>
+        (responseOrError(rich).json \ "models").get.asSafe[Seq[ModelMetadata]]
+      }.recoverWith(transportErrors)
+    )(Future.successful)
 
   // like ws-client's getResponseOrError, but the exception also carries the request id
   private def responseOrError(rich: RichResponse): Response =
@@ -123,9 +146,67 @@ private[service] object TypeSafeServiceImpl {
   def normalizeBaseUrl(baseUrl: String): String =
     baseUrl.trim.stripSuffix("/") + "/"
 
+  // TypeSafe's own header first, then the `x-request-id` of Perplexity (and most other hosts) -
+  // by priority, not by their order in the response
+  private val requestIdHeaders =
+    Seq(TypeSafeServiceConsts.requestIdHeader, TypeSafeServiceConsts.genericRequestIdHeader)
+
   private[impl] def requestId(rich: RichResponse): Option[String] =
-    rich.headers.collectFirst {
-      case (name, values) if name.equalsIgnoreCase(TypeSafeServiceConsts.requestIdHeader) =>
-        values.headOption
-    }.flatten
+    requestIdHeaders.map { header =>
+      rich.headers.collectFirst {
+        case (name, values) if name.equalsIgnoreCase(header) => values.headOption
+      }.flatten
+    }.collectFirst { case Some(id) => id }
+}
+
+/**
+ * What differs between the hosts of the System One question / answer format.
+ *
+ * @param label
+ *   the site's label (logs)
+ * @param decisions
+ *   the endpoint that answers the questions
+ * @param models
+ *   the models [[TypeSafeServiceImpl.listModels]] returns without a request, for a host that
+ *   lists none of its own
+ * @param images
+ *   whether the host reads image parts in the state - their URLs and sizes are then checked
+ *   before sending ([[DecisionImage]])
+ * @param maxQuestions
+ *   the most questions the host takes per request, checked before sending
+ */
+private[service] final case class DecisionApi(
+  label: String,
+  decisions: EndPoint,
+  models: Option[Seq[ModelMetadata]] = None,
+  images: Boolean = false,
+  maxQuestions: Option[Int] = None
+)
+
+private[service] object DecisionApi {
+
+  // Jev took 129 questions in one request (live 2026-10-02) - no cap known
+  val typeSafe: DecisionApi = DecisionApi("typesafe", EndPoint.systemOne)
+
+  // 422 "A request accepts at most 128 questions." (live 2026-10-02)
+  val liquid: DecisionApi = DecisionApi("liquid", EndPoint.systemOne, maxQuestions = Some(128))
+
+  // Perplexity's `GET /v1/models` lists its Agent API models, not the decider (live
+  // 2026-10-02); the Decisions API has this one model
+  val perplexity: DecisionApi = DecisionApi(
+    "perplexity",
+    EndPoint.decisions,
+    models = Some(
+      Seq(
+        ModelMetadata(
+          TypeSafeModelId.pplx_decider_v1_27b,
+          "Perplexity's multimodal decision model, the one model of its Decisions API.",
+          "2026-10-01"
+        )
+      )
+    ),
+    images = true,
+    // 400 "Each request needs between 1 and 128 questions" (live 2026-10-02)
+    maxQuestions = Some(128)
+  )
 }

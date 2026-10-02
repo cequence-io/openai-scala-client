@@ -9,7 +9,10 @@ import scala.concurrent.Future
 /**
  * TypeSafe AI's System One API: send a `state` plus named typed questions, get typed answers
  * with calibrated probabilities back - a decision model, not a chat one, so there is no
- * streaming and no `asOpenAI()` adapter.
+ * streaming; `TypeSafeServiceFactory.asOpenAI` puts it behind the chat interface for
+ * JSON-schema structured output. Liquid AI's d1 and Perplexity's Decisions API
+ * (`pplx-decider-v1-27b`, images in the state too) take the same questions
+ * (`TypeSafeServiceFactory.liquid` / `perplexity`).
  *
  * Errors are [[TypeSafeScalaClientException]]s classified by status and body
  * (`TypeSafeScalaUnauthorizedException`, `TypeSafeScalaTokenCountExceededException`,

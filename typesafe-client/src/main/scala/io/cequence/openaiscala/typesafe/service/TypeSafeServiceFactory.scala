@@ -1,8 +1,9 @@
 package io.cequence.openaiscala.typesafe.service
 
 import io.cequence.openaiscala.EnvHelper
-import io.cequence.openaiscala.service.OpenAIChatCompletionService
+import io.cequence.openaiscala.service.{ChatProviderSettings, OpenAIChatCompletionService}
 import io.cequence.openaiscala.typesafe.service.impl.{
+  DecisionApi,
   OpenAITypeSafeChatCompletionService,
   TypeSafeServiceImpl
 }
@@ -36,7 +37,8 @@ import scala.concurrent.ExecutionContext
  * Liquid AI's decision model d1 speaks the same System One API: [[liquid]] /
  * [[liquidAsOpenAI]] point the client at Liquid's host (`LIQUID_API_KEY`, model `d1:free`);
  * its errors are the same [[TypeSafeScalaClientException]] hierarchy, classified by HTTP
- * status.
+ * status. So does Perplexity's Decisions API ([[perplexity]] / [[perplexityAsOpenAI]],
+ * `PERPLEXITY_API_KEY`, model `pplx-decider-v1-27b`), which also reads images in the state.
  */
 object TypeSafeServiceFactory extends EnvHelper {
 
@@ -105,6 +107,21 @@ object TypeSafeServiceFactory extends EnvHelper {
     new OpenAITypeSafeChatCompletionService(service)
 
   /**
+   * The OpenAI adapter over an EXISTING service, saying whether its host reads images in the
+   * state - `imageInput = true` for a Perplexity service ([[perplexity]], e.g. wrapped in the
+   * retry adapter): the image parts of user messages then go into the state instead of being
+   * refused. TypeSafe's Jev and Liquid's d1 read an image part as text, so keep it `false` for
+   * them.
+   */
+  def asOpenAI(
+    service: TypeSafeService,
+    imageInput: Boolean
+  )(
+    implicit ec: ExecutionContext
+  ): OpenAIChatCompletionService =
+    new OpenAITypeSafeChatCompletionService(service, imageInput)
+
+  /**
    * Liquid AI's decision model d1 on its System One API (`https://api.liquid.ai/decisions`,
    * `LIQUID_API_KEY`, `d1:free`), on its own PRIVATE engine.
    */
@@ -116,7 +133,7 @@ object TypeSafeServiceFactory extends EnvHelper {
   )(
     implicit ec: ExecutionContext
   ): TypeSafeService =
-    apply(apiKey, baseUrl, defaultModel, timeouts)
+    new TypeSafeServiceImpl(apiKey, baseUrl, defaultModel, timeouts, api = DecisionApi.liquid)
 
   /** [[liquid]] on a CALLER-SUPPLIED, shared engine (see [[withEngine]]). */
   def liquidWithEngine(
@@ -127,7 +144,13 @@ object TypeSafeServiceFactory extends EnvHelper {
   )(
     implicit ec: ExecutionContext
   ): TypeSafeService =
-    withEngine(engine, apiKey, baseUrl, defaultModel)
+    new TypeSafeServiceImpl(
+      apiKey,
+      baseUrl,
+      defaultModel,
+      externalEngine = Some(engine),
+      api = DecisionApi.liquid
+    )
 
   /**
    * Liquid AI's d1 behind the OpenAI chat-completion interface - `json_schema` structured
@@ -142,6 +165,79 @@ object TypeSafeServiceFactory extends EnvHelper {
     implicit ec: ExecutionContext
   ): OpenAIChatCompletionService =
     asOpenAI(liquid(apiKey, baseUrl, defaultModel, timeouts))
+
+  /**
+   * Perplexity's decision model `pplx-decider-v1-27b` on its Decisions API (`POST
+   * https://api.perplexity.ai/v1/decisions`; the key from `PERPLEXITY_API_KEY`, else
+   * `SONAR_API_KEY`), on its own PRIVATE engine. The same questions and answers as System One,
+   * plus images: an OpenAI-style `image_url` part anywhere in the state, as a base64 PNG, JPEG
+   * or WebP data URL of at most 2,048 tiles of 32 x 32 pixels (e.g. 1440 x 1440) - both
+   * checked before sending, since a larger image times out (504) after about a minute. Limits
+   * of its own: at most 128 questions and an input under 262,144 tokens. `listModels` returns
+   * the one model without a request (Perplexity's `/v1/models` lists its Agent API models).
+   */
+  def perplexity(
+    apiKey: String = perplexityApiKey,
+    baseUrl: String = perplexityBaseUrl,
+    defaultModel: String = perplexityDefaultModel,
+    timeouts: Option[Timeouts] = None
+  )(
+    implicit ec: ExecutionContext
+  ): TypeSafeService =
+    new TypeSafeServiceImpl(
+      apiKey,
+      baseUrl,
+      defaultModel,
+      timeouts,
+      api = DecisionApi.perplexity
+    )
+
+  /** [[perplexity]] on a CALLER-SUPPLIED, shared engine (see [[withEngine]]). */
+  def perplexityWithEngine(
+    engine: WSClientEngine,
+    apiKey: String = perplexityApiKey,
+    baseUrl: String = perplexityBaseUrl,
+    defaultModel: String = perplexityDefaultModel
+  )(
+    implicit ec: ExecutionContext
+  ): TypeSafeService =
+    new TypeSafeServiceImpl(
+      apiKey,
+      baseUrl,
+      defaultModel,
+      externalEngine = Some(engine),
+      api = DecisionApi.perplexity
+    )
+
+  /**
+   * Perplexity's decider behind the OpenAI chat-completion interface - `json_schema`
+   * structured output only, like [[asOpenAI]], but the image parts of user messages
+   * (`ImageURLContent` with a data URL) go into the state (`pplx-decider-v1-27b` is in
+   * `models-supporting-json-schema`).
+   */
+  def perplexityAsOpenAI(
+    apiKey: String = perplexityApiKey,
+    baseUrl: String = perplexityBaseUrl,
+    defaultModel: String = perplexityDefaultModel,
+    timeouts: Option[Timeouts] = None
+  )(
+    implicit ec: ExecutionContext
+  ): OpenAIChatCompletionService =
+    asOpenAI(perplexity(apiKey, baseUrl, defaultModel, timeouts), imageInput = true)
+
+  // like the Perplexity module: the name Perplexity's docs use, else `SONAR_API_KEY`
+  private def perplexityApiKey: String = {
+    val keys = Seq(perplexityApiKeyEnvKey, ChatProviderSettings.sonar.apiKeyEnvVariable)
+    keys
+      .flatMap(key => Option(System.getenv(key)).map(_.trim).filter(_.nonEmpty))
+      .headOption
+      .getOrElse(
+        throw new IllegalStateException(
+          s"${keys.mkString(" or ")} environment variable expected but not set. Alternatively, " +
+            "you can pass the value explicitly to the factory method."
+        )
+      )
+  }
 
   private def baseUrlFromEnv: String = envOrElse(baseUrlEnvKey, defaultBaseUrl)
 

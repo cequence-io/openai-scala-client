@@ -1,7 +1,7 @@
 # OpenAI Scala Client 🤖
 [![version](https://img.shields.io/badge/version-1.4.0-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT) ![GitHub Stars](https://img.shields.io/github/stars/cequence-io/openai-scala-client?style=social) [![Follow on X](https://img.shields.io/badge/X-%400xbnd-black?logo=x)](https://x.com/0xbnd) ![GitHub CI](https://github.com/cequence-io/openai-scala-client/actions/workflows/continuous-integration.yml/badge.svg)
 
-This is a no-nonsense async Scala client for OpenAI API and multiple LLM providers supporting all the available endpoints and params **including streaming** (with a provider-neutral typed stream of text / thinking / tool-call / tool-result chunks), **chat completion**, **responses API**, **agents API**, **tools** (including MCP), **graders**, **vision** (with provider-uniform file/image attachments), **batch processing**, and **voice routines** (as defined [here](https://platform.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala) with adapters for Anthropic (incl. Bedrock and Managed Agents), Google Gemini/Vertex AI, Groq, Perplexity, TypeSafe AI (Jev), Liquid AI (d1), and others. The supported calls are:
+This is a no-nonsense async Scala client for OpenAI API and multiple LLM providers supporting all the available endpoints and params **including streaming** (with a provider-neutral typed stream of text / thinking / tool-call / tool-result chunks), **chat completion**, **responses API**, **agents API**, **tools** (including MCP), **graders**, **vision** (with provider-uniform file/image attachments), **batch processing**, and **voice routines** (as defined [here](https://platform.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala) with adapters for Anthropic (incl. Bedrock and Managed Agents), Google Gemini/Vertex AI, Groq, Perplexity (incl. its decision model), TypeSafe AI (Jev), Liquid AI (d1), and others. The supported calls are:
 
 * **Models**: [listModels](https://platform.openai.com/docs/api-reference/models/list), and [retrieveModel](https://platform.openai.com/docs/api-reference/models/retrieve)
 * **Completions**: [createCompletion](https://platform.openai.com/docs/api-reference/completions/create) (deprecated on `OpenAIService` - OpenAI shuts down its last completions models on 2026-09-28; OpenAI-compatible servers keep it via `OpenAICoreService`)
@@ -61,10 +61,11 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 | [Novita](https://novita.ai/) | Full (model-dependent) |                                   |                         | Cloud provider |
 | [Octo AI](https://octo.ai/) | Only JSON object mode  |                                   |                         | Cloud provider (obsolete) |
 | [Ollama](https://ollama.com/) | Varies                 |                                   |                         | Local LLMs |
-| [Perplexity](https://www.perplexity.ai/) | Only implied           |                                   |                         | Agent API (🔥 1.4.0) + Sonar (⚠️ chat completions retire on 2026-09-27, see below) |
+| [Perplexity](https://www.perplexity.ai/) | Only implied           |                                   |                         | Agent API (🔥 1.4.0) + Sonar (⚠️ chat completions retire on 2026-09-27, see below); its decision model is the row below |
 | [TogetherAI](https://www.together.ai/) | Full (model-dependent)|                                   |                         | Cloud provider |
 | [TypeSafe AI](https://typesafe.ai/)         | Typed by construction  | `json_schema` structured output only (`asOpenAI()`) |                         | Decision model `Jev`: typed answers with calibrated probabilities |
 | [Liquid AI](https://www.liquid.ai/) (🔥 New) | Typed by construction  | `json_schema` structured output only (`liquidAsOpenAI()`) |                         | Decision model `d1` - Jev-compatible (System One API, the TypeSafe lib); no chat models yet |
+| [Perplexity Decisions](https://docs.perplexity.ai/docs/decisions/quickstart) (🔥 New) | Typed by construction  | `json_schema` structured output only (`perplexityAsOpenAI()`), images too |                         | Decision model `pplx-decider-v1-27b` - Jev-compatible questions, multimodal (the TypeSafe lib) |
 
 ---
 
@@ -317,6 +318,13 @@ Then you can obtain a service in one of the following ways.
   val d1Service = TypeSafeServiceFactory.liquidAsOpenAI() // json_schema structured output
 ```
    See [Liquid AI (d1)](#liquid-ai-d1-) below - what works, and d1 vs Jev.
+
+   🔥 Perplexity's multimodal decision model **pplx-decider-v1-27b** (launched 2026-10-01) takes the same questions - and images - on its Decisions API, with `PERPLEXITY_API_KEY`:
+```scala
+  val decider = TypeSafeServiceFactory.perplexity()                 // native, POST /v1/decisions
+  val deciderService = TypeSafeServiceFactory.perplexityAsOpenAI()  // json_schema structured output, images in user messages
+```
+   See [Perplexity Decisions API (pplx-decider)](#perplexity-decisions-api-pplx-decider-) below - images, limits, and the decider vs Jev vs d1.
 
 8. [Groq](https://wow.groq.com/) - requires `GROQ_API_KEY"`
 ```scala
@@ -1745,7 +1753,8 @@ Questions are named by their property paths (`customer.is_angry`, a multi-select
 Of the standard settings only `model`, `response_format_type`, `jsonSchema` and `n` = 1 are honoured; anything else you
 set (temperature, `max_tokens`, `seed`, `reasoning_effort`, ...) is dropped with one warning naming it, since System One
 does not sample. A free-form string in the schema, a plain (non-`json_schema`) request, `n > 1`, tools, streaming and
-image content are refused up front with an explanation. The `jev-*` ids are listed under `models-supporting-json-schema`,
+image content (read only by [Perplexity's decider](#perplexity-decisions-api-pplx-decider-)) are refused up front with an
+explanation. The `jev-*` ids are listed under `models-supporting-json-schema`,
 so the JSON helper keeps the request in schema mode, and a `chatCompletionRouter` can send closed-vocabulary schemas to
 Jev and everything else to an LLM. See `examples/typesafe/TypeSafeCreateChatCompletionWithJSON`, and
 `TypeSafeOpenAIAdapterScenarios` for fifteen "how to call it and what happens when" cases (JSON user messages, system
@@ -1814,6 +1823,94 @@ Liquid's errors come in OpenAI's shape; they arrive as the same `TypeSafeScala*E
 Liquid's code (e.g. `model_unavailable`) in `errorType`. See
 [LiquidD1SmokeTest](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/typesafe/LiquidD1SmokeTest.scala)
 (the models, a native call, the OpenAI adapter, Jev side by side, and the latency benchmark).
+
+## Perplexity Decisions API (pplx-decider) 🧭
+
+Perplexity's open-sourced decision model **`pplx-decider-v1-27b`** (launched 2026-10-01) answers the same typed questions as
+TypeSafe's Jev on Perplexity's **Decisions API** (`POST https://api.perplexity.ai/v1/decisions`) - and it is multimodal:
+images can go into the `state`. The TypeSafe lib (`openai-scala-typesafe-client`) talks to it; only the host, the path, the
+key (`PERPLEXITY_API_KEY`, else `SONAR_API_KEY`) and the model differ. Input costs $0.04 per million tokens, output is free.
+
+| | Status |
+|---|---|
+| Decisions - native `systemOne` (`TypeSafeServiceFactory.perplexity()`) | ✅ works |
+| Images in the state - `DecisionImage(bytes)`, base64 PNG / JPEG / WebP data URLs, anywhere in the state | ✅ works (sizes checked before sending) |
+| Decisions as structured output - the OpenAI adapter (`TypeSafeServiceFactory.perplexityAsOpenAI()`, `json_schema` only), images in user messages | ✅ works |
+| `listModels` | returns the one model without a request (Perplexity's `/v1/models` lists its Agent API models) |
+
+```scala
+  import io.cequence.openaiscala.domain.{TextContent, UserSeqMessage, VLMContent}
+  import io.cequence.openaiscala.typesafe.domain.{ChoiceQuestion, DecisionImage, NoulQuestion, ScoreQuestion, TypeSafeModelId}
+  import io.cequence.openaiscala.typesafe.service.TypeSafeServiceFactory
+  import play.api.libs.json.Json
+  import java.nio.file.{Files, Paths}
+
+  val decider = TypeSafeServiceFactory.perplexity()   // PERPLEXITY_API_KEY (or SONAR_API_KEY), pplx-decider-v1-27b
+
+  decider.systemOne(
+    state = Json.obj("review" -> "The headphones sound great, but the battery stopped charging after two weeks."),
+    questions = Map(
+      "defect" -> NoulQuestion("Does the review report a product defect?"),
+      "sentiment" -> ChoiceQuestion(
+        "What is the overall sentiment of the review?",
+        "positive" -> "Mostly satisfied",
+        "mixed" -> "Praise and complaints in one review",
+        "negative" -> "Mostly dissatisfied"
+      ),
+      "severity" -> ScoreQuestion("How severe is the reported problem?", "Cosmetic", "Inconvenient", "Product unusable")
+    )
+  ).map { response =>
+    response.noul("defect").noul          // 0.942
+    response.choice("sentiment").choice   // mixed (0.95)
+    response.score("severity").score      // 1.78 of 0..2
+  }
+
+  // an image: DecisionImage builds the part from PNG, JPEG or WebP bytes (or fromDataUrl) and refuses an
+  // oversized one up front; the part may go anywhere in the state
+  val square = Files.readAllBytes(Paths.get("square.png"))
+
+  decider.systemOne(
+    state = Json.arr("Which color is the square?", DecisionImage(square)),
+    questions = Map("color" -> ChoiceQuestion.ofLabels("What color is the square?", "red", "blue", "green"))
+  )
+
+  // as an OpenAIChatCompletionService for json_schema structured output - the image parts of user messages go
+  // into the state, e.g. via VLMContent (a "[file: NAME]" label + the image as a data URL)
+  val service = TypeSafeServiceFactory.perplexityAsOpenAI()
+
+  service.createChatCompletionWithJSON[Square](
+    Seq(UserSeqMessage(TextContent("Which color is the square?") +: VLMContent.of(square, "square.png"))),
+    CreateChatCompletionSettings(model = TypeSafeModelId.pplx_decider_v1_27b).withJsonSchema(squareSchema)
+  )  // Square(blue, 0.99) - a `color` enum plus a `color_confidence` number
+```
+
+**Limits** (checked live 2026-10-02): 1 to 128 questions (checked before sending, for d1 too), 255 options per choice, 10 levels per score, an input under 262,144
+tokens (a longer one is a `TypeSafeScalaTokenCountExceededException`), a body under 32 MiB, 10 requests per second per
+organization. Jev and d1 stop at 10 score levels too, so the schema planner refuses a wider range or numeric enum up front.
+Images go only as base64 PNG / JPEG / WebP data URLs - the API never fetches a URL - of at most 2,048 tiles of 32 x 32 pixels
+(1440 x 1440 or 2048 x 1024 fit). A larger image is not refused but times out (504) after about a minute, so the client reads
+each image's size from its header and refuses, say, a phone photo (4032 x 3024, ~12,000 tiles) before sending - resize it
+first. Jev and d1 read an image part as text, so the plain `asOpenAI()` / `liquidAsOpenAI()` still refuse image content.
+
+**pplx-decider vs Jev vs d1** (live 2026-10-02): the answers agree (defect 0.942 / 0.940 / 0.988, sentiment mixed 0.95 /
+0.94 / 0.87, severity 1.78 / 1.99 / 1.88 of 0..2), and the blue square is blue at 0.99 (161 input tokens). Median latency per
+call on a kept-alive connection:
+
+| Questions per call | pplx-decider | Jev | d1 (free tier) |
+|---|---|---|---|
+| 1 | 213 ms | 243 ms | 837 ms |
+| 3 | 210 ms | 246 ms | 295 ms |
+| 10 | 277 ms | 244 ms | 584 ms |
+| 20 | 335 ms | 261 ms | 739 ms |
+| 40 | 457 ms | 274 ms | 732 ms |
+
+The decider takes ~210 ms plus ~7 ms per question beyond three - the fastest of the three for a few questions; Jev stays
+flat, d1's free tier varies from run to run. One earlier run had ~1.1 s medians at one and three questions, a slow stretch on
+Perplexity's side. Errors come in OpenAI's shape and arrive as the same `TypeSafeScala*Exception`s, classified by status,
+with `error.type` in `errorType` and the `x-request-id` as the request id. See
+[PerplexityDeciderSmokeTest](./openai-examples/src/main/scala/io/cequence/openaiscala/examples/typesafe/PerplexityDeciderSmokeTest.scala)
+(a native call, an image, an oversized image refused, the OpenAI adapter with and without an image, Jev and d1 side by side,
+and the latency benchmark).
 
 ## Anthropic Managed Agents 🤝
 
