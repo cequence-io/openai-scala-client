@@ -2,7 +2,7 @@ package io.cequence.openaiscala.typesafe.service
 
 import io.cequence.openaiscala.EnvHelper
 import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIDecisionsService}
-import io.cequence.openaiscala.typesafe.domain.{DecisionProvider, TypeSafeModelId}
+import io.cequence.openaiscala.typesafe.domain.DecisionProvider
 import io.cequence.openaiscala.typesafe.service.impl.{
   OpenAIDecisionsOverTypeSafe,
   OpenAITypeSafeChatCompletionService,
@@ -331,62 +331,82 @@ object TypeSafeServiceFactory extends EnvHelper {
     asOpenAI(liquid(apiKey, baseUrl, defaultModel, timeouts), imageInput = true)
 
   /**
-   * Microsoft-Decision-1 on your Microsoft Foundry deployment (public preview since
-   * 2026-10-09; TypeSafe's protocol at `<endpoint>/v1/systemone`, see
+   * Microsoft-Decision-1 on your Microsoft Foundry resource (public preview since 2026-10-09;
+   * TypeSafe's protocol at `<endpoint>/providers/microsoft/v1/systemone`, live-verified - see
    * `DecisionProviderSettings.microsoftFoundry`), on its own PRIVATE engine. The key from
-   * `FOUNDRY_API_KEY`, the endpoint from `FOUNDRY_BASE_URL` - the names of Microsoft's launch
-   * example; the model has to be deployed in your subscription. NOT live-verified here yet.
+   * `FOUNDRY_API_KEY`, the resource's endpoint (`https://<resource>.services.ai.azure.com`)
+   * from `FOUNDRY_BASE_URL` - the names of Microsoft's launch example. A request names a
+   * DEPLOYMENT of the model, so `deployment` is the default model: `FOUNDRY_MODEL` when set,
+   * else `decision-1` (`DecisionProviderSettings.FoundryDefaultDeployment`) - deploy the model
+   * under that name, or pass yours (Foundry's proposed `Microsoft-Decision-1` is refused by
+   * Azure's reserved-word rule). `listModels` lists the resource's deployments of the model.
    */
   def microsoftFoundry(
     apiKey: String = getEnvValue(foundryApiKeyEnvKey),
     baseUrl: String = getEnvValue(foundryBaseUrlEnvKey),
-    defaultModel: String = TypeSafeModelId.microsoft_decision_1,
+    deployment: String = foundryDeploymentFromEnv,
     timeouts: Option[Timeouts] = None
   )(
     implicit ec: ExecutionContext
-  ): TypeSafeService =
+  ): TypeSafeService = {
+    val provider = DecisionProviderSettings.microsoftFoundry(baseUrl, deployment)
     new TypeSafeServiceImpl(
       apiKey,
-      baseUrl,
-      defaultModel,
+      provider.baseUrl,
+      provider.defaultModel,
       timeouts,
-      provider = DecisionProviderSettings.microsoftFoundry(baseUrl)
+      provider = provider
     )
+  }
 
   /** [[microsoftFoundry]] on a CALLER-SUPPLIED, shared engine (see [[withEngine]]). */
   def microsoftFoundryWithEngine(
     engine: WSClientEngine,
     apiKey: String = getEnvValue(foundryApiKeyEnvKey),
     baseUrl: String = getEnvValue(foundryBaseUrlEnvKey),
-    defaultModel: String = TypeSafeModelId.microsoft_decision_1
+    deployment: String = foundryDeploymentFromEnv
   )(
     implicit ec: ExecutionContext
-  ): TypeSafeService =
+  ): TypeSafeService = {
+    val provider = DecisionProviderSettings.microsoftFoundry(baseUrl, deployment)
     new TypeSafeServiceImpl(
       apiKey,
-      baseUrl,
-      defaultModel,
+      provider.baseUrl,
+      provider.defaultModel,
       externalEngine = Some(engine),
-      provider = DecisionProviderSettings.microsoftFoundry(baseUrl)
+      provider = provider
     )
+  }
 
   /**
    * Microsoft-Decision-1 behind the OpenAI chat-completion interface - `json_schema`
-   * structured output only, exactly like [[asOpenAI]] (`microsoft-decision-1` is in
-   * `models-supporting-json-schema`).
+   * structured output only, exactly like [[asOpenAI]]. The chat model is the deployment name,
+   * which `models-supporting-json-schema` lists only as the `-microsoft-decision-1` suffix (a
+   * deployment `prod-microsoft-decision-1` matches), so for another name
+   * `createChatCompletionWithJSON` either takes `jsonSchemaModels = Seq(deployment)` or falls
+   * back to JSON-object mode, which the adapter reads the schema back from - the same
+   * questions either way.
    */
   def microsoftFoundryAsOpenAI(
     apiKey: String = getEnvValue(foundryApiKeyEnvKey),
     baseUrl: String = getEnvValue(foundryBaseUrlEnvKey),
-    defaultModel: String = TypeSafeModelId.microsoft_decision_1,
+    deployment: String = foundryDeploymentFromEnv,
     timeouts: Option[Timeouts] = None
   )(
     implicit ec: ExecutionContext
   ): OpenAIChatCompletionService =
-    asOpenAI(microsoftFoundry(apiKey, baseUrl, defaultModel, timeouts))
+    asOpenAI(microsoftFoundry(apiKey, baseUrl, deployment, timeouts))
 
   private val foundryApiKeyEnvKey = "FOUNDRY_API_KEY"
   private val foundryBaseUrlEnvKey = "FOUNDRY_BASE_URL"
+  private val foundryModelEnvKey = "FOUNDRY_MODEL"
+
+  // Microsoft's launch example reads the deployment from FOUNDRY_MODEL
+  private def foundryDeploymentFromEnv: String =
+    Option(System.getenv(foundryModelEnvKey))
+      .map(_.trim)
+      .filter(_.nonEmpty)
+      .getOrElse(DecisionProviderSettings.FoundryDefaultDeployment)
 
   /**
    * Perplexity's decision model `pplx-decider-v1.1-27b` (the 2026-10-06 update; the launch

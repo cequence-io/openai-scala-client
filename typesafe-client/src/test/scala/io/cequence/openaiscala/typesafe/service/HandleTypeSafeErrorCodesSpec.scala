@@ -199,6 +199,72 @@ class HandleTypeSafeErrorCodesSpec extends AnyWordSpec with Matchers {
     }
   }
 
+  "Microsoft Foundry's error bodies (Azure's OpenAI-style 400s, a Go backend's 422s)" should {
+    // collected against a Foundry resource on 2026-10-09
+
+    "be classified by status and message, carrying Azure's error code" in {
+      val badShape = toException(
+        400,
+        """{"error":{"code":"unsupported_request_argument","message":"Model does not support request argument supplied: choice question team requires 2-255 options","details":"Model does not support request argument supplied: choice question team requires 2-255 options"}}"""
+      )
+      badShape shouldBe a[TypeSafeScalaInvalidRequestException]
+      badShape.errorType shouldBe Some("unsupported_request_argument")
+      badShape.getMessage should include("requires 2-255 options")
+
+      val unknownField = toException(
+        400,
+        """{"error":{"code":"unrecognized_request_argument","message":"Unrecognized request argument supplied: images","details":"Unrecognized request argument supplied: images"}}"""
+      )
+      unknownField shouldBe a[TypeSafeScalaInvalidRequestException]
+      unknownField.errorType shouldBe Some("unrecognized_request_argument")
+
+      val noDeployment = toException(
+        404,
+        """{"error":{"code":"DeploymentNotFound","message":"The API deployment microsoft-decision-1 does not exist. If you created the deployment within the last 5 minutes, please wait a moment and try again.","details":"The API deployment microsoft-decision-1 does not exist. If you created the deployment within the last 5 minutes, please wait a moment and try again."}}"""
+      )
+      noDeployment shouldBe a[TypeSafeScalaNotFoundException]
+      noDeployment.errorType shouldBe Some("DeploymentNotFound")
+      noDeployment.getMessage should include("deployment microsoft-decision-1 does not exist")
+
+      // Azure's gateway: the code is the status, so no error type
+      val badKey = toException(
+        401,
+        """{"error":{"code":"401","message":"Access denied due to invalid subscription key or wrong API endpoint. Make sure to provide a valid key for an active subscription and use a correct regional API endpoint for your resource."}}"""
+      )
+      badKey shouldBe a[TypeSafeScalaUnauthorizedException]
+      badKey.errorType shouldBe None
+      badKey.getMessage should startWith("Code 401 : Access denied")
+    }
+
+    "take the token limit (a 422) as a token-count exception, the other 422s and the 413 as invalid requests" in {
+      val tooLong = toException(
+        422,
+        """{"detail":"invalid TypeSafe request: request is about 165021 tokens; the limit for the state plus all questions is 64000"}"""
+      )
+      tooLong shouldBe a[TypeSafeScalaTokenCountExceededException]
+      tooLong.getMessage shouldBe
+        "Code 422 : invalid TypeSafe request: request is about 165021 tokens; the limit for the state plus all questions is 64000"
+
+      val tooMany = toException(
+        422,
+        """{"detail":"invalid TypeSafe request: request has 256 questions; the limit is 255"}"""
+      )
+      tooMany shouldBe a[TypeSafeScalaInvalidRequestException]
+      tooMany.getMessage should include("256 questions; the limit is 255")
+
+      val numericLevels = toException(
+        422,
+        """{"detail":"invalid TypeSafe request: invalid criteria for question \"anger\": value must be a string, object, or array"}"""
+      )
+      numericLevels shouldBe a[TypeSafeScalaInvalidRequestException]
+
+      val tooBig =
+        toException(413, """{"detail":"request body too large: limit is 1048576 bytes"}""")
+      tooBig shouldBe a[TypeSafeScalaInvalidRequestException]
+      tooBig.getMessage should include("1048576 bytes")
+    }
+  }
+
   "extractMessage / errorType" should {
 
     "unpack the shapes the official SDK unpacks" in {

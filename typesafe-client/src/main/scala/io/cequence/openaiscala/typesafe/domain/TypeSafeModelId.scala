@@ -52,8 +52,8 @@ object TypeSafeModelId {
 
   /**
    * Microsoft-Decision-1 on Microsoft Foundry (public preview 2026-10-09) - see
-   * `TypeSafeServiceFactory.microsoftFoundry`; the model has to be deployed in your
-   * subscription.
+   * `TypeSafeServiceFactory.microsoftFoundry`. The model's name (a deployment's `model`); a
+   * request names your DEPLOYMENT of it, not the model - `listModels` lists them.
    */
   val microsoft_decision_1: String = NonOpenAIModelId.microsoft_decision_1
 

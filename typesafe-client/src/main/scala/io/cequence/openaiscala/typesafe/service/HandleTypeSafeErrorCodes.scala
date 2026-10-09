@@ -29,8 +29,10 @@ object HandleTypeSafeErrorCodes {
       (String, Option[Int], Option[String], Option[String]) => TypeSafeScalaClientException
 
     val build: Build = httpCode match {
-      // Perplexity: "Input length (262144) exceeds or equals model's maximum context length"
-      case 400 if kind.contains("max_tokens_exceeded") || exceedsContext(message) =>
+      // Perplexity: "Input length (262144) exceeds or equals model's maximum context length";
+      // Microsoft Foundry (a 422): "request is about 165021 tokens; the limit for the state
+      // plus all questions is 64000"
+      case 400 | 422 if kind.contains("max_tokens_exceeded") || exceedsContext(message) =>
         new TypeSafeScalaTokenCountExceededException(_, null, _, _, _)
       case 400 if kind.isDefined => new TypeSafeScalaApiUsageException(_, null, _, _, _)
       // 413: Perplexity's body limit (32 MiB); 501: llama.cpp's "not a decision model" / "no
@@ -54,9 +56,12 @@ object HandleTypeSafeErrorCodes {
   }
 
   // Perplexity: "... exceeds or equals model's maximum context length", OpenAI's Decisions API:
-  // "Decision input exceeds the token limit."
+  // "Decision input exceeds the token limit.", Microsoft Foundry: "... the limit for the state
+  // plus all questions is 64000"
   private def exceedsContext(message: String) =
-    message.contains("maximum context length") || message.contains("exceeds the token limit")
+    message.contains("maximum context length") ||
+      message.contains("exceeds the token limit") ||
+      message.contains("the limit for the state plus all questions")
 
   // a body that is not JSON - empty (Perplexity's 404 / 405) or an HTML page (a gateway's 504)
   private def plainBody(body: String) =

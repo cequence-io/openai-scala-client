@@ -137,35 +137,57 @@ object DecisionProviderSettings {
   )
 
   /**
-   * Microsoft-Decision-1 on Microsoft Foundry (public preview since 2026-10-09; built on
-   * Qwen3.5-9B; $0.042 / 1M input tokens in the US and EU data zones, output free): TypeSafe's
-   * protocol at `POST <your Foundry endpoint>/v1/systemone` with a `Bearer` key
-   * (`FOUNDRY_API_KEY`), as Microsoft's launch example shows. The endpoint is per deployment -
-   * pass your Foundry resource's base URL (the example's `FOUNDRY_BASE_URL`, without
-   * `/v1/systemone`); the request id is Azure's `apim-request-id`. The model must be deployed
-   * in your Foundry subscription first. NOT live-verified here (2026-10-09: no deployment to
-   * test against; the route and header come from the launch post's example, which says to
-   * confirm them in the Foundry quickstart), so `decisionsPath` or the model id may need
-   * adjusting - `copy` the provider.
+   * The deployment name [[microsoftFoundry]] sends when none is given: Foundry proposes
+   * `Microsoft-Decision-1`, which Azure's resource-name rule refuses (`ContainsReservedWord` -
+   * "microsoft"), so a deployment needs a name of your own.
    */
-  def microsoftFoundry(baseUrl: String): DecisionProvider = DecisionProvider(
-    baseUrl,
+  val FoundryDefaultDeployment = "decision-1"
+
+  /** Where a Microsoft Foundry resource serves the System One protocol (live 2026-10-09). */
+  val FoundryDecisionsPath = "providers/microsoft/v1/systemone"
+
+  /**
+   * Microsoft-Decision-1 ([[TypeSafeModelId.microsoft_decision_1]]) on a Microsoft Foundry
+   * resource (public preview since 2026-10-09; built on Qwen3.5-9B; $0.042 / 1M input tokens
+   * in the US and EU data zones, output free): TypeSafe's protocol at `POST
+   * <endpoint>/providers/microsoft/v1/systemone` with a `Bearer` key (`FOUNDRY_API_KEY`; the
+   * `api-key` header works too), live-verified 2026-10-09. `endpoint` is the resource's
+   * endpoint (`https://<resource>.services.ai.azure.com`, Microsoft's `FOUNDRY_BASE_URL`; a
+   * trailing `/providers/microsoft` is stripped). A request names a DEPLOYMENT of the model,
+   * not the model (`"Microsoft-Decision-1"` as the model is a 404 `DeploymentNotFound`), so
+   * `deployment` is the default model and `listModels` lists the resource's deployments of it
+   * ([[DecisionModelListing.AzureDeployments]]); the response's `model` is
+   * `microsoft-decision-1`. Live facts: at most 255 questions (a 422 for 256), 2-255 options
+   * per choice, 2-10 score levels (a 400 for one of either), the state plus all questions
+   * under 64,000 tokens (a 422, [[TypeSafeScalaTokenCountExceededException]]), the body under
+   * 1 MiB (a 413); a noul needs no instructions there (the client still requires instructions
+   * or criteria); no images (an `images` field is a 400, an image part in the state is read as
+   * text); the request id is Azure's `apim-request-id` (an `x-request-id` comes too); the
+   * deployment's rate limit rides in `x-ratelimit-limit-requests` (50 per minute by default).
+   * 128 noul questions in ~0.7 s, a 30k-token state in ~0.9 s.
+   */
+  def microsoftFoundry(
+    endpoint: String,
+    deployment: String = FoundryDefaultDeployment
+  ): DecisionProvider = DecisionProvider(
+    foundryEndpoint(endpoint),
     "FOUNDRY_API_KEY",
-    TypeSafeModelId.microsoft_decision_1,
-    models = DecisionModelListing.Fixed(
-      Seq(
-        ModelMetadata(
-          TypeSafeModelId.microsoft_decision_1,
-          "Microsoft's decision model for classification, routing and evaluation (public preview; " +
-            "Qwen3.5-9B base, $0.042 / 1M input tokens).",
-          "2026-10-09",
-          Some(Seq("text"))
-        )
-      )
-    ),
-    requestIdHeaders = Seq("apim-request-id", "x-ms-request-id", "x-request-id"),
+    deployment,
+    decisionsPath = FoundryDecisionsPath,
+    models = DecisionModelListing.AzureDeployments(),
+    maxQuestions = Some(255),
+    requestIdHeaders = Seq("apim-request-id", "x-request-id"),
     name = Some("microsoft-foundry")
   )
+
+  // the resource endpoint - without the `/providers/microsoft` the launch example's base URL
+  // may carry (its "base URL excludes /v1/systemone")
+  private def foundryEndpoint(endpoint: String): String = {
+    val trimmed = endpoint.trim.stripSuffix("/")
+    val providerSuffix = "/providers/microsoft"
+    if (trimmed.toLowerCase.endsWith(providerSuffix)) trimmed.dropRight(providerSuffix.length)
+    else trimmed
+  }
 
   /**
    * OpenRouter (`OPENROUTER_API_KEY`): many hosts' decision models behind one key, on

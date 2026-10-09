@@ -207,6 +207,19 @@ private[service] class TypeSafeServiceImpl(
 
       case DecisionModelListing.Fixed(models) =>
         Future.successful(models)
+
+      case DecisionModelListing.AzureDeployments(modelPrefix) =>
+        execGETRich(
+          EndPoint.custom(TypeSafeServiceImpl.AzureDeploymentsPath),
+          params = Seq(
+            Param.query("api-version") -> Some(TypeSafeServiceImpl.AzureDeploymentsApiVersion)
+          )
+        ).map { rich =>
+          (responseOrError(rich).json \ "data")
+            .asOpt[Seq[JsObject]]
+            .getOrElse(Nil)
+            .flatMap(TypeSafeServiceImpl.azureDeployment(_, modelPrefix))
+        }.recoverWith(transportErrors)
     }
 
   // like ws-client's getResponseOrError, but the exception also carries the request id
@@ -238,6 +251,42 @@ private[service] object TypeSafeServiceImpl {
    */
   def normalizeBaseUrl(baseUrl: String): String =
     baseUrl.trim.stripSuffix("/") + "/"
+
+  /**
+   * Azure's data-plane deployment list on a Foundry resource
+   * (`DecisionModelListing.AzureDeployments`).
+   */
+  val AzureDeploymentsPath = "openai/deployments"
+
+  /**
+   * The only api-version that list answers (live 2026-10-09; `2024-10-21` and
+   * `2025-04-01-preview` are 404s).
+   */
+  val AzureDeploymentsApiVersion = "2023-03-15-preview"
+
+  // an entry of Azure's deployment list (`{"id", "model", "status", "created_at"}`; the model a
+  // name, or `{"name"}` in other api-versions) as TypeSafe's metadata: the deployment id as the
+  // name - what a request sends - and the model as the description; None for a deployment of
+  // another model
+  private[impl] def azureDeployment(
+    json: JsObject,
+    modelPrefix: String
+  ): Option[ModelMetadata] =
+    for {
+      id <- (json \ "id").asOpt[String]
+      model <- (json \ "model").asOpt[String].orElse((json \ "model" \ "name").asOpt[String])
+      if model.toLowerCase.startsWith(modelPrefix.toLowerCase)
+    } yield ModelMetadata(
+      id,
+      (json \ "status").asOpt[String].filterNot(_ == "succeeded") match {
+        case Some(status) => s"$model deployment ($status)"
+        case None         => s"$model deployment"
+      },
+      (json \ "created_at")
+        .asOpt[Long]
+        .map(Instant.ofEpochSecond(_).atZone(ZoneOffset.UTC).toLocalDate.toString)
+        .getOrElse("")
+    )
 
   private[impl] def requestId(
     rich: RichResponse,

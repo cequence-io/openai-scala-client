@@ -7,20 +7,21 @@ import io.cequence.wsclient.domain.CequenceWSException
  * The exceptions the TypeSafe service throws, classified by HTTP status and by the body's
  * `detail.error_type` (collected against the live API, 2026-09-17):
  *
- * | status    | body                                                                                                           | exception                                                                             |
- * |:----------|:---------------------------------------------------------------------------------------------------------------|:--------------------------------------------------------------------------------------|
- * | 401 / 403 | `{"detail":{"error_type":"authentication_error",...}}`                                                         | [[TypeSafeScalaUnauthorizedException]]                                                |
- * | 400       | `{"detail":{"error_type":"max_tokens_exceeded"}}` (~32k input tokens)                                          | [[TypeSafeScalaTokenCountExceededException]]                                          |
- * | 400       | `{"detail":{"error_type":"api_usage_error","message":...}}` (unknown model, invalid JSON, feature not enabled) | [[TypeSafeScalaApiUsageException]]                                                    |
- * | 400       | `{"detail":"Choice question must have at least one choice: q"}` and other question-shape errors                | [[TypeSafeScalaInvalidRequestException]]                                              |
- * | 422       | `{"detail":[{"loc":[...],"msg":...},...]}` (schema validation)                                                 | [[TypeSafeScalaInvalidRequestException]] with `violations`                            |
- * | 404 / 405 | `{"detail":"Not Found"}`                                                                                       | [[TypeSafeScalaNotFoundException]]                                                    |
- * | 408       |                                                                                                                | [[TypeSafeScalaClientTimeoutException]]                                               |
- * | 429       | rate limit (250k tokens/s, 1,200 req/min)                                                                      | [[TypeSafeScalaRateLimitException]]                                                   |
- * | 501       | llama.cpp: not a decision model, or images without a projector (`not_supported_error`)                         | [[TypeSafeScalaInvalidRequestException]]                                              |
- * | 503 / 529 | Overloaded                                                                                                     | [[TypeSafeScalaEngineOverloadedException]]                                            |
- * | other 5xx |                                                                                                                | [[TypeSafeScalaServerErrorException]]                                                 |
- * | transport | timeout / unknown host                                                                                         | [[TypeSafeScalaClientTimeoutException]] / [[TypeSafeScalaClientUnknownHostException]] |
+ * | status    | body                                                                                                                                            | exception                                                                             |
+ * |:----------|:------------------------------------------------------------------------------------------------------------------------------------------------|:--------------------------------------------------------------------------------------|
+ * | 401 / 403 | `{"detail":{"error_type":"authentication_error",...}}`                                                                                          | [[TypeSafeScalaUnauthorizedException]]                                                |
+ * | 400       | `{"detail":{"error_type":"max_tokens_exceeded"}}` (~32k input tokens)                                                                           | [[TypeSafeScalaTokenCountExceededException]]                                          |
+ * | 400       | `{"detail":{"error_type":"api_usage_error","message":...}}` (unknown model, invalid JSON, feature not enabled)                                  | [[TypeSafeScalaApiUsageException]]                                                    |
+ * | 400       | `{"detail":"Choice question must have at least one choice: q"}` and other question-shape errors                                                 | [[TypeSafeScalaInvalidRequestException]]                                              |
+ * | 422       | `{"detail":[{"loc":[...],"msg":...},...]}` (schema validation)                                                                                  | [[TypeSafeScalaInvalidRequestException]] with `violations`                            |
+ * | 422       | Microsoft Foundry: `{"detail":"invalid TypeSafe request: request is about 165021 tokens; the limit for the state plus all questions is 64000"}` | [[TypeSafeScalaTokenCountExceededException]]                                          |
+ * | 404 / 405 | `{"detail":"Not Found"}`                                                                                                                        | [[TypeSafeScalaNotFoundException]]                                                    |
+ * | 408       |                                                                                                                                                 | [[TypeSafeScalaClientTimeoutException]]                                               |
+ * | 429       | rate limit (250k tokens/s, 1,200 req/min)                                                                                                       | [[TypeSafeScalaRateLimitException]]                                                   |
+ * | 501       | llama.cpp: not a decision model, or images without a projector (`not_supported_error`)                                                          | [[TypeSafeScalaInvalidRequestException]]                                              |
+ * | 503 / 529 | Overloaded                                                                                                                                      | [[TypeSafeScalaEngineOverloadedException]]                                            |
+ * | other 5xx |                                                                                                                                                 | [[TypeSafeScalaServerErrorException]]                                                 |
+ * | transport | timeout / unknown host                                                                                                                          | [[TypeSafeScalaClientTimeoutException]] / [[TypeSafeScalaClientUnknownHostException]] |
  *
  * Every instance carries the `httpCode`, the body's `errorType` and the
  * `x-typesafe-request-id` (`requestId`) when known. [[TypeSafeRetryable]] says which ones are
@@ -45,7 +46,9 @@ class TypeSafeScalaUnauthorizedException(
 ) extends TypeSafeScalaClientException(message, cause, httpCode, errorType, requestId)
 
 /**
- * 400 `max_tokens_exceeded`: the state and the questions exceed the ~32k-token input limit.
+ * 400 `max_tokens_exceeded`: the state and the questions exceed the ~32k-token input limit -
+ * or another host's (Perplexity's 262,144 tokens, Microsoft Foundry's 64,000, OpenAI's
+ * "Decision input exceeds the token limit."), recognised by the message.
  */
 class TypeSafeScalaTokenCountExceededException(
   message: String,

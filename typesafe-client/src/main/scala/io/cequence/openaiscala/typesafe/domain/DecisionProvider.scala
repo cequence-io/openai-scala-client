@@ -14,7 +14,8 @@ import scala.util.Try
  * }}}
  *
  * @param baseUrl
- *   the host; `decisionsPath` and `v1/models` are appended to it
+ *   the host; `decisionsPath` and the model listing's path (`v1/models`, Azure's
+ *   `openai/deployments`) are appended to it
  * @param apiKeyEnvVariable
  *   the environment variable holding the key, sent as `Authorization: Bearer <key>`
  * @param defaultModel
@@ -170,4 +171,15 @@ object DecisionModelListing {
    * `/v1/models` lists its Agent API models).
    */
   final case class Fixed(models: Seq[ModelMetadata]) extends DecisionModelListing
+
+  /**
+   * The deployments of a Microsoft Foundry resource - `GET openai/deployments` (Azure's
+   * data-plane list, `{"data": [{"id", "model", "status", "created_at"}]}`, which answers only
+   * `api-version=2023-03-15-preview`: the newer versions are 404s, live 2026-10-09) - keeping
+   * those whose `model` starts with `modelPrefix` (case-insensitive). A request to Foundry
+   * names a DEPLOYMENT (its `id` here), not the model, so these are the ids to send; the
+   * `model` is the description.
+   */
+  final case class AzureDeployments(modelPrefix: String = "Microsoft-Decision")
+      extends DecisionModelListing
 }

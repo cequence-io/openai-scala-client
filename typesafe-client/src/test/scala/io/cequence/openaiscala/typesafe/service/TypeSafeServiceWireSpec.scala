@@ -704,20 +704,84 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
         |  {"id":"~typesafe/jev-latest","name":"TypeSafe: Jev Latest","created":1789689685,"description":"The latest Jev.","architecture":{"output_modalities":["decisions"]}}
         |]}""".stripMargin
 
-    "serve Microsoft-Decision-1 on a Foundry endpoint - /v1/systemone, the Bearer key, apim-request-id" in {
-      // the shape of Microsoft's launch example (2026-10-09); no deployment to verify it live yet
-      val foundry = TypeSafeServiceFactory.microsoftFoundryWithEngine(engine, "f_k", baseUrl)
+    // recorded against Microsoft Foundry on 2026-10-09
+    val foundryResponse =
+      """{"model":"microsoft-decision-1","answers":{"team":{"choice":"billing","confidence":0.9977213773098679,"probabilities":{"account":0.0010317279963969746,"billing":0.9984809182065786,"technical":0.0004873537970244329},"type":"choice"}},"usage":{"input_tokens":67,"output_tokens":1}}"""
 
-      respond(200, quickStartResponse, Map("apim-request-id" -> "57601b9b-5dbf-4027-9a54"))
-      val response = await(foundry.systemOne("I was charged twice.", questions))
-      received.get.path shouldBe "/v1/systemone"
+    // GET /openai/deployments?api-version=2023-03-15-preview - plus a chat deployment and one
+    // still being created, which the listing leaves out / labels
+    val foundryDeployments =
+      """{"data":[
+        |  {"scale_settings":{"scale_type":"standard"},"model":"Microsoft-Decision-1","owner":"organization-owner","id":"decision-1","status":"succeeded","created_at":1791578757,"updated_at":1791578757,"object":"deployment"},
+        |  {"scale_settings":{"scale_type":"standard"},"model":"gpt-5.4-mini","owner":"organization-owner","id":"chat","status":"succeeded","created_at":1791578757,"updated_at":1791578757,"object":"deployment"},
+        |  {"scale_settings":{"scale_type":"standard"},"model":{"name":"Microsoft-Decision-1","version":"1"},"owner":"organization-owner","id":"decision-1-eu","status":"creating","created_at":1791578757,"updated_at":1791578757,"object":"deployment"}
+        |],"object":"list"}""".stripMargin
+
+    "serve Microsoft-Decision-1 on a Foundry resource - /providers/microsoft/v1/systemone, the deployment as the model, apim-request-id, the deployments listed" in {
+      // recorded against a Foundry resource on 2026-10-09 (the deployment `decision-1`); the
+      // launch example's base URL carries the `/providers/microsoft`, which is stripped
+      val foundry = TypeSafeServiceFactory.microsoftFoundryWithEngine(
+        engine,
+        "f_k",
+        baseUrl + "/providers/microsoft/",
+        "decision-1"
+      )
+      val routing = Map(
+        "team" -> ChoiceQuestion(
+          "Which team should handle this customer support request?",
+          "billing" -> "Charges, invoices, refunds, or subscription payments",
+          "technical" -> "Software errors, bugs, or integration failures",
+          "account" -> "Sign-in, password, or account-access problems"
+        )
+      )
+
+      respond(
+        200,
+        foundryResponse,
+        Map(
+          "apim-request-id" -> "420297b1-b9ef-4ce8-a615-bcc76acb87f1",
+          "x-request-id" -> "66b2e28a-b8f9-4ad7-84dd-50586c7d8294"
+        )
+      )
+      val response = await(foundry.systemOne("I was charged twice.", routing))
+      received.get.path shouldBe "/providers/microsoft/v1/systemone"
       received.get.headers("authorization") shouldBe "Bearer f_k"
-      (Json.parse(received.get.body) \ "model").as[String] shouldBe
-        TypeSafeModelId.microsoft_decision_1
-      response.requestId shouldBe Some("57601b9b-5dbf-4027-9a54")
+      (Json.parse(received.get.body) \ "model").as[String] shouldBe "decision-1"
+      response.model shouldBe "microsoft-decision-1"
+      response.choice("team").choice shouldBe "billing"
+      response.requestId shouldBe Some("420297b1-b9ef-4ce8-a615-bcc76acb87f1")
 
-      // a fixed model list: no request
-      await(foundry.listModels).map(_.name) shouldBe Seq(TypeSafeModelId.microsoft_decision_1)
+      // the resource's deployments, those of the model only, under Azure's old api-version
+      respond(200, foundryDeployments)
+      await(foundry.listModels) shouldBe Seq(
+        ModelMetadata("decision-1", "Microsoft-Decision-1 deployment", "2026-10-09"),
+        ModelMetadata(
+          "decision-1-eu",
+          "Microsoft-Decision-1 deployment (creating)",
+          "2026-10-09"
+        )
+      )
+      received.get.method shouldBe "GET"
+      received.get.path shouldBe "/openai/deployments"
+      received.get.query shouldBe Some("api-version=2023-03-15-preview")
+
+      // the deployment name is the default model, and the endpoint itself works as the base URL
+      val bare = TypeSafeServiceFactory.microsoftFoundryWithEngine(engine, "f_k", baseUrl)
+      respond(200, foundryResponse)
+      await(bare.systemOne("I was charged twice.", routing, "decision-1-eu"))
+      received.get.path shouldBe "/providers/microsoft/v1/systemone"
+      (Json.parse(received.get.body) \ "model").as[String] shouldBe "decision-1-eu"
+
+      // Foundry's token limit is a 422 - a token-count exception, as on the other hosts
+      respond(
+        422,
+        """{"detail":"invalid TypeSafe request: request is about 165021 tokens; the limit for the state plus all questions is 64000"}"""
+      )
+      the[TypeSafeScalaTokenCountExceededException]
+        .thrownBy(await(bare.systemOne("x" * 100, routing)))
+        .getMessage should include("the limit for the state plus all questions is 64000")
+
+      bare.close()
       foundry.close()
     }
 
