@@ -333,12 +333,17 @@ or WebP (a GIF is refused, despite the docs); an image costs 1.5 input tokens pe
 input tokens.
 
 ```scala
-  val d1 = TypeSafeServiceFactory.liquid(defaultModel = TypeSafeModelId.liquid_d1)
+  val liquid = TypeSafeServiceFactory.liquid() // d1:free by default - text only
 
-  d1.systemOne(
+  // the model is a per-call choice: systemOne's optional third argument (as decide[T]'s `model`,
+  // RerankSettings.model and CreateDecisionSettings.model); the paid d1 reads the photo
+  liquid.systemOne(
     Json.obj("note" -> "A photo from a customer.", "photo" -> DecisionImage(Files.readAllBytes(photo))),
-    Map("damaged" -> NoulQuestion("Is the product in the photo damaged?"))
+    Map("damaged" -> NoulQuestion("Is the product in the photo damaged?")),
+    TypeSafeModelId.liquid_d1
   )
+
+  // or make it the service's default: TypeSafeServiceFactory.liquid(defaultModel = TypeSafeModelId.liquid_d1)
 ```
 
 **Open d1** (2026-10-07): Liquid released the weights - d1-3B (text and images) and the experimental d1-omni-600M (text and
