@@ -1,5 +1,199 @@
 # Changelog
 
+## 1.5.0 (unreleased)
+
+The 2026-10-01 - 2026-10-09 work since v1.4.0 (2026-09-30): OpenAI's Decisions API (natively and as a
+decision provider), decision models from Perplexity, Liquid AI (with images), OpenRouter and llama.cpp behind one
+`DecisionProvider` abstraction, typed decisions and re-ranking on any decision model, a guardrails adapter, JSON schemas
+derived from case classes by one shared IR on Scala 2 and 3, Claude Haiku 5.5 with the Anthropic access modes re-verified,
+Mistral Large 4 with its chunked content and citations, Perplexity's decider v1.1, a 32 MiB stream frame cap (1.4.0:
+1 MiB) and a server-sent-events decoder built for large events. Everything below is live-verified against the providers
+unless stated otherwise.
+
+Artifacts (Scala 2.12 / 2.13 / 3): `openai-scala-client`, `openai-scala-client-stream`, `openai-scala-anthropic-client`,
+`openai-scala-google-gemini-client`, `openai-scala-google-vertexai-client`, `openai-scala-perplexity-sonar-client`,
+`openai-scala-typesafe-client`, `openai-scala-claude-agent-client`, `openai-scala-count-tokens`, `openai-scala-guice` and
+the envelope `openai-scala-all`.
+
+### ⚠️ Upgrading from 1.4.x
+
+**Recompile** - 1.5.0 is not binary compatible with 1.4.0 (a `javap` diff of the published jars: `OpenAIService` gained
+the Decisions API, `ChunkMessageSpec` and the TypeSafe `ModelMetadata` gained a field, the TypeSafe `impl` constructors
+changed); ws-client stays at 1.1.1.
+
+**Source breaks** - typical code compiles unchanged:
+- your own implementations of `OpenAIService` need `createDecision` (`OpenAIService extends OpenAIDecisionsService`;
+  wrappers delegate it);
+- positional pattern matches on `ChunkMessageSpec` (new `content_chunks`) and on the TypeSafe `ModelMetadata` (new
+  `input_modalities`), both defaulted;
+- TypeSafe: `SchemaQuestions.MaxRangeLevels` (32) is gone - `ScoreQuestion.MaxLevels` (10) is the real limit;
+  `TypeSafeServiceImpl` and `OpenAITypeSafeChatCompletionService` are built from a `DecisionProvider` / with an
+  `imageInput` flag now (use `TypeSafeServiceFactory`, which did not change for the existing calls);
+- `TypeSafeServiceAdapters.retry` over a factory service returns a `RetryTypeSafeService with OpenAIDecisionsService`
+  (the static type is still `TypeSafeService`).
+
+**Behavior changes** (details below):
+- streamed frames: one event / JSON line may now be up to **32 MiB** (1.4.0: 1 MiB - the 2-3 MiB image frames of the
+  Responses image generation and of Gemini's image models failed the stream); configurable, see "Streams";
+- a chat `content` that is a list of chunks (Mistral) is read instead of failing the response - 1.4.0 could not parse
+  any Mistral reasoning answer;
+- the JSON helper (`createChatCompletionWithJSON`) keeps working for a model missing from
+  `models-supporting-json-schema`: it falls back to JSON-object mode with the schema in the prompt, which the TypeSafe
+  adapter reads back (1.4.0 failed loudly for an unlisted id);
+- the TypeSafe adapter plans at most **10** score levels (`ScoreQuestion.MaxLevels`; 1.4.0 shipped an unverified 32 -
+  the API refuses more than 10) and names its questions by escaped paths, so `{"a.b": ...}` and `{"a": {"b": ...}}`
+  never share an answer (#128);
+- `OpenAIErrorCodes` types two more token limits as `OpenAIScalaTokenCountExceededException` (batch splitters rely
+  on it): the embeddings endpoint's per-request limit - a 400 `max_tokens_per_request` ("Requested 468160 tokens, max
+  300000 tokens per request"; its per-input limit, "maximum input length is 8192 tokens", was typed already) - and
+  the Decisions API's "Decision input exceeds the token limit." (`OpenAIErrorCodesSpec`);
+- Anthropic: the retired `context-1m-2025-08-07` beta header is no longer sent (a Claude-subscription OAuth token
+  refused every request carrying it); Bedrock structured outputs (`output_config.format`) are sent only to the
+  inference profiles that accept them (see "Claude Haiku 5.5");
+- the chat-completion batch emulation adapter runs its requests through `FutureHelpers.parallelize` (the next as soon
+  as one finishes, results in order) instead of fixed-size groups.
+
+### New models
+
+- **Claude Haiku 5.5** (2026-10-07) - `NonOpenAIModelId.claude_haiku_5_5` / `bedrock_claude_haiku_5_5`: adaptive-only
+  thinking (`enabled` and `between_tools` are 400s) with effort `low`..`max`, sampling params only at their defaults
+  (the adapter drops them), no prefill, no fast mode, `json_schema` on the Claude API and on Bedrock; it keeps forced
+  `tool_choice`. It thinks by default, so `reasoning_effort = none` sends `thinking.type = disabled` (effort `high`
+  or below) - `noneThinkingByModel` maps `none` to Sonnet 5.5's `between_tools` and Haiku 5.5's `disabled`. On Bedrock
+  it needs an inference profile (`global.` everywhere, `eu.` / `us.` regionally). `ClaudeHaiku55SmokeTest`.
+- **Anthropic access modes** re-verified (`AnthropicAccessModesSmokeTest api|oauth|foundry|bedrock`): API key, a
+  Claude-subscription OAuth token (`asOpenAIWithAuthToken`; outside Claude Code only Haiku 4.5 answers, every other
+  model a bare 429 - Anthropic's gate), Microsoft Foundry (`customInstance` at
+  `https://<resource>.services.ai.azure.com/anthropic/v1/`) and Bedrock (SigV4 and bearer token). Bedrock structured
+  outputs re-probed per inference profile: the Claude 4.5 / 4.6 profiles and Haiku 5.5 accept `output_config.format`
+  everywhere, Sonnet 5.5 on `global.` / `eu.`, Opus 5.5 on `eu.`; 4.7+ / 5.x profiles 400 - `models-supporting-json-schema`
+  lists exactly the accepting ids.
+- **Mistral Large 4** (`NonOpenAIModelId.mistral_large_4`, public preview 2026-10-06; 512k context, vision,
+  `json_schema`, tools, prefix) and Mistral-hosted **GLM 5.3** (`zai-glm-5*`): `reasoning_effort` is a switch on
+  Mistral's reasoning models (`mistralSwitchReasoning`: only `none` / `high`; `minimal` → `none`, the rest → `high`;
+  GLM 5.3 `low` / `high` / `max`). A reasoning turn's `content` arrives as a LIST of `thinking` / `text` chunks, read into
+  the text plus `reasoning_content` (→ `ChatChunk.Thinking`); Mistral's `reference` citation chunks ride raw in
+  `ChunkMessageSpec.content_chunks` → `ChatChunk.Other("content.reference", chunk)` on the typed stream (Medium 3.5 and
+  Magistral stream one as a delta of its own; the sync message reads drop them). `MistralLarge4SmokeTest`,
+  `MistralCitationsSmokeTest`.
+- **Perplexity's decider v1.1** - `pplx-decider-v1.1-27b` (2026-10-06; open weights, Decision Index 61.56 against
+  56.4; the launch id answers alike - one model under two names), the Perplexity preset's default; input $0.02 / 1M
+  (was $0.04). Images of any size: the API scales them to ~2,100 tokens, so the client's 2,048-tile refusal is gone -
+  `DecisionImage(bytes)` / `fromDataUrl` check the format only, and a size cap applies only through a provider's
+  `maxImageTiles` (no preset sets one).
+- **Liquid AI d1 with images** - the paid `d1` (`TypeSafeModelId.liquid_d1`, text + image, $0.04 / 1M) next to `d1:free`
+  (text only); `DecisionImages.ImagesField` lifts a state's image parts into Liquid's top-level `images` array (at most
+  8 images, 10,000 patches in all). **Open d1** (d1-3B, d1-omni-600M; `liquid_d1_3b_gguf` / `liquid_d1_omni_600m_gguf`)
+  and the local **llama.cpp** preset (`DecisionProviderSettings.llamaCpp`, `/v1/systemone`, router or single-model
+  server) - llama.cpp b11476 could not yet load the d1 GGUFs; verified with Julia-1 / Laya.
+- **OpenRouter's decision models** (`DecisionProviderSettings.openRouter`; listed with `output_modalities=decisions`):
+  `~typesafe/jev-latest`, `liquid/d1`, `upstage/solar-decide`, `inception/mercury-decide:free`,
+  `togethercomputer/tev1-4b-experimental`, `jaredpalmer/kev-4b`, `respan/span-01` (+ `-lite`, `-lite:free`; noul
+  questions only) and, live 2026-10-09, the two `perplexity/pplx-decider-*` ids, `openai/gpt-6-luna-decisions`,
+  `cloudflare/clef` / `clef-flash`, `upstage/solar-decide-flash` and `inception/mercury-decide` - 16 decision models,
+  all answering the same review alike.
+- **Groq's catalog** re-listed (`openai/gpt-oss-*`, `qwen/qwen3.6-27b` / `qwen3.8-27b`, `allam-2-7b`; the Llama 3.3 /
+  4 and DeepSeek ids are gone).
+
+### 🔥 OpenAI Decisions API (public beta)
+
+`OpenAIDecisionsService.createDecision(input, questions, settings)` - part of the full `OpenAIService` - typed answers
+about text and inline images from `gpt-6-luna` (launched 2026-10-06; $0.10 / 1M input tokens, no output charge):
+`DecisionQuestion.Predicate` (a probability), `Choice` (text or boolean values) and `Score` (ordered levels, the
+probability-weighted index), each answer a distribution with a `confidence`, plus `DecisionAnswer.Refusal`. Domain and
+JSON in `domain/decisions/`; the request id (`x-request-id`) on `Decision.requestId`. Limits: 200 questions, 255
+choices, 10 levels, 128 images as base64 data URLs, user messages only. `OpenAIDecisionsSmokeTest`.
+
+**Either API on either host.** `TypeSafeServiceFactory.asOpenAIDecisions(provider | service)` serves OpenAI's interface
+on a System One host (the questions translated; a factory service and the retry adapter over one serve it natively),
+and `DecisionProviderSettings.openAI` serves System One's interface - `systemOne`, `decide[T]`, `rerank`, the guardrails
+and the `asOpenAI` chat adapter - on OpenAI's Decisions API (`DecisionProtocol.OpenAI`, `impl/DecisionCodec`).
+`CreateDecisionSettings.model` is optional (the host's default). Against Jev: the answers agree; OpenAI bills the input
+once per question (~2.4x Jev at 3 questions, ~14x at 40) and slows with the count. `DecisionApiSwitchSmokeTest`.
+
+### 🔥 Decision providers
+
+`DecisionProvider` (`domain/`) describes a host of decision models like `ChatProviderSettings` describes a chat host:
+base URL, key variable (+ fallbacks), default model, `decisionsPath` (`v1/systemone` or Perplexity's `v1/decisions`),
+`models` (`TypeSafe` / `OpenAIStyle(query)` / `Fixed`), `maxQuestions`, `images` (`Unsupported` / `InState` /
+`ImagesField`), `maxImageTiles`, `requestIdHeaders`, `protocol` (`SystemOne` / `OpenAI`), `apiKeyRequired`. Presets in
+`DecisionProviderSettings`: `typeSafe`, `liquid`, `perplexity`, `openAI`, `llamaCpp`, `openRouter`;
+`TypeSafeServiceFactory(provider)` / `withEngine(engine, provider)` / `asOpenAI(provider)` (image content per
+`provider.readsImages`). Every host check runs before I/O: the question cap, the image format and a host's tile cap -
+on `systemOne` and on `createDecision` alike.
+
+### 🔥 Typed decisions and re-ranking
+
+- `decide[T: JsonSchemaOf: Reads](state, model, noulThreshold)` (`DecisionServiceExtra`, an implicit class over any
+  `TypeSafeService`): the schema of `T` planned into questions, asked, assembled and read back as `T` -
+  `Decision[T](value, response)` with `noul` / `choice` / `score` by field path. `TypeSafeTypedDecision`.
+- `rerank(query, passages, RerankSettings)` / `rerankBy(query, items)(text)`: one noul per passage (the passage in
+  `<document>` tags, defused), batched by count and size, at most `parallelism` requests at once, identical texts asked
+  once, a token-limit failure split in halves. `TypeSafeRerank` (Jev relevant 0.95 / partly 0.51 / injection 0.03).
+- `ChoiceAnswer.probabilityOf` / `margin`, `ScoreAnswer.probabilityAtLeast`.
+
+### 🔥 Guardrails adapter
+
+`OpenAIServiceAdapters.guardrails(input, output, onViolation, outputReprompts, onVerdict)` and
+`guardrailsWithStreaming(...)` guard `createChatCompletion` / `createChatToolCompletion` and both streams: the input
+guardrails run before the call, the output guardrails check the reply (a stream's once it finished); a block fails with
+`OpenAIScalaGuardrailException` (`Reject`) or answers with a message and `finish_reason = content_filter` (`Respond`);
+`outputReprompts` asks again with the flagged reply. `ModelGuardrail` asks a stage's `GuardrailCheck`s in ONE
+`json_schema` call to any chat service - an LLM or a decision model (`TypeSafeServiceFactory.asOpenAI`, a noul per check,
+probabilities via `threshold`); only user text goes to the guard, tags inside it defused (`QuotedText`). Live: all 12
+default checks right with gpt-5.4-mini (~0.9 s) and Jev (~250 ms). `GuardrailsSmokeTest`.
+
+### JSON schema from a case class, on Scala 2 and 3
+
+`JsonSchemaReflectionHelper.jsonSchemaFor[T]` builds one IR (`JsonSchemaShape`) by runtime reflection on Scala 2 and a
+quotes macro on Scala 3, converted by one function - the versions cannot drift (`JsonSchemaDerivationSpec` on both).
+Enums keep their declaration order; `@JsonSchemaDescription` (class, field, enum value) and `@JsonSchemaRange(min, max)`
+(`domain/JsonSchemaAnnotations`); a Map, a tuple, a sealed hierarchy of case classes or a recursive type is refused (a
+compile error on Scala 3). `JsonSchemaOf[T]` (`service/`) is the derived-per-version instance for APIs that need a
+schema per type (`decide[T]`). Value descriptions reach a decision model as per-option criteria.
+
+### Streams
+
+- **Frame cap** `StreamingConsts.maxFrameLength`: 32 MiB unless set via `openai-scala-client.streaming.maxFrameLength`
+  (a HOCON size, e.g. `128 MiB`; env `OPENAI_SCALA_CLIENT_STREAM_MAX_FRAME_LENGTH`), applied to every JSON stream and to
+  the raw framings; a frame over it fails the stream with an exception naming the setting. Why 32 and not more: the cap
+  bounds a stream's worst-case memory (~2-3x the frame), how much a delimiter-less broken stream buffers before failing
+  and how long a dispatcher thread stalls parsing one; the JSON parser refuses a single string over 20M characters
+  anyway. Live: the Responses image generation (2.2-2.7 MiB events) and Gemini 2.5 Flash Image (2.8 MiB), both over
+  1.4.0's cap, read whole (`StreamedLargeFramesSmokeTest`).
+- **Server-sent events decoder** (core `ServerSentEvents`, used by the Agents API session streams and the Perplexity
+  Agent API): the pending event's rope is never walked per chunk - only its last 3 bytes plus the new chunk are
+  searched for the boundary (a whole-buffer search was cubic in the chunks: 21 s for 1 MiB in 8 KiB chunks) - and an
+  event is read on its bytes (one compaction, `Json.parse(bytes)`) instead of ~9 String copies.
+
+### Changed
+
+- `TypeSafeServiceAdapters.retry` over a factory service keeps the service's own Decisions path
+  (`asOpenAIDecisions(retry(service))` no longer translates); `imageInput` is ignored, with a warning, for a service
+  that serves the interface itself.
+- `Decision.requestId` / `SystemOneResponse.requestId` read the host's id headers through one core helper,
+  `ResponseHeaders.first` (case-insensitive, by priority, blank values skipped).
+- `UsageInfo.sumOption`; `FutureHelpers.parallelize` (core).
+- `OpenAIChatCompletionExtra.jsonSchemaFromPrompt` keeps an empty or blank user message the schema was appended to.
+- TypeSafe: `TypeSafeChatMapping.toState(messages, images)` is public; errors carry `httpCode` / `errorType` /
+  `requestId` via the shared `ProviderErrorDetails`; Liquid's and Perplexity's OpenAI-style error bodies are classified
+  by status with `error.type` / `error.code`; `ModelMetadata.input_modalities`.
+- Perplexity's Decisions OpenAPI spec vendored (`perplexity-decisions-openapi.json`) and pinned; Perplexity Agent /
+  TypeSafe wire specs extended.
+
+### Deprecated
+
+- `NonOpenAIModelId.groq_compound` / `groq_compound_mini` - gone from Groq's catalog (404 since 2026-10-09).
+- `ReflectionUtil` (Scala 2 and 3) - unused since the IR rewrite, to be removed.
+- `MessageConversions`' reasoning helpers now point at `ChunkMessageSpec.reasoningText` / `ChatChunk.Thinking` (a sync
+  response carries no reasoning).
+
+### Changed defaults
+
+- Stream frame cap 1 MiB → 32 MiB (configurable).
+- `DecisionProviderSettings.perplexity` defaults to `pplx-decider-v1.1-27b` and lists both deciders; no image size cap.
+- `ScoreQuestion.MaxLevels` 32 → 10 (the APIs' real limit).
+
 ## 1.4.0 (2026-09-30)
 
 39 commits since v1.3.0 (2026-09-18), 235 files, +35k lines: GPT-6.1 Sol with the Fast / Ultrafast tiers and the
