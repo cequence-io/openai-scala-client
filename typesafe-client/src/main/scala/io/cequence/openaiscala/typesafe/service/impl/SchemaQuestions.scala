@@ -237,7 +237,11 @@ private[typesafe] object SchemaQuestions {
                     base -> names.filter(fields.contains)
                   }
                 )
-              case _ => unsupported(path, "an object without properties")
+              case _ =>
+                unsupported(
+                  path,
+                  "an object without properties (a map or open object) - the questions need fixed fields"
+                )
             }
 
           case Some(other) => unsupported(path, s"type '$other' is not supported")

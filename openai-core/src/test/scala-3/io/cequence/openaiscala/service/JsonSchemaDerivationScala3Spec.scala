@@ -75,17 +75,15 @@ class JsonSchemaDerivationScala3Spec extends AnyWordSpec with Matchers with Json
     "refuse unsupported types at compile time" in {
       def errors(code: List[Error]) = code.map(_.message).mkString("\n")
 
-      errors(typeCheckErrors("jsonSchemaFor[WithMap]()")) should include("- a map")
       errors(typeCheckErrors("jsonSchemaFor[Tree]()")) should include("- a recursive type")
       errors(typeCheckErrors("jsonSchemaFor[WithTuple]()")) should include("- a tuple")
-      errors(typeCheckErrors("jsonSchemaFor[WithEither]()")) should include(
-        "- a sealed hierarchy or enum with the class Left"
-      )
+      errors(typeCheckErrors("jsonSchemaFor[WithEither]()")) should include("- an Either")
       errors(typeCheckErrors("jsonSchemaFor[WithShape]()")) should include(
         "- a sealed hierarchy or enum with the class Circle"
       )
-      // a well-typed call compiles
+      // a well-typed call compiles - a map is an open object since 1.5.0
       typeCheckErrors("jsonSchemaFor[Paint]()") shouldBe Nil
+      typeCheckErrors("jsonSchemaFor[WithMap]()") shouldBe Nil
     }
   }
 }

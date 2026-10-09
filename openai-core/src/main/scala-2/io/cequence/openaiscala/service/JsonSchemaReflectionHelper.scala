@@ -12,12 +12,19 @@ import scala.util.Try
  * strict, jsonSchemaFor[T]())`) or tool parameters. The same call works on Scala 2 (runtime
  * reflection, here) and Scala 3 (a macro) and derives the same schema:
  *
- *   - `Int` / `Long` / `Short` / `Byte` / `BigInt` -> integer; `Double` / `Float` /
- *     `BigDecimal` -> number; `Boolean`; `String` / `Char` / `UUID` / `java.time` values ->
- *     string; `java.util.Date` -> string, or a number with `dateAsNumber`
- *   - `Option[T]` -> `T`, the field not required (OpenAI's strict mode requires every field,
- *     so use `strict = false` with optional fields)
- *   - `Seq` / `List` / `Set` / `Vector` / `Array` / any `Iterable` -> array
+ *   - `Int` / `Long` / `Short` / `Byte` / `BigInt` (and the boxed / `java.math` kinds) ->
+ *     integer; `Double` / `Float` / `BigDecimal` -> number; `Boolean`; `String` / `Char` /
+ *     `UUID` / `URI` / `URL` / `Locale` / `Currency` / `File` / `Path` / the `java.time`
+ *     values, `Duration`s and `Period`s (Scala's `Duration` too) -> string; `java.util.Date`
+ *     -> string, or a number with `dateAsNumber`
+ *   - `Option[T]` / `java.util.Optional[T]` -> `T`, the field not required (OpenAI's strict
+ *     mode requires every field, so use `strict = false` with optional fields)
+ *   - `Seq` / `List` / `Set` / `Vector` / `Array` / any Scala `Iterable` or Java `Iterable`
+ *     (`java.util.List`, `Set`, ...) -> array
+ *   - a value class (`extends AnyVal`) -> its underlying type, as `Json.valueFormat` writes it
+ *   - `Map[String, V]` / `java.util.Map` -> an open object (`additionalProperties: true`; the
+ *     value type is not expressed, and OpenAI's strict mode closes every object - a map needs
+ *     `strict = false`)
  *   - a case class -> object, its fields in declaration order (type parameters resolved)
  *   - a string enum: an `Enumeration` (declaration order), a Java enum (declaration order), a
  *     Scala 3 `enum` of singleton cases (declaration order), a sealed trait or class whose
@@ -27,9 +34,9 @@ import scala.util.Try
  *     `description`; [[io.cequence.openaiscala.domain.JsonSchemaRange]] on a numeric field ->
  *     `minimum` / `maximum`
  *
- * A `Map`, a sealed hierarchy with case classes (no `anyOf` here), a tuple or a recursive case
- * class is refused - on Scala 2 when called (an [[OpenAIScalaClientException]]), on Scala 3 at
- * compile time. Pass arguments by name: `useRuntimeMirror` exists on Scala 2 only.
+ * An `Either`, a sealed hierarchy with case classes (no `anyOf` here), a tuple or a recursive
+ * case class is refused - on Scala 2 when called (an [[OpenAIScalaClientException]]), on Scala
+ * 3 at compile time. Pass arguments by name: `useRuntimeMirror` exists on Scala 2 only.
  */
 trait JsonSchemaReflectionHelper {
 
@@ -86,8 +93,19 @@ private object JsonSchemaReflection {
 
   private val booleanTypes = Seq(typeOf[Boolean], typeOf[java.lang.Boolean])
 
-  private val stringTypes =
-    Seq(typeOf[String], typeOf[Char], typeOf[java.lang.Character], typeOf[java.util.UUID])
+  private val stringTypes = Seq(
+    typeOf[String],
+    typeOf[Char],
+    typeOf[java.lang.Character],
+    typeOf[java.util.UUID],
+    typeOf[java.net.URI],
+    typeOf[java.net.URL],
+    typeOf[java.util.Locale],
+    typeOf[java.util.Currency],
+    typeOf[java.io.File],
+    typeOf[java.nio.file.Path],
+    typeOf[java.time.ZoneId]
+  )
 
   def shapeOf(
     tpe: Type,
@@ -113,6 +131,8 @@ private object JsonSchemaReflection {
     else if (tpe =:= typeOf[java.util.Date]) DateShape
     else if (tpe <:< typeOf[Option[_]])
       OptionShape(shapeOf(typeArgOf(typeOf[Option[_]]), mirror, path))
+    else if (tpe <:< typeOf[java.util.Optional[_]])
+      OptionShape(shapeOf(typeArgOf(typeOf[java.util.Optional[_]]), mirror, path))
     // an enum whose values reflection cannot reach (an Enumeration declared in a class, a
     // Java enum the mirror's class loader cannot see) stays a plain string, as 1.4.0 derived it
     else if (tpe <:< typeOf[Enumeration#Value])
@@ -120,15 +140,21 @@ private object JsonSchemaReflection {
     else if (tpe <:< typeOf[java.lang.Enum[_]])
       javaEnumValues(tpe, mirror).fold[JsonSchemaShape](StringShape)(EnumShape(_))
     else if (tpe <:< typeOf[java.time.temporal.TemporalAccessor]) StringShape
-    else if (tpe <:< typeOf[scala.collection.Map[_, _]])
-      unsupported(
-        tpe,
-        "a map - a structured-output schema needs fixed property names, use a Seq of key-value case classes"
-      )
+    // java.time.Duration / Period, and Scala's Duration
+    else if (tpe <:< typeOf[java.time.temporal.TemporalAmount]) StringShape
+    else if (tpe <:< typeOf[scala.concurrent.duration.Duration]) StringShape
+    else if (tpe <:< typeOf[scala.collection.Map[_, _]] || tpe <:< typeOf[java.util.Map[_, _]])
+      MapShape
     else if (tpe <:< typeOf[Iterable[_]])
       ArrayShape(shapeOf(typeArgOf(typeOf[Iterable[_]]), mirror, path))
+    else if (tpe <:< typeOf[java.lang.Iterable[_]])
+      ArrayShape(shapeOf(typeArgOf(typeOf[java.lang.Iterable[_]]), mirror, path))
     else if (symbol == definitions.ArrayClass)
       ArrayShape(shapeOf(tpe.typeArgs.head, mirror, path))
+    else if (tpe <:< typeOf[Either[_, _]])
+      unsupported(tpe, "an Either - no anyOf here; use a case class with two optional fields")
+    else if (symbol.isClass && symbol.asClass.isDerivedValueClass)
+      valueClassShape(tpe, mirror, path)
     else if (symbol.isClass && symbol.asClass.isCaseClass && !symbol.isModuleClass) {
       if (symbol.fullName.startsWith("scala.Tuple"))
         unsupported(tpe, "a tuple - use a case class")
@@ -171,6 +197,23 @@ private object JsonSchemaReflection {
     }
 
     ObjectShape(fields, description(symbol.annotations))
+  }
+
+  // a value class as its one parameter's type - the way Json.valueFormat writes it
+  private def valueClassShape(
+    tpe: Type,
+    mirror: Mirror,
+    path: List[Symbol]
+  ): JsonSchemaShape = {
+    val symbol = tpe.typeSymbol.asClass
+    val param = tpe
+      .decl(termNames.CONSTRUCTOR)
+      .alternatives
+      .collectFirst { case method: MethodSymbol if method.isPrimaryConstructor => method }
+      .flatMap(_.paramLists.flatten.headOption)
+      .getOrElse(unsupported(tpe, "a value class without a parameter"))
+
+    shapeOf(param.typeSignature.substituteTypes(symbol.typeParams, tpe.typeArgs), mirror, path)
   }
 
   // the values of an Enumeration that is a top-level or nested object

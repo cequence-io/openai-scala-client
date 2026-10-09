@@ -56,6 +56,30 @@ object JsonSchemaDerivationTypes {
   case object Dog extends Pet
   case object Wolf extends Animal
 
+  // value classes may not be members of a class - here they are members of an object
+  final case class UserId(value: String) extends AnyVal
+  final case class Points(count: Int) extends AnyVal
+
+  case class Extras(
+    user: UserId,
+    points: Option[Points],
+    counts: Map[String, Int],
+    props: java.util.Map[String, String],
+    nickname: java.util.Optional[String],
+    items: java.util.List[java.lang.Integer],
+    labels: java.util.Set[String],
+    uri: java.net.URI,
+    url: java.net.URL,
+    locale: java.util.Locale,
+    currency: java.util.Currency,
+    path: java.nio.file.Path,
+    file: java.io.File,
+    zone: java.time.ZoneId,
+    age: java.time.Duration,
+    period: java.time.Period,
+    timeout: scala.concurrent.duration.FiniteDuration
+  )
+
   case class Review(
     sentiment: Sentiment,
     severity: Option[Severity],
@@ -198,6 +222,47 @@ class JsonSchemaDerivationSpec
           "created",
           "day",
           "month"
+        )
+      )
+    }
+
+    "derive value classes as their value, maps as open objects, Java collections and more string types" in {
+      jsonSchemaFor[Extras]() shouldBe JsonSchema.Object(
+        properties = Seq(
+          "user" -> JsonSchema.String(),
+          "points" -> JsonSchema.Integer(),
+          "counts" -> JsonSchema.Object(Nil, Nil, additionalProperties = Some(true)),
+          "props" -> JsonSchema.Object(Nil, Nil, additionalProperties = Some(true)),
+          "nickname" -> JsonSchema.String(),
+          "items" -> JsonSchema.Array(JsonSchema.Integer()),
+          "labels" -> JsonSchema.Array(JsonSchema.String()),
+          "uri" -> JsonSchema.String(),
+          "url" -> JsonSchema.String(),
+          "locale" -> JsonSchema.String(),
+          "currency" -> JsonSchema.String(),
+          "path" -> JsonSchema.String(),
+          "file" -> JsonSchema.String(),
+          "zone" -> JsonSchema.String(),
+          "age" -> JsonSchema.String(),
+          "period" -> JsonSchema.String(),
+          "timeout" -> JsonSchema.String()
+        ),
+        required = Seq(
+          "user",
+          "counts",
+          "props",
+          "items",
+          "labels",
+          "uri",
+          "url",
+          "locale",
+          "currency",
+          "path",
+          "file",
+          "zone",
+          "age",
+          "period",
+          "timeout"
         )
       )
     }

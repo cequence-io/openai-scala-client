@@ -172,13 +172,26 @@ There is a new project [openai-scala-client-examples](../openai-examples/src/mai
     }
 ```
 
+- **How `createChatCompletionWithJSON` picks its mode** - the model is looked up in `models-supporting-json-schema`
+  (`openai-scala-client.conf`; or the call's own `jsonSchemaModels`, or `enforceJsonSchemaMode = true`). A listed model gets
+  native structured output - `response_format: json_schema`, the schema enforced by the provider. An unlisted one gets
+  `response_format: json_object` with the schema appended to the prompt, the reply parsed and repaired on the client: weaker
+  (nothing is enforced server-side), but it works for any model that can follow a schema in text. So the list selects the
+  mechanism, not whether the call works; keep it current for the models you want enforced. Decision models are the one case
+  where both routes are equivalent: their adapter turns the schema into questions either way (reading it back from the
+  prompt in the fallback), so an unlisted decider id loses nothing.
 - **JSON schema derived from a case class** - `jsonSchemaFor[T]()` (`JsonSchemaReflectionHelper`; runtime reflection on
   Scala 2, a macro on Scala 3 - the same call and the same schema on both). Fields map to their JSON types (`Option` = not
   required, collections = arrays, nested case classes = objects, type parameters resolved); `Enumeration`s, Java enums,
   Scala 3 `enum`s and sealed traits of case objects become string enums; `@JsonSchemaDescription` and
   `@JsonSchemaRange(min, max)` add descriptions and numeric bounds. A described case object or enum case adds a
-  "- value: description" line to its field's description, since a JSON schema enum has no place for value descriptions. A `Map`, a tuple, a sealed hierarchy with case classes
-  or a recursive type is refused (Scala 3: at compile time); an `Enumeration` declared in a class stays a plain string. OpenAI's strict mode requires every field, so use
+  "- value: description" line to its field's description, since a JSON schema enum has no place for value descriptions. The commonly used Scala and Java types are covered: the boxed and `java.math` numbers, `UUID` / `URI` / `URL` / `Locale` /
+  `Currency` / `File` / `Path`, the `java.time` values, `Duration`s and `Period`s (Scala's `Duration` too) as strings,
+  `java.util.Optional` like `Option`, `java.util.List` / `Set` / any Java `Iterable` as arrays, a value class
+  (`extends AnyVal`) as its underlying type (as `Json.valueFormat` writes it), and a `Map[String, V]` / `java.util.Map` as an
+  open object (`additionalProperties: true`; the value type is not expressed, and OpenAI's strict mode closes every object -
+  a map needs `strict = false`). An `Either`, a tuple, a sealed hierarchy with case classes or a recursive type is refused
+  (Scala 3: at compile time); an `Enumeration` declared in a class stays a plain string. OpenAI's strict mode requires every field, so use
   `strict = false` with `Option` fields. APIs that need a type's schema take it as a `JsonSchemaOf[T]`, derived the same
   way unless you put an instance of your own in scope (`JsonSchemaOf.instance(schema)`).
 

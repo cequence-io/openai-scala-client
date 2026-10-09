@@ -11,12 +11,19 @@ import scala.quoted.*
  * works on Scala 2 (runtime reflection) and Scala 3 (a macro, here) and derives the same
  * schema:
  *
- *   - `Int` / `Long` / `Short` / `Byte` / `BigInt` -> integer; `Double` / `Float` /
- *     `BigDecimal` -> number; `Boolean`; `String` / `Char` / `UUID` / `java.time` values ->
- *     string; `java.util.Date` -> string, or a number with `dateAsNumber`
- *   - `Option[T]` -> `T`, the field not required (OpenAI's strict mode requires every field,
- *     so use `strict = false` with optional fields)
- *   - `Seq` / `List` / `Set` / `Vector` / `Array` / any `Iterable` -> array
+ *   - `Int` / `Long` / `Short` / `Byte` / `BigInt` (and the boxed / `java.math` kinds) ->
+ *     integer; `Double` / `Float` / `BigDecimal` -> number; `Boolean`; `String` / `Char` /
+ *     `UUID` / `URI` / `URL` / `Locale` / `Currency` / `File` / `Path` / the `java.time` values,
+ *     `Duration`s and `Period`s (Scala's `Duration` too) -> string; `java.util.Date` -> string,
+ *     or a number with `dateAsNumber`
+ *   - `Option[T]` / `java.util.Optional[T]` -> `T`, the field not required (OpenAI's strict
+ *     mode requires every field, so use `strict = false` with optional fields)
+ *   - `Seq` / `List` / `Set` / `Vector` / `Array` / any Scala `Iterable` or Java `Iterable`
+ *     (`java.util.List`, `Set`, ...) -> array
+ *   - a value class (`extends AnyVal`) -> its underlying type, as `Json.valueFormat` writes it
+ *   - `Map[String, V]` / `java.util.Map` -> an open object (`additionalProperties: true`; the
+ *     value type is not expressed, and OpenAI's strict mode closes every object - a map needs
+ *     `strict = false`)
  *   - a case class -> object, its fields in declaration order (type parameters resolved)
  *   - a string enum: an `Enumeration` (declaration order), a Java enum (declaration order),
  *     a Scala 3 `enum` of singleton cases (declaration order), a sealed trait or class whose
@@ -26,7 +33,7 @@ import scala.quoted.*
  *     `description`; [[io.cequence.openaiscala.domain.JsonSchemaRange]] on a numeric field ->
  *     `minimum` / `maximum`
  *
- * A `Map`, a sealed hierarchy with case classes (no `anyOf` here), a tuple or a recursive
+ * An `Either`, a sealed hierarchy with case classes (no `anyOf` here), a tuple or a recursive
  * case class is refused - on Scala 2 when called, on Scala 3 at compile time. Pass arguments
  * by name: Scala 2's `useRuntimeMirror` does not exist here.
  */
@@ -84,12 +91,25 @@ object JsonSchemaMacros {
       TypeRepr.of[String],
       TypeRepr.of[Char],
       TypeRepr.of[java.lang.Character],
-      TypeRepr.of[java.util.UUID]
+      TypeRepr.of[java.util.UUID],
+      TypeRepr.of[java.net.URI],
+      TypeRepr.of[java.net.URL],
+      TypeRepr.of[java.util.Locale],
+      TypeRepr.of[java.util.Currency],
+      TypeRepr.of[java.io.File],
+      TypeRepr.of[java.nio.file.Path],
+      TypeRepr.of[java.time.ZoneId]
     )
 
     val optionClass = Symbol.requiredClass("scala.Option")
+    val optionalClass = Symbol.requiredClass("java.util.Optional")
     val iterableClass = Symbol.requiredClass("scala.collection.Iterable")
+    val javaIterableClass = Symbol.requiredClass("java.lang.Iterable")
     val mapClass = Symbol.requiredClass("scala.collection.Map")
+    val javaMapClass = Symbol.requiredClass("java.util.Map")
+    val eitherClass = Symbol.requiredClass("scala.util.Either")
+    val temporalAmountClass = Symbol.requiredClass("java.time.temporal.TemporalAmount")
+    val scalaDurationClass = Symbol.requiredClass("scala.concurrent.duration.Duration")
     val javaEnumClass = Symbol.requiredClass("java.lang.Enum")
     val temporalClass = Symbol.requiredClass("java.time.temporal.TemporalAccessor")
     val enumerationValueClass = TypeRepr.of[Enumeration#Value].typeSymbol
@@ -150,6 +170,8 @@ object JsonSchemaMacros {
       else if (tpe =:= TypeRepr.of[java.util.Date]) '{ DateShape }
       else if (tpe.derivesFrom(optionClass))
         '{ OptionShape(${ shapeOf(typeArgOf(optionClass), path) }) }
+      else if (tpe.derivesFrom(optionalClass))
+        '{ OptionShape(${ shapeOf(typeArgOf(optionalClass), path) }) }
       else if (tpe.derivesFrom(enumerationValueClass)) enumerationShape(tpe)
       else if (tpe.derivesFrom(javaEnumClass)) {
         // the values are read by plain helpers: a member selected on a spliced tree is typed
@@ -157,15 +179,22 @@ object JsonSchemaMacros {
         val enumClass = Literal(ClassOfConstant(tpe)).asExprOf[Class[?]]
         '{ EnumShape(JsonSchemaShape.javaEnumValues($enumClass)) }
       } else if (tpe.derivesFrom(temporalClass)) '{ StringShape }
-      else if (tpe.derivesFrom(mapClass))
-        unsupported(
-          tpe,
-          "a map - a structured-output schema needs fixed property names, use a Seq of key-value case classes"
-        )
+      // java.time.Duration / Period, and Scala's Duration
+      else if (tpe.derivesFrom(temporalAmountClass) || tpe.derivesFrom(scalaDurationClass))
+        '{ StringShape }
+      else if (tpe.derivesFrom(mapClass) || tpe.derivesFrom(javaMapClass)) '{ MapShape }
       else if (tpe.derivesFrom(iterableClass))
         '{ ArrayShape(${ shapeOf(typeArgOf(iterableClass), path) }) }
+      else if (tpe.derivesFrom(javaIterableClass))
+        '{ ArrayShape(${ shapeOf(typeArgOf(javaIterableClass), path) }) }
       else if (symbol == defn.ArrayClass)
         '{ ArrayShape(${ shapeOf(tpe.typeArgs.head, path) }) }
+      else if (tpe.derivesFrom(eitherClass))
+        unsupported(tpe, "an Either - no anyOf here; use a case class with two optional fields")
+      else if (
+        symbol.isClassDef && tpe.derivesFrom(defn.AnyValClass) && !symbol.flags.is(Flags.Module)
+      )
+        valueClassShape(tpe, symbol, path)
       else if (
         symbol.isClassDef && symbol.flags.is(Flags.Case) && !symbol.flags.is(Flags.Module)
       ) {
@@ -181,6 +210,21 @@ object JsonSchemaMacros {
         '{ JsonSchemaShape.sortedEnumShape(${ Expr.ofSeq(singletonValues(tpe, symbol)) }) }
       else
         unsupported(tpe, "")
+    }
+
+    // a value class as its one parameter's type - the way Json.valueFormat writes it
+    def valueClassShape(
+      tpe: TypeRepr,
+      symbol: Symbol,
+      path: List[Symbol]
+    ): Expr[JsonSchemaShape] = {
+      val field = symbol.primaryConstructor.paramSymss.flatten
+        .filter(_.isTerm)
+        .headOption
+        .map(param => symbol.fieldMember(param.name))
+        .filter(_.exists)
+        .getOrElse(unsupported(tpe, "a value class without a parameter"))
+      shapeOf(tpe.memberType(field), path)
     }
 
     def objectShape(

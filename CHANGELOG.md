@@ -37,9 +37,10 @@ changed); ws-client stays at 1.1.1.
   Responses image generation and of Gemini's image models failed the stream); configurable, see "Streams";
 - a chat `content` that is a list of chunks (Mistral) is read instead of failing the response - 1.4.0 could not parse
   any Mistral reasoning answer;
-- the JSON helper (`createChatCompletionWithJSON`) keeps working for a model missing from
-  `models-supporting-json-schema`: it falls back to JSON-object mode with the schema in the prompt, which the TypeSafe
-  adapter reads back (1.4.0 failed loudly for an unlisted id);
+- the JSON helper (`createChatCompletionWithJSON`) picks its mode as before - native `json_schema` for a model listed in
+  `models-supporting-json-schema` (or in the call's `jsonSchemaModels`), the prompt-based `json_object` fallback for one
+  that is not; what changed is the TypeSafe adapter, which now reads the schema back from that fallback's prompt, so an
+  unlisted decision-model id (a new dated `jev-1.14.0`, an OpenRouter id) works instead of failing loudly as in 1.4.0;
 - the TypeSafe adapter plans at most **10** score levels (`ScoreQuestion.MaxLevels`; 1.4.0 shipped an unverified 32 -
   the API refuses more than 10) and names its questions by escaped paths, so `{"a.b": ...}` and `{"a": {"b": ...}}`
   never share an answer (#128);
@@ -147,9 +148,13 @@ default checks right with gpt-5.4-mini (~0.9 s) and Jev (~250 ms). `GuardrailsSm
 
 `JsonSchemaReflectionHelper.jsonSchemaFor[T]` builds one IR (`JsonSchemaShape`) by runtime reflection on Scala 2 and a
 quotes macro on Scala 3, converted by one function - the versions cannot drift (`JsonSchemaDerivationSpec` on both).
-Enums keep their declaration order; `@JsonSchemaDescription` (class, field, enum value) and `@JsonSchemaRange(min, max)`
-(`domain/JsonSchemaAnnotations`); a Map, a tuple, a sealed hierarchy of case classes or a recursive type is refused (a
-compile error on Scala 3). `JsonSchemaOf[T]` (`service/`) is the derived-per-version instance for APIs that need a
+The commonly used Scala and Java types are covered: the boxed and `java.math` numbers, `UUID` / `URI` / `URL` / `Locale`
+/ `Currency` / `File` / `Path`, the `java.time` values, `Duration`s and `Period`s (Scala's `Duration` too), `Option` and
+`java.util.Optional`, Scala and Java collections, a value class (`extends AnyVal`) as its underlying type (1.4.0 derived
+it as an object `{value}`), and `Map[String, V]` / `java.util.Map` as an open object (`additionalProperties: true` - not
+for OpenAI's strict mode, which closes every object). Enums keep their declaration order; `@JsonSchemaDescription`
+(class, field, enum value) and `@JsonSchemaRange(min, max)` (`domain/JsonSchemaAnnotations`); an `Either`, a tuple, a
+sealed hierarchy of case classes or a recursive type is refused (a compile error on Scala 3). `JsonSchemaOf[T]` (`service/`) is the derived-per-version instance for APIs that need a
 schema per type (`decide[T]`). Value descriptions reach a decision model as per-option criteria.
 
 ### Streams

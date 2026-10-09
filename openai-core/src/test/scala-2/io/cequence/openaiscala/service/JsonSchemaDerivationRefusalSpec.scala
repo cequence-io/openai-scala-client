@@ -15,10 +15,13 @@ object JsonSchemaRefusalTypes {
     case class Dog(size: Size)
   }
 
-  case class WithMap(counts: Map[String, Int])
+  sealed trait Shape
+  case class Circle(radius: Double) extends Shape
+
   case class Tree(children: Seq[Tree])
   case class WithTuple(pair: (String, Int))
   case class WithEither(value: Either[String, Int])
+  case class WithShape(shape: Shape)
 }
 
 // Scala 2 refuses an unsupported type when called; Scala 3 at compile time (see the scala-3
@@ -35,8 +38,8 @@ class JsonSchemaDerivationRefusalSpec
 
   "jsonSchemaFor (Scala 2)" should {
 
-    "refuse a map" in {
-      refusal(jsonSchemaFor[WithMap]()) should include("a map")
+    "refuse an Either" in {
+      refusal(jsonSchemaFor[WithEither]()) should include("an Either")
     }
 
     "refuse a recursive case class" in {
@@ -48,7 +51,7 @@ class JsonSchemaDerivationRefusalSpec
     }
 
     "refuse a sealed hierarchy with case classes" in {
-      refusal(jsonSchemaFor[WithEither]()) should include("a sealed hierarchy")
+      refusal(jsonSchemaFor[WithShape]()) should include("a sealed hierarchy")
     }
 
     "name the case objects it cannot reach" in {

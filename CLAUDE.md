@@ -453,8 +453,14 @@ companion object):
 - **How:** Scala 2 uses runtime reflection (`scala-2/`, plus Scala 2's `useRuntimeMirror`); Scala 3 uses a quotes
   macro (`scala-3/`, `JsonSchemaMacros`). Both build the shared IR `service/JsonSchemaShape`, which one converter
   (`toJsonSchema`) turns into a `JsonSchema`, so the versions cannot drift - `JsonSchemaDerivationSpec` runs on both.
-- **Types:** primitives / boxed / `BigInt` / `BigDecimal` / UUID / `java.time` / `java.util.Date` (string, or a
-  number); `Option` = not required; any `Iterable` / `Array` = array; type params resolved; decoded field names.
+- **Types:** primitives / boxed / `BigInt` / `BigDecimal` / UUID / `java.time` (temporals, `Duration`, `Period`,
+  `ZoneId`) / Scala `Duration` / `URI` / `URL` / `Locale` / `Currency` / `File` / `Path` (strings), `java.util.Date`
+  (string, or a number); `Option` / `java.util.Optional` = not required; any Scala or Java `Iterable` / `Array` = array;
+  a value class (`extends AnyVal`) = its underlying type, as `Json.valueFormat` writes it; `Map[String, V]` /
+  `java.util.Map` = an open object (`additionalProperties: true`, the value type not expressed - OpenAI's strict mode
+  closes every object, so a map needs `strict = false`; the TypeSafe planner refuses it as "an object without
+  properties"); type params resolved; decoded field names. (Value classes, maps, Java collections / `Optional` and the
+  extra string types since 2026-10-09 - a value class used to derive as an object `{value}`.)
 - **Enums:** `Enumeration` / Java enum / Scala 3 `enum` keep declaration order; sealed case objects are sorted by
   `toString`. `@JsonSchemaDescription` on a case object or Scala 3 enum case
   (`EnumShape.descriptions`) is appended to the field's description as "- value: description" lines. A JSON
@@ -469,7 +475,7 @@ companion object):
   `@JsonSchemaRange(min, max)` (an integer gets ceil / floor; it also applies to a numeric collection's items).
 - **Leftover:** the Scala 2 / 3 `service/ReflectionUtil` objects (public in 1.4.0) lost their last user to the IR
   rewrite - `@deprecated` since 1.5.0, to be removed later.
-- **Refusals:** a Map, a tuple, a sealed hierarchy with case classes, or a recursive type. Scala 2 throws
+- **Refusals:** an `Either` ("no anyOf here"), a tuple, a sealed hierarchy with case classes, or a recursive type. Scala 2 throws
   `OpenAIScalaClientException`; Scala 3 fails at compile time (tested with `typeCheckErrors`). Not refused: an
   `Enumeration` whose values cannot be reached (declared in a class, a generic `E#Value`) or a Java enum the mirror's
   class loader cannot see stays a plain string, as 1.4.0 derived it; Scala 2 names case objects it cannot reach

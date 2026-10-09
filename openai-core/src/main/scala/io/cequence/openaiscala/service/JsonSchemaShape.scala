@@ -22,6 +22,13 @@ object JsonSchemaShape {
   case object DateShape extends JsonSchemaShape
 
   /**
+   * A `Map[String, V]` / `java.util.Map` - an open object (`additionalProperties: true`); the
+   * value type is not expressed, [[io.cequence.openaiscala.domain.JsonSchema.Object]] has no
+   * place for it. OpenAI's strict mode closes every object, so a map needs `strict = false`.
+   */
+  case object MapShape extends JsonSchemaShape
+
+  /**
    * A string with fixed values.
    *
    * @param descriptions
@@ -113,6 +120,14 @@ object JsonSchemaShape {
 
         case DateShape =>
           if (dateAsNumber) JsonSchema.Number(description) else JsonSchema.String(description)
+
+        case MapShape =>
+          JsonSchema.Object(
+            Nil,
+            Nil,
+            additionalProperties = Some(true),
+            description = description
+          )
 
         case EnumShape(values, descriptions) =>
           JsonSchema.String(withValueDescriptions(description, values, descriptions), values)
