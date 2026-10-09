@@ -70,9 +70,12 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 ⁴ `json_schema` on M2.7 and newer, per MiniMax's docs.\
 ⁵ 🔥 New in 1.4.0. Perplexity's Sonar chat completions retired on 2026-09-27 (see [Services and providers](docs/providers.md)).
 
-**Decision models** give typed answers with calibrated probabilities. They are served through the TypeSafe module
-(`TypeSafeServiceFactory`), with `json_schema` structured output only - no tools or batch. See
-[Decision-model providers](docs/decision-models.md#decision-model-providers-).
+**Decision models** give typed answers with calibrated probabilities. Two APIs serve them - TypeSafe AI's System One
+(`TypeSafeService.systemOne`: Jev, Liquid's d1, Perplexity's decider, OpenRouter, llama.cpp) and OpenAI's Decisions API
+(`OpenAIService.createDecision`: `gpt-6-luna`) - and the client speaks either interface to either host: `asOpenAIDecisions`
+puts OpenAI's interface on a System One host, `DecisionProviderSettings.openAI` runs the System One routines (typed
+decisions, re-ranking, the `json_schema`-only chat adapter) on OpenAI's. No tools or batch. See
+[Decision models](docs/decision-models.md).
 
 | Provider | Models | Factory method |
 |----------|--------|----------------|
@@ -89,7 +92,6 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 
 👉 For background information how the project started read an article about the lib/client on [Medium](https://medium.com/@0xbnd/openai-scala-client-is-out-d7577de934ad).
 
-Also try out our [Scala client for Pinecone vector database](https://github.com/cequence-io/pinecone-scala), or use both clients together! [This demo project](https://github.com/cequence-io/pinecone-openai-scala-demo) shows how to generate and store OpenAI embeddings into Pinecone and query them afterward. The OpenAI + Pinecone combo is commonly used for autonomous AI agents, such as [babyAGI](https://github.com/yoheinakajima/babyagi) and [AutoGPT](https://github.com/Significant-Gravitas/Auto-GPT).
 
 **✔️ Important**: this is a "community-maintained" library and, as such, has no relation to OpenAI company.
 
