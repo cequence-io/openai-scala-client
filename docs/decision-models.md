@@ -4,7 +4,7 @@
 
 Decision models give typed answers - yes/no probabilities, choices, scores - with calibrated probabilities, in a few
 hundred milliseconds. OpenAI's Decisions API is part of the full `OpenAIService`; TypeSafe AI's Jev, Liquid AI's d1,
-Perplexity's decider, OpenRouter's catalogue and a local llama.cpp are served through the `typesafe-client` module,
+Perplexity's decider, Microsoft-Decision-1, OpenRouter's catalogue and a local llama.cpp are served through the `typesafe-client` module,
 which also serves either API on either host, typed decisions (`decide[T]`) and re-ranking.
 
 ## OpenAI Decisions API (gpt-6-luna) 🔥
@@ -513,7 +513,7 @@ a protocol of its own; its preset translates the questions and answers, so every
   import io.cequence.openaiscala.typesafe.service.{DecisionProviderSettings, TypeSafeServiceFactory}
 
   val openRouter = TypeSafeServiceFactory(DecisionProviderSettings.openRouter)   // OPENROUTER_API_KEY
-  openRouter.listModels                                                         // its ten decision models
+  openRouter.listModels                                                         // its 17 decision models (2026-10-09)
   openRouter.systemOne(state, questions, TypeSafeModelId.openrouter_liquid_d1)
 
   // behind the OpenAI interface (json_schema structured output); image content goes into the state where the host reads it
@@ -532,7 +532,7 @@ a protocol of its own; its preset translates the questions and answers, so every
 | `typeSafe` | `TYPESAFE_API_KEY` | `jev-latest` | the default of `TypeSafeServiceFactory()` |
 | `liquid` | `LIQUID_API_KEY` | `d1:free`, `d1` | at most 128 questions; the paid `d1` reads images (sent in a top-level `images` array) |
 | `perplexity` | `PERPLEXITY_API_KEY` (or `SONAR_API_KEY`) | `pplx-decider-v1.1-27b`, `pplx-decider-v1-27b` | `POST /v1/decisions`, images of any size, at most 128 questions |
-| `openRouter` | `OPENROUTER_API_KEY` | Jev, d1, Perplexity's deciders, OpenAI's Luna, Cloudflare's Clef (+ Flash), Solar Decide (+ Flash), Mercury Decide (+ free), Tev1, Kev 4B, Span-01 (+ Lite) | listed with `output_modalities=decisions`; Span-01 takes noul questions only |
+| `openRouter` | `OPENROUTER_API_KEY` | Jev, d1, Perplexity's deciders, OpenAI's Luna, Cloudflare's Clef (+ Flash, Omni), Solar Decide (+ Flash), Mercury Decide (+ free), Tev1, Kev 4B, Span-01 (+ Lite) | listed with `output_modalities=decisions`; Span-01 takes noul questions only |
 | `microsoftFoundry(endpoint, deployment)` | `FOUNDRY_API_KEY` | your deployment of Microsoft-Decision-1 (`decision-1` by default; `listModels` lists them) | your Foundry resource, `POST /providers/microsoft/v1/systemone`; at most 255 questions, 64k tokens, no images |
 | `openAI` | `OPENAI_SCALA_CLIENT_API_KEY` (or `OPENAI_API_KEY`) | `gpt-6-luna` | OpenAI's own protocol (translated), images, at most 200 questions; a refusal arrives as `UnknownAnswer("refusal", ...)` |
 | `llamaCpp` | none (`LLAMA_API_KEY` if the server has one) | whatever `llama-server` loaded | a local server, `http://127.0.0.1:8080/`; a router needs a model id from `listModels` (its decision models only); images in a top-level `images` array, for a model with a projector (else a 501) |

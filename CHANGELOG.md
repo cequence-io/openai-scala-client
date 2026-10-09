@@ -3,8 +3,8 @@
 ## 1.5.0 (unreleased)
 
 The 2026-10-01 - 2026-10-09 work since v1.4.0 (2026-09-30): OpenAI's Decisions API (natively and as a
-decision provider), decision models from Perplexity, Liquid AI (with images), OpenRouter and llama.cpp behind one
-`DecisionProvider` abstraction, typed decisions and re-ranking on any decision model, a guardrails adapter, JSON schemas
+decision provider), decision models from Perplexity, Liquid AI (with images), OpenRouter, llama.cpp and Microsoft Foundry
+(Microsoft-Decision-1) behind one `DecisionProvider` abstraction with their execution time compared side by side, typed decisions and re-ranking on any decision model, a guardrails adapter, JSON schemas
 derived from case classes by one shared IR on Scala 2 and 3, Claude Haiku 5.5 with the Anthropic access modes re-verified,
 Mistral Large 4 with its chunked content and citations, Perplexity's decider v1.1, a 32 MiB stream frame cap (1.4.0:
 1 MiB) and a server-sent-events decoder built for large events. Everything below is live-verified against the providers
@@ -25,7 +25,8 @@ changed); ws-client stays at 1.1.1.
 - your own implementations of `OpenAIService` need `createDecision` (`OpenAIService extends OpenAIDecisionsService`;
   wrappers delegate it);
 - positional pattern matches on `ChunkMessageSpec` (new `content_chunks`) and on the TypeSafe `ModelMetadata` (new
-  `input_modalities`), both defaulted;
+  `input_modalities`), both defaulted; an exhaustive match on the TypeSafe `DecisionModelListing` needs a case for the
+  new `AzureDeployments` (Microsoft Foundry's deployment list);
 - TypeSafe: `SchemaQuestions.MaxRangeLevels` (32) is gone - `ScoreQuestion.MaxLevels` (10) is the real limit;
   `TypeSafeServiceImpl` and `OpenAITypeSafeChatCompletionService` are built from a `DecisionProvider` / with an
   `imageInput` flag now (use `TypeSafeServiceFactory`, which did not change for the existing calls);
