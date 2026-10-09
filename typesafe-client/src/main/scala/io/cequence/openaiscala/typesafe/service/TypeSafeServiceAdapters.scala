@@ -3,6 +3,13 @@ package io.cequence.openaiscala.typesafe.service
 import akka.actor.Scheduler
 import io.cequence.openaiscala.RetryHelpers
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
+import io.cequence.openaiscala.domain.decisions.{
+  CreateDecisionSettings,
+  Decision,
+  DecisionInput,
+  DecisionQuestion
+}
+import io.cequence.openaiscala.service.OpenAIDecisionsService
 import io.cequence.openaiscala.typesafe.domain.{ModelMetadata, Question, SystemOneResponse}
 import play.api.libs.json.JsValue
 
@@ -14,7 +21,10 @@ object TypeSafeServiceAdapters {
   /**
    * Retries failed calls with exponential backoff, as TypeSafe asks for 429 / 529 responses.
    * What is retried is decided by [[io.cequence.openaiscala.Retryable]] (rate limits,
-   * overloads, 5xx and timeouts - never auth or validation errors).
+   * overloads, 5xx and timeouts - never auth or validation errors). A service that also serves
+   * OpenAI's Decisions API interface (one of `TypeSafeServiceFactory`) keeps serving it,
+   * retried the same way, so `TypeSafeServiceFactory.asOpenAIDecisions(retry(service))` stays
+   * on the service's own path - native on OpenAI's host.
    *
    * @param log
    *   where to report each retry (nothing by default)
@@ -28,7 +38,29 @@ object TypeSafeServiceAdapters {
     retrySettings: RetrySettings,
     scheduler: Scheduler
   ): TypeSafeService =
-    new RetryTypeSafeService(underlying, log, includeExceptionMessage)
+    underlying match {
+      case decisions: OpenAIDecisionsService =>
+        new RetryTypeSafeService(underlying, log, includeExceptionMessage)
+          with OpenAIDecisionsService {
+
+          // its failures are the OpenAIScala* exceptions, which the shared matcher knows
+          override def createDecision(
+            input: DecisionInput,
+            questions: Seq[DecisionQuestion],
+            settings: CreateDecisionSettings
+          ): Future[Decision] =
+            decisions
+              .createDecision(input, questions, settings)
+              .retryOnFailure(
+                Some("CreateDecision call failed"),
+                log,
+                includeExceptionMessage = includeExceptionMessage
+              )
+        }
+
+      case _ =>
+        new RetryTypeSafeService(underlying, log, includeExceptionMessage)
+    }
 }
 
 private class RetryTypeSafeService(

@@ -152,13 +152,11 @@ class DecisionImageSpec extends AnyWordSpec with Matchers {
       DecisionImage.fromDataUrl(dataUrl("image/png", png)) shouldBe DecisionImage(png)
     }
 
-    "refuse another format, an image over 2,048 tiles and a URL, up front" in {
+    "refuse another format and a URL up front - not a large image (the hosts scale it)" in {
       the[IllegalArgumentException]
         .thrownBy(DecisionImage("GIF89a, a gif".getBytes(US_ASCII)))
         .getMessage should include("Not a PNG, JPEG or WebP image")
-      the[IllegalArgumentException]
-        .thrownBy(DecisionImage(pngHeader(4032, 3024)))
-        .getMessage should include("4032 x 3024")
+      (DecisionImage(pngHeader(4032, 3024)) \ "type").as[String] shouldBe "image_url"
       the[IllegalArgumentException]
         .thrownBy(DecisionImage.fromDataUrl("https://example.com/cat.png"))
         .getMessage should include("never fetches")
@@ -177,16 +175,17 @@ class DecisionImageSpec extends AnyWordSpec with Matchers {
 
   "problem" should {
 
-    "pass an image that fits" in {
-      problem(dataUrl("image/png", encoded(64, 48, "png"))) shouldBe None
-      problem(dataUrl("image/jpeg", jpegHeader(1440, 1440))) shouldBe None
-      problem(dataUrl("image/webp", vp8x(2048, 1024))) shouldBe None
+    "pass an image that fits a host's tile cap, and any image without one" in {
+      problem(dataUrl("image/png", encoded(64, 48, "png")), Some(2048)) shouldBe None
+      problem(dataUrl("image/jpeg", jpegHeader(1440, 1440)), Some(2048)) shouldBe None
+      problem(dataUrl("image/webp", vp8x(2048, 1024)), Some(2048)) shouldBe None
+      problem(dataUrl("image/jpeg", jpegHeader(4032, 3024))) shouldBe None
     }
 
-    "refuse an image over 2,048 tiles, which the API would let time out after a minute" in {
-      val photo = problem(dataUrl("image/jpeg", jpegHeader(4032, 3024)))
-      photo.get should (include("4032 x 3024") and include("11970 tiles") and include("504"))
-      problem(dataUrl("image/png", pngHeader(1600, 1310))) shouldBe defined
+    "refuse an image over a host's tile cap" in {
+      val photo = problem(dataUrl("image/jpeg", jpegHeader(4032, 3024)), Some(2048))
+      photo.get should (include("4032 x 3024") and include("11970 tiles") and include("2048"))
+      problem(dataUrl("image/png", pngHeader(1600, 1310)), Some(2048)) shouldBe defined
     }
 
     "refuse a URL the API would have to fetch, and other image types" in {
@@ -198,18 +197,21 @@ class DecisionImageSpec extends AnyWordSpec with Matchers {
 
     "refuse a PNG declaring a size past Int.MaxValue rather than wrap it negative" in {
       dimensions(pngHeader(Int.MinValue, 1000)) shouldBe Some((2147483648L, 1000L))
-      problem(dataUrl("image/png", pngHeader(Int.MinValue, 1000))) shouldBe defined
+      problem(dataUrl("image/png", pngHeader(Int.MinValue, 1000)), Some(2048)) shouldBe defined
     }
 
     "find a JPEG's size past the decoded head - and decode only the head when it is there" in {
       val photo = jpegWithLargeSegments(4032, 3024)
       photo.length should be > 300000
-      problem(dataUrl("image/jpeg", photo)).get should include("4032 x 3024")
-      problem(dataUrl("image/jpeg", jpegWithLargeSegments(1440, 1440))) shouldBe None
+      problem(dataUrl("image/jpeg", photo), Some(2048)).get should include("4032 x 3024")
+      problem(
+        dataUrl("image/jpeg", jpegWithLargeSegments(1440, 1440)),
+        Some(2048)
+      ) shouldBe None
 
       // a big PNG: its size is in the first bytes
       val bigPng = pngHeader(4032, 3024) ++ new Array[Byte](2 * 1024 * 1024)
-      problem(dataUrl("image/png", bigPng)).get should include("4032 x 3024")
+      problem(dataUrl("image/png", bigPng), Some(2048)).get should include("4032 x 3024")
     }
 
     "leave an image of unreadable size to the API" in {
@@ -226,9 +228,40 @@ class DecisionImageSpec extends AnyWordSpec with Matchers {
         "attachments" -> Json.obj("first" -> part("https://example.com/a.png"))
       )
 
-      problems(state).map(_.take(12)) shouldBe Seq("a 4032 x 302", "an image URL")
-      problems(JsString("text only")) shouldBe empty
-      problems(part(dataUrl("image/png", encoded(8, 8, "png")))) shouldBe empty
+      problems(state, Some(2048)).map(_.take(12)) shouldBe Seq("a 4032 x 302", "an image URL")
+      // without a cap, only the URL is a problem
+      problems(state, None).map(_.take(12)) shouldBe Seq("an image URL")
+      problems(JsString("text only"), None) shouldBe empty
+      problems(part(dataUrl("image/png", encoded(8, 8, "png"))), None) shouldBe empty
+    }
+  }
+
+  "lift" should {
+
+    "replace the image parts by numbered markers, their URLs in the same document order" in {
+      val state = Json.obj(
+        "message" -> Json.arr("Look:", part("data:image/png;base64,AAAA")),
+        "attachments" -> Json.obj(
+          "first" -> part("data:image/jpeg;base64,BBBB"),
+          // a part of no URL is no image - left as it is
+          "broken" -> Json.obj("type" -> "image_url")
+        )
+      )
+
+      lift(state) shouldBe (
+        (
+          Json.obj(
+            "message" -> Json.arr("Look:", "[image 1]"),
+            "attachments" -> Json.obj(
+              "first" -> "[image 2]",
+              "broken" -> Json.obj("type" -> "image_url")
+            )
+          ),
+          Seq("data:image/png;base64,AAAA", "data:image/jpeg;base64,BBBB")
+        )
+      )
+      imageUrls(state) shouldBe lift(state)._2
+      lift(JsString("text only")) shouldBe ((JsString("text only"), Nil))
     }
   }
 }

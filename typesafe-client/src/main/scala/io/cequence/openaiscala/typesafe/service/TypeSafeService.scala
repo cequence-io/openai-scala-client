@@ -11,7 +11,7 @@ import scala.concurrent.Future
  * with calibrated probabilities back - a decision model, not a chat one, so there is no
  * streaming; `TypeSafeServiceFactory.asOpenAI` puts it behind the chat interface for
  * JSON-schema structured output. Liquid AI's d1 and Perplexity's Decisions API
- * (`pplx-decider-v1-27b`, images in the state too) take the same questions
+ * (`pplx-decider-v1.1-27b`, images in the state too) take the same questions
  * (`TypeSafeServiceFactory.liquid` / `perplexity`).
  *
  * Errors are [[TypeSafeScalaClientException]]s classified by status and body

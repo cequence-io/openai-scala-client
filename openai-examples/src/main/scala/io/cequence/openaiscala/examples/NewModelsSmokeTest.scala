@@ -100,7 +100,11 @@ object NewModelsSmokeTest {
         "GROQ_API_KEY",
         Seq(
           Case("qwen/qwen3.8-27b", NonOpenAIModelId.groq_qwen3_8_27b),
-          Case("groq/compound", NonOpenAIModelId.groq_compound)
+          Case(
+            "groq/compound (gone from Groq's catalog)",
+            "groq/compound",
+            expectedToFail = Some("404 model_not_found since 2026-10-09")
+          )
         )
       ),
       (

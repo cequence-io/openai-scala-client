@@ -1,14 +1,17 @@
 package io.cequence.openaiscala.typesafe.service
 
 import io.cequence.openaiscala.EnvHelper
-import io.cequence.openaiscala.service.OpenAIChatCompletionService
+import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIDecisionsService}
 import io.cequence.openaiscala.typesafe.domain.DecisionProvider
 import io.cequence.openaiscala.typesafe.service.impl.{
+  OpenAIDecisionsOverTypeSafe,
   OpenAITypeSafeChatCompletionService,
   TypeSafeServiceImpl
 }
 import io.cequence.wsclient.service.WSClientEngine
 import io.cequence.wsclient.service.ws.Timeouts
+
+import org.slf4j.LoggerFactory
 
 import scala.concurrent.ExecutionContext
 
@@ -43,6 +46,8 @@ import scala.concurrent.ExecutionContext
  * openRouter.systemOne(state, questions, TypeSafeModelId.openrouter_liquid_d1)
  *
  * val decider = TypeSafeServiceFactory.asOpenAI(DecisionProviderSettings.perplexity)
+ *
+ * val local = TypeSafeServiceFactory(DecisionProviderSettings.llamaCpp) // llama-server, no key
  * }}}
  *
  * Their errors are the same [[TypeSafeScalaClientException]] hierarchy, classified by HTTP
@@ -50,6 +55,8 @@ import scala.concurrent.ExecutionContext
  * shorthands for the Liquid AI and Perplexity providers.
  */
 object TypeSafeServiceFactory extends EnvHelper {
+
+  private val logger = LoggerFactory.getLogger("TypeSafeServiceFactory")
 
   import TypeSafeServiceConsts._
 
@@ -116,11 +123,11 @@ object TypeSafeServiceFactory extends EnvHelper {
     new OpenAITypeSafeChatCompletionService(service)
 
   /**
-   * The OpenAI adapter over an EXISTING service, saying whether its host reads images in the
-   * state - `imageInput = true` for a Perplexity service ([[perplexity]], e.g. wrapped in the
-   * retry adapter): the image parts of user messages then go into the state instead of being
-   * refused. TypeSafe's Jev and Liquid's d1 read an image part as text, so keep it `false` for
-   * them.
+   * The OpenAI adapter over an EXISTING service, saying whether its host reads images -
+   * `imageInput = true` for a Perplexity, OpenAI, Liquid (paid `d1`) or llama.cpp service
+   * (e.g. wrapped in the retry adapter; the provider's `readsImages`): the image parts of user
+   * messages then go into the state instead of being refused. TypeSafe's Jev reads an image
+   * part as text, so keep it `false` for it.
    */
   def asOpenAI(
     service: TypeSafeService,
@@ -129,6 +136,76 @@ object TypeSafeServiceFactory extends EnvHelper {
     implicit ec: ExecutionContext
   ): OpenAIChatCompletionService =
     new OpenAITypeSafeChatCompletionService(service, imageInput)
+
+  /**
+   * A host of decision models behind OpenAI's Decisions API interface - `createDecision`, as
+   * the full `OpenAIService` has it - so code written against that interface switches between
+   * OpenAI and the System One hosts by its construction alone:
+   *
+   * {{{
+   * val decisions: OpenAIDecisionsService =
+   *   if (useJev) TypeSafeServiceFactory.asOpenAIDecisions(DecisionProviderSettings.typeSafe)
+   *   else OpenAIServiceFactory()
+   *
+   * decisions.createDecision(DecisionInput.Text(ticket), questions)   // no model: the host's default
+   * }}}
+   *
+   * On a System One host the questions are translated: a predicate -> a noul, a choice -> a
+   * choice (a boolean value as its text), a score -> a score; unnamed questions get keys of
+   * their own; the answers come back in the questions' order with their names, values and
+   * level labels, a declined question as a refusal. The `safety_identifier` and image
+   * `detail`s do not carry over (dropped with a warning), images only to a host that reads
+   * them. OpenAI's own host (`DecisionProviderSettings.openAI`) takes the call as it is - also
+   * behind the retry adapter (`TypeSafeServiceAdapters.retry`), which serves the interface of
+   * the service it wraps. Failures are the `OpenAIScala*` exceptions, the native one as the
+   * cause.
+   *
+   * The other way round - code written against [[TypeSafeService]] on OpenAI's Decisions API -
+   * is `TypeSafeServiceFactory(DecisionProviderSettings.openAI)`.
+   */
+  def asOpenAIDecisions(
+    provider: DecisionProvider
+  )(
+    implicit ec: ExecutionContext
+  ): OpenAIDecisionsService =
+    asOpenAIDecisions(apply(provider))
+
+  /**
+   * [[asOpenAIDecisions(provider* asOpenAIDecisions(provider)]] over an EXISTING service: one
+   * of this factory serves the interface itself (it knows its host), and so does the retry
+   * adapter over one. Any other service is asked in System One's terms - a translation, even
+   * when its host is OpenAI's (then without the `safety_identifier`, image details and the
+   * message structure) - and without images.
+   */
+  def asOpenAIDecisions(
+    service: TypeSafeService
+  )(
+    implicit ec: ExecutionContext
+  ): OpenAIDecisionsService =
+    asOpenAIDecisions(service, imageInput = false)
+
+  /**
+   * [[asOpenAIDecisions(service* asOpenAIDecisions(service)]], saying whether a wrapped
+   * service's host reads images. A service that serves the interface itself (one of this
+   * factory, or the retry adapter over one) knows that from its provider, so `imageInput` is
+   * ignored for it - with a warning when it is set.
+   */
+  def asOpenAIDecisions(
+    service: TypeSafeService,
+    imageInput: Boolean
+  )(
+    implicit ec: ExecutionContext
+  ): OpenAIDecisionsService =
+    service match {
+      case served: OpenAIDecisionsService =>
+        if (imageInput)
+          logger.warn(
+            "imageInput is ignored: the service serves OpenAI's Decisions interface itself " +
+              "and reads images as its provider says (DecisionProvider.images)."
+          )
+        served
+      case other => new OpenAIDecisionsOverTypeSafe(other, imageInput)
+    }
 
   /**
    * A service for a host of decision models - one of the [[DecisionProviderSettings]] or a
@@ -189,18 +266,20 @@ object TypeSafeServiceFactory extends EnvHelper {
   /**
    * A host of decision models behind the OpenAI chat-completion interface - `json_schema`
    * structured output only, like [[asOpenAI]]; image content goes into the state when the host
-   * reads images (`provider.images`).
+   * reads images (`provider.readsImages`).
    */
   def asOpenAI(
     provider: DecisionProvider
   )(
     implicit ec: ExecutionContext
   ): OpenAIChatCompletionService =
-    asOpenAI(apply(provider), provider.images)
+    asOpenAI(apply(provider), provider.readsImages)
 
   /**
    * Liquid AI's decision model d1 on its System One API (`https://api.liquid.ai/decisions`,
-   * `LIQUID_API_KEY`, `d1:free`), on its own PRIVATE engine.
+   * `LIQUID_API_KEY`, `d1:free`), on its own PRIVATE engine. The paid `d1` also reads images
+   * (parts in the state, sent in a top-level `images` array - see
+   * `DecisionProviderSettings.liquid`).
    */
   def liquid(
     apiKey: String = getEnvValue(liquidApiKeyEnvKey),
@@ -237,7 +316,9 @@ object TypeSafeServiceFactory extends EnvHelper {
 
   /**
    * Liquid AI's d1 behind the OpenAI chat-completion interface - `json_schema` structured
-   * output only, exactly like [[asOpenAI]] (`d1:free` is in `models-supporting-json-schema`).
+   * output only, exactly like [[asOpenAI]] (`d1:free` and `d1` are in
+   * `models-supporting-json-schema`); the image content of user messages goes to the paid `d1`
+   * (`d1:free` refuses it with a 422).
    */
   def liquidAsOpenAI(
     apiKey: String = getEnvValue(liquidApiKeyEnvKey),
@@ -247,17 +328,18 @@ object TypeSafeServiceFactory extends EnvHelper {
   )(
     implicit ec: ExecutionContext
   ): OpenAIChatCompletionService =
-    asOpenAI(liquid(apiKey, baseUrl, defaultModel, timeouts))
+    asOpenAI(liquid(apiKey, baseUrl, defaultModel, timeouts), imageInput = true)
 
   /**
-   * Perplexity's decision model `pplx-decider-v1-27b` on its Decisions API (`POST
+   * Perplexity's decision model `pplx-decider-v1.1-27b` (the 2026-10-06 update; the launch
+   * model `pplx-decider-v1-27b` is served too) on its Decisions API (`POST
    * https://api.perplexity.ai/v1/decisions`; the key from `PERPLEXITY_API_KEY`, else
    * `SONAR_API_KEY`), on its own PRIVATE engine. The same questions and answers as System One,
    * plus images: an OpenAI-style `image_url` part anywhere in the state, as a base64 PNG, JPEG
-   * or WebP data URL of at most 2,048 tiles of 32 x 32 pixels (e.g. 1440 x 1440) - both
-   * checked before sending, since a larger image times out (504) after about a minute. Limits
-   * of its own: at most 128 questions and an input under 262,144 tokens. `listModels` returns
-   * the one model without a request (Perplexity's `/v1/models` lists its Agent API models).
+   * or WebP data URL (checked before sending) of any size - the API scales an image to about
+   * 2,100 tokens (live 2026-10-08). Limits of its own: at most 128 questions and an input
+   * under 262,144 tokens. `listModels` returns the two models without a request (Perplexity's
+   * `/v1/models` lists its Agent API models).
    */
   def perplexity(
     apiKey: String = DecisionProviderSettings.perplexity.apiKeyFromEnv,
@@ -295,7 +377,7 @@ object TypeSafeServiceFactory extends EnvHelper {
   /**
    * Perplexity's decider behind the OpenAI chat-completion interface - `json_schema`
    * structured output only, like [[asOpenAI]], but the image parts of user messages
-   * (`ImageURLContent` with a data URL) go into the state (`pplx-decider-v1-27b` is in
+   * (`ImageURLContent` with a data URL) go into the state (both decider ids are in
    * `models-supporting-json-schema`).
    */
   def perplexityAsOpenAI(

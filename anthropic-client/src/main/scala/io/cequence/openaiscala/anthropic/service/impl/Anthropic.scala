@@ -49,7 +49,9 @@ trait Anthropic
       "code-execution-2025-08-25",
       "mcp-client-2025-04-04",
       "web-fetch-2025-09-10",
-      "context-1m-2025-08-07", // deprecated (April 30, 2026)
+      // no context-1m-2025-08-07: retired 2026-04-30 (1M is the default wherever a model has it),
+      // and a Claude subscription's OAuth token refuses every request carrying it - 400 "The long
+      // context beta is not yet available for this subscription." (live 2026-10-07)
       "fast-mode-2026-02-01"
     )
     val pdf = if (withPdf) Seq("pdfs-2024-09-25") else Nil

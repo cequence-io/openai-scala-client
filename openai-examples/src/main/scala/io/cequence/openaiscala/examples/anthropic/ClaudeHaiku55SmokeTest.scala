@@ -21,25 +21,24 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 /**
- * Live smoke test for Claude Sonnet 5.5 (`claude-sonnet-5-5`) through the OpenAI adapter,
- * covering what the client adapts for it (live-verified 2026-09-29):
+ * Live smoke test for Claude Haiku 5.5 (`claude-haiku-5-5`, released 2026-10-07) through the
+ * OpenAI adapter, covering what the client adapts for it:
  *
  *   - adaptive thinking + `output_config.effort` (low..max), no sampling params (temperature /
- *     top_p are dropped)
- *   - `reasoning_effort = none` -> `thinking.type = between_tools`, its lowest setting (it
- *     rejects `disabled`, and omitting thinking would mean adaptive thinking at effort high) -
- *     sent without a `display`, which that setting rejects, also on the typed stream
- *   - a forced tool choice downgraded to `auto` plus a system instruction (the API rejects
- *     `tool_choice` `any`/`tool`, like Opus 5.5)
- *   - json_schema structured output on the Claude API and on Bedrock's `global.` profile
- *     (which took `output_config.format` from October 2026 - `us.` still refuses it, live
- *     2026-10-07)
+ *     top_p are dropped - the API takes only their defaults)
+ *   - `reasoning_effort = none` -> `thinking.type = disabled` (it thinks by default, so
+ *     omitting thinking would not turn it off; it rejects `between_tools`), also on the typed
+ *     stream
+ *   - a forced tool choice kept as it is (unlike Opus / Sonnet 5.5, it accepts `any` / `tool`)
+ *   - json_schema structured output on the Claude API and on Bedrock (`output_config.format`,
+ *     accepted on every inference profile despite Anthropic's docs; the bare id needs a
+ *     profile)
  *
  * Every section prints PASS/FAIL and the run continues; the exit code is 1 if any failed.
  * Requires `ANTHROPIC_API_KEY`; the Bedrock section also a Bedrock API key in
  * `AWS_BEARER_TOKEN_BEDROCK` (skipped otherwise).
  */
-object ClaudeSonnet55SmokeTest {
+object ClaudeHaiku55SmokeTest {
 
   private case class Capital(
     country: String,
@@ -91,7 +90,7 @@ object ClaudeSonnet55SmokeTest {
     implicit val ec: ExecutionContext = system.dispatcher
 
     val anthropic = AnthropicServiceFactory.asOpenAI()
-    val model = NonOpenAIModelId.claude_sonnet_5_5
+    val model = NonOpenAIModelId.claude_haiku_5_5
     val failures = new AtomicInteger(0)
 
     def section(
@@ -127,7 +126,7 @@ object ClaudeSonnet55SmokeTest {
           .map(r => s"content='${r.contentHead}'")
       }
 
-      _ <- section(s"$model: reasoning_effort=none -> thinking between_tools") {
+      _ <- section(s"$model: reasoning_effort=none -> thinking disabled") {
         anthropic
           .createChatCompletion(
             Seq(UserMessage("Say hi")),
@@ -140,7 +139,7 @@ object ClaudeSonnet55SmokeTest {
           .map(r => s"content='${r.contentHead}'")
       }
 
-      _ <- section(s"$model: typed stream, reasoning_effort=none + tool (no display sent)") {
+      _ <- section(s"$model: typed stream, reasoning_effort=none + tool (no thinking)") {
         anthropic
           .createChatToolCompletionStreamed(
             weatherQuestion,
@@ -155,6 +154,7 @@ object ClaudeSonnet55SmokeTest {
           .assembled
           .map { a =>
             if (a.toolCalls.isEmpty) throw new IllegalStateException(s"no tool call: $a")
+            if (a.thinking.nonEmpty) throw new IllegalStateException(s"thought: ${a.thinking}")
             s"calls=${a.toolCalls.map(_.toolName)} thinking=${a.thinking.length} chars finish=${a.finishReason}"
           }
       }
@@ -183,7 +183,7 @@ object ClaudeSonnet55SmokeTest {
           .map(functionCalls)
       }
 
-      _ <- section(s"$model: forced tool choice (downgraded to auto + instruction)") {
+      _ <- section(s"$model: forced tool choice (kept)") {
         anthropic
           .createChatToolCompletion(
             weatherQuestion,
@@ -208,9 +208,9 @@ object ClaudeSonnet55SmokeTest {
           .map(c => s"parsed=$c")
       }
 
-      // the global. profile takes output_config.format (us. does not - live 2026-10-07)
+      // Bedrock takes output_config.format for Haiku 5.5 on every profile (live 2026-10-07)
       _ <- section(
-        s"global.${NonOpenAIModelId.bedrock_claude_sonnet_5_5}: JSON (json_schema)"
+        s"global.${NonOpenAIModelId.bedrock_claude_haiku_5_5}: JSON (json_schema)"
       ) {
         if (sys.env.get("AWS_BEARER_TOKEN_BEDROCK").forall(_.isEmpty))
           Future.successful("skipped - AWS_BEARER_TOKEN_BEDROCK not set")
@@ -221,7 +221,7 @@ object ClaudeSonnet55SmokeTest {
             .createChatCompletionWithJSON[Capital](
               Seq(UserMessage("Capital of Norway?")),
               CreateChatCompletionSettings(
-                model = "global." + NonOpenAIModelId.bedrock_claude_sonnet_5_5,
+                model = "global." + NonOpenAIModelId.bedrock_claude_haiku_5_5,
                 max_tokens = Some(2000),
                 response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
                 jsonSchema = Some(capitalSchema)

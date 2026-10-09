@@ -13,7 +13,7 @@ import play.api.libs.json.JsValue
  */
 private[service] object ServerSentEvents {
 
-  val DefaultMaxEventBytes: Int = CoreServerSentEvents.DefaultMaxEventBytes
+  def DefaultMaxEventBytes: Int = CoreServerSentEvents.DefaultMaxEventBytes
 
   def jsonPayloads(maxEventBytes: Int = DefaultMaxEventBytes)
     : Flow[ByteString, JsValue, NotUsed] =

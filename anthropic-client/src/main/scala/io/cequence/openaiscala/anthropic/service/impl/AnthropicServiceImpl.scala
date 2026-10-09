@@ -2,7 +2,7 @@ package io.cequence.openaiscala.anthropic.service.impl
 
 import akka.NotUsed
 import io.cequence.openaiscala.service.StreamingConsts
-import akka.stream.scaladsl.{Framing, Source}
+import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.cequence.openaiscala.anthropic.domain.{
   FileDeleteResponse,
@@ -112,11 +112,6 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     )
   }
 
-  // A single SSE frame carries a whole content block start - server-tool results such as
-  // `web_search_tool_result` (21 KB live on 2026-09-10) or fetched documents easily exceed
-  // ws-client's 20 000-byte default, which fails the stream with "Stream framing problem".
-  private val messageStreamMaxFrameLength = StreamingConsts.DefaultMaxFrameLength
-
   private def streamMessageEvents(
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings
@@ -125,10 +120,12 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       EndPoint.messages,
       "POST",
       bodyParams = createBodyParamsForMessageCreation(messages, settings, stream = Some(true)),
-      // message-feature betas + skill headers if a container (with skills) is passed
+      // message-feature betas + skill headers if a container (with skills) is passed;
+      // a frame carries a whole content block start - a server-tool result such as
+      // `web_search_tool_result` (21 KB live on 2026-09-10) or a fetched document can be
+      // large, hence the shared StreamingConsts.maxFrameLength (ws-client's default is 20 KB)
       extraHeaders =
-        messageBetaHeaders ++ (if (settings.container.isDefined) skillHeaders else Nil),
-      maxFrameLength = Some(messageStreamMaxFrameLength)
+        messageBetaHeaders ++ (if (settings.container.isDefined) skillHeaders else Nil)
     ).map(parseStreamEvent)
   }
 
@@ -149,9 +146,6 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   // ============================================================================
   // Message batches
   // ============================================================================
-
-  // Generous frame cap - one result line carries an entire message response.
-  private val batchResultMaxFrameLength = 20 * 1024 * 1024
 
   override def createMessageBatch(
     requests: Seq[MessageBatchRequest]
@@ -205,13 +199,8 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       EndPoint.messageBatches,
       "GET",
       endPointParam = Some(s"$batchId/results")
-    ).via(
-      Framing.delimiter(
-        ByteString("\n"),
-        batchResultMaxFrameLength,
-        allowTruncation = true
-      )
-    ).map(_.utf8String.trim)
+    ).via(StreamingConsts.framing("\n")) // a line carries a whole message response
+      .map(_.utf8String.trim)
       .filter(_.nonEmpty)
       .map(line => Json.parse(line).asSafe[MessageBatchIndividualResponse])
 
@@ -890,9 +879,6 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[PagedResponse[SessionEventEnvelope]])
 
-  // Generous SSE frame cap - a single agent.message event can carry a long response.
-  private val sessionEventMaxFrameLength = 5 * 1024 * 1024
-
   override def streamSessionEvents(
     sessionId: String
   ): Source[SessionEventEnvelope, NotUsed] =
@@ -904,22 +890,18 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       "GET",
       endPointParam = Some(s"$sessionId/events/stream"),
       extraHeaders = managedAgentsHeaders
-    ).via(
-      Framing.delimiter(
-        ByteString("\n\n"),
-        sessionEventMaxFrameLength,
-        allowTruncation = true
-      )
-    ).mapConcat { frameBytes =>
-      // An SSE frame consists of `event:`/`id:` lines, comment lines (starting with ':'),
-      // and one or more `data:` lines (joined with a newline per the SSE spec).
-      val dataLines = frameBytes.utf8String.split("\n").toList.collect {
-        case line if line.startsWith("data:") => line.drop("data:".length).trim
-      }
+    ).via(StreamingConsts.framing("\n\n")) // an agent.message event can carry a long response
+      .mapConcat { frameBytes =>
+        // An SSE frame consists of `event:`/`id:` lines, comment lines (starting with ':'),
+        // and one or more `data:` lines (joined with a newline per the SSE spec).
+        val dataLines = frameBytes.utf8String.split("\n").toList.collect {
+          case line if line.startsWith("data:") => line.drop("data:".length).trim
+        }
 
-      if (dataLines.isEmpty) Nil
-      else List(Json.parse(dataLines.mkString("\n")))
-    }.map(_.asOpt[SessionEventEnvelope])
+        if (dataLines.isEmpty) Nil
+        else List(Json.parse(dataLines.mkString("\n")))
+      }
+      .map(_.asOpt[SessionEventEnvelope])
       .collect { case Some(e) => e }
 
   // -- Resources --

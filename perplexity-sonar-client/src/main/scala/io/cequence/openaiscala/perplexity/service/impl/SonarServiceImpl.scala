@@ -3,6 +3,7 @@ package io.cequence.openaiscala.perplexity.service.impl
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
+import io.cequence.openaiscala.ResponseHeaders
 import io.cequence.openaiscala.perplexity.AgentJsonFormats
 import io.cequence.openaiscala.perplexity.AgentJsonFormats._
 import io.cequence.openaiscala.perplexity.domain.agent._
@@ -20,7 +21,7 @@ import io.cequence.openaiscala.perplexity.service.{
   PerplexityScalaClientUnknownHostException,
   SonarService
 }
-import io.cequence.openaiscala.service.{ClassifiedStreamingWSClient, StreamingConsts}
+import io.cequence.openaiscala.service.ClassifiedStreamingWSClient
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
 import io.cequence.wsclient.StreamResponseImplicits.StreamSafeOps
@@ -97,9 +98,7 @@ private[service] class SonarServiceImpl(
       EndPoint.chatCompletion,
       "POST",
       bodyParams = createBodyParamsForChatCompletion(messages, settings, stream = true),
-      framingDelimiter = "\r\n\r\n",
-      // citation-heavy frames exceed ws-client's 20 000-byte default
-      maxFrameLength = Some(StreamingConsts.DefaultMaxFrameLength)
+      framingDelimiter = "\r\n\r\n"
     ).map { json =>
       inBandStreamError(json).foreach(throw _)
       json.asSafe[SonarChatCompletionChunkResponse]
@@ -274,7 +273,5 @@ private[service] object SonarServiceImpl {
   val requestIdHeader = "x-request-id"
 
   def requestId(rich: RichResponse): Option[String] =
-    rich.headers.collectFirst {
-      case (name, values) if name.equalsIgnoreCase(requestIdHeader) => values.headOption
-    }.flatten
+    ResponseHeaders.first(rich.headers, Seq(requestIdHeader))
 }

@@ -2,7 +2,6 @@ package io.cequence.openaiscala.anthropic.service.impl
 
 import akka.NotUsed
 import io.cequence.openaiscala.service.StreamingConsts
-import akka.stream.javadsl.{Framing, FramingTruncation}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.cequence.wsclient.service.ws.PlayJsonUtil
@@ -179,14 +178,8 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
       "POST",
       bodyParams = bodyParams,
       extraHeaders = extraHeaders ++ extraSkillsHeaders
-    ).via(
-      Framing.delimiter(
-        ByteString(":content-type"),
-        maximumFrameLength =
-          StreamingConsts.DefaultMaxFrameLength, // server-tool result blocks can exceed 64 KB
-        FramingTruncation.ALLOW
-      )
-    ).via(AwsEventStreamEventParser.flow) // parse frames into JSON with "bytes"
+    ).via(StreamingConsts.framing(":content-type")) // server-tool result blocks can be large
+      .via(AwsEventStreamEventParser.flow) // parse frames into JSON with "bytes"
       .collect { case Some(x) => x }
       .via(AwsEventStreamBytesDecoder.flow) // decode the "
       .map(parseStreamEvent)

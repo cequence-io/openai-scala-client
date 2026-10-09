@@ -6,7 +6,7 @@ import akka.stream.scaladsl.{Sink, Source}
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.UserMessage
-import io.cequence.openaiscala.gemini.domain.{ChatRole, Content}
+import io.cequence.openaiscala.gemini.domain.{ChatRole, Content, Part}
 import io.cequence.openaiscala.gemini.domain.settings.GenerateContentSettings
 import io.cequence.openaiscala.gemini.service._
 import io.cequence.openaiscala.{
@@ -145,6 +145,31 @@ class GeminiStreamedHttpErrorsWireSpec
       failure[GeminiScalaUnauthorizedException](badKey)(
         service.generateContentStreamed(contents, settings)
       )
+    }
+
+    // 1.4.0 capped every stream at 1 MiB - an image model's picture arrives in one event
+    "read an image part of 5 MiB in base64 whole" in {
+      val image = "A" * (5 * 1024 * 1024)
+      reply = (
+        200,
+        "data: " +
+          s"""{"candidates":[{"content":{"parts":[{"inlineData":{"mimeType":"image/png","data":"$image"}}],"role":"model"},"index":0}],"usageMetadata":{"promptTokenCount":2,"totalTokenCount":3},"modelVersion":"gemini-3-pro-image"}""" +
+          "\r\n\r\n",
+        "text/event-stream"
+      )
+
+      Await
+        .result(
+          service
+            .generateContentStreamed(
+              Seq(Content.textPart("draw a cat", ChatRole.User)),
+              GenerateContentSettings("gemini-3-pro-image")
+            )
+            .runWith(Sink.seq),
+          30.seconds
+        )
+        .flatMap(_.candidates.flatMap(_.content.parts))
+        .collect { case Part.InlineData(_, data) => data.length } shouldBe Seq(image.length)
     }
   }
 

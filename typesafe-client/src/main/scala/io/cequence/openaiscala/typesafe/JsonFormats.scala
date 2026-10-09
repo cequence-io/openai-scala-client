@@ -253,14 +253,15 @@ object JsonFormats {
         name <- field[String](json, "name")
         description <- field[String](json, "description")
         releaseDate <- field[String](json, "release_date")
-      } yield ModelMetadata(name, description, releaseDate)
+        inputModalities <- fieldOpt[Seq[String]](json, "input_modalities")
+      } yield ModelMetadata(name, description, releaseDate, inputModalities)
     },
     Writes { model =>
       Json.obj(
         "name" -> model.name,
         "description" -> model.description,
         "release_date" -> model.release_date
-      )
+      ) ++ model.input_modalities.fold(Json.obj())(m => Json.obj("input_modalities" -> m))
     }
   )
 }

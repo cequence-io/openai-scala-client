@@ -1,8 +1,11 @@
 package io.cequence.openaiscala.typesafe.service
 
+import io.cequence.openaiscala.domain.decisions.CreateDecisionSettings
 import io.cequence.openaiscala.service.ChatProviderSettings
 import io.cequence.openaiscala.typesafe.domain.{
+  DecisionImages,
   DecisionModelListing,
+  DecisionProtocol,
   DecisionProvider,
   ModelMetadata,
   TypeSafeModelId
@@ -26,40 +29,111 @@ object DecisionProviderSettings {
     DecisionProvider(defaultBaseUrl, apiKeyEnvKey, defaultModel, name = Some("typesafe"))
 
   /**
-   * Liquid AI's d1 (`LIQUID_API_KEY`, `d1:free`) - 422 "A request accepts at most 128
-   * questions." (live 2026-10-02).
+   * Liquid AI's d1 (`LIQUID_API_KEY`; `d1:free` by default) - 422 "A request accepts at most
+   * 128 questions." (live 2026-10-02). The paid `d1` ([[TypeSafeModelId.liquid_d1]]) also
+   * reads images, sent in a top-level `images` array ([[DecisionImages.ImagesField]]): at most
+   * 8, 10,000 32 x 32 patches in all, no side over 100 times the other - each a quick 422, as
+   * is an image for `d1:free` ("The model `d1:free` does not accept images.", live
+   * 2026-10-07).
    */
   val liquid: DecisionProvider = DecisionProvider(
     liquidBaseUrl,
     liquidApiKeyEnvKey,
     liquidDefaultModel,
     maxQuestions = Some(128),
+    images = DecisionImages.ImagesField,
     name = Some("liquid")
   )
 
   /**
-   * Perplexity's Decisions API (`pplx-decider-v1-27b`; `PERPLEXITY_API_KEY`, else
-   * `SONAR_API_KEY`): `POST /v1/decisions`, images in the state, at most 128 questions; its
-   * `/v1/models` lists the Agent API models, so the one decision model is listed here.
+   * Perplexity's Decisions API (`pplx-decider-v1.1-27b` by default, `pplx-decider-v1-27b` the
+   * launch model; `PERPLEXITY_API_KEY`, else `SONAR_API_KEY`): `POST /v1/decisions`, images in
+   * the state, at most 128 questions, an input under 262,144 tokens, $0.02 per 1M input tokens
+   * (live 2026-10-08); its `/v1/models` lists the Agent API models, so the decision models are
+   * listed here. An image of any size goes: the API scales it to about 2,100 tokens (a 4032 x
+   * 3024 phone photo, or 8192 x 8192, answered in ~1 s on 2026-10-08) - the 2,048-tile cap
+   * over which it used to time out is gone, so no `maxImageTiles` here.
    */
   val perplexity: DecisionProvider = DecisionProvider(
     "https://api.perplexity.ai/",
     "PERPLEXITY_API_KEY",
-    TypeSafeModelId.pplx_decider_v1_27b,
+    TypeSafeModelId.pplx_decider_v1_1_27b,
     decisionsPath = "v1/decisions",
     models = DecisionModelListing.Fixed(
       Seq(
         ModelMetadata(
+          TypeSafeModelId.pplx_decider_v1_1_27b,
+          "Perplexity's multimodal decision model, the update of 2026-10-06 (Decision Index 61.56).",
+          "2026-10-06",
+          Some(Seq("text", "image"))
+        ),
+        ModelMetadata(
           TypeSafeModelId.pplx_decider_v1_27b,
-          "Perplexity's multimodal decision model, the one model of its Decisions API.",
-          "2026-10-01"
+          "Perplexity's first decision model (Decision Index 56.4).",
+          "2026-10-01",
+          Some(Seq("text", "image"))
         )
       )
     ),
     maxQuestions = Some(128),
-    images = true,
+    images = DecisionImages.InState,
     name = Some("perplexity"),
     apiKeyEnvFallbacks = Seq(ChatProviderSettings.sonar.apiKeyEnvVariable)
+  )
+
+  /**
+   * OpenAI's Decisions API (`gpt-6-luna`, public beta since 2026-10-06; the client's
+   * `OPENAI_SCALA_CLIENT_API_KEY`, else `OPENAI_API_KEY`): its own protocol
+   * ([[DecisionProtocol.OpenAI]]) - the questions and answers are translated, so every routine
+   * on a decision service runs on it. At most 200 questions, images as base64 data URLs
+   * anywhere in the state (no size cap: OpenAI scales them); the request id is `x-request-id`
+   * (live 2026-10-07). The same API natively: `OpenAIService.createDecision`.
+   */
+  val openAI: DecisionProvider = DecisionProvider(
+    "https://api.openai.com/",
+    "OPENAI_SCALA_CLIENT_API_KEY",
+    CreateDecisionSettings.DefaultModel,
+    decisionsPath = "v1/decisions",
+    models = DecisionModelListing.Fixed(
+      Seq(
+        ModelMetadata(
+          CreateDecisionSettings.DefaultModel,
+          "OpenAI's decision model, the one model of its Decisions API (input $0.10 / 1M tokens).",
+          "2026-10-06",
+          Some(Seq("text", "image"))
+        )
+      )
+    ),
+    maxQuestions = Some(200),
+    images = DecisionImages.InState,
+    requestIdHeaders = Seq("x-request-id"),
+    name = Some("openai"),
+    apiKeyEnvFallbacks = Seq("OPENAI_API_KEY"),
+    protocol = DecisionProtocol.OpenAI
+  )
+
+  /**
+   * A local llama.cpp server (`llama-server`, `http://127.0.0.1:8080/` - copy the provider
+   * with another `baseUrl` for another host or port) serving decision models on TypeSafe's
+   * protocol: Liquid AI's open-weight d1 ([[TypeSafeModelId.liquid_d1_3b_gguf]]) once
+   * llama.cpp loads it, and Julia-1, Laya, Lev, Kev, OpenJev, Nimble, Clef. A server of one
+   * model ignores the request's model; a router (several) needs one of its ids (`listModels` -
+   * its decision models only, by `architecture.output_modalities`). Images go in a top-level
+   * `images` array and need a model with a projector (`--mmproj`) - else a 501, as for a model
+   * that is not a decision model ([[TypeSafeScalaInvalidRequestException]]). The key
+   * (`LLAMA_API_KEY`, as `llama-server --api-key` reads it) only when the server was started
+   * with one. Live 2026-10-07 with llama.cpp b11476: Julia-1 ~160 ms and Laya ~1.5 s for three
+   * questions on two CPU cores.
+   */
+  val llamaCpp: DecisionProvider = DecisionProvider(
+    "http://127.0.0.1:8080/",
+    "LLAMA_API_KEY",
+    TypeSafeModelId.liquid_d1_3b_gguf,
+    models = DecisionModelListing.OpenAIStyle(),
+    images = DecisionImages.ImagesField,
+    requestIdHeaders = Nil,
+    name = Some("llama.cpp"),
+    apiKeyRequired = false
   )
 
   /**

@@ -1,7 +1,10 @@
 package io.cequence.openaiscala.typesafe.service.impl
 
+import io.cequence.openaiscala.service.JsonSchemaShape
 import io.cequence.openaiscala.typesafe.domain._
 import play.api.libs.json._
+
+import scala.collection.immutable.ListMap
 
 /**
  * Turns a JSON schema into System One questions and the answers back into a JSON value of that
@@ -119,7 +122,15 @@ private[typesafe] object SchemaQuestions {
       schema: JsValue
     ): Slot = {
       val description = (schema \ "description").asOpt[String].filter(_.trim.nonEmpty)
-      val instructions = description.getOrElse(humanize(path.lastOption.getOrElse("value")))
+      val name = humanize(path.lastOption.getOrElse("value"))
+      val instructions = description.getOrElse(name)
+
+      // the instructions without the enum values' descriptions, and those by value
+      def valueDescriptions(values: Seq[String]): (String, Map[String, String]) =
+        description.fold(name -> Map.empty[String, String]) { text =>
+          val (own, byValue) = JsonSchemaShape.splitValueDescriptions(text, values)
+          (if (own.trim.isEmpty) name else own, byValue)
+        }
 
       if (
         Seq("anyOf", "oneOf", "allOf", "$ref", "not")
@@ -140,7 +151,19 @@ private[typesafe] object SchemaQuestions {
                     s"${ChoiceQuestion.MaxOptions}"
                 )
               case Some(Right(options)) if options.nonEmpty =>
-                ChoiceSlot(add(path, ChoiceQuestion.ofLabels(instructions, options: _*)))
+                // a value's description is its option's criteria
+                val (own, byValue) = valueDescriptions(options)
+                ChoiceSlot(
+                  add(
+                    path,
+                    ChoiceQuestion(
+                      ListMap(
+                        options.map(option => option -> byValue.get(option).map(JsString)): _*
+                      ),
+                      Some(JsString(own))
+                    )
+                  )
+                )
               case Some(Right(_))      => unsupported(path, "an empty enum")
               case Some(Left(problem)) => unsupported(path, problem)
               case None =>
@@ -172,10 +195,15 @@ private[typesafe] object SchemaQuestions {
           case Some("array") =>
             (schema \ "items").toOption.flatMap(stringEnum) match {
               case Some(Right(options)) if options.nonEmpty =>
+                // each option's question with its own description, not every option's
+                val (own, byValue) = valueDescriptions(options)
                 MultiSelectSlot(options.map { option =>
                   option -> add(
                     path :+ s"[$option]",
-                    NoulQuestion(s"Does '$option' apply? ($instructions)")
+                    NoulQuestion(
+                      s"Does '$option' apply? ($own)" +
+                        byValue.get(option).fold("")(text => s"\n- $option: $text")
+                    )
                   )
                 })
               case Some(Right(_))      => unsupported(path, "an empty enum")

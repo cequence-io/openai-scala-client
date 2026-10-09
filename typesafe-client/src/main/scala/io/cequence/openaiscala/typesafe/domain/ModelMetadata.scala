@@ -6,9 +6,13 @@ package io.cequence.openaiscala.typesafe.domain
  *
  * @param release_date
  *   `YYYY-MM-DD`
+ * @param input_modalities
+ *   what the model reads - `text`, `image` - when the host says (Liquid AI, llama.cpp,
+ *   OpenRouter)
  */
 final case class ModelMetadata(
   name: String,
   description: String,
-  release_date: String
+  release_date: String,
+  input_modalities: Option[Seq[String]] = None
 )

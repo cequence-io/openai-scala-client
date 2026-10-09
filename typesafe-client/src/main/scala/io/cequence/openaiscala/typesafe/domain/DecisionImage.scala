@@ -8,10 +8,11 @@ import scala.annotation.tailrec
 import scala.util.Try
 
 /**
- * An image for the `state` of a decision model that reads images - Perplexity's Decisions API
- * (`TypeSafeServiceFactory.perplexity`): an OpenAI-style part, `{"type": "image_url",
- * "image_url": {"url": "data:image/png;base64,..."}}`, which may go anywhere in the state -
- * next to the text in an array, as the whole state, nested in an object (live 2026-10-02):
+ * An image for the `state` of a decision model that reads images - Perplexity's decider,
+ * OpenAI's `gpt-6-luna`, Liquid AI's `d1`, a local llama.cpp with a vision model: an
+ * OpenAI-style part, `{"type": "image_url", "image_url": {"url":
+ * "data:image/png;base64,..."}}`, which may go anywhere in the state - next to the text in an
+ * array, as the whole state, nested in an object:
  *
  * {{{
  * decider.systemOne(
@@ -20,28 +21,30 @@ import scala.util.Try
  * )
  * }}}
  *
- * The API takes base64 PNG, JPEG and WebP data URLs only - it never fetches a URL (400) - of
- * at most [[MaxTiles]] tiles of 32 x 32 pixels: a larger image is NOT refused, the request
- * times out (504) after about a minute. Both are checked here, and again before a Perplexity
- * service sends a state. Through the OpenAI adapter (`perplexityAsOpenAI`) pass an
- * `ImageURLContent` with a data URL instead (e.g. `VLMContent.of(bytes, "photo.png")`).
- * TypeSafe's Jev and Liquid's d1 read such a part as plain JSON text, so it is no use there.
+ * The provider says how its host takes them (`DecisionProvider.images`): where they are, or
+ * lifted into a top-level `images` array with an `[image n]` marker left in their place.
+ *
+ * The hosts take base64 PNG, JPEG and WebP data URLs only - they never fetch a URL; Liquid and
+ * Perplexity refuse a GIF too (live 2026-10-07). The format is checked here, and again before
+ * a service sends a state; a size cap only where a provider sets one (`maxImageTiles` - none
+ * of the presets does since 2026-10-06: Perplexity's decider, which used to time out over
+ * 2,048 tiles of 32 x 32 pixels, now scales any image, Liquid refuses too large ones with a
+ * quick 422, OpenAI scales them). Through the OpenAI adapter pass an `ImageURLContent` with a
+ * data URL instead (e.g. `VLMContent.of(bytes, "photo.png")`). TypeSafe's Jev and Liquid's
+ * `d1:free` take no images (Jev reads such a part as plain JSON text).
  */
 object DecisionImage {
-
-  /** The most 32 x 32 tiles an image may have - e.g. 1440 x 1440 or 2048 x 1024. */
-  val MaxTiles = 2048
 
   /**
    * The part for an image's bytes - PNG, JPEG or WebP, the type read from the bytes.
    *
    * @throws IllegalArgumentException
-   *   for another format, or an image of more than [[MaxTiles]] tiles
+   *   for another format
    */
   def apply(bytes: Array[Byte]): JsObject = {
     val mediaType = mediaTypeOf(bytes).getOrElse(
       throw new IllegalArgumentException(
-        "Not a PNG, JPEG or WebP image - the Decisions API takes only those."
+        "Not a PNG, JPEG or WebP image - the decision-model hosts take only those."
       )
     )
     fromDataUrl(s"data:$mediaType;base64," + Base64.getEncoder.encodeToString(bytes))
@@ -51,12 +54,11 @@ object DecisionImage {
    * The part for a data URL (`data:image/png;base64,...`).
    *
    * @throws IllegalArgumentException
-   *   for anything but a base64 PNG, JPEG or WebP data URL, or an image of more than
-   *   [[MaxTiles]] tiles
+   *   for anything but a base64 PNG, JPEG or WebP data URL
    */
   def fromDataUrl(url: String): JsObject = {
     problem(url).foreach(p =>
-      throw new IllegalArgumentException(s"The image cannot go to the Decisions API: $p.")
+      throw new IllegalArgumentException(s"The image cannot go to a decision model: $p.")
     )
     part(url)
   }
@@ -71,25 +73,37 @@ object DecisionImage {
   // first and the whole image only when its size is not in it
   private val HeaderChars = 256 * 1024 // base64 characters, a multiple of 4
 
-  /** Why the Decisions API would not take an image URL, if it would not. */
-  private[typesafe] def problem(url: String): Option[String] =
+  /**
+   * Why a decision-model host would not take an image URL, if it would not: anything but a
+   * base64 PNG / JPEG / WebP data URL and, for a host with a tile cap only, an image over it
+   * (the size read from the image header, so only then is the base64 decoded - a malformed one
+   * is otherwise left to the host's 400).
+   *
+   * @param maxTiles
+   *   the largest image the host takes, in tiles - no cap by default
+   */
+  private[typesafe] def problem(
+    url: String,
+    maxTiles: Option[Int] = None
+  ): Option[String] =
     DataUrlPrefix.findPrefixMatchOf(url) match {
       case Some(prefix) =>
-        size(url, prefix.end) match {
-          case Left(problem) => Some(problem)
-          case Right(Some((width, height))) if tiles(width, height) > MaxTiles =>
-            Some(
-              s"a $width x $height image - ${tiles(width, height)} tiles of 32 x 32 pixels, at " +
-                s"most $MaxTiles fit (e.g. 1440 x 1440 or 2048 x 1024); a larger one times out " +
-                "(504) after about a minute, so resize it first"
-            )
-          case Right(_) => None
+        maxTiles.flatMap { max =>
+          size(url, prefix.end) match {
+            case Left(problem) => Some(problem)
+            case Right(Some((width, height))) if tiles(width, height) > max =>
+              Some(
+                s"a $width x $height image - ${tiles(width, height)} tiles of 32 x 32 pixels, " +
+                  s"at most $max fit on this host, so resize it first"
+              )
+            case Right(_) => None
+          }
         }
 
       case None if url.startsWith("http://") || url.startsWith("https://") =>
         Some(
-          s"an image URL (${abbreviate(url)}) - the Decisions API never fetches one; send a " +
-            "base64 PNG, JPEG or WebP data URL"
+          s"an image URL (${abbreviate(url)}) - a decision-model host never fetches one; send " +
+            "a base64 PNG, JPEG or WebP data URL"
         )
 
       case None =>
@@ -97,12 +111,103 @@ object DecisionImage {
     }
 
   /** The problems of the image parts anywhere in a state, in document order. */
-  private[typesafe] def problems(state: JsValue): Seq[String] =
-    imageUrls(state).flatMap(problem)
+  private[typesafe] def problems(
+    state: JsValue,
+    maxTiles: Option[Int]
+  ): Seq[String] =
+    imageUrls(state).flatMap(problem(_, maxTiles))
+
+  /**
+   * The state of one message of texts (`Left`) and image URLs (`Right`): its text alone (the
+   * texts joined with a newline) when it has no images, else an array of its parts in order -
+   * consecutive texts joined, each image an `image_url` part.
+   *
+   * @param text
+   *   how a text goes into the state
+   */
+  private[typesafe] def messageState(
+    parts: Seq[Either[String, String]],
+    text: String => JsValue = JsString(_)
+  ): JsValue =
+    if (parts.forall(_.isLeft)) text(parts.collect { case Left(t) => t }.mkString("\n"))
+    else
+      JsArray(
+        parts
+          .foldLeft(Vector.empty[Either[String, String]]) {
+            case (done :+ Left(previous), Left(more)) => done :+ Left(previous + "\n" + more)
+            case (done, part)                         => done :+ part
+          }
+          .map {
+            case Left(t)    => text(t)
+            case Right(url) => part(url)
+          }
+      )
+
+  /** The image URLs of the image parts anywhere in a state, in document order. */
+  private[typesafe] def imageUrls(json: JsValue): Seq[String] = {
+    // a walk that only collects (the state is not rebuilt, as `lift` does)
+    val found = Vector.newBuilder[String]
+    def go(json: JsValue): Unit =
+      json match {
+        case obj: JsObject =>
+          url(obj) match {
+            case Some(imageUrl) => found += imageUrl
+            case None           => obj.fields.foreach { case (_, value) => go(value) }
+          }
+        case JsArray(values) => values.foreach(go)
+        case _               => ()
+      }
+    go(json)
+    found.result()
+  }
+
+  /**
+   * The state with each image part replaced by an `[image n]` marker (numbered from 1 in
+   * document order), and the parts' URLs in that order.
+   */
+  private[typesafe] def lift(state: JsValue): (JsValue, Seq[String]) = {
+    // a value lifted after the URLs found before it
+    def go(
+      json: JsValue,
+      urls: Vector[String]
+    ): (JsValue, Vector[String]) =
+      json match {
+        case obj: JsObject if url(obj).isDefined =>
+          (JsString(s"[image ${urls.size + 1}]"), urls ++ url(obj))
+
+        case JsObject(fields) =>
+          val (lifted, found) = fields.foldLeft((Vector.empty[(String, JsValue)], urls)) {
+            case ((done, found), (key, value)) =>
+              val (liftedValue, foundAfter) = go(value, found)
+              (done :+ (key -> liftedValue), foundAfter)
+          }
+          (JsObject(lifted), found)
+
+        case JsArray(values) =>
+          val (lifted, found) = values.foldLeft((Vector.empty[JsValue], urls)) {
+            case ((done, found), value) =>
+              val (liftedValue, foundAfter) = go(value, found)
+              (done :+ liftedValue, foundAfter)
+          }
+          (JsArray(lifted), found)
+
+        case other =>
+          (other, urls)
+      }
+
+    go(state, Vector.empty)
+  }
+
+  // the URL of an image part - `image_url.url`, or `image_url` as a string
+  private[typesafe] def url(obj: JsObject): Option[String] =
+    if ((obj \ "type").asOpt[String].contains("image_url"))
+      (obj \ "image_url" \ "url").asOpt[String].orElse((obj \ "image_url").asOpt[String])
+    else None
 
   /**
    * 32 x 32 tiles of an image, its width and height rounded to the nearest multiple of 32 (the
-   * rule Perplexity documents: 1600 x 1310 is 50 x 41 = 2,050 tiles).
+   * rule Perplexity documented for its former cap: 1600 x 1310 is 50 x 41 = 2,050 tiles) - the
+   * unit of a provider's `maxImageTiles`.
    */
   private[typesafe] def tiles(
     width: Long,
@@ -194,18 +299,6 @@ object DecisionImage {
       else None
     }.toOption.flatten
   }
-
-  private def imageUrls(json: JsValue): Seq[String] =
-    json match {
-      case obj: JsObject if (obj \ "type").asOpt[String].contains("image_url") =>
-        (obj \ "image_url" \ "url")
-          .asOpt[String]
-          .orElse((obj \ "image_url").asOpt[String])
-          .toSeq
-      case obj: JsObject => obj.values.toSeq.flatMap(imageUrls)
-      case arr: JsArray  => arr.value.toSeq.flatMap(imageUrls)
-      case _             => Nil
-    }
 
   private def abbreviate(url: String) =
     if (url.length <= 60) url else url.take(57) + "..."

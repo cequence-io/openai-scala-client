@@ -355,7 +355,8 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
     NonOpenAIModelId.claude_opus_4_6,
     NonOpenAIModelId.claude_sonnet_5_5,
     NonOpenAIModelId.claude_sonnet_5,
-    NonOpenAIModelId.claude_sonnet_4_6
+    NonOpenAIModelId.claude_sonnet_4_6,
+    NonOpenAIModelId.claude_haiku_5_5
   )
 
   // Models that accept output_config.effort = xhigh - narrower than outputEffortModels:
@@ -370,7 +371,8 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
     NonOpenAIModelId.claude_opus_4_8,
     NonOpenAIModelId.claude_opus_4_7,
     NonOpenAIModelId.claude_sonnet_5_5,
-    NonOpenAIModelId.claude_sonnet_5
+    NonOpenAIModelId.claude_sonnet_5,
+    NonOpenAIModelId.claude_haiku_5_5
   )
 
   // Models where extended thinking with budget_tokens and the sampling params
@@ -386,7 +388,8 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
     NonOpenAIModelId.claude_opus_4_8,
     NonOpenAIModelId.claude_opus_4_7,
     NonOpenAIModelId.claude_sonnet_5_5,
-    NonOpenAIModelId.claude_sonnet_5
+    NonOpenAIModelId.claude_sonnet_5,
+    NonOpenAIModelId.claude_haiku_5_5
   )
 
   private def isAdaptiveOnlyThinkingModel(model: String): Boolean = {
@@ -411,17 +414,20 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
     NonOpenAIModelId.claude_sonnet_5_5
   )
 
-  // Models whose lowest thinking setting is `between_tools` (no up-front thinking, progress
-  // updates between tool calls only): they reject `disabled`, and omitting thinking means
-  // adaptive thinking at the default effort - so reasoning_effort = none maps to it
-  // (live-verified 2026-09-29).
-  private val betweenToolsThinkingModels: Set[String] = Set(
-    NonOpenAIModelId.claude_sonnet_5_5
+  // Models that think by default (omitting `thinking` means adaptive thinking at the default
+  // effort), so reasoning_effort = none needs their lowest setting sent explicitly: Sonnet 5.5
+  // rejects `disabled` - its lowest is `between_tools`, no up-front thinking, progress updates
+  // between tool calls only (live-verified 2026-09-29); Haiku 5.5 takes `disabled` (at effort
+  // high or below - no effort goes with it) and rejects `between_tools` (live-verified
+  // 2026-10-07).
+  private val noneThinkingByModel: Seq[(String, ThinkingSettings)] = Seq(
+    NonOpenAIModelId.claude_sonnet_5_5 -> ThinkingSettings.betweenTools,
+    NonOpenAIModelId.claude_haiku_5_5 -> ThinkingSettings.disabled
   )
 
-  private def supportsBetweenToolsThinking(model: String): Boolean = {
+  private def noneThinking(model: String): Option[ThinkingSettings] = {
     val m = model.toLowerCase
-    betweenToolsThinkingModels.exists(m.contains)
+    noneThinkingByModel.collectFirst { case (id, thinking) if m.contains(id) => thinking }
   }
 
   def supportsForcedToolChoice(model: String): Boolean = {
@@ -573,11 +579,11 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
           (Some(ThinkingSettings.adaptive), None)
         case Some(budget) =>
           (Some(ThinkingSettings.enabled(budget)), None)
-        // no up-front thinking: the lowest setting of a model that cannot turn thinking off
+        // no thinking: the lowest setting of a model that thinks by default
         case None
             if settings.reasoning_effort.contains(ReasoningEffort.none) &&
-              supportsBetweenToolsThinking(settings.model) =>
-          (Some(ThinkingSettings.betweenTools), None)
+              noneThinking(settings.model).isDefined =>
+          (noneThinking(settings.model), None)
         case None if useOutputEffort =>
           val effort = toOutputEffort(settings.reasoning_effort, settings.model)
           (effort.map(_ => ThinkingSettings.adaptive), effort)

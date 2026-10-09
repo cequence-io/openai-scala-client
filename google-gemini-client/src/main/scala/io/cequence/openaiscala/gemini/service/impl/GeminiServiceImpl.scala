@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.gemini.service.impl
 
 import akka.NotUsed
-import io.cequence.openaiscala.service.{ClassifiedStreamingWSClient, StreamingConsts}
+import io.cequence.openaiscala.service.ClassifiedStreamingWSClient
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.gemini.JsonFormats._
@@ -107,9 +107,9 @@ private[service] class GeminiServiceImpl(
       // tool-result frame (2026-09-16). Gemini terminates its events with CRLF pairs.
       params = Seq(Param.alt -> Some("sse")),
       bodyParams = createBodyParams(contents, settings),
-      framingDelimiter = "\r\n\r\n",
-      // one JSON event per frame - grounding metadata / tool results can be large
-      maxFrameLength = Some(StreamingConsts.DefaultMaxFrameLength)
+      // one JSON event per frame, capped by the shared StreamingConsts.maxFrameLength - an
+      // image in base64, grounding metadata or a tool result can take several MB
+      framingDelimiter = "\r\n\r\n"
     ).map { json =>
       // a mid-stream error frame ({"error": {"code", "status", ...}}), classified like its status
       inBandStreamError(json).foreach(throw _)

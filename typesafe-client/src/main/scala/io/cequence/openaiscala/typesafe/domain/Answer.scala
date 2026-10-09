@@ -34,6 +34,31 @@ final case class ChoiceAnswer(
 
   /** Options ordered from most to least likely. */
   def ranked: Seq[(String, Double)] = probabilities.toSeq.sortBy(-_._2)
+
+  /**
+   * The probability of an option.
+   *
+   * @throws IllegalArgumentException
+   *   for an option that was not offered (a typo, most likely)
+   */
+  def probabilityOf(option: String): Double =
+    probabilities.getOrElse(
+      option,
+      throw new IllegalArgumentException(
+        s"'$option' was not an option - the options were ${probabilities.keys.mkString(", ")}."
+      )
+    )
+
+  /**
+   * How far the most likely option leads the runner-up - a small margin is a close call, e.g.
+   * worth a human's look.
+   */
+  def margin: Double =
+    ranked.map(_._2) match {
+      case Seq(first, second, _*) => first - second
+      case Seq(only)              => only
+      case _                      => 0d
+    }
 }
 
 /**
@@ -63,6 +88,13 @@ final case class ScoreAnswer(
 
   /** The single most likely level. */
   def mostLikelyLevel: Int = probabilities.maxBy(_._2)._1
+
+  /**
+   * The probability of this level or any above it (levels 0 .. n-1) - e.g. to act on "high or
+   * worse".
+   */
+  def probabilityAtLeast(level: Int): Double =
+    probabilities.collect { case (l, p) if l >= level => p }.sum
 
   /** The text description of a level, when the rubric was given as text. */
   def describe(level: Int): Option[String] =

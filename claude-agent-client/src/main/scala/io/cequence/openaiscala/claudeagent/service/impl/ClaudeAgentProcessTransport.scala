@@ -2,10 +2,10 @@ package io.cequence.openaiscala.claudeagent.service.impl
 
 import akka.NotUsed
 import akka.stream.Materializer
-import akka.stream.scaladsl.{BroadcastHub, Framing, Keep, Source, StreamConverters}
-import akka.util.ByteString
+import akka.stream.scaladsl.{BroadcastHub, Keep, Source, StreamConverters}
 import com.typesafe.scalalogging.Logger
 import io.cequence.openaiscala.claudeagent.domain.{ClaudeAgentProcessExit, ClaudeAgentSettings}
+import io.cequence.openaiscala.service.StreamingConsts
 import org.slf4j.LoggerFactory
 import play.api.libs.json.{JsValue, Json}
 
@@ -197,13 +197,9 @@ private[claudeagent] class ClaudeAgentProcessTransport(
     StreamConverters
       .fromInputStream(() => process.getInputStream)
       .mapMaterializedValue(_ => NotUsed)
-      .via(
-        Framing.delimiter(
-          ByteString("\n"),
-          maximumFrameLength = 10 * 1024 * 1024,
-          allowTruncation = true
-        )
-      )
+      // a line carries a whole message - a tool result with a large file or an image can take
+      // several MB
+      .via(StreamingConsts.framing("\n"))
       .map { bytes =>
         val line = bytes.utf8String
         val parsed = Try(Json.parse(line))

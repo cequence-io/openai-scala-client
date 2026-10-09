@@ -28,16 +28,18 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.control.NonFatal
 
 /**
- * Live walkthrough of Perplexity's decision model `pplx-decider-v1-27b` (launched 2026-10-01).
- * Its Decisions API takes the System One questions and answers - plus images in the state - so
- * the typesafe-client talks to it: `TypeSafeServiceFactory.perplexity` points the client at
- * `POST https://api.perplexity.ai/v1/decisions`.
+ * Live walkthrough of Perplexity's decision model `pplx-decider-v1.1-27b` (the update of
+ * 2026-10-06 - open weights, Decision Index 61.56 against the launch model's 56.4; the launch
+ * id `pplx-decider-v1-27b` answers alike). Its Decisions API takes the System One questions
+ * and answers - plus images in the state - so the typesafe-client talks to it:
+ * `TypeSafeServiceFactory.perplexity` points the client at `POST
+ * https://api.perplexity.ai/v1/decisions`.
  *
- *   - the docs' example: a noul, a choice and a score about one product review
+ *   - the docs' example: a noul, a choice and a score about one product review, on both ids
  *   - an image in the state (a generated blue square, `DecisionImage(bytes)`): which colour,
  *     with the probabilities
- *   - a phone photo's size (4032 x 3024, ~12,000 tiles of 32 x 32 px) refused up front - the
- *     API would let it time out (504) after about a minute
+ *   - a phone photo's size (4032 x 3024, ~12,000 tiles of 32 x 32 px) answered: the API scales
+ *     an image to about 2,100 tokens (until 2026-10-06 it timed out over 2,048 tiles)
  *   - the same questions as a JSON schema through the OpenAI interface (`perplexityAsOpenAI` +
  *     `createChatCompletionWithJSON[T]`), and once with the image in the user message
  *     (`VLMContent.of(bytes, "square.png")`)
@@ -64,8 +66,16 @@ import scala.util.control.NonFatal
  *     agreed within ~10 ms; the first one, minutes earlier, had medians of ~1.1 s at one and
  *     three questions (minimum 200 ms) - a slow stretch on Perplexity's side.
  *
- * Requires `PERPLEXITY_API_KEY` (or `SONAR_API_KEY`); input costs $0.04 per million tokens, a
- * run well under a cent.
+ * Live 2026-10-08 (v1.1 out): the two ids answer byte for byte alike - defect 0.996, mixed
+ * 0.774 (negative 0.211), severity 1.94, 367 input tokens each - and differently from v1 on
+ * its launch day (0.942 / 0.950 / 1.78), so the API serves the update under both names; the
+ * 4032 x 3024 photo is blue at 1.000 for 2,125 input tokens; Jev (0.940 / 0.920 / 1.99) and d1
+ * (0.977 / 0.877 / 1.89) agree. Medians: the decider 282 / 264 / 369 / 528 / 862 ms at 1 / 3 /
+ * 10 / 20 / 40 questions (~15 ms per question this time), Jev 240 - 259 ms flat, d1's free
+ * tier 229 - 378 ms with 3 of 8 calls failing at 1 - 10 questions.
+ *
+ * Requires `PERPLEXITY_API_KEY` (or `SONAR_API_KEY`); input costs $0.02 per million tokens
+ * (was $0.04), a run well under a cent.
  */
 object PerplexityDeciderSmokeTest {
 
@@ -207,7 +217,11 @@ object PerplexityDeciderSmokeTest {
       _ = println(s"[models] ${models.map(_.name).mkString(", ")}")
 
       native <- pplx.systemOne(review, questions)
-      _ = show("pplx-decider", native)
+      _ = show("pplx-decider v1.1", native)
+
+      // the launch id, which the API answers alike
+      launch <- pplx.systemOne(review, questions, TypeSafeModelId.pplx_decider_v1_27b)
+      _ = show("pplx-decider v1", launch)
 
       square <- pplx.systemOne(
         Json.arr("Which color is the square?", DecisionImage(blue)),
@@ -222,18 +236,22 @@ object PerplexityDeciderSmokeTest {
         )
       }
 
-      _ =
-        try {
-          DecisionImage(png(4032, 3024, Color.DARK_GRAY))
-          println("[oversized image] NOT refused")
-        } catch {
-          case e: IllegalArgumentException =>
-            println(s"[oversized image] refused: ${e.getMessage}")
-        }
+      // a phone photo's size - scaled by the API, not refused here any more
+      photo <- pplx.systemOne(
+        Json.arr(
+          "Which color is the square?",
+          DecisionImage(png(4032, 3024, new Color(20, 60, 220)))
+        ),
+        colorQuestion
+      )
+      _ = println(
+        f"[phone photo 4032 x 3024] ${photo.choice("color").choice} " +
+          f"(confidence ${photo.choice("color").confidence}%.3f), usage ${photo.usage}"
+      )
 
       triage <- pplxAsOpenAI.createChatCompletionWithJSON[Review](
         Seq(UserMessage(review.toString)),
-        CreateChatCompletionSettings(model = TypeSafeModelId.pplx_decider_v1_27b)
+        CreateChatCompletionSettings(model = TypeSafeModelId.pplx_decider_v1_1_27b)
           .withJsonSchema(reviewSchema)
       )
       _ = println(s"[via OpenAI] $triage")
@@ -244,7 +262,7 @@ object PerplexityDeciderSmokeTest {
             TextContent("Which color is the square?") +: VLMContent.of(blue, "square.png")
           )
         ),
-        CreateChatCompletionSettings(model = TypeSafeModelId.pplx_decider_v1_27b)
+        CreateChatCompletionSettings(model = TypeSafeModelId.pplx_decider_v1_1_27b)
           .withJsonSchema(squareSchema)
       )
       _ = println(s"[via OpenAI, image] $squareViaOpenAI")

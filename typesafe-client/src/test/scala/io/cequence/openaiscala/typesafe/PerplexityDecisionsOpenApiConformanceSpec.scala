@@ -14,11 +14,12 @@ import scala.io.Source
 /**
  * Checks the Perplexity preset against Perplexity's published Decisions API document
  * (`https://docs.perplexity.ai/openapi-gateway-preview.json`, vendored as
- * `perplexity-decisions-openapi.json` - version 0.1.0, fetched 2026-10-02): the endpoint and
- * auth scheme the preset calls, the spec's request and response examples decode into the
- * shared System One domain, what the client writes stays within the strict request schema (an
- * unknown field is a 400), the limits agree, and the documented error bodies classify by their
- * status.
+ * `perplexity-decisions-openapi.json` - version 0.1.0, fetched 2026-10-02 and refreshed
+ * 2026-10-08, when only the examples (`pplx-decider-v1.1-27b`) and the price changed): the
+ * endpoint and auth scheme the preset calls, the spec's request and response examples decode
+ * into the shared System One domain, what the client writes stays within the strict request
+ * schema (an unknown field is a 400), the limits agree, and the documented error bodies
+ * classify by their status.
  */
 class PerplexityDecisionsOpenApiConformanceSpec extends AnyWordSpec with Matchers {
 
@@ -67,7 +68,7 @@ class PerplexityDecisionsOpenApiConformanceSpec extends AnyWordSpec with Matcher
       val request =
         (post \ "requestBody" \ "content" \ "application/json" \ "examples" \ "mixed-questions" \ "value")
           .as[SystemOneRequest]
-      request.model shouldBe TypeSafeModelId.pplx_decider_v1_27b
+      request.model shouldBe TypeSafeModelId.pplx_decider_v1_1_27b
       request.questions.keySet shouldBe Set("defect", "sentiment", "severity")
       request.questions("severity") shouldBe ScoreQuestion(
         "How severe is the reported problem?",
@@ -79,7 +80,7 @@ class PerplexityDecisionsOpenApiConformanceSpec extends AnyWordSpec with Matcher
       val response =
         (post \ "responses" \ "200" \ "content" \ "application/json" \ "examples" \ "answers" \ "value")
           .as[SystemOneResponse]
-      response.model shouldBe TypeSafeModelId.pplx_decider_v1_27b
+      response.model shouldBe TypeSafeModelId.pplx_decider_v1_1_27b
       response.noul("defect").noul shouldBe 0.9424522889347015
       response.choice("sentiment").choice shouldBe "mixed"
       response.score("severity").mostLikelyLevel shouldBe 2

@@ -26,29 +26,7 @@ class OpenAITypeSafeChatCompletionServiceSpec extends AnyWordSpec with Matchers 
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
   /** Records the request and answers from a canned map. */
-  private class Stub(answers: Map[String, Answer]) extends TypeSafeService {
-    var lastState: Option[JsValue] = None
-    var lastQuestions: Map[String, Question] = Map.empty
-    var lastModel: Option[String] = None
-
-    override val defaultModel = "jev-latest"
-
-    override def systemOne(
-      state: JsValue,
-      questions: Map[String, Question],
-      model: String
-    ): Future[SystemOneResponse] = {
-      lastState = Some(state)
-      lastQuestions = questions
-      lastModel = Some(model)
-      Future.successful(
-        SystemOneResponse("jev-1.13.0", answers, Usage(Some(300), Some(40)), Some("req-1"))
-      )
-    }
-
-    override def listModels: Future[Seq[ModelMetadata]] = Future.successful(Nil)
-    override def close(): Unit = ()
-  }
+  private class Stub(answers: Map[String, Answer]) extends RecordingTypeSafeService(answers)
 
   private val schema = JsonSchemaDef(
     name = "triage",
@@ -107,6 +85,34 @@ class OpenAITypeSafeChatCompletionServiceSpec extends AnyWordSpec with Matchers 
         "is_urgent" -> NoulQuestion("Conveys urgency")
       )
       stub.lastModel shouldBe Some("jev-preview")
+    }
+
+    "serve the JSON helper's JSON-object fallback for a model it does not list" in {
+      import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
+
+      val system = akka.actor.ActorSystem("json-fallback-spec")
+      implicit val scheduler: akka.actor.Scheduler = system.scheduler
+
+      val stub = new Stub(answers)
+      val service = TypeSafeServiceFactory.asOpenAI(stub)
+
+      // no openai-scala-client.conf on this classpath - no model is listed as json_schema-capable,
+      // so the schema rides in the prompt
+      val json =
+        try
+          await(
+            service.createChatCompletionWithJSON[JsValue](
+              Seq(UserMessage("I was charged twice!")),
+              jsonSchemaSettings.copy(model = "jev-1.14.0", response_format_type = None)
+            )
+          )
+        finally { system.terminate(); () }
+
+      json shouldBe Json.obj("department" -> "billing", "is_urgent" -> true)
+      // the schema is read back from the prompt and kept out of the state
+      stub.lastState shouldBe Some(JsString("I was charged twice!"))
+      stub.lastQuestions.keySet shouldBe Set("department", "is_urgent")
+      stub.lastModel shouldBe Some("jev-1.14.0")
     }
 
     "fill confidence fields from the answers instead of asking for them" in {
@@ -317,7 +323,7 @@ class OpenAITypeSafeChatCompletionServiceSpec extends AnyWordSpec with Matchers 
           Seq(UserSeqMessage(Seq(ImageURLContent("data:image/png;base64,AAA")))),
           jsonSchemaSettings
         )
-      ).getMessage should include("Image content is read only by Perplexity's Decisions API")
+      ).getMessage should include("Image content goes only to a host that reads images")
 
       failure(
         service.createChatCompletion(

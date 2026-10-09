@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Decisions API",
-    "description": "Ask yes/no, multiple-choice, and rating questions about your content and get probabilities back. Input tokens are billed at $0.04 per million; output tokens are free. Authenticate with your Perplexity API key as `Authorization: Bearer <key>`.",
+    "description": "Ask yes/no, multiple-choice, and rating questions about your content and get probabilities back. Input tokens are billed at $0.02 per million; output tokens are free. Authenticate with your Perplexity API key as `Authorization: Bearer <key>`.",
     "version": "0.1.0"
   },
   "servers": [
@@ -25,7 +25,7 @@
                 "mixed-questions": {
                   "summary": "Three question types about one product review",
                   "value": {
-                    "model": "pplx-decider-v1-27b",
+                    "model": "pplx-decider-v1.1-27b",
                     "state": {
                       "title": "Battery died after two weeks",
                       "review": "The headphones sound great, but the battery stopped charging after two weeks."
@@ -88,7 +88,7 @@
                   "answers": {
                     "summary": "One answer per question, typed like its question",
                     "value": {
-                      "model": "pplx-decider-v1-27b",
+                      "model": "pplx-decider-v1.1-27b",
                       "answers": {
                         "defect": {
                           "type": "noul",
@@ -171,7 +171,7 @@
         "x-mint": {
           "href": "/api-reference/decisions-post"
         },
-        "description": "Evaluate one or more named questions against the content in `state`. Mix `noul`, `choice`, and `score` questions in one request; the response returns one answer per question under the same name, plus the model name and token usage. Set `model` to `pplx-decider-v1-27b`; a missing or unknown model returns `400`."
+        "description": "Evaluate one or more named questions against the content in `state`. Mix `noul`, `choice`, and `score` questions in one request; the response returns one answer per question under the same name, plus the model name and token usage. Set `model` to `pplx-decider-v1.1-27b` or `pplx-decider-v1-27b`; a missing or unknown model returns `400`."
       }
     }
   },
@@ -233,7 +233,7 @@
             },
             "example": {
               "error": {
-                "message": "Invalid model 'pplx-decider-v1-27b-latest'. Permitted models can be found in the documentation at https://docs.perplexity.ai/docs/getting-started/models.",
+                "message": "Invalid model 'pplx-decider-v1.1-27b-latest'. Permitted models can be found in the documentation at https://docs.perplexity.ai/docs/getting-started/models.",
                 "type": "invalid_request_error",
                 "param": null,
                 "code": null
@@ -783,8 +783,8 @@
           "model": {
             "type": "string",
             "title": "Model",
-            "description": "The model to use: `pplx-decider-v1-27b`. A missing or unknown model returns `400`.",
-            "example": "pplx-decider-v1-27b"
+            "description": "The model to use: `pplx-decider-v1.1-27b` or `pplx-decider-v1-27b`. A missing or unknown model returns `400`.",
+            "example": "pplx-decider-v1.1-27b"
           },
           "state": {
             "anyOf": [
@@ -837,7 +837,7 @@
             "type": "string",
             "title": "Model",
             "description": "The model name you sent, echoed back.",
-            "example": "pplx-decider-v1-27b"
+            "example": "pplx-decider-v1.1-27b"
           },
           "answers": {
             "type": "object",
@@ -895,7 +895,7 @@
           "input_tokens",
           "output_tokens"
         ],
-        "description": "Token counts for the request. Input tokens are billed at $0.04 per million; output tokens are free."
+        "description": "Token counts for the request. Input tokens are billed at $0.02 per million; output tokens are free."
       },
       "Error": {
         "type": "object",

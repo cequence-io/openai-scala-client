@@ -17,6 +17,7 @@ import io.cequence.wsclient.domain.CequenceWSException
  * | 404 / 405 | `{"detail":"Not Found"}`                                                                                       | [[TypeSafeScalaNotFoundException]]                                                    |
  * | 408       |                                                                                                                | [[TypeSafeScalaClientTimeoutException]]                                               |
  * | 429       | rate limit (250k tokens/s, 1,200 req/min)                                                                      | [[TypeSafeScalaRateLimitException]]                                                   |
+ * | 501       | llama.cpp: not a decision model, or images without a projector (`not_supported_error`)                         | [[TypeSafeScalaInvalidRequestException]]                                              |
  * | 503 / 529 | Overloaded                                                                                                     | [[TypeSafeScalaEngineOverloadedException]]                                            |
  * | other 5xx |                                                                                                                | [[TypeSafeScalaServerErrorException]]                                                 |
  * | transport | timeout / unknown host                                                                                         | [[TypeSafeScalaClientTimeoutException]] / [[TypeSafeScalaClientUnknownHostException]] |
@@ -75,8 +76,9 @@ final case class TypeSafeViolation(
 /**
  * The request body was rejected: a 422 schema validation (see `violations`) or a 400 on the
  * shape of a question (empty choice, more than 255 options, noul without instructions or
- * criteria, ...). The client fails fast on the shapes it knows about, so this mostly signals a
- * rule the client does not mirror yet.
+ * criteria, ...), or a 501 from a llama.cpp server that cannot answer it (not a decision
+ * model, or images without a projector). The client fails fast on the shapes it knows about,
+ * so this mostly signals a rule the client does not mirror yet.
  */
 class TypeSafeScalaInvalidRequestException(
   message: String,

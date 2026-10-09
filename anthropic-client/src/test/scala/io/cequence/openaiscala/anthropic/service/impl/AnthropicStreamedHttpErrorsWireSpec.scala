@@ -48,6 +48,7 @@ class AnthropicStreamedHttpErrorsWireSpec
   @volatile private var reply: (Int, String, String) = (200, "{}", "application/json")
   @volatile private var lastPath: Option[String] = None
   @volatile private var lastBody: String = ""
+  @volatile private var lastBetas: Seq[String] = Nil
 
   private val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
   private lazy val coreUrl = s"http://localhost:${server.getAddress.getPort}/"
@@ -78,6 +79,9 @@ class AnthropicStreamedHttpErrorsWireSpec
         override def handle(exchange: HttpExchange): Unit = {
           lastBody = new String(exchange.getRequestBody.readAllBytes(), StandardCharsets.UTF_8)
           lastPath = Some(exchange.getRequestURI.getPath)
+          lastBetas = Option(exchange.getRequestHeaders.get("anthropic-beta"))
+            .map(_.toArray.toSeq.flatMap(_.toString.split(",")).map(_.trim))
+            .getOrElse(Nil)
           val (status, body, contentType) = reply
           val bytes = body.getBytes(StandardCharsets.UTF_8)
           exchange.getResponseHeaders.add("Content-Type", contentType)
@@ -195,6 +199,28 @@ class AnthropicStreamedHttpErrorsWireSpec
         (400, """{"message":"Input is too long for requested model."}""")
       )(bedrock.createMessageStreamed(messages, settings))
     }
+
+    // 1.4.0 capped every stream at 1 MiB - a fetched document or a large server-tool result
+    // arrives in one event
+    "read an event over 1 MiB whole" in {
+      val text = "a" * (3 * 1024 * 1024)
+      reply = (
+        200,
+        "event: message_start\ndata: " +
+          """{"type":"message_start","message":{"id":"msg_1","type":"message","role":"assistant","model":"claude-sonnet-5","content":[],"stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":5,"output_tokens":1}}}""" +
+          "\n\nevent: content_block_delta\ndata: " +
+          s"""{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"$text"}}""" +
+          "\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n",
+        "text/event-stream"
+      )
+
+      Await
+        .result(
+          service.createMessageStreamed(messages, settings).runWith(Sink.seq),
+          30.seconds
+        )
+        .map(_.text.length) shouldBe Seq(text.length)
+    }
   }
 
   "the OpenAI adapter's streams" should {
@@ -243,6 +269,25 @@ class AnthropicStreamedHttpErrorsWireSpec
           reasoning_effort = Some(ReasoningEffort.none)
         )
       ) shouldBe Some(play.api.libs.json.Json.obj("type" -> "between_tools"))
+      // Haiku 5.5 thinks by default - none turns it off, again with no display
+      sentThinking(
+        CreateChatCompletionSettings(
+          "claude-haiku-5-5",
+          reasoning_effort = Some(ReasoningEffort.none)
+        )
+      ) shouldBe Some(play.api.libs.json.Json.obj("type" -> "disabled"))
+    }
+
+    "send no retired beta - a subscription's OAuth token refuses a request carrying context-1m" in {
+      failure[OpenAIScalaRateLimitException](rateLimited)(
+        adapter.createChatCompletionStreamedTyped(
+          Seq(OpenAIUserMessage("hi")),
+          CreateChatCompletionSettings("claude-haiku-4-5")
+        )
+      )
+
+      lastBetas should contain("structured-outputs-2025-11-13")
+      lastBetas should not contain "context-1m-2025-08-07"
     }
   }
 }

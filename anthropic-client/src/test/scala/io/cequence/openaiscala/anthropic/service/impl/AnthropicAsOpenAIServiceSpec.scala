@@ -439,6 +439,74 @@ class AnthropicAsOpenAIServiceSpec extends AnyWordSpec with Matchers {
     }
   }
 
+  "Claude Haiku 5.5" should {
+
+    "turn thinking off with disabled for reasoning_effort=none (it thinks by default)" in {
+      Seq(
+        NonOpenAIModelId.claude_haiku_5_5,
+        "global." + NonOpenAIModelId.bedrock_claude_haiku_5_5
+      ).foreach { model =>
+        val out = toAnthropicSettings(
+          CreateChatCompletionSettings(
+            model = model,
+            reasoning_effort = Some(ReasoningEffort.none)
+          )
+        )
+
+        out.thinking shouldBe Some(ThinkingSettings.disabled)
+        // disabled needs effort high or below - none goes with it (the default is medium)
+        out.output_config.flatMap(_.effort) shouldBe None
+      }
+    }
+
+    "map low..max to adaptive thinking + effort, drop sampling params, cap output at 128k" in {
+      Seq(
+        ReasoningEffort.low -> OutputEffort.low,
+        ReasoningEffort.xhigh -> OutputEffort.xhigh,
+        ReasoningEffort.max -> OutputEffort.max
+      ).foreach { case (effort, expected) =>
+        val out = toAnthropicSettings(
+          CreateChatCompletionSettings(
+            model = NonOpenAIModelId.claude_haiku_5_5,
+            reasoning_effort = Some(effort),
+            temperature = Some(0.2),
+            top_p = Some(0.9)
+          )
+        )
+
+        out.thinking shouldBe Some(ThinkingSettings.adaptive)
+        out.output_config.flatMap(_.effort) shouldBe Some(expected)
+        out.temperature shouldBe None
+        out.top_p shouldBe None
+        out.max_tokens shouldBe 128000
+      }
+    }
+
+    "use adaptive thinking for an explicit budget, which it rejects" in {
+      toAnthropicSettings(
+        CreateChatCompletionSettings(model = NonOpenAIModelId.claude_haiku_5_5)
+          .setAnthropicThinkingBudgetTokens(2048)
+      ).thinking shouldBe Some(ThinkingSettings.adaptive)
+    }
+
+    "keep a forced tool_choice (unlike Opus / Sonnet 5.5)" in {
+      toAnthropicToolChoice(
+        NonOpenAIModelId.claude_haiku_5_5,
+        Some("get_weather"),
+        None
+      ) shouldBe ((ToolChoice.Tool("get_weather", None), Nil))
+    }
+
+    "leave Haiku 4.5 on the budget path" in {
+      toAnthropicSettings(
+        CreateChatCompletionSettings(
+          model = NonOpenAIModelId.claude_haiku_4_5,
+          reasoning_effort = Some(ReasoningEffort.none)
+        )
+      ).thinking shouldBe None
+    }
+  }
+
   "toOpenAIAssistantMessage (A3 - tool-only/thinking-only responses must not throw)" should {
 
     "return empty content for a tool-only response (no text block)" in {

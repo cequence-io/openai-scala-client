@@ -1,6 +1,19 @@
 package io.cequence.openaiscala.typesafe.service
 
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
+import io.cequence.openaiscala.domain.decisions.JsonFormats.createDecisionBody
+import io.cequence.openaiscala.domain.decisions.{
+  ChoiceProbability,
+  CreateDecisionSettings,
+  DecisionAnswer,
+  DecisionChoice,
+  DecisionContent,
+  DecisionImageDetail,
+  DecisionInput,
+  DecisionQuestion,
+  DecisionValue
+}
+import io.cequence.openaiscala.typesafe.JsonFormats._
 import io.cequence.openaiscala.typesafe.domain._
 import io.cequence.wsclient.service.spi.{TransportSettings, WSClientEngineRegistry}
 import org.scalatest.BeforeAndAfterAll
@@ -236,6 +249,96 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       liquid.close()
     }
 
+    "send Liquid the images of a state in a top-level images array, marked where they stood" in {
+      // recorded from https://api.liquid.ai/decisions/v1/systemone (d1) on 2026-10-07
+      respond(
+        200,
+        """{"model":"d1","answers":{"first":{"type":"choice","choice":"red","probabilities":{"red":0.9998840806664074,"blue":0.00011591933359264961},"confidence":0.9997681613328149}},"usage":{"input_tokens":105,"output_tokens":0,"cost":0.0000042}}"""
+      )
+      val liquid = TypeSafeServiceFactory.liquidWithEngine(
+        engine,
+        "liquid_k",
+        baseUrl = baseUrl + "/decisions",
+        defaultModel = TypeSafeModelId.liquid_d1
+      )
+      val (red, blue) = (pngDataUrl(64, 64), pngDataUrl(32, 32))
+      val colours: Map[String, Question] =
+        Map(
+          "first" -> ChoiceQuestion.ofLabels("Which colour is the first image?", "red", "blue")
+        )
+
+      val response = await(
+        liquid.systemOne(
+          Json.obj(
+            "note" -> "Two photos.",
+            "photos" -> Json.arr(DecisionImage.part(red), DecisionImage.part(blue))
+          ),
+          colours
+        )
+      )
+
+      val body = Json.parse(received.get.body)
+      (body \ "state").get shouldBe
+        Json.obj("note" -> "Two photos.", "photos" -> Json.arr("[image 1]", "[image 2]"))
+      (body \ "images").get shouldBe Json.arr(red, blue)
+      (body \ "model").as[String] shouldBe "d1"
+      response.choice("first").choice shouldBe "red"
+
+      // a lone image is the whole state
+      await(liquid.systemOne(DecisionImage.part(red), colours))
+      (Json.parse(received.get.body) \ "state").get shouldBe JsString("[image 1]")
+
+      // a state without images goes out as it is, with no images field
+      await(liquid.systemOne(JsString("x"), colours))
+      (Json.parse(received.get.body) \ "images").toOption shouldBe None
+
+      // the format is checked before sending - Liquid fetches no URL either
+      received = None
+      the[IllegalArgumentException]
+        .thrownBy(
+          liquid.systemOne(
+            Json.arr("x", DecisionImage.part("https://example.com/a.png")),
+            colours
+          )
+        )
+        .getMessage should include("never fetches")
+      received shouldBe None
+      liquid.close()
+    }
+
+    "serve a local llama.cpp - no key, no Authorization header, a 501 not retried" in {
+      // recorded from llama-server b11476 (Julia-1) on 2026-10-07
+      respond(
+        200,
+        """{"model":"/models/Julia-1-Q8_0.gguf","answers":{"r":{"type":"noul","noul":0.999514219918827}},"usage":{"input_tokens":19,"output_tokens":0}}"""
+      )
+      val llamaCpp = TypeSafeServiceFactory.withEngine(
+        engine,
+        DecisionProviderSettings.llamaCpp.copy(baseUrl = baseUrl),
+        ""
+      )
+      val photo = Json.arr("x", DecisionImage.part(pngDataUrl(64, 64)))
+
+      await(llamaCpp.systemOne(photo, questions)).model shouldBe "/models/Julia-1-Q8_0.gguf"
+      received.get.path shouldBe "/v1/systemone"
+      received.get.headers.get("authorization") shouldBe None
+      val body = Json.parse(received.get.body)
+      (body \ "model").as[String] shouldBe TypeSafeModelId.liquid_d1_3b_gguf
+      (body \ "images").get shouldBe Json.arr(pngDataUrl(64, 64))
+
+      respond(
+        501,
+        """{"error":{"code":501,"message":"This server does not support image input for decisions. For a model that supports it, start it with `--mmproj`","type":"not_supported_error"}}"""
+      )
+      val error = Await.result(llamaCpp.systemOne(photo, questions).failed, 20.seconds)
+      error shouldBe a[TypeSafeScalaInvalidRequestException]
+      error.getMessage should include("start it with `--mmproj`")
+      error.asInstanceOf[TypeSafeScalaClientException].errorType shouldBe
+        Some("not_supported_error")
+      TypeSafeRetryable.unapply(error) shouldBe None
+      llamaCpp.close()
+    }
+
     "serve Perplexity's decider through the perplexity preset - /v1/decisions, x-request-id" in {
       respond(
         200,
@@ -252,7 +355,7 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       val body = Json.parse(received.get.body).as[JsObject]
       // the Decisions API answers 400 to any other field
       body.keys shouldBe Set("model", "state", "questions")
-      (body \ "model").as[String] shouldBe TypeSafeModelId.pplx_decider_v1_27b
+      (body \ "model").as[String] shouldBe TypeSafeModelId.pplx_decider_v1_1_27b
       (body \ "state" \ "review").as[String] shouldBe review
 
       response.requestId shouldBe Some("7a1504a6-a884-48e6-af6e-0c3140aeb6db")
@@ -262,24 +365,177 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       perplexity.close()
     }
 
-    "check the images in a Perplexity state before sending - an oversized one never leaves" in {
+    "speak OpenAI's Decisions API through the openAI preset - its protocol, translated" in {
+      // the shape of a live answer (2026-10-07)
+      respond(
+        200,
+        """{"model":"gpt-6-luna","answers":[
+          |{"type":"predicate","name":"defect","probability":0.93},
+          |{"type":"choice","name":"sentiment","choice":"mixed","probabilities":[{"value":"positive","probability":0.04},{"value":"mixed","probability":0.9},{"value":"negative","probability":0.06}],"confidence":0.82},
+          |{"type":"score","name":"severity","score":1.4,"probabilities":[{"value":0,"label":"Cosmetic","probability":0.05},{"value":1,"label":"Inconvenient","probability":0.5},{"value":2,"label":"Product unusable","probability":0.45}],"confidence":0.4}
+          |],"usage":{"input_tokens":312,"input_tokens_details":{"cached_tokens":0,"cache_write_tokens":0},"output_tokens":0,"output_tokens_details":{"reasoning_tokens":0},"total_tokens":312}}""".stripMargin,
+        Map("x-request-id" -> "req_42")
+      )
+      val openAI = TypeSafeServiceFactory.withEngine(
+        engine,
+        DecisionProviderSettings.openAI.copy(baseUrl = baseUrl),
+        "sk-test"
+      )
+
+      val response = await(openAI.systemOne(JsString(review), reviewQuestions))
+
+      received.get.path shouldBe "/v1/decisions"
+      received.get.headers("authorization") shouldBe "Bearer sk-test"
+      val body = Json.parse(received.get.body).as[JsObject]
+      body.keys shouldBe Set("model", "input", "questions")
+      (body \ "model").as[String] shouldBe "gpt-6-luna"
+      (body \ "input").as[String] shouldBe review
+      (body \ "questions")
+        .as[Seq[JsObject]]
+        .map(q => (q \ "name").as[String] -> q)
+        .toMap shouldBe Map(
+        "defect" -> Json.obj(
+          "type" -> "predicate",
+          "instructions" -> "Does the review report a product defect?",
+          "name" -> "defect"
+        ),
+        "sentiment" -> Json.obj(
+          "type" -> "choice",
+          "choices" -> Json.arr(
+            Json.obj("value" -> "positive", "description" -> "Mostly satisfied"),
+            Json
+              .obj("value" -> "mixed", "description" -> "Praise and complaints in one review"),
+            Json.obj("value" -> "negative", "description" -> "Mostly dissatisfied")
+          ),
+          "instructions" -> "What is the overall sentiment of the review?",
+          "name" -> "sentiment"
+        ),
+        "severity" -> Json.obj(
+          "type" -> "score",
+          "levels" -> Json.arr(
+            Json.obj("label" -> "Cosmetic"),
+            Json.obj("label" -> "Inconvenient"),
+            Json.obj("label" -> "Product unusable")
+          ),
+          "instructions" -> "How severe is the reported problem?",
+          "name" -> "severity"
+        )
+      )
+
+      response.model shouldBe "gpt-6-luna"
+      response.requestId shouldBe Some("req_42")
+      response.usage shouldBe Usage(Some(312), Some(0))
+      response.noul("defect").noul shouldBe 0.93
+      response.choice("sentiment") shouldBe
+        ChoiceAnswer(
+          "mixed",
+          0.82,
+          Map("positive" -> 0.04, "mixed" -> 0.9, "negative" -> 0.06)
+        )
+      response.score("severity") shouldBe ScoreAnswer(
+        1.4,
+        0.4,
+        Map(
+          0 -> JsString("Cosmetic"),
+          1 -> JsString("Inconvenient"),
+          2 -> JsString("Product unusable")
+        ),
+        Map(0 -> 0.05, 1 -> 0.5, 2 -> 0.45)
+      )
+      openAI.close()
+    }
+
+    "send OpenAI the images of a state as input images, marked where they stood" in {
+      respond(
+        200,
+        """{"model":"gpt-6-luna","answers":[{"type":"refusal","name":"defect"}],"usage":null}"""
+      )
+      val openAI = TypeSafeServiceFactory.withEngine(
+        engine,
+        DecisionProviderSettings.openAI.copy(baseUrl = baseUrl),
+        "sk-test"
+      )
+      // OpenAI scales a large image itself - no tile cap
+      val photo = DecisionImage.part(pngDataUrl(4032, 3024))
+
+      val response = await(
+        openAI.systemOne(
+          Json.obj("review" -> review, "photo" -> photo),
+          Map("defect" -> reviewQuestions("defect"))
+        )
+      )
+
+      (Json.parse(received.get.body) \ "input").get shouldBe Json.arr(
+        Json.obj(
+          "role" -> "user",
+          "content" -> Json.arr(
+            Json.obj(
+              "type" -> "input_text",
+              "text" -> Json.stringify(Json.obj("review" -> review, "photo" -> "[image 1]"))
+            ),
+            Json.obj("type" -> "input_image", "image_url" -> pngDataUrl(4032, 3024))
+          )
+        )
+      )
+      // a refusal is no answer System One knows
+      response.answers("defect") shouldBe
+        UnknownAnswer("refusal", Json.obj("type" -> "refusal", "name" -> "defect"))
+      openAI.close()
+    }
+
+    "check OpenAI's question cap before sending, and classify its token limit" in {
+      val openAI = TypeSafeServiceFactory.withEngine(
+        engine,
+        DecisionProviderSettings.openAI.copy(baseUrl = baseUrl),
+        "sk-test"
+      )
+      received = None
+      val tooMany = (1 to 201).map(i => s"q$i" -> NoulQuestion(s"Is it about $i?")).toMap
+
+      the[IllegalArgumentException]
+        .thrownBy(openAI.systemOne(JsString(review), tooMany))
+        .getMessage should include("at most 200 questions")
+      received shouldBe None
+
+      respond(
+        400,
+        """{"error":{"message":"Decision input exceeds the token limit.","type":"invalid_request_error","param":null,"code":null}}"""
+      )
+      Await.result(
+        openAI.systemOne(JsString(review), reviewQuestions).failed,
+        20.seconds
+      ) shouldBe
+        a[TypeSafeScalaTokenCountExceededException]
+      openAI.close()
+    }
+
+    "check the images in a state before sending - a host's tile cap, where it has one" in {
       respond(200, perplexityResponse)
       val perplexity =
         TypeSafeServiceFactory.perplexityWithEngine(engine, "pplx_k", baseUrl = baseUrl)
       val photo =
         Json.arr("Is the device damaged?", DecisionImage.part(pngDataUrl(4032, 3024)))
 
+      // Perplexity scales any image since 2026-10-06: a phone photo goes out as it is
+      await(perplexity.systemOne(photo, reviewQuestions))
+      (Json.parse(received.get.body) \ "state").as[JsArray] shouldBe photo
+
+      // a host with a cap refuses a larger image up front
+      val capped = TypeSafeServiceFactory.withEngine(
+        engine,
+        DecisionProviderSettings.perplexity
+          .copy(baseUrl = baseUrl, maxImageTiles = Some(2048)),
+        "pplx_k"
+      )
+      received = None
       the[IllegalArgumentException]
-        .thrownBy(
-          perplexity.systemOne(photo, reviewQuestions)
-        )
-        .getMessage should include("4032 x 3024")
+        .thrownBy(capped.systemOne(photo, reviewQuestions))
+        .getMessage should (include("4032 x 3024") and include("2048"))
       received shouldBe None
 
-      // one that fits goes out as it is
       val fits =
         Json.arr("Is the device damaged?", DecisionImage.part(pngDataUrl(1440, 1440)))
-      await(perplexity.systemOne(fits, reviewQuestions))
+      await(capped.systemOne(fits, reviewQuestions))
       (Json.parse(received.get.body) \ "state").as[JsArray] shouldBe fits
 
       // TypeSafe's Jev does not read images, so its state is not checked
@@ -287,6 +543,7 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       await(service.systemOne(photo, questions))
       received shouldBe defined
       perplexity.close()
+      capped.close()
     }
 
     "take TypeSafe's own request id over a generic x-request-id, whatever their order" in {
@@ -405,33 +662,35 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       implicit val scheduler: akka.actor.Scheduler = system.scheduler
       val retrying = TypeSafeServiceAdapters.retry(service)
 
-      var calls = 0
-      onRequest = () => {
-        calls += 1
-        if (calls < 3) (529, """{"detail":"Overloaded"}""", Map.empty[String, String])
-        else (200, quickStartResponse, Map.empty[String, String])
-      }
-      await(retrying.systemOne("x", questions))
-        .choice("department")
-        .choice shouldBe "technical"
-      calls shouldBe 3
+      try {
+        var calls = 0
+        onRequest = () => {
+          calls += 1
+          if (calls < 3) (529, """{"detail":"Overloaded"}""", Map.empty[String, String])
+          else (200, quickStartResponse, Map.empty[String, String])
+        }
+        await(retrying.systemOne("x", questions))
+          .choice("department")
+          .choice shouldBe "technical"
+        calls shouldBe 3
 
-      calls = 0
-      onRequest = () => {
-        calls += 1;
-        (
-          401,
-          """{"detail":{"error_type":"authentication_error","message":"no"}}""",
-          Map.empty[String, String]
-        )
+        calls = 0
+        onRequest = () => {
+          calls += 1;
+          (
+            401,
+            """{"detail":{"error_type":"authentication_error","message":"no"}}""",
+            Map.empty[String, String]
+          )
+        }
+        await(retrying.systemOne("x", questions).failed) shouldBe a[
+          TypeSafeScalaUnauthorizedException
+        ]
+        calls shouldBe 1
+      } finally {
+        onRequest = null
+        await(system.terminate())
       }
-      await(retrying.systemOne("x", questions).failed) shouldBe a[
-        TypeSafeScalaUnauthorizedException
-      ]
-      calls shouldBe 1
-
-      onRequest = null
-      await(system.terminate())
     }
   }
 
@@ -462,7 +721,12 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
 
       respond(200, openRouterModels)
       await(openRouter.listModels) shouldBe Seq(
-        ModelMetadata("liquid/d1", "d1 is Liquid AI's first decision model.", "2026-10-01"),
+        ModelMetadata(
+          "liquid/d1",
+          "d1 is Liquid AI's first decision model.",
+          "2026-10-01",
+          Some(Seq("text"))
+        ),
         ModelMetadata("~typesafe/jev-latest", "The latest Jev.", "2026-09-18")
       )
       received.get.path shouldBe "/api/v1/models"
@@ -502,6 +766,196 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       custom.close()
     }
 
+    "answer OpenAI's Decisions API interface on Jev - System One on the wire" in {
+      respond(200, quickStartResponse)
+      val decisions = TypeSafeServiceFactory.asOpenAIDecisions(service)
+
+      val decision = await(
+        decisions.createDecision(
+          DecisionInput.Text("My invoice is wrong and I need it fixed today."),
+          Seq(
+            DecisionQuestion.Choice(
+              "Which team should handle this",
+              Seq(
+                DecisionChoice("billing", "Payment or subscription issues"),
+                DecisionChoice("technical", "Bugs or integration problems"),
+                DecisionChoice("sales", "Pricing or account questions")
+              ),
+              Some("department")
+            ),
+            DecisionQuestion.Predicate(
+              "The message conveys urgency or time-sensitivity",
+              Some("is_urgent")
+            )
+          )
+        )
+      )
+
+      received.get.path shouldBe "/v1/systemone"
+      val body = Json.parse(received.get.body)
+      (body \ "model").as[String] shouldBe "jev-latest"
+      (body \ "questions").as[JsObject] shouldBe Json.toJson(questions)
+      decision.model shouldBe "jev-1.12"
+      decision.answers.map(_.name) shouldBe Seq(Some("department"), Some("is_urgent"))
+      decision.answer("is_urgent") shouldBe Some(
+        DecisionAnswer.Predicate(Some("is_urgent"), 0.999)
+      )
+      decision.usage.map(_.totalTokens) shouldBe Some(360)
+
+      respond(
+        401,
+        """{"detail":{"error_type":"authentication_error","message":"Invalid API key"}}"""
+      )
+      val error = Await.result(
+        decisions
+          .createDecision(DecisionInput.Text("x"), Seq(DecisionQuestion.Predicate("?")))
+          .failed,
+        20.seconds
+      )
+      error shouldBe an[io.cequence.openaiscala.OpenAIScalaUnauthorizedException]
+      error.getCause shouldBe a[TypeSafeScalaUnauthorizedException]
+    }
+
+    "check the images of a Decisions input before sending - the format, a host's cap" in {
+      // the checks systemOne makes, on createDecision too (until 2026-10-09 it skipped them)
+      respond(200, "{}")
+      val capped = TypeSafeServiceFactory.asOpenAIDecisions(
+        TypeSafeServiceFactory.withEngine(
+          engine,
+          DecisionProviderSettings.openAI.copy(baseUrl = baseUrl, maxImageTiles = Some(2048)),
+          "sk-test"
+        )
+      )
+      val asked = Seq(
+        DecisionQuestion
+          .Choice("Is it blue?", Seq(DecisionChoice(true), DecisionChoice(false)))
+      )
+
+      received = None
+      val oversized = await(
+        capped
+          .createDecision(
+            DecisionInput.of(DecisionContent.InputImage(pngDataUrl(4032, 3024))),
+            asked
+          )
+          .failed
+      )
+      oversized shouldBe an[io.cequence.openaiscala.OpenAIScalaClientException]
+      oversized.getMessage should (include("4032 x 3024") and include("2048"))
+      received shouldBe None
+
+      await(
+        capped
+          .createDecision(
+            DecisionInput.of(DecisionContent.InputImage("https://example.com/cat.png")),
+            asked
+          )
+          .failed
+      ).getMessage should include("never fetches")
+      received shouldBe None
+      capped.close()
+    }
+
+    "answer OpenAI's Decisions API interface on OpenAI's host as it is" in {
+      // recorded from https://api.openai.com/v1/decisions on 2026-10-07
+      val lunaReply =
+        """{"model":"gpt-6-luna","answers":[{"type":"choice","name":null,"choice":true,"probabilities":[{"value":true,"probability":1.0},{"value":false,"probability":0.0}],"confidence":1.0}],"usage":{"input_tokens":118,"input_tokens_details":{"cached_tokens":0,"cache_write_tokens":0},"output_tokens":0,"output_tokens_details":{"reasoning_tokens":0},"total_tokens":118}}"""
+      respond(200, lunaReply, Map("x-request-id" -> "req_luna_1"))
+      val decisions = TypeSafeServiceFactory.asOpenAIDecisions(
+        TypeSafeServiceFactory.withEngine(
+          engine,
+          DecisionProviderSettings.openAI.copy(baseUrl = baseUrl),
+          "sk-test"
+        )
+      )
+      val input = DecisionInput.of(
+        DecisionContent.InputText("Is the photo blue?"),
+        DecisionContent.InputImage(pngDataUrl(64, 64), Some(DecisionImageDetail.low))
+      )
+      val asked = Seq(
+        DecisionQuestion
+          .Choice("Is it blue?", Seq(DecisionChoice(true), DecisionChoice(false)))
+      )
+
+      val decision = await(
+        decisions
+          .createDecision(input, asked, CreateDecisionSettings(safetyIdentifier = Some("u1")))
+      )
+
+      // nothing translated: the detail, the boolean values, the unnamed question, the safety id
+      received.get.path shouldBe "/v1/decisions"
+      Json.parse(received.get.body) shouldBe createDecisionBody(
+        input,
+        asked,
+        CreateDecisionSettings(Some("gpt-6-luna"), Some("u1"))
+      )
+      decision.answers.head shouldBe DecisionAnswer.Choice(
+        None,
+        DecisionValue.Bool(true),
+        Seq(
+          ChoiceProbability(DecisionValue.Bool(true), 1.0),
+          ChoiceProbability(DecisionValue.Bool(false), 0.0)
+        ),
+        1.0
+      )
+      decision.requestId shouldBe Some("req_luna_1")
+
+      // the retry adapter keeps the native path - the body is the same, with the safety id
+      {
+        import io.cequence.openaiscala.RetryHelpers.RetrySettings
+        implicit val retrySettings: RetrySettings =
+          RetrySettings(maxRetries = 2, delayOffset = 10.millis)
+        implicit val system: akka.actor.ActorSystem = akka.actor.ActorSystem("decisions-retry")
+        implicit val scheduler: akka.actor.Scheduler = system.scheduler
+        val retried = TypeSafeServiceFactory.asOpenAIDecisions(
+          TypeSafeServiceAdapters.retry(
+            TypeSafeServiceFactory.withEngine(
+              engine,
+              DecisionProviderSettings.openAI.copy(baseUrl = baseUrl),
+              "sk-test"
+            )
+          )
+        )
+
+        try {
+          var calls = 0
+          onRequest = () => {
+            calls += 1
+            if (calls < 2)
+              (529, """{"error":{"message":"overloaded"}}""", Map.empty[String, String])
+            else (200, lunaReply, Map("x-request-id" -> "req_luna_2"))
+          }
+          val retriedDecision = await(
+            retried.createDecision(
+              input,
+              asked,
+              CreateDecisionSettings(safetyIdentifier = Some("u1"))
+            )
+          )
+          onRequest = null
+          calls shouldBe 2
+          Json.parse(received.get.body) shouldBe createDecisionBody(
+            input,
+            asked,
+            CreateDecisionSettings(Some("gpt-6-luna"), Some("u1"))
+          )
+          retriedDecision.requestId shouldBe Some("req_luna_2")
+        } finally {
+          onRequest = null
+          retried.close()
+          await(system.terminate())
+        }
+      }
+
+      respond(
+        400,
+        """{"error":{"message":"Decision input exceeds the token limit.","type":"invalid_request_error","param":null,"code":null}}"""
+      )
+      Await.result(decisions.createDecision(input, asked).failed, 20.seconds) shouldBe
+        an[io.cequence.openaiscala.OpenAIScalaTokenCountExceededException]
+      decisions.close()
+    }
+
     "name every variable it reads for a missing key, and default its label to the host" in {
       val provider = DecisionProvider(
         "https://decisions.example.com/",
@@ -514,10 +968,56 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       )
       provider.label shouldBe "decisions.example.com"
       DecisionProviderSettings.openRouter.label shouldBe "openrouter"
+
+      // a host that needs no key gets none
+      provider.copy(apiKeyRequired = false).apiKeyFromEnv shouldBe ""
     }
   }
 
   "listModels" should {
+
+    "list only a llama.cpp router's decision models, with what they read" in {
+      // recorded from llama-server b11476 in router mode on 2026-10-07, trimmed, plus a chat
+      // model next to them
+      respond(
+        200,
+        """{"data":[
+          |  {"id":"Julia-1-Q8_0","aliases":[],"tags":[],"object":"model","owned_by":"llamacpp","created":1791394484,"status":{"value":"unloaded"},"architecture":{"input_modalities":["text"],"output_modalities":["decisions"]},"source":"models_dir","can_remove":false},
+          |  {"id":"gemma-3-4b-it-Q4_K_M","object":"model","owned_by":"llamacpp","created":1791394484,"architecture":{"input_modalities":["text","image"],"output_modalities":["text"]}},
+          |  {"id":"old-server-model","object":"model","owned_by":"llamacpp","created":1791394484}
+          |]}""".stripMargin
+      )
+      val llamaCpp = TypeSafeServiceFactory.withEngine(
+        engine,
+        DecisionProviderSettings.llamaCpp.copy(baseUrl = baseUrl),
+        ""
+      )
+
+      await(llamaCpp.listModels) shouldBe Seq(
+        ModelMetadata("Julia-1-Q8_0", "", "2026-10-07", Some(Seq("text"))),
+        // an older server says nothing about it - kept
+        ModelMetadata("old-server-model", "", "2026-10-07")
+      )
+      received.get.path shouldBe "/v1/models"
+      received.get.query shouldBe None
+      llamaCpp.close()
+    }
+
+    "read what Liquid's models take" in {
+      // recorded from https://api.liquid.ai/decisions/v1/models on 2026-10-07
+      respond(
+        200,
+        """{"models":[{"name":"d1","description":"","release_date":"2026-09-29","input_modalities":["text","image"]},{"name":"d1:free","description":"","release_date":"2026-09-22","input_modalities":["text"]}]}"""
+      )
+      val liquid =
+        TypeSafeServiceFactory.liquidWithEngine(engine, "liquid_k", baseUrl = baseUrl)
+
+      await(liquid.listModels).map(m => m.name -> m.input_modalities) shouldBe Seq(
+        "d1" -> Some(Seq("text", "image")),
+        "d1:free" -> Some(Seq("text"))
+      )
+      liquid.close()
+    }
 
     "return Perplexity's one decision model without a request" in {
       respond(200, "{}")
@@ -525,6 +1025,7 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
         TypeSafeServiceFactory.perplexityWithEngine(engine, "pplx_k", baseUrl = baseUrl)
 
       await(perplexity.listModels).map(_.name) shouldBe Seq(
+        TypeSafeModelId.pplx_decider_v1_1_27b,
         TypeSafeModelId.pplx_decider_v1_27b
       )
       received shouldBe None

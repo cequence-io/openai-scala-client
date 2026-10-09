@@ -1,6 +1,7 @@
 package io.cequence.openaiscala.typesafe.service.impl
 
 import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps
+import io.cequence.openaiscala.JsonFormats.eitherJsonSchemaWrites
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.response.{
@@ -12,7 +13,7 @@ import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
   CreateChatCompletionSettings
 }
-import io.cequence.openaiscala.service.OpenAIChatCompletionService
+import io.cequence.openaiscala.service.{OpenAIChatCompletionExtra, OpenAIChatCompletionService}
 import io.cequence.openaiscala.typesafe.domain.SystemOneResponse
 import io.cequence.openaiscala.typesafe.domain.settings.CreateChatCompletionSettingsOps
 import io.cequence.openaiscala.typesafe.domain.settings.CreateChatCompletionSettingsOps._
@@ -31,9 +32,12 @@ import scala.util.Try
  * [[TypeSafeChatMapping]]: system messages as `instructions`, JSON user messages embedded as
  * JSON, several turns as a `conversation`) and the answers are folded into the assistant
  * message's content as a JSON document of that schema. This is what
- * `createChatCompletionWithJSON[T]` needs - add the model to `jsonSchemaModels` (or the
- * `models-supporting-json-schema` config, where the `jev-*` ids are listed) so it stays in
- * json-schema mode.
+ * `createChatCompletionWithJSON[T]` (and a `ModelGuardrail`) needs. For a model the JSON
+ * helper does not list as json_schema-capable (`models-supporting-json-schema` /
+ * `jsonSchemaModels`
+ *   - e.g. a new dated build or another host's id) it falls back to JSON-object mode with the
+ *     schema appended to the prompt; that schema is read back from there
+ *     (`OpenAIChatCompletionExtra.jsonSchemaFromPrompt`) and kept out of the state.
  *
  * The full [[SystemOneResponse]] (probabilities, confidences) rides in `originalResponse`.
  * Native `TypeSafeScala*` exceptions are repacked onto the `OpenAIScala*` hierarchy
@@ -46,7 +50,7 @@ import scala.util.Try
  * `stop`, `seed`, `logprobs`, `reasoning_effort`, `user` / `store` / `metadata` and so on - is
  * DROPPED with a warning naming it, because System One does not sample text. `n > 1`, tools,
  * streaming and non-text message content are refused outright - image content too, unless
- * `imageInput` says the host reads it (Perplexity's Decisions API).
+ * `imageInput` says the host reads it (Perplexity, OpenAI, Liquid's `d1`, llama.cpp).
  *
  * @param imageInput
  *   whether the image parts of user messages go into the state
@@ -68,18 +72,27 @@ private[service] class OpenAITypeSafeChatCompletionService(
     ToolApprovalSettingsOps.refusingDecisions(settings, "The TypeSafe System One adapter") {
       Future
         .fromTry(Try {
-          val schema = settings.response_format_type match {
+          // the messages and the schema they are asked about - in json_object mode, the JSON
+          // helper's fallback for a model it does not list as json_schema-capable, the schema
+          // closes the prompt
+          val (messagesFinal, schema) = (settings.response_format_type match {
             case Some(ChatCompletionResponseFormatType.json_schema) =>
-              settings.jsonSchema.getOrElse(
+              val schemaDef = settings.jsonSchema.getOrElse(
                 fail("response_format_type is json_schema but no jsonSchema was set.")
               )
-            case other =>
-              fail(
-                "TypeSafe System One answers structured questions only: set " +
-                  s"response_format_type = json_schema and a jsonSchema (got ${other.getOrElse("none")}). With createChatCompletionWithJSON pass the model in " +
-                  "jsonSchemaModels, or list it under models-supporting-json-schema."
-              )
-          }
+              Some(messages -> Json.toJson(schemaDef.structure))
+
+            case Some(ChatCompletionResponseFormatType.json_object) =>
+              OpenAIChatCompletionExtra.jsonSchemaFromPrompt(messages)
+
+            case _ => None
+          }).getOrElse(
+            fail(
+              "TypeSafe System One answers structured questions only: set " +
+                s"response_format_type = json_schema and a jsonSchema (got ${settings.response_format_type
+                    .getOrElse("none")})."
+            )
+          )
 
           OpenAITypeSafeChatCompletionService
             .unsupportedSettingsMessage(settings)
@@ -93,7 +106,7 @@ private[service] class OpenAITypeSafeChatCompletionService(
 
           (
             plan,
-            TypeSafeChatMapping.toState(messages, imageInput),
+            TypeSafeChatMapping.toState(messagesFinal, imageInput),
             settings.typeSafeNoulThreshold
           )
         })

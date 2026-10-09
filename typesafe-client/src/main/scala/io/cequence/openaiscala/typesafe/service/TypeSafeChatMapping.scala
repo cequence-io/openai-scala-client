@@ -27,12 +27,13 @@ import scala.util.Try
  *   - several turns -> `{"instructions": ..., "conversation": [{"role", "content"}, ...]}`
  *
  * Tool messages and an empty conversation are refused, and so is image content - unless the
- * host reads images (`toState(messages, images = true)`, Perplexity's Decisions API): a user
- * message with images then becomes an array of its parts, text as above and each image an
- * OpenAI-style `{"type": "image_url", "image_url": {"url": ...}}` part, which may be a base64
- * PNG, JPEG or WebP data URL of at most 2,048 tiles of 32 x 32 pixels. Everything this object
- * cannot map fails with an `OpenAIScalaClientException` - it is the OpenAI adapter's mapping,
- * so its errors wear the OpenAI adapter's type.
+ * host reads images (`toState(messages, images = true)`: Perplexity, OpenAI, Liquid's `d1`,
+ * llama.cpp): a user message with images then becomes an array of its parts, text as above and
+ * each image an OpenAI-style `{"type": "image_url", "image_url": {"url": ...}}` part, which
+ * must be a base64 PNG, JPEG or WebP data URL (a host's size cap is checked by the service
+ * before sending). Everything this object cannot map fails with an
+ * `OpenAIScalaClientException` - it is the OpenAI adapter's mapping, so its errors wear the
+ * OpenAI adapter's type.
  *
  * '''Schema -> `questions`.''' Only the schema produces questions - one per property, named by
  * its path, with the description as the instructions and the enum / range as the criteria
@@ -49,8 +50,9 @@ object TypeSafeChatMapping {
    * The `state` the adapter sends for these messages.
    *
    * @param images
-   *   whether the host reads images in the state (Perplexity's Decisions API does; TypeSafe's
-   *   Jev and Liquid's d1 read an image part as text, so for them image content is refused)
+   *   whether the host reads images in the state (Perplexity, OpenAI, Liquid's paid `d1`,
+   *   llama.cpp); with `false` image content is refused up front - TypeSafe's Jev reads an
+   *   image part as text, and Liquid's `d1:free` rejects one with a 422
    */
   def toState(
     messages: Seq[BaseMessage],
@@ -102,7 +104,10 @@ object TypeSafeChatMapping {
   // the adapter's own plan (it also needs the slots to assemble the answers); a schema System
   // One cannot answer fails the way every other misuse here does
   private[typesafe] def plan(schema: JsonSchemaDef): SchemaQuestions.Plan =
-    try SchemaQuestions.plan(Json.toJson(schema.structure))
+    plan(Json.toJson(schema.structure))
+
+  private[typesafe] def plan(schema: JsValue): SchemaQuestions.Plan =
+    try SchemaQuestions.plan(schema)
     catch { case e: IllegalArgumentException => fail(e.getMessage) }
 
   // text parts are joined into one text; with images (allowed) the message is an array of its
@@ -122,27 +127,19 @@ object TypeSafeChatMapping {
 
     val imageUrls = parts.collect { case Right(url) => url }
 
-    if (imageUrls.isEmpty)
-      userContent(parts.collect { case Left(text) => text }.mkString("\n"))
-    else if (!images)
+    if (imageUrls.nonEmpty && !images)
       fail(
-        "Image content is read only by Perplexity's Decisions API " +
-          "(TypeSafeServiceFactory.perplexityAsOpenAI, or asOpenAI(service, imageInput = true)) - " +
-          "TypeSafe's Jev and Liquid's d1 would read it as text."
+        "Image content goes only to a host that reads images (TypeSafeServiceFactory." +
+          "asOpenAI(provider) for Perplexity, OpenAI, Liquid's d1 or llama.cpp, or " +
+          "asOpenAI(service, imageInput = true)) - TypeSafe's Jev would read it as text."
       )
     else {
-      val problems = imageUrls.flatMap(DecisionImage.problem)
+      // the format here; a host's size cap, if any, is checked by the service before sending
+      val problems = imageUrls.flatMap(DecisionImage.problem(_))
       if (problems.nonEmpty)
         fail(s"The message carries an image the API cannot take: ${problems.mkString("; ")}.")
 
-      val grouped = parts.foldLeft(Vector.empty[Either[String, String]]) {
-        case (acc :+ Left(previous), Left(text)) => acc :+ Left(previous + "\n" + text)
-        case (acc, part)                         => acc :+ part
-      }
-      JsArray(grouped.map {
-        case Left(text) => userContent(text)
-        case Right(url) => DecisionImage.part(url)
-      })
+      DecisionImage.messageState(parts, userContent)
     }
   }
 
