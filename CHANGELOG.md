@@ -93,6 +93,12 @@ changed); ws-client stays at 1.1.1.
   questions only) and, live 2026-10-09, the two `perplexity/pplx-decider-*` ids, `openai/gpt-6-luna-decisions`,
   `cloudflare/clef` / `clef-flash`, `upstage/solar-decide-flash` and `inception/mercury-decide` - 16 decision models,
   all answering the same review alike.
+- **Microsoft-Decision-1** (Microsoft Foundry, public preview 2026-10-09; Qwen3.5-9B base, $0.042 / 1M input tokens):
+  TypeSafe's protocol at `<your Foundry endpoint>/v1/systemone` with a `Bearer` key, as Microsoft's launch example shows -
+  `DecisionProviderSettings.microsoftFoundry(baseUrl)`, `TypeSafeServiceFactory.microsoftFoundry()` /
+  `microsoftFoundryAsOpenAI()` (`FOUNDRY_BASE_URL`, `FOUNDRY_API_KEY`), `NonOpenAIModelId.microsoft_decision_1`. Not
+  live-verified: the model has to be deployed in your subscription first (the route and header may need confirming
+  against the Foundry quickstart - `copy` the provider); pinned against a local server.
 - **Groq's catalog** re-listed (`openai/gpt-oss-*`, `qwen/qwen3.6-27b` / `qwen3.8-27b`, `allam-2-7b`; the Llama 3.3 /
   4 and DeepSeek ids are gone).
 

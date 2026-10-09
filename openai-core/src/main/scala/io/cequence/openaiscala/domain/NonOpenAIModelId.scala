@@ -1069,6 +1069,11 @@ object NonOpenAIModelId {
   // byte for byte alike on nine questions, so the API serves one model under both names
   val pplx_decider_v1_1_27b = "pplx-decider-v1.1-27b"
   val pplx_decider_v1_27b = "pplx-decider-v1-27b" // 2026-10-01
+  // Microsoft's decision model on Microsoft Foundry (public preview 2026-10-09; built on Qwen3.5-9B;
+  // TypeSafe's protocol at `<your Foundry endpoint>/v1/systemone`, $0.042 / 1M input tokens) -
+  // `TypeSafeServiceFactory.microsoftFoundry`; needs a deployment in your subscription, so NOT
+  // live-verified here yet
+  val microsoft_decision_1 = "microsoft-decision-1"
 
   // decision models on OpenRouter - TypeSafe's protocol at `POST
   // https://openrouter.ai/api/v1/systemone` (typesafe-client's

@@ -50,6 +50,13 @@ object TypeSafeModelId {
    */
   val pplx_decider_v1_27b: String = NonOpenAIModelId.pplx_decider_v1_27b
 
+  /**
+   * Microsoft-Decision-1 on Microsoft Foundry (public preview 2026-10-09) - see
+   * `TypeSafeServiceFactory.microsoftFoundry`; the model has to be deployed in your
+   * subscription.
+   */
+  val microsoft_decision_1: String = NonOpenAIModelId.microsoft_decision_1
+
   // decision models on OpenRouter (`DecisionProviderSettings.openRouter`)
   val openrouter_jev_latest: String = NonOpenAIModelId.openrouter_jev_latest
   val openrouter_jev_1_13: String = NonOpenAIModelId.openrouter_jev_1_13

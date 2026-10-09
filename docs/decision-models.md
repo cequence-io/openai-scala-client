@@ -450,6 +450,40 @@ with `error.type` in `errorType` and the `x-request-id` as the request id. See
 (a native call on both ids, an image, a 4032 x 3024 photo, the OpenAI adapter with and without an image, Jev and d1 side by
 side, and the latency benchmark).
 
+## Microsoft-Decision-1 (Microsoft Foundry) 🪟
+
+🔥 Microsoft's decision model **Microsoft-Decision-1** (public preview since 2026-10-09; built on Qwen3.5-9B, future
+iterations to be rebased on OpenAI and MAI models; $0.042 per 1M input tokens in the US and EU data zones, output free) is
+served from your own Microsoft Foundry deployment and speaks TypeSafe's System One protocol: Microsoft's launch example
+POSTs `{"model", "state", "questions"}` to `<endpoint>/v1/systemone` with a `Bearer` key and reads `answers.<name>.choice`.
+So it is a `DecisionProvider` like the others - `TypeSafeServiceFactory.microsoftFoundry()` (the endpoint from
+`FOUNDRY_BASE_URL`, the key from `FOUNDRY_API_KEY` - the example's names; `microsoft-decision-1` by default, or your
+deployment id), `microsoftFoundryWithEngine`, `microsoftFoundryAsOpenAI()` for `json_schema` structured output, and
+`DecisionProviderSettings.microsoftFoundry(baseUrl)` for `decide[T]`, re-ranking and the guardrails. Microsoft positions
+it for classification, routing, evaluation and workflow control, reporting quality competitive with GPT-5 at a fraction
+of the latency and cost (Xbox Research categorised 10,000 feedback items with it).
+
+```scala
+  val decision1 = TypeSafeServiceFactory.microsoftFoundry() // FOUNDRY_BASE_URL + FOUNDRY_API_KEY
+
+  decision1.systemOne(
+    "I was charged twice.",
+    Map("team" -> ChoiceQuestion(
+      "Which team should handle this customer support request?",
+      "billing" -> "Charges, invoices, refunds, or subscription payments",
+      "technical" -> "Software errors, bugs, or integration failures",
+      "account" -> "Sign-in, password, or account-access problems"
+    ))
+  )
+```
+
+**Not yet live-verified here**: the model has to be deployed in a Foundry subscription first (the catalog page needs a
+sign-in, and a resource without the deployment answers 404 on every route - probed 2026-10-09), so the route and header
+come from the launch post's example, which itself says to confirm them in the Foundry quickstart. If your deployment
+answers on another path, `copy` the provider (`decisionsPath`); the request id is read from Azure's `apim-request-id`.
+`examples/typesafe/MicrosoftDecision1SmokeTest` walks the launch example (routing, a noul, `decide[Triage]`) against a
+deployment.
+
 ## Decision-model providers 🧩
 
 Decision models are spreading fast, and most hosts copy TypeSafe's System One protocol - so the TypeSafe lib reaches them all
@@ -481,6 +515,7 @@ a protocol of its own; its preset translates the questions and answers, so every
 | `liquid` | `LIQUID_API_KEY` | `d1:free`, `d1` | at most 128 questions; the paid `d1` reads images (sent in a top-level `images` array) |
 | `perplexity` | `PERPLEXITY_API_KEY` (or `SONAR_API_KEY`) | `pplx-decider-v1.1-27b`, `pplx-decider-v1-27b` | `POST /v1/decisions`, images of any size, at most 128 questions |
 | `openRouter` | `OPENROUTER_API_KEY` | Jev, d1, Perplexity's deciders, OpenAI's Luna, Cloudflare's Clef (+ Flash), Solar Decide (+ Flash), Mercury Decide (+ free), Tev1, Kev 4B, Span-01 (+ Lite) | listed with `output_modalities=decisions`; Span-01 takes noul questions only |
+| `microsoftFoundry(baseUrl)` | `FOUNDRY_API_KEY` | `microsoft-decision-1` | your Foundry deployment's endpoint, `POST /v1/systemone`; not yet live-verified |
 | `openAI` | `OPENAI_SCALA_CLIENT_API_KEY` (or `OPENAI_API_KEY`) | `gpt-6-luna` | OpenAI's own protocol (translated), images, at most 200 questions; a refusal arrives as `UnknownAnswer("refusal", ...)` |
 | `llamaCpp` | none (`LLAMA_API_KEY` if the server has one) | whatever `llama-server` loaded | a local server, `http://127.0.0.1:8080/`; a router needs a model id from `listModels` (its decision models only); images in a top-level `images` array, for a model with a projector (else a 501) |
 

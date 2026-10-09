@@ -85,6 +85,7 @@ decisions, re-ranking, the `json_schema`-only chat adapter) on OpenAI's. No tool
 | [Perplexity Decisions](https://docs.perplexity.ai/docs/decisions/quickstart) 🔥 | pplx-decider-v1.1-27b / v1-27b, images too | `perplexityAsOpenAI()` |
 | [OpenRouter](https://openrouter.ai/models?output_modalities=decisions) 🔥 | Jev, d1, Perplexity's deciders, OpenAI's Luna, Cloudflare's Clef, Solar Decide, Mercury Decide, Tev1, Kev 4B, Span-01 | `asOpenAI(DecisionProviderSettings.openRouter)` |
 | [OpenAI Decisions](https://developers.openai.com/api/docs/guides/decisions) 🔥 | gpt-6-luna, images too | `asOpenAI(DecisionProviderSettings.openAI)` |
+| [Microsoft Foundry](https://ai.azure.com/catalog/models/microsoft-decision-1) 🔥 | Microsoft-Decision-1 (public preview; needs a deployment in your subscription - not yet live-verified here) | `microsoftFoundryAsOpenAI()` |
 
 🔥 New in 1.5.0 (Liquid AI's d1 since 1.4.0, its images since 1.5.0).
 

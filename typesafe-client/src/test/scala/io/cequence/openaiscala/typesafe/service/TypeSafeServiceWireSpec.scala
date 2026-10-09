@@ -704,6 +704,23 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
         |  {"id":"~typesafe/jev-latest","name":"TypeSafe: Jev Latest","created":1789689685,"description":"The latest Jev.","architecture":{"output_modalities":["decisions"]}}
         |]}""".stripMargin
 
+    "serve Microsoft-Decision-1 on a Foundry endpoint - /v1/systemone, the Bearer key, apim-request-id" in {
+      // the shape of Microsoft's launch example (2026-10-09); no deployment to verify it live yet
+      val foundry = TypeSafeServiceFactory.microsoftFoundryWithEngine(engine, "f_k", baseUrl)
+
+      respond(200, quickStartResponse, Map("apim-request-id" -> "57601b9b-5dbf-4027-9a54"))
+      val response = await(foundry.systemOne("I was charged twice.", questions))
+      received.get.path shouldBe "/v1/systemone"
+      received.get.headers("authorization") shouldBe "Bearer f_k"
+      (Json.parse(received.get.body) \ "model").as[String] shouldBe
+        TypeSafeModelId.microsoft_decision_1
+      response.requestId shouldBe Some("57601b9b-5dbf-4027-9a54")
+
+      // a fixed model list: no request
+      await(foundry.listModels).map(_.name) shouldBe Seq(TypeSafeModelId.microsoft_decision_1)
+      foundry.close()
+    }
+
     "serve OpenRouter's decision models - its /api base, the x-generation-id, the listing query" in {
       val openRouter = TypeSafeServiceFactory.withEngine(
         engine,

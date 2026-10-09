@@ -2,7 +2,7 @@ package io.cequence.openaiscala.typesafe.service
 
 import io.cequence.openaiscala.EnvHelper
 import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIDecisionsService}
-import io.cequence.openaiscala.typesafe.domain.DecisionProvider
+import io.cequence.openaiscala.typesafe.domain.{DecisionProvider, TypeSafeModelId}
 import io.cequence.openaiscala.typesafe.service.impl.{
   OpenAIDecisionsOverTypeSafe,
   OpenAITypeSafeChatCompletionService,
@@ -329,6 +329,64 @@ object TypeSafeServiceFactory extends EnvHelper {
     implicit ec: ExecutionContext
   ): OpenAIChatCompletionService =
     asOpenAI(liquid(apiKey, baseUrl, defaultModel, timeouts), imageInput = true)
+
+  /**
+   * Microsoft-Decision-1 on your Microsoft Foundry deployment (public preview since
+   * 2026-10-09; TypeSafe's protocol at `<endpoint>/v1/systemone`, see
+   * `DecisionProviderSettings.microsoftFoundry`), on its own PRIVATE engine. The key from
+   * `FOUNDRY_API_KEY`, the endpoint from `FOUNDRY_BASE_URL` - the names of Microsoft's launch
+   * example; the model has to be deployed in your subscription. NOT live-verified here yet.
+   */
+  def microsoftFoundry(
+    apiKey: String = getEnvValue(foundryApiKeyEnvKey),
+    baseUrl: String = getEnvValue(foundryBaseUrlEnvKey),
+    defaultModel: String = TypeSafeModelId.microsoft_decision_1,
+    timeouts: Option[Timeouts] = None
+  )(
+    implicit ec: ExecutionContext
+  ): TypeSafeService =
+    new TypeSafeServiceImpl(
+      apiKey,
+      baseUrl,
+      defaultModel,
+      timeouts,
+      provider = DecisionProviderSettings.microsoftFoundry(baseUrl)
+    )
+
+  /** [[microsoftFoundry]] on a CALLER-SUPPLIED, shared engine (see [[withEngine]]). */
+  def microsoftFoundryWithEngine(
+    engine: WSClientEngine,
+    apiKey: String = getEnvValue(foundryApiKeyEnvKey),
+    baseUrl: String = getEnvValue(foundryBaseUrlEnvKey),
+    defaultModel: String = TypeSafeModelId.microsoft_decision_1
+  )(
+    implicit ec: ExecutionContext
+  ): TypeSafeService =
+    new TypeSafeServiceImpl(
+      apiKey,
+      baseUrl,
+      defaultModel,
+      externalEngine = Some(engine),
+      provider = DecisionProviderSettings.microsoftFoundry(baseUrl)
+    )
+
+  /**
+   * Microsoft-Decision-1 behind the OpenAI chat-completion interface - `json_schema`
+   * structured output only, exactly like [[asOpenAI]] (`microsoft-decision-1` is in
+   * `models-supporting-json-schema`).
+   */
+  def microsoftFoundryAsOpenAI(
+    apiKey: String = getEnvValue(foundryApiKeyEnvKey),
+    baseUrl: String = getEnvValue(foundryBaseUrlEnvKey),
+    defaultModel: String = TypeSafeModelId.microsoft_decision_1,
+    timeouts: Option[Timeouts] = None
+  )(
+    implicit ec: ExecutionContext
+  ): OpenAIChatCompletionService =
+    asOpenAI(microsoftFoundry(apiKey, baseUrl, defaultModel, timeouts))
+
+  private val foundryApiKeyEnvKey = "FOUNDRY_API_KEY"
+  private val foundryBaseUrlEnvKey = "FOUNDRY_BASE_URL"
 
   /**
    * Perplexity's decision model `pplx-decider-v1.1-27b` (the 2026-10-06 update; the launch

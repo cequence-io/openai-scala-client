@@ -137,6 +137,37 @@ object DecisionProviderSettings {
   )
 
   /**
+   * Microsoft-Decision-1 on Microsoft Foundry (public preview since 2026-10-09; built on
+   * Qwen3.5-9B; $0.042 / 1M input tokens in the US and EU data zones, output free): TypeSafe's
+   * protocol at `POST <your Foundry endpoint>/v1/systemone` with a `Bearer` key
+   * (`FOUNDRY_API_KEY`), as Microsoft's launch example shows. The endpoint is per deployment -
+   * pass your Foundry resource's base URL (the example's `FOUNDRY_BASE_URL`, without
+   * `/v1/systemone`); the request id is Azure's `apim-request-id`. The model must be deployed
+   * in your Foundry subscription first. NOT live-verified here (2026-10-09: no deployment to
+   * test against; the route and header come from the launch post's example, which says to
+   * confirm them in the Foundry quickstart), so `decisionsPath` or the model id may need
+   * adjusting - `copy` the provider.
+   */
+  def microsoftFoundry(baseUrl: String): DecisionProvider = DecisionProvider(
+    baseUrl,
+    "FOUNDRY_API_KEY",
+    TypeSafeModelId.microsoft_decision_1,
+    models = DecisionModelListing.Fixed(
+      Seq(
+        ModelMetadata(
+          TypeSafeModelId.microsoft_decision_1,
+          "Microsoft's decision model for classification, routing and evaluation (public preview; " +
+            "Qwen3.5-9B base, $0.042 / 1M input tokens).",
+          "2026-10-09",
+          Some(Seq("text"))
+        )
+      )
+    ),
+    requestIdHeaders = Seq("apim-request-id", "x-ms-request-id", "x-request-id"),
+    name = Some("microsoft-foundry")
+  )
+
+  /**
    * OpenRouter (`OPENROUTER_API_KEY`): many hosts' decision models behind one key, on
    * TypeSafe's protocol - Jev, Liquid's d1, Upstage's Solar Decide, Inception's Mercury
    * Decide, Together's Tev1, Kev 4B and Respan's Span-01 (live 2026-10-02; Span-01 judges with
