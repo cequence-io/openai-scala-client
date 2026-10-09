@@ -48,8 +48,9 @@ object MessageConversions {
       "nowhere else to put their chain of thought. OpenAI-compatible providers now return it " +
       "in a dedicated field - `delta.reasoning_content` (DeepSeek, Grok, Mistral, Fireworks) " +
       "or `delta.reasoning` (Groq) - so there is nothing to strip out of the content. Read it " +
-      "from ChatCompletionResponse's `reasoningText`, or from ChatChunk.Thinking when " +
-      "streaming, and drop the adapter."
+      "from the stream - `delta.reasoningText` (ChunkMessageSpec) on the OpenAI-shaped chunks, " +
+      "ChatChunk.Thinking on the typed one; a sync response carries no reasoning - and drop " +
+      "the adapter."
 
   @deprecated(thinkTagDeprecation, since = "1.3.0")
   lazy val thinkEndTagRegex = "(?<!['\"])</think>(?!['\"])"

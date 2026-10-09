@@ -29,6 +29,12 @@ import io.cequence.openaiscala.domain.responsesapi.{
   DeleteResponse => ResponsesAPIDeleteResponse
 }
 
+import io.cequence.openaiscala.domain.decisions.{
+  CreateDecisionSettings,
+  Decision,
+  DecisionInput,
+  DecisionQuestion
+}
 import io.cequence.openaiscala.domain.agents.{
   Agent,
   AgentConfig,
@@ -728,6 +734,16 @@ trait OpenAIServiceWrapper
     order: Option[SortOrder]
   ): Future[Seq[Batch]] =
     wrap(_.listBatches(pagination, order))
+
+  ///////////////////
+  // Decisions API //
+  ///////////////////
+
+  override def createDecision(
+    input: DecisionInput,
+    questions: Seq[DecisionQuestion],
+    settings: CreateDecisionSettings
+  ): Future[Decision] = wrap(_.createDecision(input, questions, settings))
 
   ////////////////
   // Agents API //

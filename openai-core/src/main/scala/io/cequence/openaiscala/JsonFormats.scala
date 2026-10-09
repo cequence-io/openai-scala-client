@@ -128,29 +128,83 @@ object JsonFormats {
 
   implicit val toolMessageFormat: Format[ToolMessage] = Json.format[ToolMessage]
 
+  /**
+   * A message (or streamed delta) whose `content` is a list of chunks, as Mistral answers a
+   * reasoning turn - `[{"type": "thinking", "thinking": [{"type": "text", "text": ...}]},
+   * {"type": "text", "text": ...}]`, a delta carrying one or both (live 2026-10-07: Large 4,
+   * Medium 3.5, Small 4, GLM 5.3) - with the text chunks as its `content` and the thinking as
+   * its `reasoning_content` (unless it has one); a string `content` stays as it is. Chunks of
+   * other kinds - Mistral's `reference` citations (live 2026-10-09: Medium 3.5 and Magistral
+   * stream one as a delta of its own, Large 3 answers `[text, reference, text]`) - ride raw in
+   * `content_chunks`, which a streamed delta keeps (`ChunkMessageSpec.content_chunks`) and a
+   * message read drops (it has no field for them); a list without text is read as no content,
+   * never refused - a 200 must not fail on an unmodelled chunk kind.
+   */
+  private[openaiscala] def withChunkedContent(json: JsValue): JsValue =
+    json match {
+      case obj: JsObject =>
+        (obj \ "content").toOption match {
+          case Some(JsArray(chunks)) =>
+            def kind(chunk: JsValue) = (chunk \ "type").asOpt[String]
+            def ofType(name: String) = chunks.filter(kind(_).contains(name))
+            val text = ofType("text").flatMap(c => (c \ "text").asOpt[String])
+            val thinking =
+              ofType("thinking").flatMap(c => chunkText((c \ "thinking").toOption))
+            val others = chunks.filterNot(kind(_).exists(k => k == "text" || k == "thinking"))
+
+            (obj - "content") ++
+              (if (text.nonEmpty) Json.obj("content" -> text.mkString) else Json.obj()) ++
+              (if (
+                 thinking.nonEmpty && (obj \ "reasoning_content").toOption.forall(
+                   _ == JsNull
+                 )
+               )
+                 Json.obj("reasoning_content" -> thinking.mkString)
+               else Json.obj()) ++
+              (if (others.nonEmpty) Json.obj("content_chunks" -> JsArray(others))
+               else Json.obj())
+          case _ => obj
+        }
+      case other => other
+    }
+
+  // a thinking chunk's text: a string, or a list of text chunks
+  private def chunkText(json: Option[JsValue]): Option[String] =
+    json.collect {
+      case JsString(text) => text
+      case JsArray(parts) => parts.flatMap(p => (p \ "text").asOpt[String]).mkString
+    }
+
   // Some OpenAI-compatible providers (e.g. gpt-oss on Bedrock mantle) can return
   // "content": null in a completion - typically a reasoning-only response where the model
   // decided to output nothing. A null/absent content is read as an empty string instead of
   // failing the whole response parse; the write side is unchanged (content always written).
-  implicit val assistantMessageFormat: Format[AssistantMessage] = (
-    (__ \ "content").formatNullable[String] and
-      (__ \ "name").formatNullable[String] and
-      (__ \ "refusal").formatNullable[String]
-  )(
-    (
-      content,
-      name,
-      refusal
-    ) => AssistantMessage(content.getOrElse(""), name, refusal),
-    (m: AssistantMessage) => (Some(m.content), m.name, m.refusal)
-  )
+  // A list of chunks (Mistral's reasoning turns) is read as its text (`withChunkedContent`).
+  implicit val assistantMessageFormat: Format[AssistantMessage] = {
+    val format: OFormat[AssistantMessage] = (
+      (__ \ "content").formatNullable[String] and
+        (__ \ "name").formatNullable[String] and
+        (__ \ "refusal").formatNullable[String]
+    )(
+      (
+        content,
+        name,
+        refusal
+      ) => AssistantMessage(content.getOrElse(""), name, refusal),
+      (m: AssistantMessage) => (Some(m.content), m.name, m.refusal)
+    )
+    Format(Reads(json => format.reads(withChunkedContent(json))), format)
+  }
 
   implicit val urlCitationFormat: Format[UrlCitation] = Json.format[UrlCitation]
   implicit val annotationFormat: Format[Annotation] = Json.format[Annotation]
   implicit val assistantWebSearchMessageFormat: Format[AssistantWebSearchMessage] =
     Json.format[AssistantWebSearchMessage]
 
-  implicit val assistantToolMessageReads: Reads[AssistantToolMessage] = (
+  implicit val assistantToolMessageReads: Reads[AssistantToolMessage] =
+    Reads(json => assistantToolMessageBaseReads.reads(withChunkedContent(json)))
+
+  private lazy val assistantToolMessageBaseReads: Reads[AssistantToolMessage] = (
     (__ \ "content").readNullable[String] and
       (__ \ "name").readNullable[String] and
       (__ \ "tool_calls").readNullable[JsArray]
@@ -554,8 +608,12 @@ object JsonFormats {
     Json.format[FunctionCallChunkSpec]
   implicit lazy val toolCallChunkSpecFormat: Format[ToolCallChunkSpec] =
     Json.format[ToolCallChunkSpec]
-  implicit lazy val chatChunkMessageFormat: Format[ChunkMessageSpec] =
-    Json.format[ChunkMessageSpec]
+  // a delta whose `content` is a list of chunks (Mistral's reasoning turns) is read as its text
+  // plus `reasoning_content` (`withChunkedContent`)
+  implicit lazy val chatChunkMessageFormat: Format[ChunkMessageSpec] = {
+    val format = Json.format[ChunkMessageSpec]
+    Format(Reads(json => format.reads(withChunkedContent(json))), format)
+  }
   implicit lazy val chatCompletionChoiceChunkInfoFormat
     : Format[ChatCompletionChoiceChunkInfo] =
     Json.format[ChatCompletionChoiceChunkInfo]

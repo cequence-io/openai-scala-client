@@ -6,8 +6,11 @@ import io.cequence.openaiscala.domain.{
   ChatCompletionErrorInterceptData,
   ChatCompletionInterceptData
 }
+import io.cequence.openaiscala.domain.guardrails.{GuardrailAction, GuardrailVerdict}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.service._
+import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
+import io.cequence.openaiscala.service.guardrails.{InputGuardrail, OutputGuardrail}
 import io.cequence.openaiscala.service.adapter.ServiceWrapperTypes._
 import io.cequence.wsclient.service.CloseableService
 import io.cequence.wsclient.service.adapter.ServiceWrapperTypes.CloseableServiceWrapper
@@ -53,6 +56,38 @@ object OpenAIServiceAdapters {
     implicit ec: ExecutionContext
   ): OpenAIChatCompletionService with OpenAIChatCompletionBatchService =
     new ChatCompletionBatchEmulationAdapter(service, warn, maxParallelism, maxRetainedBatches)
+
+  /**
+   * [[OpenAIServiceAdapters.guardrails]] for a service that also streams (e.g. one from
+   * `OpenAIServiceFactory.withStreaming()`, or any provider's streamed `asOpenAI`): the calls
+   * that are not streamed are guarded exactly like there, and so are the streams - the
+   * OpenAI-shaped `createChatCompletionStreamed` and the typed
+   * `createChatToolCompletionStreamed` (with `createChatCompletionStreamedTyped` and
+   * `createChatToolCompletionStreamedWithApprovals` built on it).
+   *
+   * A stream starts only once the input guardrails passed. With output guardrails, its reply
+   * is held back until the stream finishes, checked once, then released - so no unchecked text
+   * reaches the consumer, and a flagged reply can be asked for again (`outputReprompts`), as
+   * without streaming; without output guardrails the stream passes through as it comes. A
+   * block either fails the stream with an
+   * [[io.cequence.openaiscala.OpenAIScalaGuardrailException]] (`Reject`) or answers it with
+   * the block message and finish reason `content_filter` (`Respond`; the typed stream also
+   * carries the verdicts in an `Other("guardrail_block")` chunk).
+   */
+  def guardrailsWithStreaming(
+    input: Seq[InputGuardrail] = Nil,
+    output: Seq[OutputGuardrail] = Nil,
+    onViolation: GuardrailAction = GuardrailAction.Reject,
+    outputReprompts: Int = 0,
+    onVerdict: GuardrailVerdict => Unit = _ => ()
+  )(
+    service: OpenAIChatCompletionStreamedService
+  )(
+    implicit ec: ExecutionContext
+  ): OpenAIChatCompletionStreamedService =
+    new GuardrailsStreamedAdapter(input, output, onViolation, outputReprompts, onVerdict)(
+      service
+    )
 }
 
 trait OpenAIServiceAdapters[S <: CloseableService] extends ServiceAdapters[S] {
@@ -128,6 +163,58 @@ trait OpenAIServiceAdapters[S <: CloseableService] extends ServiceAdapters[S] {
   ): S =
     wrapAndDelegateChatCompletion(
       new ChatCompletionErrorInterceptAdapter(intercept, adjustSettingsForCall)(service)
+    )
+
+  /**
+   * Guards chat completions with guardrails - checks of a call's input before it is made and
+   * of its replies before they are returned. Covers `createChatCompletion` and
+   * `createChatToolCompletion` (so the JSON helpers built on them too); batches and the rest
+   * of `service` pass through unguarded - for a service that streams, see
+   * [[OpenAIServiceAdapters.guardrailsWithStreaming]], which guards its streams too.
+   *
+   * {{{
+   * val guard = ModelGuardrail(guardService, "jev-latest") // or an LLM, e.g. "gpt-5.4-mini"
+   * val guarded = OpenAIServiceAdapters.forFullService.guardrails(
+   *   input = Seq(guard),
+   *   output = Seq(guard)
+   * )(service)
+   * }}}
+   *
+   * The input guardrails run concurrently before the call; when one blocks, the call is not
+   * made. The output guardrails check every non-empty reply (a tool-call-only reply has no
+   * text to check). Every verdict goes to `onVerdict`.
+   *
+   * @param input
+   *   checks of the call's messages, e.g. a
+   *   [[io.cequence.openaiscala.service.guardrails.ModelGuardrail]]
+   * @param output
+   *   checks of each reply
+   * @param onViolation
+   *   `Reject` (default) fails the call with an
+   *   [[io.cequence.openaiscala.OpenAIScalaGuardrailException]]; `Respond` answers with a
+   *   message instead (finish reason `content_filter`, the verdicts in `originalResponse` as a
+   *   [[io.cequence.openaiscala.domain.guardrails.GuardrailBlock]])
+   * @param outputReprompts
+   *   how many times a blocked reply is asked for again - the blocked reply and a note naming
+   *   the flagged checks are appended to the messages - before `onViolation` applies; not when
+   *   the guard was unavailable
+   * @param onVerdict
+   *   gets every verdict, passing or not - e.g. to log or store them (a failing callback is
+   *   logged and ignored)
+   */
+  def guardrails(
+    input: Seq[InputGuardrail] = Nil,
+    output: Seq[OutputGuardrail] = Nil,
+    onViolation: GuardrailAction = GuardrailAction.Reject,
+    outputReprompts: Int = 0,
+    onVerdict: GuardrailVerdict => Unit = _ => ()
+  )(
+    service: S with OpenAIChatCompletionService
+  )(
+    implicit ec: ExecutionContext
+  ): S =
+    wrapAndDelegateChatCompletion(
+      new GuardrailsAdapter(input, output, onViolation, outputReprompts, onVerdict)(service)
     )
 
   def chatCompletionRouter[T <: OpenAIChatCompletionService](

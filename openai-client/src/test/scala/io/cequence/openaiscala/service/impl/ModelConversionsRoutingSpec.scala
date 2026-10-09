@@ -422,4 +422,39 @@ class ModelConversionsRoutingSpec extends AnyWordSpec with Matchers {
       ChatCompletionSettingsConversions.chatToolsForceNoReasoning("gpt-5.8") shouldBe true
     }
   }
+
+  "Mistral's reasoning models" should {
+
+    "take reasoning_effort as a switch - none or high (Large 4, Medium 3.5, Small 4)" in {
+      Seq(
+        "mistral-large-4",
+        "mistral-large-4-0",
+        "mistral-medium-3.5",
+        "magistral-small-latest"
+      ).foreach { model =>
+        effortSent(model, ReasoningEffort.none) shouldBe Some("none")
+        effortSent(model, ReasoningEffort.minimal) shouldBe Some("none")
+        Seq(
+          ReasoningEffort.low,
+          ReasoningEffort.medium,
+          ReasoningEffort.xhigh,
+          ReasoningEffort.max
+        ).foreach(effort => effortSent(model, effort) shouldBe Some("high"))
+        effortSent(model, ReasoningEffort.high) shouldBe Some("high")
+      }
+    }
+
+    "keep GLM 5.3 within low / high / max - it cannot turn reasoning off" in {
+      effortSent("zai-glm-5-3", ReasoningEffort.none) shouldBe Some("low")
+      effortSent("zai-glm-latest", ReasoningEffort.medium) shouldBe Some("high")
+      effortSent("zai-glm-5", ReasoningEffort.xhigh) shouldBe Some("max")
+      effortSent("zai-glm-5-3", ReasoningEffort.max) shouldBe Some("max")
+      // GLM 5.2 takes every value
+      effortSent("zai-glm-5-2", ReasoningEffort.medium) shouldBe Some("medium")
+    }
+
+    "leave Large 3 alone - the API's 400 for any effort is clear" in {
+      effortSent("mistral-large-2512", ReasoningEffort.low) shouldBe Some("low")
+    }
+  }
 }

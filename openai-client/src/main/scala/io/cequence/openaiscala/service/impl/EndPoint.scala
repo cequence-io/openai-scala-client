@@ -31,6 +31,7 @@ object EndPoint {
   case object agent_sessions extends EndPoint("agents/sessions")
   case object agent_environments extends EndPoint("agents/environments")
   case object agent_environment_templates extends EndPoint("agents/environments/templates")
+  case object decisions extends EndPoint
 }
 
 sealed abstract class Param(value: String = "") extends NamedEnumValue(value)

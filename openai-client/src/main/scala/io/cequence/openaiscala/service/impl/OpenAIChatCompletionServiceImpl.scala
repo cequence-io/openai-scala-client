@@ -271,6 +271,8 @@ trait ChatCompletionBodyMaker {
       else if (isGpt6ReasoningAlwaysOn(model)) gpt6(settings) // Astra, 6.1 Sol and newer
       else if (gpt6Minor(model).isDefined) gpt6SolLuna(settings)
       else if (isGpt5SearchApi(model)) gpt5SearchApi(settings)
+      else if (isMistralSwitchReasoning(model)) mistralSwitchReasoning(settings)
+      else if (isMistralGlm(model)) mistralGlm(settings)
       else
         gpt5Minor(model) match {
           case Some(0)                   => gpt5(settings)

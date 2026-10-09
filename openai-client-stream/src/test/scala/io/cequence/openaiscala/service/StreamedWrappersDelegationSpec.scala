@@ -178,4 +178,40 @@ class StreamedWrappersDelegationSpec
       ) shouldBe Seq(Start("conv", "m-converted"), Text("TOOLS=0 MESSAGES=2 CHOICE=-"))
     }
   }
+
+  "the streamed guardrails adapter" should {
+    "pass the typed stream through, with its tools and tool choice" in {
+      val stub = new Stub("guarded") with OpenAIChatCompletionService {
+        override def createChatCompletion(
+          messages: Seq[BaseMessage],
+          settings: CreateChatCompletionSettings
+        ): scala.concurrent.Future[
+          io.cequence.openaiscala.domain.response.ChatCompletionResponse
+        ] =
+          scala.concurrent.Future.failed(new IllegalStateException("not streamed"))
+      }
+
+      val guarded = adapter.OpenAIServiceAdapters.guardrailsWithStreaming(
+        input = Seq(new guardrails.InputGuardrail {
+          override val name = "pass"
+          override def checkInput(messages: Seq[BaseMessage]) =
+            scala.concurrent.Future.successful(
+              io.cequence.openaiscala.domain.guardrails.GuardrailVerdict(
+                name,
+                io.cequence.openaiscala.domain.guardrails.GuardrailStage.Input
+              )
+            )
+        })
+      )(stub)
+
+      collect(
+        guarded.createChatToolCompletionStreamed(
+          messages,
+          Seq(io.cequence.openaiscala.domain.AssistantTool.FunctionTool("fn")),
+          Some("fn"),
+          CreateChatCompletionSettings("m")
+        )
+      ) shouldBe Seq(Start("guarded", "m"), Text("tools=1 messages=1 choice=fn"))
+    }
+  }
 }

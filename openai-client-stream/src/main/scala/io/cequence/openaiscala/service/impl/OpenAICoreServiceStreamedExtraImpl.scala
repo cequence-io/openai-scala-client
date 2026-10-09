@@ -48,8 +48,7 @@ private[service] trait OpenAICoreServiceStreamedExtraImpl
     execJsonStream(
       EndPoint.completions,
       "POST",
-      bodyParams = createBodyParamsForCompletion(prompt, settings, stream = true),
-      maxFrameLength = Some(OpenAIChatCompletionServiceStreamedExtraImpl.maxFrameLength)
+      bodyParams = createBodyParamsForCompletion(prompt, settings, stream = true)
     ).map { (json: JsValue) =>
       inBandStreamError(json).foreach(throw _)
       json.asSafe[TextCompletionResponse]
@@ -108,8 +107,7 @@ private[service] trait OpenAICoreServiceStreamedExtraImpl
       bodyParams = body.fields.toList.map { case (name, value) =>
         Param.Raw(name) -> Some(value)
       },
-      extraHeaders = CreateModelResponseSettings.betaHeaders(settings),
-      maxFrameLength = Some(OpenAIChatCompletionServiceStreamedExtraImpl.maxFrameLength)
+      extraHeaders = CreateModelResponseSettings.betaHeaders(settings)
     ).map { (json: JsValue) =>
       // an error body ({"error": {...}}); streamed `error` events carry the message at the
       // top level and are modeled as ResponseStreamEvent.ErrorEvent

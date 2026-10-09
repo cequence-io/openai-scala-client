@@ -2,6 +2,8 @@ package io.cequence.openaiscala.service
 
 import scala.reflect.runtime.universe._
 
+/** Unused since the JSON schema derivation moved to the `JsonSchemaShape` IR (1.5.0). */
+@deprecated("Unused since 1.5.0 (JsonSchemaShape derives the schemas); to be removed", "1.5.0")
 object ReflectionUtil {
 
   implicit class InfixOp(val typ: Type) {

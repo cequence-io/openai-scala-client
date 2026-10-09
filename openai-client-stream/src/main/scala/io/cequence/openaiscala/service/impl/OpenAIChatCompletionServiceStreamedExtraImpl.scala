@@ -120,8 +120,7 @@ private[service] trait OpenAIChatCompletionServiceStreamedExtraImpl
     execJsonStream(
       EndPoint.chat_completions,
       "POST",
-      bodyParams = bodyParams,
-      maxFrameLength = Some(OpenAIChatCompletionServiceStreamedExtraImpl.maxFrameLength)
+      bodyParams = bodyParams
     ).map { (json: JsValue) =>
       inBandStreamError(json).foreach(throw _)
       json.asSafe[ChatCompletionChunkResponse]
@@ -129,7 +128,11 @@ private[service] trait OpenAIChatCompletionServiceStreamedExtraImpl
 }
 
 object OpenAIChatCompletionServiceStreamedExtraImpl {
-  // SSE frames of gateways / OpenAI-compatible providers (e.g. usage-only chunks with
-  // large tool payloads) can exceed ws-client's 20 000-byte default
-  val maxFrameLength: Int = StreamingConsts.DefaultMaxFrameLength
+
+  /**
+   * The cap on one streamed frame - the shared, configurable
+   * [[StreamingConsts.maxFrameLength]] (applied to every stream by
+   * `ClassifiedStreamingWSClient`).
+   */
+  def maxFrameLength: Int = StreamingConsts.maxFrameLength
 }

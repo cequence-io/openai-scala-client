@@ -29,11 +29,19 @@ object OpenAIErrorCodes {
       case 503 => new OpenAIScalaEngineOverloadedException(errorMessage)
       case 529 => new OpenAIScalaEngineOverloadedException(errorMessage)
       case 400 =>
+        // a token limit is the typed OpenAIScalaTokenCountExceededException - batch splitters
+        // rely on it. The embeddings endpoint has two (live 2026-10-09, text-embedding-3-small):
+        // one input over 8,192 tokens ("Invalid 'input[0]': maximum input length is 8192
+        // tokens.") and a request over 300k tokens in all ({"error": {"message": "Requested
+        // 468160 tokens, max 300000 tokens per request", "type": "max_tokens_per_request", ...})
         if (
           message.contains("Please reduce your prompt; or completion length") ||
           message.contains("Please reduce the length of the messages") ||
           message.contains("maximum input length is") ||
-          message.contains("maximum context length is")
+          message.contains("maximum context length is") ||
+          message.contains("max_tokens_per_request") ||
+          // the Decisions API: "Decision input exceeds the token limit." (live 2026-10-07)
+          message.contains("exceeds the token limit")
         )
           new OpenAIScalaTokenCountExceededException(errorMessage)
         else

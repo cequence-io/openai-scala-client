@@ -12,6 +12,8 @@ import io.cequence.openaiscala.domain.{
   ToolCallChunkSpec
 }
 
+import play.api.libs.json.JsValue
+
 import java.{util => ju}
 
 sealed trait BaseChatCompletionResponse[
@@ -213,7 +215,10 @@ case class ChunkMessageSpec(
   // Grok, Mistral, Fireworks, ...)
   reasoning_content: Option[String] = None,
   // ... or `delta.reasoning` (Groq with reasoning_format=parsed, OpenRouter)
-  reasoning: Option[String] = None
+  reasoning: Option[String] = None,
+  // the chunks of other kinds of a chunked `content` (Mistral's `reference` citations), raw -
+  // the typed stream reports each as `ChatChunk.Other("content.<type>", chunk)`
+  content_chunks: Option[Seq[JsValue]] = None
 ) {
   def reasoningText: Option[String] = reasoning_content.orElse(reasoning)
 }

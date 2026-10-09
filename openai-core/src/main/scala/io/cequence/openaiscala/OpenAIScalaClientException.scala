@@ -1,5 +1,6 @@
 package io.cequence.openaiscala
 
+import io.cequence.openaiscala.domain.guardrails.{GuardrailStage, GuardrailVerdict}
 import io.cequence.openaiscala.domain.response.ChatCompletionResponse
 import io.cequence.wsclient.domain.CequenceWSException
 
@@ -121,4 +122,26 @@ class OpenAIScalaCapacityExceededException(
   cause: Throwable
 ) extends OpenAIScalaClientException(message, cause) {
   def this(message: String) = this(message, null)
+}
+
+/**
+ * A guardrail blocked a chat call - `OpenAIServiceAdapters.guardrails` with the default
+ * `GuardrailAction.Reject`. Carries the blocking verdicts (one per guardrail that blocked);
+ * when a guard could not answer and its guardrail fails closed, the guard's error is the
+ * cause. Deliberately NOT [[Retryable]]: the call was judged, not lost - asking again (with
+ * the same input) is the caller's decision.
+ */
+class OpenAIScalaGuardrailException(
+  val verdicts: Seq[GuardrailVerdict]
+) extends OpenAIScalaClientException(
+      GuardrailVerdict.describe(verdicts),
+      verdicts.flatMap(_.failure).headOption.orNull
+    ) {
+  require(verdicts.nonEmpty, "A guardrail exception needs at least one blocking verdict.")
+
+  /** The first blocking verdict. */
+  def verdict: GuardrailVerdict = verdicts.head
+
+  /** Whether the input or a reply was blocked. */
+  def stage: GuardrailStage = verdict.stage
 }

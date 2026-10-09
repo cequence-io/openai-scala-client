@@ -74,6 +74,10 @@ object ChatChunks {
 
             delta.reasoningText.filter(_.nonEmpty).foreach(t => out += Thinking(t))
             delta.content.filter(_.nonEmpty).foreach(t => out += Text(t))
+            // a chunked content's other kinds (Mistral's `reference` citations), never dropped
+            delta.content_chunks.getOrElse(Nil).foreach { raw =>
+              out += Other(s"content.${(raw \ "type").asOpt[String].getOrElse("chunk")}", raw)
+            }
 
             delta.tool_calls.getOrElse(Nil).foreach { tc =>
               val name = tc.function.flatMap(_.name)

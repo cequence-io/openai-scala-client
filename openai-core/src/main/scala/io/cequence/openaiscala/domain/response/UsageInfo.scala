@@ -50,6 +50,13 @@ object UsageInfo {
         }
     )
 
+  /** Two optional usages added up ([[sum]]) - the one present when the other is absent. */
+  def sumOption(
+    a: Option[UsageInfo],
+    b: Option[UsageInfo]
+  ): Option[UsageInfo] =
+    (a.toList ++ b.toList).reduceOption(sum(_, _))
+
   private def sumOpt(
     a: Option[Int],
     b: Option[Int]

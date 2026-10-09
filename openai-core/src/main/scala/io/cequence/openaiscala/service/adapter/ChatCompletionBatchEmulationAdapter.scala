@@ -15,6 +15,7 @@ import io.cequence.openaiscala.domain.response.{
   ChatToolCompletionResponse
 }
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
+import io.cequence.openaiscala.FutureHelpers.parallelize
 import io.cequence.openaiscala.service.{
   OpenAIChatCompletionBatchService,
   OpenAIChatCompletionService
@@ -110,16 +111,9 @@ private class ChatCompletionBatchEmulationAdapter(
 
     val batchId = s"emulated-batch-${UUID.randomUUID()}"
 
-    // bounded fan-out: process requests in maxParallelism-sized chunks, sequentially chunk by
-    // chunk, while still running each chunk's requests concurrently. Order is preserved.
-    val resultsFuture = requests
-      .grouped(maxParallelism)
-      .foldLeft(Future.successful(Seq.empty[ChatCompletionBatchResultItem])) {
-        case (accF, chunk) =>
-          accF.flatMap { acc =>
-            Future.sequence(chunk.map(runOne(_, settings))).map(acc ++ _)
-          }
-      }
+    // at most maxParallelism requests at once (the next as soon as one finishes), the results
+    // in the requests' order
+    val resultsFuture = parallelize(requests, Some(maxParallelism))(runOne(_, settings))
 
     putResult(batchId, resultsFuture)
 

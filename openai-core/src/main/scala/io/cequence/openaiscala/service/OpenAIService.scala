@@ -53,6 +53,7 @@ trait OpenAIService
     extends OpenAICoreService
     with OpenAIResponsesService
     with OpenAIAgentsService
+    with OpenAIDecisionsService
     with OpenAIGraderService
     with OpenAIChatCompletionBatchService {
 

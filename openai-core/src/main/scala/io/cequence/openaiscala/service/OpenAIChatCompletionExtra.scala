@@ -31,6 +31,7 @@ import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import com.fasterxml.jackson.core.JsonProcessingException
+import java.util.regex.Pattern
 import io.cequence.openaiscala.{
   OpenAIScalaBatchTimeoutException,
   OpenAIScalaClientException,
@@ -727,12 +728,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
 
     val messagesFinal = if (addJsonToPrompt) {
       if (messages.nonEmpty && messages.last.role == ChatRole.User) {
-        val outputJSONFormatAppendix =
-          s"""
-             |
-             |<output_json_schema>
-             |${jsonSchemaString}
-             |</output_json_schema>""".stripMargin
+        val outputJSONFormatAppendix = "\n\n" + jsonSchemaAppendix(jsonSchemaString)
 
         val newUserMessage = messages.last match {
           case x: UserMessage =>
@@ -756,10 +752,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
 
         messages.dropRight(1) :+ newUserMessage
       } else {
-        val outputJSONFormatAppendix =
-          s"""<output_json_schema>
-             |${jsonSchemaString}
-             |</output_json_schema>""".stripMargin
+        val outputJSONFormatAppendix = jsonSchemaAppendix(jsonSchemaString)
 
         logger.debug(
           s"Appended a JSON schema to an empty message:\n${outputJSONFormatAppendix}"
@@ -773,6 +766,62 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
     }
 
     (messagesFinal, settingsFinal)
+  }
+
+  private val JsonSchemaOpenTag = "<output_json_schema>"
+  private val JsonSchemaCloseTag = "</output_json_schema>"
+
+  // the schema as handleOutputJsonSchema appends it to the prompt in JSON-object mode
+  private def jsonSchemaAppendix(jsonSchemaString: String) =
+    s"$JsonSchemaOpenTag\n$jsonSchemaString\n$JsonSchemaCloseTag"
+
+  // a text ending with the appendix: the text before it (null for a message of its own), and
+  // the schema
+  private val EndingWithJsonSchema = (
+    "(?s)(?:(.*)\\n\\n)?" + Pattern.quote(JsonSchemaOpenTag) + "\\n(.*)\\n" +
+      Pattern.quote(JsonSchemaCloseTag) + "\\s*"
+  ).r
+
+  /**
+   * The JSON schema [[handleOutputJsonSchema]] appended to the last user message in
+   * JSON-object mode (for a model not listed under `models-supporting-json-schema`), and the
+   * messages without it - None when the last message carries no such schema. It lets a service
+   * that can only answer with a schema (a decision model's adapter) serve such a request
+   * anyway.
+   */
+  def jsonSchemaFromPrompt(
+    messages: Seq[BaseMessage]
+  ): Option[(Seq[BaseMessage], JsValue)] = {
+    // the text before the appendix (None for a message of the schema alone), and the schema
+    def split(text: String): Option[(Option[String], JsValue)] =
+      text match {
+        case EndingWithJsonSchema(before, schema) =>
+          Try(Json.parse(schema)).toOption.collect { case json: JsObject =>
+            Option(before) -> json
+          }
+        case _ => None
+      }
+
+    messages.lastOption.flatMap {
+      case message: UserMessage =>
+        split(message.content).map { case (before, schema) =>
+          // a message of the schema alone was added for it; one the schema was appended to
+          // keeps its text, even an empty one
+          val others = messages.init
+          before.fold(others)(rest => others :+ message.copy(content = rest)) -> schema
+        }
+
+      case message: UserSeqMessage =>
+        // the appendix was added as a part of its own
+        message.content.lastOption.collect { case TextContent(text) => text }
+          .flatMap(split)
+          .collect {
+            case (before, schema) if before.forall(_.trim.isEmpty) =>
+              (messages.init :+ message.copy(content = message.content.init)) -> schema
+          }
+
+      case _ => None
+    }
   }
 
   def toStrictSchema(jsonSchema: JsonSchemaOrMap): Map[String, Any] = {

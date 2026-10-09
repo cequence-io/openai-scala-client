@@ -1,5 +1,7 @@
 package io.cequence.openaiscala.service
 
+import akka.NotUsed
+import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.wsclient.domain.CequenceWSHttpStatusException
 import io.cequence.wsclient.service.{
@@ -24,11 +26,42 @@ import scala.util.Try
  *     (`StreamErrorMappingConventionSpec` enforces it)
  *   - an error frame inside a 200 stream (`{"error": {...}}`, e.g. a mid-stream overload):
  *     [[inBandStreamError]], with the status taken from the frame ([[InBandStreamErrors]])
+ *
+ * Every JSON stream is framed with the shared cap [[StreamingConsts.maxFrameLength]] (unless a
+ * call passes its own); a frame over the cap fails the stream with an exception naming the
+ * setting ([[StreamingConsts.frameTooLong]]).
  */
 trait ClassifiedStreamingWSClient
     extends WSClientWithEngineOutputStreamingBase[
       WSClientEngine with WSClientOutputStreamExtraAkka
     ] {
+
+  override def execJsonStream(
+    endPoint: PEP,
+    method: String,
+    endPointParam: Option[String],
+    params: Seq[(PT, Option[Any])],
+    bodyParams: Seq[(PT, Option[JsValue])],
+    extraHeaders: Seq[(String, String)],
+    framingDelimiter: String,
+    maxFrameLength: Option[Int],
+    stripPrefix: Option[String],
+    stripSuffix: Option[String]
+  ): Source[JsValue, NotUsed] =
+    super
+      .execJsonStream(
+        endPoint,
+        method,
+        endPointParam,
+        params,
+        bodyParams,
+        extraHeaders,
+        framingDelimiter,
+        maxFrameLength.orElse(Some(StreamingConsts.maxFrameLength)),
+        stripPrefix,
+        stripSuffix
+      )
+      .mapError(StreamingConsts.frameTooLong)
 
   /**
    * The exception for an `{"error": ...}` frame of a stream (None if the frame is not one):

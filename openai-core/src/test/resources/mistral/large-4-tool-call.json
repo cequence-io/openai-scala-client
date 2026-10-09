@@ -1,0 +1,49 @@
+{
+  "id": "dc1aacd540bb4637976e7a9a5138f7dd",
+  "created": 1791406002,
+  "model": "mistral-large-4",
+  "usage": {
+    "prompt_tokens": 67,
+    "total_tokens": 109,
+    "completion_tokens": 42,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "service_tier": "standard"
+  },
+  "object": "chat.completion",
+  "choices": [
+    {
+      "index": 0,
+      "finish_reason": "tool_calls",
+      "message": {
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "id": "cQp4CKPLS",
+            "type": "function",
+            "function": {
+              "name": "get_weather",
+              "arguments": "{\"city\": \"Paris\"}"
+            },
+            "index": 0
+          }
+        ],
+        "content": [
+          {
+            "type": "thinking",
+            "thinking": [
+              {
+                "type": "text",
+                "text": "The user is asking for the weather in Paris now. I should use the get_weather function with \"Paris\" as the city parameter."
+              }
+            ],
+            "closed": true
+          }
+        ]
+      },
+      "logprobs": null,
+      "prompt_logprobs": null
+    }
+  ]
+}

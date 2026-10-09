@@ -799,6 +799,77 @@ object ChatCompletionSettingsConversions {
 
   val o1Preview: SettingsConversion = generic(o1PreviewConversions)
 
+  // Mistral's reasoning models take reasoning_effort as a switch (live 2026-10-07): Large 4 and
+  // every alias of Medium 3.5 and Small 4 (incl. magistral-* and mistral-vibe-cli-*) accept only
+  // `none` and `high` - the other values are 400s; Mistral-hosted GLM 5.3 (zai-glm-5 / -5-3 /
+  // -latest) only `low`, `high` and `max`, so it cannot turn reasoning off (GLM 5.2 takes every
+  // value). Large 4 and GLM 5.3 reason by default, the others do not.
+  private val mistralSwitchReasoningModels = Set(
+    NonOpenAIModelId.mistral_medium_2604,
+    NonOpenAIModelId.mistral_medium_3_5,
+    "mistral-medium-3-5",
+    "mistral-medium-3",
+    "mistral-medium",
+    "mistral-medium-latest",
+    NonOpenAIModelId.magistral_medium_latest,
+    NonOpenAIModelId.mistral_small_2603,
+    "mistral-small-latest",
+    NonOpenAIModelId.magistral_small_latest,
+    NonOpenAIModelId.mistral_vibe_cli_latest,
+    NonOpenAIModelId.mistral_vibe_cli_with_tools,
+    NonOpenAIModelId.mistral_vibe_cli_fast
+  )
+
+  def isMistralSwitchReasoning(model: String): Boolean =
+    model.startsWith(NonOpenAIModelId.mistral_large_4) ||
+      mistralSwitchReasoningModels.contains(model)
+
+  private val mistralGlmModels =
+    Set(NonOpenAIModelId.mistral_zai_glm_5_3, "zai-glm-5", "zai-glm-latest")
+
+  def isMistralGlm(model: String): Boolean = mistralGlmModels.contains(model)
+
+  private def reasoningEffortTo(
+    from: Set[ReasoningEffort],
+    to: ReasoningEffort
+  ): FieldConversionDef = FieldConversionDef(
+    settings => settings.reasoning_effort.exists(from.contains),
+    _.copy(reasoning_effort = Some(to)),
+    Some(settings =>
+      s"${settings.model} model doesn't support reasoning_effort " +
+        s"'${settings.reasoning_effort.getOrElse("")}', converting to '$to'."
+    ),
+    warning = true
+  )
+
+  // reasoning on (`high`) or off (`none`)
+  val mistralSwitchReasoning: SettingsConversion = generic(
+    Seq(
+      reasoningEffortTo(Set(ReasoningEffort.minimal), ReasoningEffort.none),
+      reasoningEffortTo(
+        Set(
+          ReasoningEffort.low,
+          ReasoningEffort.medium,
+          ReasoningEffort.xhigh,
+          ReasoningEffort.max
+        ),
+        ReasoningEffort.high
+      )
+    )
+  )
+
+  // low / high / max - no way to turn reasoning off
+  val mistralGlm: SettingsConversion = generic(
+    Seq(
+      reasoningEffortTo(
+        Set(ReasoningEffort.none, ReasoningEffort.minimal),
+        ReasoningEffort.low
+      ),
+      reasoningEffortTo(Set(ReasoningEffort.medium), ReasoningEffort.high),
+      reasoningEffortTo(Set(ReasoningEffort.xhigh), ReasoningEffort.max)
+    )
+  )
+
   private def groqConversions(
     reasoningFormat: Option[ReasoningFormat] = None
   ) = Seq(

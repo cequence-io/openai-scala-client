@@ -38,6 +38,7 @@ private[service] trait OpenAIServiceImpl
     extends OpenAICoreServiceImpl
     with OpenAIResponseServiceImpl
     with OpenAIAgentsServiceImpl
+    with OpenAIDecisionsServiceImpl
     with OpenAIGraderServiceImpl
     with OpenAIService
     with HandleOpenAIErrorCodes { // TODO: should HandleOpenAIErrorCodes be here?

@@ -30,6 +30,12 @@ object NonOpenAIModelId {
   val claude_opus_4_5 = "claude-opus-4-5"
   val claude_sonnet_4_5_20250929 = "claude-sonnet-4-5-20250929"
   val claude_sonnet_4_5 = "claude-sonnet-4-5"
+  // Haiku 5.5 (released 2026-10-07, live-verified the same day): adaptive thinking ON by default
+  // (thinking `enabled` and `between_tools` are 400s; `disabled` turns it off, at effort high or
+  // below), effort low..max, no sampling params (only temperature 1 / top_p 0.99 pass), no
+  // assistant prefill, forced tool_choice kept (unlike Opus / Sonnet 5.5), json_schema on the
+  // Claude API, no fast mode, 128k max output, 1M context; $0.10 / $0.50 per MTok
+  val claude_haiku_5_5 = "claude-haiku-5-5"
   val claude_haiku_4_5_20251001 = "claude-haiku-4-5-20251001"
   val claude_haiku_4_5 = "claude-haiku-4-5"
   @deprecated(
@@ -119,10 +125,14 @@ object NonOpenAIModelId {
   val bedrock_claude_opus_4_8 = "anthropic.claude-opus-4-8"
   val bedrock_claude_opus_4_7 = "anthropic.claude-opus-4-7"
   val bedrock_claude_opus_4_6_v1 = "anthropic.claude-opus-4-6-v1"
-  // served through the `global.` inference profile only (no `eu.` / `us.` one yet, 2026-09-29)
+  // inference profiles `global.` and, since October 2026, `eu.` / `us.` (2026-09-29 only `global.`)
   val bedrock_claude_sonnet_5_5 = "anthropic.claude-sonnet-5-5"
   val bedrock_claude_sonnet_5 = "anthropic.claude-sonnet-5"
   val bedrock_claude_sonnet_4_6 = "anthropic.claude-sonnet-4-6"
+  // invoked through an inference profile only (`global.` / `eu.` / `us.`; the bare id 400s "on-demand
+  // throughput isn't supported"), output_config.format json_schema accepted on all of them - despite
+  // Anthropic's docs (live 2026-10-07)
+  val bedrock_claude_haiku_5_5 = "anthropic.claude-haiku-5-5"
   val bedrock_claude_haiku_4_5 = "anthropic.claude-haiku-4-5"
   val bedrock_claude_opus_4_5_20251101_v1_0 = "anthropic.claude-opus-4-5-20251101-v1:0"
   val bedrock_claude_sonnet_4_5_20250929_v1_0 = "anthropic.claude-sonnet-4-5-20250929-v1:0"
@@ -322,11 +332,14 @@ object NonOpenAIModelId {
   val meta_llama_3_8b_instruct_to_ai = "meta-llama/Meta-Llama-3-8B-Instruct" // Together AI
   val groq_llama_prompt_guard_2_22m = "meta-llama/llama-prompt-guard-2-22m" // Groq
   val groq_llama_prompt_guard_2_86m = "meta-llama/llama-prompt-guard-2-86m" // Groq
-  // Groq (preview) - Qwen 3.8 / 3.6 27B dense, MiniMax M2.7, and Groq's agentic compound systems
+  // Groq (preview) - Qwen 3.8 / 3.6 27B dense; Groq's agentic compound systems are gone from its
+  // catalog (404 `model_not_found` and absent from `/v1/models` on 2026-10-09)
   val groq_qwen3_8_27b = "qwen/qwen3.8-27b" // Groq
   val groq_qwen3_6_27b = "qwen/qwen3.6-27b" // Groq
+  @deprecated("Gone from Groq's catalog (404 since 2026-10-09)", "1.5.0")
   val groq_compound =
     "groq/compound" // Groq (agentic system with built-in web search / code exec)
+  @deprecated("Gone from Groq's catalog (404 since 2026-10-09)", "1.5.0")
   val groq_compound_mini = "groq/compound-mini" // Groq
   val groq_allam_2_7b = "allam-2-7b" // Groq (Arabic)
   val groq_orpheus_v1_english = "canopylabs/orpheus-v1-english" // Groq (TTS)
@@ -337,6 +350,14 @@ object NonOpenAIModelId {
   val mistral_saba_24b = "mistral-saba-24b" // Groq
   // Mistral - ids as listed by `GET /v1/models` on 2026-09-10; the `*-latest` aliases are
   // rolling pointers
+  // Mistral Large 4 (public preview 2026-10-06, open weights promised for the end of October;
+  // live-verified 2026-10-07): 1.05T parameters / 52B active, vision, 512k context per
+  // /v1/models (1M per the docs), $0.68 / $2.09 per MTok (sale; $1.36 / $4.18 list). Reasons by
+  // default and then answers `content` as a list of thinking / text chunks;
+  // reasoning_effort only `none` / `high`; json_schema, tools (auto / required / named),
+  // images, prefix; `max_completion_tokens` is a 422. `mistral-large-latest` is still Large 3
+  val mistral_large_4 = "mistral-large-4"
+  val mistral_large_4_0 = "mistral-large-4-0" // alias of mistral-large-4
   val mistral_large_2512 = "mistral-large-2512" // Mistral Large 3
   val mistral_medium_2604 = "mistral-medium-2604" // Mistral Medium 3.5
   val mistral_medium_3_5 = "mistral-medium-3.5" // Mistral (alias of mistral-medium-2604)
@@ -1029,11 +1050,25 @@ object NonOpenAIModelId {
   // speaks it: `TypeSafeServiceFactory.liquid` / `liquidAsOpenAI`. `/decisions/v1/models`
   // lists only `d1:free` (live 2026-09-30)
   val liquid_d1_free = "d1:free"
+  // the paid d1 (listed since 2026-09-29), which also reads images (`d1:free` refuses them):
+  // a top-level `images` array, at most 8 and 10,000 32 x 32 patches in all; $0.04 / 1M input
+  // tokens, an image 1.5 tokens per patch for every question (live 2026-10-07)
+  val liquid_d1 = "d1"
+  // Open d1 (2026-10-07): the open-weight d1-3B (text + images) and d1-omni-600M (text +
+  // images or audio, experimental) on a local llama.cpp server - router-mode ids as
+  // `llama-server -hf` caches them (a server of one model ignores the name). Mainline
+  // llama.cpp could not load either yet ("unsupported decision model type: d1", b11476)
+  val liquid_d1_3b_gguf = "LiquidAI/d1-3B-GGUF:Q8_0"
+  val liquid_d1_omni_600m_gguf = "LiquidAI/d1-omni-600M-GGUF:Q8_0"
 
-  // Perplexity's multimodal decision model (2026-10-01), served by its Decisions API (`POST
+  // Perplexity's multimodal decision models, served by its Decisions API (`POST
   // https://api.perplexity.ai/v1/decisions`, the System One question / answer format plus
-  // images in the state) - `TypeSafeServiceFactory.perplexity` / `perplexityAsOpenAI`
-  val pplx_decider_v1_27b = "pplx-decider-v1-27b"
+  // images in the state) - `TypeSafeServiceFactory.perplexity` / `perplexityAsOpenAI`. v1.1
+  // (2026-10-06; open weights under Apache-2.0 on a Qwen3.8-27B backbone, Decision Index 61.56
+  // against v1's 56.4 per its model card, a 250k context) - live 2026-10-08 the two ids answered
+  // byte for byte alike on nine questions, so the API serves one model under both names
+  val pplx_decider_v1_1_27b = "pplx-decider-v1.1-27b"
+  val pplx_decider_v1_27b = "pplx-decider-v1-27b" // 2026-10-01
 
   // decision models on OpenRouter - TypeSafe's protocol at `POST
   // https://openrouter.ai/api/v1/systemone` (typesafe-client's
@@ -1043,6 +1078,17 @@ object NonOpenAIModelId {
   val openrouter_jev_latest = "~typesafe/jev-latest"
   val openrouter_jev_1_13 = "typesafe/jev-1.13"
   val openrouter_liquid_d1 = "liquid/d1"
+  // listed 2026-10-07, not live-verified (no key)
+  val openrouter_pplx_decider_v1_1_27b = "perplexity/pplx-decider-v1.1-27b"
+  val openrouter_pplx_decider_v1_27b = "perplexity/pplx-decider-v1-27b"
+  // live 2026-10-09 through OpenRouter (the same questions as to Jev; see OpenRouterDecisionsSmokeTest)
+  val openrouter_gpt_6_luna_decisions =
+    "openai/gpt-6-luna-decisions" // OpenAI's Decisions API model
+  val openrouter_clef = "cloudflare/clef" // Cloudflare's decision model
+  val openrouter_clef_flash = "cloudflare/clef-flash"
+  val openrouter_solar_decide_flash = "upstage/solar-decide-flash"
+  val openrouter_mercury_decide =
+    "inception/mercury-decide" // the paid tier of the :free one below
   val openrouter_solar_decide = "upstage/solar-decide"
   val openrouter_mercury_decide_free = "inception/mercury-decide:free"
   val openrouter_tev1_4b_experimental = "togethercomputer/tev1-4b-experimental"
