@@ -16,7 +16,7 @@ import scala.util.Try
  *     integer; `Double` / `Float` / `BigDecimal` -> number; `Boolean`; `String` / `Char` /
  *     `UUID` / `URI` / `URL` / `Locale` / `Currency` / `File` / `Path` / the `java.time`
  *     values, `Duration`s and `Period`s (Scala's `Duration` too) -> string; `java.util.Date`
- *     -> string, or a number with `dateAsNumber`
+ * -> string, or a number with `dateAsNumber`
  *   - `Option[T]` / `java.util.Optional[T]` -> `T`, the field not required (OpenAI's strict
  *     mode requires every field, so use `strict = false` with optional fields)
  *   - `Seq` / `List` / `Set` / `Vector` / `Array` / any Scala `Iterable` or Java `Iterable`

@@ -68,6 +68,7 @@ object TypeSafeModelId {
     NonOpenAIModelId.openrouter_gpt_6_luna_decisions
   val openrouter_clef: String = NonOpenAIModelId.openrouter_clef
   val openrouter_clef_flash: String = NonOpenAIModelId.openrouter_clef_flash
+  val openrouter_clef_omni: String = NonOpenAIModelId.openrouter_clef_omni
   val openrouter_solar_decide_flash: String = NonOpenAIModelId.openrouter_solar_decide_flash
   val openrouter_mercury_decide: String = NonOpenAIModelId.openrouter_mercury_decide
   val openrouter_solar_decide: String = NonOpenAIModelId.openrouter_solar_decide

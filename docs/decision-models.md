@@ -546,6 +546,68 @@ with the largest image a host takes), the request id headers, fallback key varia
 `createChatCompletionWithJSON` works with another host's ids too: it then sends the schema in the prompt (JSON-object mode),
 and the adapter reads it back from there.
 
+### Execution time across hosts ⏱️
+
+[DecisionModelsLatencyBenchmark](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/typesafe/DecisionModelsLatencyBenchmark.scala)
+times every decision model this library reaches, side by side: the same review with 1, 3, 10, 20 and 40 questions (a noul,
+a choice and a score, topped up with nouls), timed calls one after another on one shared engine from one box in Europe, 5
+timed calls per cell after an untimed warm-up, every host with a key in the environment (the local llama.cpp preset joins
+when a server answers). Live 2026-10-09, 24 models, 640 calls in 10 minutes - median ms per call (min-max), the fastest at
+10 questions first; `tokens` = the input tokens billed at 1 / 40 questions, so how a host reads the state (once, or once
+per question); `defect` = the first noul's probability (0.9+ on the review's battery defect):
+
+| model | host | 1 q | 3 q | 10 q | 20 q | 40 q | tokens | defect |
+|---|---|---:|---:|---:|---:|---:|---|---:|
+| cloudflare/clef-omni | openrouter | 198 (179-204) | 210 (183-307) | 217 (201-290) | 229 (208-335) | 281 (272-293) | 166 / 3,944 | 0.98 |
+| jev-preview | typesafe | 259 (236-275) | 232 (223-251) | 218 (205-272) | 225 (218-234) | 244 (222-274) | 306 / 1,415 | 0.94 |
+| jev-latest | typesafe | 237 (225-270) | 238 (225-272) | 225 (221-233) | 250 (235-262) | 269 (235-286) | 306 / 1,415 | 0.94 |
+| gpt-6-luna | openai | 145 (117-1,703) | 225 (111-284) | 250 (137-393) | 160 (148-397) | 211 (173-218) | 182 / 6,449 | 1.00 |
+| d1:free | liquid | 584 (215-638) ✗1 | 266 (254-266) ✗3 | 269 (259-309) ✗2 | 339 (325-385) ✗2 | 389 (358-389) ✗3 | 94 / 4,207 | 0.98 |
+| d1 | liquid | 308 (224-697) | 245 (234-420) | 287 (268-406) | 332 (264-484) | 324 (316-372) | 64 / 3,007 | 0.97 |
+| respan/span-01 † | openrouter | 419 (273-447) | 270 (251-293) | 276 (263-386) | 306 (273-313) | 379 (358-499) | 47 / 1,587 | 0.96 |
+| respan/span-01-lite † | openrouter | 287 (253-306) | 267 (250-519) | 277 (262-317) | 281 (272-364) | 350 (307-534) | 47 / 1,587 | 0.96 |
+| typesafe/jev-1.13 | openrouter | 281 (272-350) | 297 (280-331) | 293 (290-300) | 284 (270-309) | 284 (274-321) | 306 / 1,415 | 0.94 |
+| ~typesafe/jev-latest | openrouter | 317 (283-388) | 278 (267-305) | 317 (276-394) | 303 (267-322) | 288 (274-307) | 306 / 1,415 | 0.94 |
+| liquid/d1 | openrouter | 316 (292-409) | 353 (305-429) | 322 (314-382) | 360 (334-513) | 407 (363-525) | 64 / 3,007 | 0.98 |
+| decision-1 (Microsoft-Decision-1) | microsoft-foundry | 283 (258-700) | 274 (188-279) | 341 (335-1,386) | 325 (230-744) | 360 (345-372) | 49 / 1,325 | 0.99 |
+| openai/gpt-6-luna-decisions | openrouter | 195 (175-305) | 283 (178-324) | 358 (216-454) | 454 (221-515) | 576 (277-722) | 182 / 6,449 | 1.00 |
+| inception/mercury-decide:free | openrouter | 273 (267-455) | 384 (328-526) | 358 (351-363) | 537 (444-599) | 729 (433-803) | 87 / 97 | 0.99 |
+| cloudflare/clef-flash | openrouter | 395 (243-465) | 290 (260-558) | 434 (321-459) | 497 (308-1,044) | 518 (441-684) | 169 / 3,986 | 0.89 |
+| pplx-decider-v1.1-27b | perplexity | 290 (274-388) | 299 (294-368) | 440 (365-1,036) | 555 (459-2,840) | 876 (704-2,996) | 116 / 5,093 | 1.00 |
+| perplexity/pplx-decider-v1.1-27b | openrouter | 326 (321-424) | 327 (318-352) | 455 (398-782) | 498 (490-540) | 912 (732-1,752) | 116 / 5,093 | 1.00 |
+| cloudflare/clef | openrouter | 412 (371-438) | 372 (258-724) | 466 (357-587) | 529 (392-746) | 735 (537-850) | 169 / 3,986 | 0.97 |
+| inception/mercury-decide | openrouter | 539 (343-598) | 455 (402-810) | 497 (440-591) | 494 (399-545) | 576 (548-682) | 89 / 97 | 0.99 |
+| togethercomputer/tev1-4b-experimental | openrouter | 271 (260-290) | 325 (272-338) | 544 (507-576) | 983 (956-1,104) | 400 (at most 32 questions) | 117 / - | 0.78 |
+| jaredpalmer/kev-4b | openrouter | 717 (492-757) | 696 (563-1,046) | 622 (547-790) | 735 (634-886) | 726 (637-926) | 41 / 1,125 | 0.70 |
+| upstage/solar-decide-flash | openrouter | 1,090 (485-1,242) | 566 (534-868) | 683 (605-701) | 857 (696-2,780) | 1,809 (1,275-2,256) | 400 / 16,391 | 0.97 |
+| upstage/solar-decide | openrouter | 550 (538-855) | 843 (464-988) | 22,468 (15,256-29,359) | skipped | skipped | 400 / - | 0.98 |
+| respan/span-01-lite:free † | openrouter | 429 free-models-per-day | - | - | - | - | - | - |
+
+† Span-01 judges with noul questions only, over a text state (an object state is a 400 unless it is a conversation trace),
+so its rows are nouls only. ✗n = failed calls in the cell (not timed).
+
+What the table says:
+
+- **The fast tier answers 1-10 questions in 0.2-0.3 s and stays flat to 40**: Cloudflare's Clef Omni (new on OpenRouter
+  that day; a Qwen3-Omni-30B-A3B mixture of experts), Jev (direct, or through OpenRouter at +50-80 ms), OpenAI's Luna
+  directly, Liquid's d1, Span-01 and Microsoft-Decision-1. They read the state once: 20-35 input tokens per extra
+  question (Kev 1,125, Microsoft-Decision-1 1,325, Jev 1,415 and Span-01 1,587 tokens at 40 questions), except Luna,
+  which bills the input per question (6,449 tokens at 40 - ~14x Jev's cost there) and still answers in ~0.2 s.
+- **The others slow with the question count**: Perplexity's decider 0.29 → 0.88 s (direct and through OpenRouter alike),
+  Luna through OpenRouter 0.20 → 0.58 s, Mercury Decide 0.27 → 0.73 s (it bills the state only: 97 tokens at 40
+  questions), Clef 0.41 → 0.74 s, Clef Flash 0.40 → 0.52 s, Tev1 0.27 → 0.98 s at 20 questions (it takes at most 32 per
+  request), Solar Decide Flash 1.1 → 1.8 s (~400 tokens per question), and Solar Decide ~2 s PER question - 22 s at 10,
+  so the run skipped its larger counts (`budget=15`).
+- **Free tiers throttle**: Liquid's `d1:free` answered 429 "receiving too many requests" on 11 of 30 calls paced 250 ms
+  apart (the paid `d1` never failed), and OpenRouter's `span-01-lite:free` hit the free-models-per-day cap (Mercury
+  Decide's free tier had used it up).
+- A host's own API is as fast as, or faster than, OpenRouter's relay: Jev 225 vs 293-317 ms, d1 287 vs 322 ms, Luna 250
+  vs 358 ms, Perplexity 440 vs 455 ms at 10 questions.
+
+The box, the sequence and the hour all matter (Perplexity's 20-question cell has a 2.8 s outlier, Luna's first call took
+1.7 s); run it again with your own questions before choosing - `runs=`, `counts=`, `only=`, `models=`, `budget=` and
+`pace=` are its arguments.
+
 **OpenRouter's decision models** (live 2026-10-02, `examples/typesafe/OpenRouterDecisionsSmokeTest`): the docs' review example,
 and the median latency per call by the number of questions:
 

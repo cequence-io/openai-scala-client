@@ -1092,6 +1092,10 @@ object NonOpenAIModelId {
     "openai/gpt-6-luna-decisions" // OpenAI's Decisions API model
   val openrouter_clef = "cloudflare/clef" // Cloudflare's decision model
   val openrouter_clef_flash = "cloudflare/clef-flash"
+  // Clef Omni (listed 2026-10-09): the mixture-of-experts member of the family, a Qwen3-Omni-30B-A3B
+  // fine-tune (3B active), text + image, $0.15 / 1M input tokens - the fastest decision model on
+  // OpenRouter that day (~0.2-0.3 s at 1-40 questions, DecisionModelsLatencyBenchmark)
+  val openrouter_clef_omni = "cloudflare/clef-omni"
   val openrouter_solar_decide_flash = "upstage/solar-decide-flash"
   val openrouter_mercury_decide =
     "inception/mercury-decide" // the paid tier of the :free one below

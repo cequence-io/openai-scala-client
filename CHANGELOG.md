@@ -92,7 +92,15 @@ changed); ws-client stays at 1.1.1.
   `togethercomputer/tev1-4b-experimental`, `jaredpalmer/kev-4b`, `respan/span-01` (+ `-lite`, `-lite:free`; noul
   questions only) and, live 2026-10-09, the two `perplexity/pplx-decider-*` ids, `openai/gpt-6-luna-decisions`,
   `cloudflare/clef` / `clef-flash`, `upstage/solar-decide-flash` and `inception/mercury-decide` - 16 decision models,
-  all answering the same review alike.
+  all answering the same review alike; `cloudflare/clef-omni` (a Qwen3-Omni-30B-A3B mixture of experts, text + image)
+  joined the list later that day.
+- **`examples/typesafe/DecisionModelsLatencyBenchmark`**: the execution time of every decision model this library reaches,
+  side by side - the same review with 1 to 40 questions on one shared engine, every host with a key (TypeSafe, Liquid,
+  Perplexity, OpenAI, Microsoft Foundry, OpenRouter's whole decision list, a local llama.cpp), a row per model with the
+  median per call, the input tokens billed and a sanity answer; the table and its reading are in `docs/decision-models.md`
+  (live 2026-10-09, 24 models: Clef Omni, Jev, Luna, d1, Span-01 and Microsoft-Decision-1 answer 1-10 questions in
+  0.2-0.3 s and stay flat to 40; Perplexity's decider, Mercury, Clef, Tev1 and the Solar Decides slow with the count;
+  Luna bills the input per question).
 - **Microsoft-Decision-1** (Microsoft Foundry, public preview 2026-10-09; Qwen3.5-9B base, $0.042 / 1M input tokens;
   live-verified the same day): TypeSafe's protocol at `<your Foundry resource>/providers/microsoft/v1/systemone` with a
   `Bearer` key - `DecisionProviderSettings.microsoftFoundry(endpoint, deployment)`,
