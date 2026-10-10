@@ -4,7 +4,7 @@
 
 Decision models give typed answers - yes/no probabilities, choices, scores - with calibrated probabilities, in a few
 hundred milliseconds. OpenAI's Decisions API is part of the full `OpenAIService`; TypeSafe AI's Jev, Liquid AI's d1,
-Perplexity's decider, Microsoft-Decision-1, OpenRouter's catalogue and a local llama.cpp are served through the `typesafe-client` module,
+Perplexity's decider, Microsoft-Decision-1, OpenRouter's catalogue, Vercel AI Gateway and a local llama.cpp are served through the `typesafe-client` module,
 which also serves either API on either host, typed decisions (`decide[T]`) and re-ranking.
 
 ## OpenAI Decisions API (gpt-6-luna) 🔥
@@ -100,7 +100,9 @@ evaluated independently in one call. Requires `TYPESAFE_API_KEY` (optional `TYPE
 ```
 
 Every response carries token usage (`usage.input_tokens` is what you are billed for, `output_tokens` is currently free and
-grows with the number of questions). Model names come from `typeSafe.listModels`; `TypeSafeServiceFactory.withEngine(engine)`
+grows with the number of questions). Model names come from `typeSafe.listModels`, or as constants from `DecisionModelId`
+(every decision model the module reaches, `jev_latest` to `vercel_laya_free`; `TypeSafeModelId`, its 1.4.0 name, still
+compiles as a deprecated alias of it); `TypeSafeServiceFactory.withEngine(engine)`
 shares one engine with the other providers. The wire format is pinned against TypeSafe's published OpenAPI spec and the
 official Python SDK's fixtures in the module's tests, and `examples/typesafe/TypeSafeSmokeTest` runs every question shape,
 JSON states, parallel calls, the retry adapter and the error mapping against the live API (`jev-latest` resolves to a dated

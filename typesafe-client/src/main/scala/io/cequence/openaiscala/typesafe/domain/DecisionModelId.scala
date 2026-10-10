@@ -3,17 +3,17 @@ package io.cequence.openaiscala.typesafe.domain
 import io.cequence.openaiscala.domain.NonOpenAIModelId
 
 /**
- * The ids of the decision models the typesafe-client reaches - TypeSafe's Jev, Liquid AI's d1,
- * Perplexity's decider, Microsoft-Decision-1 and OpenRouter's decision list (the same
- * constants as the decision-model section of [[NonOpenAIModelId]]); `TypeSafeModelId` until
- * 1.5.0, which keeps that name as a deprecated alias. Jev is the first System One model;
- * `jev-latest` is the alias the official SDKs default to and resolves to a dated build (the
- * response's `model` names it). TypeSafe's `GET /v1/models` lists what a given account can use
- *   - the dated builds themselves are not listed but are accepted by name (2026-09-17:
- *     `jev-latest` and `jev-preview` both -> `jev-1.13.0`; the `jev-1.12` the cookbooks pinned
- *     is already gone). Jev's pricing is $0.042 per 1M input tokens, output free; the state
- *     and the questions share an input limit of ~32k tokens (~150k characters) - see the
- *     TypeSafe AI section of [[NonOpenAIModelId]].
+ * The ids of every decision model the typesafe-client reaches: TypeSafe's Jev, Liquid AI's d1,
+ * Perplexity's decider, Microsoft-Decision-1, and the decision lists of OpenRouter and Vercel
+ * AI Gateway (the same constants as the decision-model section of [[NonOpenAIModelId]]). Its
+ * name until 1.5.0, `TypeSafeModelId`, is a deprecated alias of this object. Jev is the first
+ * System One model; `jev-latest` is the alias the official SDKs default to and resolves to a
+ * dated build (the response's `model` names it). TypeSafe's `GET /v1/models` lists what a
+ * given account can use; the dated builds themselves are not listed but are accepted by name
+ * (2026-09-17: `jev-latest` and `jev-preview` both resolved to `jev-1.13.0`; the `jev-1.12`
+ * the cookbooks pinned is already gone). Jev's pricing is $0.042 per 1M input tokens, output
+ * free; the state and the questions share an input limit of ~32k tokens (~150k characters),
+ * see the TypeSafe AI section of [[NonOpenAIModelId]].
  */
 object DecisionModelId {
   val jev_latest: String = NonOpenAIModelId.jev_latest

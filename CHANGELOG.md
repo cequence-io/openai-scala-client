@@ -3,8 +3,8 @@
 ## 1.5.0 (unreleased)
 
 The 2026-10-01 - 2026-10-09 work since v1.4.0 (2026-09-30): OpenAI's Decisions API (natively and as a
-decision provider), decision models from Perplexity, Liquid AI (with images), OpenRouter, llama.cpp and Microsoft Foundry
-(Microsoft-Decision-1) behind one `DecisionProvider` abstraction with their execution time compared side by side, typed decisions and re-ranking on any decision model, a guardrails adapter, JSON schemas
+decision provider), decision models from Perplexity, Liquid AI (with images), OpenRouter, llama.cpp, Microsoft Foundry
+(Microsoft-Decision-1) and Vercel AI Gateway behind one `DecisionProvider` abstraction with their execution time compared side by side, typed decisions and re-ranking on any decision model, a guardrails adapter, JSON schemas
 derived from case classes by one shared IR on Scala 2 and 3, Claude Haiku 5.5 with the Anthropic access modes re-verified,
 Mistral Large 4 with its chunked content and citations, Perplexity's decider v1.1, a 32 MiB stream frame cap (1.4.0:
 1 MiB) and a server-sent-events decoder built for large events. Everything below is live-verified against the providers
@@ -27,9 +27,7 @@ changed); ws-client stays at 1.1.1.
 - positional pattern matches on `ChunkMessageSpec` (new `content_chunks`) and on the TypeSafe `ModelMetadata` (new
   `input_modalities`), both defaulted; an exhaustive match on the TypeSafe `DecisionModelListing` needs a case for the
   new `AzureDeployments` (Microsoft Foundry's deployment list);
-- TypeSafe: `TypeSafeModelId` is `DecisionModelId` now (its constants cover every decision host: Jev, d1, Perplexity's
-  decider, Microsoft-Decision-1, OpenRouter's list) - the old name stays as a deprecated alias of the same object;
-  `SchemaQuestions.MaxRangeLevels` (32) is gone - `ScoreQuestion.MaxLevels` (10) is the real limit;
+- TypeSafe: `SchemaQuestions.MaxRangeLevels` (32) is gone - `ScoreQuestion.MaxLevels` (10) is the real limit;
   `TypeSafeServiceImpl` and `OpenAITypeSafeChatCompletionService` are built from a `DecisionProvider` / with an
   `imageInput` flag now (use `TypeSafeServiceFactory`, which did not change for the existing calls);
 - `TypeSafeServiceAdapters.retry` over a factory service returns a `RetryTypeSafeService with OpenAIDecisionsService`
@@ -118,6 +116,10 @@ changed); ws-client stays at 1.1.1.
   lists from Azure's deployment list (`DecisionModelListing.AzureDeployments`). Limits: 255 questions, 2-255 options,
   2-10 levels, 64k tokens per request (a 422, now a `TypeSafeScalaTokenCountExceededException`), 1 MiB bodies, no
   images. `examples/typesafe/MicrosoftDecision1SmokeTest` (10 sections) passed; pinned against a local server.
+- **`DecisionModelId`** - the ids of every decision model the typesafe-client reaches (Jev, d1, Perplexity's decider,
+  Microsoft-Decision-1, OpenRouter's and Vercel AI Gateway's lists), the same constants as `NonOpenAIModelId`'s
+  decision-model section. `TypeSafeModelId`, its name in 1.4.0, is a deprecated alias of the same object, so 1.4.0
+  code compiles unchanged (with a deprecation warning pointing to `DecisionModelId`).
 - **Vercel AI Gateway** (`DecisionProviderSettings.vercel`, `AI_GATEWAY_API_KEY`; `DecisionModelId.vercel_*`): its
   TypeSafe-compatible API at `https://ai-gateway.vercel.sh/typesafe/v1/systemone` with TypeSafe's model listing -
   `typesafe-ai/jev`, `liquid/d1`, `microsoft/microsoft-decision-1`, `openai/gpt-6-luna-decisions`,
@@ -220,6 +222,8 @@ schema per type (`decide[T]`). Value descriptions reach a decision model as per-
 
 ### Deprecated
 
+- `TypeSafeModelId` (typesafe-client) - renamed to `DecisionModelId`, whose constants cover every decision host; the old
+  name is an alias of the same object, to be removed in a later release.
 - `NonOpenAIModelId.groq_compound` / `groq_compound_mini` - gone from Groq's catalog (404 since 2026-10-09).
 - `ReflectionUtil` (Scala 2 and 3) - unused since the IR rewrite, to be removed.
 - `MessageConversions`' reasoning helpers now point at `ChunkMessageSpec.reasoningText` / `ChatChunk.Thinking` (a sync

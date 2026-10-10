@@ -16,6 +16,7 @@ class DecisionModelIdSpec extends AnyWordSpec with Matchers {
       DecisionModelId.pplx_decider_v1_1_27b shouldBe NonOpenAIModelId.pplx_decider_v1_1_27b
       DecisionModelId.microsoft_decision_1 shouldBe NonOpenAIModelId.microsoft_decision_1
       DecisionModelId.openrouter_clef_omni shouldBe NonOpenAIModelId.openrouter_clef_omni
+      DecisionModelId.vercel_laya_free shouldBe NonOpenAIModelId.vercel_laya_free
     }
 
     "keep its 1.4.0 name as a deprecated alias of the same object" in {
