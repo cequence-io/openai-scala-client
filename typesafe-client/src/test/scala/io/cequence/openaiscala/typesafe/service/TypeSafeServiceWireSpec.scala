@@ -847,6 +847,61 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       openRouter.close()
     }
 
+    // recorded against ai-gateway.vercel.sh/typesafe on 2026-10-10
+    val vercelResponse =
+      """{"model":"convaiinnovations/laya-free","answers":{"refund":{"type":"noul","noul":0.9504}},"usage":{"input_tokens":44,"output_tokens":0},"provider_metadata":{"typesafe":{"confidence":{}},"gateway":{"routing":{"originalModelId":"convaiinnovations/laya-free","resolvedProvider":"boundless","canonicalSlug":"convaiinnovations/laya","finalProvider":"boundless"},"cost":"0","marketCost":"0","surchargeCost":"0","gatewayCost":"0","generationId":"gen_x"}}}"""
+
+    val vercelModels =
+      """{"models":[
+        |  {"name":"convaiinnovations/laya","description":"Laya is Convai Innovations' System One evaluation model for fast, structured decisions.","release_date":"2026-10-01"},
+        |  {"name":"liquid/d1","description":"Liquid d1 is a decision model for classification, routing, and scoring.","release_date":"2026-09-29"},
+        |  {"name":"jev","description":"TypeSafe AI System One decision model.","release_date":"2026-09-15"}
+        |]}""".stripMargin
+
+    "serve Vercel AI Gateway - /typesafe/v1/systemone, the Bearer key, x-vercel-id, its listing and flat errors" in {
+      // recorded against the gateway on 2026-10-10 (a free-tier team, Laya)
+      val vercel = TypeSafeServiceFactory.withEngine(
+        engine,
+        DecisionProviderSettings.vercel.copy(baseUrl = baseUrl + "/typesafe"),
+        "vck_k"
+      )
+      DecisionProviderSettings.vercel.readsImages shouldBe true
+      val refund = Map("refund" -> NoulQuestion("Does the customer ask for money back?"))
+
+      respond(
+        200,
+        vercelResponse,
+        Map("x-vercel-id" -> "arn1::fra1::x8v95-1791670212019-a35b13e95cba")
+      )
+      val response =
+        await(vercel.systemOne("I was charged twice and want my money back.", refund))
+      received.get.path shouldBe "/typesafe/v1/systemone"
+      received.get.headers("authorization") shouldBe "Bearer vck_k"
+      (Json.parse(received.get.body) \ "model").as[String] shouldBe DecisionModelId.vercel_jev
+      response.model shouldBe "convaiinnovations/laya-free"
+      response.noul("refund").noul shouldBe 0.9504
+      response.usage.input_tokens shouldBe Some(44)
+      response.requestId shouldBe Some("arn1::fra1::x8v95-1791670212019-a35b13e95cba")
+
+      // TypeSafe's listing shape, at the gateway's /typesafe prefix
+      respond(200, vercelModels)
+      await(vercel.listModels).map(_.name) shouldBe
+        Seq("convaiinnovations/laya", "liquid/d1", "jev")
+      received.get.path shouldBe "/typesafe/v1/models"
+
+      // the gateway's own validation answers in a flat shape, the error type kept
+      respond(
+        400,
+        """{"message":"questions.s.criteria: Too small: expected array to have >=2 items","error_type":"invalid_request"}"""
+      )
+      val tooFew = the[TypeSafeScalaInvalidRequestException].thrownBy(
+        await(vercel.systemOne("x", Map("s" -> ScoreQuestion("How much?", "one"))))
+      )
+      tooFew.errorType shouldBe Some("invalid_request")
+      tooFew.getMessage should include("Too small")
+      vercel.close()
+    }
+
     "take a host of its own - path, question cap, fixed models and request id header" in {
       val custom = TypeSafeServiceFactory.withEngine(
         engine,

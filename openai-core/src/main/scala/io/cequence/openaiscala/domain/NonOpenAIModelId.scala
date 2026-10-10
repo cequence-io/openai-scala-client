@@ -1101,6 +1101,17 @@ object NonOpenAIModelId {
   // $0.04 / 1M) - both text only
   val openrouter_microsoft_decision_1 = "microsoft/microsoft-decision-1"
   val openrouter_drex_v1_5 = "nace-ai/drex-v1.5"
+
+  // decision models on Vercel AI Gateway - TypeSafe's protocol at `POST
+  // https://ai-gateway.vercel.sh/typesafe/v1/systemone` (typesafe-client's
+  // `DecisionProviderSettings.vercel`), listed by `GET /typesafe/v1/models`; live 2026-10-10: a
+  // free-tier team gets Laya only (5 requests per minute), the others need paid credits
+  val vercel_jev = "typesafe-ai/jev" // the bare `jev` works too
+  val vercel_liquid_d1 = "liquid/d1" // text + images
+  val vercel_microsoft_decision_1 = "microsoft/microsoft-decision-1"
+  val vercel_gpt_6_luna_decisions = "openai/gpt-6-luna-decisions"
+  val vercel_laya = "convaiinnovations/laya" // Convai Innovations' Laya, 8k context
+  val vercel_laya_free = "convaiinnovations/laya-free"
   val openrouter_solar_decide_flash = "upstage/solar-decide-flash"
   val openrouter_mercury_decide =
     "inception/mercury-decide" // the paid tier of the :free one below

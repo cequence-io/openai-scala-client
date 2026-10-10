@@ -71,7 +71,7 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 ⁵ 🔥 New in 1.4.0. Perplexity's Sonar chat completions retired on 2026-09-27 (see [Services and providers](docs/providers.md)).
 
 **Decision models** give typed answers with calibrated probabilities. Two APIs serve them - TypeSafe AI's System One
-(`TypeSafeService.systemOne`: Jev, Liquid's d1, Perplexity's decider, Microsoft-Decision-1, OpenRouter, llama.cpp) and OpenAI's Decisions API
+(`TypeSafeService.systemOne`: Jev, Liquid's d1, Perplexity's decider, Microsoft-Decision-1, OpenRouter, Vercel AI Gateway, llama.cpp) and OpenAI's Decisions API
 (`OpenAIService.createDecision`: `gpt-6-luna`) - and the client speaks either interface to either host: `asOpenAIDecisions`
 puts OpenAI's interface on a System One host, `DecisionProviderSettings.openAI` runs the System One routines (typed
 decisions, re-ranking, the `json_schema`-only chat adapter) on OpenAI's. No tools or batch. See
@@ -85,6 +85,7 @@ decisions, re-ranking, the `json_schema`-only chat adapter) on OpenAI's. No tool
 | [Perplexity Decisions](https://docs.perplexity.ai/docs/decisions/quickstart) 🔥 | pplx-decider-v1.1-27b / v1-27b, images too | `perplexityAsOpenAI()` |
 | [OpenRouter](https://openrouter.ai/models?output_modalities=decisions) 🔥 | Jev, d1, Perplexity's deciders, OpenAI's Luna, Microsoft-Decision-1, Cloudflare's Clef (+ Flash, Omni), Solar Decide, Mercury Decide, Tev1, Kev 4B, NACE's Drex, Span-01; images too | `asOpenAI(DecisionProviderSettings.openRouter)` |
 | [OpenAI Decisions](https://developers.openai.com/api/docs/guides/decisions) 🔥 | gpt-6-luna, images too | `asOpenAI(DecisionProviderSettings.openAI)` |
+| [Vercel AI Gateway](https://vercel.com/docs/ai-gateway/sdks-and-apis/typesafe) 🔥 | Jev, d1 (images too), Microsoft-Decision-1, OpenAI's Luna, Convai's Laya (free tier) | `asOpenAI(DecisionProviderSettings.vercel)` |
 | [Microsoft Foundry](https://ai.azure.com/catalog/models/microsoft-decision-1) 🔥 | Microsoft-Decision-1 (public preview; your own deployment in a Foundry resource) | `microsoftFoundryAsOpenAI()` |
 
 🔥 New in 1.5.0 (Liquid AI's d1 since 1.4.0, its images since 1.5.0).

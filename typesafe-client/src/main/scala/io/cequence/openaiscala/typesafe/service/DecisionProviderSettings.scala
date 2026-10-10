@@ -214,4 +214,37 @@ object DecisionProviderSettings {
     requestIdHeaders = Seq("x-generation-id"),
     name = Some("openrouter")
   )
+
+  /**
+   * Vercel AI Gateway (`AI_GATEWAY_API_KEY` - an AI Gateway key, `vck_...`, from the team's AI
+   * Gateway > API keys; a Vercel account token is a 401): TypeSafe's protocol at
+   * `https://ai-gateway.vercel.sh/typesafe/` - `POST v1/systemone`, the models at `GET
+   * v1/models` in TypeSafe's shape (no input modalities): `typesafe-ai/jev` (the bare `jev`
+   * too), `liquid/d1` (text + images), `microsoft/microsoft-decision-1`,
+   * `openai/gpt-6-luna-decisions` and Convai Innovations' `convaiinnovations/laya` /
+   * `laya-free`, billed through the gateway (`provider_metadata.gateway` in the response: the
+   * routing, the cost, a `generationId`); the request id is the `x-vercel-id` header. Live
+   * 2026-10-10 on a free-tier team (a card on file unlocks the free credits): Laya answers the
+   * review in 0.5-1.4 s at 5 requests per minute per region (429 `rate_limit_exceeded` "Retry
+   * after 46s"), every other model is a 403 `no_providers_available` "Free tier users do not
+   * have access to this model" until credits are bought - so d1's images are not verified
+   * here; the gateway takes an `image_url` part in the state array, as its AI SDK sends them
+   * ([[DecisionImages.InState]]). It validates before routing (400 `invalid_request` in a flat
+   * `{"message", "error_type"}` body): 2-10 score levels, at most 255 options, a string /
+   * object / array state; an unknown model is a 404 `model_not_found`; an unknown top-level
+   * field is ignored. A provider's own refusal comes back as a 422 / 413 `AI_APICallError` -
+   * Laya (8k context) took 40 questions and answered 200 of them, or a 20k-token state, with
+   * "That request is too large for this model" (a
+   * [[TypeSafeScalaTokenCountExceededException]]), and a noul without instructions with "That
+   * request was rejected". Its decision fallbacks (`providerOptions.gateway.models`) are the
+   * gateway's own extension, not sent here.
+   */
+  val vercel: DecisionProvider = DecisionProvider(
+    "https://ai-gateway.vercel.sh/typesafe/",
+    "AI_GATEWAY_API_KEY",
+    DecisionModelId.vercel_jev,
+    images = DecisionImages.InState,
+    requestIdHeaders = Seq("x-vercel-id"),
+    name = Some("vercel")
+  )
 }

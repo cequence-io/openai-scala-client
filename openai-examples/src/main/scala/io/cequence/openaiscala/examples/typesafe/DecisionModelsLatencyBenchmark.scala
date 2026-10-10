@@ -28,7 +28,8 @@ import scala.util.control.NonFatal
  * (`LIQUID_API_KEY`), Perplexity (`PERPLEXITY_API_KEY` / `SONAR_API_KEY`), OpenAI
  * (`OPENAI_SCALA_CLIENT_API_KEY`), Microsoft Foundry (`FOUNDRY_API_KEY` + `FOUNDRY_BASE_URL`,
  * the deployments of `FOUNDRY_MODEL`'s model), OpenRouter (`OPENROUTER_API_KEY`, every
- * decision model it lists) and a local llama.cpp server when one answers at
+ * decision model it lists), Vercel AI Gateway (`AI_GATEWAY_API_KEY`, its decision list, paced
+ * to a free tier's 5 requests per minute) and a local llama.cpp server when one answers at
  * `http://127.0.0.1:8080/` - the others are reported as skipped. Arguments: `runs=<n>` timed
  * calls per cell (5, plus an untimed warm-up), `counts=1,3,10,20,40`, `only=<host,...>`,
  * `models=<substring,...>`, `budget=<seconds>` - a model whose call took longer skips the
@@ -177,6 +178,14 @@ object DecisionModelsLatencyBenchmark {
         Some(DecisionProviderSettings.openRouter),
         env("OPENROUTER_API_KEY"),
         listed
+      ),
+      Host(
+        "vercel",
+        Some(DecisionProviderSettings.vercel),
+        env("AI_GATEWAY_API_KEY"),
+        listed,
+        // a free-tier team gets 5 requests per minute (pace=0 with paid credits)
+        paceMs = Some(13000L)
       ),
       Host(
         "llama.cpp",

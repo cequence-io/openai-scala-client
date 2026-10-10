@@ -265,6 +265,65 @@ class HandleTypeSafeErrorCodesSpec extends AnyWordSpec with Matchers {
     }
   }
 
+  "Vercel AI Gateway's error bodies (its own checks flat, the gateway's in OpenAI's shape)" should {
+    // collected against ai-gateway.vercel.sh/typesafe on 2026-10-10
+
+    "be classified by status, carrying the flat error_type or the gateway's type" in {
+      val badKey = toException(
+        401,
+        """{"message":"Authentication failed","error_type":"authentication_error"}"""
+      )
+      badKey shouldBe a[TypeSafeScalaUnauthorizedException]
+      badKey.errorType shouldBe Some("authentication_error")
+      badKey.getMessage shouldBe "Code 401 : Authentication failed"
+
+      val tooFew = toException(
+        400,
+        """{"message":"questions.s.criteria: Too small: expected array to have >=2 items","error_type":"invalid_request"}"""
+      )
+      tooFew shouldBe a[TypeSafeScalaInvalidRequestException]
+      tooFew.errorType shouldBe Some("invalid_request")
+
+      val paidTier = toException(
+        403,
+        """{"error":{"message":"Free tier users do not have access to this model. Upgrade to paid credits at https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai%3Fmodal%3Dtop-up for unrestricted access.","type":"no_providers_available","param":{"error":"Free tier users do not have access to this model."}}}"""
+      )
+      paidTier shouldBe a[TypeSafeScalaUnauthorizedException]
+      paidTier.errorType shouldBe Some("no_providers_available")
+
+      val unknownModel = toException(
+        404,
+        """{"error":{"message":"Model 'nope/nope' not found","type":"model_not_found","param":{"modelId":"nope/nope"}}}"""
+      )
+      unknownModel shouldBe a[TypeSafeScalaNotFoundException]
+      unknownModel.errorType shouldBe Some("model_not_found")
+
+      val throttled = toException(
+        429,
+        """{"error":{"message":"Rate limit exceeded for convaiinnovations/laya for provider boundless: this team's limit of 5 requests per minute (per region) was reached. Retry after 46s.","type":"rate_limit_exceeded","param":{"error":"Rate limit exceeded"}}}"""
+      )
+      throttled shouldBe a[TypeSafeScalaRateLimitException]
+      throttled.errorType shouldBe Some("rate_limit_exceeded")
+      throttled.getMessage should include("Retry after 46s")
+
+      // a model's context (Laya's 8k: 200 questions, a 20k-token state) is a 413 relayed from
+      // the provider - a token-count exception, so re-ranking splits on it
+      val tooLarge = toException(
+        413,
+        """{"error":{"message":"That request is too large for this model. Reduce the input or requested output and try again.","type":"AI_APICallError","param":{"statusCode":413,"name":"AI_APICallError"}}}"""
+      )
+      tooLarge shouldBe a[TypeSafeScalaTokenCountExceededException]
+      tooLarge.errorType shouldBe Some("AI_APICallError")
+
+      // a provider-side rejection of the request's shape (a noul without instructions)
+      val rejected = toException(
+        422,
+        """{"error":{"message":"That request was rejected. Check it against the model's supported inputs and limits. If it meets those requirements, contact support.","type":"AI_APICallError"}}"""
+      )
+      rejected shouldBe a[TypeSafeScalaInvalidRequestException]
+    }
+  }
+
   "extractMessage / errorType" should {
 
     "unpack the shapes the official SDK unpacks" in {

@@ -118,6 +118,13 @@ changed); ws-client stays at 1.1.1.
   lists from Azure's deployment list (`DecisionModelListing.AzureDeployments`). Limits: 255 questions, 2-255 options,
   2-10 levels, 64k tokens per request (a 422, now a `TypeSafeScalaTokenCountExceededException`), 1 MiB bodies, no
   images. `examples/typesafe/MicrosoftDecision1SmokeTest` (10 sections) passed; pinned against a local server.
+- **Vercel AI Gateway** (`DecisionProviderSettings.vercel`, `AI_GATEWAY_API_KEY`; `DecisionModelId.vercel_*`): its
+  TypeSafe-compatible API at `https://ai-gateway.vercel.sh/typesafe/v1/systemone` with TypeSafe's model listing -
+  `typesafe-ai/jev`, `liquid/d1`, `microsoft/microsoft-decision-1`, `openai/gpt-6-luna-decisions`,
+  `convaiinnovations/laya` / `laya-free` - billed through the gateway (`provider_metadata.gateway` in the response, the
+  `x-vercel-id` request id); images as `image_url` parts in the state. Live 2026-10-10 on a free-tier team: Laya answers
+  (5 requests per minute), the paid models 403 until credits are bought - `examples/typesafe/VercelAIGatewaySmokeTest`,
+  paced to that tier. The gateway's flat `{"message", "error_type"}` errors keep their type in `errorType`.
 - **Groq's catalog** re-listed (`openai/gpt-oss-*`, `qwen/qwen3.6-27b` / `qwen3.8-27b`, `allam-2-7b`; the Llama 3.3 /
   4 and DeepSeek ids are gone).
 

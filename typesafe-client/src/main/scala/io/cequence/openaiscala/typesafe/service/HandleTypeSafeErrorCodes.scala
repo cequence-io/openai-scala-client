@@ -31,8 +31,10 @@ object HandleTypeSafeErrorCodes {
     val build: Build = httpCode match {
       // Perplexity: "Input length (262144) exceeds or equals model's maximum context length";
       // Microsoft Foundry (a 422): "request is about 165021 tokens; the limit for the state
-      // plus all questions is 64000"
-      case 400 | 422 if kind.contains("max_tokens_exceeded") || exceedsContext(message) =>
+      // plus all questions is 64000"; Vercel AI Gateway (a 413): "That request is too large
+      // for this model. Reduce the input or requested output and try again."
+      case 400 | 413 | 422
+          if kind.contains("max_tokens_exceeded") || exceedsContext(message) =>
         new TypeSafeScalaTokenCountExceededException(_, null, _, _, _)
       case 400 if kind.isDefined => new TypeSafeScalaApiUsageException(_, null, _, _, _)
       // 413: Perplexity's body limit (32 MiB); 501: llama.cpp's "not a decision model" / "no
@@ -61,7 +63,8 @@ object HandleTypeSafeErrorCodes {
   private def exceedsContext(message: String) =
     message.contains("maximum context length") ||
       message.contains("exceeds the token limit") ||
-      message.contains("the limit for the state plus all questions")
+      message.contains("the limit for the state plus all questions") ||
+      message.contains("too large for this model")
 
   // a body that is not JSON - empty (Perplexity's 404 / 405) or an HTML page (a gateway's 504)
   private def plainBody(body: String) =
@@ -87,12 +90,15 @@ object HandleTypeSafeErrorCodes {
     (json \ "detail" \ "error_type").asOpt[String]
 
   // `{"error": {"code": "model_unavailable", "type": "rate_limit_error", ...}}` - the code when
-  // it names the error (Liquid), else the type (Perplexity's code is the status: "400", 401)
+  // it names the error (Liquid), else the type (Perplexity's code is the status: "400", 401);
+  // Vercel AI Gateway's TypeSafe-compatible API answers its own checks with a flat
+  // `{"message": ..., "error_type": "invalid_request" | "authentication_error"}`
   private def openAIErrorType(json: JsValue): Option[String] =
     (json \ "error" \ "code")
       .asOpt[String]
       .filterNot(_.forall(_.isDigit))
       .orElse((json \ "error" \ "type").asOpt[String])
+      .orElse((json \ "error_type").asOpt[String])
 
   private def extractMessage(json: JsValue): Option[String] =
     json match {

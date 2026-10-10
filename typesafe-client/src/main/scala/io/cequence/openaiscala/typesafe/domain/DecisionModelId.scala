@@ -85,4 +85,12 @@ object DecisionModelId {
   val openrouter_span_01: String = NonOpenAIModelId.openrouter_span_01
   val openrouter_span_01_lite: String = NonOpenAIModelId.openrouter_span_01_lite
   val openrouter_span_01_lite_free: String = NonOpenAIModelId.openrouter_span_01_lite_free
+
+  // decision models on Vercel AI Gateway (`DecisionProviderSettings.vercel`)
+  val vercel_jev: String = NonOpenAIModelId.vercel_jev
+  val vercel_liquid_d1: String = NonOpenAIModelId.vercel_liquid_d1
+  val vercel_microsoft_decision_1: String = NonOpenAIModelId.vercel_microsoft_decision_1
+  val vercel_gpt_6_luna_decisions: String = NonOpenAIModelId.vercel_gpt_6_luna_decisions
+  val vercel_laya: String = NonOpenAIModelId.vercel_laya
+  val vercel_laya_free: String = NonOpenAIModelId.vercel_laya_free
 }

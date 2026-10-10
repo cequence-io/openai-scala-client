@@ -504,6 +504,39 @@ works as well as `Bearer`, and `?api-version` is not needed. `examples/typesafe/
 this (the deployments, routing, a noul and a score, an object state, `decide[Triage]`, the OpenAI interface, 128 questions,
 the token limit) - all 10 sections passed.
 
+## Vercel AI Gateway ▲
+
+🔥 Vercel's AI Gateway serves decision models through a TypeSafe-compatible API, so `DecisionProviderSettings.vercel` reaches
+them like any other host: `POST https://ai-gateway.vercel.sh/typesafe/v1/systemone` with an AI Gateway key (`vck_…`, created
+under the team's AI Gateway → API keys, in `AI_GATEWAY_API_KEY`; a Vercel account token is a 401), the models listed at
+`GET /typesafe/v1/models` in TypeSafe's shape - `typesafe-ai/jev` (the bare `jev` too), `liquid/d1` (text and images),
+`microsoft/microsoft-decision-1`, `openai/gpt-6-luna-decisions` and Convai Innovations' `convaiinnovations/laya` /
+`laya-free` - and billed through the gateway, which reports the routing, the cost and a `generationId` in the response's
+`provider_metadata.gateway` (the request id is the `x-vercel-id` header). Images go as `image_url` parts in the state
+array, as the gateway's AI SDK sends them.
+
+```scala
+  val gateway = TypeSafeServiceFactory(DecisionProviderSettings.vercel) // AI_GATEWAY_API_KEY
+
+  gateway.listModels                                                     // the six decision models
+  gateway.systemOne(review, questions, DecisionModelId.vercel_laya_free) // Laya, free tier
+  gateway.systemOne(review, questions, DecisionModelId.vercel_jev)       // Jev, with paid credits
+```
+
+Live 2026-10-10 on a free-tier team (a card on file unlocks the free credits, which cover Laya only): Laya answered the
+review in 0.5-1.4 s at the free tier's 5 requests per minute per region (a 429 `rate_limit_exceeded`, "Retry after
+46s"), the other models answer a 403 `no_providers_available` ("Free tier users do not have access to this model") until
+credits are bought - so Jev, d1 and its images, Microsoft-Decision-1 and Luna are not verified through the gateway here.
+The gateway validates before routing, in a flat `{"message", "error_type": "invalid_request"}` shape: 2-10 score levels,
+at most 255 options, a string / object / array state; an unknown model is a 404 `model_not_found`; an unknown top-level
+field is ignored. A model's own limits come back as a 422 / 413 `AI_APICallError`: Laya (8k context) answered 40 questions
+but not 200 nor a 20k-token state ("That request is too large for this model", a `TypeSafeScalaTokenCountExceededException`,
+so re-ranking splits on it), and refused a noul without instructions. Its confidence-based
+decision fallbacks (`providerOptions.gateway.models`: rerun an uncertain decision with another model) are the gateway's
+own extension, not sent by this client. `examples/typesafe/VercelAIGatewaySmokeTest` walks the listing, the review on
+every model (the paid ones reported as skipped on a free tier), a blue square on d1, the OpenAI interface and the error
+cases, paced to the free tier.
+
 ## Decision-model providers 🧩
 
 Decision models are spreading fast, and most hosts copy TypeSafe's System One protocol - so the TypeSafe lib reaches them all
@@ -535,6 +568,7 @@ a protocol of its own; its preset translates the questions and answers, so every
 | `liquid` | `LIQUID_API_KEY` | `d1:free`, `d1` | at most 128 questions; the paid `d1` reads images (sent in a top-level `images` array) |
 | `perplexity` | `PERPLEXITY_API_KEY` (or `SONAR_API_KEY`) | `pplx-decider-v1.1-27b`, `pplx-decider-v1-27b` | `POST /v1/decisions`, images of any size, at most 128 questions |
 | `openRouter` | `OPENROUTER_API_KEY` | Jev, d1, Perplexity's deciders, OpenAI's Luna, Microsoft-Decision-1, Cloudflare's Clef (+ Flash, Omni), Solar Decide (+ Flash), Mercury Decide (+ free), Tev1, Kev 4B, NACE's Drex, Span-01 (+ Lite) | listed with `output_modalities=decisions`; images as `image_url` parts in the state (read by Clef Omni / Flash, Perplexity's decider, Luna, d1 and Mercury Decide; the others read them as text); Span-01 takes noul questions only |
+| `vercel` | `AI_GATEWAY_API_KEY` | `typesafe-ai/jev`, `liquid/d1`, `microsoft/microsoft-decision-1`, `openai/gpt-6-luna-decisions`, `convaiinnovations/laya` (+ free) | `https://ai-gateway.vercel.sh/typesafe/`, images in the state; a free-tier team gets Laya at 5 requests per minute, the rest needs paid credits |
 | `microsoftFoundry(endpoint, deployment)` | `FOUNDRY_API_KEY` | your deployment of Microsoft-Decision-1 (`decision-1` by default; `listModels` lists them) | your Foundry resource, `POST /providers/microsoft/v1/systemone`; at most 255 questions, 64k tokens, no images |
 | `openAI` | `OPENAI_SCALA_CLIENT_API_KEY` (or `OPENAI_API_KEY`) | `gpt-6-luna` | OpenAI's own protocol (translated), images, at most 200 questions; a refusal arrives as `UnknownAnswer("refusal", ...)` |
 | `llamaCpp` | none (`LLAMA_API_KEY` if the server has one) | whatever `llama-server` loaded | a local server, `http://127.0.0.1:8080/`; a router needs a model id from `listModels` (its decision models only); images in a top-level `images` array, for a model with a projector (else a 501) |
