@@ -94,7 +94,12 @@ changed); ws-client stays at 1.1.1.
   questions only) and, live 2026-10-09, the two `perplexity/pplx-decider-*` ids, `openai/gpt-6-luna-decisions`,
   `cloudflare/clef` / `clef-flash`, `upstage/solar-decide-flash` and `inception/mercury-decide` - 16 decision models,
   all answering the same review alike; `cloudflare/clef-omni` (a Qwen3-Omni-30B-A3B mixture of experts, text + image)
-  joined the list later that day.
+  joined the list later that day, `microsoft/microsoft-decision-1` (no Foundry deployment needed) and `nace-ai/drex-v1.5`
+  on 2026-10-10 (19 models). The preset now takes **images**, as `image_url` parts in the state array (`DecisionImages.InState`;
+  a top-level `images` is a 400 there) - live 2026-10-10 a blue square was blue at 0.9+ for Clef Omni, Clef Flash,
+  Perplexity's decider, Luna, d1 and Mercury Decide (the listing understates: d1 and Mercury are listed as text), read
+  as text by Jev, Kev, Tev1, Drex, the Solar Decides and Span-01; `asOpenAI(DecisionProviderSettings.openRouter)` maps
+  the image content of user messages accordingly.
 - **`examples/typesafe/DecisionModelsLatencyBenchmark`**: the execution time of every decision model this library reaches,
   side by side - the same review with 1 to 40 questions on one shared engine, every host with a key (TypeSafe, Liquid,
   Perplexity, OpenAI, Microsoft Foundry, OpenRouter's whole decision list, a local llama.cpp), a row per model with the

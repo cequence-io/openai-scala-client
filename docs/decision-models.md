@@ -468,7 +468,9 @@ categorised 10,000 feedback items with it).
 proposes the deployment name `Microsoft-Decision-1`, which Azure's resource-name rule refuses - `ContainsReservedWord` -
 so give it a name of your own, `decision-1` by default here) and send that name as the model: `Microsoft-Decision-1` as
 the model is a 404 `DeploymentNotFound`, while the response reports `model: microsoft-decision-1`. `listModels` lists the
-resource's deployments of the model (Azure's `GET /openai/deployments`), so the ids to send are one call away.
+resource's deployments of the model (Azure's `GET /openai/deployments`), so the ids to send are one call away. Since
+2026-10-09 OpenRouter serves the same model as `microsoft/microsoft-decision-1` ($0.042 per 1M input tokens, 32k
+context) - no deployment needed there.
 
 ```scala
   val decision1 = TypeSafeServiceFactory.microsoftFoundry() // FOUNDRY_BASE_URL + FOUNDRY_API_KEY (+ FOUNDRY_MODEL)
@@ -532,7 +534,7 @@ a protocol of its own; its preset translates the questions and answers, so every
 | `typeSafe` | `TYPESAFE_API_KEY` | `jev-latest` | the default of `TypeSafeServiceFactory()` |
 | `liquid` | `LIQUID_API_KEY` | `d1:free`, `d1` | at most 128 questions; the paid `d1` reads images (sent in a top-level `images` array) |
 | `perplexity` | `PERPLEXITY_API_KEY` (or `SONAR_API_KEY`) | `pplx-decider-v1.1-27b`, `pplx-decider-v1-27b` | `POST /v1/decisions`, images of any size, at most 128 questions |
-| `openRouter` | `OPENROUTER_API_KEY` | Jev, d1, Perplexity's deciders, OpenAI's Luna, Cloudflare's Clef (+ Flash, Omni), Solar Decide (+ Flash), Mercury Decide (+ free), Tev1, Kev 4B, Span-01 (+ Lite) | listed with `output_modalities=decisions`; Span-01 takes noul questions only |
+| `openRouter` | `OPENROUTER_API_KEY` | Jev, d1, Perplexity's deciders, OpenAI's Luna, Microsoft-Decision-1, Cloudflare's Clef (+ Flash, Omni), Solar Decide (+ Flash), Mercury Decide (+ free), Tev1, Kev 4B, NACE's Drex, Span-01 (+ Lite) | listed with `output_modalities=decisions`; images as `image_url` parts in the state (read by Clef Omni / Flash, Perplexity's decider, Luna, d1 and Mercury Decide; the others read them as text); Span-01 takes noul questions only |
 | `microsoftFoundry(endpoint, deployment)` | `FOUNDRY_API_KEY` | your deployment of Microsoft-Decision-1 (`decision-1` by default; `listModels` lists them) | your Foundry resource, `POST /providers/microsoft/v1/systemone`; at most 255 questions, 64k tokens, no images |
 | `openAI` | `OPENAI_SCALA_CLIENT_API_KEY` (or `OPENAI_API_KEY`) | `gpt-6-luna` | OpenAI's own protocol (translated), images, at most 200 questions; a refusal arrives as `UnknownAnswer("refusal", ...)` |
 | `llamaCpp` | none (`LLAMA_API_KEY` if the server has one) | whatever `llama-server` loaded | a local server, `http://127.0.0.1:8080/`; a router needs a model id from `listModels` (its decision models only); images in a top-level `images` array, for a model with a projector (else a 501) |

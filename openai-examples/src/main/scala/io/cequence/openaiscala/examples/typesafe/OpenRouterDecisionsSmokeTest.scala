@@ -2,7 +2,13 @@ package io.cequence.openaiscala.examples.typesafe
 
 import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, JsonSchemaDef}
-import io.cequence.openaiscala.domain.{JsonSchema, UserMessage}
+import io.cequence.openaiscala.domain.{
+  JsonSchema,
+  TextContent,
+  UserMessage,
+  UserSeqMessage,
+  VLMContent
+}
 import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
 import io.cequence.openaiscala.typesafe.domain._
 import io.cequence.openaiscala.typesafe.service.{
@@ -12,6 +18,12 @@ import io.cequence.openaiscala.typesafe.service.{
 }
 import io.cequence.wsclient.service.spi.{TransportSettings, WSClientEngineRegistry}
 import play.api.libs.json.{Format, JsString, JsValue, Json}
+
+import java.awt.Color
+import java.awt.image.BufferedImage
+import java.io.ByteArrayOutputStream
+import java.util.Base64
+import javax.imageio.ImageIO
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
@@ -27,6 +39,10 @@ import scala.util.control.NonFatal
  *     or a conversation trace (`{"input": [messages], "output": message}`), so it gets those
  *   - the questions as a JSON schema through the OpenAI interface on d1
  *     (`asOpenAI(DecisionProviderSettings.openRouter)` + `createChatCompletionWithJSON[T]`)
+ *   - a blue square as an `image_url` part in the state array - how OpenRouter takes images (a
+ *     top-level `images` is a 400) - on Clef Omni, d1 and Luna, and through the OpenAI
+ *     interface with the image in the user message (live 2026-10-10: blue at 0.95 / 1.00 /
+ * 1.00; Jev, Kev, Tev1, Drex, the Solar Decides and Span-01 read an image as text)
  *   - a latency benchmark of the models that answer (`DecisionModelBenchmark`, one shared
  *     engine; pass `nobench` to skip it)
  *
@@ -89,6 +105,53 @@ object OpenRouterDecisionsSmokeTest {
   // Respan's Span-01 judges with nouls only (plain-string instructions), over a text state or a
   // conversation trace
   private def isSpan(model: String) = model.startsWith("respan/")
+
+  // the models that read an image through OpenRouter (live 2026-10-10)
+  private val imageModels = Seq(
+    TypeSafeModelId.openrouter_clef_omni,
+    TypeSafeModelId.openrouter_liquid_d1,
+    TypeSafeModelId.openrouter_gpt_6_luna_decisions
+  )
+
+  private case class Square(color: String)
+
+  private implicit val squareFormat: Format[Square] = Json.format[Square]
+
+  private val squareSchema = JsonSchemaDef(
+    name = "square",
+    strict = true,
+    structure = Left(
+      JsonSchema.Object(
+        properties = Seq(
+          "color" -> JsonSchema.String(
+            Some("Which color is the square?"),
+            `enum` = Seq("red", "blue", "green")
+          )
+        ),
+        required = Seq("color")
+      )
+    )
+  )
+
+  private val colorQuestion: Map[String, Question] = Map(
+    "color" -> ChoiceQuestion(
+      "Which color is the square?",
+      "red" -> "A red square",
+      "blue" -> "A blue square",
+      "green" -> "A green square"
+    )
+  )
+
+  private def png(colour: Color): Array[Byte] = {
+    val image = new BufferedImage(64, 64, BufferedImage.TYPE_INT_RGB)
+    val graphics = image.createGraphics()
+    graphics.setColor(colour)
+    graphics.fillRect(0, 0, 64, 64)
+    graphics.dispose()
+    val out = new ByteArrayOutputStream()
+    ImageIO.write(image, "png", out)
+    out.toByteArray
+  }
 
   private val spanQuestions: Map[String, Question] = Map(
     "defect" -> NoulQuestion("Does the review report a product defect?"),
@@ -154,6 +217,47 @@ object OpenRouterDecisionsSmokeTest {
           .withJsonSchema(reviewSchema)
       )
       _ = println(s"[via OpenAI, d1] $triage")
+
+      // images: an image_url part in the state array, next to the question's text
+      blue = png(Color.BLUE)
+      square = Json.arr(
+        "Which color is the square?",
+        Json.obj(
+          "type" -> "image_url",
+          "image_url" -> Json.obj(
+            "url" -> ("data:image/png;base64," + Base64.getEncoder.encodeToString(blue))
+          )
+        )
+      )
+      _ <- imageModels.foldLeft(Future.successful(())) {
+        (
+          acc,
+          model
+        ) =>
+          acc.flatMap { _ =>
+            openRouter
+              .systemOne(square, colorQuestion, model)
+              .map { response =>
+                val answer = response.choice("color")
+                println(
+                  f"[image, $model%-32s] ${answer.choice} ${answer.confidence}%.2f | ${response.usage}"
+                )
+              }
+              .recover { case NonFatal(e) =>
+                println(f"[image, $model%-32s] FAILED: ${e.getMessage.take(160)}")
+              }
+          }
+      }
+      squareViaOpenAI <- asOpenAI.createChatCompletionWithJSON[Square](
+        Seq(
+          UserSeqMessage(
+            TextContent("Which color is the square?") +: VLMContent.of(blue, "square.png")
+          )
+        ),
+        CreateChatCompletionSettings(model = TypeSafeModelId.openrouter_clef_omni)
+          .withJsonSchema(squareSchema)
+      )
+      _ = println(s"[via OpenAI, image, clef-omni] $squareViaOpenAI")
 
       _ <-
         if (args.contains("nobench")) Future.successful(())

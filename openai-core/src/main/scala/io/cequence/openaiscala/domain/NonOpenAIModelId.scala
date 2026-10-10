@@ -1096,6 +1096,11 @@ object NonOpenAIModelId {
   // fine-tune (3B active), text + image, $0.15 / 1M input tokens - the fastest decision model on
   // OpenRouter that day (~0.2-0.3 s at 1-40 questions, DecisionModelsLatencyBenchmark)
   val openrouter_clef_omni = "cloudflare/clef-omni"
+  // listed 2026-10-09, live 2026-10-10 through OpenRouter: Microsoft-Decision-1 without a Foundry
+  // deployment ($0.042 / 1M input tokens, 32k context) and NACE AI's small Drex 1.5 (128k context,
+  // $0.04 / 1M) - both text only
+  val openrouter_microsoft_decision_1 = "microsoft/microsoft-decision-1"
+  val openrouter_drex_v1_5 = "nace-ai/drex-v1.5"
   val openrouter_solar_decide_flash = "upstage/solar-decide-flash"
   val openrouter_mercury_decide =
     "inception/mercury-decide" // the paid tier of the :free one below

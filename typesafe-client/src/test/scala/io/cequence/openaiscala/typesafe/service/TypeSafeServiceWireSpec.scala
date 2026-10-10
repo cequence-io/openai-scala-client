@@ -546,6 +546,38 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       capped.close()
     }
 
+    "send OpenRouter an image as an image_url part of the state, checked before sending" in {
+      // live 2026-10-10: a top-level `images` is a 400 there; the part stays where it is
+      respond(200, perplexityResponse)
+      val openRouter = TypeSafeServiceFactory.withEngine(
+        engine,
+        DecisionProviderSettings.openRouter.copy(baseUrl = baseUrl + "/api"),
+        "or_k"
+      )
+      DecisionProviderSettings.openRouter.readsImages shouldBe true
+
+      val square =
+        Json.arr("Which color is the square?", DecisionImage.part(pngDataUrl(64, 64)))
+      await(openRouter.systemOne(square, reviewQuestions))
+      received.get.path shouldBe "/api/v1/systemone"
+      val body = Json.parse(received.get.body)
+      (body \ "state").as[JsArray] shouldBe square
+      (body \ "images").toOption shouldBe None
+
+      // an image the hosts cannot take (a URL instead of a data URL) is refused before I/O
+      received = None
+      the[IllegalArgumentException]
+        .thrownBy(
+          openRouter.systemOne(
+            Json.arr(DecisionImage.part("https://example.com/square.png")),
+            reviewQuestions
+          )
+        )
+        .getMessage should include("carries an image the API cannot take")
+      received shouldBe None
+      openRouter.close()
+    }
+
     "take TypeSafe's own request id over a generic x-request-id, whatever their order" in {
       respond(
         200,

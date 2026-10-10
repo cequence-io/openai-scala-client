@@ -191,17 +191,26 @@ object DecisionProviderSettings {
 
   /**
    * OpenRouter (`OPENROUTER_API_KEY`): many hosts' decision models behind one key, on
-   * TypeSafe's protocol - Jev, Liquid's d1, Upstage's Solar Decide, Inception's Mercury
-   * Decide, Together's Tev1, Kev 4B and Respan's Span-01 (live 2026-10-02; Span-01 judges with
-   * noul questions only, over a text state or a conversation trace `{"input": [messages],
-   * "output": message}`). `listModels` asks for them with `output_modalities=decisions`
-   * (OpenRouter's plain list leaves them out); the request id is the `x-generation-id`.
+   * TypeSafe's protocol - Jev, Liquid's d1, Perplexity's decider, OpenAI's Luna,
+   * Microsoft-Decision-1, Cloudflare's Clefs, Upstage's Solar Decides, Inception's Mercury
+   * Decide, Together's Tev1, Kev 4B, NACE's Drex and Respan's Span-01 (19 models on
+   * 2026-10-10; Span-01 judges with noul questions only, over a text state or a conversation
+   * trace `{"input": [messages], "output": message}`). `listModels` asks for them with
+   * `output_modalities=decisions` (OpenRouter's plain list leaves them out, and its
+   * `input_modalities` understate: `liquid/d1` and Mercury Decide read images although listed
+   * as text); the request id is the `x-generation-id`. Images go as `image_url` parts in the
+   * state array ([[DecisionImages.InState]]; a top-level `images` is a 400 "Top-level `images`
+   * is not supported") - live 2026-10-10 a blue square was blue at 0.9+ for Clef Omni, Clef
+   * Flash, Perplexity's decider, Luna, d1 and Mercury Decide, read as text by Jev, Kev, Tev1,
+   * Drex, the Solar Decides and Span-01, and Clef itself answered 0.99 once and 0.39 the next
+   * time.
    */
   val openRouter: DecisionProvider = DecisionProvider(
     "https://openrouter.ai/api/",
     "OPENROUTER_API_KEY",
     TypeSafeModelId.openrouter_jev_latest,
     models = DecisionModelListing.OpenAIStyle(Seq("output_modalities" -> "decisions")),
+    images = DecisionImages.InState,
     requestIdHeaders = Seq("x-generation-id"),
     name = Some("openrouter")
   )

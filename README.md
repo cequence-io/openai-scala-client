@@ -83,7 +83,7 @@ decisions, re-ranking, the `json_schema`-only chat adapter) on OpenAI's. No tool
 | [Liquid AI](https://www.liquid.ai/) 🔥 | d1, images too (the paid `d1`) | `liquidAsOpenAI()` |
 | [llama.cpp](https://github.com/ggml-org/llama.cpp) (local) 🔥 | Liquid's Open d1 (d1-3B, d1-omni-600M) once llama.cpp loads them; Julia-1, Laya, Lev, Kev, OpenJev, Nimble, Clef | `asOpenAI(DecisionProviderSettings.llamaCpp)` |
 | [Perplexity Decisions](https://docs.perplexity.ai/docs/decisions/quickstart) 🔥 | pplx-decider-v1.1-27b / v1-27b, images too | `perplexityAsOpenAI()` |
-| [OpenRouter](https://openrouter.ai/models?output_modalities=decisions) 🔥 | Jev, d1, Perplexity's deciders, OpenAI's Luna, Cloudflare's Clef (+ Flash, Omni), Solar Decide, Mercury Decide, Tev1, Kev 4B, Span-01 | `asOpenAI(DecisionProviderSettings.openRouter)` |
+| [OpenRouter](https://openrouter.ai/models?output_modalities=decisions) 🔥 | Jev, d1, Perplexity's deciders, OpenAI's Luna, Microsoft-Decision-1, Cloudflare's Clef (+ Flash, Omni), Solar Decide, Mercury Decide, Tev1, Kev 4B, NACE's Drex, Span-01; images too | `asOpenAI(DecisionProviderSettings.openRouter)` |
 | [OpenAI Decisions](https://developers.openai.com/api/docs/guides/decisions) 🔥 | gpt-6-luna, images too | `asOpenAI(DecisionProviderSettings.openAI)` |
 | [Microsoft Foundry](https://ai.azure.com/catalog/models/microsoft-decision-1) 🔥 | Microsoft-Decision-1 (public preview; your own deployment in a Foundry resource) | `microsoftFoundryAsOpenAI()` |
 
