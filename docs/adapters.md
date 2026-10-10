@@ -298,7 +298,7 @@ class MyCompletionService @Inject() (
   val guard = ModelGuardrail(
     TypeSafeServiceFactory.asOpenAI(),
     ModelGuardrailSettings(
-      TypeSafeModelId.jev_latest,
+      DecisionModelId.jev_latest,
       inputChecks = GuardrailCheck.inputDefaults.map(_.withThreshold(0.7)), // decide by probability
       policy = Some("Questions about other companies' products are off-topic.")
     )
@@ -327,7 +327,7 @@ class MyCompletionService @Inject() (
   val streamGuard = ModelGuardrail(
     TypeSafeServiceFactory.asOpenAI(),
     ModelGuardrailSettings(
-      TypeSafeModelId.jev_latest,
+      DecisionModelId.jev_latest,
       prompts = GuardrailPrompts(
         input = GuardrailPrompts.DefaultInput.replace("an AI assistant", "a bank's support assistant")
       )

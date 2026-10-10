@@ -9,7 +9,7 @@ import play.api.libs.json.{JsArray, JsObject, JsString, JsValue}
  *   the content the questions refer to - text, or a JSON object / array (a record, a chat log,
  *   your application state); see <a href="https://docs.typesafe.ai/concepts/state">State</a>
  * @param model
- *   a model name or alias from `GET /v1/models`, e.g. [[TypeSafeModelId.jev_latest]]
+ *   a model name or alias from `GET /v1/models`, e.g. [[DecisionModelId.jev_latest]]
  * @param questions
  *   questions keyed by a name of your choosing; the answers come back under the same names
  */

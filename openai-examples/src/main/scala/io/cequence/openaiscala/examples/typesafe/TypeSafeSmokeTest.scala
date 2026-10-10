@@ -85,7 +85,7 @@ object TypeSafeSmokeTest {
       _ <- section("listModels") {
         service.listModels.map { models =>
           val names = models.map(_.name)
-          check(names.contains(TypeSafeModelId.jev_latest), s"no jev-latest in $names")
+          check(names.contains(DecisionModelId.jev_latest), s"no jev-latest in $names")
           check(models.forall(_.release_date.nonEmpty), "a model without a release date")
           names.mkString(", ")
         }
@@ -172,7 +172,7 @@ object TypeSafeSmokeTest {
                 "fr" -> "French"
               )
             ),
-            model = TypeSafeModelId.jev_preview
+            model = DecisionModelId.jev_preview
           )
           .map { r =>
             val p = r.score("priority")
@@ -360,7 +360,7 @@ object TypeSafeSmokeTest {
           structure = Left(JsonSchema.Object(Seq("urgent" -> JsonSchema.Boolean())))
         )
         val settings = CreateChatCompletionSettings(
-          TypeSafeModelId.jev_latest,
+          DecisionModelId.jev_latest,
           response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
           jsonSchema = Some(schema)
         )
@@ -427,7 +427,7 @@ object TypeSafeSmokeTest {
           .createChatCompletion(
             Seq(SystemMessage("You triage support tickets."), UserMessage(ticket)),
             CreateChatCompletionSettings(
-              model = TypeSafeModelId.jev_preview,
+              model = DecisionModelId.jev_preview,
               response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
               jsonSchema = Some(schema)
             )
@@ -461,14 +461,14 @@ object TypeSafeSmokeTest {
           e1 <- adapter
             .createChatCompletion(
               Seq(UserMessage(ticket)),
-              CreateChatCompletionSettings(TypeSafeModelId.jev_latest)
+              CreateChatCompletionSettings(DecisionModelId.jev_latest)
             )
             .failed
           e2 <- adapter
             .createChatCompletion(
               Seq(UserMessage(ticket)),
               CreateChatCompletionSettings(
-                TypeSafeModelId.jev_latest,
+                DecisionModelId.jev_latest,
                 response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
                 jsonSchema = Some(freeText)
               )
@@ -489,7 +489,7 @@ object TypeSafeSmokeTest {
         Future {
           check(
             service.defaultModel == sys.env
-              .getOrElse(TypeSafeServiceConsts.defaultModelEnvKey, TypeSafeModelId.jev_latest),
+              .getOrElse(TypeSafeServiceConsts.defaultModelEnvKey, DecisionModelId.jev_latest),
             service.defaultModel
           )
           s"defaultModel=${service.defaultModel}"

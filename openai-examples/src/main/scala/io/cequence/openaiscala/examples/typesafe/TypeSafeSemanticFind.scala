@@ -5,7 +5,7 @@ import io.cequence.openaiscala.domain.{JsonSchema, UserMessage}
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
-import io.cequence.openaiscala.typesafe.domain.{SystemOneResponse, TypeSafeModelId}
+import io.cequence.openaiscala.typesafe.domain.{SystemOneResponse, DecisionModelId}
 import io.cequence.openaiscala.typesafe.service.TypeSafeServiceFactory
 import play.api.libs.json.{Format, Json}
 
@@ -107,7 +107,7 @@ object TypeSafeSemanticFind extends ExampleBase[OpenAIChatCompletionService] {
     service
       .createChatCompletionWithJSONFullResponse[Find](
         Seq(UserMessage(document)),
-        CreateChatCompletionSettings(model = TypeSafeModelId.jev_latest)
+        CreateChatCompletionSettings(model = DecisionModelId.jev_latest)
           .withJsonSchema(schema(query))
       )
       .map { case (find, response) =>

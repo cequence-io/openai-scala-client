@@ -203,7 +203,7 @@ the `SystemOneResponse`.
   import io.cequence.openaiscala.domain._
   import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, JsonSchemaDef}
   import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
-  import io.cequence.openaiscala.typesafe.domain.{SystemOneResponse, TypeSafeModelId}
+  import io.cequence.openaiscala.typesafe.domain.{SystemOneResponse, DecisionModelId}
   import io.cequence.openaiscala.typesafe.service.TypeSafeServiceFactory
 
   val service = TypeSafeServiceFactory.asOpenAI()   // an OpenAIChatCompletionService; TYPESAFE_API_KEY
@@ -229,7 +229,7 @@ the `SystemOneResponse`.
       SystemMessage("You triage support tickets for a payments platform."),   // -> state.instructions
       UserMessage("My Stripe connection has been failing for 3 days. I'm losing sales, please help ASAP.")  // -> state.message
     ),
-    CreateChatCompletionSettings(model = TypeSafeModelId.jev_latest).withJsonSchema(triageSchema)
+    CreateChatCompletionSettings(model = DecisionModelId.jev_latest).withJsonSchema(triageSchema)
   ).map { case (triage, response) =>
     triage                                                        // Triage(technical, true, 4, List(payments, integration))
     response.originalResponse.collect { case r: SystemOneResponse =>
@@ -327,7 +327,7 @@ Liquid's code (e.g. `model_unavailable`) in `errorType`. See
 **Images** (the paid `d1`, live 2026-10-07): put `DecisionImage` parts anywhere in the state, as for Perplexity - the
 client lifts them into the top-level `images` array Liquid documents and leaves an `[image n]` marker where each stood
 (Liquid itself lifts only the parts of an array state and reads one nested in an object as text: blue at 0.56 instead of
-0.9999). Through `liquidAsOpenAI(defaultModel = TypeSafeModelId.liquid_d1)` the image content of user messages goes there
+0.9999). Through `liquidAsOpenAI(defaultModel = DecisionModelId.liquid_d1)` the image content of user messages goes there
 too. At most 8 images, 10,000 32 x 32 patches in all and an aspect ratio of 100 - each a quick 422 - as base64 PNG, JPEG
 or WebP (a GIF is refused, despite the docs); an image costs 1.5 input tokens per patch for every question, at $0.04 / 1M
 input tokens.
@@ -340,15 +340,15 @@ input tokens.
   liquid.systemOne(
     Json.obj("note" -> "A photo from a customer.", "photo" -> DecisionImage(Files.readAllBytes(photo))),
     Map("damaged" -> NoulQuestion("Is the product in the photo damaged?")),
-    TypeSafeModelId.liquid_d1
+    DecisionModelId.liquid_d1
   )
 
-  // or make it the service's default: TypeSafeServiceFactory.liquid(defaultModel = TypeSafeModelId.liquid_d1)
+  // or make it the service's default: TypeSafeServiceFactory.liquid(defaultModel = DecisionModelId.liquid_d1)
 ```
 
 **Open d1** (2026-10-07): Liquid released the weights - d1-3B (text and images) and the experimental d1-omni-600M (text and
 images or audio) - with GGUF builds for llama.cpp's `/v1/systemone`. `DecisionProviderSettings.llamaCpp` serves them (no key,
-`http://127.0.0.1:8080/`, the router-mode ids `TypeSafeModelId.liquid_d1_3b_gguf` / `liquid_d1_omni_600m_gguf`), but the
+`http://127.0.0.1:8080/`, the router-mode ids `DecisionModelId.liquid_d1_3b_gguf` / `liquid_d1_omni_600m_gguf`), but the
 llama.cpp release of the same day (b11476) cannot load them yet ("unsupported decision model type: d1") - the provider was
 verified live with the decision models llama.cpp does run (Julia-1, Laya). Audio is not supported here: no server takes it
 yet (Liquid's API ignores an `audio` field). See
@@ -374,7 +374,7 @@ key (`PERPLEXITY_API_KEY`, else `SONAR_API_KEY`) and the model differ. Input cos
 
 ```scala
   import io.cequence.openaiscala.domain.{TextContent, UserSeqMessage, VLMContent}
-  import io.cequence.openaiscala.typesafe.domain.{ChoiceQuestion, DecisionImage, NoulQuestion, ScoreQuestion, TypeSafeModelId}
+  import io.cequence.openaiscala.typesafe.domain.{ChoiceQuestion, DecisionImage, NoulQuestion, ScoreQuestion, DecisionModelId}
   import io.cequence.openaiscala.typesafe.service.TypeSafeServiceFactory
   import play.api.libs.json.Json
   import java.nio.file.{Files, Paths}
@@ -414,7 +414,7 @@ key (`PERPLEXITY_API_KEY`, else `SONAR_API_KEY`) and the model differ. Input cos
 
   service.createChatCompletionWithJSON[Square](
     Seq(UserSeqMessage(TextContent("Which color is the square?") +: VLMContent.of(square, "square.png"))),
-    CreateChatCompletionSettings(model = TypeSafeModelId.pplx_decider_v1_1_27b).withJsonSchema(squareSchema)
+    CreateChatCompletionSettings(model = DecisionModelId.pplx_decider_v1_1_27b).withJsonSchema(squareSchema)
   )  // Square(blue, 0.99) - a `color` enum plus a `color_confidence` number
 ```
 
@@ -511,12 +511,12 @@ through **`DecisionProviderSettings`**, the decision-model counterpart of `ChatP
 a protocol of its own; its preset translates the questions and answers, so every routine on a decision service runs on it:
 
 ```scala
-  import io.cequence.openaiscala.typesafe.domain.{DecisionProvider, TypeSafeModelId}
+  import io.cequence.openaiscala.typesafe.domain.{DecisionProvider, DecisionModelId}
   import io.cequence.openaiscala.typesafe.service.{DecisionProviderSettings, TypeSafeServiceFactory}
 
   val openRouter = TypeSafeServiceFactory(DecisionProviderSettings.openRouter)   // OPENROUTER_API_KEY
   openRouter.listModels                                                         // its 17 decision models (2026-10-09)
-  openRouter.systemOne(state, questions, TypeSafeModelId.openrouter_liquid_d1)
+  openRouter.systemOne(state, questions, DecisionModelId.openrouter_liquid_d1)
 
   // behind the OpenAI interface (json_schema structured output); image content goes into the state where the host reads it
   val decider = TypeSafeServiceFactory.asOpenAI(DecisionProviderSettings.perplexity)

@@ -6,7 +6,7 @@ import io.cequence.openaiscala.domain.settings.JsonSchemaDef
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
 import io.cequence.openaiscala.service.{OpenAIChatCompletionService, OpenAIServiceFactory}
-import io.cequence.openaiscala.typesafe.domain.TypeSafeModelId
+import io.cequence.openaiscala.typesafe.domain.DecisionModelId
 import io.cequence.openaiscala.typesafe.service.TypeSafeServiceFactory
 import play.api.libs.json.{Format, Json}
 
@@ -136,7 +136,7 @@ object TypeSafeVsOpenAIBenchmark extends ExampleBase[OpenAIChatCompletionService
       _ <- timed(
         "Jev via TypeSafeServiceFactory.asOpenAI()",
         service,
-        TypeSafeModelId.jev_latest
+        DecisionModelId.jev_latest
       )
       _ <- timed("OpenAI via OpenAIServiceFactory()", openAI, openAIModel)
     } yield openAI.close()

@@ -5,7 +5,7 @@ import io.cequence.openaiscala.domain.{JsonSchema, SystemMessage, UserMessage}
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
-import io.cequence.openaiscala.typesafe.domain.{SystemOneResponse, TypeSafeModelId}
+import io.cequence.openaiscala.typesafe.domain.{SystemOneResponse, DecisionModelId}
 import io.cequence.openaiscala.typesafe.service.TypeSafeServiceFactory
 import play.api.libs.json.{Format, Json}
 
@@ -78,7 +78,7 @@ object TypeSafeCreateChatCompletionWithJSON extends ExampleBase[OpenAIChatComple
     service
       .createChatCompletionWithJSONFullResponse[Triage](
         messages,
-        CreateChatCompletionSettings(model = TypeSafeModelId.jev_latest)
+        CreateChatCompletionSettings(model = DecisionModelId.jev_latest)
           .withJsonSchema(triageSchema)
       )
       .map { case (triage, response) =>

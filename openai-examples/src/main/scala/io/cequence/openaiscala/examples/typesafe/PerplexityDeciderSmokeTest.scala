@@ -220,7 +220,7 @@ object PerplexityDeciderSmokeTest {
       _ = show("pplx-decider v1.1", native)
 
       // the launch id, which the API answers alike
-      launch <- pplx.systemOne(review, questions, TypeSafeModelId.pplx_decider_v1_27b)
+      launch <- pplx.systemOne(review, questions, DecisionModelId.pplx_decider_v1_27b)
       _ = show("pplx-decider v1", launch)
 
       square <- pplx.systemOne(
@@ -251,7 +251,7 @@ object PerplexityDeciderSmokeTest {
 
       triage <- pplxAsOpenAI.createChatCompletionWithJSON[Review](
         Seq(UserMessage(review.toString)),
-        CreateChatCompletionSettings(model = TypeSafeModelId.pplx_decider_v1_1_27b)
+        CreateChatCompletionSettings(model = DecisionModelId.pplx_decider_v1_1_27b)
           .withJsonSchema(reviewSchema)
       )
       _ = println(s"[via OpenAI] $triage")
@@ -262,7 +262,7 @@ object PerplexityDeciderSmokeTest {
             TextContent("Which color is the square?") +: VLMContent.of(blue, "square.png")
           )
         ),
-        CreateChatCompletionSettings(model = TypeSafeModelId.pplx_decider_v1_1_27b)
+        CreateChatCompletionSettings(model = DecisionModelId.pplx_decider_v1_1_27b)
           .withJsonSchema(squareSchema)
       )
       _ = println(s"[via OpenAI, image] $squareViaOpenAI")

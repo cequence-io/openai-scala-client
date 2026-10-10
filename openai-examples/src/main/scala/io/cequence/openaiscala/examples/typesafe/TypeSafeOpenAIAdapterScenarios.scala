@@ -10,7 +10,7 @@ import io.cequence.openaiscala.domain.settings.{
 import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
 import io.cequence.openaiscala.service.adapter.OpenAIServiceAdapters
 import io.cequence.openaiscala.typesafe.domain.settings.CreateChatCompletionSettingsOps._
-import io.cequence.openaiscala.typesafe.domain.{SystemOneResponse, TypeSafeModelId}
+import io.cequence.openaiscala.typesafe.domain.{SystemOneResponse, DecisionModelId}
 import io.cequence.openaiscala.typesafe.service.{TypeSafeChatMapping, TypeSafeServiceFactory}
 import play.api.libs.json.{Format, Json}
 
@@ -62,7 +62,7 @@ object TypeSafeOpenAIAdapterScenarios {
 
   private def jsonSchemaSettings(schema: JsonSchemaDef = triageSchema) =
     CreateChatCompletionSettings(
-      model = TypeSafeModelId.jev_latest,
+      model = DecisionModelId.jev_latest,
       response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
       jsonSchema = Some(schema)
     )
@@ -254,7 +254,7 @@ object TypeSafeOpenAIAdapterScenarios {
           service
             .createChatCompletionWithJSON[Triage](
               m,
-              CreateChatCompletionSettings(TypeSafeModelId.jev_latest)
+              CreateChatCompletionSettings(DecisionModelId.jev_latest)
                 .withJsonSchema(triageSchema)
             )
             .map(_.toString)
@@ -274,7 +274,7 @@ object TypeSafeOpenAIAdapterScenarios {
             raw <- plainCall(m, s)
             typed <- service.createChatCompletionWithJSON[TriageWithConfidence](
               m,
-              CreateChatCompletionSettings(TypeSafeModelId.jev_latest)
+              CreateChatCompletionSettings(DecisionModelId.jev_latest)
                 .withJsonSchema(triageWithConfidenceSchema)
             )
           } yield s"$raw\n            as a case class -> $typed"
@@ -308,7 +308,7 @@ object TypeSafeOpenAIAdapterScenarios {
 
       _ <- {
         val m = Seq(UserMessage(ticket));
-        val s = CreateChatCompletionSettings(TypeSafeModelId.jev_latest)
+        val s = CreateChatCompletionSettings(DecisionModelId.jev_latest)
         scenario("10. WHAT HAPPENS WHEN: no json_schema -> refused before any I/O", m, s)(
           plainCall(m, s)
         )

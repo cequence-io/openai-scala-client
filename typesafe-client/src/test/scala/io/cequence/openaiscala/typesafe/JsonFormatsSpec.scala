@@ -182,7 +182,7 @@ class JsonFormatsSpec extends AnyWordSpec with Matchers {
         state = JsString(
           "Hi, I've been trying to connect my Stripe account for 3 days and it keeps failing. I'm losing sales. Please help ASAP."
         ),
-        model = TypeSafeModelId.jev_latest,
+        model = DecisionModelId.jev_latest,
         questions = Map(
           "department" -> ChoiceQuestion(
             "Which team should handle this",

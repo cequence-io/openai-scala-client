@@ -68,7 +68,7 @@ class PerplexityDecisionsOpenApiConformanceSpec extends AnyWordSpec with Matcher
       val request =
         (post \ "requestBody" \ "content" \ "application/json" \ "examples" \ "mixed-questions" \ "value")
           .as[SystemOneRequest]
-      request.model shouldBe TypeSafeModelId.pplx_decider_v1_1_27b
+      request.model shouldBe DecisionModelId.pplx_decider_v1_1_27b
       request.questions.keySet shouldBe Set("defect", "sentiment", "severity")
       request.questions("severity") shouldBe ScoreQuestion(
         "How severe is the reported problem?",
@@ -80,7 +80,7 @@ class PerplexityDecisionsOpenApiConformanceSpec extends AnyWordSpec with Matcher
       val response =
         (post \ "responses" \ "200" \ "content" \ "application/json" \ "examples" \ "answers" \ "value")
           .as[SystemOneResponse]
-      response.model shouldBe TypeSafeModelId.pplx_decider_v1_1_27b
+      response.model shouldBe DecisionModelId.pplx_decider_v1_1_27b
       response.noul("defect").noul shouldBe 0.9424522889347015
       response.choice("sentiment").choice shouldBe "mixed"
       response.score("severity").mostLikelyLevel shouldBe 2
@@ -94,7 +94,7 @@ class PerplexityDecisionsOpenApiConformanceSpec extends AnyWordSpec with Matcher
       .toJson(
         SystemOneRequest(
           JsString("state"),
-          TypeSafeModelId.pplx_decider_v1_27b,
+          DecisionModelId.pplx_decider_v1_27b,
           Map(
             "noul" -> NoulQuestion("q", "yes", "no"),
             "choice" -> ChoiceQuestion("q", "a" -> "A"),

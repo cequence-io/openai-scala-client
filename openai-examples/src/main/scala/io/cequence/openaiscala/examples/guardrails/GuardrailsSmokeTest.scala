@@ -12,7 +12,7 @@ import io.cequence.openaiscala.service.OpenAIServiceFactory
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.openaiscala.service.adapter.OpenAIServiceAdapters
 import io.cequence.openaiscala.service.guardrails.ModelGuardrail
-import io.cequence.openaiscala.typesafe.domain.TypeSafeModelId
+import io.cequence.openaiscala.typesafe.domain.DecisionModelId
 import io.cequence.openaiscala.typesafe.service.TypeSafeServiceFactory
 
 import scala.concurrent.duration._
@@ -103,7 +103,7 @@ object GuardrailsSmokeTest {
     val jevGuard = ModelGuardrail(
       typeSafe,
       ModelGuardrailSettings(
-        TypeSafeModelId.jev_latest,
+        DecisionModelId.jev_latest,
         inputChecks = GuardrailCheck.inputDefaults.map(_.withThreshold(0.5)),
         outputChecks = GuardrailCheck.outputDefaults.map(_.withThreshold(0.5)),
         name = "jev"
@@ -212,7 +212,7 @@ object GuardrailsSmokeTest {
       val streamGuard = ModelGuardrail(
         typeSafe,
         ModelGuardrailSettings(
-          TypeSafeModelId.jev_latest,
+          DecisionModelId.jev_latest,
           outputChecks = GuardrailCheck.outputDefaults :+
             GuardrailCheck("discount_code", "mention a discount or promo code"),
           prompts = GuardrailPrompts(

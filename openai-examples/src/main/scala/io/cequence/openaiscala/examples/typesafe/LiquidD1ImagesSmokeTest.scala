@@ -13,7 +13,7 @@ import io.cequence.openaiscala.typesafe.domain.{
   ChoiceQuestion,
   DecisionImage,
   NoulQuestion,
-  TypeSafeModelId
+  DecisionModelId
 }
 import io.cequence.openaiscala.typesafe.service.{
   TypeSafeScalaInvalidRequestException,
@@ -68,9 +68,9 @@ object LiquidD1ImagesSmokeTest {
     val system = ActorSystem("liquid-d1-images-smoke-test")
     implicit val scheduler: Scheduler = system.scheduler
 
-    val d1 = TypeSafeServiceFactory.liquid(defaultModel = TypeSafeModelId.liquid_d1)
+    val d1 = TypeSafeServiceFactory.liquid(defaultModel = DecisionModelId.liquid_d1)
     val d1AsOpenAI =
-      TypeSafeServiceFactory.liquidAsOpenAI(defaultModel = TypeSafeModelId.liquid_d1)
+      TypeSafeServiceFactory.liquidAsOpenAI(defaultModel = DecisionModelId.liquid_d1)
 
     val (red, blue) = (png(Color.RED), png(Color.BLUE))
     val colour = (which: String) =>
@@ -142,7 +142,7 @@ object LiquidD1ImagesSmokeTest {
               )
             )
           ),
-          CreateChatCompletionSettings(TypeSafeModelId.liquid_d1, jsonSchema = Some(schema))
+          CreateChatCompletionSettings(DecisionModelId.liquid_d1, jsonSchema = Some(schema))
         )
       )
       println(s"[OpenAI interface] $jsonMs ms: $json")
@@ -153,7 +153,7 @@ object LiquidD1ImagesSmokeTest {
         d1.systemOne(
           Json.arr("A photo.", DecisionImage(blue)),
           Map("photo" -> NoulQuestion("Is there a photo?")),
-          TypeSafeModelId.liquid_d1_free
+          DecisionModelId.liquid_d1_free
         ).failed,
         1.minute
       )

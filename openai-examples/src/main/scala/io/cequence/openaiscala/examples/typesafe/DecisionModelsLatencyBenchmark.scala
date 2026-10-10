@@ -139,19 +139,19 @@ object DecisionModelsLatencyBenchmark {
         "typesafe",
         Some(DecisionProviderSettings.typeSafe),
         env("TYPESAFE_API_KEY"),
-        fixed(TypeSafeModelId.jev_latest, TypeSafeModelId.jev_preview)
+        fixed(DecisionModelId.jev_latest, DecisionModelId.jev_preview)
       ),
       Host(
         "liquid",
         Some(DecisionProviderSettings.liquid),
         env("LIQUID_API_KEY"),
-        fixed(TypeSafeModelId.liquid_d1_free, TypeSafeModelId.liquid_d1)
+        fixed(DecisionModelId.liquid_d1_free, DecisionModelId.liquid_d1)
       ),
       Host(
         "perplexity",
         Some(DecisionProviderSettings.perplexity),
         env("PERPLEXITY_API_KEY").orElse(env("SONAR_API_KEY")),
-        fixed(TypeSafeModelId.pplx_decider_v1_1_27b)
+        fixed(DecisionModelId.pplx_decider_v1_1_27b)
       ),
       Host(
         "openai",

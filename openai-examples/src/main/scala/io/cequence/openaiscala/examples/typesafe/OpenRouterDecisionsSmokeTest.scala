@@ -108,9 +108,9 @@ object OpenRouterDecisionsSmokeTest {
 
   // the models that read an image through OpenRouter (live 2026-10-10)
   private val imageModels = Seq(
-    TypeSafeModelId.openrouter_clef_omni,
-    TypeSafeModelId.openrouter_liquid_d1,
-    TypeSafeModelId.openrouter_gpt_6_luna_decisions
+    DecisionModelId.openrouter_clef_omni,
+    DecisionModelId.openrouter_liquid_d1,
+    DecisionModelId.openrouter_gpt_6_luna_decisions
   )
 
   private case class Square(color: String)
@@ -213,7 +213,7 @@ object OpenRouterDecisionsSmokeTest {
 
       triage <- asOpenAI.createChatCompletionWithJSON[Review](
         Seq(UserMessage(review.toString)),
-        CreateChatCompletionSettings(model = TypeSafeModelId.openrouter_liquid_d1)
+        CreateChatCompletionSettings(model = DecisionModelId.openrouter_liquid_d1)
           .withJsonSchema(reviewSchema)
       )
       _ = println(s"[via OpenAI, d1] $triage")
@@ -254,7 +254,7 @@ object OpenRouterDecisionsSmokeTest {
             TextContent("Which color is the square?") +: VLMContent.of(blue, "square.png")
           )
         ),
-        CreateChatCompletionSettings(model = TypeSafeModelId.openrouter_clef_omni)
+        CreateChatCompletionSettings(model = DecisionModelId.openrouter_clef_omni)
           .withJsonSchema(squareSchema)
       )
       _ = println(s"[via OpenAI, image, clef-omni] $squareViaOpenAI")
@@ -265,7 +265,7 @@ object OpenRouterDecisionsSmokeTest {
           DecisionModelBenchmark.run(
             answered
               .filterNot(isSpan)
-              .filterNot(_ == TypeSafeModelId.openrouter_jev_1_13)
+              .filterNot(_ == DecisionModelId.openrouter_jev_1_13)
               .map(model => model.split('/').last -> serviceFor(model)),
             Json.stringify(review),
             questions,

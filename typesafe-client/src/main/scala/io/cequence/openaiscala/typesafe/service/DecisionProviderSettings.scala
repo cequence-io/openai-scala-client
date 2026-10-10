@@ -8,7 +8,7 @@ import io.cequence.openaiscala.typesafe.domain.{
   DecisionProtocol,
   DecisionProvider,
   ModelMetadata,
-  TypeSafeModelId
+  DecisionModelId
 }
 
 /**
@@ -30,7 +30,7 @@ object DecisionProviderSettings {
 
   /**
    * Liquid AI's d1 (`LIQUID_API_KEY`; `d1:free` by default) - 422 "A request accepts at most
-   * 128 questions." (live 2026-10-02). The paid `d1` ([[TypeSafeModelId.liquid_d1]]) also
+   * 128 questions." (live 2026-10-02). The paid `d1` ([[DecisionModelId.liquid_d1]]) also
    * reads images, sent in a top-level `images` array ([[DecisionImages.ImagesField]]): at most
    * 8, 10,000 32 x 32 patches in all, no side over 100 times the other - each a quick 422, as
    * is an image for `d1:free` ("The model `d1:free` does not accept images.", live
@@ -57,18 +57,18 @@ object DecisionProviderSettings {
   val perplexity: DecisionProvider = DecisionProvider(
     "https://api.perplexity.ai/",
     "PERPLEXITY_API_KEY",
-    TypeSafeModelId.pplx_decider_v1_1_27b,
+    DecisionModelId.pplx_decider_v1_1_27b,
     decisionsPath = "v1/decisions",
     models = DecisionModelListing.Fixed(
       Seq(
         ModelMetadata(
-          TypeSafeModelId.pplx_decider_v1_1_27b,
+          DecisionModelId.pplx_decider_v1_1_27b,
           "Perplexity's multimodal decision model, the update of 2026-10-06 (Decision Index 61.56).",
           "2026-10-06",
           Some(Seq("text", "image"))
         ),
         ModelMetadata(
-          TypeSafeModelId.pplx_decider_v1_27b,
+          DecisionModelId.pplx_decider_v1_27b,
           "Perplexity's first decision model (Decision Index 56.4).",
           "2026-10-01",
           Some(Seq("text", "image"))
@@ -115,7 +115,7 @@ object DecisionProviderSettings {
   /**
    * A local llama.cpp server (`llama-server`, `http://127.0.0.1:8080/` - copy the provider
    * with another `baseUrl` for another host or port) serving decision models on TypeSafe's
-   * protocol: Liquid AI's open-weight d1 ([[TypeSafeModelId.liquid_d1_3b_gguf]]) once
+   * protocol: Liquid AI's open-weight d1 ([[DecisionModelId.liquid_d1_3b_gguf]]) once
    * llama.cpp loads it, and Julia-1, Laya, Lev, Kev, OpenJev, Nimble, Clef. A server of one
    * model ignores the request's model; a router (several) needs one of its ids (`listModels` -
    * its decision models only, by `architecture.output_modalities`). Images go in a top-level
@@ -128,7 +128,7 @@ object DecisionProviderSettings {
   val llamaCpp: DecisionProvider = DecisionProvider(
     "http://127.0.0.1:8080/",
     "LLAMA_API_KEY",
-    TypeSafeModelId.liquid_d1_3b_gguf,
+    DecisionModelId.liquid_d1_3b_gguf,
     models = DecisionModelListing.OpenAIStyle(),
     images = DecisionImages.ImagesField,
     requestIdHeaders = Nil,
@@ -147,7 +147,7 @@ object DecisionProviderSettings {
   val FoundryDecisionsPath = "providers/microsoft/v1/systemone"
 
   /**
-   * Microsoft-Decision-1 ([[TypeSafeModelId.microsoft_decision_1]]) on a Microsoft Foundry
+   * Microsoft-Decision-1 ([[DecisionModelId.microsoft_decision_1]]) on a Microsoft Foundry
    * resource (public preview since 2026-10-09; built on Qwen3.5-9B; $0.042 / 1M input tokens
    * in the US and EU data zones, output free): TypeSafe's protocol at `POST
    * <endpoint>/providers/microsoft/v1/systemone` with a `Bearer` key (`FOUNDRY_API_KEY`; the
@@ -208,7 +208,7 @@ object DecisionProviderSettings {
   val openRouter: DecisionProvider = DecisionProvider(
     "https://openrouter.ai/api/",
     "OPENROUTER_API_KEY",
-    TypeSafeModelId.openrouter_jev_latest,
+    DecisionModelId.openrouter_jev_latest,
     models = DecisionModelListing.OpenAIStyle(Seq("output_modalities" -> "decisions")),
     images = DecisionImages.InState,
     requestIdHeaders = Seq("x-generation-id"),

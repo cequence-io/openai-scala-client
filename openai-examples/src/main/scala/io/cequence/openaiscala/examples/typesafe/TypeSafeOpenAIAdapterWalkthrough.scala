@@ -13,7 +13,7 @@ import io.cequence.openaiscala.domain.{
   UserMessage
 }
 import io.cequence.openaiscala.typesafe.domain.settings.CreateChatCompletionSettingsOps._
-import io.cequence.openaiscala.typesafe.domain.{SystemOneResponse, TypeSafeModelId}
+import io.cequence.openaiscala.typesafe.domain.{SystemOneResponse, DecisionModelId}
 import io.cequence.openaiscala.typesafe.service.TypeSafeServiceFactory
 import io.cequence.wsclient.service.spi.{TransportSettings, WSClientEngineRegistry}
 import play.api.libs.json.Json
@@ -74,7 +74,7 @@ object TypeSafeOpenAIAdapterWalkthrough {
   )
 
   private val settings = CreateChatCompletionSettings(
-    model = TypeSafeModelId.jev_latest,
+    model = DecisionModelId.jev_latest,
     response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
     jsonSchema = Some(triageSchema),
     // ignored by System One, kept here to show they do no harm

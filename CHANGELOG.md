@@ -27,7 +27,9 @@ changed); ws-client stays at 1.1.1.
 - positional pattern matches on `ChunkMessageSpec` (new `content_chunks`) and on the TypeSafe `ModelMetadata` (new
   `input_modalities`), both defaulted; an exhaustive match on the TypeSafe `DecisionModelListing` needs a case for the
   new `AzureDeployments` (Microsoft Foundry's deployment list);
-- TypeSafe: `SchemaQuestions.MaxRangeLevels` (32) is gone - `ScoreQuestion.MaxLevels` (10) is the real limit;
+- TypeSafe: `TypeSafeModelId` is `DecisionModelId` now (its constants cover every decision host: Jev, d1, Perplexity's
+  decider, Microsoft-Decision-1, OpenRouter's list) - the old name stays as a deprecated alias of the same object;
+  `SchemaQuestions.MaxRangeLevels` (32) is gone - `ScoreQuestion.MaxLevels` (10) is the real limit;
   `TypeSafeServiceImpl` and `OpenAITypeSafeChatCompletionService` are built from a `DecisionProvider` / with an
   `imageInput` flag now (use `TypeSafeServiceFactory`, which did not change for the existing calls);
 - `TypeSafeServiceAdapters.retry` over a factory service returns a `RetryTypeSafeService with OpenAIDecisionsService`
@@ -83,7 +85,7 @@ changed); ws-client stays at 1.1.1.
   (was $0.04). Images of any size: the API scales them to ~2,100 tokens, so the client's 2,048-tile refusal is gone -
   `DecisionImage(bytes)` / `fromDataUrl` check the format only, and a size cap applies only through a provider's
   `maxImageTiles` (no preset sets one).
-- **Liquid AI d1 with images** - the paid `d1` (`TypeSafeModelId.liquid_d1`, text + image, $0.04 / 1M) next to `d1:free`
+- **Liquid AI d1 with images** - the paid `d1` (`DecisionModelId.liquid_d1`, text + image, $0.04 / 1M) next to `d1:free`
   (text only); `DecisionImages.ImagesField` lifts a state's image parts into Liquid's top-level `images` array (at most
   8 images, 10,000 patches in all). **Open d1** (d1-3B, d1-omni-600M; `liquid_d1_3b_gguf` / `liquid_d1_omni_600m_gguf`)
   and the local **llama.cpp** preset (`DecisionProviderSettings.llamaCpp`, `/v1/systemone`, router or single-model

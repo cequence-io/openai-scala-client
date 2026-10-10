@@ -1,13 +1,13 @@
 package io.cequence.openaiscala.typesafe.service
 
-import io.cequence.openaiscala.typesafe.domain.TypeSafeModelId
+import io.cequence.openaiscala.typesafe.domain.DecisionModelId
 
 /** Defaults and env keys shared with the official TypeSafe SDKs. */
 object TypeSafeServiceConsts {
 
   val defaultBaseUrl = "https://api.typesafe.ai/"
 
-  val defaultModel: String = TypeSafeModelId.jev_latest
+  val defaultModel: String = DecisionModelId.jev_latest
 
   val apiKeyEnvKey = "TYPESAFE_API_KEY"
 
@@ -30,5 +30,5 @@ object TypeSafeServiceConsts {
 
   val liquidApiKeyEnvKey = "LIQUID_API_KEY"
 
-  val liquidDefaultModel: String = TypeSafeModelId.liquid_d1_free
+  val liquidDefaultModel: String = DecisionModelId.liquid_d1_free
 }

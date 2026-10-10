@@ -43,7 +43,7 @@ import scala.concurrent.ExecutionContext
  *
  * {{{
  * val openRouter = TypeSafeServiceFactory(DecisionProviderSettings.openRouter) // OPENROUTER_API_KEY
- * openRouter.systemOne(state, questions, TypeSafeModelId.openrouter_liquid_d1)
+ * openRouter.systemOne(state, questions, DecisionModelId.openrouter_liquid_d1)
  *
  * val decider = TypeSafeServiceFactory.asOpenAI(DecisionProviderSettings.perplexity)
  *

@@ -158,7 +158,7 @@ object LiquidD1SmokeTest {
 
       triage <- d1AsOpenAI.createChatCompletionWithJSON[Triage](
         Seq(UserMessage(state)),
-        CreateChatCompletionSettings(model = TypeSafeModelId.liquid_d1_free)
+        CreateChatCompletionSettings(model = DecisionModelId.liquid_d1_free)
           .withJsonSchema(triageSchema)
       )
       _ = println(s"[d1 via OpenAI] $triage")
