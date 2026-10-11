@@ -89,14 +89,29 @@ class SigningWSClientEngineSpec extends AnyWordSpec with Matchers with ScalaFutu
     }
 
     "sign an empty sync body as {} - the engine always serializes one" in {
-      val fake = new RecordingEngine
-      val e = engine(fake)
-      e.execPOSTRich(awsSite, "x", None, Nil, Nil, Nil, Nil)
-      e.execPOSTBodyRich(awsSite, "x", None, Nil, Json.obj(), Nil, Nil)
+      // (X-Amz-Date, signature) of a request without a body and one with `{}`
+      def signedPair(): Seq[(String, String)] = {
+        val fake = new RecordingEngine
+        val e = engine(fake)
+        e.execPOSTRich(awsSite, "x", None, Nil, Nil, Nil, Nil)
+        e.execPOSTBodyRich(awsSite, "x", None, Nil, Json.obj(), Nil, Nil)
+        fake.calls.toList.map { c =>
+          c._3.collectFirst { case ("X-Amz-Date", date) => date }.getOrElse("") ->
+            authHeader(c._3).head.split("Signature=").last
+        }
+      }
 
-      // both hash the same "{}" payload, so their signatures agree (same second, same URL)
-      val sigs = fake.calls.map(c => authHeader(c._3).head.split("Signature=").last)
-      sigs.distinct should have size 1
+      // the signature covers the second-precision X-Amz-Date, so only a pair signed within
+      // one second can agree - a pair straddling a second boundary is signed again
+      val pair = Iterator
+        .continually(signedPair())
+        .take(5)
+        .find(_.map(_._1).distinct.size == 1)
+        .getOrElse(fail("no pair signed within one second in 5 attempts"))
+
+      // both hash the same "{}" payload, so their signatures agree
+      pair should have size 2
+      pair.map(_._2).distinct should have size 1
     }
 
     "fail fast on payloads it cannot hash instead of sending a bad signature" in {
