@@ -51,7 +51,9 @@ changed); ws-client stays at 1.1.1.
   the Decisions API's "Decision input exceeds the token limit." (`OpenAIErrorCodesSpec`);
 - Anthropic: the retired `context-1m-2025-08-07` beta header is no longer sent (a Claude-subscription OAuth token
   refused every request carrying it); Bedrock structured outputs (`output_config.format`) are sent only to the
-  inference profiles that accept them (see "Claude Haiku 5.5");
+  inference profiles that accept them (see "Claude Haiku 5.5"); the OpenAI-shaped stream (`createChatCompletionStreamed`)
+  carries Claude's thinking as `delta.reasoning_content` and asks for summarized thinking, as the typed stream does -
+  1.4.0 dropped every thinking delta there, so extra chunks with `content = None` now arrive while Claude thinks;
 - the chat-completion batch emulation adapter runs its requests through `FutureHelpers.parallelize` (the next as soon
   as one finishes, results in order) instead of fixed-size groups.
 
@@ -62,7 +64,19 @@ changed); ws-client stays at 1.1.1.
   (the adapter drops them), no prefill, no fast mode, `json_schema` on the Claude API and on Bedrock; it keeps forced
   `tool_choice`. It thinks by default, so `reasoning_effort = none` sends `thinking.type = disabled` (effort `high`
   or below) - `noneThinkingByModel` maps `none` to Sonnet 5.5's `between_tools` and Haiku 5.5's `disabled`. On Bedrock
-  it needs an inference profile (`global.` everywhere, `eu.` / `us.` regionally). `ClaudeHaiku55SmokeTest`.
+  it needs an inference profile (`global.` everywhere, `eu.` / `us.` regionally). `ClaudeHaiku55SmokeTest` walks it
+  in 35 sections, all passing on 2026-10-11 on the Claude API, and with `target=bedrock` / `target=bedrock-sigv4` the
+  same groups on Bedrock (a Bedrock API key: 37 of 37 with the Bedrock group; SigV4 keys: 29 of 29) - there MCP servers
+  and the web search tool are refused with a classified 400, everything else behaves as on the Claude API:
+  structured output (the JSON helper, a schema derived from case classes with its numeric bounds dropped, on both
+  streams, with reasoning on), whole tool loops with thinking on (default, `high`, on the typed stream, two parallel
+  calls answered in one turn), a forced tool choice with reasoning, MCP servers through `MCPServerTool` and
+  `setAnthropicMcpServers` (server-side calls never surface as client calls; an allowed-tools filter; next to a
+  client function tool; `requireApproval = true` refused before any I/O; Bedrock answers an MCP server with a 400
+  "MCP server configurations are not supported for this model"), every effort level with summarized thinking and its
+  signatures, an image, prompt caching (19,501 of 19,527 prompt tokens read from the cache) and the web search tool.
+  A tool loop whose first turn thought is accepted without that thinking sent back (the OpenAI-shaped messages carry
+  none).
 - **Anthropic access modes** re-verified (`AnthropicAccessModesSmokeTest api|oauth|foundry|bedrock`): API key, a
   Claude-subscription OAuth token (`asOpenAIWithAuthToken`; outside Claude Code only Haiku 4.5 answers, every other
   model a bare 429 - Anthropic's gate), Microsoft Foundry (`customInstance` at
@@ -219,6 +233,13 @@ schema per type (`decide[T]`). Value descriptions reach a decision model as per-
   by status with `error.type` / `error.code`; `ModelMetadata.input_modalities`.
 - Perplexity's Decisions OpenAPI spec vendored (`perplexity-decisions-openapi.json`) and pinned; Perplexity Agent /
   TypeSafe wire specs extended.
+
+### Fixed
+
+- Bedrock `inferenceProfilePrefix` takes the profile with or without its dot (`Some("eu")` and `Some("eu.")` alike,
+  `BedrockConnectionSettings.withInferenceProfile`). 1.4.0 glued it on as it was, so the form its README documented,
+  `Some("eu")`, sent the model id `euanthropic.claude-...` - a 400 "The provided model identifier is invalid." on
+  every call.
 
 ### Deprecated
 

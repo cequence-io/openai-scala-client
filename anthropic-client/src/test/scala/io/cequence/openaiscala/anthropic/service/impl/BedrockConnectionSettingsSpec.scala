@@ -16,6 +16,26 @@ class BedrockConnectionSettingsSpec extends AnyWordSpec with Matchers {
   private val SessionToken = "session-token-value"
   private val BearerToken = "bearer-token-value"
 
+  "BedrockConnectionSettings.withInferenceProfile" should {
+
+    "put the profile in front of a bare id, with or without its dot, never twice" in {
+      def withPrefix(prefix: Option[String]) =
+        BedrockConnectionSettings("", "", "eu-central-1", inferenceProfilePrefix = prefix)
+
+      val bare = "anthropic.claude-haiku-5-5"
+      // the documented form (no dot) used to send "euanthropic.claude-...", an invalid id
+      withPrefix(Some("eu"))
+        .withInferenceProfile(bare) shouldBe "eu.anthropic.claude-haiku-5-5"
+      withPrefix(Some("eu."))
+        .withInferenceProfile(bare) shouldBe "eu.anthropic.claude-haiku-5-5"
+      withPrefix(Some(" global ")).withInferenceProfile(bare) shouldBe
+        "global.anthropic.claude-haiku-5-5"
+      withPrefix(Some("eu")).withInferenceProfile("eu." + bare) shouldBe "eu." + bare
+      withPrefix(None).withInferenceProfile(bare) shouldBe bare
+      withPrefix(Some("")).withInferenceProfile(bare) shouldBe bare
+    }
+  }
+
   "BedrockConnectionSettings.toString" should {
 
     "redact secretKey, sessionToken and bearerToken, and truncate accessKey" in {

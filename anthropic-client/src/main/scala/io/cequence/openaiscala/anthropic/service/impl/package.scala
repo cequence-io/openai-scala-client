@@ -851,6 +851,21 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
               ) =>
             List(chunk(ChunkMessageSpec(role = None, content = Some(text))))
 
+          // thinking -> `reasoning_content`, the field the OpenAI-compatible reasoning providers
+          // stream it in (the typed stream derived from such chunks reads it as `Thinking`)
+          case MessageStreamEvent.ContentBlockDeltaEvent(
+                ContentBlockDelta(_, _, DeltaBlock.DeltaThinking(thinking))
+              ) if thinking.nonEmpty =>
+            List(
+              chunk(
+                ChunkMessageSpec(
+                  role = None,
+                  content = None,
+                  reasoning_content = Some(thinking)
+                )
+              )
+            )
+
           case MessageStreamEvent.ContentBlockDeltaEvent(
                 ContentBlockDelta(_, blockIndex, DeltaBlock.DeltaInputJson(partialJson))
               ) =>

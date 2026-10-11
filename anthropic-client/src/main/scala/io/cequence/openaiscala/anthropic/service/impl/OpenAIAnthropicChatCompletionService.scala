@@ -105,7 +105,10 @@ private[service] class OpenAIAnthropicChatCompletionService(
     }
 
   /**
-   * Creates a completion for the chat message(s) with streamed results.
+   * Creates a completion for the chat message(s) with streamed results, in OpenAI's chunk
+   * shape. Thinking streams as `delta.reasoning_content` (summarized text, requested whenever
+   * thinking is configured), as the OpenAI-compatible reasoning providers send it; the answer
+   * as `delta.content`.
    *
    * @param messages
    *   A list of messages comprising the conversation so far.
@@ -127,11 +130,26 @@ private[service] class OpenAIAnthropicChatCompletionService(
         .createMessageStreamedEvents(
           toAnthropicSystemMessages(messages.filter(_.isSystem), settings) ++
             toAnthropicMessages(messages.filter(!_.isSystem), settings),
-          toAnthropicSettings(settings)
+          withSummarizedThinking(toAnthropicSettings(settings))
         )
         .via(toOpenAIChunks)
         .mapError(toOpenAIException)
     }
+
+  // summarized thinking text for the streams (the 5-series models omit it by default), unless
+  // the caller pinned a display mode - `disabled` / `between_tools` take no display (a 400)
+  private def withSummarizedThinking(
+    settings: AnthropicCreateMessageSettings
+  ): AnthropicCreateMessageSettings =
+    settings.copy(
+      thinking = settings.thinking.map(thinking =>
+        thinking.`type` match {
+          case ThinkingType.adaptive | ThinkingType.enabled =>
+            thinking.copy(display = thinking.display.orElse(Some(ThinkingDisplay.summarized)))
+          case _ => thinking
+        }
+      )
+    )
 
   override def createChatToolCompletion(
     messages: Seq[BaseMessage],
@@ -177,20 +195,11 @@ private[service] class OpenAIAnthropicChatCompletionService(
     val (anthropicMessages, anthropicSettings) =
       toAnthropicToolRequest(messages, tools, responseToolChoice, settings)
 
-    // summarized thinking text for the Thinking chunks - `disabled` / `between_tools` take no
-    // display (a 400)
-    val settingsFinal = anthropicSettings.copy(
-      thinking = anthropicSettings.thinking.map(thinking =>
-        thinking.`type` match {
-          case ThinkingType.adaptive | ThinkingType.enabled =>
-            thinking.copy(display = thinking.display.orElse(Some(ThinkingDisplay.summarized)))
-          case _ => thinking
-        }
-      )
-    )
-
-    streamWithContinuation(anthropicMessages, settingsFinal, maxContinuations(settings))
-      .mapError(toOpenAIException)
+    streamWithContinuation(
+      anthropicMessages,
+      withSummarizedThinking(anthropicSettings),
+      maxContinuations(settings)
+    ).mapError(toOpenAIException)
   }
 
   private def maxContinuations(settings: CreateChatCompletionSettings): Int =

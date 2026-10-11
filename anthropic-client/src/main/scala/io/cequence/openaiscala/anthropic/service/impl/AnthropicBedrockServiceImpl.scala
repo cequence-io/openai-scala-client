@@ -785,8 +785,9 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
  * @param region
  *   AWS region for Bedrock (e.g. us-east-1, eu-central-1). Required in all modes.
  * @param inferenceProfilePrefix
- *   Optional cross-region inference profile prefix (e.g. "us." or "eu.") prepended to the
- *   model id at request time when not already present.
+ *   Optional cross-region inference profile (`eu`, `us`, `global`, ... - with or without its
+ *   trailing dot) prepended to the model id at request time when not already present - see
+ *   [[withInferenceProfile]].
  * @param sessionToken
  *   STS session token. When set, included as `X-Amz-Security-Token` in SigV4 signed headers.
  *   Must come from the same STS triple as accessKey/secretKey.
@@ -819,4 +820,18 @@ case class BedrockConnectionSettings(
       s"sessionToken=${sessionToken.map(_ => "***")}, " +
       s"bearerToken=${bearerToken.map(_ => "***")})"
   }
+
+  /**
+   * The model id a request goes out with: the inference profile in front of it - `eu` and
+   * `eu.` alike, the dot added when missing (1.4.0 glued the prefix on as it was, so the
+   * documented `Some("eu")` sent `euanthropic....`, an invalid id) - unless the id already
+   * starts with it.
+   */
+  def withInferenceProfile(modelId: String): String =
+    inferenceProfilePrefix.map(_.trim).filter(_.nonEmpty) match {
+      case Some(raw) =>
+        val prefix = if (raw.endsWith(".")) raw else raw + "."
+        if (modelId.startsWith(prefix)) modelId else prefix + modelId
+      case None => modelId
+    }
 }

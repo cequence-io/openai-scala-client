@@ -129,7 +129,7 @@ class AnthropicStreamedToOpenAISpec
       last.usage.map(_.total_tokens) shouldBe Some(15)
     }
 
-    "keep choice index 0 for text after a thinking block (thinking deltas produce no content chunks)" in {
+    "stream thinking as reasoning_content, never as content, and keep choice index 0" in {
       val events: Seq[MessageStreamEvent] = Seq(
         messageStart(),
         ContentBlockStart(0, "thinking", None),
@@ -148,6 +148,8 @@ class AnthropicStreamedToOpenAISpec
       chunks.flatMap(_.choices.flatMap(_.delta.content)).filter(_.nonEmpty) shouldBe Seq(
         "answer"
       )
+      // ... but as reasoning_content, as the OpenAI-compatible reasoning providers stream it
+      chunks.flatMap(_.choices.flatMap(_.delta.reasoning_content)) shouldBe Seq("pondering...")
       // every chunk uses OpenAI's choice index (0), never Anthropic's content-block index (1)
       chunks.foreach(_.choices.head.index shouldBe 0)
     }

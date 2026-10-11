@@ -13,7 +13,7 @@ of tool calls mid-stream.
   |---|---|---|---|---|
   | `Start(id, model)` | first chunk | chunk id / model | `message_start` | `modelVersion` |
   | `Text(text)` | answer fragment | `delta.content` | `text_delta` | text part |
-  | `Thinking(text)` | reasoning fragment | `delta.reasoning_content` (DeepSeek, Grok, ...) / `delta.reasoning` (Groq) | `thinking_delta` (summarized thinking is requested automatically) | thought-summary part (`includeThoughts` on by default) |
+  | `Thinking(text)` | reasoning fragment | `delta.reasoning_content` (DeepSeek, Grok, ...) / `delta.reasoning` (Groq) | `thinking_delta` (summarized thinking is requested automatically; on the OpenAI-shaped `createChatCompletionStreamed` it arrives as `delta.reasoning_content` since 1.5.0) | thought-summary part (`includeThoughts` on by default) |
   | `ThinkingSignature(signature, callId)`, `RedactedThinking` | opaque data to echo back in tool loops (`callId` set when the signature rides on a function call) | encrypted reasoning (Responses API) | `signature_delta`, `redacted_thinking` | `thoughtSignature` |
   | `ToolCallStart` / `ToolCallDelta` / `ToolCall` | tool call: start, argument fragments, assembled call | `delta.tool_calls` fragments | `tool_use` + `input_json_delta`; `server_tool_use` / `mcp_tool_use` (`serverSide = true`, MCP servers via `setAnthropicMcpServers`) | `functionCall` (complete); `executableCode` and `mcpServers` calls (`serverSide = true`) |
   | `ToolResult` | result of a provider-executed tool | code interpreter outputs, MCP / file search results (Responses API) | web search / web fetch / code execution / bash / text editor / MCP result blocks | `codeExecutionResult`; `functionResponse` of `mcpServers` calls |

@@ -135,7 +135,7 @@ Then you can obtain a service in one of the following ways.
      // the native AnthropicService against the `bedrock-mantle` Anthropic Messages endpoint (`AWS_BEARER_TOKEN_BEDROCK`)
      val service = AnthropicServiceFactory.forBedrockMantle()
    ```
-   Pass `inferenceProfilePrefix = Some("eu")` (or `"us"` / `"global"`) to route through a cross-region inference profile. The native (non-adapter) counterparts are `forBedrock`, `forBedrockWithSessionToken`, and `forBedrockWithBearerToken`.
+   Pass `inferenceProfilePrefix = Some("eu")` (or `"us"` / `"global"`, with or without the trailing dot) to route through a cross-region inference profile. The native (non-adapter) counterparts are `forBedrock`, `forBedrockWithSessionToken`, and `forBedrockWithBearerToken`.
 
 3. [Google Vertex AI](https://cloud.google.com/vertex-ai) - requires `openai-scala-google-vertexai-client` lib and `VERTEXAI_LOCATION` + `VERTEXAI_PROJECT_ID`
 ```scala

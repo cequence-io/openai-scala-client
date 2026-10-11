@@ -48,12 +48,6 @@ private[service] class OpenAIAnthropicBedrockChatCompletionService(
     batchSupport.flatMap(_.s3Region).getOrElse(connectionInfo.region)
   )
 
-  private def withInferenceProfile(modelId: String): String =
-    connectionInfo.inferenceProfilePrefix match {
-      case Some(prefix) if !modelId.startsWith(prefix) => prefix + modelId
-      case _                                           => modelId
-    }
-
   override def createChatCompletionBatch(
     requests: Seq[ChatCompletionBatchRequest],
     settings: CreateChatCompletionSettings
@@ -85,7 +79,7 @@ private[service] class OpenAIAnthropicBedrockChatCompletionService(
         job <- support.batchService.createBatchInferenceJob(
           CreateBatchInferenceJobSettings(
             jobName = s"openai-scala-client-batch-${java.util.UUID.randomUUID().toString}",
-            modelId = withInferenceProfile(anthropicSettings.model),
+            modelId = connectionInfo.withInferenceProfile(anthropicSettings.model),
             roleArn = support.roleArn,
             inputS3Uri = s"s3://${support.s3Bucket}/$inputKey",
             outputS3Uri = s"s3://${support.s3Bucket}/$outputPrefix"

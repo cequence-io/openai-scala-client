@@ -409,8 +409,9 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
    * @param region
    *   AWS region for Bedrock. Defaults to AWS_BEDROCK_REGION env var.
    * @param inferenceProfilePrefix
-   *   Optional cross-region inference profile prefix (e.g. "eu." or "us."). When set, it's
-   *   prepended to the model id on each request unless the model id already starts with it.
+   *   Optional cross-region inference profile (`eu`, `us`, `global`, ... - with or without its
+   *   trailing dot). When set, it's prepended to the model id on each request unless the model
+   *   id already starts with it.
    * @param timeouts
    *   Optional explicit HTTP timeouts.
    * @param sessionToken
@@ -1157,11 +1158,7 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
     private def withInferenceProfile(
       settings: AnthropicCreateMessageSettings
     ): AnthropicCreateMessageSettings =
-      connectionInfo.inferenceProfilePrefix match {
-        case Some(prefix) if !settings.model.startsWith(prefix) =>
-          settings.copy(model = prefix + settings.model)
-        case _ => settings
-      }
+      settings.copy(model = connectionInfo.withInferenceProfile(settings.model))
 
     override def createMessage(
       messages: Seq[Message],
