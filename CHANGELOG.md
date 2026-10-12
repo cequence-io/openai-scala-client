@@ -2,10 +2,10 @@
 
 ## 1.5.0 (unreleased)
 
-The 2026-10-01 - 2026-10-09 work since v1.4.0 (2026-09-30): OpenAI's Decisions API (natively and as a
+The 2026-10-01 - 2026-10-12 work since v1.4.0 (2026-09-30): OpenAI's Decisions API (natively and as a
 decision provider), decision models from Perplexity, Liquid AI (with images), OpenRouter, llama.cpp, Microsoft Foundry
 (Microsoft-Decision-1) and Vercel AI Gateway behind one `DecisionProvider` abstraction with their execution time compared side by side, typed decisions and re-ranking on any decision model, a guardrails adapter, JSON schemas
-derived from case classes by one shared IR on Scala 2 and 3, Claude Haiku 5.5 with the Anthropic access modes re-verified,
+derived from case classes by one shared IR on Scala 2 and 3, a switch that forces the JSON helpers' mode either way, Claude Haiku 5.5 with the Anthropic access modes re-verified,
 Mistral Large 4 with its chunked content and citations, Perplexity's decider v1.1, a 32 MiB stream frame cap (1.4.0:
 1 MiB) and a server-sent-events decoder built for large events. Everything below is live-verified against the providers
 unless stated otherwise.
@@ -31,7 +31,11 @@ changed); ws-client stays at 1.1.1.
   `TypeSafeServiceImpl` and `OpenAITypeSafeChatCompletionService` are built from a `DecisionProvider` / with an
   `imageInput` flag now (use `TypeSafeServiceFactory`, which did not change for the existing calls);
 - `TypeSafeServiceAdapters.retry` over a factory service returns a `RetryTypeSafeService with OpenAIDecisionsService`
-  (the static type is still `TypeSafeService`).
+  (the static type is still `TypeSafeService`);
+- the JSON helpers' `enforceJsonSchemaMode: Boolean` is now `enforceMode: Option[ChatCompletionResponseFormatType]`
+  (`createChatCompletionWithJSON`, `createChatCompletionWithJSONFullResponse`, `createChatCompletionBatchWithJSON`,
+  `handleOutputJsonSchema`, same position): `enforceJsonSchemaMode = true` becomes
+  `enforceMode = Some(ChatCompletionResponseFormatType.json_schema)`.
 
 **Behavior changes** (details below):
 - streamed frames: one event / JSON line may now be up to **32 MiB** (1.4.0: 1 MiB - the 2-3 MiB image frames of the
@@ -40,8 +44,9 @@ changed); ws-client stays at 1.1.1.
   any Mistral reasoning answer;
 - the JSON helper (`createChatCompletionWithJSON`) picks its mode as before - native `json_schema` for a model listed in
   `models-supporting-json-schema` (or in the call's `jsonSchemaModels`), the prompt-based `json_object` fallback for one
-  that is not; what changed is the TypeSafe adapter, which now reads the schema back from that fallback's prompt, so an
-  unlisted decision-model id (a new dated `jev-1.14.0`, an OpenRouter id) works instead of failing loudly as in 1.4.0;
+  that is not - unless `enforceMode` says otherwise (see "Changed"); the TypeSafe adapter now reads the schema back
+  from that fallback's prompt, so an unlisted decision-model id (a new dated `jev-1.14.0`, an OpenRouter id) works
+  instead of failing loudly as in 1.4.0;
 - the TypeSafe adapter plans at most **10** score levels (`ScoreQuestion.MaxLevels`; 1.4.0 shipped an unverified 32 -
   the API refuses more than 10) and names its questions by escaped paths, so `{"a.b": ...}` and `{"a": {"b": ...}}`
   never share an answer (#128);
@@ -221,6 +226,15 @@ schema per type (`decide[T]`). Value descriptions reach a decision model as per-
 
 ### Changed
 
+- **JSON helpers: the mode can be forced either way** - `enforceMode = Some(ChatCompletionResponseFormatType.json_object)`
+  puts the schema in the prompt with `response_format: json_object` even for a model listed in
+  `models-supporting-json-schema`, `Some(json_schema)` sends it natively to an unlisted one (1.4.0's
+  `enforceJsonSchemaMode = true`), `None` keeps the lists' choice and `text` is refused. The same switch on
+  `createChatCompletionBatchWithJSON` and on `ModelGuardrailSettings` (the guard's verdict call). Live: gpt-5.4-mini,
+  Claude Haiku 5.5, Gemini 2.5 Flash-Lite and Jev give the same answer all three ways (`JsonEnforceModeSmokeTest`).
+  JSON-object mode keeps prompt caching on GPT-6 when calls share a prompt but differ in schema: GPT-6 caches a native
+  schema as part of the prompt's prefix (another schema: 0 tokens cached on gpt-6-luna / gpt-6-sol, 3,231 of 3,312 in
+  JSON-object mode; GPT-5.4-mini / 5.5 cache across schemas either way).
 - `TypeSafeServiceAdapters.retry` over a factory service keeps the service's own Decisions path
   (`asOpenAIDecisions(retry(service))` no longer translates); `imageInput` is ignored, with a warning, for a service
   that serves the interface itself.

@@ -68,6 +68,48 @@ class JsonSchemaModelMatchingSpec extends AnyWordSpec with Matchers {
       schemaMode("eu.anthropic.claude-opus-5", Seq("claude-opus-5")) shouldBe false
       schemaMode("anthropic.claude-haiku-4-5", Seq("claude-haiku-4-5")) shouldBe false
     }
+
+    def enforced(
+      model: String,
+      listed: Seq[String],
+      mode: ChatCompletionResponseFormatType
+    ) =
+      OpenAIChatCompletionExtra.handleOutputJsonSchema(
+        Seq(UserMessage("x")),
+        CreateChatCompletionSettings(model, jsonSchema = Some(schema)),
+        "test",
+        jsonSchemaModels = listed,
+        enforceMode = Some(mode)
+      )
+
+    "put the schema into the prompt when JSON-object mode is enforced, even for a listed model" in {
+      val (messages, settings) =
+        enforced(
+          "gpt-5.6-luna",
+          Seq("gpt-5.6-luna"),
+          ChatCompletionResponseFormatType.json_object
+        )
+
+      settings.response_format_type shouldBe Some(ChatCompletionResponseFormatType.json_object)
+      settings.jsonSchema shouldBe None
+      OpenAIChatCompletionExtra.jsonSchemaFromPrompt(messages).map(_._1) shouldBe Some(
+        Seq(UserMessage("x"))
+      )
+    }
+
+    "send the schema natively when JSON-schema mode is enforced, even for an unlisted model" in {
+      val (messages, settings) =
+        enforced("unlisted", Seq("other"), ChatCompletionResponseFormatType.json_schema)
+
+      settings.response_format_type shouldBe Some(ChatCompletionResponseFormatType.json_schema)
+      settings.jsonSchema shouldBe Some(schema)
+      messages shouldBe Seq(UserMessage("x"))
+    }
+
+    "refuse text as the enforced mode" in {
+      an[IllegalArgumentException] should be thrownBy
+        enforced("gpt-5.6-luna", Nil, ChatCompletionResponseFormatType.text)
+    }
   }
 
   "jsonSchemaFromPrompt" should {

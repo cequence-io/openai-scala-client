@@ -1,6 +1,9 @@
 package io.cequence.openaiscala.domain.guardrails
 
-import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
+import io.cequence.openaiscala.domain.settings.{
+  ChatCompletionResponseFormatType,
+  CreateChatCompletionSettings
+}
 
 /**
  * Settings of a guardrail answered by a chat model (`ModelGuardrail`): the checks of a stage
@@ -31,11 +34,14 @@ import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
  *   how many times an answer that is not a verdict is asked again. Transient errors (timeouts,
  *   429, 5xx) are not retried here - wrap the guard service with `OpenAIServiceAdapters.retry`
  *   for those.
- * @param enforceJsonSchemaMode
- *   send the JSON schema even when `model` is not in the configured
- *   `models-supporting-json-schema` - for an LLM that takes one although the config does not
- *   list it; otherwise such a model gets the schema in the prompt (JSON-object mode), which a
- *   decision model's adapter reads back from there, so it does not need this
+ * @param enforceMode
+ *   how the guard is asked for its verdict, whatever the configured
+ *   `models-supporting-json-schema` says: `Some(json_schema)` sends the JSON schema natively -
+ *   for an LLM that takes one although the config does not list it; `Some(json_object)` puts
+ *   the schema in the prompt with `response_format: json_object` even for a listed model - for
+ *   a host whose `json_schema` refuses parts of the schema. None (default) decides by the
+ *   config: an unlisted model gets JSON-object mode, which a decision model's adapter reads
+ *   the schema back from, so a decision model needs no override. `text` is refused.
  * @param adjustSettings
  *   adjusts the guard call's settings - e.g. `_.copy(reasoning_effort =
  *   Some(ReasoningEffort.none))` to keep a reasoning LLM quick. With a decision model, the
@@ -53,12 +59,16 @@ final case class ModelGuardrailSettings(
   name: String = "moderation",
   scope: GuardrailScope = GuardrailScope.NewUserMessages,
   parseRetries: Int = 2,
-  enforceJsonSchemaMode: Boolean = false,
+  enforceMode: Option[ChatCompletionResponseFormatType] = None,
   adjustSettings: CreateChatCompletionSettings => CreateChatCompletionSettings =
     identity[CreateChatCompletionSettings]
 ) {
   require(model.trim.nonEmpty, "The guard model is not set.")
   require(parseRetries >= 0, s"parseRetries must not be negative, got $parseRetries.")
+  require(
+    !enforceMode.contains(ChatCompletionResponseFormatType.text),
+    "enforceMode takes json_schema or json_object - text asks for no JSON."
+  )
 
   // a policy needs a place in the prompt of every stage that asks something
   if (policy.exists(_.trim.nonEmpty))

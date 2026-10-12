@@ -76,7 +76,7 @@ class ModelGuardrailSpec extends AnyWordSpec with Matchers {
           "guard-model",
           inputChecks = twoChecks,
           outputChecks = Seq(GuardrailCheck.systemPromptLeak),
-          enforceJsonSchemaMode = true
+          enforceMode = Some(ChatCompletionResponseFormatType.json_schema)
         )
       )
     )
@@ -446,13 +446,43 @@ class ModelGuardrailSpec extends AnyWordSpec with Matchers {
     "put the schema into the prompt for a model without JSON-schema support" in {
       val guard = new ScriptedGuard(passing)
       await(
-        guardrail(guard, _.copy(model = "plain-model", enforceJsonSchemaMode = false))
+        guardrail(guard, _.copy(model = "plain-model", enforceMode = None))
           .checkInput(Seq(UserMessage("Hello")))
       )
 
       val (_, settings) = guard.calls.head
       settings.response_format_type shouldBe Some(ChatCompletionResponseFormatType.json_object)
+      settings.jsonSchema shouldBe None
       userPrompt(guard.calls.head) should include("<output_json_schema>")
+    }
+
+    "send the schema natively or in the prompt as enforced" in {
+      val native = new ScriptedGuard(passing)
+      await(guardrail(native).checkInput(Seq(UserMessage("Hello"))))
+      native.calls.head._2.response_format_type shouldBe Some(
+        ChatCompletionResponseFormatType.json_schema
+      )
+      native.calls.head._2.jsonSchema.map(_.name) shouldBe Some("guardrail_verdict")
+      userPrompt(native.calls.head) should not include "<output_json_schema>"
+
+      val inPrompt = new ScriptedGuard(passing)
+      await(
+        guardrail(
+          inPrompt,
+          _.copy(enforceMode = Some(ChatCompletionResponseFormatType.json_object))
+        ).checkInput(Seq(UserMessage("Hello")))
+      )
+      inPrompt.calls.head._2.response_format_type shouldBe Some(
+        ChatCompletionResponseFormatType.json_object
+      )
+      userPrompt(inPrompt.calls.head) should include("<output_json_schema>")
+    }
+
+    "refuse text as the enforced mode" in {
+      the[IllegalArgumentException] thrownBy ModelGuardrailSettings(
+        "m",
+        enforceMode = Some(ChatCompletionResponseFormatType.text)
+      ) should have message "requirement failed: enforceMode takes json_schema or json_object - text asks for no JSON."
     }
 
     "apply the settings adjustment" in {

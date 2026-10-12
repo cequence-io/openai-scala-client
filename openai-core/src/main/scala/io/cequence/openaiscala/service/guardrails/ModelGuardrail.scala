@@ -85,7 +85,7 @@ final class ModelGuardrail(
         Seq(SystemMessage(instructions(stage, checks)), UserMessage(prompt)),
         chatSettings,
         taskNameForLogging = s"guardrail '$name'",
-        enforceJsonSchemaMode = settings.enforceJsonSchemaMode
+        enforceMode = settings.enforceMode
       )
 
       ask(messagesFinal, settingsFinal, checks, settings.parseRetries, None).map {

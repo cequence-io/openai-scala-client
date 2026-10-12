@@ -1,7 +1,11 @@
 package io.cequence.openaiscala.examples.typesafe
 
 import akka.actor.{ActorSystem, Scheduler}
-import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, JsonSchemaDef}
+import io.cequence.openaiscala.domain.settings.{
+  ChatCompletionResponseFormatType,
+  CreateChatCompletionSettings,
+  JsonSchemaDef
+}
 import io.cequence.openaiscala.domain.{JsonSchema, JsonSchemaDescription, UserMessage}
 import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
 import io.cequence.openaiscala.typesafe.domain._
@@ -200,7 +204,8 @@ object MicrosoftDecision1SmokeTest {
           .createChatCompletionWithJSON[Routing](
             Seq(UserMessage("I was charged twice and want my money back.")),
             CreateChatCompletionSettings(model = deployment).withJsonSchema(routingSchema),
-            jsonSchemaModels = Seq(deployment)
+            // a deployment name is not in models-supporting-json-schema - send the schema natively
+            enforceMode = Some(ChatCompletionResponseFormatType.json_schema)
           )
           .map { routing =>
             if (routing != Routing("billing", refund = true)) sys.error(s"answered $routing")

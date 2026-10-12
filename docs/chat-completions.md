@@ -173,13 +173,41 @@ There is a new project [openai-scala-client-examples](../openai-examples/src/mai
 ```
 
 - **How `createChatCompletionWithJSON` picks its mode** - the model is looked up in `models-supporting-json-schema`
-  (`openai-scala-client.conf`; or the call's own `jsonSchemaModels`, or `enforceJsonSchemaMode = true`). A listed model gets
-  native structured output - `response_format: json_schema`, the schema enforced by the provider. An unlisted one gets
-  `response_format: json_object` with the schema appended to the prompt, the reply parsed and repaired on the client: weaker
-  (nothing is enforced server-side), but it works for any model that can follow a schema in text. So the list selects the
-  mechanism, not whether the call works; keep it current for the models you want enforced. Decision models are the one case
-  where both routes are equivalent: their adapter turns the schema into questions either way (reading it back from the
-  prompt in the fallback), so an unlisted decider id loses nothing.
+  (`openai-scala-client.conf`, or the call's own `jsonSchemaModels`). A listed model gets native structured output -
+  `response_format: json_schema`, the schema enforced by the provider. An unlisted one gets `response_format: json_object`
+  with the schema appended to the prompt, the reply parsed and repaired on the client: weaker (nothing is enforced
+  server-side), but it works for any model that can follow a schema in text. So the list selects the mechanism, not whether
+  the call works; keep it current for the models you want enforced. `enforceMode` overrides the list for a call:
+  `Some(ChatCompletionResponseFormatType.json_schema)` sends the schema natively to a model the list misses, and
+  `Some(ChatCompletionResponseFormatType.json_object)` puts it in the prompt even for a listed model. The latter helps
+  - with **prompt caching on GPT-6**, when calls share a long prompt but differ in schema: GPT-6 caches a native schema
+    as part of the prompt's prefix, so a call with another schema reads nothing from the cache, while in JSON-object mode
+    the schema rides at the end of the last user message and the shared prompt stays cached (live 2026-10-11, a
+    3,300-token prompt, a second call with another schema: gpt-6-luna and gpt-6-sol 0 tokens cached natively vs 3,231 in
+    JSON-object mode; gpt-5.4-mini and gpt-5.5 cached 2,816 either way);
+  - with a provider whose structured output loses parts of a schema (Anthropic refuses `minimum` / `maximum`, so its
+    adapter strips them; Gemini ignores them and `enum`), while the prompt shows the model the whole schema.
+
+  `createChatCompletionBatchWithJSON` and `ModelGuardrailSettings` take the same switch, and
+  [`JsonEnforceModeSmokeTest`](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/JsonEnforceModeSmokeTest.scala)
+  runs all three ways on four providers. Decision models are the one case where both routes are equivalent: their adapter
+  turns the schema into questions either way (reading it back from the prompt in the fallback), so an unlisted decider id
+  loses nothing.
+
+```scala
+  // the schema at the end of the prompt, although gpt-6-sol takes it natively - the shared
+  // system prompt stays cached across calls with different schemas
+  service
+    .createChatCompletionWithJSON[JsObject](
+      messages = messages,
+      settings = CreateChatCompletionSettings(
+        model = ModelId.gpt_6_sol,
+        jsonSchema = Some(jsonSchemaDef)
+      ),
+      enforceMode = Some(ChatCompletionResponseFormatType.json_object)
+    )
+```
+
 - **JSON schema derived from a case class** - `jsonSchemaFor[T]()` (`JsonSchemaReflectionHelper`; runtime reflection on
   Scala 2, a macro on Scala 3 - the same call and the same schema on both). Fields map to their JSON types (`Option` = not
   required, collections = arrays, nested case classes = objects, type parameters resolved); `Enumeration`s, Java enums,

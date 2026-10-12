@@ -2,6 +2,7 @@ package io.cequence.openaiscala.typesafe.service.impl
 
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.guardrails._
+import io.cequence.openaiscala.domain.settings.ChatCompletionResponseFormatType
 import io.cequence.openaiscala.service.guardrails.ModelGuardrail
 import io.cequence.openaiscala.typesafe.domain._
 import io.cequence.openaiscala.typesafe.service._
@@ -31,7 +32,7 @@ class GuardrailOnDecisionModelSpec extends AnyWordSpec with Matchers {
   // mode, the schema appended to its prompt, which the adapter reads back from there
   private def guardrail(
     stub: Stub,
-    enforceJsonSchemaMode: Boolean = false
+    enforceMode: Option[ChatCompletionResponseFormatType] = None
   ) =
     ModelGuardrail(
       TypeSafeServiceFactory.asOpenAI(stub),
@@ -40,7 +41,7 @@ class GuardrailOnDecisionModelSpec extends AnyWordSpec with Matchers {
         inputChecks =
           Seq(GuardrailCheck.promptInjection.withThreshold(0.5), GuardrailCheck.sexualContent),
         outputChecks = Seq(GuardrailCheck.systemPromptLeak),
-        enforceJsonSchemaMode = enforceJsonSchemaMode
+        enforceMode = enforceMode
       )
     )
 
@@ -95,7 +96,8 @@ class GuardrailOnDecisionModelSpec extends AnyWordSpec with Matchers {
 
       val verdict = await(guardrail(fallback).checkInput(call))
       await(
-        guardrail(schemaMode, enforceJsonSchemaMode = true).checkInput(call)
+        guardrail(schemaMode, Some(ChatCompletionResponseFormatType.json_schema))
+          .checkInput(call)
       ) shouldBe verdict
 
       schemaMode.lastState shouldBe fallback.lastState

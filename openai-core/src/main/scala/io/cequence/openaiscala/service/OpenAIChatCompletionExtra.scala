@@ -138,9 +138,10 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
      *   - JSON response parsing and validation
      *   - Logging of operation progress and timing
      *
-     * **Important:** pass an explicit list of models that support JSON schema if the default
-     * list is not sufficient or use `enforceJsonSchemaMode` if you are sure that the model
-     * supports it.
+     * **The mode:** native `json_schema` for a model listed in `models-supporting-json-schema`
+     * (or in `jsonSchemaModels`), else JSON-object mode - `response_format: json_object` with
+     * the schema appended to the last user message, the reply parsed and repaired here.
+     * `enforceMode` overrides that choice in either direction.
      *
      * @tparam T
      *   The target type to deserialize the JSON response into (must have an implicit Format)
@@ -160,8 +161,11 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
      * @param jsonSchemaModels
      *   Models that support JSON schema mode (important to specify if using non-default
      *   models)
-     * @param enforceJsonSchemaMode
-     *   If true, use OpenAI's native JSON schema mode for compatible models
+     * @param enforceMode
+     *   `Some(json_schema)` sends the schema natively whatever the model lists say,
+     *   `Some(json_object)` always uses JSON-object mode (the schema in the prompt) - e.g. for
+     *   a provider whose `json_schema` refuses parts of a schema; None (default) decides by
+     *   the lists. `text` is refused.
      * @param parseJson
      *   Custom JSON parsing function (defaults to standard parser with error handling)
      * @return
@@ -175,7 +179,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       retryOnAnyError: Boolean = false,
       taskNameForLogging: Option[String] = None,
       jsonSchemaModels: Seq[String] = Nil,
-      enforceJsonSchemaMode: Boolean = false,
+      enforceMode: Option[ChatCompletionResponseFormatType] = None,
       parseJson: String => JsValue = defaultParseJsonOrRepair,
       filterModels: Option[Seq[String] => Future[Seq[String]]] = None
     )(
@@ -190,7 +194,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
         retryOnAnyError,
         taskNameForLogging,
         jsonSchemaModels,
-        enforceJsonSchemaMode,
+        enforceMode,
         parseJson,
         filterModels
       ).map(_._1)
@@ -218,7 +222,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       retryOnAnyError: Boolean = false,
       taskNameForLogging: Option[String] = None,
       jsonSchemaModels: Seq[String] = Nil,
-      enforceJsonSchemaMode: Boolean = false,
+      enforceMode: Option[ChatCompletionResponseFormatType] = None,
       parseJson: String => JsValue = defaultParseJsonOrRepair,
       filterModels: Option[Seq[String] => Future[Seq[String]]] = None
     )(
@@ -235,7 +239,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
           settings,
           taskNameForLoggingFinal,
           jsonSchemaModels,
-          enforceJsonSchemaMode
+          enforceMode
         )
       } else {
         (messages, settings)
@@ -458,7 +462,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       failoverModels: Seq[String] = Nil,
       taskNameForLogging: Option[String] = None,
       jsonSchemaModels: Seq[String] = Nil,
-      enforceJsonSchemaMode: Boolean = false,
+      enforceMode: Option[ChatCompletionResponseFormatType] = None,
       parseJson: String => JsValue = defaultParseJsonOrRepair
     )(
       implicit ec: ExecutionContext,
@@ -520,7 +524,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
                 currentSettings,
                 taskNameForLoggingFinal,
                 jsonSchemaModels,
-                enforceJsonSchemaMode
+                enforceMode
               )
               (request.copy(messages = newMessages), newSettings)
             }
@@ -662,13 +666,26 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       Json.parse(repairedJsonString)
   }
 
+  /**
+   * The messages and settings of a JSON call: native `json_schema` (`response_format:
+   * json_schema`, the schema sent as it is) for a model listed in `jsonSchemaModels` - or,
+   * when that is empty, in `models-supporting-json-schema` - else JSON-object mode
+   * (`response_format: json_object`, the schema appended to the last user message, see
+   * [[jsonSchemaFromPrompt]]). `enforceMode` overrides the lists: `Some(json_schema)` or
+   * `Some(json_object)` picks that mode for any model; `Some(text)` is refused.
+   */
   def handleOutputJsonSchema(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings,
     taskNameForLogging: String,
     jsonSchemaModels: Seq[String] = Nil,
-    enforceJsonSchemaMode: Boolean = false
+    enforceMode: Option[ChatCompletionResponseFormatType] = None
   ): (Seq[BaseMessage], CreateChatCompletionSettings) = {
+    require(
+      !enforceMode.contains(ChatCompletionResponseFormatType.text),
+      "enforceMode takes json_schema or json_object - text asks for no JSON."
+    )
+
     // Use explicitly provided JSON schema models if available,
     // otherwise fall back to models configured in openai-scala-client.conf
     val jsonSchemaModelsFinal =
@@ -690,17 +707,24 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       io.cequence.openaiscala.service.adapter.ChatCompletionSettingsConversions
         .canonicalOpenAIModel(settings.model)
 
+    // to be more robust we also match models with a suffix
+    def listed =
+      jsonSchemaModelsFinal.exists { model =>
+        settings.model.equals(model) || settings.model.endsWith("-" + model) ||
+        (canonicalModel != settings.model && canonicalModel.equals(model))
+      }
+
+    val schemaMode = enforceMode match {
+      case Some(ChatCompletionResponseFormatType.json_schema) => true
+      case Some(ChatCompletionResponseFormatType.json_object) => false
+      case _                                                  => listed
+    }
+    val how = if (enforceMode.isDefined) "enforced" else "by the model lists"
+
     val (settingsFinal, addJsonToPrompt) = {
-      // to be more robust we also match models with a suffix
-      if (
-        enforceJsonSchemaMode ||
-        jsonSchemaModelsFinal.exists { model =>
-          settings.model.equals(model) || settings.model.endsWith("-" + model) ||
-          (canonicalModel != settings.model && canonicalModel.equals(model))
-        }
-      ) {
+      if (schemaMode) {
         logger.debug(
-          s"Using OpenAI json schema mode for ${taskNameForLogging} and the model '${settings.model}' - name: ${jsonSchemaDef.name}, strict: ${jsonSchemaDef.strict}, structure:\n${jsonSchemaString}"
+          s"Using OpenAI json schema mode ($how) for ${taskNameForLogging} and the model '${settings.model}' - name: ${jsonSchemaDef.name}, strict: ${jsonSchemaDef.strict}, structure:\n${jsonSchemaString}"
         )
 
         (
@@ -713,7 +737,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
         // otherwise we failover to json object format and pass json schema to the user prompt
 
         logger.debug(
-          s"Using JSON object mode for ${taskNameForLogging} and the model '${settings.model}'. Also passing a JSON schema as part of a user prompt."
+          s"Using JSON object mode ($how) for ${taskNameForLogging} and the model '${settings.model}'. Also passing a JSON schema as part of a user prompt."
         )
 
         (

@@ -160,7 +160,7 @@ object PerplexityAgentAsOpenAISmokeTest {
             ),
             // Perplexity answers json_object with an empty {} - keep json_schema mode for the
             // provider/model id (it is not in models-supporting-json-schema)
-            jsonSchemaModels = Seq(model)
+            enforceMode = Some(ChatCompletionResponseFormatType.json_schema)
           )
           .map { c =>
             check(c.capital.contains("Stockholm"), s"unexpected $c")
