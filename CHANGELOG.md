@@ -19,7 +19,8 @@ the envelope `openai-scala-all`.
 
 **Recompile** - 1.5.0 is not binary compatible with 1.4.0 (a `javap` diff of the published jars: `OpenAIService` gained
 the Decisions API, `ChunkMessageSpec` and the TypeSafe `ModelMetadata` gained a field, the TypeSafe `impl` constructors
-changed); ws-client stays at 1.1.1.
+changed, the JSON helpers take `enforceMode`, and `TypeSafeModelId` is an alias of `DecisionModelId` now, without a
+class of its own); ws-client stays at 1.1.1.
 
 **Source breaks** - typical code compiles unchanged:
 - your own implementations of `OpenAIService` need `createDecision` (`OpenAIService extends OpenAIDecisionsService`;
