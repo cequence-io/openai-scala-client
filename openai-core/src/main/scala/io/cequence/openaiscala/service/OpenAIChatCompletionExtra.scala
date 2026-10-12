@@ -146,13 +146,19 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
      *   - JSON response parsing and validation
      *   - Logging of operation progress and timing
      *
+     * **The schema:** `settings.jsonSchema`, else the one inferred from `T` - a case class
+     * (its `@JsonSchemaDescription` / `@JsonSchemaRange` annotations included) or your own
+     * `JsonSchemaOf[T]` in scope, see [[InferredJsonSchema]]; a JSON value (`JsObject`, ...)
+     * or a type that does not derive is asked without one, the reply just parsed.
+     *
      * **The mode:** native `json_schema` for a model listed in `models-supporting-json-schema`
      * (or in `jsonSchemaModels`), else JSON-object mode - `response_format: json_object` with
      * the schema appended to the last user message, the reply parsed and repaired here.
      * `enforceMode` overrides that choice in either direction.
      *
      * @tparam T
-     *   The target type to deserialize the JSON response into (must have an implicit Format)
+     *   The target type to deserialize the JSON response into (must have an implicit Format;
+     *   its schema is inferred when the settings carry none)
      * @param messages
      *   The chat messages (prompts) to send to the model
      * @param settings
@@ -179,7 +185,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
      * @return
      *   Future containing the parsed response of type T
      */
-    def createChatCompletionWithJSON[T: Format](
+    def createChatCompletionWithJSON[T: Format: InferredJsonSchema](
       messages: Seq[BaseMessage],
       settings: CreateChatCompletionSettings,
       failoverModels: Seq[String] = Nil,
@@ -222,7 +228,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
      *   [[io.cequence.openaiscala.OpenAIScalaJsonParseException]] that carries the raw
      *   response, so the (billed) token usage of the failed attempt remains accessible.
      */
-    def createChatCompletionWithJSONFullResponse[T: Format](
+    def createChatCompletionWithJSONFullResponse[T: Format: InferredJsonSchema](
       messages: Seq[BaseMessage],
       settings: CreateChatCompletionSettings,
       failoverModels: Seq[String] = Nil,
@@ -241,16 +247,18 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
 
       val taskNameForLoggingFinal = taskNameForLogging.getOrElse("JSON-based chat-completion")
 
-      val (messagesFinal, settingsFinal) = if (settings.jsonSchema.isDefined) {
+      val settingsWithSchema = withInferredSchema[T](settings, taskNameForLoggingFinal)
+
+      val (messagesFinal, settingsFinal) = if (settingsWithSchema.jsonSchema.isDefined) {
         handleOutputJsonSchema(
           messages,
-          settings,
+          settingsWithSchema,
           taskNameForLoggingFinal,
           jsonSchemaModels,
           enforceMode
         )
       } else {
-        (messages, settings)
+        (messages, settingsWithSchema)
       }
 
       openAIChatCompletionService
@@ -434,8 +442,9 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
      * each response into `T`, returning one typed item per request '''in request order'''
      * (provider batch results are unordered - re-association by `customId` happens here).
      *
-     * JSON schema handling mirrors the synchronous path: when `settings.jsonSchema` is
-     * defined, [[handleOutputJsonSchema]] is applied to '''each''' request's messages (the
+     * JSON schema handling mirrors the synchronous path: the schema is `settings.jsonSchema`,
+     * else the one inferred from `T` ([[InferredJsonSchema]]); when there is one,
+     * [[handleOutputJsonSchema]] is applied to '''each''' request's messages (the
      * prompt-appendix fallback for non-json-schema models is per-message) and once to the
      * shared settings (that half depends only on the model, so it is identical across
      * requests).
@@ -461,7 +470,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
      *   Models to resubmit the whole batch with (in order) after a terminal batch-level
      *   failure of the previous one.
      */
-    def createChatCompletionBatchWithJSON[T: Format](
+    def createChatCompletionBatchWithJSON[T: Format: InferredJsonSchema](
       requests: Seq[ChatCompletionBatchRequest],
       settings: CreateChatCompletionSettings,
       pollingInterval: FiniteDuration = 30.seconds,
@@ -570,8 +579,12 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
           }
         }
 
+        val settingsWithSchema = withInferredSchema[T](settings, taskNameForLoggingFinal)
+
         attempt(
-          settings +: failoverModels.map(model => settings.copy(model = model))
+          settingsWithSchema +: failoverModels.map(model =>
+            settingsWithSchema.copy(model = model)
+          )
         ).map { items =>
           val itemsByCustomId = items.map(item => item.customId -> item).toMap
 
@@ -673,6 +686,24 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       val repairedJsonString = JsonRepair.repair(jsonString)
       Json.parse(repairedJsonString)
   }
+
+  // the settings' own schema, else the one inferred from T (none for a JSON value or a type
+  // that does not derive)
+  private def withInferredSchema[T: InferredJsonSchema](
+    settings: CreateChatCompletionSettings,
+    taskNameForLogging: String
+  ): CreateChatCompletionSettings =
+    if (settings.jsonSchema.isDefined) settings
+    else
+      InferredJsonSchema[T].jsonSchemaDef match {
+        case Some(definition) =>
+          logger.debug(
+            s"Inferred the JSON schema '${definition.name}' (strict: ${definition.strict}) for ${taskNameForLogging}."
+          )
+          settings.copy(jsonSchema = Some(definition))
+
+        case None => settings
+      }
 
   /**
    * The messages and settings of a JSON call: native `json_schema` (`response_format:

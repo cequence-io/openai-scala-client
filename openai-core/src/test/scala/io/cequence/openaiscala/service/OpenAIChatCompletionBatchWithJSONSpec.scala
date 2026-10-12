@@ -329,6 +329,34 @@ class OpenAIChatCompletionBatchWithJSONSpec
       }
     }
 
+    "infer the schema from T when the settings carry none" in {
+      val service = new FakeBatchService(contentFor =
+        (
+          customId,
+          _
+        ) => cityJson(customId)
+      )
+
+      service
+        .createChatCompletionBatchWithJSON[Answer](
+          Seq(req("a"), req("b")),
+          CreateChatCompletionSettings("m1"),
+          jsonSchemaModels = Seq("m1")
+        )
+        .futureValue
+        .map(_.valueOption) shouldBe Seq(Some(Answer("city-of-a")), Some(Answer("city-of-b")))
+
+      val settings = service.submittedSettings.get
+      settings.response_format_type shouldBe Some(ChatCompletionResponseFormatType.json_schema)
+      settings.jsonSchema shouldBe Some(
+        JsonSchemaDef(
+          "Answer",
+          strict = true,
+          Left(JsonSchemaReflectionHelper.jsonSchemaFor[Answer]())
+        )
+      )
+    }
+
     "short-circuit empty requests without submitting a batch" in {
       val service = new FakeBatchService(contentFor =
         (

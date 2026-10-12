@@ -250,6 +250,36 @@ There is a new project [openai-scala-client-examples](../openai-examples/src/mai
     .map(_.capitals.foreach(println))
 ```
 
+- **Or let the JSON helper infer the schema from `T`** - with no `jsonSchema` in the settings, `createChatCompletionWithJSON[T]`
+  (and `createChatCompletionWithJSONFullResponse[T]` / `createChatCompletionBatchWithJSON[T]`) asks with the schema of `T`:
+  the case class above with its annotations, as a `JsonSchemaDef` named after the type (`CapitalsResponse`). It is
+  `strict` unless OpenAI's strict mode would refuse it - an `Option` field or a `Map` makes it `strict = false`. The rules
+  (`InferredJsonSchema`, the same on Scala 2 and 3):
+  - the settings' own `jsonSchema` always wins, so schemas built at runtime work as before;
+  - a `JsonSchemaOf[T]` of your own in scope is used instead of the derived schema
+    (`JsonSchemaOf.instance("name", schema)` names it; an unnamed one is called `response`);
+  - nothing is inferred for a JSON value (`JsObject`, `JsValue`), a type whose schema is not an object with fields (a
+    `Seq`, a `String`, a `Map`, an enum) or one that does not derive (an `Either`, a sealed hierarchy of case classes) -
+    the reply is parsed without a schema, as before. On Scala 3 such a type still compiles: the inference has a macro of
+    its own that gives up quietly, where `decide[T]` reports a compile error;
+  - generic code passes the inference on with a context bound, `def ask[T: Format: InferredJsonSchema]`, which the
+    caller resolves for its concrete `T` (an abstract `T` without the bound infers nothing);
+  - `implicit val noSchema: InferredJsonSchema[T] = InferredJsonSchema.none` keeps a derivable `T` schema-less.
+
+```scala
+  // no jsonSchema in the settings - the schema comes from CapitalsResponse
+  service
+    .createChatCompletionWithJSON[CapitalsResponse](
+      messages,
+      CreateChatCompletionSettings(model = ModelId.gpt_5_4_mini)
+    )
+    .map(_.capitals.foreach(println))
+```
+
+  [`CreateChatCompletionJsonInferredSchema`](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/CreateChatCompletionJsonInferredSchema.scala)
+  runs it on gpt-5.4-mini, Claude Haiku 5.5, Gemini 2.5 Flash-Lite and Jev - a decision model plans the inferred schema
+  into its questions.
+
 - **Failover** to alternative models if the primary one fails
 
 ```scala

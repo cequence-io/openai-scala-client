@@ -489,7 +489,27 @@ companion object):
 - **`JsonSchemaOf[T]`** (`service/JsonSchemaOf`): the schema of a type for APIs that need one per type. The
   instance is derived per version (`JsonSchemaOfDerivation`: Scala 2 `implicit def derived[T: TypeTag]`, Scala 3
   `inline given derived[T]` - a compile error for an unsupported type). A local instance
-  (`JsonSchemaOf.instance(schema)`) wins over the derived one on both versions.
+  (`JsonSchemaOf.instance(schema)`) wins over the derived one on both versions. `name: Option[String]` (2026-10-12):
+  derived instances carry the type's simple name, `JsonSchemaOf.instance(name, schema)` sets one.
+- **Inferred by the JSON helpers** (2026-10-12, the user's ask via the cruncher session): `createChatCompletionWithJSON[T]`
+  / `...FullResponse[T]` / `createChatCompletionBatchWithJSON[T]` take `[T: Format: InferredJsonSchema]` (a context bound
+  added since 1.5.0 - a binary break, so the next release is 1.6.0) and, when `settings.jsonSchema` is None, ask with
+  `InferredJsonSchema[T].jsonSchemaDef` (`service/InferredJsonSchema`): `T`'s `JsonSchemaOf` (own instance or derived),
+  named after the type (`schemaName`: `[^a-zA-Z0-9_-]` -> `_`, 64 chars, else `response`), `strict` only when
+  `strictCompatible` (all fields required, no `additionalProperties: true` - an `Option` or `Map` field makes it false),
+  and ONLY for an object root with fields (OpenAI wants an object; arrays / strings / maps / enums infer nothing). The
+  settings' own schema always wins. Instances by priority: `jsonValue[T <: JsValue]` = none (the object itself - a
+  `JsObject` would otherwise derive as a case class with its internal map) > Scala 2 `inferred(implicit JsonSchemaOf[T])`
+  (runtime derivation in a `Try`, a failure = none) > `absent` (an abstract `T` without a TypeTag). Scala 3 has its own
+  macro, `InferredJsonSchemaMacros`, because a `report.errorAndAbort` inside an inline given is a HARD compile error even
+  when a lower-priority given exists (probed 2026-10-12 on 3.2.2 - no fallback): it skips JsValue types, looks for an own
+  instance with `Implicits.search` ignoring the `derived` given (its tree is not spliced, so it never expands), else
+  uses `JsonSchemaMacros.softShapeOf` (the same derivation, unsupported types -> None via an internal exception instead
+  of the abort that `shapeOfImpl` still reports). Generic callers pass it on with a context bound; `InferredJsonSchema.none`
+  as a local implicit opts out. Pinned by `InferredJsonSchemaSpec` (both versions, incl. an `Either` field and a sealed
+  hierarchy that must still compile on 3) and a batch case; live 2026-10-12 `examples/CreateChatCompletionJsonInferredSchema`
+  6/6 on 2.13 and 3 (gpt-5.4-mini strict `Triage` + non-strict `City` with an Option + a schema-less `JsObject`, Haiku 5.5,
+  Gemini 2.5 Flash-Lite, Jev).
 
 ### Configuration
 Configuration uses Typesafe Config with defaults in `openai-scala-client.conf`:

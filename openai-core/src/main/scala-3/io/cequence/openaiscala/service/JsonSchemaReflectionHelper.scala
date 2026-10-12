@@ -60,7 +60,31 @@ object JsonSchemaMacros {
 
   inline def shapeOf[T]: JsonSchemaShape = ${ shapeOfImpl[T] }
 
-  def shapeOfImpl[T: Type](using q: Quotes): Expr[JsonSchemaShape] = {
+  /** The simple name of `T` (`T`'s own name for an abstract type). */
+  inline def typeNameOf[T]: String = ${ typeNameOfImpl[T] }
+
+  // a type the derivation does not support - a compile error from shapeOf, no shape from softShapeOf
+  private final class UnsupportedType(message: String) extends Exception(message)
+
+  def shapeOfImpl[T: Type](using q: Quotes): Expr[JsonSchemaShape] =
+    try shapeExprOf[T]
+    catch { case e: UnsupportedType => q.reflect.report.errorAndAbort(e.getMessage) }
+
+  /**
+   * The shape of `T`, or None for a type the derivation does not support (an `Either`, a
+   * sealed hierarchy of case classes, a tuple, a recursive or an abstract type) - no compile
+   * error, for the JSON helpers' inferred schema.
+   */
+  def softShapeOf[T: Type](using Quotes): Option[Expr[JsonSchemaShape]] =
+    try Some(shapeExprOf[T])
+    catch { case _: UnsupportedType => None }
+
+  def typeNameOfImpl[T: Type](using q: Quotes): Expr[String] = {
+    import q.reflect.*
+    Expr(TypeRepr.of[T].dealias.typeSymbol.name)
+  }
+
+  private def shapeExprOf[T: Type](using q: Quotes): Expr[JsonSchemaShape] = {
     import q.reflect.*
 
     val integerTypes = List(
@@ -120,7 +144,7 @@ object JsonSchemaMacros {
       tpe: TypeRepr,
       reason: String
     ): Nothing =
-      report.errorAndAbort(
+      throw new UnsupportedType(
         s"jsonSchemaFor doesn't support the type '${tpe.show}'" +
           (if (reason.nonEmpty) s" - $reason." else ".")
       )
