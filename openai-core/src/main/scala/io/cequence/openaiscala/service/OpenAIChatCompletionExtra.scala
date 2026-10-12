@@ -46,7 +46,15 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
   protected val logger: Logger =
     LoggerFactory.getLogger(this.getClass.getSimpleName.stripSuffix("$"))
 
-  private val defaultMaxRetries = 5
+  /**
+   * The default `maxRetries` of the failover and JSON helpers
+   * (`createChatCompletionWithFailover`, `createChatCompletionWithFailoverSettings`,
+   * `createChatCompletionWithJSON`, `createChatCompletionWithJSONFullResponse`): how many
+   * times a failed call is retried - on a retryable error, or on any with `retryOnAnyError` -
+   * before the next failover model is tried. Public, so a wrapper that passes `maxRetries`
+   * through can keep the same default.
+   */
+  val defaultMaxRetries: Int = 5
 
   implicit class OpenAIChatCompletionImplicits(
     openAIChatCompletionService: OpenAIChatCompletionService

@@ -235,6 +235,8 @@ schema per type (`decide[T]`). Value descriptions reach a decision model as per-
   JSON-object mode keeps prompt caching on GPT-6 when calls share a prompt but differ in schema: GPT-6 caches a native
   schema as part of the prompt's prefix (another schema: 0 tokens cached on gpt-6-luna / gpt-6-sol, 3,231 of 3,312 in
   JSON-object mode; GPT-5.4-mini / 5.5 cache across schemas either way).
+- `OpenAIChatCompletionExtra.defaultMaxRetries` (5, the failover and JSON helpers' default `maxRetries`) is public, so
+  a wrapper that passes `maxRetries` through can keep the library's default.
 - `TypeSafeServiceAdapters.retry` over a factory service keeps the service's own Decisions path
   (`asOpenAIDecisions(retry(service))` no longer translates); `imageInput` is ignored, with a warning, for a service
   that serves the interface itself.
