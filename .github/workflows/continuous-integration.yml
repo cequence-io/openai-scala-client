@@ -38,6 +38,7 @@ jobs:
     name: Build & Test
     needs: [ validate ]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     strategy:
       fail-fast: true
@@ -75,6 +76,7 @@ jobs:
     continue-on-error: ${{ matrix.experimental }}
     needs: [ validate ]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     strategy:
       fail-fast: true
