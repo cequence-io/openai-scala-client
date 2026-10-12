@@ -198,6 +198,23 @@ object DecisionImage {
     go(state, Vector.empty)
   }
 
+  /**
+   * A data URL as an image object - `{"mediaType", "base64"}`, the bare base64
+   * ([[DecisionImages.ImageObjects]]).
+   */
+  private[typesafe] def mediaObject(dataUrl: String): JsObject = {
+    val comma = dataUrl.indexOf(',')
+    require(
+      dataUrl
+        .startsWith("data:") && comma > 0 && dataUrl.substring(0, comma).endsWith(";base64"),
+      s"An image must be a base64 data URL, got '${dataUrl.take(40)}...'."
+    )
+    Json.obj(
+      "mediaType" -> dataUrl.substring("data:".length, comma).split(';').head,
+      "base64" -> dataUrl.substring(comma + 1)
+    )
+  }
+
   // the URL of an image part - `image_url.url`, or `image_url` as a string
   private[typesafe] def url(obj: JsObject): Option[String] =
     if ((obj \ "type").asOpt[String].contains("image_url"))

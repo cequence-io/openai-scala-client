@@ -4,7 +4,7 @@
 
 Decision models give typed answers - yes/no probabilities, choices, scores - with calibrated probabilities, in a few
 hundred milliseconds. OpenAI's Decisions API is part of the full `OpenAIService`; TypeSafe AI's Jev, Liquid AI's d1,
-Perplexity's decider, Microsoft-Decision-1, OpenRouter's catalogue, Vercel AI Gateway and a local llama.cpp are served through the `typesafe-client` module,
+Perplexity's decider, Microsoft-Decision-1, SubQ Snap, OpenRouter's catalogue, Vercel AI Gateway and a local llama.cpp are served through the `typesafe-client` module,
 which also serves either API on either host, typed decisions (`decide[T]`) and re-ranking.
 
 ## OpenAI Decisions API (gpt-6-luna) 🔥
@@ -539,6 +539,41 @@ own extension, not sent by this client. `examples/typesafe/VercelAIGatewaySmokeT
 every model (the paid ones reported as skipped on a free tier), a blue square on d1, the OpenAI interface and the error
 cases, paced to the free tier.
 
+## SubQ Snap 📜
+
+🔥 SubQ Snap (`subq-snap-preview`, Subquadratic, public preview since 2026-10-12) is a long-context decision model on
+TypeSafe's System One protocol: `POST https://api.subq.ai/v1/systemone` with a `Bearer` key in `SUBQ_API_KEY`, $0.05 per
+1M input tokens, output free. `DecisionProviderSettings.subq` reaches it like Jev - every routine runs on it (`decide[T]`,
+re-ranking, the guardrails, the OpenAI interface):
+
+```scala
+  val snap = TypeSafeServiceFactory(DecisionProviderSettings.subq)                 // SUBQ_API_KEY
+  snap.systemOne(longContract, questions)                                         // up to 295,957 input tokens
+  snap.systemOne(Json.arr("The number row stopped working.", DecisionImage(photo)), questions) // up to 4 images
+
+  val asOpenAI = TypeSafeServiceFactory.asOpenAI(DecisionProviderSettings.subq)    // image content of user messages too
+```
+
+Images go as `{"mediaType", "base64"}` objects in a top-level `images` array - the bare base64, no `data:` prefix
+(`DecisionImages.ImageObjects`): the client lifts the state's image parts into it, leaving `[image n]` markers. SubQ
+refuses a data URL string there ("images/0: must be object") and reads an `image_url` part left in the state as text.
+At most 4 images, 4 MiB each and 8 MiB in all, PNG / JPEG / WebP.
+
+Live 2026-10-12 (its launch day): the largest input it takes is **295,957 tokens** - about 77% of the launch post's 384K
+- and one token more is a 400 "Input exceeds the token limit." (a `TypeSafeScalaTokenCountExceededException`). The
+count is SubQ's own, from `usage.input_tokens` (its tokenizer, question included): a test sentence it counts as exactly
+19 tokens, plus 87 for one question, matched every answered request from 1 to 15,572 sentences to the token, and the
+limit was bisected to one token - 295,957 answered, one more word refused. ~1.4 s at the limit, ~0.3 s for 10k-32k
+tokens, ~0.7 s for 95k on a kept-alive connection. Its errors are TypeSafe's `{"detail":
+{"error_type", "message"}}`: a 422 for an unknown model (its chat model `subq-preview` included), a choice of one
+option, more than 10 score levels, a noul without instructions or a question name over 100 characters; 402 is out of
+credits (a `TypeSafeScalaApiUsageException`). No question cap (513 questions took 1.3 s), no request id header, an unknown
+top-level field ignored. Its `GET /v1/models` lists the early-access chat model next to it for a key that has one, so
+the preset's list is fixed. `examples/typesafe/SubQSnapSmokeTest` walks SubQ's docs example (a nurse-escalation noul, the
+owning team, a score with its legend), an object state, `decide[Triage]`, the OpenAI interface with the schema inferred
+from a case class, a blue square both ways, a ~95k-token state, the token limit and two refusals - all 11 sections
+passed on Scala 2.13 and 3.
+
 ## Decision-model providers 🧩
 
 Decision models are spreading fast, and most hosts copy TypeSafe's System One protocol - so the TypeSafe lib reaches them all
@@ -571,6 +606,7 @@ a protocol of its own; its preset translates the questions and answers, so every
 | `perplexity` | `PERPLEXITY_API_KEY` (or `SONAR_API_KEY`) | `pplx-decider-v1.1-27b`, `pplx-decider-v1-27b` | `POST /v1/decisions`, images of any size, at most 128 questions |
 | `openRouter` | `OPENROUTER_API_KEY` | Jev, d1, Perplexity's deciders, OpenAI's Luna, Microsoft-Decision-1, Cloudflare's Clef (+ Flash, Omni), Solar Decide (+ Flash), Mercury Decide (+ free), Tev1, Kev 4B, NACE's Drex, Span-01 (+ Lite) | listed with `output_modalities=decisions`; images as `image_url` parts in the state (read by Clef Omni / Flash, Perplexity's decider, Luna, d1 and Mercury Decide; the others read them as text); Span-01 takes noul questions only |
 | `vercel` | `AI_GATEWAY_API_KEY` | `typesafe-ai/jev`, `liquid/d1`, `microsoft/microsoft-decision-1`, `openai/gpt-6-luna-decisions`, `convaiinnovations/laya` (+ free) | `https://ai-gateway.vercel.sh/typesafe/`, images in the state; a free-tier team gets Laya at 5 requests per minute, the rest needs paid credits |
+| `subq` | `SUBQ_API_KEY` | `subq-snap-preview` | `https://api.subq.ai/`, at most 295,957 input tokens, up to 4 images as `{mediaType, base64}` objects in a top-level `images` array |
 | `microsoftFoundry(endpoint, deployment)` | `FOUNDRY_API_KEY` | your deployment of Microsoft-Decision-1 (`decision-1` by default; `listModels` lists them) | your Foundry resource, `POST /providers/microsoft/v1/systemone`; at most 255 questions, 64k tokens, no images |
 | `openAI` | `OPENAI_SCALA_CLIENT_API_KEY` (or `OPENAI_API_KEY`) | `gpt-6-luna` | OpenAI's own protocol (translated), images, at most 200 questions; a refusal arrives as `UnknownAnswer("refusal", ...)` |
 | `llamaCpp` | none (`LLAMA_API_KEY` if the server has one) | whatever `llama-server` loaded | a local server, `http://127.0.0.1:8080/`; a router needs a model id from `listModels` (its decision models only); images in a top-level `images` array, for a model with a projector (else a 501) |
@@ -610,6 +646,7 @@ per question); `defect` = the first noul's probability (0.9+ on the review's bat
 | decision-1 (Microsoft-Decision-1) | microsoft-foundry | 283 (258-700) | 274 (188-279) | 341 (335-1,386) | 325 (230-744) | 360 (345-372) | 49 / 1,325 | 0.99 |
 | openai/gpt-6-luna-decisions | openrouter | 195 (175-305) | 283 (178-324) | 358 (216-454) | 454 (221-515) | 576 (277-722) | 182 / 6,449 | 1.00 |
 | inception/mercury-decide:free | openrouter | 273 (267-455) | 384 (328-526) | 358 (351-363) | 537 (444-599) | 729 (433-803) | 87 / 97 | 0.99 |
+| subq-snap-preview ‡ | subq | 222 (220-271) | 276 (270-287) | 370 (332-380) | 385 (337-477) | 470 (448-1,018) | 116 / 2,402 | 0.96 |
 | cloudflare/clef-flash | openrouter | 395 (243-465) | 290 (260-558) | 434 (321-459) | 497 (308-1,044) | 518 (441-684) | 169 / 3,986 | 0.89 |
 | pplx-decider-v1.1-27b | perplexity | 290 (274-388) | 299 (294-368) | 440 (365-1,036) | 555 (459-2,840) | 876 (704-2,996) | 116 / 5,093 | 1.00 |
 | perplexity/pplx-decider-v1.1-27b | openrouter | 326 (321-424) | 327 (318-352) | 455 (398-782) | 498 (490-540) | 912 (732-1,752) | 116 / 5,093 | 1.00 |
@@ -622,7 +659,9 @@ per question); `defect` = the first noul's probability (0.9+ on the review's bat
 | respan/span-01-lite:free † | openrouter | 429 free-models-per-day | - | - | - | - | - | - |
 
 † Span-01 judges with noul questions only, over a text state (an object state is a 400 unless it is a conversation trace),
-so its rows are nouls only. ✗n = failed calls in the cell (not timed).
+so its rows are nouls only. ✗n = failed calls in the cell (not timed). ‡ SubQ Snap was timed on its launch day,
+2026-10-12, in a run of its own next to Jev, whose medians that day were within ~25 ms of the table's: as fast as the flat
+tier for one question, then growing to 0.47 s at 40, ~60 input tokens per extra question (the state read once).
 
 What the table says:
 

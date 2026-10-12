@@ -264,4 +264,19 @@ class DecisionImageSpec extends AnyWordSpec with Matchers {
       lift(JsString("text only")) shouldBe ((JsString("text only"), Nil))
     }
   }
+
+  "mediaObject" should {
+
+    "split a data URL into SubQ's image object - the media type and the bare base64" in {
+      mediaObject("data:image/png;base64,AAAA") shouldBe
+        Json.obj("mediaType" -> "image/png", "base64" -> "AAAA")
+      mediaObject("data:image/jpeg;charset=binary;base64,/9j/4A==") shouldBe
+        Json.obj("mediaType" -> "image/jpeg", "base64" -> "/9j/4A==")
+    }
+
+    "refuse anything but a base64 data URL" in {
+      an[IllegalArgumentException] should be thrownBy mediaObject("https://example.com/a.png")
+      an[IllegalArgumentException] should be thrownBy mediaObject("data:image/png,raw")
+    }
+  }
 }

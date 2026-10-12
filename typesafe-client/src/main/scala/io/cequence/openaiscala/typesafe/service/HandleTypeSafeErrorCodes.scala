@@ -37,6 +37,8 @@ object HandleTypeSafeErrorCodes {
           if kind.contains("max_tokens_exceeded") || exceedsContext(message) =>
         new TypeSafeScalaTokenCountExceededException(_, null, _, _, _)
       case 400 if kind.isDefined => new TypeSafeScalaApiUsageException(_, null, _, _, _)
+      // SubQ: insufficient credits
+      case 402 => new TypeSafeScalaApiUsageException(_, null, _, _, _)
       // 413: Perplexity's body limit (32 MiB); 501: llama.cpp's "not a decision model" / "no
       // image input" - a request this server can never answer, so not retryable
       case 400 | 413 | 422 | 501 =>

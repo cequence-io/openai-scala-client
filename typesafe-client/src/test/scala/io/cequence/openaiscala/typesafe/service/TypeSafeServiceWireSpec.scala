@@ -902,6 +902,64 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       vercel.close()
     }
 
+    // recorded against api.subq.ai on 2026-10-12
+    val subqResponse =
+      """{"model":"subq-snap-preview","answers":{"blue":{"type":"noul","noul":0.9862655997276306}},"usage":{"input_tokens":159,"output_tokens":0}}"""
+
+    "serve SubQ Snap - /v1/systemone, the Bearer key, images as {mediaType, base64} objects, a fixed listing and its errors" in {
+      val subq = TypeSafeServiceFactory.withEngine(
+        engine,
+        DecisionProviderSettings.subq.copy(baseUrl = baseUrl),
+        "subq_k"
+      )
+      DecisionProviderSettings.subq.readsImages shouldBe true
+      val blue = Map("blue" -> NoulQuestion("Is the image a solid blue square?"))
+      val png = pngDataUrl(64, 64)
+
+      respond(200, subqResponse)
+      val response =
+        await(subq.systemOne(Json.arr("A photo.", DecisionImage.part(png)), blue))
+      received.get.path shouldBe "/v1/systemone"
+      received.get.headers("authorization") shouldBe "Bearer subq_k"
+      val body = Json.parse(received.get.body)
+      (body \ "model").as[String] shouldBe DecisionModelId.subq_snap_preview
+      // the image lifted out of the state, as an object with the bare base64
+      (body \ "state").get shouldBe Json.arr("A photo.", "[image 1]")
+      (body \ "images").get shouldBe Json.arr(
+        Json.obj(
+          "mediaType" -> "image/png",
+          "base64" -> png.stripPrefix("data:image/png;base64,")
+        )
+      )
+      response.noul("blue").noul shouldBe 0.9862655997276306
+      response.usage.input_tokens shouldBe Some(159)
+      response.requestId shouldBe None
+
+      // a fixed listing, no request
+      respond(200, "{}")
+      await(subq.listModels).map(_.name) shouldBe Seq(DecisionModelId.subq_snap_preview)
+      received shouldBe None
+
+      // over its context: a 400 with TypeSafe's detail shape
+      respond(
+        400,
+        """{"detail":{"error_type":"validation_error","message":"Input exceeds the token limit."}}"""
+      )
+      the[TypeSafeScalaTokenCountExceededException]
+        .thrownBy(await(subq.systemOne("x", blue)))
+        .errorType shouldBe Some("validation_error")
+
+      // an unknown model (its chat model too) is a 422
+      respond(
+        422,
+        """{"detail":{"error_type":"validation_error","message":"Unknown model 'subq-preview'."}}"""
+      )
+      the[TypeSafeScalaInvalidRequestException]
+        .thrownBy(await(subq.systemOne(JsString("x"), blue, model = "subq-preview")))
+        .getMessage should include("Unknown model 'subq-preview'.")
+      subq.close()
+    }
+
     "take a host of its own - path, question cap, fixed models and request id header" in {
       val custom = TypeSafeServiceFactory.withEngine(
         engine,

@@ -38,6 +38,8 @@ private[impl] object DecisionCodec {
       case (DecisionProtocol.OpenAI, _) => OpenAIDecisionsCodec
       case (DecisionProtocol.SystemOne, DecisionImages.ImagesField) =>
         SystemOneCodec.withImagesField
+      case (DecisionProtocol.SystemOne, DecisionImages.ImageObjects) =>
+        SystemOneCodec.withImageObjects
       case (DecisionProtocol.SystemOne, _) => SystemOneCodec
     }
 
@@ -58,25 +60,37 @@ private[impl] object DecisionCodec {
      * The same, the image parts of the state lifted into a top-level `images` array
      * (`DecisionImages.ImagesField`) - a state without any goes out as it is.
      */
-    val withImagesField: DecisionCodec = new DecisionCodec {
+    val withImagesField: DecisionCodec = liftingImages(Json.toJson(_))
 
-      override def body(
-        request: SystemOneRequest,
-        questions: Seq[(String, Question)]
-      ): JsValue =
-        DecisionImage.lift(request.state) match {
-          case (_, Nil) =>
-            SystemOneCodec.body(request, questions)
-          case (state, images) =>
-            Json.toJson(request.copy(state = state)).as[JsObject] +
-              ("images" -> Json.toJson(images))
-        }
+    /**
+     * The same, each lifted image an `{"mediaType", "base64"}` object
+     * (`DecisionImages.ImageObjects`, SubQ).
+     */
+    val withImageObjects: DecisionCodec =
+      liftingImages(images => JsArray(images.map(DecisionImage.mediaObject)))
 
-      override def response(
-        json: JsValue,
-        questions: Seq[(String, Question)]
-      ): SystemOneResponse = SystemOneCodec.response(json, questions)
-    }
+    // the state's image parts lifted into a top-level `images` array, written by `images`
+    private def liftingImages(images: Seq[String] => JsValue): DecisionCodec =
+      new DecisionCodec {
+
+        override def body(
+          request: SystemOneRequest,
+          questions: Seq[(String, Question)]
+        ): JsValue =
+          DecisionImage.lift(request.state) match {
+            case (_, Nil) =>
+              SystemOneCodec.body(request, questions)
+            case (state, urls) =>
+              Json.toJson(request.copy(state = state)).as[JsObject] + ("images" -> images(
+                urls
+              ))
+          }
+
+        override def response(
+          json: JsValue,
+          questions: Seq[(String, Question)]
+        ): SystemOneResponse = SystemOneCodec.response(json, questions)
+      }
   }
 }
 

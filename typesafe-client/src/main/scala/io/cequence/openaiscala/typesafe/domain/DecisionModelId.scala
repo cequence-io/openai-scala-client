@@ -93,4 +93,7 @@ object DecisionModelId {
   val vercel_gpt_6_luna_decisions: String = NonOpenAIModelId.vercel_gpt_6_luna_decisions
   val vercel_laya: String = NonOpenAIModelId.vercel_laya
   val vercel_laya_free: String = NonOpenAIModelId.vercel_laya_free
+
+  // SubQ Snap (`DecisionProviderSettings.subq`)
+  val subq_snap_preview: String = NonOpenAIModelId.subq_snap_preview
 }

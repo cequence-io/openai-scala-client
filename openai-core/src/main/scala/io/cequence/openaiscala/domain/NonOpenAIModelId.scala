@@ -1112,6 +1112,12 @@ object NonOpenAIModelId {
   val vercel_gpt_6_luna_decisions = "openai/gpt-6-luna-decisions"
   val vercel_laya = "convaiinnovations/laya" // Convai Innovations' Laya, 8k context
   val vercel_laya_free = "convaiinnovations/laya-free"
+
+  // SubQ Snap (Subquadratic, public preview since 2026-10-12) - a long-context decision model
+  // on TypeSafe's protocol at `POST https://api.subq.ai/v1/systemone` (typesafe-client's
+  // `DecisionProviderSettings.subq`): text + up to 4 images, at most 295,957 input tokens (its
+  // own count, live 2026-10-12), $0.05 / 1M
+  val subq_snap_preview = "subq-snap-preview"
   val openrouter_solar_decide_flash = "upstage/solar-decide-flash"
   val openrouter_mercury_decide =
     "inception/mercury-decide" // the paid tier of the :free one below

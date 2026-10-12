@@ -247,4 +247,40 @@ object DecisionProviderSettings {
     requestIdHeaders = Seq("x-vercel-id"),
     name = Some("vercel")
   )
+
+  /**
+   * SubQ Snap (`subq-snap-preview`, Subquadratic, public preview since 2026-10-12;
+   * `SUBQ_API_KEY`): a long-context decision model on TypeSafe's protocol at `POST
+   * https://api.subq.ai/v1/systemone`, $0.05 per 1M input tokens, output free. Live
+   * 2026-10-12: the largest input it takes is 295,957 tokens by its own count (`usage`), the
+   * question included - one more is a 400 "Input exceeds the token limit." (a
+   * [[TypeSafeScalaTokenCountExceededException]]), so ~77% of the launch post's 384K; ~230 ms
+   * for one question on a kept-alive connection, ~320 ms for 10, ~410 ms for 40, ~0.7 s for a
+   * 95k-token state. Up to 4 images as `{"mediaType", "base64"}` objects in a top-level
+   * `images` array ([[DecisionImages.ImageObjects]]; an `image_url` part left in the state is
+   * read as text). Errors are TypeSafe's `{"detail": {"error_type", "message"}}`: a 422 for an
+   * unknown model (its chat model `subq-preview` included), a choice of one option, more than
+   * 10 score levels, a noul without instructions or a question name over 100 characters; 402
+   * is out of credits. No question cap (513 took), no request id header, an unknown top-level
+   * field ignored. Its `/v1/models` would list the early-access chat model next to it for a
+   * key that has one, so the list is fixed here.
+   */
+  val subq: DecisionProvider = DecisionProvider(
+    "https://api.subq.ai/",
+    "SUBQ_API_KEY",
+    DecisionModelId.subq_snap_preview,
+    models = DecisionModelListing.Fixed(
+      Seq(
+        ModelMetadata(
+          DecisionModelId.subq_snap_preview,
+          "SubQ Snap Preview - a long-context decision model (text + up to 4 images, at most 295,957 input tokens).",
+          "2026-10-12",
+          Some(Seq("text", "image"))
+        )
+      )
+    ),
+    images = DecisionImages.ImageObjects,
+    requestIdHeaders = Nil,
+    name = Some("subq")
+  )
 }

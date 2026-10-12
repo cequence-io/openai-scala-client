@@ -125,6 +125,13 @@ class DecisionCodecSpec extends AnyWordSpec with Matchers {
         (body \ "images").get shouldBe Json.arr("data:image/png;base64,AAAA")
       }
 
+      // SubQ takes them as {mediaType, base64} objects
+      val subq = bodyFor(DecisionProviderSettings.subq, state)
+      (subq \ "state").get shouldBe Json.arr("What is it?", "[image 1]")
+      (subq \ "images").get shouldBe Json.arr(
+        Json.obj("mediaType" -> "image/png", "base64" -> "AAAA")
+      )
+
       // Perplexity reads them where they are, and TypeSafe's Jev not at all
       for (
         provider <- Seq(DecisionProviderSettings.perplexity, DecisionProviderSettings.typeSafe)

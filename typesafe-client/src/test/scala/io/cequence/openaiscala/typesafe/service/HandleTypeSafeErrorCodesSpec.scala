@@ -265,6 +265,40 @@ class HandleTypeSafeErrorCodesSpec extends AnyWordSpec with Matchers {
     }
   }
 
+  "SubQ's error bodies (TypeSafe's detail shape)" should {
+    // collected against api.subq.ai on 2026-10-12
+
+    "be classified by status - the token limit by its message, 402 as out of credits" in {
+      val tooLong = toException(
+        400,
+        """{"detail":{"error_type":"validation_error","message":"Input exceeds the token limit."}}"""
+      )
+      tooLong shouldBe a[TypeSafeScalaTokenCountExceededException]
+      tooLong.errorType shouldBe Some("validation_error")
+
+      val unknownModel = toException(
+        422,
+        """{"detail":{"error_type":"validation_error","message":"Unknown model 'subq-preview'."}}"""
+      )
+      unknownModel shouldBe a[TypeSafeScalaInvalidRequestException]
+      unknownModel.getMessage shouldBe "Code 422 : Unknown model 'subq-preview'."
+
+      val longName = toException(
+        422,
+        """{"detail":{"error_type":"validation_error","message":"questions: must NOT have more than 100 characters; questions: property name must be valid"}}"""
+      )
+      longName shouldBe a[TypeSafeScalaInvalidRequestException]
+
+      // documented, not provoked
+      val noCredits = toException(
+        402,
+        """{"detail":{"error_type":"insufficient_credits","message":"Insufficient credits."}}"""
+      )
+      noCredits shouldBe a[TypeSafeScalaApiUsageException]
+      noCredits.httpCode shouldBe Some(402)
+    }
+  }
+
   "Vercel AI Gateway's error bodies (its own checks flat, the gateway's in OpenAI's shape)" should {
     // collected against ai-gateway.vercel.sh/typesafe on 2026-10-10
 

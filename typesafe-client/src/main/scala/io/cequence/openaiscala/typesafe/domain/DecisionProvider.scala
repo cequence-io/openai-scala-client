@@ -125,6 +125,15 @@ object DecisionImages {
    * 2026-10-07).
    */
   case object ImagesField extends DecisionImages
+
+  /**
+   * A top-level `images` array of `{"mediaType", "base64"}` objects - the bare base64, no
+   * `data:` prefix (SubQ Snap): the parts are lifted out of the state as for [[ImagesField]].
+   * Live 2026-10-12, SubQ refuses a data URL string ("images/0: must be object", a 422) and
+   * reads an `image_url` part left in the state as text; it takes at most 4 images, 4 MiB each
+   * and 8 MiB in all, PNG / JPEG / WebP (each a quick 422).
+   */
+  case object ImageObjects extends DecisionImages
 }
 
 /** The wire format of a [[DecisionProvider]]. */
