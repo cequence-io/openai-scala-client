@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.5.0 (unreleased)
+## 1.5.0 (2026-10-12)
 
 The 2026-10-01 - 2026-10-12 work since v1.4.0 (2026-09-30): OpenAI's Decisions API (natively and as a
 decision provider), decision models from Perplexity, Liquid AI (with images), OpenRouter, llama.cpp, Microsoft Foundry
