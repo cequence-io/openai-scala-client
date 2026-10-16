@@ -1,0 +1,17 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "models/gemini-2.5-flash",
+      "object": "model",
+      "owned_by": "google",
+      "display_name": "Gemini 2.5 Flash"
+    },
+    {
+      "id": "models/gemini-2.5-pro",
+      "object": "model",
+      "owned_by": "google",
+      "display_name": "Gemini 2.5 Pro"
+    }
+  ]
+}

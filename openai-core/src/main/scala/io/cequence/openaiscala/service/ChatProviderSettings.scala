@@ -27,4 +27,12 @@ object ChatProviderSettings {
   // see the typesafe-client's TypeSafeServiceFactory.liquid)
   val liquid = ProviderSettings("https://api.liquid.ai/openai/v1/", "LIQUID_API_KEY")
   val minimaxChina = ProviderSettings("https://api.minimaxi.com/v1/", "MINIMAX_API_KEY")
+  // Meta Model API (dev.meta.ai) - Muse Wonder and Muse Spark over OpenAI's chat completions;
+  // the key variable is the one Meta's docs use
+  val meta = ProviderSettings("https://api.meta.ai/v1/", "MODEL_API_KEY")
+  // OpenRouter's OpenAI-compatible chat API - `provider/model` ids, e.g. `meta/muse-wonder`
+  val openRouter = ProviderSettings("https://openrouter.ai/api/v1/", "OPENROUTER_API_KEY")
+  // Vercel's AI Gateway chat API - `provider/model` ids, e.g. `meta/muse-spark-open`; a key of
+  // the gateway (`vck_...`), not a Vercel account token
+  val vercel = ProviderSettings("https://ai-gateway.vercel.sh/v1/", "AI_GATEWAY_API_KEY")
 }

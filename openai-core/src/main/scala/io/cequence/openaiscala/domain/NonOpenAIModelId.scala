@@ -483,6 +483,14 @@ object NonOpenAIModelId {
   val gemini_flash_lite_latest = "gemini-flash-lite-latest"
   val gemini_pro_latest = "gemini-pro-latest"
 
+  // Gemini 4 Argon (on the Gemini API since 2026-10-13; announced 2026-09-30 for trusted cyber
+  // defenders first): Google's flagship reasoning model - 1,048,576 input tokens, the listing
+  // says 32,768 output but `maxOutputTokens` up to 1M is accepted (OpenRouter: ~944k through AI
+  // Studio, 65,536 through Vertex AI); $2 / $10 per 1M tokens (OpenRouter's listing); thinking
+  // levels LOW / MEDIUM / HIGH (MINIMAL is a 400), json_schema, function calling, Google Search,
+  // code execution and URL context; no penalties and one candidate only, like Gemini 3.x
+  val gemini_4_argon = "gemini-4-argon"
+
   val gemini_3_1_pro = "gemini-3.1-pro"
   val gemini_3_1_pro_preview = "gemini-3.1-pro-preview"
   val gemini_3_1_pro_preview_customtools = "gemini-3.1-pro-preview-customtools"
@@ -916,6 +924,48 @@ object NonOpenAIModelId {
   // only: `supportsServerless = false`, a plain serverless call is a 404 (2026-09-29)
   val muse_glimmer_30b = "muse-glimmer-30b" // Fireworks AI (on-demand deployment)
 
+  // Meta Model API (`ChatProviderSettings.meta`: https://api.meta.ai/v1, `MODEL_API_KEY`):
+  // Muse Wonder (2026-10-12, preview - Meta's most capable, for coding and long-horizon agentic
+  // work) and Muse Spark (agentic / coding work at scale). Text, image, video, audio and PDF in,
+  // text out, a 1,048,576-token context; they always reason - reasoning_effort minimal..max,
+  // `none` is a 400, `max` on Muse Wonder and every Muse Spark 1.3 (not 1.2 / 1.1); json_schema
+  // with constrained decoding; tool_choice "auto" only. A `-contributor` id is the cheaper
+  // Contributor mode (prompts may train Meta's models). Muse Wonder Full is in Muse Code only.
+  // Live-verified 2026-10-13 on the Meta Model API (examples/meta/MuseSmokeTest).
+  val muse_wonder_1_0 = "muse-wonder-1.0"
+  val muse_spark_1_3 = "muse-spark-1.3"
+  val muse_spark_1_3_contributor = "muse-spark-1.3-contributor"
+  val muse_spark_1_2 = "muse-spark-1.2"
+  val muse_spark_1_2_contributor = "muse-spark-1.2-contributor"
+  val muse_spark_1_1 = "muse-spark-1.1"
+  // the same on OpenRouter (`ChatProviderSettings.openRouter`; it gates them behind an 18+ age
+  // confirmation in the account's settings - a 403 until then, 2026-10-13)
+  val openrouter_muse_wonder = "meta/muse-wonder" // $4 / $20 per 1M tokens
+  val openrouter_muse_spark_1_3 = "meta/muse-spark-1.3"
+  val openrouter_muse_spark_1_3_contributor = "meta/muse-spark-1.3-contributor"
+  val openrouter_muse_spark_1_2 = "meta/muse-spark-1.2"
+  val openrouter_muse_spark_1_2_contributor = "meta/muse-spark-1.2-contributor"
+  val openrouter_muse_spark_1_1 = "meta/muse-spark-1.1"
+  val openrouter_muse_glimmer_30b = "meta/muse-glimmer-30b"
+  // Muse Spark Open (2026-10-15): Meta's open-weight Muse Spark - 816B total / 42B active
+  // parameters, a 1,048,576-token context, text / image / video / audio in - on OpenRouter and
+  // Vercel's AI Gateway (`meta/muse-spark-open`, $1.25 / $4.25 per 1M tokens), Together and
+  // Fireworks (below), with its weights on Hugging Face; not on the Meta Model API. It always
+  // reasons and returns the reasoning; its hosts take reasoning_effort differently
+  // (`ChatCompletionSettingsConversions.isMuseSparkOpen`, live 2026-10-15)
+  val openrouter_muse_spark_open = "meta/muse-spark-open"
+  val meta_models_muse_spark_open_816b_a42b =
+    "meta-models/Muse-Spark-Open-816B-A42B" // Together AI (and the Hugging Face weights)
+  val muse_spark_open = "muse-spark-open" // Fireworks AI (prepend accounts/fireworks/models/)
+
+  // Tencent HY4 preview (2026-10) and HY3 - the same id on Novita and OpenRouter. Live 2026-10-13
+  // through OpenRouter (served by Novita, SiliconFlow or Makora): HY4 preview reasons and calls
+  // tools, but its json_schema output is flaky - runs of whitespace, once an empty field - while
+  // JSON-object mode with the schema in the prompt answered 5 of 5, so it is left out of
+  // `models-supporting-json-schema`; its text may end in a stray `</think:opensource>` tag
+  val tencent_hy4_preview = "tencent/hy4-preview"
+  val tencent_hy3 = "tencent/hy3"
+
   // openai oss
   val gpt_oss_20b = "gpt-oss-20b" // fireworks
   val gpt_oss_120b = "gpt-oss-120b" // Fireworks, Cerebras
@@ -1031,29 +1081,47 @@ object NonOpenAIModelId {
   // TypeSafe AI (typesafe.ai) - System One decision models, `POST /v1/systemone` via the
   // typesafe-client module (not chat). Facts as of 2026-09-17 (docs.typesafe.ai/models +
   // live probes): input $0.042 / 1M tokens ($42 / 1B), output tokens FREE (unmetered);
-  // input limit ~32k tokens (~150k characters) SHARED by the state and the questions - a
-  // request of 32,202 input tokens was accepted, ~33.7k answered 400 max_tokens_exceeded
-  // (-> OpenAIScalaTokenCountExceededException); rate limits 250k tokens/s and 1,200
-  // requests/min, adjusting dynamically; ~70-500 ms per call; a choice takes at most 255
-  // options. The response names the dated build an alias resolved to.
-  // rolling alias: "the most recent stable, official release" (jev-1.13.0 as of 2026-09-17)
+  // input limits 33,024 tokens per question and ~65.8k per request (state + every question) by
+  // Jev's own count (live 2026-10-14; the docs say 32k / 64k) - one more is a 400
+  // max_tokens_exceeded (-> OpenAIScalaTokenCountExceededException); 262,400 for both with the
+  // long-context opt-in (typesafe-client's `DecisionProviderSettings.typeSafeLongContext`);
+  // rate limits 250k tokens/s and 1,200 requests/min, adjusting dynamically; ~70-500 ms per
+  // call; a choice takes at most 255 options. The response names the build an alias resolved
+  // to. Both builds read images since 2026-10-14 (experimental; typesafe-client sends them as
+  // TypeSafe's assets).
+  // rolling alias: "the most recent stable, official release" (jev-1.13.0; it moves to
+  // jev-1.14.0 about a week after 2026-10-14)
   val jev_latest = "jev-latest"
-  // rolling alias for the next release - currently ALSO jev-1.13.0 ("there is no preview
-  // build available right now")
+  // rolling alias for the most recent release, official or not - jev-1.14.0 since 2026-10-14
   val jev_preview = "jev-preview"
-  // pin a dated build to keep answers stable across alias moves (dated builds are accepted
-  // by name but not listed by /v1/models; jev-1.12 is already gone)
+  // pin a build to keep answers stable across alias moves (builds are accepted by name but not
+  // listed by /v1/models; jev-1.12 is gone, `jev-1.14` without the patch is a 400)
   val jev_1_13_0 = "jev-1.13.0"
+  // Jev 1.14 (2026-10-14): "small, subtle improvements to everything", most in multilingual
+  // support; the only build with box questions (where something is in an image)
+  val jev_1_14_0 = "jev-1.14.0"
 
   // Liquid AI's decision model d1 (launched 2026-09-30) - served on the SAME System One API
   // (`https://api.liquid.ai/decisions/v1/systemone`, `LIQUID_API_KEY`), so the typesafe-client
-  // speaks it: `TypeSafeServiceFactory.liquid` / `liquidAsOpenAI`. `/decisions/v1/models`
-  // lists only `d1:free` (live 2026-09-30)
+  // speaks it: `TypeSafeServiceFactory.liquid` / `liquidAsOpenAI`. Its free tier `d1:free`,
+  // listed alone at launch (2026-09-30), was removed on 2026-10-14 (a 404 "The model `d1:free`
+  // does not exist.")
+  @deprecated(
+    "Liquid removed d1:free on 2026-10-14 (a 404) - use liquid_d1 or liquid_d1_ultra",
+    "1.6.0"
+  )
   val liquid_d1_free = "d1:free"
-  // the paid d1 (listed since 2026-09-29), which also reads images (`d1:free` refuses them):
-  // a top-level `images` array, at most 8 and 10,000 32 x 32 patches in all; $0.04 / 1M input
-  // tokens, an image 1.5 tokens per patch for every question (live 2026-10-07)
+  // the paid d1 (listed since 2026-09-29), which also reads images: a top-level `images` array,
+  // at most 8 and 10,000 32 x 32 patches in all, an image 1.5 tokens per patch for every
+  // question; $0.02 / 1M input tokens by its `usage.cost` on 2026-10-15 (was $0.04 on
+  // 2026-10-07); 65,536 tokens per question's prompt
   val liquid_d1 = "d1"
+  // d1-ultra (2026-10-15, "our most powerful decision model" on a larger open-weight base, 44
+  // languages, 65 on Artificial Analysis' Decision Index): text and images like d1 (the
+  // `images` array), $0.042 / 1M input tokens, every question billed as its own prompt (the
+  // state and its images included), 32,768 tokens per question's prompt, 128 questions, 8
+  // images (live 2026-10-15)
+  val liquid_d1_ultra = "d1-ultra"
   // Open d1 (2026-10-07): the open-weight d1-3B (text + images) and d1-omni-600M (text +
   // images or audio, experimental) on a local llama.cpp server - router-mode ids as
   // `llama-server -hf` caches them (a server of one model ignores the name). Mainline
@@ -1101,6 +1169,23 @@ object NonOpenAIModelId {
   // $0.04 / 1M) - both text only
   val openrouter_microsoft_decision_1 = "microsoft/microsoft-decision-1"
   val openrouter_drex_v1_5 = "nace-ai/drex-v1.5"
+  // listed 2026-10-12, live 2026-10-13 through OpenRouter: NACE AI's Drex 2.0 (128k context, $0.06
+  // / 1M, text only) and the rolling alias of Perplexity's latest decider (262k context, $0.02 / 1M;
+  // listed as `~perplexity/pplx-decider-27b-latest` until OpenRouter relisted it on 2026-10-14)
+  val openrouter_drex_v2_0 = "nace-ai/drex-v2.0"
+  val openrouter_pplx_decider_latest = "~perplexity/pplx-decider-latest"
+  // ScaleDown's Classify-1 (2026-10-13; 1M context, $0.04 / 1M through OpenRouter, billed per
+  // question): text only - plus one document - so typesafe-client sends it ScaleDown's protocol
+  // (`DecisionProtocol.ScaleDown`, the `scaledown/` prefix in `openRouter.modelProtocols`)
+  val openrouter_scaledown_classify_1 = "scaledown/classify-1"
+  // listed 2026-10-15 / 16, live 2026-10-16 through OpenRouter: TypeSafe's Jev 1.14 (OpenRouter's
+  // `~typesafe/jev-latest` already resolves to it, while TypeSafe's own `jev-latest` stays 1.13
+  // until ~2026-10-21; its images and boxes not checked there - OpenRouter dropped `assets` and
+  // refused `box` on 2026-10-14), Liquid's d1-ultra and Respan's Span-02 (unlike Span-01 it takes
+  // choice and score questions and object states)
+  val openrouter_jev_1_14 = "typesafe/jev-1.14"
+  val openrouter_liquid_d1_ultra = "liquid/d1-ultra"
+  val openrouter_span_02 = "respan/span-02"
 
   // decision models on Vercel AI Gateway - TypeSafe's protocol at `POST
   // https://ai-gateway.vercel.sh/typesafe/v1/systemone` (typesafe-client's
@@ -1112,12 +1197,22 @@ object NonOpenAIModelId {
   val vercel_gpt_6_luna_decisions = "openai/gpt-6-luna-decisions"
   val vercel_laya = "convaiinnovations/laya" // Convai Innovations' Laya, 8k context
   val vercel_laya_free = "convaiinnovations/laya-free"
+  // ScaleDown's Classify-1 (2026-10-13), open to a free-tier team; text only, as on OpenRouter
+  val vercel_scaledown_classify_1 = "scaledown/scaledown-classify-1"
 
   // SubQ Snap (Subquadratic, public preview since 2026-10-12) - a long-context decision model
   // on TypeSafe's protocol at `POST https://api.subq.ai/v1/systemone` (typesafe-client's
   // `DecisionProviderSettings.subq`): text + up to 4 images, at most 295,957 input tokens (its
   // own count, live 2026-10-12), $0.05 / 1M
   val subq_snap_preview = "subq-snap-preview"
+
+  // ScaleDown's Classify (2026-10-13), a Constrained Decoding Model: TypeSafe's protocol in text
+  // only at `POST https://api.scaledown.xyz/v1/scaledown` (typesafe-client's
+  // `DecisionProviderSettings.scaleDown`, key in `x-api-key`); text + one document (an image or a
+  // PDF), 1M context, $0.05 / 1M input tokens billed once per question. `classify` is always the
+  // latest version, `classify-1` pinned (the same model on its launch day)
+  val scaledown_classify_1 = "classify-1"
+  val scaledown_classify = "classify"
   val openrouter_solar_decide_flash = "upstage/solar-decide-flash"
   val openrouter_mercury_decide =
     "inception/mercury-decide" // the paid tier of the :free one below

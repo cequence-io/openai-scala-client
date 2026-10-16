@@ -457,4 +457,108 @@ class ModelConversionsRoutingSpec extends AnyWordSpec with Matchers {
       effortSent("mistral-large-2512", ReasoningEffort.low) shouldBe Some("low")
     }
   }
+
+  "Meta's Muse models" should {
+
+    "never send none - they always reason, minimal is the lowest" in {
+      Seq(
+        "muse-wonder-1.0",
+        "muse-spark-1.3",
+        "meta/muse-wonder",
+        "meta/muse-spark-1.1"
+      ).foreach { model =>
+        effortSent(model, ReasoningEffort.none) shouldBe Some("minimal")
+        effortSent(model, ReasoningEffort.minimal) shouldBe Some("minimal")
+        effortSent(model, ReasoningEffort.xhigh) shouldBe Some("xhigh")
+      }
+    }
+
+    "keep max on Muse Wonder and Muse Spark 1.3 (its Contributor variant too) only" in {
+      Seq(
+        "muse-wonder-1.0",
+        "meta/muse-wonder",
+        "muse-spark-1.3",
+        "meta/muse-spark-1.3",
+        "muse-spark-1.3-contributor",
+        "meta/muse-spark-1.3-contributor"
+      ).foreach(model => effortSent(model, ReasoningEffort.max) shouldBe Some("max"))
+      Seq("muse-spark-1.2", "muse-spark-1.2-contributor", "meta/muse-spark-1.1").foreach(
+        model => effortSent(model, ReasoningEffort.max) shouldBe Some("xhigh")
+      )
+      // a newer version passes max on
+      effortSent("muse-spark-1.4", ReasoningEffort.max) shouldBe Some("max")
+    }
+
+    "drop the parameters Meta's API refuses - stop, logit_bias, logprobs, verbosity" in {
+      val body = maker.body(
+        CreateChatCompletionSettings(
+          "muse-spark-1.3",
+          stop = Seq("\n"),
+          logit_bias = Map("16" -> 5),
+          logprobs = Some(true),
+          top_logprobs = Some(2),
+          verbosity = Some(Verbosity.low),
+          temperature = Some(0.2)
+        )
+      )
+      Seq("stop", "logit_bias", "logprobs", "top_logprobs", "verbosity").foreach(key =>
+        body.get(key) shouldBe None
+      )
+      // the sampling parameters it takes stay
+      body.get("temperature").map(_.as[Double]) shouldBe Some(0.2)
+    }
+
+    "leave the open-weight Muse Glimmer alone" in {
+      effortSent("meta-models/Muse-Glimmer-30B", ReasoningEffort.none) shouldBe Some("none")
+      effortSent("meta/muse-glimmer-30b", ReasoningEffort.max) shouldBe Some("max")
+    }
+  }
+
+  "Meta's Muse Spark Open (open weights, each host its own reasoning_effort)" should {
+
+    def withAll(model: String) =
+      maker.body(
+        CreateChatCompletionSettings(
+          model,
+          stop = Seq("\n"),
+          logit_bias = Map("16" -> 5),
+          logprobs = Some(true),
+          verbosity = Some(Verbosity.low)
+        )
+      )
+
+    "send none as minimal on Fireworks, which takes minimal..max, and drop verbosity" in {
+      val fireworks = "accounts/fireworks/models/muse-spark-open"
+      effortSent(fireworks, ReasoningEffort.none) shouldBe Some("minimal")
+      effortSent(fireworks, ReasoningEffort.minimal) shouldBe Some("minimal")
+      effortSent(fireworks, ReasoningEffort.max) shouldBe Some("max")
+      val body = withAll(fireworks)
+      body.get("verbosity") shouldBe None
+      Seq("stop", "logit_bias", "logprobs").foreach(key => body.get(key) shouldBe defined)
+    }
+
+    "send minimal as low and max as xhigh to the model's chat template (Together), none kept" in {
+      Seq("meta-models/Muse-Spark-Open-816B-A42B", "muse-spark-open").foreach { model =>
+        effortSent(model, ReasoningEffort.none) shouldBe Some("none")
+        effortSent(model, ReasoningEffort.minimal) shouldBe Some("low")
+        effortSent(model, ReasoningEffort.high) shouldBe Some("high")
+        effortSent(model, ReasoningEffort.max) shouldBe Some("xhigh")
+        val body = withAll(model)
+        body.get("verbosity") shouldBe None
+        Seq("stop", "logit_bias", "logprobs").foreach(key => body.get(key) shouldBe defined)
+      }
+    }
+
+    "send only none as minimal through OpenRouter and Vercel - not the Meta Model API's Muse rules" in {
+      val routed = "meta/muse-spark-open"
+      // OpenRouter: 400 "Reasoning is mandatory for this endpoint and cannot be disabled."
+      effortSent(routed, ReasoningEffort.none) shouldBe Some("minimal")
+      effortSent(routed, ReasoningEffort.minimal) shouldBe Some("minimal")
+      effortSent(routed, ReasoningEffort.max) shouldBe Some("max")
+      val body = withAll(routed)
+      Seq("stop", "logit_bias", "logprobs", "verbosity").foreach(key =>
+        body.get(key) shouldBe defined
+      )
+    }
+  }
 }

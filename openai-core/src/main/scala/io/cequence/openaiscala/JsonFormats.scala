@@ -42,15 +42,52 @@ object JsonFormats {
   private implicit lazy val dateFormat: Format[ju.Date] = JsonUtil.SecDateFormat
 
   implicit lazy val permissionFormat: Format[Permission] = Json.format[Permission]
+  // `created` as Unix seconds (a number or a numeric string) or an ISO-8601 date-time string
+  // (Anthropic's `created_at`); anything else reads as unknown
+  private def modelDate(json: JsValue): Option[ju.Date] =
+    JsonUtil.SecDateFormat
+      .reads(json)
+      .asOpt
+      .orElse(json match {
+        case JsString(text) =>
+          scala.util
+            .Try(java.time.OffsetDateTime.parse(text).toInstant)
+            .orElse(scala.util.Try(java.time.Instant.parse(text)))
+            .toOption
+            .map(ju.Date.from)
+        case _ => None
+      })
+
+  // only the `id` is required - the OpenAI-compatible hosts send different fields (see
+  // `ModelInfo`); a field of an unexpected type reads as absent
   implicit lazy val modelSpecFormat: Format[ModelInfo] = {
     val reads: Reads[ModelInfo] = (
       (__ \ "id").read[String] and
-        (__ \ "created").read[ju.Date] and
-        (__ \ "owned_by").read[String] and
-        (__ \ "root").readNullable[String] and
-        (__ \ "parent").readNullable[String] and
+        (__ \ "created").readNullable[JsValue] and
+        (__ \ "created_at").readNullable[JsValue] and
+        (__ \ "owned_by").readNullable[JsValue] and
+        (__ \ "root").readNullable[JsValue] and
+        (__ \ "parent").readNullable[JsValue] and
         (__ \ "permission").read[Seq[Permission]].orElse(Reads.pure(Nil))
-    )(ModelInfo.apply _)
+    ) {
+      (
+        id,
+        created,
+        createdAt,
+        ownedBy,
+        root,
+        parent,
+        permission
+      ) =>
+        ModelInfo(
+          id,
+          created.flatMap(modelDate).orElse(createdAt.flatMap(modelDate)),
+          ownedBy.flatMap(_.asOpt[String]),
+          root.flatMap(_.asOpt[String]),
+          parent.flatMap(_.asOpt[String]),
+          permission
+        )
+    }
 
     val writes: Writes[ModelInfo] = Json.writes[ModelInfo]
     Format(reads, writes)

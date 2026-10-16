@@ -1,0 +1,106 @@
+{
+  "data": [
+    {
+      "id": "~unbiased/pareto-latest",
+      "canonical_slug": "~unbiased/pareto-latest",
+      "alias_target": {
+        "name": "Pareto 26.9",
+        "slug": "unbiased/pareto-26.9"
+      },
+      "hugging_face_id": null,
+      "name": "Pareto Latest",
+      "created": 1791933050,
+      "description": "This model always redirects to the latest model in the Pareto family.",
+      "context_length": 262144,
+      "architecture": {
+        "modality": "text+image->text",
+        "input_modalities": [
+          "text",
+          "image"
+        ],
+        "output_modalities": [
+          "text"
+        ],
+        "tokenizer": "Router",
+        "instruct_type": null
+      },
+      "pricing": {
+        "prompt": "0.0000025",
+        "completion": "0.0000075",
+        "input_cache_read": "0.00000025"
+      },
+      "top_provider": {
+        "context_length": 262144,
+        "max_completion_tokens": 131072,
+        "is_moderated": false
+      },
+      "per_request_limits": null,
+      "supported_parameters": [
+        "max_tokens",
+        "response_format",
+        "temperature",
+        "tool_choice",
+        "tools",
+        "top_p"
+      ],
+      "default_parameters": {},
+      "supported_voices": null,
+      "knowledge_cutoff": null,
+      "expiration_date": null,
+      "links": {
+        "details": "/api/v1/models/~unbiased/pareto-latest/endpoints"
+      }
+    },
+    {
+      "id": "unbiased/pareto-26.9",
+      "canonical_slug": "unbiased/pareto-26.9-20260917",
+      "hugging_face_id": null,
+      "name": "Pareto 26.9",
+      "created": 1791930537,
+      "description": "Pareto is a multimodal composite model built for research, coding, and agentic w...",
+      "context_length": 262144,
+      "architecture": {
+        "modality": "text+image->text",
+        "input_modalities": [
+          "text",
+          "image"
+        ],
+        "output_modalities": [
+          "text"
+        ],
+        "tokenizer": "Other",
+        "instruct_type": null
+      },
+      "pricing": {
+        "prompt": "0.0000025",
+        "completion": "0.0000075",
+        "input_cache_read": "0.00000025"
+      },
+      "top_provider": {
+        "context_length": 262144,
+        "max_completion_tokens": 131072,
+        "is_moderated": false
+      },
+      "per_request_limits": null,
+      "supported_parameters": [
+        "max_tokens",
+        "response_format",
+        "temperature",
+        "tool_choice",
+        "tools",
+        "top_p"
+      ],
+      "default_parameters": {},
+      "supported_voices": null,
+      "knowledge_cutoff": null,
+      "expiration_date": null,
+      "links": {
+        "details": "/api/v1/models/unbiased/pareto-26.9-20260917/endpoints"
+      }
+    }
+  ],
+  "total_count": 462,
+  "links": {
+    "next": null
+  }
+}

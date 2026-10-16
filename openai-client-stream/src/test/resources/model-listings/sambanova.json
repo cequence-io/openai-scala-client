@@ -1,0 +1,29 @@
+{
+  "data": [
+    {
+      "context_length": 131072,
+      "id": "DeepSeek-V3.1",
+      "max_completion_tokens": 7168,
+      "object": "model",
+      "owned_by": "no-reply@sambanova.ai",
+      "pricing": {
+        "completion": "0.00000450",
+        "prompt": "0.00000300"
+      },
+      "sn_metadata": {}
+    },
+    {
+      "context_length": 32768,
+      "id": "DeepSeek-V3.2",
+      "max_completion_tokens": 7168,
+      "object": "model",
+      "owned_by": "no-reply@sambanova.ai",
+      "pricing": {
+        "completion": "0.00000450",
+        "prompt": "0.00000300"
+      },
+      "sn_metadata": {}
+    }
+  ],
+  "object": "list"
+}

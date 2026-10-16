@@ -8,7 +8,7 @@ import io.cequence.openaiscala.service.{HandleOpenAIErrorCodes, OpenAICoreServic
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits._
 import io.cequence.wsclient.service.WSClient
-import play.api.libs.json.{JsObject, JsValue}
+import play.api.libs.json.{JsArray, JsValue}
 
 import scala.concurrent.Future
 
@@ -28,11 +28,16 @@ private[service] trait OpenAICoreServiceImpl
 
   override def listModels: Future[Seq[ModelInfo]] =
     execGET(EndPoint.models).map { response =>
-      (response.asSafeJson[JsObject] \ "data").toOption.map {
+      // `{"data": [...]}` as OpenAI sends it, or a bare array (Together)
+      val models = response.asSafeJson[JsValue] match {
+        case array: JsArray => Some(array)
+        case json           => (json \ "data").toOption
+      }
+      models.map {
         _.asSafeArray[ModelInfo]
       }.getOrElse(
         throw new OpenAIScalaClientException(
-          s"The attribute 'data' is not present in the response: ${response.toString()}."
+          s"Neither a 'data' attribute nor an array of models in the response: ${response.toString()}."
         )
       )
     }

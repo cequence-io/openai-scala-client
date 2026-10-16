@@ -1,0 +1,28 @@
+: OPENROUTER PROCESSING
+
+: OPENROUTER PROCESSING
+
+: OPENROUTER PROCESSING
+
+: OPENROUTER PROCESSING
+
+: OPENROUTER PROCESSING
+
+data: {"id":"gen-1792165919-k4uUCMbVuGd4zeG9xs5Z","object":"chat.completion.chunk","created":1792165919,"model":"meta/muse-wonder","provider":"Meta","choices":[{"index":0,"delta":{"content":"","role":"assistant","reasoning":"Counting primes under a numeric bound using known pi values and partial enumeration.","reasoning_details":[{"type":"reasoning.summary","summary":"Counting primes under a numeric bound using known pi values and partial enumeration.","format":"meta-responses-v1","index":0}]},"finish_reason":null,"native_finish_reason":null}]}
+
+: OPENROUTER PROCESSING
+
+: OPENROUTER PROCESSING
+
+: OPENROUTER PROCESSING
+
+data: {"id":"gen-1792165919-k4uUCMbVuGd4zeG9xs5Z","object":"chat.completion.chunk","created":1792165919,"model":"meta/muse-wonder","provider":"Meta","choices":[{"index":0,"delta":{"content":"","role":"assistant","reasoning":null,"reasoning_details":[{"type":"reasoning.encrypted","data":"ENCRYPTED","format":"meta-responses-v1","id":"rs_6ad2481f06253108a7834e57:rs_01a14569bbb370f39963f5d4720e81b2","index":1}]},"finish_reason":null,"native_finish_reason":null}]}
+
+data: {"id":"gen-1792165919-k4uUCMbVuGd4zeG9xs5Z","object":"chat.completion.chunk","created":1792165919,"model":"meta/muse-wonder","provider":"Meta","choices":[{"index":0,"delta":{"content":"62","role":"assistant"},"finish_reason":null,"native_finish_reason":null}]}
+
+data: {"id":"gen-1792165919-k4uUCMbVuGd4zeG9xs5Z","object":"chat.completion.chunk","created":1792165919,"model":"meta/muse-wonder","provider":"Meta","choices":[{"index":0,"delta":{"content":"","role":"assistant","reasoning":null},"finish_reason":"stop","native_finish_reason":"completed"}]}
+
+data: {"id":"gen-1792165919-k4uUCMbVuGd4zeG9xs5Z","object":"chat.completion.chunk","created":1792165919,"model":"meta/muse-wonder","provider":"Meta","service_tier":"auto","choices":[{"index":0,"delta":{"content":"","role":"assistant"},"finish_reason":"stop","native_finish_reason":"completed"}],"usage":{"prompt_tokens":21,"completion_tokens":681,"total_tokens":702,"cost":0.013704,"is_byok":false,"prompt_tokens_details":{"cached_tokens":0,"cache_write_tokens":0,"audio_tokens":0,"video_tokens":0},"cost_details":{"upstream_inference_cost":0.013704,"upstream_inference_prompt_cost":0.000084,"upstream_inference_completions_cost":0.01362},"completion_tokens_details":{"reasoning_tokens":655,"image_tokens":0,"audio_tokens":0}}}
+
+data: [DONE]
+

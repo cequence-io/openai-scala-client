@@ -11,12 +11,13 @@ import scala.collection.mutable.ListBuffer
 
 /**
  * A server-sent-events decoder over a raw byte stream (`execRawStream`), for the streams whose
- * framing ws-client's JSON framing does not cover - comment-only heartbeat frames (`:`, e.g.
- * OpenAI's Agents API session events every 15 s), CRLF framing: splits the byte stream into
- * events on a blank line (`\n\n` or `\r\n\r\n` - both occur in the wild, so neither is
- * assumed), joins an event's `data:` lines, skips comments / `event:` / `id:` lines and the
- * `[DONE]` terminator, and parses each payload as JSON. A pending event larger than
- * `maxEventBytes` fails the stream instead of buffering without bound.
+ * framing ws-client's JSON framing does not cover - CRLF and LF framing in one stream, and (up
+ * to ws-client 1.1.2, which failed on them) comment-only heartbeat frames (`:`, e.g. OpenAI's
+ * Agents API session events every 15 s): splits the byte stream into events on a blank line
+ * (`\n\n` or `\r\n\r\n` - both occur in the wild, so neither is assumed), joins an event's
+ * `data:` lines, skips comments / `event:` / `id:` lines and the `[DONE]` terminator, and
+ * parses each payload as JSON. A pending event larger than `maxEventBytes` fails the stream
+ * instead of buffering without bound.
  *
  * Built for large events (a frame may be up to [[StreamingConsts.maxFrameLength]], 32 MiB by
  * default): the pending event is a rope of the chunks that is never walked per chunk - only

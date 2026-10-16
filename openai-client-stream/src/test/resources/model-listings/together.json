@@ -1,0 +1,58 @@
+[
+  {
+    "id": "deepseek-ai/DeepSeek-V4.1-Flash",
+    "object": "model",
+    "created": 1789197495,
+    "type": "chat",
+    "running": false,
+    "display_name": "DeepSeek V4.1 Flash",
+    "organization": "DeepSeek",
+    "context_length": 1048576,
+    "config": {
+      "chat_template": null,
+      "stop": [],
+      "bos_token": null,
+      "eos_token": null
+    },
+    "pricing": {
+      "hourly": 0,
+      "input": 0.3,
+      "output": 1.2,
+      "base": 0,
+      "finetune": 0,
+      "cached_input": 0.006,
+      "image_pixel": 0,
+      "transcribe": 0,
+      "image": 0,
+      "video": 0
+    }
+  },
+  {
+    "id": "zai-org/GLM-5.3",
+    "object": "model",
+    "created": 1787957543,
+    "type": "chat",
+    "running": false,
+    "display_name": "GLM 5.3",
+    "organization": "zai-org",
+    "context_length": 1048575,
+    "config": {
+      "chat_template": null,
+      "stop": [],
+      "bos_token": null,
+      "eos_token": null
+    },
+    "pricing": {
+      "hourly": 0,
+      "input": 1.4,
+      "output": 4.4,
+      "base": 0,
+      "finetune": 0,
+      "cached_input": 0.25999999999999995,
+      "image_pixel": 0,
+      "transcribe": 0,
+      "image": 0,
+      "video": 0
+    }
+  }
+]

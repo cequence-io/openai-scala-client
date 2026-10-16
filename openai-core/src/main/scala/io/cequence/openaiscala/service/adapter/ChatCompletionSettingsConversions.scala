@@ -474,6 +474,14 @@ object ChatCompletionSettingsConversions {
     val logitBiasUnsupported: FieldConversionDef =
       unsupported("logit_bias", _.logit_bias.nonEmpty, _.copy(logit_bias = Map()))
 
+    // Meta's Muse on the Meta Model API refuses both ("is not supported"); Muse Spark Open's
+    // hosts refuse verbosity (Fireworks: "Extra inputs are not permitted", Together reads it as
+    // an integer) - live 2026-10-13 / 15
+    val topLogprobsUnsupported: FieldConversionDef =
+      unsupported("top_logprobs", _.top_logprobs.isDefined, _.copy(top_logprobs = None))
+    val verbosityUnsupported: FieldConversionDef =
+      unsupported("verbosity", _.verbosity.isDefined, _.copy(verbosity = None))
+
     // o1 and o3-mini (and their dated snapshots) still accept stop; o3 / o4-mini (and any newer
     // o-model) reject it
     private val oSeriesAcceptingStop = "^o(?:1|3-mini)(?:-\\d{4}-\\d{2}-\\d{2})?$".r
@@ -857,6 +865,87 @@ object ChatCompletionSettingsConversions {
       )
     )
   )
+
+  // Meta's Muse Wonder and Muse Spark (the Meta Model API's ids and OpenRouter's `meta/` ones),
+  // live 2026-10-13 on the Meta Model API: they always reason - reasoning_effort minimal..max,
+  // `none` a 400 ("Supported values: [minimal, low, medium, high, xhigh, max]") - and `max` works
+  // on Muse Wonder and Muse Spark 1.3, its Contributor variant included (Meta's docs say it is
+  // not), but is a 400 on 1.2 / 1.1. `stop`, `logit_bias` and `verbosity` are 400s ("is not
+  // supported"), and so are logprobs, since reasoning is always on - all dropped here; `n` must be
+  // 1 and `tool_choice` only "auto" (a forced / required choice is a 400) - left to the API
+  def isMuseReasoning(model: String): Boolean = {
+    val bare = model.stripPrefix("meta/")
+    (bare.startsWith("muse-wonder") || bare.startsWith("muse-spark")) && !isMuseSparkOpen(
+      model
+    )
+  }
+
+  // the versions known to lack `max` - a newer one passes it on
+  private def museLacksMax(model: String): Boolean = {
+    val bare = model.stripPrefix("meta/")
+    bare.startsWith(NonOpenAIModelId.muse_spark_1_2) || bare.startsWith(
+      NonOpenAIModelId.muse_spark_1_1
+    )
+  }
+
+  private val museUnsupported = Seq(
+    FieldConversions.stopUnsupported,
+    FieldConversions.logitBiasUnsupported,
+    FieldConversions.logProbsUnsupported,
+    FieldConversions.topLogprobsUnsupported,
+    FieldConversions.verbosityUnsupported
+  )
+
+  val muse: SettingsConversion = settings =>
+    generic(
+      museUnsupported ++
+        (reasoningEffortTo(Set(ReasoningEffort.none), ReasoningEffort.minimal) +:
+          (if (museLacksMax(settings.model))
+             Seq(reasoningEffortTo(Set(ReasoningEffort.max), ReasoningEffort.xhigh))
+           else Nil))
+    )(settings)
+
+  // Meta's open-weight Muse Spark Open (2026-10-15): it always reasons and RETURNS the reasoning
+  // (unlike the Meta Model API's Muse), and stop, logit_bias, logprobs, penalties, tools with a
+  // forced tool_choice and images all work - so none of the Meta Model API's Muse rules apply.
+  // Its hosts take reasoning_effort differently (live 2026-10-15):
+  //   - Fireworks (`accounts/fireworks/models/muse-spark-open`): `none` is a 400 ("Muse Spark is a
+  //     reasoning model; disabling thinking ..."), minimal..max fine - none is sent as minimal
+  //   - the model's own chat template - Together (`meta-models/Muse-Spark-Open-816B-A42B`) or the
+  //     weights on a server of your own: `none` turns thinking off, low..xhigh fine, `minimal` /
+  //     `max` a 400 ("Failed to apply chat template ... Unsupported reasoning effort") - sent as
+  //     low / xhigh
+  //   - OpenRouter and Vercel's AI Gateway (`meta/muse-spark-open`): minimal..max fine; `none` a
+  //     400 on OpenRouter ("Reasoning is mandatory for this endpoint and cannot be disabled.",
+  //     live 2026-10-16) and taken by Vercel, which reasons anyway - sent as minimal on both
+  // Fireworks and the template refuse verbosity, so it is dropped there; n > 1 is a 400 on
+  // Fireworks only - left to the API
+  def isMuseSparkOpen(model: String): Boolean =
+    model.split('/').last.toLowerCase.startsWith("muse-spark-open")
+
+  private val museSparkOpenFireworks: SettingsConversion = generic(
+    Seq(
+      reasoningEffortTo(Set(ReasoningEffort.none), ReasoningEffort.minimal),
+      FieldConversions.verbosityUnsupported
+    )
+  )
+
+  private val museSparkOpenGateway: SettingsConversion = generic(
+    Seq(reasoningEffortTo(Set(ReasoningEffort.none), ReasoningEffort.minimal))
+  )
+
+  private val museSparkOpenTemplate: SettingsConversion = generic(
+    Seq(
+      reasoningEffortTo(Set(ReasoningEffort.minimal), ReasoningEffort.low),
+      reasoningEffortTo(Set(ReasoningEffort.max), ReasoningEffort.xhigh),
+      FieldConversions.verbosityUnsupported
+    )
+  )
+
+  def museSparkOpen(model: String): SettingsConversion =
+    if (model.startsWith("accounts/fireworks/")) museSparkOpenFireworks
+    else if (model.startsWith("meta/")) museSparkOpenGateway
+    else museSparkOpenTemplate
 
   // low / high / max - no way to turn reasoning off
   val mistralGlm: SettingsConversion = generic(

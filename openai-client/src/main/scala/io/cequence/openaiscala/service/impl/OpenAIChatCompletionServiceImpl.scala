@@ -273,6 +273,8 @@ trait ChatCompletionBodyMaker {
       else if (isGpt5SearchApi(model)) gpt5SearchApi(settings)
       else if (isMistralSwitchReasoning(model)) mistralSwitchReasoning(settings)
       else if (isMistralGlm(model)) mistralGlm(settings)
+      else if (isMuseSparkOpen(model)) museSparkOpen(model)(settings)
+      else if (isMuseReasoning(model)) muse(settings)
       else
         gpt5Minor(model) match {
           case Some(0)                   => gpt5(settings)

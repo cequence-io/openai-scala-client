@@ -1,0 +1,15 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "c4ai-aya-expanse-32b",
+      "object": "model",
+      "owned_by": "cohere"
+    },
+    {
+      "id": "c4ai-aya-vision-32b",
+      "object": "model",
+      "owned_by": "cohere"
+    }
+  ]
+}
