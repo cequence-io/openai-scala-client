@@ -19,7 +19,13 @@ import scala.collection.immutable.ListMap
  *     values; an integer gets the most likely value, a number the probability-weighted
  *     expected value
  *   - `array` whose `items` are a string `enum` -> one noul per option (multi-select)
- *   - `object` -> its properties, recursively
+ *   - `object` of exactly the `number` properties `top`, `bottom`, `left` and `right`, each a
+ *     fraction (`minimum` 0, `maximum` 1 - a `BoundingBox`, or a case class of your own with
+ *     `@JsonSchemaRange(0, 1)` edges) -> a box question (TypeSafe's Jev 1.14, with an image in
+ *     the request): the edges as fractions of the image, the object's description the
+ *     instructions ("the coffee mug in the photo"). The range is the opt-in - four free
+ *     numbers with those names (margins, insets) are planned as any other numbers
+ *   - any other `object` -> its properties, recursively
  *
  * Questions are named by their paths (`questionName`).
  *
@@ -39,12 +45,14 @@ import scala.collection.immutable.ListMap
  *     distribution is)
  *   - array of a string enum: the minimum over its options, each as for a boolean - the
  *     weakest in-or-out decision bounds the set
- *   - object: the minimum over every question underneath it
+ *   - box: the box's `confidence` (none when the model gives none - the field is left out)
+ *   - object: the minimum over every question underneath it (none when a box underneath has
+ *     none)
  *
  * A `*_confidence` / `*Confidence` property WITHOUT such a sibling is an ordinary property
  * (and, as a number without levels, refused); one that is not a `number` is refused. When a
- * question under the base has no usable answer the confidence field is left out with a
- * warning.
+ * question under the base has no usable answer, or a box no confidence, the confidence field
+ * is left out with a warning saying which.
  */
 private[typesafe] object SchemaQuestions {
 
@@ -70,6 +78,9 @@ private[typesafe] object SchemaQuestions {
 
   /** option -> the noul question asking whether it applies. */
   final case class MultiSelectSlot(options: Seq[(String, String)]) extends Slot
+
+  /** A `{top, bottom, left, right}` object answered by a box question. */
+  final case class BoxSlot(question: String) extends Slot
 
   /**
    * @param confidenceFields
@@ -212,6 +223,9 @@ private[typesafe] object SchemaQuestions {
                 unsupported(path, "an array whose items are not a string enum (multi-select)")
             }
 
+          case Some("object") if isBox(schema) =>
+            BoxSlot(add(path, BoxQuestion(instructions)))
+
           case Some("object") =>
             (schema \ "properties").asOpt[JsObject] match {
               case Some(properties) if properties.fields.nonEmpty =>
@@ -314,6 +328,11 @@ private[typesafe] object SchemaQuestions {
               JsString(option)
           })
 
+        case BoxSlot(q) =>
+          answer(q) { case BoxAnswer(BoundingBox(top, bottom, left, right), _) =>
+            Json.obj("top" -> top, "bottom" -> bottom, "left" -> left, "right" -> right)
+          }
+
         case ObjectSlot(fields, confidenceFields) =>
           JsObject(fields.flatMap { case (name, s) =>
             val confidences = confidenceFields.getOrElse(name, Nil) match {
@@ -324,11 +343,13 @@ private[typesafe] object SchemaQuestions {
                     confidenceNames.map(
                       _ -> JsNumber(BigDecimal(c.bigDecimal.stripTrailingZeros))
                     )
-                  case Left(unanswered) =>
+                  case Left(unusable) =>
                     logger.warn(
-                      s"Leaving out ${confidenceNames.map(c => questionName(path :+ c)).mkString(", ")}: " +
-                        s"no usable answer for ${unanswered.mkString(", ")}; " +
-                        s"answered: ${answers.keys.toSeq.sorted.mkString(", ")}"
+                      confidenceLeftOutMessage(
+                        confidenceNames.map(c => questionName(path :+ c)),
+                        unusable,
+                        answers
+                      )
                     )
                     Nil
                 }
@@ -350,8 +371,35 @@ private[typesafe] object SchemaQuestions {
     path.map(_.replace("\\", "\\\\").replace(".", "\\.")).mkString(".")
 
   /**
+   * Why confidence fields are left out: the questions without a usable answer, and apart from
+   * them the boxes answered without a confidence (the API may send none).
+   */
+  private[impl] def confidenceLeftOutMessage(
+    fields: Seq[String],
+    unusable: Seq[String],
+    answers: Map[String, Answer]
+  ): String = {
+    val (withoutConfidence, unanswered) = unusable.partition { question =>
+      answers.get(question).exists {
+        case box: BoxAnswer => box.confidence.isEmpty
+        case _              => false
+      }
+    }
+    val reasons = Seq(
+      "no usable answer for" -> unanswered,
+      "no confidence in the box answer to" -> withoutConfidence
+    ).collect {
+      case (reason, questions) if questions.nonEmpty =>
+        s"$reason ${questions.mkString(", ")}"
+    }
+
+    s"Leaving out ${fields.mkString(", ")}: ${reasons.mkString("; ")}; " +
+      s"answered: ${answers.keys.toSeq.sorted.mkString(", ")}"
+  }
+
+  /**
    * The confidence in a slot's answer (see the object scaladoc) rounded to 4 decimals, or the
-   * questions under it without a usable answer.
+   * questions under it without a usable answer or, for a box, without a confidence.
    */
   private[impl] def confidence(
     slot: Slot,
@@ -370,7 +418,9 @@ private[typesafe] object SchemaQuestions {
         case ScoreSlot(q, _, _) =>
           Seq(q -> answers.get(q).collect { case a: ScoreAnswer => a.confidence })
         case MultiSelectSlot(options) => options.map { case (_, q) => q -> noul(q) }
-        case ObjectSlot(fields, _)    => fields.flatMap { case (_, s) => perQuestion(s) }
+        case BoxSlot(q) =>
+          Seq(q -> answers.get(q).collect { case a: BoxAnswer => a.confidence }.flatten)
+        case ObjectSlot(fields, _) => fields.flatMap { case (_, s) => perQuestion(s) }
       }
 
     val confidences = perQuestion(slot)
@@ -400,6 +450,23 @@ private[typesafe] object SchemaQuestions {
 
     names.collect { case name if isConfidence(name) => name -> baseOf(name).get }.toMap
   }
+
+  private val BoxEdges = Set("top", "bottom", "left", "right")
+
+  // an object of exactly the four edges of a bounding box, each a `number` declared a fraction
+  // of the image (`minimum` 0, `maximum` 1 - `BoundingBox` derives them): the range is the
+  // opt-in, since four numbers with these names may mean something else (margins, insets) -
+  // those stay ordinary numbers (refused when free, score questions with a range or an enum)
+  private def isBox(schema: JsValue): Boolean =
+    (schema \ "properties").asOpt[JsObject].exists { properties =>
+      properties.keys == BoxEdges && properties.values.forall(isFraction)
+    }
+
+  private def isFraction(schema: JsValue): Boolean =
+    typeOf(schema).contains("number") &&
+      (schema \ "minimum").asOpt[Double].contains(0d) &&
+      (schema \ "maximum").asOpt[Double].contains(1d) &&
+      (schema \ "enum").toOption.isEmpty
 
   // `type` is a string or an array of them (nullable types) - the non-null one wins
   private def typeOf(schema: JsValue): Option[String] =

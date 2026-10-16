@@ -61,12 +61,14 @@ object HandleTypeSafeErrorCodes {
 
   // Perplexity: "... exceeds or equals model's maximum context length", OpenAI's Decisions API:
   // "Decision input exceeds the token limit.", Microsoft Foundry: "... the limit for the state
-  // plus all questions is 64000"
+  // plus all questions is 64000", Liquid (a 422): "The prompt for question `x` is over the
+  // model's input limit of 32768 tokens, images included, or 250000 bytes of text."
   private def exceedsContext(message: String) =
     message.contains("maximum context length") ||
       message.contains("exceeds the token limit") ||
       message.contains("the limit for the state plus all questions") ||
-      message.contains("too large for this model")
+      message.contains("too large for this model") ||
+      message.contains("over the model's input limit")
 
   // a body that is not JSON - empty (Perplexity's 404 / 405) or an HTML page (a gateway's 504)
   private def plainBody(body: String) =

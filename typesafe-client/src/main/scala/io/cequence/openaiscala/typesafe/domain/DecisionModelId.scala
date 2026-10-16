@@ -18,20 +18,43 @@ import io.cequence.openaiscala.domain.NonOpenAIModelId
 object DecisionModelId {
   val jev_latest: String = NonOpenAIModelId.jev_latest
 
-  /** A preview of the next `jev-latest`: "should be better in most ways". */
+  /**
+   * A preview of the next `jev-latest`: "should be better in most ways" - Jev 1.14 since
+   * 2026-10-14.
+   */
   val jev_preview: String = NonOpenAIModelId.jev_preview
 
-  /** The build `jev-latest` resolved to on 2026-09-16. */
+  /** The build `jev-latest` resolves to (since 2026-09-16; images since 2026-10-14). */
   val jev_1_13_0: String = NonOpenAIModelId.jev_1_13_0
 
   /**
-   * Liquid AI's decision model d1 (free tier) - the same System One API on Liquid's host (see
-   * `TypeSafeServiceFactory.liquid`).
+   * Jev 1.14 (2026-10-14; `jev-preview`, `jev-latest` about a week later): small improvements
+   * across the board, most in multilingual support - and the only build that answers a
+   * `BoxQuestion`.
    */
+  val jev_1_14_0: String = NonOpenAIModelId.jev_1_14_0
+
+  /**
+   * Liquid AI's decision model d1 (free tier) - the same System One API on Liquid's host (see
+   * `TypeSafeServiceFactory.liquid`); removed by Liquid on 2026-10-14.
+   */
+  @deprecated(
+    "Liquid removed d1:free on 2026-10-14 (a 404) - use liquid_d1 or liquid_d1_ultra",
+    "1.6.0"
+  )
   val liquid_d1_free: String = NonOpenAIModelId.liquid_d1_free
 
-  /** Liquid AI's paid d1, which also reads images (in a top-level `images` array). */
+  /**
+   * Liquid AI's d1, which also reads images (in a top-level `images` array) - the default of
+   * `TypeSafeServiceFactory.liquid`.
+   */
   val liquid_d1: String = NonOpenAIModelId.liquid_d1
+
+  /**
+   * Liquid AI's d1-ultra (2026-10-15), its strongest decision model: text and images like d1,
+   * $0.042 / 1M input tokens, 32,768 tokens per question's prompt (d1: 65,536).
+   */
+  val liquid_d1_ultra: String = NonOpenAIModelId.liquid_d1_ultra
 
   /**
    * Liquid AI's open-weight d1-3B (text and images) on a local llama.cpp server
@@ -75,6 +98,15 @@ object DecisionModelId {
   val openrouter_microsoft_decision_1: String =
     NonOpenAIModelId.openrouter_microsoft_decision_1
   val openrouter_drex_v1_5: String = NonOpenAIModelId.openrouter_drex_v1_5
+  val openrouter_drex_v2_0: String = NonOpenAIModelId.openrouter_drex_v2_0
+  val openrouter_pplx_decider_latest: String =
+    NonOpenAIModelId.openrouter_pplx_decider_latest
+  // text only - its requests go in `DecisionProtocol.ScaleDown` (`openRouter.modelProtocols`)
+  val openrouter_scaledown_classify_1: String =
+    NonOpenAIModelId.openrouter_scaledown_classify_1
+  val openrouter_jev_1_14: String = NonOpenAIModelId.openrouter_jev_1_14
+  val openrouter_liquid_d1_ultra: String = NonOpenAIModelId.openrouter_liquid_d1_ultra
+  val openrouter_span_02: String = NonOpenAIModelId.openrouter_span_02
   val openrouter_solar_decide_flash: String = NonOpenAIModelId.openrouter_solar_decide_flash
   val openrouter_mercury_decide: String = NonOpenAIModelId.openrouter_mercury_decide
   val openrouter_solar_decide: String = NonOpenAIModelId.openrouter_solar_decide
@@ -93,7 +125,17 @@ object DecisionModelId {
   val vercel_gpt_6_luna_decisions: String = NonOpenAIModelId.vercel_gpt_6_luna_decisions
   val vercel_laya: String = NonOpenAIModelId.vercel_laya
   val vercel_laya_free: String = NonOpenAIModelId.vercel_laya_free
+  val vercel_scaledown_classify_1: String = NonOpenAIModelId.vercel_scaledown_classify_1
 
   // SubQ Snap (`DecisionProviderSettings.subq`)
   val subq_snap_preview: String = NonOpenAIModelId.subq_snap_preview
+
+  /**
+   * ScaleDown's Classify, pinned to version 1 (2026-10-13) - see
+   * `DecisionProviderSettings.scaleDown`.
+   */
+  val scaledown_classify_1: String = NonOpenAIModelId.scaledown_classify_1
+
+  /** ScaleDown's Classify, always the latest version. */
+  val scaledown_classify: String = NonOpenAIModelId.scaledown_classify
 }

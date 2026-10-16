@@ -76,6 +76,8 @@ private class RetryTypeSafeService(
 
   override def defaultModel: String = underlying.defaultModel
 
+  override def readsImages: Boolean = underlying.readsImages
+
   override def systemOne(
     state: JsValue,
     questions: Map[String, Question],

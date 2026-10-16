@@ -90,6 +90,9 @@ object JsonFormats {
             i <- instructions
           } yield ScoreQuestion(c, i)
 
+        case "box" =>
+          instructions.map(BoxQuestion(_))
+
         case other =>
           JsError(JsPath \ "type", s"Unknown question type '$other'.")
       }
@@ -113,6 +116,9 @@ object JsonFormats {
         Json.obj("type" -> "score") ++
           optField("instructions", instructions) ++
           Json.obj("criteria" -> criteria)
+
+      case BoxQuestion(instructions) =>
+        Json.obj("type" -> "box") ++ optField("instructions", instructions)
     }
   )
 
@@ -184,6 +190,22 @@ object JsonFormats {
             probabilities <- intKeyed[Double](json, "probabilities")
           } yield ScoreAnswer(score, confidence, legend, probabilities)
 
+        case "box" =>
+          for {
+            box <- field[JsObject](json, "box").flatMap { edges =>
+              at(
+                "box",
+                for {
+                  top <- field[Double](edges, "top")
+                  bottom <- field[Double](edges, "bottom")
+                  left <- field[Double](edges, "left")
+                  right <- field[Double](edges, "right")
+                } yield BoundingBox(top, bottom, left, right)
+              )
+            }
+            confidence <- fieldOpt[Double](json, "confidence")
+          } yield BoxAnswer(box, confidence)
+
         case other =>
           json.validate[JsObject].map(UnknownAnswer(other, _))
       }
@@ -206,6 +228,14 @@ object JsonFormats {
           "score" -> score,
           "legend" -> intKeyedJson(legend),
           "probabilities" -> intKeyedJson(probabilities),
+          "confidence" -> confidence
+        )
+
+      case BoxAnswer(BoundingBox(top, bottom, left, right), confidence) =>
+        Json.obj(
+          "type" -> "box",
+          "box" -> Json
+            .obj("top" -> top, "bottom" -> bottom, "left" -> left, "right" -> right),
           "confidence" -> confidence
         )
 

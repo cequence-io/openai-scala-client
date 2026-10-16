@@ -1,6 +1,7 @@
 package io.cequence.openaiscala.typesafe.domain
 
-import play.api.libs.json.{JsObject, JsString, JsValue}
+import io.cequence.openaiscala.domain.JsonSchemaRange
+import play.api.libs.json.{Format, JsObject, JsString, JsValue, Json}
 
 /**
  * The answer to a [[Question]], of the matching kind. Every answer carries the `type` of its
@@ -99,6 +100,77 @@ final case class ScoreAnswer(
   /** The text description of a level, when the rubric was given as text. */
   def describe(level: Int): Option[String] =
     legend.get(level).collect { case JsString(text) => text }
+}
+
+/**
+ * Where a [[BoxQuestion]]'s target is in the image.
+ *
+ * @param box
+ *   its edges as fractions of the image's size
+ * @param confidence
+ *   0 to 1 - low when the target is not in the image; none when the model gives none
+ */
+final case class BoxAnswer(
+  box: BoundingBox,
+  confidence: Option[Double]
+) extends Answer
+
+/**
+ * A rectangle in an image, its edges as fractions (0 to 1) of the image's height (`top`,
+ * `bottom`) and width (`left`, `right`), measured from the top-left corner - each the expected
+ * value of its edge's predicted position.
+ *
+ * Its derived JSON schema declares each edge a fraction (`minimum` 0, `maximum` 1), which is
+ * what the JSON schema adapter and `decide[T]` ask a box question for.
+ */
+final case class BoundingBox(
+  @JsonSchemaRange(0, 1) top: Double,
+  @JsonSchemaRange(0, 1) bottom: Double,
+  @JsonSchemaRange(0, 1) left: Double,
+  @JsonSchemaRange(0, 1) right: Double
+) {
+
+  /** The box's width as a fraction of the image's. */
+  def width: Double = right - left
+
+  /** The box's height as a fraction of the image's. */
+  def height: Double = bottom - top
+
+  /** The box in pixels of an image this size - (left, top, right, bottom), rounded. */
+  def inPixels(
+    imageWidth: Int,
+    imageHeight: Int
+  ): (Int, Int, Int, Int) =
+    (
+      math.round(left * imageWidth).toInt,
+      math.round(top * imageHeight).toInt,
+      math.round(right * imageWidth).toInt,
+      math.round(bottom * imageHeight).toInt
+    )
+
+  /**
+   * The box moved out by `margin` (a fraction of the image, not negative - a negative one
+   * would turn a small box inside out) on every side, kept in the image.
+   */
+  def padded(margin: Double): BoundingBox = {
+    require(margin >= 0, s"A box's margin cannot be negative: $margin")
+    BoundingBox(
+      math.max(0d, top - margin),
+      math.min(1d, bottom + margin),
+      math.max(0d, left - margin),
+      math.min(1d, right + margin)
+    )
+  }
+}
+
+object BoundingBox {
+
+  /**
+   * `{"top", "bottom", "left", "right"}` - so a case class with a `BoundingBox` field reads it
+   * back from a typed decision or the OpenAI adapter's JSON (whose planner answers such an
+   * object with a box question).
+   */
+  implicit val format: Format[BoundingBox] = Json.format[BoundingBox]
 }
 
 /** An answer whose `type` this library does not know; `raw` is the full JSON as received. */

@@ -6,8 +6,9 @@ import scala.collection.immutable.ListMap
 
 /**
  * A typed question for the System One API, evaluated against the request's `state`. There are
- * three kinds - [[NoulQuestion]] (yes/no), [[ChoiceQuestion]] (one of a fixed set) and
- * [[ScoreQuestion]] (a level on an ordered rubric) - and each gets an [[Answer]] of the
+ * three kinds of decision - [[NoulQuestion]] (yes/no), [[ChoiceQuestion]] (one of a fixed set)
+ * and [[ScoreQuestion]] (a level on an ordered rubric) - plus TypeSafe's experimental
+ * [[BoxQuestion]] (where something is in an image), and each gets an [[Answer]] of the
  * matching kind back, under the name the caller gave the question.
  *
  * Wherever the API accepts content - `instructions`, an option or level description, the noul
@@ -167,4 +168,26 @@ object ScoreQuestion {
     levels: String*
   ): ScoreQuestion =
     ScoreQuestion(levels.map(JsString(_)), Some(JsString(instructions)))
+}
+
+/**
+ * Where something is in an image - answered with a bounding box (its four edges as fractions
+ * of the image's size, from the top-left corner) and a confidence ([[BoxAnswer]]). TypeSafe's
+ * Jev
+ * 1.14 only (`jev-1.14.0`, `jev-preview`; Jev 1.13 answers a 400 "Invalid request."), with an
+ * image in the request ([[DecisionImage]]) - "dreamer-ready", not yet production-grade
+ * (TypeSafe, 2026-10-14). There is no "not found": a target missing from the image still gets
+ * a box, with a low confidence (live 2026-10-14: 0.03 for an absent shape, 0.76-0.84 for
+ * present ones, their edges within 0.02) - ask a [[NoulQuestion]] whether it is there too.
+ *
+ * @param instructions
+ *   what to find, and in which image: "the coffee mug in `photo`" - a reference image may go
+ *   in it too ("the person matching this badge photo: " followed by the photo)
+ */
+final case class BoxQuestion(instructions: Option[JsValue]) extends Question
+
+object BoxQuestion {
+
+  /** `BoxQuestion("the coffee mug in `photo`")`. */
+  def apply(instructions: String): BoxQuestion = BoxQuestion(Some(JsString(instructions)))
 }

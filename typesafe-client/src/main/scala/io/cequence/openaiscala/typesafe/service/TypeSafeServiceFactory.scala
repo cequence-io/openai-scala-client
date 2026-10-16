@@ -101,6 +101,8 @@ object TypeSafeServiceFactory extends EnvHelper {
    * the assistant message's content is a JSON document of that schema. Anything else fails
    * fast with an explanation. Made for `createChatCompletionWithJSON[T]` (pass the model in
    * `jsonSchemaModels`, or rely on the `jev-*` entries of `models-supporting-json-schema`).
+   * The image content of user messages goes into the state - Jev reads images since 2026-10-14
+   * (`DecisionProviderSettings.typeSafe`).
    */
   def asOpenAI(
     apiKey: String = getEnvValue(apiKeyEnvKey),
@@ -110,24 +112,28 @@ object TypeSafeServiceFactory extends EnvHelper {
   )(
     implicit ec: ExecutionContext
   ): OpenAIChatCompletionService =
-    new OpenAITypeSafeChatCompletionService(apply(apiKey, baseUrl, defaultModel, timeouts))
+    asOpenAI(apply(apiKey, baseUrl, defaultModel, timeouts))
 
   /**
-   * The OpenAI adapter over an EXISTING service (e.g. one on a shared engine, or retrying).
+   * The OpenAI adapter over an EXISTING service (e.g. one on a shared engine, or retrying):
+   * the image parts of user messages go into the state when the service's host reads images
+   * (`service.readsImages` - a service of this factory knows it from its provider, the retry
+   * adapter from the service it wraps), else they are refused.
    */
   def asOpenAI(
     service: TypeSafeService
   )(
     implicit ec: ExecutionContext
   ): OpenAIChatCompletionService =
-    new OpenAITypeSafeChatCompletionService(service)
+    new OpenAITypeSafeChatCompletionService(service, imageInput = service.readsImages)
 
   /**
-   * The OpenAI adapter over an EXISTING service, saying whether its host reads images -
-   * `imageInput = true` for a Perplexity, OpenAI, Liquid (paid `d1`) or llama.cpp service
-   * (e.g. wrapped in the retry adapter; the provider's `readsImages`): the image parts of user
-   * messages then go into the state instead of being refused. TypeSafe's Jev reads an image
-   * part as text, so keep it `false` for it.
+   * The OpenAI adapter over an EXISTING service, saying whether its host reads images - for a
+   * service that cannot tell (`readsImages` is `false` for an implementation of your own):
+   * `imageInput = true` for a TypeSafe (Jev, since 2026-10-14), Perplexity, OpenAI, Liquid
+   * (paid `d1`), SubQ, ScaleDown or llama.cpp host - the image parts of user messages then go
+   * into the state instead of being refused. Keep it `false` for a host that reads an image
+   * part as text (Microsoft Foundry).
    */
   def asOpenAI(
     service: TypeSafeService,
@@ -175,14 +181,17 @@ object TypeSafeServiceFactory extends EnvHelper {
    * of this factory serves the interface itself (it knows its host), and so does the retry
    * adapter over one. Any other service is asked in System One's terms - a translation, even
    * when its host is OpenAI's (then without the `safety_identifier`, image details and the
-   * message structure) - and without images.
+   * message structure) - with images only when it says its host reads them (`readsImages`).
    */
   def asOpenAIDecisions(
     service: TypeSafeService
   )(
     implicit ec: ExecutionContext
   ): OpenAIDecisionsService =
-    asOpenAIDecisions(service, imageInput = false)
+    service match {
+      case served: OpenAIDecisionsService => served
+      case other => new OpenAIDecisionsOverTypeSafe(other, other.readsImages)
+    }
 
   /**
    * [[asOpenAIDecisions(service* asOpenAIDecisions(service)]], saying whether a wrapped
@@ -276,9 +285,9 @@ object TypeSafeServiceFactory extends EnvHelper {
     asOpenAI(apply(provider), provider.readsImages)
 
   /**
-   * Liquid AI's decision model d1 on its System One API (`https://api.liquid.ai/decisions`,
-   * `LIQUID_API_KEY`, `d1:free`), on its own PRIVATE engine. The paid `d1` also reads images
-   * (parts in the state, sent in a top-level `images` array - see
+   * Liquid AI's decision models on their System One API (`https://api.liquid.ai/decisions`,
+   * `LIQUID_API_KEY`; `d1` by default, `d1-ultra` the stronger), on its own PRIVATE engine.
+   * Both read images (parts in the state, sent in a top-level `images` array - see
    * `DecisionProviderSettings.liquid`).
    */
   def liquid(
@@ -315,10 +324,9 @@ object TypeSafeServiceFactory extends EnvHelper {
     )
 
   /**
-   * Liquid AI's d1 behind the OpenAI chat-completion interface - `json_schema` structured
-   * output only, exactly like [[asOpenAI]] (`d1:free` and `d1` are in
-   * `models-supporting-json-schema`); the image content of user messages goes to the paid `d1`
-   * (`d1:free` refuses it with a 422).
+   * Liquid AI's decision models behind the OpenAI chat-completion interface - `json_schema`
+   * structured output only, exactly like [[asOpenAI]] (`d1` and `d1-ultra` are in
+   * `models-supporting-json-schema`); the image content of user messages goes to the model.
    */
   def liquidAsOpenAI(
     apiKey: String = getEnvValue(liquidApiKeyEnvKey),

@@ -17,6 +17,8 @@ import io.cequence.openaiscala.domain.decisions.{
 import io.cequence.openaiscala.domain.responsesapi.UsageInfo
 import io.cequence.openaiscala.typesafe.domain.{
   Answer,
+  BoxAnswer,
+  BoxQuestion,
   ChoiceAnswer,
   ChoiceQuestion,
   DecisionImage,
@@ -82,15 +84,8 @@ private[service] object SystemOneToOpenAI {
     question: Question
   ): DecisionQuestion =
     question match {
-      case NoulQuestion(instructions, criteria) =>
-        val conditions = criteria.toSeq.flatMap { criteria =>
-          criteria.yes.map(yes => s"Yes when: ${text(yes)}").toSeq ++
-            criteria.no.map(no => s"No when: ${text(no)}").toSeq
-        }
-        DecisionQuestion.Predicate(
-          (instructions.map(text).toSeq ++ conditions).mkString("\n"),
-          Some(name)
-        )
+      case noul: NoulQuestion =>
+        DecisionQuestion.Predicate(noulInstructions(noul, text), Some(name))
 
       case ChoiceQuestion(criteria, instructions) =>
         DecisionQuestion.Choice(
@@ -107,7 +102,28 @@ private[service] object SystemOneToOpenAI {
           levels.map(level),
           Some(name)
         )
+
+      case _: BoxQuestion =>
+        throw new IllegalArgumentException(
+          "OpenAI's Decisions API has no box question - ask TypeSafe's Jev 1.14 " +
+            "(DecisionProviderSettings.typeSafe, jev-1.14.0)."
+        )
     }
+
+  /**
+   * A noul's instructions with its yes / no criteria appended ("Yes when: ...", "No when:
+   * ..."), for a host that takes no criteria - each piece written as text by `text`.
+   */
+  def noulInstructions(
+    noul: NoulQuestion,
+    text: JsValue => String
+  ): String = {
+    val conditions = noul.criteria.toSeq.flatMap { criteria =>
+      criteria.yes.map(yes => s"Yes when: ${text(yes)}").toSeq ++
+        criteria.no.map(no => s"No when: ${text(no)}").toSeq
+    }
+    (noul.instructions.map(text).toSeq ++ conditions).mkString("\n")
+  }
 
   /** The answers by the names of the questions asked. */
   def response(
@@ -430,6 +446,15 @@ private[service] object OpenAIToSystemOne {
             )
           },
           confidence
+        )
+
+      case box: BoxAnswer =>
+        DecisionAnswer.Unknown(
+          name,
+          "box",
+          Json
+            .toJson(box: Answer)(io.cequence.openaiscala.typesafe.JsonFormats.answerFormat)
+            .as[JsObject]
         )
 
       case UnknownAnswer("refusal", _) =>

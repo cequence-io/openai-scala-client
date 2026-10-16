@@ -27,6 +27,41 @@ class LenientResponseParsingSpec extends AnyWordSpecLike with Matchers {
 
   "GenerateContentResponse parsing" should {
 
+    "parse Google Search grounding whose first segment has no startIndex (proto3 leaves 0 out)" in {
+      // the shape answered by gemini-4-argon / gemini-3.8-flash with Google Search, 2026-10-13
+      val json = Json.parse("""
+        |{
+        |  "candidates": [{
+        |    "content": {"role": "model", "parts": [{"text": "Gemini 4 Argon is the most recent."}]},
+        |    "finishReason": "STOP",
+        |    "index": 0,
+        |    "groundingMetadata": {
+        |      "searchEntryPoint": {"renderedContent": "<style></style>"},
+        |      "groundingChunks": [{"web": {"uri": "https://example.com/r", "title": "blog.google"}}],
+        |      "groundingSupports": [
+        |        {"segment": {"endIndex": 34, "text": "Gemini 4 Argon is the most recent."}, "groundingChunkIndices": [0]},
+        |        {"segment": {"startIndex": 35, "endIndex": 40, "text": "More."}, "groundingChunkIndices": [0]}
+        |      ],
+        |      "webSearchQueries": ["latest Gemini model"]
+        |    }
+        |  }],
+        |  "usageMetadata": {"promptTokenCount": 10, "totalTokenCount": 30},
+        |  "modelVersion": "gemini-4-argon"
+        |}
+        |""".stripMargin)
+
+      val supports =
+        json
+          .as[GenerateContentResponse]
+          .candidates
+          .head
+          .groundingMetadata
+          .get
+          .groundingSupports
+      supports.map(_.segment.startIndex) shouldBe Seq(0, 35)
+      supports.head.segment.endIndex shouldBe 34
+    }
+
     "parse a response whose only candidate was blocked (no content field)" in {
       val json = Json.parse("""
         |{

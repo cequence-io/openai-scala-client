@@ -17,7 +17,8 @@ import scala.util.Try
  *   the host; `decisionsPath` and the model listing's path (`v1/models`, Azure's
  *   `openai/deployments`) are appended to it
  * @param apiKeyEnvVariable
- *   the environment variable holding the key, sent as `Authorization: Bearer <key>`
+ *   the environment variable holding the key, sent as `Authorization: Bearer <key>` (or in
+ *   `apiKeyHeader`)
  * @param defaultModel
  *   the model of a call that names none
  * @param decisionsPath
@@ -46,6 +47,19 @@ import scala.util.Try
  * @param apiKeyRequired
  *   whether the host needs a key - a local server (llama.cpp) runs without one unless started
  *   with `--api-key`; with no key no `Authorization` header is sent
+ * @param apiKeyHeader
+ *   the request header the key goes in as it is (ScaleDown's `x-api-key`) - none:
+ *   `Authorization: Bearer <key>`
+ * @param modelProtocols
+ *   the protocol of the models whose id starts with a prefix, where it is not `protocol` - the
+ *   first match wins (OpenRouter's and Vercel's `scaledown/` models take
+ *   [[DecisionProtocol.ScaleDown]])
+ * @param extraHeaders
+ *   headers sent with every request - an opt-in such as TypeSafe's long context
+ *   (`DecisionProviderSettings.typeSafeLongContext`)
+ * @param boxQuestions
+ *   whether the host answers [[BoxQuestion]]s - TypeSafe's Jev only (from 1.14); any other
+ *   host gets none: a box question is refused before sending
  */
 final case class DecisionProvider(
   baseUrl: String,
@@ -60,8 +74,18 @@ final case class DecisionProvider(
   apiKeyEnvFallbacks: Seq[String] = Nil,
   maxImageTiles: Option[Int] = None,
   protocol: DecisionProtocol = DecisionProtocol.SystemOne,
-  apiKeyRequired: Boolean = true
+  apiKeyRequired: Boolean = true,
+  apiKeyHeader: Option[String] = None,
+  modelProtocols: Seq[(String, DecisionProtocol)] = Nil,
+  extraHeaders: Seq[(String, String)] = Nil,
+  boxQuestions: Boolean = false
 ) {
+
+  /** The protocol a request for this model goes out in. */
+  def protocolFor(model: String): DecisionProtocol =
+    modelProtocols.collectFirst {
+      case (prefix, modelProtocol) if model.startsWith(prefix) => modelProtocol
+    }.getOrElse(protocol)
 
   /** Whether the host reads images at all. */
   def readsImages: Boolean = images != DecisionImages.Unsupported
@@ -112,8 +136,9 @@ object DecisionImages {
   case object Unsupported extends DecisionImages
 
   /**
-   * The parts where they are, anywhere in the state - Perplexity's decider, and OpenAI's
-   * Decisions API (whose protocol turns them into `input_image`s).
+   * The parts where they are, anywhere in the state - Perplexity's decider, OpenAI's Decisions
+   * API (whose protocol turns them into `input_image`s) and ScaleDown (whose protocol lifts
+   * one into the state's `document`).
    */
   case object InState extends DecisionImages
 
@@ -134,6 +159,20 @@ object DecisionImages {
    * and 8 MiB in all, PNG / JPEG / WebP (each a quick 422).
    */
   case object ImageObjects extends DecisionImages
+
+  /**
+   * TypeSafe's assets (Jev 1.13 and 1.14, since 2026-10-14 - "dreamer-ready", not yet
+   * production-grade): each image part - in the state, or in a question's instructions or
+   * criteria (a reference picture, options defined by example) - is replaced by a placeholder
+   * (a UUID; an image used twice keeps one), the image listed under it in a top-level `assets`
+   * map as `{"type": "image", "format", "data_base64"}`, and the request carries
+   * `TypeSafe-Danger-Zone-Images: true` (also for a [[BoxQuestion]]). PNG / JPEG only, 256 to
+   * 1,568 pixels a side and 78,400 to 2,458,624 pixels in all - checked before sending (the
+   * API refuses anything else with a 400 "Invalid image dimensions." / "Invalid image
+   * request." rather than resizing it). Each use of an image is read again (~750 input tokens
+   * for 512 x 512, live 2026-10-14).
+   */
+  case object Assets extends DecisionImages
 }
 
 /** The wire format of a [[DecisionProvider]]. */
@@ -154,6 +193,28 @@ object DecisionProtocol {
    * `UnknownAnswer("refusal", ...)`).
    */
   case object OpenAI extends DecisionProtocol
+
+  /**
+   * ScaleDown's System One, which reads text only (its `classify` models: `POST v1/scaledown`
+   * on its own host, the `scaledown/` models on OpenRouter and Vercel - live 2026-10-13, any
+   * other JSON in a request is a 400 / 422 there, and a noul's criteria are ignored):
+   *   - the state: text as it is, ScaleDown's own object (`text`, `document` - a base64 file -
+   *     and `document_mime_type`) as it is, any other JSON as its pretty-printed text (an
+   *     array of texts one per line) - classify answered it better than compact JSON, which
+   *     made a plain message with instructions read as a prompt injection (0.29-0.39 against
+   *     0.07-0.11); an image part (one at most) lifted into the `document`, an `[image 1]`
+   *     marker left in its place
+   *   - the instructions, option descriptions and score levels as text (a `{label,
+   *     description}` level as `label: description`), a question without instructions with
+   *     empty ones (OpenRouter requires them) and an option without a description with an
+   *     empty one
+   *   - a noul's yes / no criteria appended to its instructions ("Yes when: ...", "No when:
+   *     ..."), as for OpenAI's protocol - asked about a cat as an "animal" criterion, the
+   *     criteria field left the answer at 0.49, the appended lines took it to 0.96
+   *
+   * The answers come back in System One's format.
+   */
+  case object ScaleDown extends DecisionProtocol
 }
 
 /** How a [[DecisionProvider]]'s `listModels` finds the host's models. */

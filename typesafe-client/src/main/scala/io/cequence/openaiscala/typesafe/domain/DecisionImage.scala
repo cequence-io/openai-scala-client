@@ -237,21 +237,99 @@ object DecisionImage {
   private def size(
     url: String,
     start: Int
-  ): Either[String, Option[(Long, Long)]] = {
+  ): Either[String, Option[(Long, Long)]] =
+    headerBytes(url, start)
+      .map(dimensions)
+      .toRight("an image data URL whose base64 does not decode")
+
+  // the image's first bytes when its size is in them, else all of them - None when the base64
+  // does not decode
+  private def headerBytes(
+    url: String,
+    start: Int
+  ): Option[Array[Byte]] = {
     def decoded(end: Int) = Try(
       Base64.getMimeDecoder.decode(url.substring(start, end))
     ).toOption
 
-    val fromHead =
-      if (url.length - start > HeaderChars) decoded(start + HeaderChars).flatMap(dimensions)
+    val head =
+      if (url.length - start > HeaderChars)
+        decoded(start + HeaderChars).filter(dimensions(_).isDefined)
       else None
 
-    if (fromHead.isDefined) Right(fromHead)
-    else
-      decoded(url.length)
-        .map(dimensions)
-        .toRight("an image data URL whose base64 does not decode")
+    head.orElse(decoded(url.length))
   }
+
+  /**
+   * Why TypeSafe's assets (`DecisionImages.Assets`) would refuse an image, if they would - it
+   * takes PNG or JPEG (the bytes' format, whatever the data URL says) of 256 to 1,568 pixels a
+   * side and 78,400 to 2,458,624 pixels in all, and never resizes one (live 2026-10-14: 400
+   * "Invalid image dimensions." / "Invalid image request.").
+   */
+  private[typesafe] def assetProblem(url: String): Option[String] =
+    DataUrlPrefix.findPrefixMatchOf(url).flatMap { prefix =>
+      headerBytes(url, prefix.end) match {
+        case None =>
+          Some("an image data URL whose base64 does not decode")
+
+        case Some(bytes) if mediaTypeOf(bytes).contains("image/webp") =>
+          Some("a WebP image - TypeSafe takes PNG or JPEG only, so convert it first")
+
+        case Some(bytes) =>
+          dimensions(bytes).collect {
+            case (width, height) if !assetFits(width, height) =>
+              s"a $width x $height image - TypeSafe takes $AssetMinSide to $AssetMaxSide pixels " +
+                f"a side and $AssetMinPixels%,d to $AssetMaxPixels%,d pixels in all, and does not " +
+                "resize, so resize it first"
+          }
+      }
+    }
+
+  private val AssetMinSide = 256L
+  private val AssetMaxSide = 1568L
+  private val AssetMinPixels = 78400L // 280 x 280
+  private val AssetMaxPixels = 2458624L // 1568 x 1568
+
+  private def assetFits(
+    width: Long,
+    height: Long
+  ) =
+    Seq(width, height).forall(side => side >= AssetMinSide && side <= AssetMaxSide) &&
+      width * height >= AssetMinPixels && width * height <= AssetMaxPixels
+
+  /**
+   * A data URL as one of TypeSafe's image assets - `{"type": "image", "format": "png" | "jpg",
+   * "data_base64"}`, the bare base64 ([[DecisionImages.Assets]]).
+   */
+  private[typesafe] def asset(dataUrl: String): JsObject = {
+    val image = mediaObject(dataUrl)
+    Json.obj(
+      "type" -> "image",
+      "format" -> (if (image.value("mediaType") == JsString("image/png")) "png" else "jpg"),
+      "data_base64" -> image.value("base64")
+    )
+  }
+
+  /**
+   * The JSON with each image part replaced by its placeholder - `placeholder` gives one per
+   * image URL ([[DecisionImages.Assets]]).
+   */
+  private[typesafe] def replaceImages(
+    json: JsValue,
+    placeholder: String => String
+  ): JsValue =
+    json match {
+      case obj: JsObject =>
+        url(obj) match {
+          case Some(imageUrl) => JsString(placeholder(imageUrl))
+          case None =>
+            JsObject(obj.fields.map { case (key, value) =>
+              key -> replaceImages(value, placeholder)
+            })
+        }
+      case JsArray(values) => JsArray(values.map(replaceImages(_, placeholder)))
+      case other           => other
+    }
 
   private[typesafe] def mediaTypeOf(bytes: Array[Byte]): Option[String] = {
     def u8(i: Int) = bytes(i) & 0xff

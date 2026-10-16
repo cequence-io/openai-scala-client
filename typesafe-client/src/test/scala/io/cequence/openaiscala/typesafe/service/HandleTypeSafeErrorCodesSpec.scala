@@ -134,6 +134,24 @@ class HandleTypeSafeErrorCodesSpec extends AnyWordSpec with Matchers {
       backendsDown.errorType shouldBe Some("api_error")
       backendsDown.getMessage should include("All upstream backends failed")
     }
+
+    // recorded on 2026-10-15 from d1-ultra (d1 says the same with 65536)
+    "take a question's prompt over the input limit as a token-count exception, the others as invalid requests" in {
+      val overLimit = toException(
+        422,
+        """{"error":{"message":"The prompt for question `billing` is over the model's input limit of 32768 tokens, images included, or 250000 bytes of text.","type":"invalid_request_error","param":"questions.billing","code":null}}"""
+      )
+      overLimit shouldBe a[TypeSafeScalaTokenCountExceededException]
+      overLimit.errorType shouldBe Some("invalid_request_error")
+
+      Seq(
+        """{"error":{"message":"The state exceeds the 1 MB limit.","type":"invalid_request_error","param":"state","code":null}}""",
+        """{"error":{"message":"A request accepts at most 128 questions.","type":"invalid_request_error","param":"questions","code":null}}""",
+        """{"error":{"message":"A request accepts at most 8 images.","type":"invalid_request_error","param":"images","code":null}}"""
+      ).foreach(body =>
+        toException(422, body) shouldBe a[TypeSafeScalaInvalidRequestException]
+      )
+    }
   }
 
   "Perplexity's Decisions API error bodies (OpenAI-style, the code a mere status)" should {

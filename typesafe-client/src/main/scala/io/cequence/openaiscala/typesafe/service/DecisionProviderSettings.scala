@@ -24,17 +24,59 @@ object DecisionProviderSettings {
 
   /**
    * TypeSafe's Jev (`TYPESAFE_API_KEY`) - Jev took 129 questions in one request, no cap known.
+   * Images (Jev 1.13 and 1.14, "dreamer-ready" since 2026-10-14) go as TypeSafe's assets
+   * ([[DecisionImages.Assets]]) - from the state and from questions alike, the request opting
+   * in with [[TypeSafeImagesHeader]] by itself, as it does for a `BoxQuestion` (Jev 1.14
+   * only). Live 2026-10-14: a red circle read red at 0.98-1.0 and as a circle at 1.0, a
+   * reference picture in the instructions and options defined by example pictures worked,
+   * ~0.2-0.45 s per call; boxes on 1.14 came within 0.02 of a shape's edges. The default
+   * context is 33,024 input tokens per question and ~65.8k per request (Jev's own count) - see
+   * [[typeSafeLongContext]] for 262k.
    */
   val typeSafe: DecisionProvider =
-    DecisionProvider(defaultBaseUrl, apiKeyEnvKey, defaultModel, name = Some("typesafe"))
+    DecisionProvider(
+      defaultBaseUrl,
+      apiKeyEnvKey,
+      defaultModel,
+      images = DecisionImages.Assets,
+      name = Some("typesafe"),
+      boxQuestions = true
+    )
 
   /**
-   * Liquid AI's d1 (`LIQUID_API_KEY`; `d1:free` by default) - 422 "A request accepts at most
-   * 128 questions." (live 2026-10-02). The paid `d1` ([[DecisionModelId.liquid_d1]]) also
-   * reads images, sent in a top-level `images` array ([[DecisionImages.ImagesField]]): at most
-   * 8, 10,000 32 x 32 patches in all, no side over 100 times the other - each a quick 422, as
-   * is an image for `d1:free` ("The model `d1:free` does not accept images.", live
-   * 2026-10-07).
+   * TypeSafe's opt-in to images and box questions ("danger zone", 2026-10-14) - the client
+   * sends it itself with every request that carries either; without it such a request is a 400
+   * "Images are experimental. Send the header TypeSafe-Danger-Zone-Images: true to use them."
+   */
+  val TypeSafeImagesHeader = "TypeSafe-Danger-Zone-Images"
+
+  /**
+   * TypeSafe's opt-in to long context ("danger zone", 2026-10-14): 262k tokens per request and
+   * per question (live: 262,400 by Jev's own count) instead of 64k / 32k - at the same price,
+   * but slower and less accurate past the default limits (TypeSafe's words). Sent with every
+   * request by [[typeSafeLongContext]].
+   */
+  val TypeSafeLongContextHeader = "TypeSafe-Danger-Zone-Long-Context"
+
+  /**
+   * TypeSafe's Jev with long context switched on ([[TypeSafeLongContextHeader]] on every
+   * request): up to 262,400 input tokens per question and per request instead of 33,024 /
+   * ~65.8k (live 2026-10-14, both Jev 1.13 and 1.14: 120k tokens answered in 1.7 s, 250k in
+   * 4.6 s; one more token than the limit is a 400 `max_tokens_exceeded`).
+   */
+  val typeSafeLongContext: DecisionProvider =
+    typeSafe.copy(extraHeaders = Seq(TypeSafeLongContextHeader -> "true"))
+
+  /**
+   * Liquid AI's decision models (`LIQUID_API_KEY`): `d1` by default - its free tier `d1:free`,
+   * the default until Liquid removed it on 2026-10-14, is gone - and `d1-ultra`
+   * ([[DecisionModelId.liquid_d1_ultra]], 2026-10-15, the stronger). At most 128 questions
+   * (422 "A request accepts at most 128 questions."). Both read images, sent in a top-level
+   * `images` array ([[DecisionImages.ImagesField]]): at most 8, 10,000 32 x 32 patches in all,
+   * no side over 100 times the other - each a quick 422. Every question is billed as its own
+   * prompt (the state, its images and the question), which must stay under the model's input
+   * limit - 65,536 tokens on `d1`, 32,768 on `d1-ultra`, or 250,000 bytes of text (a 422, a
+   * `TypeSafeScalaTokenCountExceededException`) - and the state under 1 MB (live 2026-10-15).
    */
   val liquid: DecisionProvider = DecisionProvider(
     liquidBaseUrl,
@@ -193,9 +235,12 @@ object DecisionProviderSettings {
    * OpenRouter (`OPENROUTER_API_KEY`): many hosts' decision models behind one key, on
    * TypeSafe's protocol - Jev, Liquid's d1, Perplexity's decider, OpenAI's Luna,
    * Microsoft-Decision-1, Cloudflare's Clefs, Upstage's Solar Decides, Inception's Mercury
-   * Decide, Together's Tev1, Kev 4B, NACE's Drex and Respan's Span-01 (19 models on
-   * 2026-10-10; Span-01 judges with noul questions only, over a text state or a conversation
-   * trace `{"input": [messages], "output": message}`). `listModels` asks for them with
+   * Decide, Together's Tev1, Kev 4B, NACE's Drex, Respan's Span-01 and ScaleDown's Classify-1
+   * (22 models on 2026-10-13; Span-01 judges with noul questions only, over a text state or a
+   * conversation trace `{"input": [messages], "output": message}`; `scaledown/classify-1`
+   * reads text only, so its requests go in [[DecisionProtocol.ScaleDown]] - `modelProtocols`,
+   * live 2026-10-13: OpenRouter forwards its `document` when the text is not empty, and needs
+   * instructions on every question). `listModels` asks for them with
    * `output_modalities=decisions` (OpenRouter's plain list leaves them out, and its
    * `input_modalities` understate: `liquid/d1` and Mercury Decide read images although listed
    * as text); the request id is the `x-generation-id`. Images go as `image_url` parts in the
@@ -212,7 +257,8 @@ object DecisionProviderSettings {
     models = DecisionModelListing.OpenAIStyle(Seq("output_modalities" -> "decisions")),
     images = DecisionImages.InState,
     requestIdHeaders = Seq("x-generation-id"),
-    name = Some("openrouter")
+    name = Some("openrouter"),
+    modelProtocols = Seq("scaledown/" -> DecisionProtocol.ScaleDown)
   )
 
   /**
@@ -221,23 +267,25 @@ object DecisionProviderSettings {
    * `https://ai-gateway.vercel.sh/typesafe/` - `POST v1/systemone`, the models at `GET
    * v1/models` in TypeSafe's shape (no input modalities): `typesafe-ai/jev` (the bare `jev`
    * too), `liquid/d1` (text + images), `microsoft/microsoft-decision-1`,
-   * `openai/gpt-6-luna-decisions` and Convai Innovations' `convaiinnovations/laya` /
-   * `laya-free`, billed through the gateway (`provider_metadata.gateway` in the response: the
-   * routing, the cost, a `generationId`); the request id is the `x-vercel-id` header. Live
-   * 2026-10-10 on a free-tier team (a card on file unlocks the free credits): Laya answers the
-   * review in 0.5-1.4 s at 5 requests per minute per region (429 `rate_limit_exceeded` "Retry
-   * after 46s"), every other model is a 403 `no_providers_available` "Free tier users do not
-   * have access to this model" until credits are bought - so d1's images are not verified
-   * here; the gateway takes an `image_url` part in the state array, as its AI SDK sends them
-   * ([[DecisionImages.InState]]). It validates before routing (400 `invalid_request` in a flat
-   * `{"message", "error_type"}` body): 2-10 score levels, at most 255 options, a string /
-   * object / array state; an unknown model is a 404 `model_not_found`; an unknown top-level
-   * field is ignored. A provider's own refusal comes back as a 422 / 413 `AI_APICallError` -
-   * Laya (8k context) took 40 questions and answered 200 of them, or a 20k-token state, with
-   * "That request is too large for this model" (a
-   * [[TypeSafeScalaTokenCountExceededException]]), and a noul without instructions with "That
-   * request was rejected". Its decision fallbacks (`providerOptions.gateway.models`) are the
-   * gateway's own extension, not sent here.
+   * `openai/gpt-6-luna-decisions`, Convai Innovations' `convaiinnovations/laya` / `laya-free`
+   * and ScaleDown's `scaledown/scaledown-classify-1` (since 2026-10-13; text only - its
+   * requests go in [[DecisionProtocol.ScaleDown]], `modelProtocols`), billed through the
+   * gateway (`provider_metadata.gateway` in the response: the routing, the cost, a
+   * `generationId`); the request id is the `x-vercel-id` header. Live 2026-10-10 on a
+   * free-tier team (a card on file unlocks the free credits): Laya answers the review in
+   * 0.5-1.4 s at 5 requests per minute per region (429 `rate_limit_exceeded` "Retry after
+   * 46s"), every other model but ScaleDown's (open to it 2026-10-13) is a 403
+   * `no_providers_available` "Free tier users do not have access to this model" until credits
+   * are bought - so d1's images are not verified here; the gateway takes an `image_url` part
+   * in the state array, as its AI SDK sends them ([[DecisionImages.InState]]). It validates
+   * before routing (400 `invalid_request` in a flat `{"message", "error_type"}` body): 2-10
+   * score levels, at most 255 options, a string / object / array state; an unknown model is a
+   * 404 `model_not_found`; an unknown top-level field is ignored. A provider's own refusal
+   * comes back as a 422 / 413 `AI_APICallError` - Laya (8k context) took 40 questions and
+   * answered 200 of them, or a 20k-token state, with "That request is too large for this
+   * model" (a [[TypeSafeScalaTokenCountExceededException]]), and a noul without instructions
+   * with "That request was rejected". Its decision fallbacks
+   * (`providerOptions.gateway.models`) are the gateway's own extension, not sent here.
    */
   val vercel: DecisionProvider = DecisionProvider(
     "https://ai-gateway.vercel.sh/typesafe/",
@@ -245,7 +293,8 @@ object DecisionProviderSettings {
     DecisionModelId.vercel_jev,
     images = DecisionImages.InState,
     requestIdHeaders = Seq("x-vercel-id"),
-    name = Some("vercel")
+    name = Some("vercel"),
+    modelProtocols = Seq("scaledown/" -> DecisionProtocol.ScaleDown)
   )
 
   /**
@@ -282,5 +331,42 @@ object DecisionProviderSettings {
     images = DecisionImages.ImageObjects,
     requestIdHeaders = Nil,
     name = Some("subq")
+  )
+
+  /**
+   * ScaleDown's Constrained Decoding Models (`SCALEDOWN_API_KEY`, launched 2026-10-13):
+   * `classify-1` (the default) and `classify` (the latest version - the same model today) at
+   * `POST https://api.scaledown.xyz/v1/scaledown`, the key in an `x-api-key` header, in
+   * ScaleDown's text-only System One ([[DecisionProtocol.ScaleDown]]: a state that is not text
+   * goes as its pretty-printed text, an image part - one per request - as the state's
+   * `document`, a noul's criteria appended to its instructions). $0.05 per 1M input tokens,
+   * output free; each question is a classify call of its own, so the state is billed once per
+   * question (~180-190 tokens per noul about a one-line review). `GET v1/models` lists
+   * ScaleDown's compress, extract and summarize too, left out by their output modalities. Live
+   * 2026-10-13 without credits (through OpenRouter and Vercel, which route to it, with
+   * credits): the body is validated before the credits are checked - a malformed one, an
+   * unknown model, an empty question map or a 1-level score is a 422, any valid one a 402
+   * "Insufficient credits"; the request id is AWS API Gateway's `x-amzn-requestid`. A request
+   * that takes over ~29 s is a 504 (the gateway's timeout): on its launch day, one in a few
+   * took 15-30 s at random, and more than ~175 questions timed out (150 answered in 15 s, 175
+   * in 7 s; 129 in 2-3 s).
+   *
+   * Its host takes TLS 1.3 only, which the Play WS engine offers since ws-client 1.1.2 (the
+   * JDK's default client protocols). A JVM that pins the protocols - with
+   * `play.shaded.ahc.org.asynchttpclient.enabledProtocols` or `jdk.tls.client.protocols` -
+   * must keep `TLSv1.3` in the list, else the handshake fails ("Received close_notify during
+   * handshake").
+   */
+  val scaleDown: DecisionProvider = DecisionProvider(
+    "https://api.scaledown.xyz/",
+    "SCALEDOWN_API_KEY",
+    DecisionModelId.scaledown_classify_1,
+    decisionsPath = "v1/scaledown",
+    models = DecisionModelListing.OpenAIStyle(),
+    images = DecisionImages.InState,
+    requestIdHeaders = Seq("x-amzn-requestid"),
+    name = Some("scaledown"),
+    protocol = DecisionProtocol.ScaleDown,
+    apiKeyHeader = Some("x-api-key")
   )
 }

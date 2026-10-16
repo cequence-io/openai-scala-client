@@ -50,7 +50,8 @@ import scala.util.Try
  * `stop`, `seed`, `logprobs`, `reasoning_effort`, `user` / `store` / `metadata` and so on - is
  * DROPPED with a warning naming it, because System One does not sample text. `n > 1`, tools,
  * streaming and non-text message content are refused outright - image content too, unless
- * `imageInput` says the host reads it (Perplexity, OpenAI, Liquid's `d1`, llama.cpp).
+ * `imageInput` says the host reads it (TypeSafe's Jev, Perplexity, OpenAI, Liquid's `d1`,
+ * SubQ, ScaleDown, llama.cpp).
  *
  * @param imageInput
  *   whether the image parts of user messages go into the state

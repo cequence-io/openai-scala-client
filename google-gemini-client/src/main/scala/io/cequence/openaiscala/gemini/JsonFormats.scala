@@ -321,7 +321,8 @@ trait JsonFormats {
   implicit val retrievalMetadataFormat: Format[RetrievalMetadata] =
     Json.format[RetrievalMetadata]
   implicit val searchEntryPointFormat: Format[SearchEntryPoint] = Json.format[SearchEntryPoint]
-  implicit val segmentFormat: Format[Segment] = Json.format[Segment]
+  implicit val segmentFormat: Format[Segment] =
+    Json.using[Json.WithDefaultValues].format[Segment]
   implicit val groundingSupportFormat: Format[GroundingSupport] =
     Json.using[Json.WithDefaultValues].format[GroundingSupport]
   implicit val webFormat: Format[Web] = Json.format[Web]

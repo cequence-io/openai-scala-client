@@ -13,7 +13,8 @@ import scala.io.Source
 /**
  * Checks this client against TypeSafe's published OpenAPI document
  * (`https://api.typesafe.ai/openapi.json`, vendored as `typesafe-openapi.json` - version
- * 0.2.0, fetched 2026-09-16): the endpoints and auth scheme it calls exist as it calls them,
+ * 0.2.0, fetched 2026-10-14 with the box question, image assets and the "danger zone" headers;
+ * first fetched 2026-09-16): the endpoints and auth scheme it calls exist as it calls them,
  * every example the spec gives decodes into the domain, what the client writes carries every
  * required property and nothing the spec does not know, and the discriminators agree.
  */
@@ -106,6 +107,38 @@ class OpenApiConformanceSpec extends AnyWordSpec with Matchers {
         ),
         Map(0 -> 0.1, 1 -> 0.1, 2 -> 0.8)
       )
+
+      // the first confidence example is null - "when the model does not provide confidence"
+      exampleOf("BoxAnswer")
+        .as[Answer] shouldBe BoxAnswer(BoundingBox(0.2, 0.66, 0.19, 0.68), None)
+    }
+
+    "decode as the request and response examples of every question type" in {
+      val post = (spec \ "paths" \ "/v1/systemone" \ "post").as[JsObject]
+      val requests =
+        (post \ "requestBody" \ "content" \ "application/json" \ "examples").as[JsObject]
+      val responses =
+        (post \ "responses" \ "200" \ "content" \ "application/json" \ "examples").as[JsObject]
+
+      requests.keys shouldBe Set("noul", "choice", "score", "box")
+      responses.keys shouldBe requests.keys
+
+      requests.keys.foreach { kind =>
+        withClue(s"$kind: ") {
+          val request = (requests \ kind \ "value").as[SystemOneRequest]
+          request.questions.values
+            .map(q => (Json.toJson(q) \ "type").as[String])
+            .toSet shouldBe
+            Set(kind)
+
+          val answers = (responses \ kind \ "value").as[SystemOneResponse].answers.values
+          answers should not be empty
+          answers.foreach(_ should not be an[UnknownAnswer])
+        }
+      }
+
+      (responses \ "box" \ "value").as[SystemOneResponse].box("red_rectangle") shouldBe
+        BoxAnswer(BoundingBox(0.2, 0.66, 0.19, 0.68), None)
     }
 
     "decode as questions" in {
@@ -127,6 +160,8 @@ class OpenApiConformanceSpec extends AnyWordSpec with Matchers {
         "Needs attention this week",
         "Needs attention today"
       )
+
+      exampleOf("BoxQuestion").as[Question] shouldBe BoxQuestion(None)
     }
 
     "decode as the request, the response, the usage and the model listing" in {
@@ -169,7 +204,8 @@ class OpenApiConformanceSpec extends AnyWordSpec with Matchers {
     val fullQuestions: Map[String, (Question, String)] = Map(
       "noul" -> (NoulQuestion("q", "yes", "no"), "NoulQuestion"),
       "choice" -> (ChoiceQuestion("q", "a" -> "A"), "ChoiceQuestion"),
-      "score" -> (ScoreQuestion("q", "low", "high"), "ScoreQuestion")
+      "score" -> (ScoreQuestion("q", "low", "high"), "ScoreQuestion"),
+      "box" -> (BoxQuestion("the mug in `photo`"), "BoxQuestion")
     )
 
     "carry every required property of each question schema, and no unknown one" in {
@@ -205,7 +241,7 @@ class OpenApiConformanceSpec extends AnyWordSpec with Matchers {
       val mapping =
         (schema("Question") \ "discriminator" \ "mapping").as[Map[String, String]]
 
-      mapping.keySet shouldBe Set("noul", "choice", "score")
+      mapping.keySet shouldBe Set("noul", "choice", "score", "box")
 
       fullQuestions.foreach { case (tag, (question, schemaName)) =>
         (Json.toJson(question) \ "type").as[String] shouldBe tag
@@ -242,6 +278,53 @@ class OpenApiConformanceSpec extends AnyWordSpec with Matchers {
     }
   }
 
+  "What the client writes for images" should {
+
+    "be the request's assets, each with the properties an asset needs and no unknown one" in {
+      val png = {
+        val image =
+          new java.awt.image.BufferedImage(300, 300, java.awt.image.BufferedImage.TYPE_INT_RGB)
+        val bytes = new java.io.ByteArrayOutputStream()
+        javax.imageio.ImageIO.write(image, "png", bytes)
+        bytes.toByteArray
+      }
+      val questions = Seq[(String, Question)]("mug" -> BoxQuestion("the mug in `photo`"))
+      val body = service.impl.DecisionCodecAccess.assetsBody(
+        SystemOneRequest(
+          Json.obj("photo" -> DecisionImage(png)),
+          "jev-1.14.0",
+          questions.toMap
+        ),
+        questions
+      )
+
+      body.keys.diff(properties("SystemOneRequest").keys) shouldBe empty
+      val assets = (body \ "assets").as[JsObject]
+      assets.keys should have size 1
+      assets.values.foreach { asset =>
+        val fields = asset.as[JsObject].keys
+        fields.diff(properties("Asset").keys) shouldBe empty
+        fields should contain allOf ("format", "data_base64")
+        (properties("Asset") \ "format" \ "enum").as[Seq[String]] should contain(
+          (asset \ "format").as[String]
+        )
+      }
+    }
+
+    "use the opt-in headers the spec declares" in {
+      val headers = (spec \ "paths" \ "/v1/systemone" \ "post" \ "parameters")
+        .as[Seq[JsObject]]
+        .filter(p => (p \ "in").as[String] == "header")
+        .map(p => (p \ "name").as[String] -> (p \ "schema" \ "enum").as[Seq[String]])
+        .toMap
+
+      headers shouldBe Map(
+        service.DecisionProviderSettings.TypeSafeImagesHeader -> Seq("true"),
+        service.DecisionProviderSettings.TypeSafeLongContextHeader -> Seq("true")
+      )
+    }
+  }
+
   "What the client reads" should {
 
     "cover every answer kind in the Answer union's discriminator mapping" in {
@@ -250,7 +333,8 @@ class OpenApiConformanceSpec extends AnyWordSpec with Matchers {
       mapping shouldBe Map(
         "noul" -> "#/components/schemas/NoulAnswer",
         "choice" -> "#/components/schemas/ChoiceAnswer",
-        "score" -> "#/components/schemas/ScoreAnswer"
+        "score" -> "#/components/schemas/ScoreAnswer",
+        "box" -> "#/components/schemas/BoxAnswer"
       )
 
       // every mapped schema's example decodes into a modelled (non-Unknown) answer
@@ -263,7 +347,8 @@ class OpenApiConformanceSpec extends AnyWordSpec with Matchers {
       val modelled = Map(
         "NoulAnswer" -> Set("type", "noul"),
         "ChoiceAnswer" -> Set("type", "choice", "confidence", "probabilities"),
-        "ScoreAnswer" -> Set("type", "score", "confidence", "legend", "probabilities")
+        "ScoreAnswer" -> Set("type", "score", "confidence", "legend", "probabilities"),
+        "BoxAnswer" -> Set("type", "box", "confidence")
       )
 
       modelled.foreach { case (schemaName, fields) =>

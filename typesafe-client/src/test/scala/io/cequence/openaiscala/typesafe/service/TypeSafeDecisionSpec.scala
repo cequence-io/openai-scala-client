@@ -45,6 +45,13 @@ object TypeSafeDecisionTypes {
   implicit val customerFormat: Format[Customer] = Json.format[Customer]
   implicit val triageFormat: Format[Triage] = Json.format[Triage]
 
+  // where something is in the image - a box question (Jev 1.14)
+  case class Mug(
+    @JsonSchemaDescription("the coffee mug in `photo`") mug: BoundingBox,
+    @JsonSchemaDescription("Is there a coffee mug in `photo`?") visible: Boolean
+  )
+  implicit val mugFormat: Format[Mug] = Json.format[Mug]
+
   // free text - nothing a decision model answers
   case class Note(note: String)
   implicit val noteFormat: Format[Note] = Json.format[Note]
@@ -130,6 +137,21 @@ class TypeSafeDecisionSpec extends AnyWordSpec with Matchers {
         "Does 'Login' apply? (Which topics does the ticket mention?)"
       )
       questions("urgency") shouldBe a[ScoreQuestion]
+    }
+
+    "ask a box question for a BoundingBox field and read the box back" in {
+      val stub = new Stub(
+        Map(
+          "mug" -> BoxAnswer(BoundingBox(0.25, 0.82, 0.44, 0.84), Some(0.92)),
+          "visible" -> NoulAnswer(0.97)
+        )
+      )
+
+      val decision = await(stub.decide[Mug](Json.obj("photo" -> "an image"), "jev-1.14.0"))
+
+      decision.value shouldBe Mug(BoundingBox(0.25, 0.82, 0.44, 0.84), visible = true)
+      stub.lastQuestions("mug") shouldBe BoxQuestion("the coffee mug in `photo`")
+      decision.response.box("mug").confidence shouldBe Some(0.92)
     }
 
     "give the probabilities behind each field" in {

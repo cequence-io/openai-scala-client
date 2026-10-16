@@ -26,6 +26,9 @@ final case class SystemOneResponse(
   def scores: Map[String, ScoreAnswer] =
     answers.collect { case (name, a: ScoreAnswer) => name -> a }
 
+  def boxes: Map[String, BoxAnswer] =
+    answers.collect { case (name, a: BoxAnswer) => name -> a }
+
   def unknown: Map[String, UnknownAnswer] =
     answers.collect { case (name, a: UnknownAnswer) => name -> a }
 
@@ -37,6 +40,8 @@ final case class SystemOneResponse(
 
   /** The answer to the named [[ScoreQuestion]]; throws if absent or of another kind. */
   def score(name: String): ScoreAnswer = typed(name, "score") { case a: ScoreAnswer => a }
+
+  def box(name: String): BoxAnswer = typed(name, "box") { case a: BoxAnswer => a }
 
   private def typed[A](
     name: String,
@@ -61,6 +66,7 @@ final case class SystemOneResponse(
       case _: NoulAnswer    => "noul"
       case _: ChoiceAnswer  => "choice"
       case _: ScoreAnswer   => "score"
+      case _: BoxAnswer     => "box"
       case u: UnknownAnswer => u.kind
     }
 }

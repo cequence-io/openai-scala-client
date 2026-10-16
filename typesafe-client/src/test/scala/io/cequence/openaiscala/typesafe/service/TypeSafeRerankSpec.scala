@@ -229,5 +229,26 @@ class TypeSafeRerankSpec extends AnyWordSpec with Matchers {
       answer.probabilityAtLeast(2) shouldBe 0.7 +- 1e-9
       answer.probabilityAtLeast(0) shouldBe 1.0 +- 1e-9
     }
+
+    "measure a box, pad it within the image and give it in pixels" in {
+      val box = BoundingBox(top = 0.2, bottom = 0.5, left = 0.1, right = 0.4)
+
+      box.width shouldBe 0.3 +- 1e-9
+      box.height shouldBe 0.3 +- 1e-9
+      box.inPixels(1000, 500) shouldBe ((100, 100, 400, 250))
+
+      // out by 0.15 on every side, the left edge kept at the image's
+      val padded = box.padded(0.15)
+      padded.top shouldBe 0.05 +- 1e-9
+      padded.bottom shouldBe 0.65 +- 1e-9
+      padded.left shouldBe 0.0
+      padded.right shouldBe 0.55 +- 1e-9
+      BoundingBox(0.9, 0.95, 0.0, 1.0).padded(0.1).bottom shouldBe 1.0
+      box.padded(0) shouldBe box
+
+      // a negative margin would turn a small box inside out
+      the[IllegalArgumentException].thrownBy(box.padded(-0.2)).getMessage should
+        include("cannot be negative")
+    }
   }
 }

@@ -146,12 +146,16 @@ case class GroundingSupport(
  *   Part, exclusive, starting at zero.
  * @param text
  *   Output only. The text corresponding to the segment from the response.
+ *
+ * The API leaves a zero / empty value out (proto3 JSON) - a segment at the start of its part
+ * comes without a `startIndex` (live 2026-10-13, Google Search grounding on Gemini 4 Argon and
+ * 3.8 Flash) - so those read as their defaults.
  */
 case class Segment(
   partIndex: Option[Int] = None,
-  startIndex: Int,
-  endIndex: Int,
-  text: String
+  startIndex: Int = 0,
+  endIndex: Int = 0,
+  text: String = ""
 )
 
 /**

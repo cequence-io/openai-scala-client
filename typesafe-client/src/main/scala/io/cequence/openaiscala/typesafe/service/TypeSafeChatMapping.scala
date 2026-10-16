@@ -27,11 +27,12 @@ import scala.util.Try
  *   - several turns -> `{"instructions": ..., "conversation": [{"role", "content"}, ...]}`
  *
  * Tool messages and an empty conversation are refused, and so is image content - unless the
- * host reads images (`toState(messages, images = true)`: Perplexity, OpenAI, Liquid's `d1`,
- * llama.cpp): a user message with images then becomes an array of its parts, text as above and
- * each image an OpenAI-style `{"type": "image_url", "image_url": {"url": ...}}` part, which
- * must be a base64 PNG, JPEG or WebP data URL (a host's size cap is checked by the service
- * before sending). Everything this object cannot map fails with an
+ * host reads images (`toState(messages, images = true)`: TypeSafe's Jev since 2026-10-14,
+ * Perplexity, OpenAI, Liquid's `d1`, SubQ, ScaleDown, llama.cpp -
+ * `DecisionProvider.readsImages`): a user message with images then becomes an array of its
+ * parts, text as above and each image an OpenAI-style `{"type": "image_url", "image_url":
+ * {"url": ...}}` part, which must be a base64 PNG, JPEG or WebP data URL (a host's size cap is
+ * checked by the service before sending). Everything this object cannot map fails with an
  * `OpenAIScalaClientException` - it is the OpenAI adapter's mapping, so its errors wear the
  * OpenAI adapter's type.
  *
@@ -50,9 +51,10 @@ object TypeSafeChatMapping {
    * The `state` the adapter sends for these messages.
    *
    * @param images
-   *   whether the host reads images in the state (Perplexity, OpenAI, Liquid's paid `d1`,
-   *   llama.cpp); with `false` image content is refused up front - TypeSafe's Jev reads an
-   *   image part as text, and Liquid's `d1:free` rejects one with a 422
+   *   whether the host reads images in the state (`DecisionProvider.readsImages`: TypeSafe's
+   *   Jev, Perplexity, OpenAI, Liquid's paid `d1`, SubQ, ScaleDown, llama.cpp); with `false`
+   *   image content is refused up front - Microsoft-Decision-1 reads an image part as text,
+   *   and Liquid's `d1:free` rejects one with a 422
    */
   def toState(
     messages: Seq[BaseMessage],
@@ -130,8 +132,9 @@ object TypeSafeChatMapping {
     if (imageUrls.nonEmpty && !images)
       fail(
         "Image content goes only to a host that reads images (TypeSafeServiceFactory." +
-          "asOpenAI(provider) for Perplexity, OpenAI, Liquid's d1 or llama.cpp, or " +
-          "asOpenAI(service, imageInput = true)) - TypeSafe's Jev would read it as text."
+          "asOpenAI() / asOpenAI(provider) / asOpenAI(service) when the host does, or " +
+          "asOpenAI(service, imageInput = true) for a service that cannot tell) - this one " +
+          "would read it as text or refuse it."
       )
     else {
       // the format here; a host's size cap, if any, is checked by the service before sending

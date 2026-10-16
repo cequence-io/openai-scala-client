@@ -279,4 +279,59 @@ class DecisionImageSpec extends AnyWordSpec with Matchers {
       an[IllegalArgumentException] should be thrownBy mediaObject("data:image/png,raw")
     }
   }
+
+  "assetProblem" should {
+
+    "pass a PNG or a JPEG within TypeSafe's bounds - 256 to 1,568 pixels a side, 78,400 to 2,458,624 in all" in {
+      assetProblem(dataUrl("image/png", encoded(512, 512, "png"))) shouldBe None
+      assetProblem(dataUrl("image/jpeg", encoded(280, 280, "jpg"))) shouldBe None
+      assetProblem(dataUrl("image/png", pngHeader(1568, 1568))) shouldBe None
+      // the API reads the bytes' format, whatever the data URL says
+      assetProblem(dataUrl("image/png", encoded(400, 300, "jpg"))) shouldBe None
+    }
+
+    "refuse what the API refuses - a size out of bounds, a WebP - naming the bounds" in {
+      // live 2026-10-14: each a 400 "Invalid image dimensions." / "Invalid image request."
+      for (
+        (bytes, kind) <- Seq(
+          encoded(64, 64, "png") -> "64 x 64",
+          encoded(256, 256, "png") -> "256 x 256", // a side's minimum, under the area's
+          pngHeader(1600, 1200) -> "1600 x 1200",
+          pngHeader(1568, 200) -> "1568 x 200"
+        )
+      ) withClue(kind) {
+        assetProblem(dataUrl("image/png", bytes)).get should (include(kind) and include(
+          "256 to 1568 pixels a side"
+        ))
+      }
+      assetProblem(dataUrl("image/webp", vp8x(512, 512))).get should include("WebP")
+      assetProblem(dataUrl("image/png", vp8x(512, 512))).get should include("WebP")
+    }
+  }
+
+  "asset" should {
+
+    "write TypeSafe's asset - the type, the format and the bare base64" in {
+      asset("data:image/png;base64,AAAA") shouldBe
+        Json.obj("type" -> "image", "format" -> "png", "data_base64" -> "AAAA")
+      asset("data:image/jpeg;base64,BBBB") shouldBe
+        Json.obj("type" -> "image", "format" -> "jpg", "data_base64" -> "BBBB")
+    }
+  }
+
+  "replaceImages" should {
+
+    "put a placeholder where each image part is, at any depth, leaving the rest" in {
+      val json = Json.obj(
+        "photo" -> part("data:image/png;base64,AAAA"),
+        "frames" -> Json.arr("first:", part("data:image/png;base64,BBBB")),
+        "broken" -> Json.obj("type" -> "image_url")
+      )
+      replaceImages(json, url => s"<${url.takeRight(4)}>") shouldBe Json.obj(
+        "photo" -> "<AAAA>",
+        "frames" -> Json.arr("first:", "<BBBB>"),
+        "broken" -> Json.obj("type" -> "image_url")
+      )
+    }
+  }
 }

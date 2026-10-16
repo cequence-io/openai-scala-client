@@ -12,7 +12,9 @@ import io.cequence.openaiscala.domain.decisions.{
 import io.cequence.openaiscala.service.OpenAIDecisionsService
 import io.cequence.openaiscala.typesafe.JsonFormats._
 import io.cequence.openaiscala.typesafe.domain.{
+  BoxQuestion,
   DecisionImage,
+  DecisionImages,
   DecisionModelListing,
   DecisionProtocol,
   DecisionProvider,
@@ -24,6 +26,7 @@ import io.cequence.openaiscala.typesafe.domain.{
 import io.cequence.openaiscala.typesafe.service.{
   DecisionProviderSettings,
   HandleTypeSafeErrorCodes,
+  TypeSafeScalaApiUsageException,
   TypeSafeScalaClientTimeoutException,
   TypeSafeScalaClientUnknownHostException,
   TypeSafeService
@@ -41,7 +44,7 @@ import io.cequence.wsclient.service.WSClientEngine
 import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithEngine
 import io.cequence.wsclient.service.spi.{TransportSettings, WSClientEngineRegistry}
 import io.cequence.wsclient.service.ws.Timeouts
-import play.api.libs.json.{JsObject, JsValue}
+import play.api.libs.json.{JsObject, JsValue, Json}
 
 import java.net.UnknownHostException
 import java.time.{Instant, ZoneOffset}
@@ -83,6 +86,8 @@ private[service] class TypeSafeServiceImpl(
   override protected type PEP = EndPoint
   override protected type PT = Param
 
+  override def readsImages: Boolean = provider.readsImages
+
   // a caller-supplied, site-stateless engine (e.g. one shared with other providers), or a
   // privately-owned classpath-discovered engine
   override protected val engine: WSClientEngine =
@@ -98,9 +103,9 @@ private[service] class TypeSafeServiceImpl(
     SiteBinding(
       TypeSafeServiceImpl.normalizeBaseUrl(baseUrl),
       // a local server (llama.cpp) runs without a key
-      WsRequestContext(authHeaders =
-        Seq(apiKey).filter(_.nonEmpty).map(key => "Authorization" -> s"Bearer $key")
-      ),
+      WsRequestContext(authHeaders = Seq(apiKey).filter(_.nonEmpty).map { key =>
+        provider.apiKeyHeader.fold("Authorization" -> s"Bearer $key")(_ -> key)
+      }),
       label = Some(provider.label)
     )
 
@@ -112,29 +117,69 @@ private[service] class TypeSafeServiceImpl(
     // fails fast (IllegalArgumentException) before any I/O
     val request = SystemOneRequest(state, model, questions)
     checkQuestionCount(questions.size)
+    checkBoxQuestions(questions)
 
     checkImages(DecisionImage.imageUrls(state), "state")
+    // TypeSafe's assets take images in the questions too (a reference picture, options by
+    // example)
+    if (provider.images == DecisionImages.Assets)
+      checkImages(DecisionImage.imageUrls(Json.toJson(questions)), "questions")
 
     // one order of the questions for the request and for reading the answers back
     val asked = questions.toSeq
+    val codec = DecisionCodec(provider, model)
+    val body = codec.body(request, asked)
 
     execPOSTBodyRich(
       EndPoint.custom(provider.decisionsPath),
-      body = codec.body(request, asked)
+      body = body,
+      extraHeaders = provider.extraHeaders ++ codec.headers(body)
     ).map { rich =>
       val response = codec.response(responseOrError(rich).json, asked)
       response.copy(requestId = requestId(rich))
-    }.recoverWith(transportErrors)
+    }.recoverWith(transportErrors).recoverWith(boxHint(asked))
   }
 
-  private val codec = DecisionCodec(provider)
+  // box questions are TypeSafe's (Jev 1.14+): no other host answers one, so it is refused here,
+  // naming the questions, rather than by the host in its own words (OpenRouter: "No matching
+  // discriminator: noul, choice, score")
+  private def checkBoxQuestions(questions: Map[String, Question]): Unit = {
+    val boxes = questions.collect { case (name, _: BoxQuestion) => name }.toSeq.sorted
+    require(
+      boxes.isEmpty || provider.boxQuestions,
+      s"${provider.label} answers no box questions (${boxes.mkString(", ")}) - they are " +
+        "TypeSafe's (Jev 1.14 and later, DecisionProviderSettings.typeSafe); a provider whose " +
+        "host answers them sets boxQuestions = true."
+    )
+  }
+
+  // a Jev before 1.14 (`jev-latest` until it moves on) answers a box question with a bare 400
+  // "Invalid request." - say why
+  private def boxHint[T](
+    questions: Seq[(String, Question)]
+  ): PartialFunction[Throwable, Future[T]] = {
+    case e: TypeSafeScalaApiUsageException
+        if e.httpCode.contains(400) &&
+          Option(e.getMessage).exists(_.contains("Invalid request.")) &&
+          questions.exists(_._2.isInstanceOf[BoxQuestion]) =>
+      Future.failed(
+        new TypeSafeScalaApiUsageException(
+          s"${e.getMessage} - box questions need Jev 1.14 or later (e.g. jev-1.14.0), an " +
+            "older model answers them so",
+          e,
+          e.httpCode,
+          e.errorType,
+          e.requestId
+        )
+      )
+  }
 
   override def createDecision(
     input: DecisionInput,
     questions: Seq[DecisionQuestion],
     settings: CreateDecisionSettings
   ): Future[Decision] =
-    (provider.protocol match {
+    (provider.protocolFor(settings.model.getOrElse(defaultModel)) match {
       case DecisionProtocol.OpenAI =>
         Future.unit.flatMap { _ =>
           checkQuestionCount(questions.size)
@@ -145,26 +190,35 @@ private[service] class TypeSafeServiceImpl(
               input,
               questions,
               settings.copy(model = settings.model.orElse(Some(defaultModel)))
-            )
+            ),
+            extraHeaders = provider.extraHeaders
           ).map(rich =>
             responseOrError(rich).json.asSafe[Decision].copy(requestId = requestId(rich))
           ).recoverWith(transportErrors)
         }
 
-      case DecisionProtocol.SystemOne =>
+      case DecisionProtocol.SystemOne | DecisionProtocol.ScaleDown =>
         val imageRefusal =
           if (provider.readsImages) None
           else Some(s"${provider.label} reads no images - send them to a host that does.")
         OpenAIToSystemOne.createDecision(this, imageRefusal)(input, questions, settings)
     }).recoverWith(repackAsOpenAIException)
 
-  // the image checks - the format, a host's tile cap - before any I/O, on both entry points
+  // the image checks - the format, a host's tile cap, TypeSafe's size bounds - before any I/O,
+  // on both entry points
   private def checkImages(
     urls: Seq[String],
     what: String
   ): Unit =
     if (provider.readsImages) {
-      val problems = urls.flatMap(DecisionImage.problem(_, provider.maxImageTiles))
+      val problems = urls.flatMap { url =>
+        DecisionImage
+          .problem(url, provider.maxImageTiles)
+          .orElse(
+            if (provider.images == DecisionImages.Assets) DecisionImage.assetProblem(url)
+            else None
+          )
+      }
       require(
         problems.isEmpty,
         s"The $what carries an image the API cannot take: ${problems.mkString("; ")}."
@@ -190,14 +244,15 @@ private[service] class TypeSafeServiceImpl(
   override def listModels: Future[Seq[ModelMetadata]] =
     provider.models match {
       case DecisionModelListing.TypeSafe =>
-        execGETRich(EndPoint.models).map { rich =>
+        execGETRich(EndPoint.models, extraHeaders = provider.extraHeaders).map { rich =>
           (responseOrError(rich).json \ "models").get.asSafe[Seq[ModelMetadata]]
         }.recoverWith(transportErrors)
 
       case DecisionModelListing.OpenAIStyle(query) =>
         execGETRich(
           EndPoint.models,
-          params = query.map { case (name, value) => Param.query(name) -> Some(value) }
+          params = query.map { case (name, value) => Param.query(name) -> Some(value) },
+          extraHeaders = provider.extraHeaders
         ).map { rich =>
           (responseOrError(rich).json \ "data")
             .asOpt[Seq[JsObject]]
@@ -213,7 +268,8 @@ private[service] class TypeSafeServiceImpl(
           EndPoint.custom(TypeSafeServiceImpl.AzureDeploymentsPath),
           params = Seq(
             Param.query("api-version") -> Some(TypeSafeServiceImpl.AzureDeploymentsApiVersion)
-          )
+          ),
+          extraHeaders = provider.extraHeaders
         ).map { rich =>
           (responseOrError(rich).json \ "data")
             .asOpt[Seq[JsObject]]
@@ -295,13 +351,12 @@ private[service] object TypeSafeServiceImpl {
     ResponseHeaders.first(rich.headers, headers)
 
   // an entry of an OpenAI-style model list (`{"id", "description", "created", "architecture":
-  // {"input_modalities", "output_modalities"}}`) as TypeSafe's metadata - the release date from
-  // the creation time, if any; None for a model whose `output_modalities` lack `decisions` (a
-  // chat model next to the decision models of a llama.cpp router)
+  // {"input_modalities", "output_modalities"}}`, or the modalities at the top as names or
+  // `{"type"}` objects - ScaleDown's) as TypeSafe's metadata - the release date from the
+  // creation time, if any; None for a model whose output modalities lack `decisions` (a chat
+  // model next to the decision models of a llama.cpp router, ScaleDown's extract)
   private[impl] def openAIStyleModel(json: JsObject): Option[ModelMetadata] = {
-    val architecture = json \ "architecture"
-    val decides =
-      (architecture \ "output_modalities").asOpt[Seq[String]].forall(_.contains("decisions"))
+    val decides = modalities(json, "output_modalities").forall(_.contains("decisions"))
 
     (json \ "id").asOpt[String].filter(_ => decides).map { id =>
       ModelMetadata(
@@ -311,8 +366,24 @@ private[service] object TypeSafeServiceImpl {
           .asOpt[Long]
           .map(Instant.ofEpochSecond(_).atZone(ZoneOffset.UTC).toLocalDate.toString)
           .getOrElse(""),
-        (architecture \ "input_modalities").asOpt[Seq[String]]
+        modalities(json, "input_modalities")
       )
     }
   }
+
+  private def modalities(
+    json: JsObject,
+    name: String
+  ): Option[Seq[String]] =
+    (json \ "architecture" \ name)
+      .asOpt[Seq[String]]
+      .orElse(
+        (json \ name)
+          .asOpt[Seq[JsValue]]
+          .map(
+            _.flatMap(modality =>
+              modality.asOpt[String].orElse((modality \ "type").asOpt[String])
+            )
+          )
+      )
 }

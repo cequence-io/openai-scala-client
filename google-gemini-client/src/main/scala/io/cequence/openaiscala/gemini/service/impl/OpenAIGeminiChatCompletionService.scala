@@ -107,6 +107,66 @@ import scala.collection.immutable.Traversable
 private[impl] object OpenAIGeminiChatCompletionService {
 
   /**
+   * Google's placeholder for a function call whose thought signature is not known (a history
+   * built by hand or taken from another model): it skips the signature check. Live 2026-10-13,
+   * Gemini 3.8 Flash, 3.1 Pro, `gemini-flash-lite-latest` and 4 Argon answer a function call
+   * sent back without a signature with a 400 "Function call is missing a thought_signature in
+   * functionCall parts", and take one with this placeholder - also next to a parallel call's
+   * real signature (Gemini signs the first call of a turn only); 2.5 and Gemma need none
+   * (Gemma 4 answered the placeholder with no text, so it gets none).
+   */
+  val SkipThoughtSignatureValidator = "skip_thought_signature_validator"
+
+  /** The content with the placeholder on each function call that carries no signature. */
+  private[impl] def withPlaceholderSignatures(content: Content): Content =
+    if (!content.parts.exists(isUnsignedCall)) content
+    else
+      content.copy(parts = content.parts.map {
+        case call: Part.FunctionCall if call.thoughtSignature.isEmpty =>
+          call.copy(thoughtSignature = Some(SkipThoughtSignatureValidator))
+        case part => part
+      })
+
+  private def isUnsignedCall(part: Part) =
+    part match {
+      case call: Part.FunctionCall => call.thoughtSignature.isEmpty
+      case _                       => false
+    }
+
+  /**
+   * The thought signatures of the most recent function calls handed to the caller, by the
+   * call's id, name and arguments (Gemini's ids - `call_145482` - are short, so the id alone
+   * could collide across conversations) - the oldest dropped beyond `maxEntries`.
+   */
+  private[impl] final class FunctionCallSignatures(maxEntries: Int = 4096) {
+
+    private val signatures =
+      new java.util.LinkedHashMap[(String, String, String), String](64, 0.75f, true) {
+        override def removeEldestEntry(
+          eldest: java.util.Map.Entry[(String, String, String), String]
+        ): Boolean = size() > maxEntries
+      }
+
+    def remember(
+      id: String,
+      name: String,
+      arguments: String,
+      signature: String
+    ): Unit = signatures.synchronized {
+      signatures.put((id, name, arguments), signature)
+      ()
+    }
+
+    def get(
+      id: String,
+      name: String,
+      arguments: String
+    ): Option[String] = signatures.synchronized {
+      Option(signatures.get((id, name, arguments)))
+    }
+  }
+
+  /**
    * Converts a streamed [[GenerateContentResponse]] sequence (candidate 0) into typed
    * [[ChatChunk]]s: thought parts -> Thinking, text -> Text, thought signatures ->
    * ThinkingSignature, `functionCall` -> ToolCallStart + ToolCall (Gemini sends complete
@@ -536,6 +596,47 @@ private[service] class OpenAIGeminiChatCompletionService(
 
   import OpenAIGeminiChatCompletionService.{mcpCallRule, McpCallRule}
 
+  // Gemini 3+ refuses a function call sent back without the thought signature it came with,
+  // and an OpenAI-shaped assistant message has no place for one: the signatures of the calls
+  // handed out (sync and typed stream) are remembered here, and put back when a call returns
+  private val functionCallSignatures =
+    new OpenAIGeminiChatCompletionService.FunctionCallSignatures()
+
+  // the contents of a request: a function call whose signature is not remembered (an older
+  // one, from another service, or built by hand) carries Google's placeholder on the models
+  // that require a signature
+  private def toGeminiContents(
+    messages: Seq[BaseMessage],
+    model: String
+  ): Seq[Content] = {
+    val contents = messages.map(toGeminiContent)
+    if (GeminiThinking.requiresFunctionCallSignatures(model))
+      contents.map(OpenAIGeminiChatCompletionService.withPlaceholderSignatures)
+    else contents
+  }
+
+  // remembers the typed stream's function-call signatures - a call's `ThinkingSignature`
+  // follows its `ToolCall`
+  private def rememberingSignatures: Flow[ChatChunk, ChatChunk, NotUsed] =
+    Flow[ChatChunk].statefulMapConcat[ChatChunk] { () =>
+      val calls = mutable.Map.empty[String, (String, String)]
+
+      (chunk: ChatChunk) => {
+        chunk match {
+          case ChatChunk.ToolCall(_, callId, name, arguments, false) =>
+            calls(callId) = (name, arguments)
+
+          case ChatChunk.ThinkingSignature(signature, Some(callId)) =>
+            calls.get(callId).foreach { case (name, arguments) =>
+              functionCallSignatures.remember(callId, name, arguments, signature)
+            }
+
+          case _ => ()
+        }
+        chunk :: Nil
+      }
+    }
+
   override def createChatCompletion(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
@@ -548,7 +649,7 @@ private[service] class OpenAIGeminiChatCompletionService(
         geminiSettings <- handleCaching(systemMessage, userMessages, settings)
 
         response <- underlying.generateContent(
-          userMessages.map(toGeminiContent),
+          toGeminiContents(userMessages, settings.model),
           geminiSettings
         )
       } yield toOpenAIResponse(requireMcpCallsExecuted(response, mcp), mcp)
@@ -594,7 +695,7 @@ private[service] class OpenAIGeminiChatCompletionService(
         .map(settings =>
           underlying
             .generateContentStreamed(
-              userMessages.map(toGeminiContent),
+              toGeminiContents(userMessages, settings.model),
               settings
             )
             .map(toOpenAIChunkResponse)
@@ -691,7 +792,7 @@ private[service] class OpenAIGeminiChatCompletionService(
       val (userMessages, systemMessage) = splitMessage(request.messages)
       BatchRequestItem(
         key = request.customId,
-        contents = userMessages.map(toGeminiContent),
+        contents = toGeminiContents(userMessages, settings.model),
         // while a cache is in use, the cached (or freshly cached) system message replaces
         // the per-request one for every item, exactly as before - so no per-item override
         // in that case; otherwise each item carries its own system message, if any
@@ -925,7 +1026,8 @@ private[service] class OpenAIGeminiChatCompletionService(
               parts += Part.FunctionCall(
                 id = Some(id),
                 name = name,
-                args = args
+                args = args,
+                thoughtSignature = functionCallSignatures.get(id, name, arguments)
               )
             case other =>
               logger.warn(
@@ -1361,10 +1463,14 @@ private[service] class OpenAIGeminiChatCompletionService(
             )
 
           underlying
-            .generateContentStreamed(userMessages.map(toGeminiContent), geminiSettings)
+            .generateContentStreamed(
+              toGeminiContents(userMessages, settings.model),
+              geminiSettings
+            )
             .via(
               OpenAIGeminiChatCompletionService.chatChunksFlow(mcpCallRule(settings, tools))
             )
+            .via(rememberingSignatures)
             .mapError(toOpenAIException)
       }.recoverWith(repackAsOpenAIException)
 
@@ -1438,7 +1544,7 @@ private[service] class OpenAIGeminiChatCompletionService(
         baseSettings <- handleCaching(systemMessage, userMessages, settings)
         geminiSettings = withTools(baseSettings, tools, responseToolChoice, settings)
         response <- underlying.generateContent(
-          userMessages.map(toGeminiContent),
+          toGeminiContents(userMessages, settings.model),
           geminiSettings
         )
       } yield toOpenAIToolResponse(
@@ -1457,6 +1563,9 @@ private[service] class OpenAIGeminiChatCompletionService(
         case fc: Part.FunctionCall if !mcp.isMcpCall(fc.name) =>
           val callId = fc.id.getOrElse(java.util.UUID.randomUUID().toString)
           val argsJson = Json.toJson(fc.args)(JsonUtil.StringAnyMapFormat).toString
+          fc.thoughtSignature.foreach(
+            functionCallSignatures.remember(callId, fc.name, argsJson, _)
+          )
           (
             callId,
             FunctionCallSpec(fc.name, argsJson): io.cequence.openaiscala.domain.ToolCallSpec

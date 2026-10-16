@@ -7,12 +7,14 @@ import io.cequence.openaiscala.gemini.domain.ThinkingLevel
  * \- measured against the live `generateContent` API on 2026-09-26 (every thinkingLevel and a
  * range of thinkingBudget values per model):
  *
- *   - Gemini 3.x, the rolling aliases (`gemini-flash-latest`, `gemini-flash-lite-latest`,
- *     `gemini-pro-latest`) and `nano-banana-pro*` take `thinkingLevel`
+ *   - Gemini 3.x and 4 (Gemini 4 Argon, measured 2026-10-13), the rolling aliases
+ *     (`gemini-flash-latest`, `gemini-flash-lite-latest`, `gemini-pro-latest`) and
+ *     `nano-banana-pro*` take `thinkingLevel`
  *   - Gemini 2.5 takes `thinkingBudget`, except `gemini-2.5-flash-image`, which rejects any
  *     thinking config
  *   - MINIMAL is rejected by the Pro models (the 3-pro-image ones excepted), by 3.7 / 3.8
- *     Flash and by `gemini-flash-latest` (currently 3.7 Flash)
+ *     Flash, by `gemini-flash-latest` (currently 3.7 Flash) and by Gemini 4 Argon - assumed
+ *     for the whole Gemini 4 family until a member takes it (LOW works everywhere)
  *   - the 3.1 Flash image models (`gemini-3.1-flash-image`, `-lite-image`) accept only MINIMAL
  *     and HIGH - LOW / MEDIUM are 400s
  *
@@ -33,15 +35,30 @@ object GeminiThinking {
   def mode(model: String): Mode = {
     val m = bare(model)
     if (m.startsWith("gemini-2.5-flash-image")) Unsupported
-    else if (isGemini3(m) || rollingAliases.contains(m) || m.startsWith("nano-banana-pro"))
+    else if (
+      isGemini3(m) || isGemini4(m) || rollingAliases.contains(m) ||
+      m.startsWith("nano-banana-pro")
+    )
       Levels
     else if (m.startsWith("gemini-2.5")) Budget
     else Unsupported
   }
 
+  /**
+   * Whether the model refuses a function call sent back without its thought signature (400
+   * "Function call is missing a thought_signature in functionCall parts") - the models that
+   * take thinking levels (Gemini 3+, live 2026-10-13); Gemini 2.5 and Gemma need none.
+   */
+  def requiresFunctionCallSignatures(model: String): Boolean = mode(model) == Levels
+
   def isGemini3(model: String): Boolean = {
     val m = bare(model)
     m.startsWith("gemini-3-") || m.startsWith("gemini-3.")
+  }
+
+  def isGemini4(model: String): Boolean = {
+    val m = bare(model)
+    m.startsWith("gemini-4-") || m.startsWith("gemini-4.")
   }
 
   private def isPro(m: String): Boolean =
@@ -57,7 +74,7 @@ object GeminiThinking {
 
   def supportsMinimal(model: String): Boolean = {
     val m = bare(model)
-    !isPro(m) && !minimalUnsupportedPrefixes.exists(m.startsWith)
+    !isPro(m) && !isGemini4(m) && !minimalUnsupportedPrefixes.exists(m.startsWith)
   }
 
   /**

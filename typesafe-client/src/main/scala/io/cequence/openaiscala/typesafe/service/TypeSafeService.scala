@@ -31,6 +31,15 @@ trait TypeSafeService extends CloseableService {
   def defaultModel: String
 
   /**
+   * Whether this service's host reads images (`DecisionProvider.readsImages`) - the OpenAI
+   * adapters over it ([[TypeSafeServiceFactory.asOpenAI(service* asOpenAI(service)]],
+   * `asOpenAIDecisions(service)`) map image content only then. A service of
+   * [[TypeSafeServiceFactory]] knows it from its provider, the retry adapter from the service
+   * it wraps; any other implementation says `false` unless it overrides this.
+   */
+  def readsImages: Boolean = false
+
+  /**
    * Evaluates every question against the state, in one call. Ask everything you might need at
    * once (questions are evaluated independently and in parallel) and let your code decide what
    * matters.

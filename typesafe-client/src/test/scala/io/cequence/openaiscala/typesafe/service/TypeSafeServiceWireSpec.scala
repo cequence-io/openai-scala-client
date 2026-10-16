@@ -10,6 +10,7 @@ import io.cequence.openaiscala.domain.decisions.{
   DecisionContent,
   DecisionImageDetail,
   DecisionInput,
+  DecisionMessage,
   DecisionQuestion,
   DecisionValue
 }
@@ -244,8 +245,7 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
 
       received.get.path shouldBe "/decisions/v1/systemone"
       received.get.headers("authorization") shouldBe "Bearer liquid_k"
-      (Json.parse(received.get.body) \ "model")
-        .as[String] shouldBe DecisionModelId.liquid_d1_free
+      (Json.parse(received.get.body) \ "model").as[String] shouldBe DecisionModelId.liquid_d1
       liquid.close()
     }
 
@@ -538,10 +538,13 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       await(capped.systemOne(fits, reviewQuestions))
       (Json.parse(received.get.body) \ "state").as[JsArray] shouldBe fits
 
-      // TypeSafe's Jev does not read images, so its state is not checked
-      respond(200, quickStartResponse)
-      await(service.systemOne(photo, questions))
-      received shouldBe defined
+      // TypeSafe's Jev reads images since 2026-10-14 - but takes none over 1,568 pixels a side
+      // and never resizes one, so the phone photo is refused up front there
+      received = None
+      the[IllegalArgumentException]
+        .thrownBy(service.systemOne(photo, questions))
+        .getMessage should include("4032 x 3024")
+      received shouldBe None
       perplexity.close()
       capped.close()
     }
@@ -960,6 +963,443 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       subq.close()
     }
 
+    // recorded through OpenRouter on 2026-10-13 (ScaleDown's own answer, as relayed)
+    val scaleDownResponse =
+      """{"model":"classify-1","answers":{"defect":{"type":"noul","noul":0.9481502334676174},"sentiment":{"type":"choice","choice":"mixed","probabilities":{"positive":0.006024675083653423,"mixed":0.9853046969340996,"negative":0.008670627982247088},"confidence":0.9853046969340996}},"usage":{"input_tokens":714,"output_tokens":3,"cost":0.00002856}}"""
+
+    // api.scaledown.xyz/v1/models on 2026-10-13, abridged: its decision models next to the others
+    val scaleDownModels =
+      """{"object":"list","data":[
+        |  {"schema_version":"2.4","id":"compress","created":1791849600,"name":"ScaleDown : Compress","description":"Compress shortens prompts.","input_modalities":[{"type":"text"}],"output_modalities":[{"type":"text","streaming":false}]},
+        |  {"schema_version":"2.4","id":"classify-1","created":1791849600,"name":"ScaleDown : Classify-1","description":"Classify is a Constrained Decoding Model (CDM) from ScaleDown.","input_modalities":[{"type":"text"},{"type":"image"},{"type":"file"}],"output_modalities":[{"type":"decisions"}],"openrouter":{"slug":"scaledown/classify-1"}},
+        |  {"schema_version":"2.4","id":"extract","created":1791849600,"name":"ScaleDown : Extract","description":"Extract pulls entities.","input_modalities":[{"type":"text"}],"output_modalities":[{"type":"text"}]}
+        |]}""".stripMargin
+
+    "serve ScaleDown - /v1/scaledown, the key in x-api-key, its text-only requests, the image as the state's document" in {
+      val scaleDown = TypeSafeServiceFactory.withEngine(
+        engine,
+        DecisionProviderSettings.scaleDown.copy(baseUrl = baseUrl),
+        "sd_k"
+      )
+      val png = pngDataUrl(64, 64)
+      val questions = Map[String, Question](
+        "defect" -> NoulQuestion(
+          "Does the review report a product defect?",
+          "A part stopped working",
+          "Only opinions"
+        ),
+        "sentiment" -> ChoiceQuestion(
+          "What is the overall sentiment of the review?",
+          "positive" -> "Mostly satisfied",
+          "mixed" -> "Praise and complaints in one review",
+          "negative" -> "Mostly dissatisfied"
+        )
+      )
+
+      respond(200, scaleDownResponse, Map("x-amzn-requestid" -> "b922c927-f8d7-46a2"))
+      val response = await(
+        scaleDown.systemOne(
+          Json.obj("review" -> review, "photo" -> DecisionImage.part(png)),
+          questions
+        )
+      )
+      received.get.path shouldBe "/v1/scaledown"
+      received.get.headers("x-api-key") shouldBe "sd_k"
+      received.get.headers.get("authorization") shouldBe None
+      val body = Json.parse(received.get.body)
+      (body \ "model").as[String] shouldBe DecisionModelId.scaledown_classify_1
+      // the state as text - the image lifted into the document, a marker in its place
+      (body \ "state").get shouldBe Json.obj(
+        "text" -> Json.prettyPrint(Json.obj("review" -> review, "photo" -> "[image 1]")),
+        "document" -> png.stripPrefix("data:image/png;base64,"),
+        "document_mime_type" -> "image/png"
+      )
+      // the noul's criteria in its instructions, which ScaleDown reads
+      (body \ "questions" \ "defect").get shouldBe Json.obj(
+        "type" -> "noul",
+        "instructions" -> "Does the review report a product defect?\nYes when: A part stopped working\nNo when: Only opinions"
+      )
+      response.noul("defect").noul shouldBe 0.9481502334676174
+      response.choice("sentiment").choice shouldBe "mixed"
+      response.usage.input_tokens shouldBe Some(714)
+      response.requestId shouldBe Some("b922c927-f8d7-46a2")
+
+      // a second image is refused before sending
+      respond(200, scaleDownResponse)
+      an[IllegalArgumentException] should be thrownBy
+        scaleDown.systemOne(
+          Json.arr(DecisionImage.part(png), DecisionImage.part(png)),
+          questions
+        )
+      received shouldBe None
+
+      // its decision models only, with what they read
+      respond(200, scaleDownModels)
+      await(scaleDown.listModels) shouldBe Seq(
+        ModelMetadata(
+          "classify-1",
+          "Classify is a Constrained Decoding Model (CDM) from ScaleDown.",
+          "2026-10-13",
+          Some(Seq("text", "image", "file"))
+        )
+      )
+      received.get.path shouldBe "/v1/models"
+      received.get.headers("x-api-key") shouldBe "sd_k"
+
+      // the body is validated before the credits are checked: a 402 for a valid one without
+      // them, a 422 FastAPI list for an invalid one
+      respond(402, """{"detail":"Insufficient credits"}""")
+      the[TypeSafeScalaApiUsageException]
+        .thrownBy(await(scaleDown.systemOne("x", questions)))
+        .getMessage should include("Insufficient credits")
+      respond(
+        422,
+        """{"detail":[{"type":"value_error","loc":["body"],"msg":"Value error, Unsupported model 'bogus'. Supported: classify, classify-1.","input":{},"ctx":{"error":{}}}]}"""
+      )
+      the[TypeSafeScalaInvalidRequestException]
+        .thrownBy(await(scaleDown.systemOne(JsString("x"), questions, model = "bogus")))
+        .getMessage should include("Unsupported model 'bogus'")
+
+      // the OpenAI adapter's state of instructions and a message goes as its text too
+      val asOpenAI = TypeSafeServiceFactory.asOpenAI(scaleDown, imageInput = true)
+      respond(200, scaleDownResponse)
+      await(
+        asOpenAI.createChatCompletion(
+          Seq(
+            io.cequence.openaiscala.domain.SystemMessage("Judge product reviews."),
+            io.cequence.openaiscala.domain.UserMessage(review)
+          ),
+          io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings(
+            model = DecisionModelId.scaledown_classify_1,
+            response_format_type = Some(
+              io.cequence.openaiscala.domain.settings.ChatCompletionResponseFormatType.json_schema
+            ),
+            jsonSchema = Some(
+              io.cequence.openaiscala.domain.settings.JsonSchemaDef(
+                "review",
+                strict = true,
+                Left(
+                  io.cequence.openaiscala.domain.JsonSchema.Object(
+                    properties = Seq(
+                      "defect" -> io.cequence.openaiscala.domain.JsonSchema
+                        .Boolean(Some("Does the review report a product defect?"))
+                    ),
+                    required = Seq("defect")
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      (Json.parse(received.get.body) \ "state").get shouldBe JsString(
+        Json.prettyPrint(
+          Json.obj("instructions" -> "Judge product reviews.", "message" -> review)
+        )
+      )
+      scaleDown.close()
+    }
+
+    "send OpenRouter's scaledown/ models ScaleDown's text, its other models any JSON" in {
+      val openRouter = TypeSafeServiceFactory.withEngine(
+        engine,
+        DecisionProviderSettings.openRouter.copy(baseUrl = baseUrl + "/api"),
+        "or_k"
+      )
+      val state = Json.obj("ticket" -> "I was charged twice.")
+      val refund = Map("refund" -> NoulQuestion("Does the customer ask for money back?"))
+
+      respond(200, scaleDownResponse.replace("defect", "refund"))
+      await(
+        openRouter
+          .systemOne(state, refund, model = DecisionModelId.openrouter_scaledown_classify_1)
+      )
+      received.get.headers("authorization") shouldBe "Bearer or_k"
+      (Json.parse(received.get.body) \ "state").get shouldBe JsString(Json.prettyPrint(state))
+
+      respond(200, quickStartResponse)
+      await(openRouter.systemOne(state, refund))
+      (Json.parse(received.get.body) \ "state").get shouldBe state
+      openRouter.close()
+    }
+
+    // the shape Jev 1.14 answered live on 2026-10-14 (values rounded)
+    val jevBoxResponse =
+      """{"model":"jev-1.14.0","answers":{"red_box":{"type":"box","box":{"top":0.49,"bottom":0.82,"left":0.25,"right":0.5},"confidence":0.81},"has_red":{"type":"noul","noul":0.99}},"usage":{"input_tokens":1637,"output_tokens":72}}"""
+
+    "send TypeSafe an image as an asset under a placeholder, opted in by header, and read a box" in {
+      val png = pngDataUrl(800, 600)
+      val boxQuestions = Map[String, Question](
+        "red_box" -> BoxQuestion("the red rectangle in `photo`"),
+        "has_red" -> NoulQuestion("Is there a red rectangle in `photo`?")
+      )
+
+      respond(200, jevBoxResponse)
+      val response = await(
+        service.systemOne(
+          Json.obj("photo" -> DecisionImage.part(png)),
+          boxQuestions,
+          DecisionModelId.jev_1_14_0
+        )
+      )
+      received.get.path shouldBe "/v1/systemone"
+      received.get.headers("typesafe-danger-zone-images") shouldBe "true"
+      received.get.headers.get("typesafe-danger-zone-long-context") shouldBe None
+      val body = Json.parse(received.get.body)
+      val placeholder = (body \ "state" \ "photo").as[String]
+      (body \ "assets" \ placeholder).get shouldBe Json.obj(
+        "type" -> "image",
+        "format" -> "png",
+        "data_base64" -> png.stripPrefix("data:image/png;base64,")
+      )
+      (body \ "questions" \ "red_box").get shouldBe
+        Json.obj("type" -> "box", "instructions" -> "the red rectangle in `photo`")
+
+      response
+        .box("red_box") shouldBe BoxAnswer(BoundingBox(0.49, 0.82, 0.25, 0.5), Some(0.81))
+      response.boxes.keySet shouldBe Set("red_box")
+      response.box("red_box").box.inPixels(800, 600) shouldBe ((200, 294, 400, 492))
+
+      // text only: no assets, no opt-in
+      respond(200, quickStartResponse)
+      await(service.systemOne("x", questions))
+      received.get.headers.get("typesafe-danger-zone-images") shouldBe None
+      (Json.parse(received.get.body) \ "assets").toOption shouldBe None
+
+      // an image the API would refuse is refused before sending - Jev never resizes
+      respond(200, jevBoxResponse)
+      the[IllegalArgumentException]
+        .thrownBy(
+          service.systemOne(Json.arr(DecisionImage.part(pngDataUrl(64, 64))), questions)
+        )
+        .getMessage should include("256 to 1568 pixels a side")
+      received shouldBe None
+
+      // the API's own refusal of a request without the opt-in, as answered live
+      respond(
+        400,
+        """{"detail":{"error_type":"api_usage_error","message":"Images are experimental. Send the header TypeSafe-Danger-Zone-Images: true to use them."}}"""
+      )
+      the[TypeSafeScalaApiUsageException]
+        .thrownBy(await(service.systemOne("x", boxQuestions)))
+        .getMessage should include("Images are experimental")
+    }
+
+    "refuse a box question before sending to a host that answers none - natively and through the JSON schema adapter" in {
+      val questions =
+        Map("mug" -> BoxQuestion("the coffee mug"), "red" -> NoulQuestion("Is the mug red?"))
+      Seq(
+        DecisionProviderSettings.liquid,
+        DecisionProviderSettings.perplexity,
+        DecisionProviderSettings.subq,
+        DecisionProviderSettings.openRouter,
+        DecisionProviderSettings.vercel,
+        DecisionProviderSettings.microsoftFoundry(baseUrl)
+      ).foreach { preset =>
+        preset.boxQuestions shouldBe false
+        val local = preset.copy(baseUrl = baseUrl)
+        val other = TypeSafeServiceFactory.withEngine(engine, local, "k")
+        received = None
+        the[IllegalArgumentException]
+          .thrownBy(other.systemOne(JsString("A photo."), questions))
+          .getMessage should include(s"${local.label} answers no box questions (mug)")
+
+        // a BoundingBox-shaped field of the JSON schema adapter - an OpenAI exception there
+        val fraction = io.cequence.openaiscala.domain.JsonSchema
+          .Number(minimum = Some(0), maximum = Some(1))
+        val adapterFailure = the[io.cequence.openaiscala.OpenAIScalaClientException] thrownBy
+          await(
+            TypeSafeServiceFactory
+              .asOpenAI(other)
+              .createChatCompletion(
+                Seq(io.cequence.openaiscala.domain.UserMessage("A photo.")),
+                io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings(
+                  model = preset.defaultModel,
+                  response_format_type = Some(
+                    io.cequence.openaiscala.domain.settings.ChatCompletionResponseFormatType.json_schema
+                  ),
+                  jsonSchema = Some(
+                    io.cequence.openaiscala.domain.settings.JsonSchemaDef(
+                      "mug",
+                      strict = true,
+                      Left(
+                        io.cequence.openaiscala.domain.JsonSchema.Object(
+                          properties = Seq(
+                            "mug" -> io.cequence.openaiscala.domain.JsonSchema.Object(
+                              properties = Seq(
+                                "top" -> fraction,
+                                "bottom" -> fraction,
+                                "left" -> fraction,
+                                "right" -> fraction
+                              ),
+                              required = Seq("top", "bottom", "left", "right")
+                            )
+                          ),
+                          required = Seq("mug")
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+          )
+        adapterFailure.getMessage should include("answers no box questions (mug)")
+        received shouldBe None
+        other.close()
+      }
+      DecisionProviderSettings.typeSafe.boxQuestions shouldBe true
+      DecisionProviderSettings.typeSafeLongContext.boxQuestions shouldBe true
+    }
+
+    "send a box question to a host whose provider says it answers them" in {
+      val custom = TypeSafeServiceFactory.withEngine(
+        engine,
+        DecisionProviderSettings.liquid.copy(baseUrl = baseUrl, boxQuestions = true),
+        "k"
+      )
+      respond(200, jevBoxResponse)
+      await(
+        custom.systemOne(
+          JsString("A photo."),
+          Map(
+            "red_box" -> BoxQuestion("the red rectangle"),
+            "has_red" -> NoulQuestion("Is there a red rectangle?")
+          )
+        )
+      ).box("red_box").confidence shouldBe Some(0.81)
+      (Json.parse(received.get.body) \ "questions" \ "red_box" \ "type")
+        .as[String] shouldBe "box"
+      custom.close()
+    }
+
+    "say why Jev before 1.14 answers a box question with a bare 400" in {
+      val invalid =
+        """{"detail":{"error_type":"api_usage_error","message":"Invalid request."}}"""
+      respond(400, invalid)
+      val failure = the[TypeSafeScalaApiUsageException].thrownBy(
+        await(
+          service.systemOne(
+            JsString("A photo."),
+            Map("mug" -> BoxQuestion("the coffee mug")),
+            DecisionModelId.jev_latest
+          )
+        )
+      )
+      failure.getMessage should include("Invalid request.")
+      failure.getMessage should include("box questions need Jev 1.14 or later")
+      failure.httpCode shouldBe Some(400)
+      failure.getCause shouldBe a[TypeSafeScalaApiUsageException]
+
+      // the same 400 without a box question stays as it is
+      respond(400, invalid)
+      the[TypeSafeScalaApiUsageException]
+        .thrownBy(await(service.systemOne("x", Map("q" -> NoulQuestion("Is it?")))))
+        .getMessage should not include "box questions"
+    }
+
+    "send TypeSafe's long-context opt-in with every request of its preset" in {
+      val longContext = TypeSafeServiceFactory.withEngine(
+        engine,
+        DecisionProviderSettings.typeSafeLongContext.copy(baseUrl = baseUrl),
+        "k"
+      )
+
+      respond(200, quickStartResponse)
+      await(longContext.systemOne("a long contract", questions))
+      received.get.headers("typesafe-danger-zone-long-context") shouldBe "true"
+      received.get.headers.get("typesafe-danger-zone-images") shouldBe None
+
+      respond(200, """{"models":[]}""")
+      await(longContext.listModels)
+      received.get.headers("typesafe-danger-zone-long-context") shouldBe "true"
+      longContext.close()
+    }
+
+    // a chat completion whose user message carries a picture, through an OpenAI adapter
+    def imageChat(
+      adapter: io.cequence.openaiscala.service.OpenAIChatCompletionService,
+      png: String
+    ) =
+      adapter.createChatCompletion(
+        Seq(
+          io.cequence.openaiscala.domain.UserSeqMessage(
+            Seq(
+              io.cequence.openaiscala.domain.TextContent("A photo."),
+              io.cequence.openaiscala.domain.ImageURLContent(png)
+            )
+          )
+        ),
+        io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings(
+          model = DecisionModelId.jev_latest,
+          response_format_type = Some(
+            io.cequence.openaiscala.domain.settings.ChatCompletionResponseFormatType.json_schema
+          ),
+          jsonSchema = Some(
+            io.cequence.openaiscala.domain.settings.JsonSchemaDef(
+              "square",
+              strict = true,
+              Left(
+                io.cequence.openaiscala.domain.JsonSchema.Object(
+                  properties = Seq(
+                    "red" -> io.cequence.openaiscala.domain.JsonSchema
+                      .Boolean(Some("Is the shape red?"))
+                  ),
+                  required = Seq("red")
+                )
+              )
+            )
+          )
+        )
+      )
+
+    "map a chat message's image into TypeSafe's assets through the OpenAI adapter - " +
+      "asOpenAI(service) knowing its host reads images, also through the retry adapter" in {
+        import io.cequence.openaiscala.RetryHelpers.RetrySettings
+        implicit val retrySettings: RetrySettings =
+          RetrySettings(maxRetries = 2, delayOffset = 10.millis)
+        implicit val system: akka.actor.ActorSystem =
+          akka.actor.ActorSystem("image-adapter-spec")
+        implicit val scheduler: akka.actor.Scheduler = system.scheduler
+
+        try {
+          val retrying = TypeSafeServiceAdapters.retry(service)
+          retrying.readsImages shouldBe true
+          val asOpenAI = TypeSafeServiceFactory.asOpenAI(retrying)
+          val png = pngDataUrl(512, 512)
+
+          respond(
+            200,
+            """{"model":"jev-1.13.0","answers":{"red":{"type":"noul","noul":0.98}},"usage":{"input_tokens":1033,"output_tokens":20}}"""
+          )
+          await(imageChat(asOpenAI, png))
+          received.get.headers("typesafe-danger-zone-images") shouldBe "true"
+          val body = Json.parse(received.get.body)
+          val state = (body \ "state").as[Seq[String]]
+          state.head shouldBe "A photo."
+          (body \ "assets" \ state(1) \ "data_base64").as[String] shouldBe
+            png.stripPrefix("data:image/png;base64,")
+        } finally {
+          system.terminate()
+        }
+      }
+
+    "refuse a chat message's image before sending when the service's host reads none" in {
+      val textOnly = TypeSafeServiceFactory.withEngine(
+        engine,
+        DecisionProviderSettings.typeSafe
+          .copy(baseUrl = baseUrl, images = DecisionImages.Unsupported),
+        "k"
+      )
+      textOnly.readsImages shouldBe false
+      received = None
+
+      val refused = the[io.cequence.openaiscala.OpenAIScalaClientException] thrownBy
+        await(imageChat(TypeSafeServiceFactory.asOpenAI(textOnly), pngDataUrl(512, 512)))
+      refused.getMessage should include("Image content goes only to a host that reads images")
+      received shouldBe None
+      textOnly.close()
+    }
+
     "take a host of its own - path, question cap, fixed models and request id header" in {
       val custom = TypeSafeServiceFactory.withEngine(
         engine,
@@ -1040,6 +1480,55 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       )
       error shouldBe an[io.cequence.openaiscala.OpenAIScalaUnauthorizedException]
       error.getCause shouldBe a[TypeSafeScalaUnauthorizedException]
+    }
+
+    "send an image of OpenAI's Decisions interface to Jev as an asset, opted in by header" in {
+      respond(
+        200,
+        """{"model":"jev-1.14.0","answers":{"red":{"type":"noul","noul":0.99}},"usage":{"input_tokens":1033,"output_tokens":20}}"""
+      )
+      val decisions = TypeSafeServiceFactory.asOpenAIDecisions(service)
+      val png = pngDataUrl(512, 512)
+
+      val decision = await(
+        decisions.createDecision(
+          DecisionInput.Messages(
+            Seq(
+              DecisionMessage(
+                Seq(DecisionContent.InputText("A photo."), DecisionContent.InputImage(png))
+              )
+            )
+          ),
+          Seq(DecisionQuestion.Predicate("Is the shape in the photo red?", Some("red"))),
+          CreateDecisionSettings(Some(DecisionModelId.jev_1_14_0))
+        )
+      )
+
+      received.get.headers("typesafe-danger-zone-images") shouldBe "true"
+      val body = Json.parse(received.get.body)
+      val state = (body \ "state").as[Seq[String]]
+      state.head shouldBe "A photo."
+      (body \ "assets" \ state(1) \ "data_base64").as[String] shouldBe
+        png.stripPrefix("data:image/png;base64,")
+      decision.answer("red") shouldBe Some(DecisionAnswer.Predicate(Some("red"), 0.99))
+
+      // long context through the same interface - the preset's header
+      val longContext = TypeSafeServiceFactory.asOpenAIDecisions(
+        TypeSafeServiceFactory.withEngine(
+          engine,
+          DecisionProviderSettings.typeSafeLongContext.copy(baseUrl = baseUrl),
+          "k"
+        )
+      )
+      respond(200, quickStartResponse)
+      await(
+        longContext.createDecision(
+          DecisionInput.Text("a long contract"),
+          Seq(DecisionQuestion.Predicate("Does it have a termination clause?"))
+        )
+      )
+      received.get.headers("typesafe-danger-zone-long-context") shouldBe "true"
+      longContext.close()
     }
 
     "check the images of a Decisions input before sending - the format, a host's cap" in {

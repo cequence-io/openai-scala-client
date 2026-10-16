@@ -231,6 +231,112 @@ class SchemaQuestionsSpec extends AnyWordSpec with Matchers {
     }
   }
 
+  "a box" should {
+
+    val schema = Json.parse(
+      """{"type":"object","properties":{
+        |  "mug":{"type":"object","description":"the coffee mug in `photo`","properties":{
+        |    "top":{"type":"number","minimum":0,"maximum":1},"bottom":{"type":"number","minimum":0,"maximum":1},
+        |    "left":{"type":"number","minimum":0,"maximum":1},"right":{"type":"number","minimum":0.0,"maximum":1.0}}},
+        |  "mug_confidence":{"type":"number"},
+        |  "has_mug":{"type":"boolean","description":"Is there a coffee mug in `photo`?"}
+        |}}""".stripMargin
+    )
+
+    "be asked for an object of exactly the four fraction edges, its description the instructions" in {
+      val plan = SchemaQuestions.plan(schema)
+      plan.questions shouldBe Map(
+        "mug" -> BoxQuestion("the coffee mug in `photo`"),
+        "has_mug" -> NoulQuestion("Is there a coffee mug in `photo`?")
+      )
+    }
+
+    "be answered with the edges, its confidence filling a sibling confidence field" in {
+      val plan = SchemaQuestions.plan(schema)
+      val answers = Map[String, Answer](
+        "mug" -> BoxAnswer(BoundingBox(0.25, 0.82, 0.44, 0.84), Some(0.92)),
+        "has_mug" -> NoulAnswer(0.97)
+      )
+
+      assemble(plan, answers, 0.5) shouldBe Json.obj(
+        "mug" -> Json.obj("top" -> 0.25, "bottom" -> 0.82, "left" -> 0.44, "right" -> 0.84),
+        "mug_confidence" -> 0.92,
+        "has_mug" -> true
+      )
+
+      // no confidence from the model - the field is left out, and so is any enclosing object's
+      val withoutConfidence = answers + ("mug" -> BoxAnswer(BoundingBox(0, 1, 0, 1), None))
+      assemble(plan, withoutConfidence, 0.5).keys shouldBe Set("mug", "has_mug")
+      SchemaQuestions.confidence(plan.root, withoutConfidence, 0.5) shouldBe Left(Seq("mug"))
+    }
+
+    "say why a confidence is left out - a box answered without one is not unanswered" in {
+      val answers = Map[String, Answer](
+        "scene.mug" -> BoxAnswer(BoundingBox(0, 1, 0, 1), None),
+        "scene.has_mug" -> NoulAnswer(0.97)
+      )
+
+      SchemaQuestions.confidenceLeftOutMessage(
+        Seq("scene_confidence"),
+        Seq("scene.tier", "scene.mug"),
+        answers
+      ) shouldBe
+        "Leaving out scene_confidence: no usable answer for scene.tier; no confidence in the " +
+        "box answer to scene.mug; answered: scene.has_mug, scene.mug"
+
+      SchemaQuestions.confidenceLeftOutMessage(
+        Seq("scene_confidence"),
+        Seq("scene.mug"),
+        answers
+      ) should not include "no usable answer"
+    }
+
+    "not be taken for four free numbers with those names - refused as free numbers" in {
+      val refused = the[IllegalArgumentException].thrownBy(
+        SchemaQuestions.plan(
+          Json.parse(
+            """{"type":"object","properties":{"margins":{"type":"object","properties":{
+              |"top":{"type":"number"},"bottom":{"type":"number"},"left":{"type":"number"},"right":{"type":"number"}
+              |}}}}""".stripMargin
+          )
+        )
+      )
+      refused.getMessage should include("margins.top")
+    }
+
+    "not be taken for four numbers with another range or an enum - score questions" in {
+      val plan = SchemaQuestions.plan(
+        Json.parse(
+          """{"type":"object","properties":{"margins":{"type":"object","properties":{
+            |"top":{"type":"number","minimum":0,"maximum":5},"bottom":{"type":"number","minimum":0,"maximum":5},
+            |"left":{"type":"number","enum":[0,1]},"right":{"type":"number","minimum":0,"maximum":1,"enum":[0,1]}
+            |}}}}""".stripMargin
+        )
+      )
+      plan.questions.keySet shouldBe
+        Set("margins.top", "margins.bottom", "margins.left", "margins.right")
+      plan.questions.values.foreach(_ shouldBe a[ScoreQuestion])
+    }
+
+    "not be taken for any object with numbers - another field, a non-number edge" in {
+      for (
+        edges <- Seq(
+          """"top":{"type":"number"},"bottom":{"type":"number"},"left":{"type":"number"},"right":{"type":"number"},"label":{"type":"boolean"}""",
+          """"top":{"type":"string"},"bottom":{"type":"number"},"left":{"type":"number"},"right":{"type":"number"}"""
+        )
+      ) {
+        val refused = the[IllegalArgumentException].thrownBy(
+          SchemaQuestions.plan(
+            Json.parse(
+              s"""{"type":"object","properties":{"box":{"type":"object","properties":{$edges}}}}"""
+            )
+          )
+        )
+        refused.getMessage should include("box.top")
+      }
+    }
+  }
+
   "question names" should {
 
     "keep a dotted property apart from the nested path it spells (issue #128)" in {
