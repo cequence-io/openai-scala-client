@@ -147,7 +147,7 @@ of tool calls mid-stream.
   [AnthropicCreateChatToolCompletionStreamedWithOpenAIAdapter](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/anthropic/AnthropicCreateChatToolCompletionStreamedWithOpenAIAdapter.scala),
   and [GoogleGeminiCreateChatToolCompletionStreamedWithOpenAIAdapter](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/googlegemini/GoogleGeminiCreateChatToolCompletionStreamedWithOpenAIAdapter.scala).
 
-- **Human approval mid-stream** (🔥 New) - a run that pauses until a tool call is approved - an OpenAI MCP tool with
+- **Human approval mid-stream** - a run that pauses until a tool call is approved - an OpenAI MCP tool with
   `requireApproval` (Responses API) or an Anthropic Managed Agents tool with an `always_ask` permission policy - ends its
   typed stream with one `ToolApprovalRequest` per pending call and `Finish(approval_required)`. Answer on the next call with
   `settings.setToolApprovalDecisions(Seq(request.approve))` (or `request.deny(reason)`), or let a callback decide and get

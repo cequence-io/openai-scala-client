@@ -1,5 +1,149 @@
 # Changelog
 
+## 1.6.0 (unreleased)
+
+The 2026-10-12 - 2026-10-16 work since v1.5.0: the JSON helpers infer the response schema from `T`; Meta's Muse
+models (on the Meta Model API, and the open-weight Muse Spark Open on Together, Fireworks, OpenRouter and Vercel) and
+Gemini 4 Argon; TypeSafe's Jev 1.14 with images, bounding boxes and long context; SubQ Snap, ScaleDown's Classify and
+Liquid's d1-ultra as decision models; OpenRouter and Vercel AI Gateway as chat presets; and ws-client 1.1.3, which
+reaches TLS 1.3-only hosts and skips server-sent-event comments (OpenRouter's keep-alives). Fixed on the way: every
+Gemini 3+ tool loop failed on its second turn, Google Search answers often failed to parse, and listing models failed on
+six OpenAI-compatible providers. Everything below is live-verified against the providers unless stated otherwise.
+
+Artifacts (Scala 2.12 / 2.13 / 3): `openai-scala-client`, `openai-scala-client-stream`, `openai-scala-anthropic-client`,
+`openai-scala-google-gemini-client`, `openai-scala-google-vertexai-client`, `openai-scala-perplexity-sonar-client`,
+`openai-scala-typesafe-client`, `openai-scala-claude-agent-client`, `openai-scala-count-tokens`, `openai-scala-guice` and
+the envelope `openai-scala-all`.
+
+### ⚠️ Upgrading from 1.5.x
+
+**Recompile** - 1.6.0 is not binary compatible with 1.5.0 (a `javap` diff of the published 1.5.0 jars: `ModelInfo`'s
+`created` / `owned_by` are `Option`s, the JSON helpers take an implicit `InferredJsonSchema[T]`, the TypeSafe
+`DecisionProvider` gained fields); ws-client goes from 1.1.1 to 1.1.3.
+
+**Source breaks** - typical code compiles unchanged:
+- `ModelInfo.created` is an `Option[java.util.Date]` and `owned_by` an `Option[String]` - several OpenAI-compatible
+  hosts leave them out (see "Fixed"); every field but `id` has a default, so `ModelInfo(id)` works;
+- generic code calling `createChatCompletionWithJSON[T]`, `createChatCompletionWithJSONFullResponse[T]` or
+  `createChatCompletionBatchWithJSON[T]` with an abstract `T` passes the inference on with a context bound
+  (`T: Format: InferredJsonSchema`), or opts out with a local `implicit val noSchema: InferredJsonSchema[T] =
+  InferredJsonSchema.none`; code passing the helpers' implicits explicitly passes the new one too;
+- TypeSafe: a `DecisionProvider` built or matched positionally meets four new fields, all defaulted (`apiKeyHeader`,
+  `modelProtocols`, `extraHeaders`, `boxQuestions`); an exhaustive match on `Question` / `Answer` needs `BoxQuestion` /
+  `BoxAnswer`, one on `DecisionImages` `Assets` / `ImageObjects`, one on `DecisionProtocol` `ScaleDown`.
+
+**Behavior changes** (details below):
+- the JSON helpers ask with the schema inferred from `T` when the settings carry no `jsonSchema` - 1.5.0 sent such a
+  call as it was and only parsed the reply as JSON; now it goes out like one with an explicit schema (native
+  `json_schema` for a model in `models-supporting-json-schema`, else the JSON-object mode with the schema in the
+  prompt). An explicit `jsonSchema` always wins; a JSON value (`JsObject`), a non-object schema or an abstract `T`
+  infers nothing;
+- ws-client 1.1.3: the Play engine offers TLS 1.3 and 1.2 (1.1.1 offered at most 1.2, so a TLS 1.3-only host -
+  ScaleDown's API - failed every call with "Received close_notify during handshake"; pinning
+  `play.shaded.ahc.org.asynchttpclient.enabledProtocols` or `jdk.tls.client.protocols` still wins), and a server-sent
+  event made only of comments (`: OPENROUTER PROCESSING`, a bare `:`) is skipped instead of failing the stream with
+  "response is not a JSON";
+- `listModels` reads a bare array as well as `{"data": [...]}`;
+- the `liquid` decision preset defaults to `d1` - Liquid removed its free tier `d1:free` on 2026-10-14 (a 404), and `d1`
+  is billed ($0.02 / 1M input tokens);
+- TypeSafe: `TypeSafeServiceFactory.asOpenAI()` passes the images of user messages to Jev (as image assets), and
+  `asOpenAI(service)` / `asOpenAIDecisions(service)` do so whenever the service's host reads images (the new
+  `TypeSafeService.readsImages`); the schema planner (`asOpenAI`, `decide[T]`) asks an object of exactly the `number`
+  edges `top` / `bottom` / `left` / `right`, each a fraction (`minimum` 0, `maximum` 1, as `BoundingBox` declares them),
+  as a box question; a box question to any host but TypeSafe is refused before I/O; Liquid's 422 "over the model's input
+  limit" is a `TypeSafeScalaTokenCountExceededException`.
+
+### New models
+
+- **Meta Muse on the Meta Model API** (`ChatProviderSettings.meta`, `MODEL_API_KEY`): Muse Wonder (`muse-wonder-1.0`,
+  preview since 2026-10-12) and Muse Spark (`muse-spark-1.3` / `1.2` / `1.1`, a `-contributor` id for the cheaper
+  Contributor mode). They always reason, privately; `reasoning_effort = none` goes as `minimal`, `max` as `xhigh` on
+  Spark 1.2 / 1.1, and `stop`, `logit_bias`, `verbosity` and logprobs are dropped (Meta refuses them); tools (`auto`
+  only), strict `json_schema`, images. `MuseSmokeTest target=meta`.
+- **Muse Spark Open** (2026-10-15, open weights, 816B / 42B active, 1M context) - Together
+  (`meta-models/Muse-Spark-Open-816B-A42B`), Fireworks (`accounts/fireworks/models/muse-spark-open`), OpenRouter and
+  Vercel (`meta/muse-spark-open`). It returns its reasoning, and each host takes `reasoning_effort` differently
+  (`museSparkOpen`): Fireworks and OpenRouter refuse `none` (sent as `minimal`; Vercel takes it but reasons anyway, so
+  the `meta/` ids send `minimal` too), the model's own chat template (Together) refuses `minimal` / `max` (sent as
+  `low` / `xhigh`), and Fireworks / Together refuse `verbosity` (dropped). `json_schema` is listed for the Together and
+  Fireworks ids - Vercel does not enforce a strict schema. 9 of 9 sections on each host.
+- **Gemini 4 Argon** (`gemini-4-argon`, on the Gemini API since 2026-10-13): thinking levels LOW / MEDIUM / HIGH
+  (MINIMAL is a 400, assumed for the whole `gemini-4` family), `json_schema`, tools, Google Search, code execution, URL
+  context and images. `Gemini4ArgonSmokeTest`.
+- **Tencent HY4 preview** (`tencent/hy4-preview`, OpenRouter / Novita): reasons and calls tools; its `json_schema`
+  output is flaky, so it is not in `models-supporting-json-schema` (the JSON helper's JSON-object mode answered 5 of 5).
+- **Decision models**: Jev 1.14 (below); Liquid's **d1-ultra** (`d1-ultra`, 2026-10-15, Liquid's strongest decision
+  model: text and images, $0.042 / 1M input tokens, a flat ~210-240 ms from 1 to 40 questions); **SubQ Snap**
+  (`DecisionProviderSettings.subq`, 2026-10-12: a long-context decision model - 295,957 input tokens by its own count -
+  that takes images as `{mediaType, base64}` objects, `DecisionImages.ImageObjects`); ScaleDown's **Classify**
+  (`DecisionProviderSettings.scaleDown`, 2026-10-13: text plus one document, the key in an `x-api-key` header -
+  `DecisionProvider.apiKeyHeader` - and a text-only protocol of its own, `DecisionProtocol.ScaleDown`, also used for the
+  `scaledown/` models on OpenRouter and Vercel via `DecisionProvider.modelProtocols`); on OpenRouter `nace-ai/drex-v2.0`,
+  `~perplexity/pplx-decider-latest`, `scaledown/classify-1`, `typesafe/jev-1.14`, `liquid/d1-ultra` and `respan/span-02`
+  (unlike Span-01 it takes choice and score questions and object states) - all 25 of OpenRouter's decision models
+  answered on 2026-10-16. Constants in `DecisionModelId` / `NonOpenAIModelId`, all in `models-supporting-json-schema`.
+- **Chat presets**: `ChatProviderSettings.openRouter` (`OPENROUTER_API_KEY`) and `ChatProviderSettings.vercel`
+  (`AI_GATEWAY_API_KEY`, a key of the gateway).
+
+### 🔥 The JSON helpers infer the response schema from `T`
+
+`createChatCompletionWithJSON[T]`, `createChatCompletionWithJSONFullResponse[T]` and `createChatCompletionBatchWithJSON[T]`
+take `[T: Format: InferredJsonSchema]` and, when the settings carry no `jsonSchema`, ask with `T`'s schema the way
+`decide[T]` does: a case class with its `@JsonSchemaDescription` / `@JsonSchemaRange` annotations, or a `JsonSchemaOf` of
+your own in scope, as a `JsonSchemaDef` named after the type, `strict` unless an `Option` or `Map` field would make
+OpenAI's strict mode refuse it. `JsonSchemaOf` gains a `name`. Scala 3 has a macro of its own
+(`InferredJsonSchemaMacros`) that gives up quietly on a type that does not derive. `CreateChatCompletionJsonInferredSchema`
+passed 6 of 6 on Scala 2.13 and 3 (gpt-5.4-mini strict and non-strict, a schema-less `JsObject`, Claude Haiku 5.5,
+Gemini 2.5 Flash-Lite, Jev).
+
+### 🔥 Jev 1.14: images, bounding boxes, long context
+
+TypeSafe's 2026-10-14 release (`jev-1.14.0` = `jev-preview`; `jev-latest` stays on 1.13 until about 2026-10-21):
+- **images** (both builds): the `typeSafe` preset sends image parts - in the state or in the questions - as a top-level
+  `assets` map with placeholders plus the `TypeSafe-Danger-Zone-Images` header (`DecisionImages.Assets`); PNG / JPEG of
+  256..1,568 px a side, checked before I/O;
+- **bounding boxes** (1.14 only): `BoxQuestion(instructions)` answers `BoxAnswer(BoundingBox(top, bottom, left, right),
+  confidence)`, fractions of the image (`inPixels`, `padded`, `width`, `height`); a `BoundingBox` field of a schema or of
+  `decide[T]` is asked as one; `DecisionProvider.boxQuestions` (true on the TypeSafe presets only) refuses them for any
+  other host before I/O, and Jev 1.13's bare 400 "Invalid request." for one gets a hint;
+- **long context**: `DecisionProviderSettings.typeSafeLongContext` sends `TypeSafe-Danger-Zone-Long-Context: true` (the
+  new `DecisionProvider.extraHeaders`) - 262,400 input tokens instead of 33,024 for a one-question request (~65.8k per
+  request).
+
+`JevDangerZoneSmokeTest` passed all 16 sections. Images through both OpenAI-shaped adapters (`asOpenAI(service)` +
+`createChatCompletionWithJSON`, `asOpenAIDecisions(service)` + `createDecision` with an `input_image`) were checked on
+every image-reading decision host (`DecisionImageAdaptersSmokeTest`).
+
+### Streams and HTTP
+
+- ws-client 1.1.3 (see "Behavior changes"). `ProviderConnectivitySmokeTest` lists, chats and streams through each
+  provider's own factory: on 2026-10-15 every host negotiated TLS 1.3, and on 2026-10-16 the listing, chat and stream of
+  all 22 targets passed on 1.1.3 (two accounts aside). `StreamedKeepAliveWireSpec` replays a stream recorded from
+  OpenRouter with eight `: OPENROUTER PROCESSING` keep-alives - it fails on 1.1.2 and passes on 1.1.3.
+- `DecisionContextLatencyBenchmark`: the decision models' execution time by context size, 1k to 128k tokens, 31 models
+  (the table is in `docs/decision-models.md`).
+
+### Fixed
+
+- Gemini 3+ / 4 tool loops: a function call sent back without its `thoughtSignature` was a 400 on the second turn
+  ("Function call is missing a thought_signature"), and the OpenAI-shaped messages have no place for it - the adapter
+  remembers the signatures of the calls it hands out and puts them back (Google's placeholder for an unknown one, on
+  the models that need it).
+- Gemini: a Google Search answer whose first cited segment starts at 0 failed to parse (proto3 JSON omits
+  `startIndex: 0`).
+- `listModels` failed on Gemini's OpenAI endpoint, DeepSeek, SambaNova and Cohere (no `created`), OpenRouter and
+  Together (no `owned_by`; Together answers a bare array) - `ModelInfo` requires only `id` now, and `created` is read as
+  Unix seconds (a number or a numeric string), an ISO-8601 string or Anthropic's `created_at`.
+- TLS 1.3-only hosts and server-sent-event comments (ws-client 1.1.3, above).
+- TypeSafe: `asOpenAI(service)` refused image content even for a host that reads images; the warning for a
+  confidence field left out reports a box answered without a confidence as such.
+- CI: a 20-minute timeout on the build jobs (#129).
+
+### Deprecated
+
+- `DecisionModelId.liquid_d1_free` / `NonOpenAIModelId.liquid_d1_free` (`d1:free` is gone - use `liquid_d1` or
+  `liquid_d1_ultra`).
+
 ## 1.5.0 (2026-10-12)
 
 The 2026-10-01 - 2026-10-12 work since v1.4.0 (2026-09-30): OpenAI's Decisions API (natively and as a

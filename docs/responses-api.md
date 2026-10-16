@@ -201,7 +201,7 @@ web search, function calls, MCP) and server-hosted multi-agent execution.
     }
 ```
 
-- **Responses API** - server-hosted multi-agent execution (🔥 New, beta, GPT-6.1 Sol): the model spawns, messages and
+- **Responses API** - server-hosted multi-agent execution (beta, GPT-6.1 Sol): the model spawns, messages and
   waits for subagents on the server. The client sends the required `OpenAI-Beta: responses_multi_agent=v1` header;
   `outputText` is the root agent's answer, the delegation is in `MultiAgentCall` / `MultiAgentCallOutput` / `AgentMessage`
   items and the subagents' own messages in `subagentMessages`. From the chat interface use

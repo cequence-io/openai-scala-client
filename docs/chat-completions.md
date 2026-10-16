@@ -17,6 +17,10 @@ There is a new project [openai-scala-client-examples](../openai-examples/src/mai
   )
 ```
 
+  Only a model's `id` is certain: `created` and `owned_by` are options, since many OpenAI-compatible hosts leave one
+  out (Gemini's OpenAI endpoint, DeepSeek, SambaNova and Cohere send no `created`, OpenRouter and Together no
+  `owned_by`). Together's bare-array listing and Anthropic's `created_at` dates are read too.
+
 - Retrieve model
 ```scala
   service.retrieveModel(ModelId.gpt_5_5).map(model =>
@@ -250,7 +254,7 @@ There is a new project [openai-scala-client-examples](../openai-examples/src/mai
     .map(_.capitals.foreach(println))
 ```
 
-- **Or let the JSON helper infer the schema from `T`** - with no `jsonSchema` in the settings, `createChatCompletionWithJSON[T]`
+- 🔥 **Or let the JSON helper infer the schema from `T`** - with no `jsonSchema` in the settings, `createChatCompletionWithJSON[T]`
   (and `createChatCompletionWithJSONFullResponse[T]` / `createChatCompletionBatchWithJSON[T]`) asks with the schema of `T`:
   the case class above with its annotations, as a `JsonSchemaDef` named after the type (`CapitalsResponse`). It is
   `strict` unless OpenAI's strict mode would refuse it - an `Option` field or a `Map` makes it `strict = false`. The rules

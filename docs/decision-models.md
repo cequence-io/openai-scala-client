@@ -4,12 +4,12 @@
 
 Decision models give typed answers - yes/no probabilities, choices, scores - with calibrated probabilities, in a few
 hundred milliseconds. OpenAI's Decisions API is part of the full `OpenAIService`; TypeSafe AI's Jev, Liquid AI's d1,
-Perplexity's decider, Microsoft-Decision-1, SubQ Snap, OpenRouter's catalogue, Vercel AI Gateway and a local llama.cpp are served through the `typesafe-client` module,
+Perplexity's decider, Microsoft-Decision-1, SubQ Snap, ScaleDown's Classify, OpenRouter's catalogue, Vercel AI Gateway and a local llama.cpp are served through the `typesafe-client` module,
 which also serves either API on either host, typed decisions (`decide[T]`) and re-ranking.
 
-## OpenAI Decisions API (gpt-6-luna) 🔥
+## OpenAI Decisions API (gpt-6-luna) ⚖️
 
-- **Decisions API** (🔥 New, public beta) - typed answers about text and inline images, about 10x faster than asking a
+- **Decisions API** (public beta) - typed answers about text and inline images, about 10x faster than asking a
   model through the Responses API: the probability that a condition holds (`Predicate`), one of fixed options
   (`Choice`) or a score against ordered levels (`Score`), each with its distribution. `gpt-6-luna` is the only model;
   input costs $0.10 per 1M tokens, output nothing.
@@ -240,7 +240,7 @@ the `SystemOneResponse`.
   }
 ```
 
-**Confidence fields** (🔥 New): a `number` property named `<field>_confidence` or `<field>Confidence` next to a field
+**Confidence fields**: a `number` property named `<field>_confidence` or `<field>Confidence` next to a field
 `<field>` (at any depth) is not asked but filled with System One's confidence in that field's answer, rounded to 4 decimals -
 a boolean's probability of the emitted answer, a choice's or score's `confidence`, the weakest option of a multi-select, the
 minimum over everything under an object. Add `"is_urgent_confidence" -> JsonSchema.Number()` to the schema above and the
@@ -253,8 +253,7 @@ Questions are named by their property paths (`customer.is_angry`, a multi-select
 Of the standard settings only `model`, `response_format_type`, `jsonSchema` and `n` = 1 are honoured; anything else you
 set (temperature, `max_tokens`, `seed`, `reasoning_effort`, ...) is dropped with one warning naming it, since System One
 does not sample. A free-form string in the schema, a plain (non-`json_schema`) request, `n > 1`, tools, streaming and
-image content (read only by [Perplexity's decider](#perplexity-decisions-api-pplx-decider-)) are refused up front with an
-explanation. The `jev-*` ids are listed under `models-supporting-json-schema`,
+image content on a host that reads no images are refused up front with an explanation. The `jev-*` ids are listed under `models-supporting-json-schema`,
 so the JSON helper keeps the request in schema mode, and a `chatCompletionRouter` can send closed-vocabulary schemas to
 Jev and everything else to an LLM. See `examples/typesafe/TypeSafeCreateChatCompletionWithJSON`, and
 `TypeSafeOpenAIAdapterScenarios` for fifteen "how to call it and what happens when" cases (JSON user messages, system
@@ -263,17 +262,105 @@ instructions, multi-turn, thresholds, `originalResponse`, dropped settings, and 
 adapter: the 218 tagged lines of GitHub's Terms of Service are the state, a string enum over the line ids ranks every
 line by relevance and a boolean tells whether the document answers the query at all, in one ~200 ms request.
 
+### Jev 1.14, images, boxes and long context 🧪
+
+🔥 TypeSafe's "JevDay" release (2026-10-14) brought **`jev-1.14.0`** (`jev-preview` now, `jev-latest` about a week later -
+small improvements everywhere, most in multilingual support; `jev-1.13.0` stays available) and three "danger zone"
+features - dreamer-ready, not yet production-grade in TypeSafe's words, each behind an opt-in header:
+
+- **Images** (Jev 1.13 and 1.14): put a `DecisionImage` anywhere in the state, in a question's instructions (a reference
+  picture) or in its criteria (options defined by example pictures). The client sends each as one of TypeSafe's
+  **assets** - a placeholder (a UUID) where the image was, the image once in a top-level `assets` map - and opts in with
+  `TypeSafe-Danger-Zone-Images: true` itself (`DecisionImages.Assets`, the `typeSafe` preset). Jev takes PNG or JPEG of
+  256 to 1,568 pixels a side (78,400 to 2,458,624 in all) and never resizes, so anything else is refused before sending;
+  a 512 x 512 image costs ~750 input tokens, again for every place it is used.
+- **Boxes** (Jev 1.14 only): `BoxQuestion("the red rectangle in `photo`")` answers where something is - a `BoxAnswer`
+  with a `BoundingBox` (top / bottom / left / right as fractions of the image, `inPixels(w, h)`, `padded(margin)`) and a
+  confidence. There is no "not found": an absent target still gets a box, with a low confidence - ask a noul too. Only
+  TypeSafe answers boxes (`DecisionProvider.boxQuestions`, set on the `typeSafe` presets), so a box question for any
+  other provider - natively, a `BoundingBox` field of `decide[T]` or of the JSON schema adapter - is refused before
+  sending ("liquid answers no box questions (mug) - ..."); a provider of your own whose host answers them sets
+  `boxQuestions = true`. Jev before 1.14 (`jev-latest` until it moves on) answers one with a bare 400 "Invalid
+  request.", to which the client adds why ("box questions need Jev 1.14 or later (e.g. jev-1.14.0)").
+- **Long context**: `DecisionProviderSettings.typeSafeLongContext` sends `TypeSafe-Danger-Zone-Long-Context: true` with
+  every request - 262k tokens per request and per question instead of 64k / 32k, at the same price, slower and less
+  accurate past the defaults. `DecisionProvider.extraHeaders` carries it (or any header of your own).
+
+```scala
+  val jev = TypeSafeServiceFactory(DecisionProviderSettings.typeSafe)
+
+  jev.systemOne(
+    Json.obj("photo" -> DecisionImage(Files.readAllBytes(kitchen))),
+    Map(
+      "mug"     -> BoxQuestion("the coffee mug in `photo`"),
+      "has_mug" -> NoulQuestion("Is there a coffee mug in `photo`?")
+    ),
+    DecisionModelId.jev_1_14_0
+  ).map { r =>
+    if (r.noul("has_mug").noul > 0.5) crop(kitchen, r.box("mug").box.padded(0.05).inPixels(width, height))
+  }
+
+  // a reference picture in a question, options defined by example pictures
+  NoulQuestion(Some(Json.arr("Is the person in `door` the same as in this badge photo:", DecisionImage(badge))), None)
+  ChoiceQuestion(ListMap("thumbs_up" -> Some(DecisionImage(thumb)), "none" -> Some(JsString("No gesture"))), Some(JsString("Which gesture is in `camera`?")))
+
+  val longJev = TypeSafeServiceFactory(DecisionProviderSettings.typeSafeLongContext)   // 262k tokens
+```
+
+The adapters take all of it. **JSON schema** (`asOpenAI()`, `decide[T]`): a chat message's image content goes into the
+state, and an object of exactly the four `number` fields `top` / `bottom` / `left` / `right`, each a fraction of the
+image (`minimum` 0, `maximum` 1) - a `BoundingBox` field, or a case class of your own with `@JsonSchemaRange(0, 1)` on its
+four `Double` edges - is asked as a box question, its description the instructions, filled with the edges (a
+`<field>_confidence` sibling gets the box's confidence); the same case class works with an LLM. The range is the
+opt-in: four free numbers with those names (margins, insets) are refused like any free number, and with another range
+or an enum they are score questions. **OpenAI's
+Decisions interface** (`TypeSafeServiceFactory.asOpenAIDecisions(DecisionProviderSettings.typeSafe)`): an
+`input_image` of a `createDecision` call reaches Jev as an asset; through `typeSafeLongContext` the call gets 262k tokens
+(OpenAI's questions have no box type, so boxes stay System One's).
+
+```scala
+  case class Detection(
+    @JsonSchemaDescription("the red rectangle in the image") red: BoundingBox,
+    @JsonSchemaDescription("Is there a red rectangle in the image?") visible: Boolean
+  )
+  implicit val detectionFormat: Format[Detection] = Json.format[Detection]   // BoundingBox brings its own Format
+
+  TypeSafeServiceFactory.asOpenAI().createChatCompletionWithJSON[Detection](
+    Seq(UserSeqMessage(Seq(TextContent("A photo."), ImageURLContent(dataUrl)))),
+    CreateChatCompletionSettings(DecisionModelId.jev_1_14_0)
+  )                                                          // Detection(BoundingBox(0.49, 0.81, 0.26, 0.5), true)
+  jev.decide[Detection](Json.obj("photo" -> DecisionImage(bytes)), DecisionModelId.jev_1_14_0)
+```
+
+Live 2026-10-14 (`examples/typesafe/JevDangerZoneSmokeTest`, 16 sections, all passed): a red
+circle read red at 0.99-1.00 and a circle at 1.00 on both builds (~1,100 tokens), the reference picture told the circle
+(1.00) from the square (0.01), the example pictures picked the green triangle (1.00), boxes on 1.14 came within 0.02 of
+both shapes' edges (confidence 0.73-0.81) while an absent shape's box had 0.05 (its noul 0.01), a box on Jev 1.13 is a 400
+"Invalid request.", `decide[Shape]` and the OpenAI interface read an image right, a `BoundingBox` field came back as
+(0.49, 0.81, 0.26, 0.50) for the rectangle at (0.5, 0.8, 0.25, 0.5) through both the JSON schema adapter and `decide[T]`,
+`createDecision` with an `input_image` read the circle (red 0.96) and with long context answered over 57k tokens,
+~0.2-0.45 s per call. The limits by
+Jev's own count (`usage.input_tokens`): **33,024** input tokens for a request of one question and ~65.8k for a request
+(state plus every question) by default, **262,400** for both with long context (120k tokens answered in 1.7 s, 250k in
+4.6 s) - one more is a 400 `max_tokens_exceeded`. Without the opt-in an image or a box is a 400 "Images are experimental.
+Send the header TypeSafe-Danger-Zone-Images: true to use them."; a WebP, an unused asset or an image out of bounds a 400
+"Invalid image request." / "Invalid image dimensions."; an image left as an `image_url` part is read as text. OpenRouter's
+Jev drops `assets` and refuses a box question (its validator knows only noul / choice / score), and does not list Jev 1.14
+yet - so these features are TypeSafe's own host only. The data opt-in ("Help improve TypeSafe models") is an organization
+setting in TypeSafe's console, not an API flag.
+
 ## Liquid AI (d1) 💧
 
-[Liquid AI](https://www.liquid.ai/)'s first decision model **d1** (launched 2026-09-30) is served on the **same System One
-API as TypeSafe's Jev** - the same `state` + typed `questions` in, calibrated probabilities out - so the TypeSafe lib
-(`openai-scala-typesafe-client`) talks to it unchanged; only the host, the key and the model differ:
+[Liquid AI](https://www.liquid.ai/)'s decision models - **d1** (launched 2026-09-30) and the stronger **d1-ultra**
+(2026-10-15) - are served on the **same System One API as TypeSafe's Jev** - the same `state` + typed `questions` in,
+calibrated probabilities out - so the TypeSafe lib (`openai-scala-typesafe-client`) talks to them unchanged; only the host,
+the key and the model differ:
 
 | | Status |
 |---|---|
-| Decisions - native `systemOne`, `listModels` (`TypeSafeServiceFactory.liquid()`) | ✅ works (`d1:free`, `d1`) |
+| Decisions - native `systemOne`, `listModels` (`TypeSafeServiceFactory.liquid()`) | ✅ works (`d1` by default, `d1-ultra`; the free tier `d1:free` was removed on 2026-10-14) |
 | Decisions as structured output - the OpenAI adapter (`TypeSafeServiceFactory.liquidAsOpenAI()`, `json_schema` only) | ✅ works |
-| Images - the paid `d1` (`d1:free` refuses them) | ✅ works, natively and through the OpenAI adapter |
+| Images - `d1` and `d1-ultra` | ✅ works, natively and through both OpenAI adapters |
 | Open d1 - the open-weight d1-3B and d1-omni-600M on a local llama.cpp (`DecisionProviderSettings.llamaCpp`) | ⏳ the provider works (live with other decision models); llama.cpp b11476 cannot load d1 yet |
 | Chat - Liquid's OpenAI-compatible surface (`ChatProviderSettings.liquid`, `https://api.liquid.ai/openai/v1/`) | ❌ answers, but lists no chat models for a free-tier key (the LFM chat models are on OpenRouter) |
 
@@ -281,7 +368,7 @@ API as TypeSafe's Jev** - the same `state` + typed `questions` in, calibrated pr
   import io.cequence.openaiscala.typesafe.domain.{ChoiceQuestion, NoulQuestion}
   import io.cequence.openaiscala.typesafe.service.TypeSafeServiceFactory
 
-  val d1 = TypeSafeServiceFactory.liquid()   // LIQUID_API_KEY, https://api.liquid.ai/decisions, d1:free
+  val d1 = TypeSafeServiceFactory.liquid()   // LIQUID_API_KEY, https://api.liquid.ai/decisions, d1 by default
 
   d1.systemOne(
     state = "I have been waiting over three weeks for my order and nobody answers my emails. I want my money back.",
@@ -317,7 +404,7 @@ kept-alive connection:
 
 d1 takes ~340 ms plus ~30 ms per question beyond three; Jev stays flat whatever the count. Under load d1 varies a lot: a
 later run the same evening measured medians of 459 / 1,016 / 1,292 / 6,667 / 1,562 ms (outliers up to 16 s), Jev
-unchanged at ~250 ms. The free tier (`d1:free`) was
+unchanged at ~250 ms. The free tier (`d1:free`, removed on 2026-10-14) was
 intermittently unavailable on launch day - stretches of 429 `model_unavailable`, at times for ten minutes, and seconds-long
 answers right after one - so pace your calls and wrap the service in `TypeSafeServiceAdapters.retry`, which treats a 429 as
 transient.
@@ -326,26 +413,51 @@ Liquid's code (e.g. `model_unavailable`) in `errorType`. See
 [LiquidD1SmokeTest](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/typesafe/LiquidD1SmokeTest.scala)
 (the models, a native call, the OpenAI adapter, Jev side by side, and the latency benchmark).
 
-**Images** (the paid `d1`, live 2026-10-07): put `DecisionImage` parts anywhere in the state, as for Perplexity - the
+🔥 **d1-ultra** (2026-10-15, [launch post](https://www.liquid.ai/blog/d1-ultra)): Liquid's strongest decision model - a
+larger open-weight base with Liquid's training, 44 languages, 65 on Artificial Analysis' Decision Index, better accuracy
+and calibration than d1 and Jev 1.14 across Liquid's 112 evaluations - on the same API, with images the same way
+(`DecisionModelId.liquid_d1_ultra`, in `models-supporting-json-schema`). It costs $0.042 per million input tokens, no
+output; like d1, every question is billed as its own prompt - the state, its images and the question - so 40 questions
+over a short review bill 3,007 input tokens (Jev ~1,400, reading the state once). Live 2026-10-15
+(`LiquidD1SmokeTest model=d1-ultra`, `DecisionModelsLatencyBenchmark only=liquid`, `DecisionContextLatencyBenchmark
+only=liquid`; median per call):
+
+| | d1-ultra | d1 | Jev 1.13 |
+|---|---|---|---|
+| 1 / 10 / 40 questions | 208 / 227 / 237 ms | 254 / 250 / 318 ms | 210 / 217 / 227 ms |
+| a 1k / 8k / 16k-token state | 230 / 639 / 599 ms | 207 / 283 / 516 ms | |
+| a question's prompt (the state, its images and the question) | at most 32,768 tokens | at most 65,536 tokens | 33,024 tokens (65.8k per request) |
+| input per 1M tokens | $0.042 | $0.02 (was $0.04 on 2026-10-07) | $0.042 |
+
+d1-ultra stays flat like Jev where d1 grows with the question count. The answers agree with d1 and Jev (the triage above:
+complaint 0.997, frustration 2.27 of 0..3 - d1 0.998 / 2.22, Jev 0.990 / 2.34 - though d1-ultra puts the refund request
+in shipping, 0.57 to billing's 0.43, where d1 and Jev say billing at 0.72 / 0.76); a red circle reads red 1.00 / blue 0.00
+/ circle 1.00 through both OpenAI adapters; a defect report in English, German, Slovak, Japanese, Arabic and Swahili
+scores 0.95-0.98 (d1 the same, but Slovak 0.92 to 0.97), the no-defect controls ~0. Limits as d1's: 128 questions, 10
+score levels, 8 images / 10,000 patches, the state under 1 MB, a prompt under the token limit or 250,000 bytes of text -
+over it a 422 "The prompt for question `x` is over the model's input limit of 32768 tokens, images included, or 250000
+bytes of text.", a `TypeSafeScalaTokenCountExceededException` (as d1's at 65,536); the test sentence of the context
+benchmark counts 20 tokens there, so 32,768 is about 31k tokens of Jev's count.
+
+**Images** (`d1` and `d1-ultra`, live 2026-10-07 / 2026-10-15): put `DecisionImage` parts anywhere in the state, as for Perplexity - the
 client lifts them into the top-level `images` array Liquid documents and leaves an `[image n]` marker where each stood
 (Liquid itself lifts only the parts of an array state and reads one nested in an object as text: blue at 0.56 instead of
 0.9999). Through `liquidAsOpenAI(defaultModel = DecisionModelId.liquid_d1)` the image content of user messages goes there
 too. At most 8 images, 10,000 32 x 32 patches in all and an aspect ratio of 100 - each a quick 422 - as base64 PNG, JPEG
-or WebP (a GIF is refused, despite the docs); an image costs 1.5 input tokens per patch for every question, at $0.04 / 1M
-input tokens.
+or WebP (a GIF is refused, despite the docs); an image costs 1.5 input tokens per patch for every question.
 
 ```scala
-  val liquid = TypeSafeServiceFactory.liquid() // d1:free by default - text only
+  val liquid = TypeSafeServiceFactory.liquid() // d1 by default
 
   // the model is a per-call choice: systemOne's optional third argument (as decide[T]'s `model`,
-  // RerankSettings.model and CreateDecisionSettings.model); the paid d1 reads the photo
+  // RerankSettings.model and CreateDecisionSettings.model)
   liquid.systemOne(
     Json.obj("note" -> "A photo from a customer.", "photo" -> DecisionImage(Files.readAllBytes(photo))),
     Map("damaged" -> NoulQuestion("Is the product in the photo damaged?")),
-    DecisionModelId.liquid_d1
+    DecisionModelId.liquid_d1_ultra
   )
 
-  // or make it the service's default: TypeSafeServiceFactory.liquid(defaultModel = DecisionModelId.liquid_d1)
+  // or make it the service's default: TypeSafeServiceFactory.liquid(defaultModel = DecisionModelId.liquid_d1_ultra)
 ```
 
 **Open d1** (2026-10-07): Liquid released the weights - d1-3B (text and images) and the experimental d1-omni-600M (text and
@@ -427,8 +539,9 @@ Images go only as base64 PNG / JPEG / WebP data URLs - the API never fetches a U
 scales an image to about 2,100 input tokens (a 4032 x 3024 phone photo and an 8192 x 8192 image both answered in about a
 second on 2026-10-08), where it used to time out (504) over 2,048 tiles of 32 x 32 pixels, so the client no longer caps the
 size (a `DecisionProvider` with `maxImageTiles` still refuses larger images up front for a host that needs it). Input tokens
-cost $0.02 per million (was $0.04). Jev reads an image part as text, so the plain `asOpenAI()` still refuses image content
-(Liquid's paid `d1` takes images in an array of their own - see [Liquid AI (d1)](#liquid-ai-d1-)).
+cost $0.02 per million (was $0.04). Jev reads images too since Jev 1.14, as assets - see
+[Jev 1.14, images, boxes and long context](#jev-114-images-boxes-and-long-context-) - and Liquid's paid `d1` takes them in
+an array of their own (see [Liquid AI (d1)](#liquid-ai-d1-)).
 
 **pplx-decider vs Jev vs d1** (live 2026-10-02): the answers agree (defect 0.942 / 0.940 / 0.988, sentiment mixed 0.95 /
 0.94 / 0.87, severity 1.78 / 1.99 / 1.88 of 0..2), and the blue square is blue at 0.99 (161 input tokens). On 2026-10-08, with
@@ -454,7 +567,7 @@ side, and the latency benchmark).
 
 ## Microsoft-Decision-1 (Microsoft Foundry) 🪟
 
-🔥 Microsoft's decision model **Microsoft-Decision-1** (public preview since 2026-10-09; built on Qwen3.5-9B, future
+Microsoft's decision model **Microsoft-Decision-1** (public preview since 2026-10-09; built on Qwen3.5-9B, future
 iterations to be rebased on OpenAI and MAI models; $0.042 per 1M input tokens in the US and EU data zones, output free) is
 served from your own Microsoft Foundry resource and speaks TypeSafe's System One protocol - live-verified 2026-10-09 at
 `POST <endpoint>/providers/microsoft/v1/systemone` with a `Bearer` key (the launch example's `<endpoint>/v1/systemone` is a
@@ -508,7 +621,7 @@ the token limit) - all 10 sections passed.
 
 ## Vercel AI Gateway ▲
 
-🔥 Vercel's AI Gateway serves decision models through a TypeSafe-compatible API, so `DecisionProviderSettings.vercel` reaches
+Vercel's AI Gateway serves decision models through a TypeSafe-compatible API, so `DecisionProviderSettings.vercel` reaches
 them like any other host: `POST https://ai-gateway.vercel.sh/typesafe/v1/systemone` with an AI Gateway key (`vck_…`, created
 under the team's AI Gateway → API keys, in `AI_GATEWAY_API_KEY`; a Vercel account token is a 401), the models listed at
 `GET /typesafe/v1/models` in TypeSafe's shape - `typesafe-ai/jev` (the bare `jev` too), `liquid/d1` (text and images),
@@ -574,6 +687,59 @@ owning team, a score with its legend), an object state, `decide[Triage]`, the Op
 from a case class, a blue square both ways, a ~95k-token state, the token limit and two refusals - all 11 sections
 passed on Scala 2.13 and 3.
 
+## ScaleDown Classify 🧮
+
+🔥 ScaleDown's Constrained Decoding Models (launched 2026-10-13) answer one task each without a generative loop, and
+**Classify** answers System One's questions - nouls, choices and scores - at `POST https://api.scaledown.xyz/v1/scaledown`
+(the key in an `x-api-key` header, `SCALEDOWN_API_KEY`; models `classify-1` and `classify`, the latest version), as
+`scaledown/classify-1` on OpenRouter and as `scaledown/scaledown-classify-1` on Vercel's AI Gateway (open to a free-tier
+team). 1M tokens of context, $0.05 per 1M input tokens ($0.04 through OpenRouter), output free - but every question is a
+classify call of its own, so the state is billed once per question (~180-190 tokens per noul about a one-line review).
+
+It reads text only: any other JSON in a request - an object or array state, object instructions, an object score level, an
+option without a description - is a 400 / 422, and a noul's yes / no criteria are accepted but ignored. So its requests go
+in **ScaleDown's protocol** (`DecisionProtocol.ScaleDown`), on its own host and - by model prefix
+(`DecisionProvider.modelProtocols`) - for the `scaledown/` models of OpenRouter and Vercel, and every routine runs on it
+unchanged (`decide[T]`, re-ranking, the guardrails, the OpenAI interface with system messages):
+
+```scala
+  val classify = TypeSafeServiceFactory(DecisionProviderSettings.scaleDown)       // SCALEDOWN_API_KEY
+  classify.systemOne(review, questions)                                           // classify-1
+  classify.systemOne(Json.arr("A scanned page.", DecisionImage(scan)), questions) // one image, as the state's document
+
+  // the same rules on OpenRouter (and Vercel) for its scaledown/ models only
+  val openRouter = TypeSafeServiceFactory(DecisionProviderSettings.openRouter)
+  openRouter.systemOne(Json.obj("ticket" -> ticket), questions, DecisionModelId.openrouter_scaledown_classify_1)
+```
+
+- the state: text as it is; ScaleDown's own `{text, document, document_mime_type}` as it is (a base64 PDF, TIFF or image);
+  any other JSON as its **pretty-printed** text - in a small benchmark (6 states x 3 nouls, twice) classify read compact
+  JSON worst (mean error 0.12: a plain message with instructions taken for a prompt injection at 0.29-0.39),
+  pretty-printed JSON best (0.08) and `key: value` lines in between (0.09)
+- an image part goes into the state's `document` (an `[image 1]` marker left in the text), one per request - a second is
+  refused before sending; ScaleDown reads it by OCR and vision (a scanned invoice's total at 0.97, a blue square told from
+  a red one)
+- the questions in text: a noul's criteria appended to its instructions ("Yes when: ...", "No when: ...", as for OpenAI's
+  protocol - asked whether a message about a cat "qualifies" under an "animal" criterion, the criteria field left the
+  answer at 0.49, the appended lines took it to 0.95), missing instructions and descriptions as empty strings (OpenRouter
+  requires instructions), a `{label, description}` level as `label: description`
+
+Live 2026-10-13, its launch day (`examples/typesafe/ScaleDownSmokeTest`, 13 sections: all passed through OpenRouter and
+through Vercel; against ScaleDown's own API without credits, the listing passed and every request the client built came
+back as a 402 "Insufficient credits" - it validates the body first, so a malformed one, an unknown model or a one-level
+score is a 422): the review in 0.4-0.6 s, a guardrail flagging an injection and passing a plain question, `decide[Triage]`,
+a rerank, the OpenAI interface with a system message. Latency grows with the questions - 0.4 / 0.6 / 0.9 / 2.4 s at 1 / 10
+/ 40 / 129 nouls, 7-15 s at 150-175 - and a request that takes over ~29 s is a 504 (its AWS API Gateway's timeout):
+200 questions timed out, and that day one call in a few took 15-30 s or timed out at random - keep requests well under
+~100 questions and use the retry adapter (a 502 / 504 is retryable). The same question on the same state varied a little
+between requests (0.44-0.55). Its `GET /v1/models` answers any key and lists compress, extract and summarize too, left
+out by their output modalities; Extract and Summarize are chat-completion models, not integrated here.
+
+> **TLS 1.3 only.** ScaleDown's own host refuses TLS 1.2. The Play WS engine offers TLS 1.3 since ws-client 1.1.2 (the
+> JDK's default client protocols; before, its shaded AsyncHttpClient enabled only TLSv1.2 / 1.1 / 1 and the handshake
+> failed with "Received close_notify during handshake"). A JVM that pins the protocols - with
+> `play.shaded.ahc.org.asynchttpclient.enabledProtocols` or `jdk.tls.client.protocols` - must keep `TLSv1.3` in the list.
+
 ## Decision-model providers 🧩
 
 Decision models are spreading fast, and most hosts copy TypeSafe's System One protocol - so the TypeSafe lib reaches them all
@@ -601,12 +767,13 @@ a protocol of its own; its preset translates the questions and answers, so every
 
 | Preset | Key | Models | Notes |
 |---|---|---|---|
-| `typeSafe` | `TYPESAFE_API_KEY` | `jev-latest` | the default of `TypeSafeServiceFactory()` |
-| `liquid` | `LIQUID_API_KEY` | `d1:free`, `d1` | at most 128 questions; the paid `d1` reads images (sent in a top-level `images` array) |
+| `typeSafe` | `TYPESAFE_API_KEY` | `jev-latest`, `jev-preview` (Jev 1.14), `jev-1.13.0`, `jev-1.14.0` | the default of `TypeSafeServiceFactory()`; images as TypeSafe's assets, box questions on Jev 1.14; `typeSafeLongContext` for 262k tokens |
+| `liquid` | `LIQUID_API_KEY` | `d1` (default), `d1-ultra` | at most 128 questions; both read images (sent in a top-level `images` array) |
 | `perplexity` | `PERPLEXITY_API_KEY` (or `SONAR_API_KEY`) | `pplx-decider-v1.1-27b`, `pplx-decider-v1-27b` | `POST /v1/decisions`, images of any size, at most 128 questions |
-| `openRouter` | `OPENROUTER_API_KEY` | Jev, d1, Perplexity's deciders, OpenAI's Luna, Microsoft-Decision-1, Cloudflare's Clef (+ Flash, Omni), Solar Decide (+ Flash), Mercury Decide (+ free), Tev1, Kev 4B, NACE's Drex, Span-01 (+ Lite) | listed with `output_modalities=decisions`; images as `image_url` parts in the state (read by Clef Omni / Flash, Perplexity's decider, Luna, d1 and Mercury Decide; the others read them as text); Span-01 takes noul questions only |
-| `vercel` | `AI_GATEWAY_API_KEY` | `typesafe-ai/jev`, `liquid/d1`, `microsoft/microsoft-decision-1`, `openai/gpt-6-luna-decisions`, `convaiinnovations/laya` (+ free) | `https://ai-gateway.vercel.sh/typesafe/`, images in the state; a free-tier team gets Laya at 5 requests per minute, the rest needs paid credits |
+| `openRouter` | `OPENROUTER_API_KEY` | Jev, d1, Perplexity's deciders (+ the `~perplexity/pplx-decider-latest` alias), OpenAI's Luna, Microsoft-Decision-1, Cloudflare's Clef (+ Flash, Omni), Solar Decide (+ Flash), Mercury Decide (+ free), Tev1, Kev 4B, NACE's Drex (1.5, 2.0), Span-01 (+ Lite), Span-02, ScaleDown's Classify-1, Jev 1.14, d1-ultra | listed with `output_modalities=decisions`; images as `image_url` parts in the state (read by Clef Omni / Flash, Perplexity's decider, Luna, d1 and Mercury Decide; the others read them as text); Span-01 takes noul questions only (Span-02 all three kinds, and object states); `scaledown/` models get ScaleDown's text-only protocol |
+| `vercel` | `AI_GATEWAY_API_KEY` | `typesafe-ai/jev`, `liquid/d1`, `microsoft/microsoft-decision-1`, `openai/gpt-6-luna-decisions`, `convaiinnovations/laya` (+ free), `scaledown/scaledown-classify-1` | `https://ai-gateway.vercel.sh/typesafe/`, images in the state; a free-tier team gets Laya and ScaleDown at 5 requests per minute, the rest needs paid credits |
 | `subq` | `SUBQ_API_KEY` | `subq-snap-preview` | `https://api.subq.ai/`, at most 295,957 input tokens, up to 4 images as `{mediaType, base64}` objects in a top-level `images` array |
+| `scaleDown` | `SCALEDOWN_API_KEY` | `classify-1`, `classify` | `https://api.scaledown.xyz/`, `POST /v1/scaledown`, the key in `x-api-key`; text only (ScaleDown's protocol) plus one image as the state's document; TLS 1.3 only (see above) |
 | `microsoftFoundry(endpoint, deployment)` | `FOUNDRY_API_KEY` | your deployment of Microsoft-Decision-1 (`decision-1` by default; `listModels` lists them) | your Foundry resource, `POST /providers/microsoft/v1/systemone`; at most 255 questions, 64k tokens, no images |
 | `openAI` | `OPENAI_SCALA_CLIENT_API_KEY` (or `OPENAI_API_KEY`) | `gpt-6-luna` | OpenAI's own protocol (translated), images, at most 200 questions; a refusal arrives as `UnknownAnswer("refusal", ...)` |
 | `llamaCpp` | none (`LLAMA_API_KEY` if the server has one) | whatever `llama-server` loaded | a local server, `http://127.0.0.1:8080/`; a router needs a model id from `listModels` (its decision models only); images in a top-level `images` array, for a model with a projector (else a 501) |
@@ -615,10 +782,42 @@ A `DecisionProvider` carries what differs between hosts: the protocol (System On
 variable and default model, the decisions path (`v1/systemone`, `v1/decisions` on Perplexity and OpenAI), how `listModels` finds the models (TypeSafe's `{"models"}` list, an OpenAI-style
 `{"data"}` list with query parameters, Azure's deployment list on a Foundry resource, or a fixed list - with what each model reads, when the host says), a question cap and
 whether and how the host reads images (in the state, or lifted into a top-level `images` array; both checked before sending,
-with the largest image a host takes), the request id headers, fallback key variables and whether a key is needed at all. `forProvider(provider, apiKey, timeouts)` and
+with the largest image a host takes), the request id headers, fallback key variables, whether a key is needed at all and the header it goes in (`Authorization:
+Bearer` unless `apiKeyHeader` says otherwise - ScaleDown's `x-api-key`), and the protocol of the models whose ids start with a
+prefix (`modelProtocols`). `forProvider(provider, apiKey, timeouts)` and
 `withEngine(engine, provider)` take an explicit key or a shared engine. OpenRouter's ids are in `models-supporting-json-schema`;
 `createChatCompletionWithJSON` works with another host's ids too: it then sends the schema in the prompt (JSON-object mode),
 and the adapter reads it back from there.
+
+### Images through the OpenAI adapters 🖼️
+
+Both OpenAI-shaped adapters send a picture the way the host takes it - TypeSafe's assets, image parts in the state
+(Perplexity, OpenRouter, Vercel), a top-level `images` array (Liquid, llama.cpp), image objects (SubQ), the state's
+document (ScaleDown) or an `input_image` (OpenAI) - and refuse it before sending when the provider reads none
+(`DecisionProvider.readsImages`; `asOpenAI(service)` asks the service, `TypeSafeService.readsImages`).
+[DecisionImageAdaptersSmokeTest](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/typesafe/DecisionImageAdaptersSmokeTest.scala)
+checks it live: one red circle and three yes / no questions (red? blue? a circle?) through the JSON schema adapter
+(`asOpenAI(service)` + `createChatCompletionWithJSON`) and OpenAI's Decisions interface (`asOpenAIDecisions(service)` +
+`createDecision` with an `input_image`). Live 2026-10-15 - P(red) / P(blue) / P(circle), the same through both adapters:
+
+| model | host | images as | result |
+|---|---|---|---|
+| `jev-latest` (1.13), `jev-1.14.0` | typesafe | assets | 1.00 / 0.00 / 0.94, 0.98 / 0.02 / 0.89 |
+| `pplx-decider-v1.1-27b` | perplexity | parts in the state | 1.00 / 0.00 / 1.00 |
+| `gpt-6-luna` | openai | `input_image` | 1.00 / 0.00 / 1.00 |
+| `d1` | liquid | `images` array | 1.00 / 0.00 / 1.00 |
+| `subq-snap-preview` | subq | image objects | 0.99 / 0.01 / 0.98 |
+| `inception/mercury-decide:free` | openrouter | parts in the state | 1.00 / 0.00 / 1.00 |
+| `perplexity/pplx-decider-v1.1-27b` | vercel | parts in the state | 1.00 / 0.00 / 1.00 |
+| `scaledown/scaledown-classify-1` | vercel | the state's document | 0.88 / 0.11 / 0.85 |
+| `respan/span-01-lite:free` | openrouter | - | 400 "Respan does not accept `image_url` parts in state" |
+| `convaiinnovations/laya-free` | vercel | - | 422 "That request was rejected" |
+| `decision-1` (Microsoft-Decision-1) | microsoft-foundry | - | refused before sending |
+
+Images are allowed per host, not per model: a text-only model on OpenRouter or Vercel gets the picture too. Span-01 and
+Laya refuse it loudly, but on 2026-10-10 Jev, Kev, Tev1, Drex and Solar Decide (+ Flash) on OpenRouter read an image part
+as text and answered near-uniformly - check what a model reads (its listing's input modalities) before sending it a
+picture there.
 
 ### Execution time across hosts ⏱️
 
@@ -707,3 +906,63 @@ Other hosts that speak the protocol, from their docs (not live-verified here - b
 meraGPT, milliseconds.ai, SiliconFlow (`Kev-4B`), Berget, Opper, Featherless, and local runtimes besides llama.cpp such
 as Ollama 0.35+ (`http://localhost:11434/`). OpenAI's and xAI's `/v1/decisions` exist but are gated (a limited preview / a per-key
 permission).
+
+### Execution time by context size 📏
+
+[DecisionContextLatencyBenchmark](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/typesafe/DecisionContextLatencyBenchmark.scala)
+asks every decision model one yes / no question over a state of 1k to 128k tokens (a 19-token sentence repeated, sized by
+Jev's count), 3 timed calls per size after an untimed warm-up, and stops a model at the first size it refuses. TypeSafe's
+Jev runs with its long-context opt-in (`DecisionProviderSettings.typeSafeLongContext`). Live 2026-10-14 from one box in
+Europe, 31 models, 477 calls in 257 s - median ms per call; `own tokens` = the model's own input count at the largest
+size it answered:
+
+| model | host | 1k | 2k | 4k | 8k | 16k | 32k | 64k | 128k | own tokens |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| gpt-6-luna | openai | 226 | 266 | 243 | 252 | 165 | 431 | 463 | 661 | 128,144 |
+| openai/gpt-6-luna-decisions | openrouter | 311 | 302 | 278 | 205 | 218 | 411 | 412 | 704 | 128,144 |
+| respan/span-01-lite:free † | openrouter | 314 | 297 | 469 | 474 | 449 | 450 | 565 | 909 | 194,404 |
+| jev-1.14.0 ‡ | typesafe | 225 | 369 | 244 | 280 | 335 | 501 | 836 | 1,854 | 128,262 |
+| jev-1.13.0 ‡ | typesafe | 225 | 230 | 238 | 282 | 344 | 483 | 823 | 1,861 | 128,262 |
+| subq-snap-preview | subq | 238 | 236 | 261 | 396 | 474 | 547 | 1,124 | 1,793 | 128,074 |
+| nace-ai/drex-v2.0 * | openrouter | 600 | 625 | 431 | 787 | 938 | 1,158 | 1,410 | 1,749 | 23,790 |
+| scaledown/classify-1 | openrouter | 630 | 297 | 524 | 454 | 590 | 860 | 1,503 | 2,203 | 128,166 |
+| nace-ai/drex-v1.5 | openrouter | 664 | 633 | 634 | 726 | 975 | 1,263 | 1,818 | 3,132 | 128,005 |
+| d1 | liquid | 483 | 185 | 200 | 266 | 410 | 580 | refused | - | 33,714 |
+| decision-1 (Microsoft-Decision-1) | microsoft-foundry | 467 | 463 | 489 | 632 | 783 | 777 | refused | - | 32,023 |
+| microsoft/microsoft-decision-1 | openrouter | 391 | 424 | 393 | 474 | 1,130 | 964 | refused | - | 32,023 |
+| upstage/solar-decide-flash | openrouter | 1,324 | 762 | 957 | 1,956 | 1,213 ✗1 | 2,218 ✗2 | 4,041 ✗1 | 4,196 ✗2 | 128,363 |
+| cloudflare/clef-omni | openrouter | 286 | 303 | 344 | 345 | 685 | 1,593 | 5,143 | refused | 64,000 |
+| pplx-decider-v1.1-27b | perplexity | 301 | 351 | 445 | 714 | 1,391 | 2,850 | 6,330 | 17,547 | 128,074 |
+| ~perplexity/pplx-decider-latest | openrouter | 339 | 369 | 480 | 716 | 1,454 | 2,833 | 6,558 | 17,428 | 128,074 |
+| inception/mercury-decide:free | openrouter | 472 | 520 | 687 | 935 | 1,659 | 3,294 | 6,113 | refused | 61,205 |
+
+† Span-01 Lite's tokenizer counts 1.5x as many tokens (194,404 at 128k). ‡ With the long-context opt-in; without it Jev
+takes at most 33,024 input tokens for a one-question request. * Drex 2.0 reads only part of a long state - 9,756 tokens at 16k,
+23,790 at 128k - so it is fast on less input. ✗n = failed calls (OpenRouter's credits ran out mid-run).
+
+What the table says:
+
+- **Flat to 128k**: OpenAI's Luna (0.23 s at 1k, 0.66 s at 128k; 0.70 s through OpenRouter) and Span-01 Lite (0.91 s at
+  128k, 194k tokens by its own count).
+- **Growing past ~32k**: Jev 1.13 and 1.14 alike (0.5 s at 32k, 1.85 s at 128k), SubQ Snap (1.79 s), ScaleDown's
+  Classify-1 (2.2 s), Drex 1.5 (3.1 s) and Solar Decide Flash (4.2 s).
+- **Steep**: Perplexity's decider doubles with each doubling of the state from 8k to 64k (2.85 s at 32k), then nearly
+  triples - 17.5 s at 128k, directly and through OpenRouter alike; Mercury Decide's free tier takes 6.1 s and Clef Omni
+  5.1 s at 64k.
+- **Refused before 128k** - and several hosts check a characters / 4 estimate, not their tokenizer's count:
+  - Liquid's d1 at 64k: 422 "over the model's input limit of 65536 tokens, images included, or 250000 bytes of text"
+    (the 64k state is 340 kB).
+  - Microsoft-Decision-1 at 64k, on Foundry and through OpenRouter: 422 "request is about 85068 tokens; the limit for the
+    state plus all questions is 64000" - the state's 340,168 characters / 4, while it bills 19 tokens per 101-character
+    sentence (32,023 at 32k) - so its limit is ~256,000 characters, ~48k tokens of plain English.
+  - Clef Omni at 128k: 413 "The estimated number of input and maximum output tokens (170122) exceeded this model context
+    window" - characters / 4 again. At 64k it reported exactly 64,000 input tokens where its count would be 64,137, so a
+    longer state is apparently cut there.
+  - Mercury Decide's free tier at 128k: 422 `context_length_exceeded` "A question exceeds the model's context length."
+- Not measured: OpenRouter's paid Clef, Clef Flash, Mercury Decide, Kev, Tev1, Span-01 (+ Lite), Solar Decide, d1 and Jev
+  (402 - the account ran out of credits mid-run); Liquid's `d1:free` is gone (404 "The model `d1:free` does not exist" -
+  `/decisions/v1/models` lists only `d1`); Vercel's free-tier Laya refuses a state over ~512 tokens (422 "That request was
+  rejected").
+
+`sizes=`, `runs=`, `only=`, `models=`, `budget=`, `pace=`, `parallel=` and `out=` (one JSON line per model and size, for
+charts) are its arguments.

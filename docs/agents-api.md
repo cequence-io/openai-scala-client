@@ -4,7 +4,7 @@
 
 OpenAI's Agents API: durable cloud agents, sessions and their event streams, and the chat-completion adapter over them.
 
-- **Agents API** (🔥 New, beta) - durable cloud agents: a session runs an agent (inline config or a reusable agent) with
+- **Agents API** (beta) - durable cloud agents: a session runs an agent (inline config or a reusable agent) with
   an optional environment (an OpenAI-hosted sandbox, your own machine, or none); the full service covers agents, sessions,
   input events, items / turns / subagents, artifacts and environments, and the streamed service the session events.
 

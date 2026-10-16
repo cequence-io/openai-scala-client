@@ -1,7 +1,7 @@
 # OpenAI Scala Client 🤖
-[![version](https://img.shields.io/badge/version-1.5.0-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT) ![GitHub Stars](https://img.shields.io/github/stars/cequence-io/openai-scala-client?style=social) [![Follow on X](https://img.shields.io/badge/X-%400xbnd-black?logo=x)](https://x.com/0xbnd) ![GitHub CI](https://github.com/cequence-io/openai-scala-client/actions/workflows/continuous-integration.yml/badge.svg)
+[![version](https://img.shields.io/badge/version-1.6.0-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT) ![GitHub Stars](https://img.shields.io/github/stars/cequence-io/openai-scala-client?style=social) [![Follow on X](https://img.shields.io/badge/X-%400xbnd-black?logo=x)](https://x.com/0xbnd) ![GitHub CI](https://github.com/cequence-io/openai-scala-client/actions/workflows/continuous-integration.yml/badge.svg)
 
-This is a no-nonsense async Scala client for OpenAI API and multiple LLM providers supporting all the available endpoints and params **including streaming** (with a provider-neutral typed stream of text / thinking / tool-call / tool-result chunks), **chat completion**, **responses API**, **agents API**, **tools** (including MCP), **graders**, **vision** (with provider-uniform file/image attachments), **batch processing**, and **voice routines** (as defined [here](https://platform.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala) with adapters for Anthropic (incl. Bedrock and Managed Agents), Google Gemini/Vertex AI, Groq, Perplexity (incl. its decision model), TypeSafe AI (Jev), Liquid AI (d1), Microsoft Foundry (Microsoft-Decision-1), SubQ (SubQ Snap), the decision models on OpenRouter and Vercel AI Gateway, and others. The supported calls are:
+This is a no-nonsense async Scala client for OpenAI API and multiple LLM providers supporting all the available endpoints and params **including streaming** (with a provider-neutral typed stream of text / thinking / tool-call / tool-result chunks), **chat completion**, **responses API**, **agents API**, **tools** (including MCP), **graders**, **vision** (with provider-uniform file/image attachments), **batch processing**, and **voice routines** (as defined [here](https://platform.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala) with adapters for Anthropic (incl. Bedrock and Managed Agents), Google Gemini/Vertex AI, Groq, Perplexity (incl. its decision model), TypeSafe AI (Jev), Liquid AI (d1), Microsoft Foundry (Microsoft-Decision-1), SubQ (SubQ Snap), ScaleDown (Classify), the decision models on OpenRouter and Vercel AI Gateway, and others. The supported calls are:
 
 * **Models**: [listModels](https://platform.openai.com/docs/api-reference/models/list), and [retrieveModel](https://platform.openai.com/docs/api-reference/models/retrieve)
 * **Completions**: [createCompletion](https://platform.openai.com/docs/api-reference/completions/create) (deprecated on `OpenAIService` - OpenAI shuts down its last completions models on 2026-09-28; OpenAI-compatible servers keep it via `OpenAICoreService`)
@@ -56,22 +56,27 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 | [Google Vertex AI](https://cloud.google.com/vertex-ai) | Full | Yes | Yes | Gemini models |
 | [Grok](https://x.ai/) | Full | Yes | – | x.AI models |
 | [Groq](https://wow.groq.com/) | Full ³ | Yes, MCP and server-side tools too | Yes | Fast inference |
+| [Meta Model API](https://dev.meta.ai/) 🔥 | Full ⁶ | Yes | – | Muse Wonder, Muse Spark (open weights: Muse Spark Open on Together, Fireworks, OpenRouter, Vercel) ⁶ |
 | [MiniMax](https://www.minimax.io/) | Varies ⁴ | – | – | Chinese provider (global and China) |
 | [Mistral](https://mistral.ai/) | Full | – | – | Open-source leader |
 | [Novita](https://novita.ai/) | Model-dependent | – | – | Cloud provider |
 | [Octo AI](https://octo.ai/) | JSON object mode only | – | – | Cloud provider (obsolete) |
 | [Ollama](https://ollama.com/) | Varies | – | – | Local LLMs |
+| [OpenRouter](https://openrouter.ai/) 🔥 | Model-dependent | Model-dependent | – | `provider/model` ids, e.g. `meta/muse-wonder` |
 | [Perplexity](https://www.perplexity.ai/) | Implied only | – | – | Agent API ⁵ |
 | [TogetherAI](https://www.together.ai/) | Model-dependent | – | – | Cloud provider |
+| [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) 🔥 | Model-dependent | Model-dependent | – | `provider/model` ids, e.g. `meta/muse-spark-open` |
 
 ¹ No prompt caching in batches.\
 ² Through `bedrock-mantle` or `bedrock-runtime`.\
 ³ Cerebras: `gpt-oss-120b`, `qwen-3.8-27b`; Groq: `openai/gpt-oss-*`, `qwen/qwen3.x-27b`.\
 ⁴ `json_schema` on M2.7 and newer, per MiniMax's docs.\
-⁵ 🔥 New in 1.4.0. Perplexity's Sonar chat completions retired on 2026-09-27 (see [Services and providers](docs/providers.md)).
+⁵ Perplexity's Sonar chat completions retired on 2026-09-27 (see [Services and providers](docs/providers.md)).\
+⁶ `ChatProviderSettings.meta` (`MODEL_API_KEY`); Muse Wonder (2026-10-12) and Muse Spark live-verified with strict `json_schema`, tools and streams (see [Services and providers](docs/providers.md)).\
+🔥 New in 1.6.0.
 
 **Decision models** give typed answers with calibrated probabilities. Two APIs serve them - TypeSafe AI's System One
-(`TypeSafeService.systemOne`: Jev, Liquid's d1, Perplexity's decider, Microsoft-Decision-1, SubQ Snap, OpenRouter, Vercel AI Gateway, llama.cpp) and OpenAI's Decisions API
+(`TypeSafeService.systemOne`: Jev, Liquid's d1, Perplexity's decider, Microsoft-Decision-1, SubQ Snap, ScaleDown's Classify, OpenRouter, Vercel AI Gateway, llama.cpp) and OpenAI's Decisions API
 (`OpenAIService.createDecision`: `gpt-6-luna`) - and the client speaks either interface to either host: `asOpenAIDecisions`
 puts OpenAI's interface on a System One host, `DecisionProviderSettings.openAI` runs the System One routines (typed
 decisions, re-ranking, the `json_schema`-only chat adapter) on OpenAI's. No tools or batch. See
@@ -79,17 +84,18 @@ decisions, re-ranking, the `json_schema`-only chat adapter) on OpenAI's. No tool
 
 | Provider | Models | Factory method |
 |----------|--------|----------------|
-| [TypeSafe AI](https://typesafe.ai/) | Jev | `asOpenAI()` |
-| [Liquid AI](https://www.liquid.ai/) 🔥 | d1, images too (the paid `d1`) | `liquidAsOpenAI()` |
-| [llama.cpp](https://github.com/ggml-org/llama.cpp) (local) 🔥 | Liquid's Open d1 (d1-3B, d1-omni-600M) once llama.cpp loads them; Julia-1, Laya, Lev, Kev, OpenJev, Nimble, Clef | `asOpenAI(DecisionProviderSettings.llamaCpp)` |
-| [Perplexity Decisions](https://docs.perplexity.ai/docs/decisions/quickstart) 🔥 | pplx-decider-v1.1-27b / v1-27b, images too | `perplexityAsOpenAI()` |
-| [OpenRouter](https://openrouter.ai/models?output_modalities=decisions) 🔥 | Jev, d1, Perplexity's deciders, OpenAI's Luna, Microsoft-Decision-1, Cloudflare's Clef (+ Flash, Omni), Solar Decide, Mercury Decide, Tev1, Kev 4B, NACE's Drex, Span-01; images too | `asOpenAI(DecisionProviderSettings.openRouter)` |
-| [OpenAI Decisions](https://developers.openai.com/api/docs/guides/decisions) 🔥 | gpt-6-luna, images too | `asOpenAI(DecisionProviderSettings.openAI)` |
-| [Vercel AI Gateway](https://vercel.com/docs/ai-gateway/sdks-and-apis/typesafe) 🔥 | Jev, d1 (images too), Microsoft-Decision-1, OpenAI's Luna, Convai's Laya (free tier) | `asOpenAI(DecisionProviderSettings.vercel)` |
+| [TypeSafe AI](https://typesafe.ai/) | Jev; images, bounding boxes (Jev 1.14) and long context - experimental 🔥 | `asOpenAI()` |
+| [Liquid AI](https://www.liquid.ai/) | d1, images too; d1-ultra 🔥 | `liquidAsOpenAI()` |
+| [llama.cpp](https://github.com/ggml-org/llama.cpp) (local) | Liquid's Open d1 (d1-3B, d1-omni-600M) once llama.cpp loads them; Julia-1, Laya, Lev, Kev, OpenJev, Nimble, Clef | `asOpenAI(DecisionProviderSettings.llamaCpp)` |
+| [Perplexity Decisions](https://docs.perplexity.ai/docs/decisions/quickstart) | pplx-decider-v1.1-27b / v1-27b, images too | `perplexityAsOpenAI()` |
+| [OpenRouter](https://openrouter.ai/models?output_modalities=decisions) | Jev, d1, Perplexity's deciders, OpenAI's Luna, Microsoft-Decision-1, Cloudflare's Clef (+ Flash, Omni), Solar Decide, Mercury Decide, Tev1, Kev 4B, NACE's Drex, Span-01; ScaleDown's Classify-1, Jev 1.14, d1-ultra and Span-02 🔥; images too | `asOpenAI(DecisionProviderSettings.openRouter)` |
+| [OpenAI Decisions](https://developers.openai.com/api/docs/guides/decisions) | gpt-6-luna, images too | `asOpenAI(DecisionProviderSettings.openAI)` |
+| [Vercel AI Gateway](https://vercel.com/docs/ai-gateway/sdks-and-apis/typesafe) | Jev, d1 (images too), Microsoft-Decision-1, OpenAI's Luna, Convai's Laya (free tier), ScaleDown's Classify-1 (free tier) 🔥 | `asOpenAI(DecisionProviderSettings.vercel)` |
 | [SubQ](https://docs.subq.ai/) 🔥 | SubQ Snap (public preview; long context - 295,957 input tokens, up to 4 images) | `asOpenAI(DecisionProviderSettings.subq)` |
-| [Microsoft Foundry](https://ai.azure.com/catalog/models/microsoft-decision-1) 🔥 | Microsoft-Decision-1 (public preview; your own deployment in a Foundry resource) | `microsoftFoundryAsOpenAI()` |
+| [ScaleDown](https://docs.scaledown.ai/) 🔥 | Classify (a constrained decoding model; text plus one document, 1M context) | `asOpenAI(DecisionProviderSettings.scaleDown)` |
+| [Microsoft Foundry](https://ai.azure.com/catalog/models/microsoft-decision-1) | Microsoft-Decision-1 (public preview; your own deployment in a Foundry resource) | `microsoftFoundryAsOpenAI()` |
 
-🔥 New in 1.5.0 (Liquid AI's d1 since 1.4.0, its images since 1.5.0).
+🔥 New in 1.6.0.
 
 ---
 
@@ -105,7 +111,7 @@ The currently supported Scala versions are **2.12, 2.13**, and **3**.
 To install the library, add the following dependency to your *build.sbt*
 
 ```
-"io.cequence" %% "openai-scala-client" % "1.5.0"
+"io.cequence" %% "openai-scala-client" % "1.6.0"
 ```
 
 or to *pom.xml* (if you use maven)
@@ -114,16 +120,16 @@ or to *pom.xml* (if you use maven)
 <dependency>
     <groupId>io.cequence</groupId>
     <artifactId>openai-scala-client_2.12</artifactId>
-    <version>1.5.0</version>
+    <version>1.6.0</version>
 </dependency>
 ```
 
-If you want streaming support, use `"io.cequence" %% "openai-scala-client-stream" % "1.5.0"` instead.
+If you want streaming support, use `"io.cequence" %% "openai-scala-client-stream" % "1.6.0"` instead.
 
 For a single dependency that includes all provider clients (Anthropic, Gemini, Vertex AI, Perplexity, TypeSafe AI, token counting):
 
 ```
-"io.cequence" %% "openai-scala-all" % "1.5.0"
+"io.cequence" %% "openai-scala-all" % "1.6.0"
 ```
 
 ## Config ⚙️
@@ -168,7 +174,7 @@ same. See [Services and providers](docs/providers.md).
 | [Responses API](docs/responses-api.md) | Inputs and images, file / web search, function calls, MCP, multi-agent execution |
 | [Agents API](docs/agents-api.md) | Durable cloud agents (beta): sessions, events, the chat adapter |
 | [Streaming](docs/streaming.md) | OpenAI-shaped and typed streams (`ChatChunk`), the frame cap, human approval mid-stream |
-| [Decision models](docs/decision-models.md) | OpenAI's Decisions API, TypeSafe (Jev), Liquid (d1), Perplexity's decider, Microsoft-Decision-1, SubQ Snap, OpenRouter, Vercel AI Gateway, llama.cpp; either API on either host, typed decisions, re-ranking, the models' execution time side by side |
+| [Decision models](docs/decision-models.md) | OpenAI's Decisions API, TypeSafe (Jev), Liquid (d1), Perplexity's decider, Microsoft-Decision-1, SubQ Snap, ScaleDown's Classify, OpenRouter, Vercel AI Gateway, llama.cpp; either API on either host, typed decisions, re-ranking, the models' execution time side by side |
 | [Adapters](docs/adapters.md) | Round robin, retry, logging, routing, batch processing, interception, guardrails |
 | [Sharing an HTTP engine](docs/http-engine.md) | One engine for many services and providers; timeouts and proxies |
 | [Graders API](docs/graders-api.md) | Evaluating model outputs |

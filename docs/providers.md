@@ -146,10 +146,24 @@ Then you can obtain a service in one of the following ways.
 ```scala
   val service = GeminiServiceFactory.asOpenAI()
 ```
+   🔥 **Gemini 4 Argon** (`NonOpenAIModelId.gemini_4_argon`, on the Gemini API since 2026-10-13): `reasoning_effort` maps
+   to the thinking levels LOW / MEDIUM / HIGH (`none` / `minimal` go as LOW - MINIMAL is a 400 on Argon, assumed for the
+   Gemini 4 family until a member takes it), json_schema, function tools, Google Search, code execution and images work
+   through the adapter and its typed stream (`examples/googlegemini/Gemini4ArgonSmokeTest` - 19 sections, all passed;
+   `GeminiThinkingAudit gemini-4-argon` - every effort). The listing says 32,768 output tokens, but a larger `max_tokens`
+   is accepted (OpenRouter serves ~944k through AI Studio). Like every Gemini model, Argon refuses presence / frequency
+   penalties, and like Gemini 3 it returns one candidate (`n` > 1 is a 400).
+
+   Gemini 3+ (and Argon) refuse a tool loop's function call sent back without the **thought signature** it came with
+   (400 "Function call is missing a thought_signature in functionCall parts"), which an OpenAI-shaped assistant message
+   cannot carry: the adapter remembers the signatures of the calls it hands out (sync and typed stream) and puts them back
+   when the calls return; a call it never handed out gets Google's documented placeholder
+   (`skip_thought_signature_validator`) on the models that require one - until 2026-10-13 a tool loop through the adapter
+   failed on its second turn for every Gemini 3+ model.
 
 5. [Perplexity](https://www.perplexity.ai/) - requires `openai-scala-perplexity-client` lib and `PERPLEXITY_API_KEY` (or `SONAR_API_KEY`)
 
-   🔥 **Agent API** (`POST /v1/agent`, since 1.4.0) - web-grounded runs on presets (`fast`, `low`, `medium`, `high`, `xhigh`,
+   **Agent API** (`POST /v1/agent`, since 1.4.0) - web-grounded runs on presets (`fast`, `low`, `medium`, `high`, `xhigh`,
    `wide-research`) or any `provider/model`, with built-in tools (web search, URL fetch, finance / people search, sandbox, MCP,
    connectors), custom functions, skills, structured output, background runs, typed streaming and sandbox files:
 ```scala
@@ -207,21 +221,21 @@ Then you can obtain a service in one of the following ways.
 ```
    System One (`jev`) is a decision model, not a chat model - see [TypeSafe AI (Jev)](decision-models.md#typesafe-ai-jev-) below for the questions / answers API and what the OpenAI adapter does.
 
-   🔥 [Liquid AI](https://www.liquid.ai/)'s decision model **d1** (launched 2026-09-30) serves the same System One API, so the same lib reaches it with `LIQUID_API_KEY`:
+   [Liquid AI](https://www.liquid.ai/)'s decision models **d1** (launched 2026-09-30) and 🔥 **d1-ultra** (2026-10-15) serve the same System One API, so the same lib reaches them with `LIQUID_API_KEY`:
 ```scala
-  val d1 = TypeSafeServiceFactory.liquid()              // native System One service (d1:free)
+  val d1 = TypeSafeServiceFactory.liquid()              // native System One service (d1 by default)
   val d1Service = TypeSafeServiceFactory.liquidAsOpenAI() // json_schema structured output
 ```
    See [Liquid AI (d1)](decision-models.md#liquid-ai-d1-) below - what works, and d1 vs Jev.
 
-   🔥 Perplexity's multimodal decision model **pplx-decider-v1.1-27b** (the 2026-10-06 update of the 2026-10-01 launch model) takes the same questions - and images - on its Decisions API, with `PERPLEXITY_API_KEY`:
+   Perplexity's multimodal decision model **pplx-decider-v1.1-27b** (the 2026-10-06 update of the 2026-10-01 launch model) takes the same questions - and images - on its Decisions API, with `PERPLEXITY_API_KEY`:
 ```scala
   val decider = TypeSafeServiceFactory.perplexity()                 // native, POST /v1/decisions
   val deciderService = TypeSafeServiceFactory.perplexityAsOpenAI()  // json_schema structured output, images in user messages
 ```
    See [Perplexity Decisions API (pplx-decider)](decision-models.md#perplexity-decisions-api-pplx-decider-) below - images, limits, and the decider vs Jev vs d1.
 
-   🔥 Any host of decision models goes through `DecisionProviderSettings`, like `ChatProviderSettings` for chat - e.g. OpenRouter's ten (`OPENROUTER_API_KEY`):
+   Any host of decision models goes through `DecisionProviderSettings`, like `ChatProviderSettings` for chat - e.g. OpenRouter's ten (`OPENROUTER_API_KEY`):
 ```scala
   val openRouter = TypeSafeServiceFactory(DecisionProviderSettings.openRouter)
   val openRouterService = TypeSafeServiceFactory.asOpenAI(DecisionProviderSettings.openRouter)
@@ -291,7 +305,7 @@ Then you can obtain a service in one of the following ways.
   // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.mistral)
 ```
-   🔥 **Mistral Large 4** (`NonOpenAIModelId.mistral_large_4`, public preview since 2026-10-06) reasons by default and
+   **Mistral Large 4** (`NonOpenAIModelId.mistral_large_4`, public preview since 2026-10-06) reasons by default and
    then answers `content` as a list of thinking / text chunks - read as the text (and as `Thinking` + `Text` on the typed
    stream), so the usual calls work unchanged. `reasoning_effort` is a switch on Mistral's reasoning models (Large 4,
    Medium 3.5, Small 4: `none` / `high`; GLM 5.3: `low` / `high` / `max`) and other values are mapped onto it. See
@@ -344,6 +358,76 @@ or with streaming
     )
   )
 ```
+
+17. [Meta Model API](https://dev.meta.ai/) - requires `MODEL_API_KEY` (the variable Meta's docs use)
+
+   🔥 **Muse Wonder** (`muse-wonder-1.0`, preview since 2026-10-12 - Meta's most capable model, for coding and long-horizon
+   agentic work) and **Muse Spark** (`muse-spark-1.3` / `1.2` / `1.1`, a `-contributor` id for the cheaper Contributor mode,
+   in which your prompts may train Meta's models) over OpenAI's chat completions: text, image, video, audio and PDF in, a
+   1,048,576-token context, tools, `json_schema` with constrained decoding. They always reason, privately (the reply carries
+   no reasoning text, only `reasoning_tokens` in the usage): `reasoning_effort` takes `minimal` to `max`, so the client sends
+   `none` as `minimal` (Meta answers `none` with a 400) and `max` as `xhigh` on Spark 1.2 and 1.1, which lack it. It also
+   drops what Meta refuses - `stop`, `logit_bias`, `verbosity` and logprobs. `tool_choice` takes only `"auto"` (a forced or
+   required choice is Meta's 400) and `n` must be 1. Muse Wonder Full is in Meta's Muse Code only.
+```scala
+  val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.meta)
+  service.createChatCompletion(messages, CreateChatCompletionSettings(NonOpenAIModelId.muse_wonder_1_0))
+```
+   Live 2026-10-13 on the Meta Model API, [MuseSmokeTest](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/meta/MuseSmokeTest.scala)
+   `target=meta` passed all 12 sections on Muse Wonder and Muse Spark 1.3 Contributor: chat, `none` (sent as `minimal`) and
+   `max`, a tool loop, `createChatCompletionWithJSON` with the schema inferred from a case class (strict `json_schema`) and
+   the typed stream. Muse Wonder answered in 1.7-4 s, Spark 1.3 Contributor in 2-9 s. The same models are on OpenRouter
+   (`meta/muse-wonder`, `meta/muse-spark-1.3`, ... - item 18), which serves them only after the account confirms its age
+   in OpenRouter's settings (a 403 until then), and the Contributor ids only to an account that allows paid model
+   training (a 404 "0 endpoints ... matching your guardrail restrictions and data policy" otherwise). Live 2026-10-16
+   (`MuseSmokeTest target=openrouter`): Muse Wonder passed all 9 sections on ws-client 1.1.3 - with 1.1.2 its typed
+   stream failed on the `: OPENROUTER PROCESSING` keep-alive comments OpenRouter sends while a slow model works, which
+   1.1.3 skips.
+
+   🔥 **Muse Spark Open** (2026-10-15, [Meta's post](https://x.com/AIatMeta/status/2110779754274292212)) is the open-weight
+   Muse Spark - 816B total / 42B active parameters, a 1M-token context, text, image, video and audio in - NOT on the Meta
+   Model API but on Together (`NonOpenAIModelId.meta_models_muse_spark_open_816b_a42b`), Fireworks
+   (`accounts/fireworks/models/` + `NonOpenAIModelId.muse_spark_open`), OpenRouter and Vercel's AI Gateway
+   (`meta/muse-spark-open`, `ChatProviderSettings.vercel`), $1.25 / $4.25 per 1M tokens, with its weights on Hugging
+   Face. It always reasons and, unlike the Meta Model API's Muse, returns the reasoning (thinking on the typed stream);
+   `stop`, `logit_bias`, logprobs, tools with a forced `tool_choice` and images all work. Each host takes
+   `reasoning_effort` differently, and the client converts per id (live 2026-10-15):
+
+   | host | `none` | `minimal` / `max` | `verbosity` | JSON |
+   |---|---|---|---|---|
+   | Fireworks | a 400 - sent as `minimal` | fine | a 400 - dropped | strict `json_schema` (listed) |
+   | Together (the model's chat template) | turns thinking off | a 400 - sent as `low` / `xhigh` | a 400 - dropped | strict `json_schema` (listed); `json_object` answers `{}` |
+   | OpenRouter, Vercel (`meta/muse-spark-open`) | OpenRouter: a 400 ("Reasoning is mandatory for this endpoint and cannot be disabled."); Vercel takes it but reasons anyway - sent as `minimal` to both | fine | Vercel: taken | Vercel: strict `json_schema` NOT enforced - the JSON helper's JSON-object mode (unlisted) |
+```scala
+  val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.togetherAI)
+  service.createChatCompletion(messages, CreateChatCompletionSettings(NonOpenAIModelId.meta_models_muse_spark_open_816b_a42b))
+```
+   `MuseSmokeTest target=together` / `fireworks` / `vercel` passed all 9 sections on each (chat, `none` / `minimal` / `max`,
+   a tool loop, both JSON helpers, an image, the typed stream with thinking); on its launch day the hosts answered in
+   0.5 s to 2 minutes a call, Fireworks' `max` once in 49 s. Through OpenRouter (`meta/muse-spark-open`, 1M context) it
+   passed all 9 too on 2026-10-16, once `none` went as `minimal`.
+
+18. [OpenRouter](https://openrouter.ai/) 🔥 - requires `OPENROUTER_API_KEY`
+```scala
+  val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.openRouter)
+  service.createChatCompletion(messages, CreateChatCompletionSettings(NonOpenAIModelId.tencent_hy4_preview))
+```
+   `provider/model` ids. Tencent's **HY4 preview** (`tencent/hy4-preview`, also on Novita) reasons and calls tools (live
+   2026-10-13, `MuseSmokeTest target=openrouter models=tencent/hy4-preview`, all passed); its `json_schema` output is flaky
+   (runs of whitespace, once an empty field) while the JSON helper's JSON-object mode answered 5 of 5, so it is not listed
+   under `models-supporting-json-schema`. Its text may end in a stray `</think:opensource>` tag.
+
+19. [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) 🔥 - requires `AI_GATEWAY_API_KEY` (a key of the gateway, `vck_...`;
+    a Vercel account token is a 401)
+```scala
+  val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.vercel)
+  service.createChatCompletion(messages, CreateChatCompletionSettings("meta/muse-spark-open"))
+```
+   `provider/model` ids, as on OpenRouter. Live 2026-10-15 on a free-tier team: Muse Spark Open passed `MuseSmokeTest
+   target=vercel` (item 17), and `google/gemini-2.5-flash-lite` listed, answered and streamed in
+   [ProviderConnectivitySmokeTest](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/ProviderConnectivitySmokeTest.scala)
+   `vercel`. The gateway's decision models go through `DecisionProviderSettings.vercel` (see
+   [Decision models](decision-models.md)).
 
 - Note that services with additional streaming support - `createCompletionStreamed` and `createChatCompletionStreamed` provided by [OpenAIStreamedServiceExtra](../openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIStreamedServiceExtra.scala) (requires `openai-scala-client-stream` lib)
 
