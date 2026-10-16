@@ -55,9 +55,11 @@ import scala.util.control.NonFatal
  *     between the benchmark's calls and the bounded retries (a run fails in about a minute and
  *     a half when d1 is unavailable).
  *
- * Requires `LIQUID_API_KEY`. On its launch day d1 answered 429 `model_unavailable` for a
- * while, so the functional calls go through the retry adapter (a 429 is transient there); the
- * benchmark times the plain service and counts failed calls instead.
+ * Requires `LIQUID_API_KEY`; `model=<id>` picks the model (`d1` by default, `d1-ultra` - the
+ * free tier `d1:free` of the results above was removed on 2026-10-14). On its launch day d1
+ * answered 429 `model_unavailable` for a while, so the functional calls go through the retry
+ * adapter (a 429 is transient there); the benchmark times the plain service and counts failed
+ * calls instead.
  */
 object LiquidD1SmokeTest {
 
@@ -140,7 +142,12 @@ object LiquidD1SmokeTest {
     implicit val retrySettings: RetrySettings =
       RetrySettings(maxRetries = 3, delayOffset = 5.seconds)
 
-    val liquid = TypeSafeServiceFactory.liquid()
+    val model =
+      args
+        .find(_.startsWith("model="))
+        .map(_.drop("model=".length))
+        .getOrElse(DecisionModelId.liquid_d1)
+    val liquid = TypeSafeServiceFactory.liquid(defaultModel = model)
     val d1 = TypeSafeServiceAdapters.retry(
       liquid,
       log = Some(message => println(s"[retry] $message"))
@@ -154,14 +161,13 @@ object LiquidD1SmokeTest {
       _ = println(s"[models] ${models.map(_.name).mkString(", ")}")
 
       native <- d1.systemOne(state, questions)
-      _ = show("d1", native)
+      _ = show(model, native)
 
       triage <- d1AsOpenAI.createChatCompletionWithJSON[Triage](
         Seq(UserMessage(state)),
-        CreateChatCompletionSettings(model = DecisionModelId.liquid_d1_free)
-          .withJsonSchema(triageSchema)
+        CreateChatCompletionSettings(model = model).withJsonSchema(triageSchema)
       )
-      _ = println(s"[d1 via OpenAI] $triage")
+      _ = println(s"[$model via OpenAI] $triage")
 
       _ <- jev.fold(Future.successful(println("[jev] skipped - no TYPESAFE_API_KEY")))(
         _.systemOne(state, questions).map(show("jev", _))
@@ -171,7 +177,7 @@ object LiquidD1SmokeTest {
         if (args.contains("nobench")) Future.successful(())
         else
           DecisionModelBenchmark.run(
-            Seq("d1" -> liquid) ++ jev.map("Jev" -> _),
+            Seq(model -> liquid) ++ jev.map("Jev" -> _),
             state,
             questions
           )

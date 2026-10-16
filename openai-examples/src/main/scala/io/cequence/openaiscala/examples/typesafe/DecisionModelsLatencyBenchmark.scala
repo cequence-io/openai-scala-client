@@ -29,13 +29,13 @@ import scala.util.control.NonFatal
  * (`OPENAI_SCALA_CLIENT_API_KEY`), Microsoft Foundry (`FOUNDRY_API_KEY` + `FOUNDRY_BASE_URL`,
  * the deployments of `FOUNDRY_MODEL`'s model), OpenRouter (`OPENROUTER_API_KEY`, every
  * decision model it lists), Vercel AI Gateway (`AI_GATEWAY_API_KEY`, its decision list, paced
- * to a free tier's 5 requests per minute), SubQ (`SUBQ_API_KEY`) and a local llama.cpp server
- * when one answers at `http://127.0.0.1:8080/` - the others are reported as skipped.
- * Arguments: `runs=<n>` timed calls per cell (5, plus an untimed warm-up),
- * `counts=1,3,10,20,40`, `only=<host,...>`, `models=<substring,...>`, `budget=<seconds>` - a
- * model whose call took longer skips the larger counts (15), `pace=<ms>` between calls (250;
- * Foundry's deployments are paced to their 50 requests per minute). A full run makes ~700
- * calls and costs a few cents at most.
+ * to a free tier's 5 requests per minute), SubQ (`SUBQ_API_KEY`), ScaleDown
+ * (`SCALEDOWN_API_KEY`) and a local llama.cpp server when one answers at
+ * `http://127.0.0.1:8080/` - the others are reported as skipped. Arguments: `runs=<n>` timed
+ * calls per cell (5, plus an untimed warm-up), `counts=1,3,10,20,40`, `only=<host,...>`,
+ * `models=<substring,...>`, `budget=<seconds>` - a model whose call took longer skips the
+ * larger counts (15), `pace=<ms>` between calls (250; Foundry's deployments are paced to their
+ * 50 requests per minute). A full run makes ~700 calls and costs a few cents at most.
  *
  * Live 2026-10-09 (24 models on 6 hosts, 640 calls in 10 minutes; the table is in
  * `docs/decision-models.md`): Cloudflare's Clef Omni, Jev, OpenAI's Luna (directly), Liquid's
@@ -73,7 +73,8 @@ object DecisionModelsLatencyBenchmark {
   private val noulsOnly: Map[String, Question] = Map("defect" -> questions("defect"))
   private val reviewAsText: JsValue = JsString(s"Battery died after two weeks\n\n$reviewText")
 
-  private def isSpan(model: String): Boolean = model.toLowerCase.contains("span")
+  // Span-01 only - Span-02 takes the full questions over the object state (live 2026-10-16)
+  private def isSpan(model: String): Boolean = model.toLowerCase.contains("span-01")
 
   private case class Host(
     name: String,
@@ -147,7 +148,7 @@ object DecisionModelsLatencyBenchmark {
         "liquid",
         Some(DecisionProviderSettings.liquid),
         env("LIQUID_API_KEY"),
-        fixed(DecisionModelId.liquid_d1_free, DecisionModelId.liquid_d1)
+        fixed(DecisionModelId.liquid_d1, DecisionModelId.liquid_d1_ultra)
       ),
       Host(
         "perplexity",
@@ -192,6 +193,12 @@ object DecisionModelsLatencyBenchmark {
         "subq",
         Some(DecisionProviderSettings.subq),
         env("SUBQ_API_KEY"),
+        listed
+      ),
+      Host(
+        "scaledown",
+        Some(DecisionProviderSettings.scaleDown),
+        env("SCALEDOWN_API_KEY"),
         listed
       ),
       Host(

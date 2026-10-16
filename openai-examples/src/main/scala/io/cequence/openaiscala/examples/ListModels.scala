@@ -5,6 +5,7 @@ object ListModels extends Example {
 
   override protected def run: Future[Unit] =
     service.listModels.map(
-      _.sortBy(_.created).reverse.foreach(fileInfo => println(fileInfo.id))
+      // newest first - hosts that send no creation date list theirs last
+      _.sortBy(_.created.map(_.getTime)).reverse.foreach(model => println(model.id))
     )
 }

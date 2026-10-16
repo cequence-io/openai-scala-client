@@ -9,16 +9,8 @@ import io.cequence.openaiscala.domain.{
   UserSeqMessage
 }
 import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
-import io.cequence.openaiscala.typesafe.domain.{
-  ChoiceQuestion,
-  DecisionImage,
-  NoulQuestion,
-  DecisionModelId
-}
-import io.cequence.openaiscala.typesafe.service.{
-  TypeSafeScalaInvalidRequestException,
-  TypeSafeServiceFactory
-}
+import io.cequence.openaiscala.typesafe.domain.{ChoiceQuestion, DecisionImage, DecisionModelId}
+import io.cequence.openaiscala.typesafe.service.TypeSafeServiceFactory
 import play.api.libs.json.{JsValue, Json}
 
 import java.awt.Color
@@ -31,18 +23,18 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.control.NonFatal
 
 /**
- * Live walkthrough of Liquid AI's paid `d1`, which reads images (`d1:free` does not) - the
- * provider sends a state's image parts in a top-level `images` array, an `[image n]` marker
- * left where each stood:
+ * Live walkthrough of Liquid AI's image-reading decision models - `d1` by default,
+ * `model=<id>` for another (`d1-ultra`) - the provider sends a state's image parts in a
+ * top-level `images` array, an `[image n]` marker left where each stood:
  *
  *   1. the models Liquid lists, with what each reads
  *   1. a photo nested in a JSON state - which Liquid itself would read as text
  *   1. two images told apart by their order
  *   1. image content through the OpenAI interface (`liquidAsOpenAI` + `json_schema`)
- *   1. an image for `d1:free` - refused (422, an invalid request)
  *
- * Live 2026-10-07: all answered right in ~330-770 ms; a 64 x 64 image costs 6 input tokens per
- * question ($0.04 / 1M input tokens). Requires `LIQUID_API_KEY` (a key with access to `d1`).
+ * Live 2026-10-07 (`d1`): all answered right in ~330-770 ms; a 64 x 64 image costs 6 input
+ * tokens per question. The free tier `d1:free`, which refused images with a 422, was removed
+ * on 2026-10-14. Requires `LIQUID_API_KEY`.
  */
 object LiquidD1ImagesSmokeTest {
 
@@ -68,9 +60,13 @@ object LiquidD1ImagesSmokeTest {
     val system = ActorSystem("liquid-d1-images-smoke-test")
     implicit val scheduler: Scheduler = system.scheduler
 
-    val d1 = TypeSafeServiceFactory.liquid(defaultModel = DecisionModelId.liquid_d1)
-    val d1AsOpenAI =
-      TypeSafeServiceFactory.liquidAsOpenAI(defaultModel = DecisionModelId.liquid_d1)
+    val model =
+      args
+        .find(_.startsWith("model="))
+        .map(_.drop("model=".length))
+        .getOrElse(DecisionModelId.liquid_d1)
+    val d1 = TypeSafeServiceFactory.liquid(defaultModel = model)
+    val d1AsOpenAI = TypeSafeServiceFactory.liquidAsOpenAI(defaultModel = model)
 
     val (red, blue) = (png(Color.RED), png(Color.BLUE))
     val colour = (which: String) =>
@@ -89,8 +85,8 @@ object LiquidD1ImagesSmokeTest {
         println(s"[models] ${m.name} reads ${m.input_modalities.getOrElse(Nil)}")
       )
       check(
-        "models: d1 reads images",
-        models.exists(m => m.name == "d1" && m.input_modalities.exists(_.contains("image")))
+        s"models: $model reads images",
+        models.exists(m => m.name == model && m.input_modalities.exists(_.contains("image")))
       )
 
       // 2. a photo nested in a JSON state
@@ -142,23 +138,12 @@ object LiquidD1ImagesSmokeTest {
               )
             )
           ),
-          CreateChatCompletionSettings(DecisionModelId.liquid_d1, jsonSchema = Some(schema))
+          CreateChatCompletionSettings(model, jsonSchema = Some(schema))
         )
       )
       println(s"[OpenAI interface] $jsonMs ms: $json")
       check("OpenAI interface: red", (json \ "colour").asOpt[String].contains("red"))
 
-      // 5. d1:free reads no images
-      val refused = Await.result(
-        d1.systemOne(
-          Json.arr("A photo.", DecisionImage(blue)),
-          Map("photo" -> NoulQuestion("Is there a photo?")),
-          DecisionModelId.liquid_d1_free
-        ).failed,
-        1.minute
-      )
-      println(s"[d1:free] ${refused.getMessage}")
-      check("d1:free: refused", refused.isInstanceOf[TypeSafeScalaInvalidRequestException])
     } catch {
       case NonFatal(e) =>
         failures :+= s"error: $e"

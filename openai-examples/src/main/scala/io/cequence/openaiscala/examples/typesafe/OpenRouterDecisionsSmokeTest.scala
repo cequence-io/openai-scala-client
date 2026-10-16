@@ -102,9 +102,10 @@ object OpenRouterDecisionsSmokeTest {
     )
   )
 
-  // Respan's Span-01 judges with nouls only (plain-string instructions), over a text state or a
-  // conversation trace
-  private def isSpan(model: String) = model.startsWith("respan/")
+  // Respan's Span-01 (+ Lite) judges with nouls only (plain-string instructions), over a text state
+  // or a conversation trace; Span-02 takes choice and score questions and object states too (live
+  // 2026-10-16), so it gets the same questions as the others
+  private def isSpan(model: String) = model.startsWith("respan/span-01")
 
   // the models that read an image through OpenRouter (live 2026-10-10)
   private val imageModels = Seq(
