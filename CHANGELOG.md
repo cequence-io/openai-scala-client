@@ -71,6 +71,10 @@ the envelope `openai-scala-all`.
 - **Gemini 4 Argon** (`gemini-4-argon`, on the Gemini API since 2026-10-13): thinking levels LOW / MEDIUM / HIGH
   (MINIMAL is a 400, assumed for the whole `gemini-4` family), `json_schema`, tools, Google Search, code execution, URL
   context and images. `Gemini4ArgonSmokeTest`.
+- **DeepSeek V4.1 Flash 1017** (2026-10-17, open weights under MIT, image input): DeepSeek's `deepseek-flash` serves it
+  (the retired `deepseek-v4-flash` names are routed to it), and on OpenRouter it is
+  `deepseek/deepseek-v4.1-flash-1017` (`NonOpenAIModelId.openrouter_deepseek_v4_1_flash_1017`, 1M context): every
+  `reasoning_effort` taken (`none` turns reasoning off), strict `json_schema` enforced (listed), tools, images.
 - **Tencent HY4 preview** (`tencent/hy4-preview`, OpenRouter / Novita): reasons and calls tools; its `json_schema`
   output is flaky, so it is not in `models-supporting-json-schema` (the JSON helper's JSON-object mode answered 5 of 5).
 - **Decision models**: Perplexity's **v1.2** deciders (2026-10-16, open weights, all questions of a request in one

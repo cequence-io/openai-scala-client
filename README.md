@@ -49,7 +49,7 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 | [OpenAI Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-mantle.html) | Full | Yes, Responses API too | – | GPT-5.x, gpt-oss, Grok and more on AWS ² |
 | [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) | Varies | – | – | Open-source models |
 | [Cerebras](https://cerebras.ai/) | Full ³ | Yes | – | Fast inference |
-| [Deepseek](https://deepseek.com/) | JSON object mode only | – | – | Chinese provider |
+| [Deepseek](https://deepseek.com/) | JSON object mode only | – | – | Chinese provider; `deepseek-flash` is V4.1 Flash 1017 🔥 |
 | [FastChat](https://github.com/lm-sys/FastChat) | Varies | – | – | Local LLMs |
 | [Fireworks AI](https://fireworks.ai/) | Full | – | – | Cloud provider |
 | [Google Gemini](https://ai.google.dev/) | Full | Yes | Yes | Google's models |

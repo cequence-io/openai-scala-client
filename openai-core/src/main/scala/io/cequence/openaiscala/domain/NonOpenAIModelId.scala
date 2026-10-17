@@ -850,7 +850,9 @@ object NonOpenAIModelId {
   // DeepSeek V4 (direct API). `GET /models` lists `deepseek-flash` and `deepseek-v4-pro`
   // (2026-09-10); `deepseek-v4-flash` (-> DeepSeek-V4-Flash-0731) still resolves as an alias,
   // `deepseek-v4-pro` -> DeepSeek-V4-Pro-0813. Thinking vs non-thinking is a request mode, not
-  // a separate model id anymore.
+  // a separate model id anymore. Since 2026-10-17 `deepseek-flash` is served by
+  // DeepSeek-V4.1-Flash-1017 (open weights, MIT, image input), and the retired
+  // `deepseek-v4-flash` / `deepseek-v4-flash-vision-exp` names are routed to it too
   val deepseek_flash = "deepseek-flash" // Deepseek
   val deepseek_v4_flash = "deepseek-v4-flash" // Deepseek
   val deepseek_v4_pro = "deepseek-v4-pro" // Deepseek
@@ -1022,6 +1024,10 @@ object NonOpenAIModelId {
   // the only spelling Novita accepts - the `deepseek/` prefix is mandatory and `v4p1` is
   // rejected there (Fireworks is the mirror image: see `deepseek_v4p1_flash`)
   val novita_deepseek_v4_1_flash = "deepseek/deepseek-v4.1-flash"
+  // DeepSeek-V4.1-Flash-1017 on OpenRouter (2026-10-17; 1M context, $0.15 / 1M input tokens):
+  // live the same day every reasoning_effort (`none` turns reasoning off), strict json_schema
+  // (enforced), tools, images, stop / logit_bias / verbosity
+  val openrouter_deepseek_v4_1_flash_1017 = "deepseek/deepseek-v4.1-flash-1017"
   val novita_deepseek_v4_flash = "deepseek/deepseek-v4-flash"
   val novita_deepseek_v4_flash_vision_exp = "deepseek/deepseek-v4-flash-vision-exp"
   val novita_deepseek_v4_pro = "deepseek/deepseek-v4-pro"
