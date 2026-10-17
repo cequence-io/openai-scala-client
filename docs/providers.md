@@ -228,7 +228,7 @@ Then you can obtain a service in one of the following ways.
 ```
    See [Liquid AI (d1)](decision-models.md#liquid-ai-d1-) below - what works, and d1 vs Jev.
 
-   Perplexity's multimodal decision model **pplx-decider-v1.1-27b** (the 2026-10-06 update of the 2026-10-01 launch model) takes the same questions - and images - on its Decisions API, with `PERPLEXITY_API_KEY`:
+   Perplexity's multimodal decision models - 🔥 **pplx-decider-v1.2** (27B) and **pplx-decider-flash-v1.2** (4B), both 2026-10-16, and the older v1.1 / v1 - take the same questions - and images - on its Decisions API, with `PERPLEXITY_API_KEY`:
 ```scala
   val decider = TypeSafeServiceFactory.perplexity()                 // native, POST /v1/decisions
   val deciderService = TypeSafeServiceFactory.perplexityAsOpenAI()  // json_schema structured output, images in user messages

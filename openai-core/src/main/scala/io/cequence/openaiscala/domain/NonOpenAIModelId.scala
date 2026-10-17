@@ -1137,6 +1137,15 @@ object NonOpenAIModelId {
   // byte for byte alike on nine questions, so the API serves one model under both names
   val pplx_decider_v1_1_27b = "pplx-decider-v1.1-27b"
   val pplx_decider_v1_27b = "pplx-decider-v1-27b" // 2026-10-01
+  // v1.2 (2026-10-16): the next generation in two sizes, open weights on Hugging Face - 27B at
+  // $0.02 / 1M input tokens and the 4B Flash at $0.01, all questions of a request answered in one
+  // pass (up to 5x faster, per Perplexity); both read images. Live 2026-10-16 v1.1's id answered
+  // exactly like v1.2 (the same probabilities and usage). `pplx-decider-latest` / `-flash-latest`
+  // are the rolling aliases
+  val pplx_decider_v1_2 = "pplx-decider-v1.2"
+  val pplx_decider_flash_v1_2 = "pplx-decider-flash-v1.2"
+  val pplx_decider_latest = "pplx-decider-latest"
+  val pplx_decider_flash_latest = "pplx-decider-flash-latest"
   // Microsoft's decision model on Microsoft Foundry (public preview 2026-10-09; built on Qwen3.5-9B;
   // TypeSafe's protocol at `<your Foundry endpoint>/providers/microsoft/v1/systemone`, $0.042 / 1M
   // input tokens; live-verified 2026-10-09) - `TypeSafeServiceFactory.microsoftFoundry`. The name as
@@ -1174,6 +1183,11 @@ object NonOpenAIModelId {
   // listed as `~perplexity/pplx-decider-27b-latest` until OpenRouter relisted it on 2026-10-14)
   val openrouter_drex_v2_0 = "nace-ai/drex-v2.0"
   val openrouter_pplx_decider_latest = "~perplexity/pplx-decider-latest"
+  // listed and live 2026-10-16 through OpenRouter: Perplexity's v1.2 deciders (dated
+  // `...-20261016` in the response) and the 4B Flash's rolling alias
+  val openrouter_pplx_decider_v1_2 = "perplexity/pplx-decider-v1.2"
+  val openrouter_pplx_decider_flash_v1_2 = "perplexity/pplx-decider-flash-v1.2"
+  val openrouter_pplx_decider_flash_latest = "~perplexity/pplx-decider-flash-latest"
   // ScaleDown's Classify-1 (2026-10-13; 1M context, $0.04 / 1M through OpenRouter, billed per
   // question): text only - plus one document - so typesafe-client sends it ScaleDown's protocol
   // (`DecisionProtocol.ScaleDown`, the `scaledown/` prefix in `openRouter.modelProtocols`)

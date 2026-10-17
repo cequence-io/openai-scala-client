@@ -87,7 +87,7 @@ decisions, re-ranking, the `json_schema`-only chat adapter) on OpenAI's. No tool
 | [TypeSafe AI](https://typesafe.ai/) | Jev; images, bounding boxes (Jev 1.14) and long context - experimental 🔥 | `asOpenAI()` |
 | [Liquid AI](https://www.liquid.ai/) | d1, images too; d1-ultra 🔥 | `liquidAsOpenAI()` |
 | [llama.cpp](https://github.com/ggml-org/llama.cpp) (local) | Liquid's Open d1 (d1-3B, d1-omni-600M) once llama.cpp loads them; Julia-1, Laya, Lev, Kev, OpenJev, Nimble, Clef | `asOpenAI(DecisionProviderSettings.llamaCpp)` |
-| [Perplexity Decisions](https://docs.perplexity.ai/docs/decisions/quickstart) | pplx-decider-v1.1-27b / v1-27b, images too | `perplexityAsOpenAI()` |
+| [Perplexity Decisions](https://docs.perplexity.ai/docs/decisions/quickstart) | pplx-decider-v1.2 and the 4B pplx-decider-flash-v1.2 🔥, v1.1-27b / v1-27b; images too | `perplexityAsOpenAI()` |
 | [OpenRouter](https://openrouter.ai/models?output_modalities=decisions) | Jev, d1, Perplexity's deciders, OpenAI's Luna, Microsoft-Decision-1, Cloudflare's Clef (+ Flash, Omni), Solar Decide, Mercury Decide, Tev1, Kev 4B, NACE's Drex, Span-01; ScaleDown's Classify-1, Jev 1.14, d1-ultra and Span-02 🔥; images too | `asOpenAI(DecisionProviderSettings.openRouter)` |
 | [OpenAI Decisions](https://developers.openai.com/api/docs/guides/decisions) | gpt-6-luna, images too | `asOpenAI(DecisionProviderSettings.openAI)` |
 | [Vercel AI Gateway](https://vercel.com/docs/ai-gateway/sdks-and-apis/typesafe) | Jev, d1 (images too), Microsoft-Decision-1, OpenAI's Luna, Convai's Laya (free tier), ScaleDown's Classify-1 (free tier) 🔥 | `asOpenAI(DecisionProviderSettings.vercel)` |

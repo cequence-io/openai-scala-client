@@ -88,21 +88,35 @@ object DecisionProviderSettings {
   )
 
   /**
-   * Perplexity's Decisions API (`pplx-decider-v1.1-27b` by default, `pplx-decider-v1-27b` the
-   * launch model; `PERPLEXITY_API_KEY`, else `SONAR_API_KEY`): `POST /v1/decisions`, images in
-   * the state, at most 128 questions, an input under 262,144 tokens, $0.02 per 1M input tokens
-   * (live 2026-10-08); its `/v1/models` lists the Agent API models, so the decision models are
-   * listed here. An image of any size goes: the API scales it to about 2,100 tokens (a 4032 x
-   * 3024 phone photo, or 8192 x 8192, answered in ~1 s on 2026-10-08) - the 2,048-tile cap
-   * over which it used to time out is gone, so no `maxImageTiles` here.
+   * Perplexity's Decisions API (`pplx-decider-v1.2` by default - the 27B of 2026-10-16 -, the
+   * 4B `pplx-decider-flash-v1.2`, and the older `pplx-decider-v1.1-27b` /
+   * `pplx-decider-v1-27b`; `PERPLEXITY_API_KEY`, else `SONAR_API_KEY`): `POST /v1/decisions`,
+   * images in the state (at most 8 per question), at most 128 questions, an input under
+   * 262,144 tokens, $0.02 (Flash $0.01) per 1M input tokens; its `/v1/models` lists the Agent
+   * API models, so the decision models are listed here. An image of any size goes: the API
+   * scales it to about 2,100 tokens (a 4032 x 3024 phone photo, or 8192 x 8192, answered in ~1
+   * s on 2026-10-08) - the 2,048-tile cap over which it used to time out is gone, so no
+   * `maxImageTiles` here.
    */
   val perplexity: DecisionProvider = DecisionProvider(
     "https://api.perplexity.ai/",
     "PERPLEXITY_API_KEY",
-    DecisionModelId.pplx_decider_v1_1_27b,
+    DecisionModelId.pplx_decider_v1_2,
     decisionsPath = "v1/decisions",
     models = DecisionModelListing.Fixed(
       Seq(
+        ModelMetadata(
+          DecisionModelId.pplx_decider_v1_2,
+          "Perplexity's 27B multimodal decision model, v1.2 - all questions in one pass.",
+          "2026-10-16",
+          Some(Seq("text", "image"))
+        ),
+        ModelMetadata(
+          DecisionModelId.pplx_decider_flash_v1_2,
+          "Perplexity's 4B multimodal decision model, Flash v1.2.",
+          "2026-10-16",
+          Some(Seq("text", "image"))
+        ),
         ModelMetadata(
           DecisionModelId.pplx_decider_v1_1_27b,
           "Perplexity's multimodal decision model, the update of 2026-10-06 (Decision Index 61.56).",

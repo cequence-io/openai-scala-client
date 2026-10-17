@@ -14,6 +14,9 @@ class DecisionModelIdSpec extends AnyWordSpec with Matchers {
       DecisionModelId.jev_latest shouldBe NonOpenAIModelId.jev_latest
       DecisionModelId.liquid_d1 shouldBe NonOpenAIModelId.liquid_d1
       DecisionModelId.pplx_decider_v1_1_27b shouldBe NonOpenAIModelId.pplx_decider_v1_1_27b
+      DecisionModelId.pplx_decider_flash_v1_2 shouldBe NonOpenAIModelId.pplx_decider_flash_v1_2
+      DecisionModelId.openrouter_pplx_decider_v1_2 shouldBe
+        NonOpenAIModelId.openrouter_pplx_decider_v1_2
       DecisionModelId.microsoft_decision_1 shouldBe NonOpenAIModelId.microsoft_decision_1
       DecisionModelId.openrouter_clef_omni shouldBe NonOpenAIModelId.openrouter_clef_omni
       DecisionModelId.vercel_laya_free shouldBe NonOpenAIModelId.vercel_laya_free

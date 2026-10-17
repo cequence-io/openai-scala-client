@@ -355,7 +355,7 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       val body = Json.parse(received.get.body).as[JsObject]
       // the Decisions API answers 400 to any other field
       body.keys shouldBe Set("model", "state", "questions")
-      (body \ "model").as[String] shouldBe DecisionModelId.pplx_decider_v1_1_27b
+      (body \ "model").as[String] shouldBe DecisionModelId.pplx_decider_v1_2
       (body \ "state" \ "review").as[String] shouldBe review
 
       response.requestId shouldBe Some("7a1504a6-a884-48e6-af6e-0c3140aeb6db")
@@ -1734,12 +1734,14 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       liquid.close()
     }
 
-    "return Perplexity's one decision model without a request" in {
+    "return Perplexity's decision models without a request" in {
       respond(200, "{}")
       val perplexity =
         TypeSafeServiceFactory.perplexityWithEngine(engine, "pplx_k", baseUrl = baseUrl)
 
       await(perplexity.listModels).map(_.name) shouldBe Seq(
+        DecisionModelId.pplx_decider_v1_2,
+        DecisionModelId.pplx_decider_flash_v1_2,
         DecisionModelId.pplx_decider_v1_1_27b,
         DecisionModelId.pplx_decider_v1_27b
       )

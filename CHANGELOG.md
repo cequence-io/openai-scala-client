@@ -4,8 +4,8 @@
 
 The 2026-10-12 - 2026-10-16 work since v1.5.0: the JSON helpers infer the response schema from `T`; Meta's Muse
 models (on the Meta Model API, and the open-weight Muse Spark Open on Together, Fireworks, OpenRouter and Vercel) and
-Gemini 4 Argon; TypeSafe's Jev 1.14 with images, bounding boxes and long context; SubQ Snap, ScaleDown's Classify and
-Liquid's d1-ultra as decision models; OpenRouter and Vercel AI Gateway as chat presets; and ws-client 1.1.3, which
+Gemini 4 Argon; TypeSafe's Jev 1.14 with images, bounding boxes and long context; Perplexity's v1.2 deciders, SubQ Snap,
+ScaleDown's Classify and Liquid's d1-ultra as decision models; OpenRouter and Vercel AI Gateway as chat presets; and ws-client 1.1.3, which
 reaches TLS 1.3-only hosts and skips server-sent-event comments (OpenRouter's keep-alives). Fixed on the way: every
 Gemini 3+ tool loop failed on its second turn, Google Search answers often failed to parse, and listing models failed on
 six OpenAI-compatible providers. Everything below is live-verified against the providers unless stated otherwise.
@@ -45,7 +45,8 @@ the envelope `openai-scala-all`.
   "response is not a JSON";
 - `listModels` reads a bare array as well as `{"data": [...]}`;
 - the `liquid` decision preset defaults to `d1` - Liquid removed its free tier `d1:free` on 2026-10-14 (a 404), and `d1`
-  is billed ($0.02 / 1M input tokens);
+  is billed ($0.02 / 1M input tokens); the `perplexity` preset defaults to `pplx-decider-v1.2` (was
+  `pplx-decider-v1.1-27b`, which the API now answers exactly like v1.2; the same price);
 - TypeSafe: `TypeSafeServiceFactory.asOpenAI()` passes the images of user messages to Jev (as image assets), and
   `asOpenAI(service)` / `asOpenAIDecisions(service)` do so whenever the service's host reads images (the new
   `TypeSafeService.readsImages`); the schema planner (`asOpenAI`, `decide[T]`) asks an object of exactly the `number`
@@ -72,7 +73,11 @@ the envelope `openai-scala-all`.
   context and images. `Gemini4ArgonSmokeTest`.
 - **Tencent HY4 preview** (`tencent/hy4-preview`, OpenRouter / Novita): reasons and calls tools; its `json_schema`
   output is flaky, so it is not in `models-supporting-json-schema` (the JSON helper's JSON-object mode answered 5 of 5).
-- **Decision models**: Jev 1.14 (below); Liquid's **d1-ultra** (`d1-ultra`, 2026-10-15, Liquid's strongest decision
+- **Decision models**: Perplexity's **v1.2** deciders (2026-10-16, open weights, all questions of a request in one
+  pass): `pplx-decider-v1.2` (27B, $0.02 / 1M input tokens, the preset's default) and `pplx-decider-flash-v1.2` (4B,
+  $0.01; 0.22 s for three questions), the aliases `pplx-decider-latest` / `pplx-decider-flash-latest`, and on OpenRouter
+  `perplexity/pplx-decider-v1.2`, `perplexity/pplx-decider-flash-v1.2` and `~perplexity/pplx-decider-flash-latest`;
+  Jev 1.14 (below); Liquid's **d1-ultra** (`d1-ultra`, 2026-10-15, Liquid's strongest decision
   model: text and images, $0.042 / 1M input tokens, a flat ~210-240 ms from 1 to 40 questions); **SubQ Snap**
   (`DecisionProviderSettings.subq`, 2026-10-12: a long-context decision model - 295,957 input tokens by its own count -
   that takes images as `{mediaType, base64}` objects, `DecisionImages.ImageObjects`); ScaleDown's **Classify**
@@ -81,7 +86,10 @@ the envelope `openai-scala-all`.
   `scaledown/` models on OpenRouter and Vercel via `DecisionProvider.modelProtocols`); on OpenRouter `nace-ai/drex-v2.0`,
   `~perplexity/pplx-decider-latest`, `scaledown/classify-1`, `typesafe/jev-1.14`, `liquid/d1-ultra` and `respan/span-02`
   (unlike Span-01 it takes choice and score questions and object states) - all 25 of OpenRouter's decision models
-  answered on 2026-10-16. Constants in `DecisionModelId` / `NonOpenAIModelId`, all in `models-supporting-json-schema`.
+  answered on 2026-10-16. Constants in `DecisionModelId` / `NonOpenAIModelId`; all but Perplexity's v1.2 ids are in
+  `models-supporting-json-schema` - which only keeps the JSON helper in schema mode: a decision model takes state and
+  questions, not a schema, and for an unlisted id the decision adapter reads the schema back from the JSON-object
+  prompt.
 - **Chat presets**: `ChatProviderSettings.openRouter` (`OPENROUTER_API_KEY`) and `ChatProviderSettings.vercel`
   (`AI_GATEWAY_API_KEY`, a key of the gateway).
 

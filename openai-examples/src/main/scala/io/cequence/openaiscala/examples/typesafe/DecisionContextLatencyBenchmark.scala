@@ -113,7 +113,7 @@ object DecisionContextLatencyBenchmark {
         "perplexity",
         Some(DecisionProviderSettings.perplexity),
         env("PERPLEXITY_API_KEY").orElse(env("SONAR_API_KEY")),
-        fixed(DecisionModelId.pplx_decider_v1_1_27b)
+        fixed(DecisionModelId.pplx_decider_v1_2, DecisionModelId.pplx_decider_flash_v1_2)
       ),
       Host(
         "openai",

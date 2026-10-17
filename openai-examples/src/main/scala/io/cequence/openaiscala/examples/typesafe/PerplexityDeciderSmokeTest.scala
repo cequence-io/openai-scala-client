@@ -28,11 +28,11 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.control.NonFatal
 
 /**
- * Live walkthrough of Perplexity's decision model `pplx-decider-v1.1-27b` (the update of
- * 2026-10-06 - open weights, Decision Index 61.56 against the launch model's 56.4; the launch
- * id `pplx-decider-v1-27b` answers alike). Its Decisions API takes the System One questions
- * and answers - plus images in the state - so the typesafe-client talks to it:
- * `TypeSafeServiceFactory.perplexity` points the client at `POST
+ * Live walkthrough of Perplexity's decision models - the preset's default `pplx-decider-v1.2`
+ * (the 27B of 2026-10-16; the 4B `pplx-decider-flash-v1.2` and the older
+ * `pplx-decider-v1.1-27b` / `pplx-decider-v1-27b` are listed too). Its Decisions API takes the
+ * System One questions and answers - plus images in the state - so the typesafe-client talks
+ * to it: `TypeSafeServiceFactory.perplexity` points the client at `POST
  * https://api.perplexity.ai/v1/decisions`.
  *
  *   - the docs' example: a noul, a choice and a score about one product review, on both ids
@@ -217,7 +217,7 @@ object PerplexityDeciderSmokeTest {
       _ = println(s"[models] ${models.map(_.name).mkString(", ")}")
 
       native <- pplx.systemOne(review, questions)
-      _ = show("pplx-decider v1.1", native)
+      _ = show("pplx-decider (the default, v1.2)", native)
 
       // the launch id, which the API answers alike
       launch <- pplx.systemOne(review, questions, DecisionModelId.pplx_decider_v1_27b)
@@ -251,7 +251,7 @@ object PerplexityDeciderSmokeTest {
 
       triage <- pplxAsOpenAI.createChatCompletionWithJSON[Review](
         Seq(UserMessage(review.toString)),
-        CreateChatCompletionSettings(model = DecisionModelId.pplx_decider_v1_1_27b)
+        CreateChatCompletionSettings(model = DecisionModelId.pplx_decider_v1_2)
           .withJsonSchema(reviewSchema)
       )
       _ = println(s"[via OpenAI] $triage")
@@ -262,7 +262,7 @@ object PerplexityDeciderSmokeTest {
             TextContent("Which color is the square?") +: VLMContent.of(blue, "square.png")
           )
         ),
-        CreateChatCompletionSettings(model = DecisionModelId.pplx_decider_v1_1_27b)
+        CreateChatCompletionSettings(model = DecisionModelId.pplx_decider_v1_2)
           .withJsonSchema(squareSchema)
       )
       _ = println(s"[via OpenAI, image] $squareViaOpenAI")

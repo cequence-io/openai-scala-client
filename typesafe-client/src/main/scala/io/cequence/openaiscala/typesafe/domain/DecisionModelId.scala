@@ -77,6 +77,21 @@ object DecisionModelId {
   val pplx_decider_v1_27b: String = NonOpenAIModelId.pplx_decider_v1_27b
 
   /**
+   * Perplexity's 27B decider v1.2 (2026-10-16, open weights; $0.02 per 1M input tokens) - the
+   * Perplexity preset's default.
+   */
+  val pplx_decider_v1_2: String = NonOpenAIModelId.pplx_decider_v1_2
+
+  /**
+   * Perplexity's 4B Flash decider v1.2 (2026-10-16, open weights; $0.01 per 1M input tokens).
+   */
+  val pplx_decider_flash_v1_2: String = NonOpenAIModelId.pplx_decider_flash_v1_2
+
+  /** The rolling aliases of Perplexity's latest decider and Flash decider. */
+  val pplx_decider_latest: String = NonOpenAIModelId.pplx_decider_latest
+  val pplx_decider_flash_latest: String = NonOpenAIModelId.pplx_decider_flash_latest
+
+  /**
    * Microsoft-Decision-1 on Microsoft Foundry (public preview 2026-10-09) - see
    * `TypeSafeServiceFactory.microsoftFoundry`. The model's name (a deployment's `model`); a
    * request names your DEPLOYMENT of it, not the model - `listModels` lists them.
@@ -101,6 +116,11 @@ object DecisionModelId {
   val openrouter_drex_v2_0: String = NonOpenAIModelId.openrouter_drex_v2_0
   val openrouter_pplx_decider_latest: String =
     NonOpenAIModelId.openrouter_pplx_decider_latest
+  val openrouter_pplx_decider_v1_2: String = NonOpenAIModelId.openrouter_pplx_decider_v1_2
+  val openrouter_pplx_decider_flash_v1_2: String =
+    NonOpenAIModelId.openrouter_pplx_decider_flash_v1_2
+  val openrouter_pplx_decider_flash_latest: String =
+    NonOpenAIModelId.openrouter_pplx_decider_flash_latest
   // text only - its requests go in `DecisionProtocol.ScaleDown` (`openRouter.modelProtocols`)
   val openrouter_scaledown_classify_1: String =
     NonOpenAIModelId.openrouter_scaledown_classify_1

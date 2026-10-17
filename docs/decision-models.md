@@ -471,6 +471,14 @@ and [LlamaCppDecisionsSmokeTest](../openai-examples/src/main/scala/io/cequence/o
 
 ## Perplexity Decisions API (pplx-decider) 🧭
 
+🔥 **v1.2** (2026-10-16) comes in two sizes, both open weights: **`pplx-decider-v1.2`** (27B, $0.02 per million input
+tokens - the Perplexity preset's default) and **`pplx-decider-flash-v1.2`** (4B, $0.01), plus the aliases
+`pplx-decider-latest` / `pplx-decider-flash-latest`. All questions of a request run in one pass (up to 5x faster, per
+Perplexity); at most 8 images per question. Live 2026-10-16 the docs' review came back defect 0.995 / negative 0.60 /
+severity 1.91 in 0.6 s on the 27B and 0.972 / mixed 0.54 / 1.71 in 0.22 s on Flash (160 input tokens for the three
+questions), a blue square blue at 0.999 / 0.998, and v1.1's id answered exactly like v1.2. On OpenRouter they are
+`perplexity/pplx-decider-v1.2` / `perplexity/pplx-decider-flash-v1.2` (and `~perplexity/pplx-decider-flash-latest`).
+
 Perplexity's open-sourced decision model **`pplx-decider-v1.1-27b`** (the 2026-10-06 update - Apache-2.0 weights on a
 Qwen3.8-27B backbone, Decision Index 61.56 against the launch model `pplx-decider-v1-27b`'s 56.4; live 2026-10-08 the API
 answers byte for byte alike under both ids) answers the same typed questions as
