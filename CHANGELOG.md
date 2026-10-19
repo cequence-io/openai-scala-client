@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.6.0 (unreleased)
+## 1.6.0 (2026-10-18)
 
 The 2026-10-12 - 2026-10-16 work since v1.5.0: the JSON helpers infer the response schema from `T`; Meta's Muse
 models (on the Meta Model API, and the open-weight Muse Spark Open on Together, Fireworks, OpenRouter and Vercel) and
