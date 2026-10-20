@@ -333,7 +333,22 @@ or with streaming
 
   // China endpoint (api.minimaxi.com)
   val chinaService = OpenAIChatCompletionServiceFactory(ChatProviderSettings.minimaxChina)
+
+  // Current direct models: MiniMax-M3.1-Flash (recommended), then MiniMax-M3.
+  service.createChatCompletion(
+    Seq(UserMessage("Hello!")),
+    CreateChatCompletionSettings(NonOpenAIModelId.minimax_m3_1_flash)
+  )
 ```
+   Provider settings select the endpoint and credentials, so pass a MiniMax model explicitly instead of using the shared service defaults.
+   The [MiniMax example](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/minimax/CreateMiniMaxChatCompletion.scala)
+   defaults to Flash and accepts a saved/custom model ID as its first argument. Existing legacy constants remain available.
+   On the [direct chat API](https://platform.minimax.io/docs/api-reference/text-openai-api), Flash always thinks:
+   omit `reasoning_effort` for its `max` default, or select `low`, `medium`, `high`, `xhigh`, or `max`.
+   Do not send `none`, `minimal`, `thinking.type = disabled`, `service_tier`, or `reasoning_split = false` for Flash.
+   M3 accepts `thinking = {"type": "adaptive"}` or `{"type": "disabled"}` through `extra_params`, defaults to adaptive,
+   and ignores effort. The generic transport preserves explicit settings and leaves invalid combinations to the API.
+
    MiniMax also exposes an Anthropic-compatible endpoint, reachable via the Anthropic client's escape hatch:
 ```scala
   import io.cequence.wsclient.domain.WsRequestContext
@@ -344,7 +359,21 @@ or with streaming
       authHeaders = Seq(("Authorization", s"Bearer ${sys.env("MINIMAX_API_KEY")}"))
     )
   )
+
+  anthropicService.createMessage(
+    Seq(io.cequence.openaiscala.anthropic.domain.Message.UserMessage("Hello!")),
+    io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings(
+      model = NonOpenAIModelId.minimax_m3_1_flash,
+      max_tokens = 4096
+    )
+  )
 ```
+   Use the native `createMessage` settings on this escape hatch. Flash defaults to adaptive thinking and maximum effort;
+   set `thinking = Some(ThinkingSettings.adaptive)` and `output_config = Some(OutputConfig(effort = Some(OutputEffort.high)))`
+   to choose an explicit effort (types from `io.cequence.openaiscala.anthropic.domain.settings`).
+   M3 defaults to disabled thinking on this protocol and accepts explicit adaptive/disabled thinking; effort has no effect.
+   See the [MiniMax Messages API contract](https://platform.minimax.io/docs/api-reference/text-anthropic-api).
+
    Claude in **Microsoft Foundry** serves the same Messages API, so the escape hatch reaches it too (the model is your
    deployment's name; live-verified 2026-10-07 with chat, a streamed tool call and `json_schema` output, see
    [AnthropicAccessModesSmokeTest](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/anthropic/AnthropicAccessModesSmokeTest.scala)):
