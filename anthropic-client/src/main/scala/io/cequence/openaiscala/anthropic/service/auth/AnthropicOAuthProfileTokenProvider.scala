@@ -2,14 +2,18 @@ package io.cequence.openaiscala.anthropic.service.auth
 
 import io.cequence.openaiscala.anthropic.service.{
   AnthropicScalaClientException,
+  AnthropicScalaClientTimeoutException,
   AnthropicScalaUnauthorizedException
 }
 import play.api.libs.json._
 
 import java.net.URI
-import java.net.http.{HttpClient, HttpRequest, HttpResponse}
+import java.net.http.{HttpClient, HttpRequest, HttpResponse, HttpTimeoutException}
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
+import java.time.Duration
+import java.util.concurrent.{ExecutionException, TimeUnit, TimeoutException}
+import java.util.concurrent.locks.ReentrantLock
 import scala.util.control.NonFatal
 
 /**
@@ -35,8 +39,23 @@ import scala.util.control.NonFatal
  * refreshing degrades to simply re-reading the credentials file, on the assumption that an
  * external process rotates it.
  *
- * All state transitions are single-flighted behind a private lock with double-checked reads so
- * that concurrent callers never stampede the refresh endpoint.
+ * Refreshes are single-flighted behind a private [[java.util.concurrent.locks.ReentrantLock]]
+ * with double-checked reads so that concurrent callers never stampede the refresh endpoint,
+ * and every refresh is bounded in time, so a token endpoint that accepts the connection and
+ * never answers cannot hang the service:
+ *   - the refresh `POST` has a connect timeout and a deadline on the WHOLE exchange (response
+ *     body included); when it expires the request is cancelled and the attempt fails with an
+ *     [[AnthropicScalaClientTimeoutException]], which in the advisory window engages the
+ *     failure backoff;
+ *   - in the advisory window a caller never waits for a refresh that is already in flight: it
+ *     returns the cached (still valid) token at once; only the caller that got the lock waits
+ *     for its own refresh, at most `refreshTimeout`;
+ *   - in the mandatory window (or when expired) a caller waits for an in-flight refresh at
+ *     most `lockWaitTimeout`, then fails with an [[AnthropicScalaClientException]]; a caller
+ *     that gets the lock refreshes on its own, again bounded by `refreshTimeout`.
+ *
+ * A thread interrupted while it waits or refreshes keeps its interrupt status: the advisory
+ * path serves the cached token, the mandatory one throws an [[AnthropicScalaClientException]].
  *
  * @param configDir
  *   Overrides the resolved Anthropic config directory (see
@@ -44,11 +63,35 @@ import scala.util.control.NonFatal
  * @param profile
  *   Overrides the resolved profile name (see [[AnthropicOAuthProfile.resolveProfileName]]).
  *   Defaults to env-var/`active_config`-based resolution.
+ * @param connectTimeout
+ *   Connect timeout of the token-refresh HTTP client (default 10 s).
+ * @param refreshTimeout
+ *   Deadline of one whole token-refresh exchange, request to last response byte (default 30
+ *   s).
+ * @param lockWaitTimeout
+ *   How long a mandatory-window caller waits for a refresh that is already in flight before it
+ *   fails (default 45 s).
  */
 class AnthropicOAuthProfileTokenProvider(
   configDir: Option[Path] = None,
-  profile: Option[String] = None
+  profile: Option[String] = None,
+  connectTimeout: Duration = AnthropicOAuthProfileTokenProvider.defaultConnectTimeout,
+  refreshTimeout: Duration = AnthropicOAuthProfileTokenProvider.defaultRefreshTimeout,
+  lockWaitTimeout: Duration = AnthropicOAuthProfileTokenProvider.defaultLockWaitTimeout
 ) extends AnthropicTokenProvider {
+
+  require(
+    !connectTimeout.isNegative && !connectTimeout.isZero,
+    s"connectTimeout must be positive, got $connectTimeout"
+  )
+  require(
+    !refreshTimeout.isNegative && !refreshTimeout.isZero,
+    s"refreshTimeout must be positive, got $refreshTimeout"
+  )
+  require(
+    !lockWaitTimeout.isNegative,
+    s"lockWaitTimeout must not be negative, got $lockWaitTimeout"
+  )
 
   private val resolvedConfigDir: Path = AnthropicOAuthProfile.resolveConfigDir(configDir)
   private val resolvedProfile: String =
@@ -59,15 +102,16 @@ class AnthropicOAuthProfileTokenProvider(
     AnthropicOAuthProfile.credentialsFilePath(resolvedConfigDir, resolvedProfile, config)
 
   // single-flights refresh/re-read attempts; all mutation of the volatile vars below happens
-  // while holding this lock
-  private val lock = new Object
+  // while holding this lock. Never waited for without a bound (see tryLock below).
+  private val lock = new ReentrantLock()
 
   @volatile private var credentials: AnthropicOAuthCredentials =
     AnthropicOAuthProfile.loadCredentials(credentialsPath)
 
   @volatile private var lastRefreshFailureEpochSeconds: Option[Long] = None
 
-  private val httpClient: HttpClient = HttpClient.newHttpClient()
+  private val httpClient: HttpClient =
+    HttpClient.newBuilder().connectTimeout(connectTimeout).build()
 
   override def extraHeaders: Seq[(String, String)] =
     config.workspaceId
@@ -79,9 +123,11 @@ class AnthropicOAuthProfileTokenProvider(
 
   /**
    * Performs the token-refresh HTTP call. Overridable for tests. The default implementation
-   * uses the JDK's [[java.net.http.HttpClient]] synchronously and throws
-   * [[AnthropicScalaClientException]] with the status code and body on a non-2xx response (or
-   * on a transport failure).
+   * uses the JDK's [[java.net.http.HttpClient]] and throws [[AnthropicScalaClientException]]
+   * with the status code and body on a non-2xx response (or on a transport failure), and an
+   * [[AnthropicScalaClientTimeoutException]] when the exchange does not complete within
+   * `refreshTimeout`. An overriding implementation must bound its own run time - the caller
+   * holds the refresh lock meanwhile.
    */
   protected def postRefresh(
     url: String,
@@ -89,6 +135,9 @@ class AnthropicOAuthProfileTokenProvider(
   ): JsValue = {
     val request = HttpRequest
       .newBuilder(URI.create(url))
+      // ends a stall before the response headers; one after them (e.g. a stalled body) is
+      // not covered, hence the deadline on the whole exchange below
+      .timeout(refreshTimeout)
       .header("Content-Type", "application/json")
       .header("anthropic-beta", AnthropicOAuthConsts.oauthBetaValue)
       .POST(
@@ -96,15 +145,37 @@ class AnthropicOAuthProfileTokenProvider(
       )
       .build()
 
+    val pending =
+      httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8))
+
     val response =
       try {
-        httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8))
+        pending.get(refreshTimeout.toNanos, TimeUnit.NANOSECONDS)
       } catch {
-        case NonFatal(e) =>
-          throw new AnthropicScalaClientException(
-            s"Anthropic OAuth token refresh request to '$url' failed: ${e.getMessage}",
+        case e: TimeoutException =>
+          // closes the connection, so the next attempt starts on a fresh one
+          pending.cancel(true)
+          throw new AnthropicScalaClientTimeoutException(
+            s"Anthropic OAuth token refresh request to '$url' timed out after " +
+              s"${refreshTimeout.toMillis} ms",
             e
           )
+
+        case e: InterruptedException =>
+          pending.cancel(true)
+          // not rethrown (accessToken cannot declare it): the status is kept for the caller
+          Thread.currentThread().interrupt()
+          throw new AnthropicScalaClientException(
+            s"Anthropic OAuth token refresh request to '$url' was interrupted",
+            e
+          )
+
+        case e: ExecutionException =>
+          throw refreshFailure(url, Option(e.getCause).getOrElse(e))
+
+        case NonFatal(e) =>
+          pending.cancel(true)
+          throw refreshFailure(url, e)
       }
 
     if (response.statusCode() / 100 != 2) {
@@ -115,6 +186,27 @@ class AnthropicOAuthProfileTokenProvider(
     }
 
     Json.parse(response.body())
+  }
+
+  private def refreshFailure(
+    url: String,
+    cause: Throwable
+  ): AnthropicScalaClientException = {
+    val reason = Option(cause.getMessage).getOrElse(cause.getClass.getName)
+
+    cause match {
+      case _: HttpTimeoutException =>
+        new AnthropicScalaClientTimeoutException(
+          s"Anthropic OAuth token refresh request to '$url' timed out: $reason",
+          cause
+        )
+
+      case _ =>
+        new AnthropicScalaClientException(
+          s"Anthropic OAuth token refresh request to '$url' failed: $reason",
+          cause
+        )
+    }
   }
 
   def accessToken(): String = {
@@ -134,16 +226,22 @@ class AnthropicOAuthProfileTokenProvider(
       case Some(r) if r > AnthropicOAuthConsts.advisoryRefreshSeconds =>
         snapshot.accessToken
 
-      // advisory window: best-effort, non-blocking-ish refresh; always serve the cached
-      // (still valid) token regardless of outcome
+      // advisory window: best-effort refresh that never waits for one already in flight (a
+      // caller that does not get the lock returns at once); always serve the cached (still
+      // valid) token regardless of outcome
       case Some(r) if r > AnthropicOAuthConsts.mandatoryRefreshSeconds =>
         attemptAdvisoryRefresh()
         credentials.accessToken
 
-      // mandatory window (or already expired): block on a refresh, or die
+      // mandatory window (or already expired): wait for an in-flight refresh (bounded) and
+      // refresh, or die
       case Some(_) =>
-        lock.synchronized {
+        acquireLockOrFail()
+
+        try {
           ensureFreshOrDie()
+        } finally {
+          lock.unlock()
         }
         credentials.accessToken
     }
@@ -169,11 +267,15 @@ class AnthropicOAuthProfileTokenProvider(
       credentials = AnthropicOAuthProfile.loadCredentials(credentialsPath)
     }
 
+  /**
+   * Never waits: a caller that finds a refresh in flight (the lock taken) returns at once and
+   * serves the cached token.
+   */
   private def attemptAdvisoryRefresh(): Unit =
-    if (!recentlyFailed()) {
-      lock.synchronized {
-        // double-checked: another thread may have already refreshed (or just failed) while
-        // we were waiting for the lock
+    if (!recentlyFailed() && lock.tryLock()) {
+      try {
+        // double-checked: another thread may have already refreshed (or just failed) between
+        // our check and getting the lock
         val remaining = credentials.expiresAt.map(_ - nowSeconds())
         val stillDue = remaining.exists(_ <= AnthropicOAuthConsts.advisoryRefreshSeconds)
 
@@ -188,8 +290,37 @@ class AnthropicOAuthProfileTokenProvider(
               lastRefreshFailureEpochSeconds = Some(nowSeconds())
           }
         }
+      } finally {
+        lock.unlock()
       }
     }
+
+  /**
+   * Waits for [[lock]] at most `lockWaitTimeout`; fails with an
+   * [[AnthropicScalaClientException]] when it is not free by then (a refresh by another thread
+   * is stalled) or the thread is interrupted (its interrupt status is kept). The caller must
+   * `unlock()` in a `finally` when this returns.
+   */
+  private def acquireLockOrFail(): Unit = {
+    val acquired =
+      try {
+        lock.tryLock(lockWaitTimeout.toNanos, TimeUnit.NANOSECONDS)
+      } catch {
+        case e: InterruptedException =>
+          Thread.currentThread().interrupt()
+          throw new AnthropicScalaClientException(
+            "Interrupted while waiting for an in-flight Anthropic OAuth token refresh",
+            e
+          )
+      }
+
+    if (!acquired) {
+      throw new AnthropicScalaClientException(
+        s"Timed out after ${lockWaitTimeout.toMillis} ms waiting for an in-flight " +
+          "Anthropic OAuth token refresh"
+      )
+    }
+  }
 
   /** Callers must hold [[lock]]. */
   private def ensureFreshOrDie(): Unit = {
@@ -268,4 +399,16 @@ class AnthropicOAuthProfileTokenProvider(
     credentials = updated
     AnthropicOAuthProfile.writeCredentialsAtomic(credentialsPath, updated)
   }
+}
+
+object AnthropicOAuthProfileTokenProvider {
+
+  /** Default connect timeout of the token-refresh HTTP client. */
+  val defaultConnectTimeout: Duration = Duration.ofSeconds(10)
+
+  /** Default deadline of one whole token-refresh exchange. */
+  val defaultRefreshTimeout: Duration = Duration.ofSeconds(30)
+
+  /** Default time a mandatory-window caller waits for an in-flight refresh. */
+  val defaultLockWaitTimeout: Duration = Duration.ofSeconds(45)
 }
