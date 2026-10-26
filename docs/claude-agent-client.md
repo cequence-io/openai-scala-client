@@ -37,6 +37,24 @@ The event stream is hot after its initial init replay, so subscribe before sendi
 events must be observed. To approve a tool call unchanged, reply with
 `PermissionDecision.Allow(request.input)`; the CLI requires an explicit `updated_input` object.
 
+**Working-directory configuration is not loaded.** The CLI is started with `--setting-sources user`
+(`ClaudeAgentSettings.settingSources`, default `Some(Seq("user"))`): the integrator's own
+`~/.claude/settings.json` (and user-level memory, skills, commands and agents) applies, but nothing the
+working directory brings:
+- `<cwd>/.claude/settings.json` and `settings.local.json` - their hooks, permission rules and environment. The
+  hooks run host shell commands - with the process environment, keys included - at session start and outside
+  `respondToolPermission`, so a repository the agent works on must not be able to configure it.
+- The project's memory - `CLAUDE.md`, `.claude/CLAUDE.md`, `CLAUDE.local.md`, `.claude/rules/` - and its skills,
+  slash commands and subagents (`.claude/skills`, `.claude/commands`, `.claude/agents`). Checked with the `claude`
+  CLI 2.1.310 (2026-10-26): with `user` alone none of the project's CLAUDE.md, CLAUDE.local.md, skills, commands or
+  subagents reached the agent's context; with `user,project,local` all of them did. The agent can still read such a
+  file with its tools, like any other file.
+
+`Some(Nil)` loads no filesystem settings at all (the official Agent SDK's default);
+`Some(Seq("user", "project"))` adds the project's settings, memory, skills, commands and subagents (`"local"` its
+`settings.local.json` and `CLAUDE.local.md`), and `None` passes no flag, so the CLI loads every source - only for a
+working directory you trust as much as your own code.
+
 See [ClaudeAgentOneShotQueryExample](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/claudeagent/ClaudeAgentOneShotQueryExample.scala)
 for a complete runnable example, and
 [ClaudeAgentToolPermissionExample](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/claudeagent/ClaudeAgentToolPermissionExample.scala)

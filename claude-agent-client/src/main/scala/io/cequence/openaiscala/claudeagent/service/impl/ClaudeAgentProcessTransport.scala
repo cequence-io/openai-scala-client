@@ -100,6 +100,14 @@ private[claudeagent] class ClaudeAgentProcessTransport(
       args += "--fork-session"
     }
 
+    // project / local settings live in the working directory - their hooks would run host
+    // commands outside the permission callback; an explicit extraArgs entry wins
+    if (!settings.extraArgs.contains("setting-sources"))
+      settings.settingSources.foreach { sources =>
+        args += "--setting-sources"
+        args += sources.mkString(",")
+      }
+
     settings.extraArgs.foreach { case (key, valueOption) =>
       valueOption match {
         case None        => args += s"--$key"

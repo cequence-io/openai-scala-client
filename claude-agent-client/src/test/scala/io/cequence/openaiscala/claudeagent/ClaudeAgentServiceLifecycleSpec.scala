@@ -111,6 +111,31 @@ class ClaudeAgentServiceLifecycleSpec
     }
   }
 
+  "ClaudeAgentService argv" should {
+
+    "load only the user's own settings by default (no project / local hooks from cwd)" in {
+      argsOf(ClaudeAgentSettings()) should contain inOrderElementsOf Seq(
+        "--setting-sources",
+        "user"
+      )
+    }
+
+    "load no filesystem settings for Nil and leave the flag out for None" in {
+      val none = argsOf(ClaudeAgentSettings(settingSources = Some(Nil)))
+      none(none.indexOf("--setting-sources") + 1) shouldBe ""
+
+      argsOf(ClaudeAgentSettings(settingSources = None)) should not contain "--setting-sources"
+    }
+
+    "let an explicit extraArgs entry win" in {
+      val args = argsOf(
+        ClaudeAgentSettings(extraArgs = Map("setting-sources" -> Some("user,project")))
+      )
+      args.count(_ == "--setting-sources") shouldBe 1
+      args(args.indexOf("--setting-sources") + 1) shouldBe "user,project"
+    }
+  }
+
   "ClaudeAgentSettings" should {
 
     "allow a system prompt to be extended" in {
@@ -126,6 +151,9 @@ class ClaudeAgentServiceLifecycleSpec
       an[IllegalArgumentException] shouldBe thrownBy {
         ClaudeAgentSettings(maxTurns = Some(0))
       }
+      an[IllegalArgumentException] shouldBe thrownBy {
+        ClaudeAgentSettings(settingSources = Some(Seq("user", "policy")))
+      }
     }
   }
 
@@ -137,6 +165,28 @@ class ClaudeAgentServiceLifecycleSpec
       )
     )
 
+  // the argv the fake CLI was started with, one element per line
+  private def argsOf(settings: ClaudeAgentSettings): Seq[String] = {
+    val argsFile = Files.createTempFile("fake-claude-args", ".txt")
+
+    try {
+      val service = ClaudeAgentServiceFactory.startSession(
+        settings.copy(
+          executablePath = Some(fakeCli.toString),
+          env = Map("FAKE_CLAUDE_MODE" -> "success", "FAKE_CLAUDE_ARGS" -> argsFile.toString)
+        )
+      )
+
+      try Await.result(service.ready, timeout)
+      finally service.close()
+
+      new String(Files.readAllBytes(argsFile), StandardCharsets.UTF_8)
+        .split("\n", -1)
+        .toSeq
+        .init
+    } finally Files.deleteIfExists(argsFile)
+  }
+
   private def isTurnEnd(event: ClaudeAgentEvent): Boolean = event match {
     case _: ClaudeAgentEvent.ResultSuccess => true
     case _: ClaudeAgentEvent.ResultError   => true
@@ -145,6 +195,9 @@ class ClaudeAgentServiceLifecycleSpec
 
   private lazy val fakeCliScript =
     """#!/bin/sh
+      |if [ -n "$FAKE_CLAUDE_ARGS" ]; then
+      |  printf '%s\n' "$@" > "$FAKE_CLAUDE_ARGS"
+      |fi
       |printf '%s\n' '{"type":"system","subtype":"init","apiKeySource":"none","model":"fake-model","tools":[],"permissionMode":"default","session_id":"session-1","cwd":"/tmp","claude_code_version":"test"}'
       |
       |if [ "$FAKE_CLAUDE_MODE" = "crash" ]; then
