@@ -1,5 +1,172 @@
 # Changelog
 
+## 1.6.1 (unreleased)
+
+### ⚠️ Upgrading from 1.6.0
+
+**Source break** - Vertex AI: the factories' `location` is an `Option[String]` (default `VERTEXAI_LOCATION`, which is
+now optional; none = `global`) - `location = "us-central1"` becomes `location = Some("us-central1")`. Not binary
+compatible with 1.6.0 (the factory methods' signatures changed).
+
+**Behavior changes**:
+- TypeSafe: the factory's Jev (`TypeSafeServiceFactory()`, `withEngine(engine, ...)`, `asOpenAI(...)`) opts in to long
+  context by default - every request carries `TypeSafe-Danger-Zone-Long-Context: true`, so a request may take 262,400
+  input tokens instead of 33,024 per question / ~65.8k in all; `longContext = false` keeps the default limits. Live
+  2026-10-22: a short request answers the same with or without the header, in the same time and for the same tokens.
+  `TypeSafeServiceFactory(DecisionProviderSettings.typeSafe)` is unchanged (no header).
+- Groq's `qwen/qwen3.8-27b` left `models-supporting-json-schema`: the JSON helpers ask it in JSON-object mode with the
+  schema in the prompt. Groq lists it under strict structured outputs but does not constrain its decoding - live
+  2026-10-22, strict `json_schema` failed 7-9 of 20 calls with a 400 `json_validate_failed` (free prose, broken JSON),
+  through the client 10 of 20; JSON-object mode answered 66 of 66, through the client 20 of 20.
+  `enforceMode = Some(json_schema)` still forces the native mode.
+
+- claude-agent-client: the CLI is started with `--setting-sources user` (new `ClaudeAgentSettings.settingSources`,
+  default `Some(Seq("user"))`), so it no longer loads anything the working directory brings: `.claude/settings.json` /
+  `settings.local.json` (hooks, permission rules, environment - the hooks ran host commands at session start,
+  outside the tool-permission callback: security fix), and also the project's memory (`CLAUDE.md`,
+  `.claude/CLAUDE.md`, `CLAUDE.local.md`, `.claude/rules/`), skills, slash commands and subagents (`.claude/skills`,
+  `commands`, `agents` - checked with the CLI 2.1.310). An agent that relied on the repository's CLAUDE.md or its
+  project subagents needs `settingSources = Some(Seq("user", "project"))` (`"local"` for `CLAUDE.local.md`), or
+  `None` for the old behaviour (every source) - only for a trusted `cwd`.
+- Resource ids and model names are one URL path segment now (new `io.cequence.openaiscala.service.PathSegment`):
+  every id a service puts into a REST path (OpenAI incl. Agents and Responses, Anthropic incl. Bedrock invoke,
+  Gemini, Perplexity, Vertex AI batch) is percent-encoded - `/`, `?`, `#`, `%`, whitespace, non-ASCII; `:` and `@`
+  stay literal - and an empty, `.` or `..` id fails the call - its Future or stream, never a synchronous throw, so
+  `.recover`, `Future.traverse` and the retry adapter handle it - with an `IllegalArgumentException` before any I/O.
+  Raw, an id such
+  as `../../vs_other` or `x?a=b` (forwarded from a less-trusted source) addressed another resource or endpoint with the
+  integrator's key (security fix). An id that relied on a raw `/` (e.g. a slash-separated model id in `retrieveModel`
+  on an OpenAI-compatible host) now goes out as `%2F`, as OpenAI's own SDK sends it.
+- OpenAI-shaped streams (`createChatCompletionStreamed` over the Responses / Agents adapters and the full streamed
+  service) omit provider-executed tool calls (hosted MCP, multi-agent delegation, hosted shell / code interpreter /
+  web search): they came out as client `tool_calls`, which a consumer would try to run and answer. The typed stream
+  still carries them (`ToolCall(serverSide = true)`).
+- `BaseMessage` has a new subtype, `ReasoningMessage` (see "New features"). An exhaustive match on `BaseMessage` needs
+  a case for it; the compiler warns about a missing one.
+- `ChatCompletionChoiceInfo` and `ChatToolCompletionChoiceInfo` have a new last field, `reasoning:
+  Option[ReasoningMessage] = None` (a binary break; source compatible except for positional patterns). A chat
+  completion's JSON choice gains `reasoning_blocks` when it carries reasoning.
+- A chat completions reply's `reasoning_content` / `reasoning` (and Mistral's thinking chunks) is read into the choice's
+  `reasoning`, and sent back on the next round to the same base URL and credentials when the history carries it (see
+  "New features").
+- Vertex AI tool replies no longer put thought summaries into the answer text.
+- The full `OpenAIService` sends a chat call that carries `setResponsesReasoningSummary(true)` for an OpenAI reasoning
+  model (GPT-5.x except `gpt-5-search-api`, GPT-6, the o-series; Bedrock ids too) through the Responses API - sync,
+  tools and both streams. Until now the flag counted only on a typed stream that already went there; elsewhere it was
+  dropped. A chat-only service still ignores it.
+- Sync tool and chat completions through the Responses API adapter (`store = false`) on OpenAI's reasoning models ask
+  for `include = ["reasoning.encrypted_content"]`. A reply that reasoned is bigger by its encrypted reasoning: live,
+  1-8k characters per item on GPT-6, up to 63k on gpt-5.4-mini at effort high.
+- ws-client 1.1.4 (from 1.1.3; security hardening):
+  - The Play engine keeps no cookie jar: it used to keep ONE cookie store per engine, so on a shared engine
+    (`withEngine`) a `Set-Cookie` that one provider or tenant received was sent on later requests of every other
+    service with a matching host. `Set-Cookie` still shows up in the response headers, but nothing is stored or
+    replayed.
+  - Redirects are never followed, even when `-Dplay.shaded.ahc.org.asynchttpclient.followRedirect=true` is set. A
+    followed redirect re-sent the body and the auth headers (`Authorization`, `x-api-key`) to whatever host the
+    redirect named.
+  - A response whose decompressed body exceeds 256 MiB fails with a `DecompressionException` instead of exhausting
+    the heap. The limit is set with `play.shaded.ahc.org.asynchttpclient.maxDecompressedResponseSize`.
+  - On Scala 3, streams arrive incrementally. They used to be buffered whole before the first chunk came out.
+  - Scala 2.12 now gets Akka 2.6.20 (it was 2.6.1, whose POM pulled protobuf-java 3.10.0). Akka refuses mixed
+    versions, so a 2.12 project that pins other Akka modules (`akka-actor-typed`, `akka-slf4j`, testkits) at 2.6.1
+    must move them to 2.6.20.
+
+### New features
+
+- Tool loops keep the model's reasoning between rounds, on every backend that returns it.
+  - Every adapter reads its provider's reasoning into the reply as the new provider-neutral message type
+    `ReasoningMessage(blocks)` - `choice.reasoning`, `response.reasoningMessage` for the first choice. A
+    `ReasoningBlock` is one case class whose fields are set as the provider returned them: `id` / `summary` /
+    `encrypted` (+ `text`) for a Responses API reasoning item, `text` + `signature` for Anthropic thinking and Gemini /
+    Vertex AI thoughts, `encrypted` alone for Anthropic redacted thinking, `text` + `field` for a chat completions
+    `reasoning_content` / `reasoning` or Mistral's thinking chunks. `reasoningMessage.text` gives the readable reasoning.
+  - `response.historyMessages` gives the messages to append: the `ReasoningMessage`, then the assistant message.
+  - The next round converts it back to the provider's form and sends it before the reply: reasoning items (Responses
+    API), thinking blocks opening the assistant turn (Anthropic), thought parts opening the model turn (Gemini, Vertex
+    AI), the field it came in or a thinking chunk (chat completions).
+  - Only the service that returned the reasoning sends it back (a Responses / Anthropic / Gemini / Vertex AI service
+    instance; for the chat completions API, its base URL and credentials - `ProducedReasoning`, the last 16,384
+    blocks). Reasoning is bound to the provider and account that made it (live 2026-10-26: OpenAI's encrypted reasoning
+    is a 400 "invalid encrypted reasoning" on Bedrock, Bedrock's a 400 `invalid_encrypted_content` on OpenAI). Another
+    model on the same service is fine (live 2026-10-25: GPT-6 Luna, 6.1 Sol and 5.4-mini on OpenAI; Luna and Sol on
+    Bedrock, across the `us.` / `global.` profiles; live 2026-10-26: Claude Sonnet 5.5 and Opus 5.5 read Haiku 5.5's
+    thinking, Haiku 5.5 reads Haiku 4.5's, Haiku 4.5 ignores 5.5's - nothing is refused, not even by a round with
+    thinking turned off). Every other backend leaves it out, so a history survives a
+    failover.
+  - The Responses API adapter (`store = false`) asks OpenAI's reasoning models for their reasoning encrypted
+    (`include = ["reasoning.encrypted_content"]`); a stateless request leaves out an item without encrypted content.
+  - Readable reasoning from OpenAI's models on sync calls: `setResponsesReasoningSummary()` asks for reasoning
+    summaries - the reply's `reasoningMessage.text` - also without a `reasoning_effort` (the model's default effort).
+    Before, only the typed stream asked (by default, whenever `reasoning_effort` is set); sync replies carried the
+    encrypted reasoning only. Live 2026-10-26: OpenAI (GPT-6 Luna, 6.1 Sol, gpt-5.4-mini, gpt-5-mini) and Bedrock
+    (`us.openai.gpt-6.1-sol`, `us.openai.gpt-6-luna`) accept a summary request without an effort; GPT-6 summarized
+    nothing on a one-step question and ~450 characters on a counting puzzle. A carried item that holds a summary goes
+    back accepted (live through the client, GPT-6 Luna on OpenAI and `us.openai.gpt-6.1-sol` on Bedrock).
+  - Gemini's and Vertex AI's sync calls ask for thought summaries with `setGeminiIncludeThoughts()` /
+    `setVertexAIIncludeThoughts()` - the flag alone, no `reasoning_effort` needed (Gemini 2.5, 3.x and 4 think by
+    default; a model that takes no thinking configuration is asked nothing). The typed streams already asked by
+    default; an explicit `setGeminiIncludeThoughts()` there now works without an effort too.
+  - The merged streamed OpenAI service (`OpenAIServiceFactory.withStreaming()`) shares the reasoning between its sync
+    calls and its typed streams: a sync round's reasoning goes back in a streamed round, and the other way round
+    through `responsesAsChatCompletion`.
+  - Live (raw probes, 2026-10-26), what a chat completions provider reads back: DeepSeek (`deepseek-reasoner`) and
+    Fireworks (gpt-oss) read `reasoning_content`, Mistral (Medium 3.5) its thinking chunks, Gemini (3.8 Flash, 2.5
+    Flash) its thought parts; Together, xAI and Cerebras ignore it - Cerebras answers `reasoning_content` with a 400,
+    hence the field it came in.
+  - The message JSON (`messageWrites` / `messageReads`) writes a `ReasoningMessage` as an assistant message with
+    `reasoning_blocks`, for persisting a history.
+  - Streams do not produce a `ReasoningMessage` yet.
+  - `examples/responsesapi/ReasoningCarrySmokeTest [responses] [anthropic] [gemini] [vertex] [chat]`: 12 of its 13
+    sections passed live on 2026-10-26. Round 2 with the reasoning reads more input tokens than without it:
+    gpt-5.4-mini 5,667 vs 208, GPT-6 Luna 935 vs 208, Bedrock's `us.openai.gpt-6.1-sol` 458 vs 162, GPT-6 Luna on the
+    merged streamed service with a streamed round 2 1,591 vs 208, Claude Haiku 5.5 1,897 vs 549, Gemini 2.5 Flash 711
+    vs 198 and 3.8 Flash 5,534 vs 5,022 (`setGeminiIncludeThoughts()` alone), DeepSeek 3,152 vs 431, Fireworks gpt-oss
+    1,858 vs 248, Mistral Medium 14,749 vs 211. A failover between OpenAI and Bedrock is answered in both directions.
+    The Vertex AI section got a 403 `PERMISSION_DENIED` for the test credentials; Vertex AI is verified through the
+    SDK with a stubbed transport only.
+
+### New models
+
+- **MiniMax-M3.1-Flash** (`NonOpenAIModelId.minimax_m3_1_flash`, MiniMax's direct API - `ChatProviderSettings.minimax` /
+  `minimaxChina`, and the Anthropic-compatible endpoint via `customInstance`; contributed in #131): 1M context, always
+  thinks - `reasoning_effort` low..max (`max` when omitted); `none` (a 400, confirmed live) and the undocumented
+  `minimal` are sent as `low`, and `service_tier` (not supported on Flash) is dropped. `CreateMiniMaxChatCompletion`.
+
+### Fixed
+
+- Streamed output guardrails (`guardrailsWithStreaming`) checked only the answer text but released everything else
+  unchecked - reasoning (`Thinking` / `reasoning_content`), a typed stream's further choices, refusals, server-side
+  tool output and citations - so a secret the guard blocks in the answer reached the consumer in the reasoning
+  (security fix). Everything released is checked now (only tool-call arguments stay unchecked, as on the sync path),
+  a reply with only non-answer text is checked instead of passing unasked, and a reprompt quotes the answer only. The
+  sync guardrails check a choice's `refusal` and its reasoning (the new `choice.reasoning`, see "New features") with
+  its content - a tool-call-only reply that reasoned is checked too, and a flagged one answered with the block message
+  loses its reasoning. Each text is checked once: a server-side tool result by its textual view (its raw content only
+  when it has none), a code execution's or web search's result once although both the tool layer and the semantic
+  layer report it, the Responses API's `content_part` / `reasoning_summary_part` events (repeating the answer and the
+  summary) not at all, and no identifier or status fields (`type`, `id`, `*_id`, `status`, ...) of a raw payload -
+  the guard prompt carried the answer about twice and code output up to three times, enough to overflow a guard
+  model's input limit and block a clean reply.
+- Anthropic OAuth profiles (`forOAuthProfile`): the token refresh had no timeout and ran under the provider's lock, so a
+  token endpoint that accepted the connection and never answered blocked every request of the service, even while the
+  cached token was valid. The refresh now has a connect timeout and a deadline on the whole exchange, an
+  advisory-window caller never waits for a refresh in flight (it gets the cached token), and a mandatory-window caller
+  waits at most `lockWaitTimeout`. `AnthropicOAuthProfileTokenProvider` takes `connectTimeout` (10 s),
+  `refreshTimeout` (30 s) and `lockWaitTimeout` (45 s).
+- Gemini batches with `enableCacheSystemMessage`: one cache was built from the FIRST request's system message and every
+  item ran under it, its own system message dropped. The cache is used only when every request carries that same
+  message; otherwise each item keeps its own (with a warning). `setSystemCacheName` is unchanged.
+- The SSE decoder of the Agents API / Perplexity Agent API streams (`ServerSentEvents`) copied and re-scanned the rest
+  of a chunk for every event in it - quadratic in the events per chunk; one 48 KiB chunk of comment events exhausted a
+  128 MiB heap. Each chunk is now copied once and walked in one pass.
+- Vertex AI chat and streams reached only regional locations: the SDK derives `<location>-aiplatform.googleapis.com`,
+  which does not exist for `global`, `eu` or `us`. `VertexAILocation` now picks the endpoint for chat, streams and
+  batch prediction alike - `aiplatform.googleapis.com` for none / `global`, the jurisdictional
+  `aiplatform.eu.rep.googleapis.com` / `aiplatform.us.rep.googleapis.com` for `eu` / `us` (ML processing stays in the
+  EU / US), `<region>-aiplatform.googleapis.com` otherwise. Live 2026-10-19: chat, stream and the batch listing on
+  none, `global`, `eu`, `us`, `us-central1` and `europe-west4`.
+
 ## 1.6.0 (2026-10-18)
 
 The 2026-10-12 - 2026-10-16 work since v1.5.0: the JSON helpers infer the response schema from `T`; Meta's Muse

@@ -49,6 +49,11 @@ of tool calls mid-stream.
     })
 ```
 
+  The OpenAI-shaped `createChatCompletionStreamed` of the Responses, Agents and full streamed services is rendered from this
+  typed stream, and it omits provider-executed activity: server-side tool calls (hosted MCP, multi-agent delegation, hosted
+  shell / code interpreter / web search) with their argument fragments, and tool results, never appear as `delta.tool_calls`, because every entry there is a call the client has to run and answer. Only the typed stream carries them; a client function
+  call next to a server-side one is kept.
+
   `source.texts` is the legacy text-only view (`thinkingTexts`, `toolCalls`, `toolResults`, `citations`, `codeExecutions`,
   `webSearches`, `images` likewise), and `source.assembled` folds the stream into an `AssembledChatCompletion` whose
   `toAssistantToolMessage` is the assistant turn of a tool loop - append it plus one `ToolMessage` per `clientToolCalls` entry,
@@ -138,7 +143,8 @@ of tool calls mid-stream.
   val chatViaResponses: OpenAIChatCompletionStreamedService = service.responsesAsChatCompletion
 ```
 
-  Reasoning summaries are requested automatically when `reasoning_effort` is set (`setResponsesReasoningSummary(false)` opts out), and
+  Reasoning summaries are requested automatically when `reasoning_effort` is set (`setResponsesReasoningSummary(false)` opts out;
+  `setResponsesReasoningSummary()` asks also without an effort, and on sync calls - the reply's `reasoningMessage.text`), and
   `setResponsesTools` adds Responses-native tools (web search, code interpreter, file search, MCP, image generation) whose activity
   arrives as server-side tool-layer chunks plus `WebSearch`, `CodeExecution`, `Image`, .... `service.responsesAsChatCompletion` also
   exists on a plain (non-streaming) `OpenAIService` through `OpenAIChatCompletionExtra._` for the synchronous adapter. See

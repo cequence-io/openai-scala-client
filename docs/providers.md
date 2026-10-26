@@ -76,7 +76,8 @@ Then you can obtain a service in one of the following ways.
     auth = BedrockAuth.SigV4(AwsCredentialsProvider.static(accessKey, secretKey)),
     isOpenAIModel = true)
 
-  // the classic runtime host, which also accepts the cross-region inference profiles
+  // the classic runtime host, which also accepts the cross-region inference profiles - and
+  // serves the GPT-6 models through one only (the model id goes out as given)
   val runtime = OpenAIServiceFactory.forBedrock(endpoint = BedrockEndpoint.Runtime)
   runtime.createChatCompletion(Seq(UserMessage("Hi")),
     CreateChatCompletionSettings(model = "global.openai.gpt-5.6-luna"))
@@ -84,6 +85,12 @@ Then you can obtain a service in one of the following ways.
   // both auth forms also take a shared engine, which the service never closes
   val shared = OpenAIServiceFactory.forBedrockWithEngine(engine, endpoint = BedrockEndpoint.Runtime)
 ```
+
+  The GPT-6 models on the runtime host take an inference profile id - `us.openai.gpt-6.1-sol`,
+  `global.openai.gpt-6-luna`: the bare `openai.gpt-6.1-sol` / `openai.gpt-6-sol` / `openai.gpt-6-luna` are a 400
+  "on-demand throughput isn't supported" in every region tried (us-east-1, us-east-2, us-west-2, eu-central-1,
+  eu-north-1, eu-west-1; live 2026-10-26), and `eu.openai.gpt-6.1-sol` an invalid id in eu-central-1. The mantle
+  host serves the bare ids instead, in us-east-1 only of those regions (404 elsewhere).
 
 - Minimal `OpenAICoreService` supporting `listModels`, `createCompletion`, `createChatCompletion`, and `createEmbeddings` calls - provided e.g. by [FastChat](https://github.com/lm-sys/FastChat) service running on the port 8000
 
@@ -137,10 +144,24 @@ Then you can obtain a service in one of the following ways.
    ```
    Pass `inferenceProfilePrefix = Some("eu")` (or `"us"` / `"global"`, with or without the trailing dot) to route through a cross-region inference profile. The native (non-adapter) counterparts are `forBedrock`, `forBedrockWithSessionToken`, and `forBedrockWithBearerToken`.
 
-3. [Google Vertex AI](https://cloud.google.com/vertex-ai) - requires `openai-scala-google-vertexai-client` lib and `VERTEXAI_LOCATION` + `VERTEXAI_PROJECT_ID`
+3. [Google Vertex AI](https://cloud.google.com/vertex-ai) - requires `openai-scala-google-vertexai-client` lib and `VERTEXAI_PROJECT_ID` (+ optional `VERTEXAI_LOCATION`)
 ```scala
   val service = VertexAIServiceFactory.asOpenAI()
+  // or with an explicit location
+  val euService = VertexAIServiceFactory.asOpenAI(location = Some("eu"))
 ```
+   The location picks the endpoint (`VertexAILocation`; chat, streams and batch prediction alike):
+
+   | `location` | Endpoint | ML processing |
+   |---|---|---|
+   | none / `global` | `aiplatform.googleapis.com` | anywhere - no residency guarantee |
+   | `eu` / `us` | `aiplatform.eu.rep.googleapis.com` / `aiplatform.us.rep.googleapis.com` | stays within the EU / US |
+   | a region, e.g. `europe-west4` | `europe-west4-aiplatform.googleapis.com` | within the region's jurisdiction |
+
+   Data at rest stays in the chosen location either way; where the prompt is processed depends on the endpoint - see
+   Google's [data residency](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/learn/data-residency) page for
+   which models carry the commitment. The endpoints serve different models: live on 2026-10-19 `eu` answered Gemini
+   3.1 Flash-Lite, 3.7 / 3.8 Flash and 4 Argon but not 2.5, `europe-west4` 2.5 Flash but not 3.8 Flash.
 
 4. [Google Gemini](https://ai.google.dev/) - requires `openai-scala-google-gemini-client` lib and `GOOGLE_API_KEY`
 ```scala
@@ -334,20 +355,21 @@ or with streaming
   // China endpoint (api.minimaxi.com)
   val chinaService = OpenAIChatCompletionServiceFactory(ChatProviderSettings.minimaxChina)
 
-  // Current direct models: MiniMax-M3.1-Flash (recommended), then MiniMax-M3.
+  // MiniMax's models: MiniMax-M3.1-Flash and MiniMax-M3 (1M context each)
   service.createChatCompletion(
     Seq(UserMessage("Hello!")),
     CreateChatCompletionSettings(NonOpenAIModelId.minimax_m3_1_flash)
   )
 ```
-   Provider settings select the endpoint and credentials, so pass a MiniMax model explicitly instead of using the shared service defaults.
-   The [MiniMax example](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/minimax/CreateMiniMaxChatCompletion.scala)
-   defaults to Flash and accepts a saved/custom model ID as its first argument. Existing legacy constants remain available.
-   On the [direct chat API](https://platform.minimax.io/docs/api-reference/text-openai-api), Flash always thinks:
-   omit `reasoning_effort` for its `max` default, or select `low`, `medium`, `high`, `xhigh`, or `max`.
-   Do not send `none`, `minimal`, `thinking.type = disabled`, `service_tier`, or `reasoning_split = false` for Flash.
-   M3 accepts `thinking = {"type": "adaptive"}` or `{"type": "disabled"}` through `extra_params`, defaults to adaptive,
-   and ignores effort. The generic transport preserves explicit settings and leaves invalid combinations to the API.
+   The provider settings pick only the endpoint and the key, so pass a MiniMax model explicitly - see the
+   [MiniMax example](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/minimax/CreateMiniMaxChatCompletion.scala)
+   (Flash by default, a model id as its first argument).
+   On the [chat API](https://platform.minimax.io/docs/api-reference/text-openai-api) Flash always thinks:
+   `reasoning_effort` takes `low` .. `max` (`max` when omitted); the client sends `none` (a 400 on Flash) and the
+   undocumented `minimal` as `low` and drops `service_tier`, which Flash does not support, and
+   `thinking = {"type": "disabled"}` (via `extra_params`) is a 400 on Flash. M3 ignores the effort and thinks by
+   default - `extra_params = Map("thinking" -> Map("type" -> "disabled"))` turns it off, `"adaptive"` back on.
+   (MiniMax's docs, 2026-10-24; the two 400s confirmed live.)
 
    MiniMax also exposes an Anthropic-compatible endpoint, reachable via the Anthropic client's escape hatch:
 ```scala
@@ -368,11 +390,12 @@ or with streaming
     )
   )
 ```
-   Use the native `createMessage` settings on this escape hatch. Flash defaults to adaptive thinking and maximum effort;
-   set `thinking = Some(ThinkingSettings.adaptive)` and `output_config = Some(OutputConfig(effort = Some(OutputEffort.high)))`
-   to choose an explicit effort (types from `io.cequence.openaiscala.anthropic.domain.settings`).
-   M3 defaults to disabled thinking on this protocol and accepts explicit adaptive/disabled thinking; effort has no effect.
-   See the [MiniMax Messages API contract](https://platform.minimax.io/docs/api-reference/text-anthropic-api).
+   Here the native `createMessage` settings go out as written (the chat API's conversions do not apply). Flash thinks
+   adaptively at the maximum effort by default; `thinking = Some(ThinkingSettings.adaptive)` with
+   `output_config = Some(OutputConfig(effort = Some(OutputEffort.high)))` picks another effort (types from
+   `io.cequence.openaiscala.anthropic.domain.settings`; a `disabled` thinking or a `none` effort is a 400 on Flash).
+   M3 does not think by default on this protocol - `thinking = Some(ThinkingSettings.adaptive)` turns it on; the
+   effort has no effect. See MiniMax's [Messages API](https://platform.minimax.io/docs/api-reference/text-anthropic-api).
 
    Claude in **Microsoft Foundry** serves the same Messages API, so the escape hatch reaches it too (the model is your
    deployment's name; live-verified 2026-10-07 with chat, a streamed tool call and `json_schema` output, see
