@@ -3,9 +3,12 @@ package io.cequence.openaiscala.vertexai.service.impl
 import io.cequence.openaiscala.domain.{
   AssistantMessage,
   AssistantToolMessage,
+  BaseMessage,
   FileContent,
   FunctionCallSpec,
   ImageURLContent,
+  ReasoningBlock,
+  ReasoningMessage,
   TextContent,
   ToolCallSpec,
   ToolMessage,
@@ -190,6 +193,51 @@ class ToNonSystemVertexAISpec extends AnyWordSpec with Matchers {
 
       val contents = toNonSystemVertexAI(messages)
       contents.map(_.getRole) shouldBe Seq("USER", "MODEL", "USER", "MODEL")
+    }
+
+    "leave a ReasoningMessage out - the history converts like the one without it" in {
+      val reasoning = ReasoningMessage(
+        Seq(ReasoningBlock(id = Some("rs_1"), encrypted = Some("enc")))
+      )
+      val history: Seq[BaseMessage] = Seq(
+        UserMessage("What's the weather in Oslo?"),
+        AssistantToolMessage(
+          None,
+          None,
+          Seq("call_1" -> FunctionCallSpec("get_weather", """{"city":"Oslo"}"""))
+        ),
+        ToolMessage(Some("4C"), "call_1", "get_weather")
+      )
+
+      val expected = toNonSystemVertexAI(history)
+      expected.map(_.getRole) shouldBe Seq("USER", "MODEL", "USER")
+
+      // in front of the reply, where the Responses adapter's history puts it, and at the end
+      toNonSystemVertexAI(history.patch(1, Seq(reasoning), 0)) shouldBe expected
+      toNonSystemVertexAI(history :+ reasoning) shouldBe expected
+      toNonSystemVertexAI(Seq(reasoning)) shouldBe Nil
+    }
+
+    "open the next model turn with the carried thoughts it may send back" in {
+      val signature = b64("sig".getBytes(StandardCharsets.US_ASCII))
+      val thought = ReasoningBlock(text = Some("Oslo is closer."), signature = Some(signature))
+      val madeUp = ReasoningBlock(text = Some("Made up."))
+      val history: Seq[BaseMessage] = Seq(
+        UserMessage("What's the weather where the trains meet?"),
+        ReasoningMessage(Seq(thought, madeUp)),
+        AssistantMessage("Oslo, 4C.")
+      )
+
+      val Seq(_, model) = toNonSystemVertexAI(history, _ == thought)
+      model.getRole shouldBe "MODEL"
+      model.getPartsCount shouldBe 2
+      model.getParts(0).getThought shouldBe true
+      model.getParts(0).getText shouldBe "Oslo is closer."
+      model.getParts(0).getThoughtSignature.toStringUtf8 shouldBe "sig"
+      model.getParts(1).getText shouldBe "Oslo, 4C."
+
+      // none by default
+      toNonSystemVertexAI(history).map(_.getPartsCount) shouldBe Seq(1, 1)
     }
   }
 }

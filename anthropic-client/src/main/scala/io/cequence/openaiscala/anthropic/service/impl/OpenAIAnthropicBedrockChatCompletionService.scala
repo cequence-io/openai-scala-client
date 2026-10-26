@@ -67,7 +67,7 @@ private[service] class OpenAIAnthropicBedrockChatCompletionService(
       val lines = requests.map { request =>
         val messages =
           toAnthropicSystemMessages(request.messages.filter(_.isSystem), settings) ++
-            toAnthropicMessages(request.messages.filter(!_.isSystem), settings)
+            toAnthropicConversation(request.messages, settings)
         val modelInput = BedrockBatchRequestBuilder.modelInput(messages, anthropicSettings)
 
         Json.stringify(Json.obj("recordId" -> request.customId, "modelInput" -> modelInput))

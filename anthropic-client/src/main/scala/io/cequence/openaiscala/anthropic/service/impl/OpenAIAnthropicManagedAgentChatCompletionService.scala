@@ -48,6 +48,7 @@ import io.cequence.openaiscala.domain.{
   FileContent,
   ImageURLContent,
   MessageSpec,
+  ReasoningMessage,
   SystemMessage,
   TextContent,
   UserMessage,
@@ -668,7 +669,9 @@ private[service] class OpenAIAnthropicManagedAgentChatCompletionService(
   }
 
   private def toKickoffEvents(messages: Seq[BaseMessage]): Seq[SessionEvent] = {
-    val (systemMessages, conversationMessages) = messages.partition(isSystemLike)
+    // a ReasoningMessage (carried reasoning) is no part of the transcript
+    val (systemMessages, conversationMessages) =
+      messages.filterNot(_.isInstanceOf[ReasoningMessage]).partition(isSystemLike)
 
     // system messages ride on the agent config unless the agent is fixed
     val inlineSystemTexts =

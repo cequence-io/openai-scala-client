@@ -1,0 +1,107 @@
+{
+  "id": "resp_05f0cfffbb437949016adf6a61d81087d2ba2f5a03aa96f7de",
+  "object": "response",
+  "created_at": 1793026657,
+  "status": "completed",
+  "access_programs": null,
+  "background": false,
+  "billing": {
+    "payer": "developer"
+  },
+  "completed_at": 1793026660,
+  "error": null,
+  "frequency_penalty": 0.0,
+  "incomplete_details": null,
+  "instructions": null,
+  "max_output_tokens": null,
+  "max_tool_calls": null,
+  "model": "gpt-6-luna",
+  "moderation": null,
+  "output": [
+    {
+      "id": "rs_05f0cfffbb437949016adf6a62510c87d28bc0affa7b84a5f6",
+      "type": "reasoning",
+      "content": [],
+      "encrypted_content": "gAAAAABq32pk06qRjFvjGorBHwfOMjwPwvWzQ4rvgKLWLed597tLwNTjAb7ZPEKSnxOT8vbkNvAFW0gBFPPbjHdH78G9MD4mhQzzZL6BCBR4VUcg8JJIDcHDnDZgACvCkOrb2mXW7a_9NR1RL6uAOgX5NM0X1AfleQ1HOo6Fm4A77lD-g9Z7pGrTFFO7xVZy1DQeEJR0AI6R4TpYaYVT9Kf4jwbgV-6jC9Xb7GRCj1tc5bC1D2uTfJq_14mOJPhtoeguXX5SgOEL1EyGOs9bMM5vrIH_pHODEInBPiwQdvlz_bR_Fp5DxKtt8EFDE8KwnKPT-FzuRrlsjoASD3J8sI46-Y8U4A8v_Q2PVv-6ANXRALg-aspjjk8wLPo7ezwnpM5t4NopQimB1JlUUli1DRMc6GOnSeAkjokHfrLI_e1WhzqRWfR3OuAsRGSo_StAMHpp5IcNJQl_r9FVYJwDrUpbV7WAluE3Epz7UHfVx9ucP0qOd8OGQjR5xS-wDy8kCMAXXXEijgDrPx-4fNp1bdTE5RACJgFv3rhLwU-PVneAe8ZiaNDkzlcfoLHXytSJwcLvV8kT6np2n1bfcpE5v_p_5D_dAcKdWaTxri84QFd3NgEBMjBnwEkdOVFj9JeADj5nuMyNIvOG7N04NgAzD6TuHWd8bcLej961DXAOk8MrA2_6Aht187Zq0OjQgKFTcnq8y6wWsYH8vW7CsRGydo8Wn_DYuX6_qPGkf8jBL1Ob6a572JUZzPSO9BIqYOXGLrJpraQM4NifqiYi8CNSkEiMrlRq-mPNhcCnje286IwhBV_srn2HqcGkWCyRbitZygCYMxVYO8W9mtPaiBNWMdwm3DeGd9JW_mLxaH4gYOZsCSCE8jxIK0xdcLIUsKbqIl_0UudXPU3TdjF-pw1jLg5YIGUeSPv1IqTp1ccdNLgOwpE42R03lvsO3VYJBGwj-JgZn-qYl8EVntWpY7YSkWmZYHzLKKFx8oyH4AVLGHnpnPPhoQB4gmpTFMaPtU0PoaYo2qHMBAW2hLx1NKickAwTWPGYNL96FwaeFFuWKQ0_jLAA_xBQsUEzoS9YsS0BqVsUBpadXsyNbXoqkMUNbAfypVsg6Iic4PTh9RZ6ZPZgyodB8I5STIQcsh2uTEC_MQzjXykCd3AZh5vP6UN-QC80fkdm_Wa-j3VOgWN3mGq1cdx3rfyVyOoOsXd8It0QVyER3K9Fdqr0r-7s2Zv7ClWsjORuuUORqRYdo_YBGB9zzmlt3x9F1WilN9R7fKxbcgWy4El1bsaZfmk1r6zFWs_XiennxOjj1xJZpMBaHUqX8ok0gbmEu5o2n8YPMSJdhV3-BY41ZEzwuXqvkR1Pz_-oQSEuqrKv9H1JpSICrB1OxM1vtpJCrL9eSczQoYsU2Wk51mwje_VNXAANylSMjYn1vUy8eNyJjIqUimETlo0s7FYDiloZKTx14sMlUMW-kHqgxOk3O2K1Mzc9zV7FsHAGlCdhai2QmFze9qDvc0AwEkmdcoaY_YkJOXFzS5UiBdm_dcJpna6L1NPgER9ylay6SFlSUxqqZW7TkQUND--NNCXuLE5T042JFYJm11sPWKEO5234Z8thcJhxuplnLeG4v5xcRW8jxBoogqjcPOCsLOGMFlVWKNlFmI-sxUz-B6VFZ032PLIPWLyG6c6CnapDRXCRRtJtpQBkPQHbz_FeNJ-tlM5rtfAN2SklT9ZQ4itpAnDTnPqan3RiSB3I0yrbJLwkGmiLAPgdesvuuU8L53YnWcwxbJik91eQRvFLeuo82eThilgbREB4iePjecjhmYpiui7Q_7jRR2QV2hcGvjoofvYNXsFPe62zi6awLudWJv0min4QO7HfTvqCkGUG2U1w7OAD3Fxep1eYTAlsOJBeDOC7dno43TUTCiCYcC3o-NIGx0nJ84l5kA_X-FhJU47IbUV1nh31KMqZzQCfLqLoLXd_xScLFFvyPustErI2oWQKoWme4zJXzZnuk3Io__Nx_yWBiN-XVdUKwOCpOmDGV-f-E6dNro6rNIVKQjwXSsCKdFiPfa90tCyHV5L84WIicaOVkx_ti86lUQCKmWzny4yCEg8AoddXSB4qbP-C1U2AZTPpzqhsyIfsUru-8Ju7_F8NkqAfPlQ6W1E-naNe0CIcTRBqeLPXf_z9JwGRWuIUTGDXRNPRmt05v1ejXLGFTe_3uxKoy-akb1dnBqTkuahWzSWpS-6-rR96krQOtrGLSb1_oZFrPG_dGSL14BwAEQVIuw6hIJw3mQT4b2odoxD3JHCB6lboM1kK24NcNETo_Rld8kJlwhj7XnJmafDTf3tyCVOs5c_5R_fCVq8maGyZXBo66Q5SIc5GIlCjB8K8MCbMcx-jcfu9JxH4O85G1ztyTeEFnQ-rQVP0_lgYxAR8KNbTk8S_MJPh9mWt3SOTB92l0zwqRAertLaGDIo3wI6Psfzw1GZ6D7XMrzQDqVoiMwBET_3Jbunta3m5uJmJ3NaNEiPD3DXUk8RuYa4FPZQ5do9PzpKQDmEb726Sxz3XfF2QFWpaZeOSpCU2EDsZScnTkUu7sx3u67-T5Le9uAYpzPT4JLo-bBhbJdZ94otH9YHfNAcTUieX28vl48QcuiP_5jK3hPk0k2RRf2is1yEsOIPa9_1NReYIJWtBp-vZh_Gh60OW-7mEm2MHKtB_Tn-O",
+      "summary": [
+        {
+          "type": "summary_text",
+          "text": "**Calculating number counts**\n\nI'm figuring out the computation needed to count numbers from 1 to 9999, focusing on those whose digit sum is divisible by 3, which means they are also divisible by 3 themselves. I want to count numbers that are divisible by 7 or 11, but they need to have that specific criterion too. I've determined the relevant counts and am confirming my findings, aiming for positive results, and I'm just looking to output the total."
+        }
+      ]
+    },
+    {
+      "id": "msg_05f0cfffbb437949016adf6a64c53c87d294f585bf9e726064",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [],
+          "logprobs": [],
+          "text": "693"
+        }
+      ],
+      "phase": "final_answer",
+      "role": "assistant"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0.0,
+  "previous_response_id": null,
+  "prompt_cache_key": null,
+  "prompt_cache_retention": "24h",
+  "reasoning": {
+    "context": "all_turns",
+    "effort": "medium",
+    "mode": "standard",
+    "summary": "detailed"
+  },
+  "safety_identifier": null,
+  "service_tier": "default",
+  "store": false,
+  "temperature": 1.0,
+  "text": {
+    "format": {
+      "type": "text"
+    },
+    "verbosity": "medium"
+  },
+  "tool_choice": "auto",
+  "tool_usage": {
+    "image_gen": {
+      "input_tokens": 0,
+      "input_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 0
+      },
+      "output_tokens": 0,
+      "output_tokens_details": {
+        "image_tokens": 0,
+        "text_tokens": 0
+      },
+      "total_tokens": 0
+    },
+    "web_search": {
+      "num_requests": 0
+    }
+  },
+  "tools": [],
+  "top_logprobs": 0,
+  "top_p": 0.98,
+  "truncation": "disabled",
+  "usage": {
+    "input_tokens": 44,
+    "input_tokens_details": {
+      "cache_write_tokens": 0,
+      "cached_tokens": 0
+    },
+    "output_tokens": 135,
+    "output_tokens_details": {
+      "reasoning_tokens": 128
+    },
+    "total_tokens": 179
+  },
+  "user": null,
+  "metadata": {}
+}

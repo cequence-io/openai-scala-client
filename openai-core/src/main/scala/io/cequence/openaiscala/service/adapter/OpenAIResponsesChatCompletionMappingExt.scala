@@ -25,7 +25,8 @@ trait OpenAIResponsesChatCompletionMappingExt {
    * Convert a sequence of chat-completion [[BaseMessage]]s into the Responses-API form: a
    * flattened `instructions` string (collected from `System` / `Developer` messages) plus an
    * ordered list of [[Input]] items for the remaining turns. Handles user text / image / file
-   * content, assistant tool calls and tool responses.
+   * content, assistant tool calls, tool responses and carried reasoning
+   * ([[io.cequence.openaiscala.domain.ReasoningMessage]] - its items as they are).
    */
   def convertMessages(messages: Seq[BaseMessage]): (Option[String], Seq[Input])
 

@@ -31,6 +31,8 @@ import io.cequence.openaiscala.domain.{
   ImageURLContent,
   JsonSchema,
   MessageSpec,
+  ReasoningBlock,
+  ReasoningMessage,
   SystemMessage,
   TextContent,
   ToolMessage,
@@ -73,8 +75,54 @@ package object impl extends io.cequence.openaiscala.service.HasOpenAIConfig {
     LoggerFactory.getLogger("io.cequence.openaiscala.vertexai.service.impl")
   )
 
-  def toNonSystemVertexAI(messages: Seq[BaseMessage]): Seq[Content] =
-    mergeConsecutiveFunctionResponses(messages.collect {
+  /**
+   * The non-system messages as Vertex AI contents. Carried reasoning (a ReasoningMessage)
+   * opens the model turn after it as thought parts - only the thinking `sendable` accepts (the
+   * thoughts the adapter's service returned; none by default) - as on the Gemini API, which
+   * reads them back (live 2026-10-26; not verified on Vertex AI).
+   */
+  def toNonSystemVertexAI(
+    messages: Seq[BaseMessage],
+    sendable: ReasoningBlock => Boolean = _ => false
+  ): Seq[Content] = {
+    val withThoughts = messages.foldRight(List.empty[(Seq[Part], BaseMessage)]) {
+      case (ReasoningMessage(blocks), following) =>
+        val thoughts = blocks.collect {
+          case block @ ReasoningBlock(Some(text), _, signature, _, _, _) if sendable(block) =>
+            val part = Part.newBuilder().setText(text).setThought(true)
+            signature.foreach(signature =>
+              part.setThoughtSignature(
+                com.google.protobuf.ByteString
+                  .copyFrom(java.util.Base64.getDecoder.decode(signature))
+              )
+            )
+            part.build()
+        }
+        following match {
+          case (noThoughts, next) :: rest
+              if noThoughts.isEmpty && next.role == ChatRole.Assistant =>
+            (thoughts, next) :: rest
+          case _ => following
+        }
+
+      case (message, following) => (Nil, message) :: following
+    }
+
+    mergeConsecutiveFunctionResponses(withThoughts.flatMap { case (thoughts, message) =>
+      toVertexAIContents(Seq(message)).map { content =>
+        if (thoughts.isEmpty)
+          content
+        else
+          content.toBuilder
+            .clearParts()
+            .addAllParts(thoughts ++ content.getPartsList.toSeq)
+            .build()
+      }
+    })
+  }
+
+  private def toVertexAIContents(messages: Seq[BaseMessage]): Seq[Content] =
+    messages.collect {
       case UserMessage(content, _) =>
         Content
           .newBuilder()
@@ -229,8 +277,10 @@ package object impl extends io.cequence.openaiscala.service.HasOpenAIConfig {
           .addParts(0, Part.newBuilder().setText(content).build())
           .build()
 
-      // Skip system/developer messages - they are handled separately by toSystemVertexAI
-    })
+      // Skip system/developer messages - they are handled separately by toSystemVertexAI -
+      // and a ReasoningMessage (carried reasoning, see toNonSystemVertexAI): no case, so
+      // collect leaves it out
+    }
 
   // Parses a function call's OpenAI-style JSON arguments string into a proto Struct. An
   // empty/blank or otherwise invalid JSON string yields an empty Struct (with a warning)
@@ -577,12 +627,35 @@ package object impl extends io.cequence.openaiscala.service.HasOpenAIConfig {
           index = candidate.getIndex,
           message = toOpenAIAssistantMessage(candidate.getContent),
           finish_reason = Some(candidate.getFinishReason.toString()),
-          logprobs = None
+          logprobs = None,
+          reasoning = toReasoningMessage(candidate.getContent)
         )
       },
       usage = Some(toOpenAI(response.getUsageMetadata)),
       originalResponse = Some(response)
     )
+
+  /**
+   * A candidate's thought summaries (returned when thoughts are requested -
+   * `setVertexAIIncludeThoughts`) as a [[ReasoningMessage]], to be passed back next round: the
+   * adapter sends the thoughts its service returned back as thought parts (see
+   * [[toNonSystemVertexAI]]).
+   */
+  def toReasoningMessage(content: Content): Option[ReasoningMessage] = {
+    val blocks = content.getPartsList.toSeq.collect {
+      case part if part.getThought && part.hasText =>
+        ReasoningBlock(
+          text = Some(part.getText),
+          signature = Option(part.getThoughtSignature)
+            .filterNot(_.isEmpty)
+            .map(bytes => java.util.Base64.getEncoder.encodeToString(bytes.toByteArray))
+        )
+    }
+    if (blocks.nonEmpty)
+      Some(ReasoningMessage(blocks))
+    else
+      None
+  }
 
   def toOpenAI(usageInfo: UsageMetadata): OpenAIUsageInfo = {
     val thoughtsTokens = usageInfo.getThoughtsTokenCount

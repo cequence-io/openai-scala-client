@@ -358,6 +358,27 @@ object JsonFormats {
     )
   }
 
+  // a block of a ReasoningMessage, for persisting a history (and a response's choices)
+  implicit lazy val reasoningBlockFormat: Format[ReasoningBlock] = (
+    (__ \ "text").formatNullable[String] and
+      (__ \ "summary").formatWithDefault[Seq[String]](Nil) and
+      (__ \ "signature").formatNullable[String] and
+      (__ \ "encrypted").formatNullable[String] and
+      (__ \ "id").formatNullable[String] and
+      (__ \ "field").formatNullable[String]
+  )(
+    (
+      text: Option[String],
+      summary: Seq[String],
+      signature: Option[String],
+      encrypted: Option[String],
+      id: Option[String],
+      field: Option[String]
+    ) => ReasoningBlock(text, summary, signature, encrypted, id, field),
+    (block: ReasoningBlock) =>
+      (block.text, block.summary, block.signature, block.encrypted, block.id, block.field)
+  )
+
   implicit val messageReads: Reads[BaseMessage] = Reads { (json: JsValue) =>
     val role = (json \ "role").as[ChatRole]
     (json \ "name").asOpt[String]
@@ -376,8 +397,11 @@ object JsonFormats {
       case ChatRole.Tool => json.as[ToolMessage]
 
       case ChatRole.Assistant =>
-        // if contains tool_calls, then it is AssistantToolMessage
-        if ((json \ "tool_calls").isDefined) {
+        if ((json \ "reasoning_blocks").isDefined) {
+          // carried reasoning (a persisted history) - never sent as such
+          ReasoningMessage((json \ "reasoning_blocks").as[Seq[ReasoningBlock]])
+        } else if ((json \ "tool_calls").isDefined) {
+          // if contains tool_calls, then it is AssistantToolMessage
           json.as[AssistantToolMessage]
         } else if ((json \ "annotations").isDefined) {
           json.as[AssistantWebSearchMessage]
@@ -442,6 +466,10 @@ object JsonFormats {
       case m: FunMessage => toJson(m)
 
       case m: MessageSpec => toJson(m)
+
+      // for persisting a history - the chat request bodies leave it out
+      case m: ReasoningMessage =>
+        Json.obj("reasoning_blocks" -> m.blocks)
     }
 
     json.as[JsObject] ++ role ++ name
@@ -565,8 +593,63 @@ object JsonFormats {
   implicit lazy val logprobsFormat: Format[Logprobs] =
     Json.format[Logprobs]
 
-  implicit lazy val chatCompletionChoiceInfoFormat: Format[ChatCompletionChoiceInfo] =
-    Json.format[ChatCompletionChoiceInfo]
+  // a choice's reasoning: its own `reasoning_blocks` (written by the client), else the
+  // message's `reasoning_content` / `reasoning` text (DeepSeek, Groq, OpenRouter, vLLM, ...;
+  // Mistral's thinking chunks via `withChunkedContent`)
+  private def choiceReasoning(choice: JsValue): Option[ReasoningMessage] =
+    (choice \ "reasoning_blocks").asOpt[Seq[ReasoningBlock]] match {
+      case Some(blocks) =>
+        if (blocks.nonEmpty)
+          Some(ReasoningMessage(blocks))
+        else
+          None
+
+      case None =>
+        val rawMessage = (choice \ "message").getOrElse(JsNull)
+        val message = withChunkedContent(rawMessage)
+        // thinking chunks (Mistral) are read into `reasoning_content` - and go back as chunks
+        val fromChunks = (rawMessage \ "reasoning_content").toOption.forall(_ == JsNull) &&
+          (rawMessage \ "content").toOption.exists {
+            case JsArray(chunks) =>
+              chunks.exists(chunk => (chunk \ "type").asOpt[String].contains("thinking"))
+            case _ => false
+          }
+        Seq("reasoning_content", "reasoning").flatMap { field =>
+          (message \ field).asOpt[String].filter(_.trim.nonEmpty).map { text =>
+            val source =
+              if (field == "reasoning_content" && fromChunks)
+                ReasoningBlock.ThinkingChunk
+              else
+                field
+            ReasoningMessage(Seq(ReasoningBlock(text = Some(text), field = Some(source))))
+          }
+        }.headOption
+    }
+
+  private def reasoningBlocksJson(reasoning: Option[ReasoningMessage]): JsObject =
+    reasoning.map(r => Json.obj("reasoning_blocks" -> r.blocks)).getOrElse(Json.obj())
+
+  implicit lazy val chatCompletionChoiceInfoFormat: Format[ChatCompletionChoiceInfo] = {
+    val format: OFormat[ChatCompletionChoiceInfo] = (
+      (__ \ "message").format[AssistantMessage] and
+        (__ \ "index").format[Int] and
+        (__ \ "finish_reason").formatNullable[String] and
+        (__ \ "logprobs").formatNullable[Logprobs]
+    )(
+      (
+        message: AssistantMessage,
+        index: Int,
+        finishReason: Option[String],
+        logprobs: Option[Logprobs]
+      ) => ChatCompletionChoiceInfo(message, index, finishReason, logprobs),
+      (choice: ChatCompletionChoiceInfo) =>
+        (choice.message, choice.index, choice.finish_reason, choice.logprobs)
+    )
+    Format(
+      Reads(json => format.reads(json).map(_.copy(reasoning = choiceReasoning(json)))),
+      Writes(choice => format.writes(choice) ++ reasoningBlocksJson(choice.reasoning))
+    )
+  }
 
   implicit lazy val chatCompletionResponseFormat: Format[ChatCompletionResponse] =
     (
@@ -598,8 +681,20 @@ object JsonFormats {
         )
     )
 
-  implicit lazy val chatToolCompletionChoiceInfoReads: Reads[ChatToolCompletionChoiceInfo] =
-    Json.reads[ChatToolCompletionChoiceInfo]
+  implicit lazy val chatToolCompletionChoiceInfoReads: Reads[ChatToolCompletionChoiceInfo] = {
+    val reads: Reads[ChatToolCompletionChoiceInfo] = (
+      (__ \ "message").read[AssistantToolMessage] and
+        (__ \ "index").read[Int] and
+        (__ \ "finish_reason").readNullable[String]
+    )(
+      (
+        message: AssistantToolMessage,
+        index: Int,
+        finishReason: Option[String]
+      ) => ChatToolCompletionChoiceInfo(message, index, finishReason)
+    )
+    Reads(json => reads.reads(json).map(_.copy(reasoning = choiceReasoning(json))))
+  }
   implicit lazy val chatToolCompletionResponseReads: Reads[ChatToolCompletionResponse] =
     (
       (__ \ "id").read[String] and

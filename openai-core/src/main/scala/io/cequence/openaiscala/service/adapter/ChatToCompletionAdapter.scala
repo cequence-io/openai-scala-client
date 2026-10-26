@@ -6,6 +6,7 @@ import io.cequence.openaiscala.domain.{
   AssistantMessage,
   BaseMessage,
   ChatCompletionTool,
+  ReasoningMessage,
   SystemMessage,
   UserMessage
 }
@@ -49,9 +50,12 @@ private class ChatToCompletionAdapter[
       settings,
       "The chat-to-completion adapter (legacy completions API)"
     ) {
+      // a ReasoningMessage (carried reasoning) is no part of the prompt
+      val conversation = messages.filterNot(_.isInstanceOf[ReasoningMessage])
+
       underlying
         .createCompletion(
-          prompt = messages.map {
+          prompt = conversation.map {
             case m: SystemMessage    => m.content
             case m: UserMessage      => s"Q: ${m.content}"
             case m: AssistantMessage => s"A: ${m.content}"

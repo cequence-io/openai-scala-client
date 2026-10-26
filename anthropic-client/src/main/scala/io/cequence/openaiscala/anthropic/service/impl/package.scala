@@ -74,6 +74,8 @@ import io.cequence.openaiscala.domain.{
   FunctionCallSpec,
   MessageSpec,
   NonOpenAIModelId,
+  ReasoningBlock,
+  ReasoningMessage,
   SystemMessage,
   ToolCallChunkSpec,
   AssistantMessage => OpenAIAssistantMessage,
@@ -137,16 +139,52 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
     settings: CreateChatCompletionSettings
   ): Seq[Message] = {
 
-    val anthropicMessages: Seq[Message] = messages.collect {
-      case OpenAIUserMessage(content, _) => Message.UserMessage(content)
+    // carried reasoning (a ReasoningMessage) opens the assistant turn that follows it as its
+    // thinking blocks - Anthropic wants them first; one followed by anything else is left out.
+    // Only signed thinking and redacted thinking go back (the adapter passes only the
+    // reasoning its own service returned)
+    val conversation: List[(Seq[ContentBlockBase], OpenAIBaseMessage)] =
+      messages.foldRight(List.empty[(Seq[ContentBlockBase], OpenAIBaseMessage)]) {
+        case (ReasoningMessage(blocks), following) =>
+          // signed thinking, or redacted thinking (encrypted, no id - an id is a Responses item)
+          val thinking = blocks.filter(_.id.isEmpty).flatMap { block =>
+            block.signature
+              .map(signature =>
+                ContentBlockBase(
+                  ContentBlock.ThinkingBlock(block.text.getOrElse(""), signature)
+                )
+              )
+              .orElse(
+                block.encrypted
+                  .map(data => ContentBlockBase(ContentBlock.RedactedThinkingBlock(data)))
+              )
+          }
+          following match {
+            case (noThinking, next) :: rest
+                if noThinking.isEmpty && next.role == ChatRole.Assistant =>
+              (thinking, next) :: rest
+            case _ => following
+          }
 
-      case OpenAIUserSeqMessage(contents, _) =>
+        case (message, following) => (Nil, message) :: following
+      }
+
+    val anthropicMessages: Seq[Message] = conversation.collect {
+      case (_, OpenAIUserMessage(content, _)) => Message.UserMessage(content)
+
+      case (_, OpenAIUserSeqMessage(contents, _)) =>
         Message.UserMessageContent(contents.map(toAnthropic))
 
-      case OpenAIAssistantMessage(content, _, _) => Message.AssistantMessage(content)
+      case (thinking, OpenAIAssistantMessage(content, _, _)) =>
+        if (thinking.isEmpty)
+          Message.AssistantMessage(content)
+        else
+          Message.AssistantMessageContent(
+            thinking ++ Seq(ContentBlockBase(TextBlock(content))).filter(_ => content.nonEmpty)
+          )
 
       // assistant tool calls -> assistant turn with tool_use blocks
-      case OpenAIAssistantToolMessage(content, _, toolCalls) =>
+      case (thinking, OpenAIAssistantToolMessage(content, _, toolCalls)) =>
         val toolUseBlocks = toolCalls.collect {
           case (toolCallId, FunctionCallSpec(name, arguments)) =>
             val input = scala.util.Try(Json.parse(arguments).as[JsObject]) match {
@@ -160,10 +198,10 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
             ContentBlockBase(ToolUseBlock(toolCallId, name, input))
         }
         val textBlocks = content.map(text => ContentBlockBase(TextBlock(text))).toSeq
-        Message.AssistantMessageContent(textBlocks ++ toolUseBlocks)
+        Message.AssistantMessageContent(thinking ++ textBlocks ++ toolUseBlocks)
 
       // client-executed tool result -> user turn with a tool_result block
-      case OpenAIToolMessage(content, toolCallId, _) =>
+      case (_, OpenAIToolMessage(content, toolCallId, _)) =>
         Message.UserMessageContent(
           Seq(
             ContentBlockBase(
@@ -173,7 +211,7 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
         )
 
       // legacy message type
-      case MessageSpec(role, content, _) if role == ChatRole.User =>
+      case (_, MessageSpec(role, content, _)) if role == ChatRole.User =>
         Message.UserMessage(content)
 
       case _ => throw new OpenAIScalaClientException("Unsupported message type")
@@ -709,6 +747,23 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
     )
   }
 
+  /**
+   * The thinking of a reply (its thinking and redacted thinking blocks, in order) as a
+   * [[ReasoningMessage]], to be passed back next round.
+   */
+  def toReasoningMessage(response: CreateMessageResponse): Option[ReasoningMessage] = {
+    val blocks = response.content.blocks.collect {
+      case ContentBlockBase(ContentBlock.ThinkingBlock(thinking, signature), _) =>
+        ReasoningBlock(text = Some(thinking), signature = Some(signature))
+      case ContentBlockBase(ContentBlock.RedactedThinkingBlock(data), _) =>
+        ReasoningBlock(encrypted = Some(data))
+    }
+    if (blocks.nonEmpty)
+      Some(ReasoningMessage(blocks))
+    else
+      None
+  }
+
   def toOpenAI(response: CreateMessageResponse): ChatCompletionResponse = {
     // Extract thinking blocks and estimate token count
     val thinkingText = response.thinkingText
@@ -728,7 +783,8 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
           message = toOpenAIAssistantMessage(response.content),
           index = 0,
           finish_reason = response.stop_reason,
-          logprobs = None
+          logprobs = None,
+          reasoning = toReasoningMessage(response)
         )
       ),
       usage = Some(toOpenAI(response.usage, thinkingTokens)),

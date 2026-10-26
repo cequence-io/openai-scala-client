@@ -2,7 +2,15 @@ package io.cequence.openaiscala.service.impl
 
 import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.openaiscala.domain.{AssistantTool, BaseMessage, ChatCompletionTool, ModelId}
+import io.cequence.openaiscala.domain.{
+  AssistantTool,
+  BaseMessage,
+  ChatCompletionTool,
+  ChatRole,
+  ModelId,
+  ReasoningBlock,
+  ReasoningMessage
+}
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps._
@@ -10,11 +18,11 @@ import io.cequence.openaiscala.service.adapter.{
   ChatCompletionSettingsConversions,
   MessageConversions
 }
-import io.cequence.openaiscala.service.OpenAIChatCompletionService
+import io.cequence.openaiscala.service.{OpenAIChatCompletionService, ProducedReasoning}
 import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.ResponseImplicits._
 import org.slf4j.LoggerFactory
-import play.api.libs.json.{JsObject, JsValue, Json}
+import play.api.libs.json.{JsArray, JsObject, JsString, JsValue, Json}
 
 import scala.concurrent.Future
 
@@ -34,8 +42,8 @@ private[service] trait OpenAIChatCompletionServiceImpl
     settings: CreateChatCompletionSettings
   ): Future[ChatCompletionResponse] =
     if (ChatCompletionSettingsConversions.chatRequiresResponsesAPI(settings))
-      // a run paused for approval, Responses-native tools, a reasoning mode and the Ultrafast
-      // tier live on the Responses API
+      // a run paused for approval, Responses-native tools, a reasoning mode, reasoning
+      // summaries and the Ultrafast tier live on the Responses API
       responsesBackedChatCompletion match {
         case Some(service) =>
           service.createChatCompletion(messages, settings)
@@ -45,7 +53,7 @@ private[service] trait OpenAIChatCompletionServiceImpl
 
         case None =>
           // refused, never dropped; a chat-only service leaves the tier to the API (another
-          // OpenAI-compatible provider may serve it)
+          // OpenAI-compatible provider may serve it) and ignores the summary flag
           unsupportedResponsesSettings(settings)
             .map(e => Future.failed[ChatCompletionResponse](e))
             .getOrElse(createChatCompletionAux(messages, settings))
@@ -61,9 +69,13 @@ private[service] trait OpenAIChatCompletionServiceImpl
       EndPoint.chat_completions,
       bodyParams =
         createBodyParamsForChatCompletion(messages.toList, settings, stream = false).toList
-    ).map(
-      _.asSafeJson[ChatCompletionResponse]
-    )
+    ).map { json =>
+      val response = json.asSafeJson[ChatCompletionResponse]
+      response.choices.foreach(choice =>
+        producedChatReasoning.foreach(_.remember(choice.reasoning))
+      )
+      response
+    }
 
   // Responses-native tools / a reasoning mode on a chat-only service
   private def unsupportedResponsesSettings(
@@ -84,6 +96,11 @@ private[service] trait OpenAIChatCompletionServiceImpl
     )
 
   private val logger = LoggerFactory.getLogger(getClass)
+
+  // the reasoning texts this site (provider account) returned - shared with its streamed
+  // implementation; see ChatCompletionBodyMaker.withCarriedReasoning
+  override protected lazy val producedChatReasoning: Option[ProducedReasoning] =
+    Some(ProducedReasoning.forSite(site))
 
   /**
    * The Responses-backed chat completion of this service, when it also serves the Responses
@@ -161,14 +178,24 @@ private[service] trait OpenAIChatCompletionServiceImpl
     execPOST(
       EndPoint.chat_completions,
       bodyParams = coreParams ++ createToolBodyParams(tools, responseToolChoice)
-    ).map(
-      _.asSafeJson[ChatToolCompletionResponse]
-    )
+    ).map { json =>
+      val response = json.asSafeJson[ChatToolCompletionResponse]
+      response.choices.foreach(choice =>
+        producedChatReasoning.foreach(_.remember(choice.reasoning))
+      )
+      response
+    }
   }
 
 }
 
 trait ChatCompletionBodyMaker {
+
+  /**
+   * The reasoning this service's site (provider account) returned - the only reasoning a
+   * request passes back. None (the default): no carried reasoning is sent.
+   */
+  protected def producedChatReasoning: Option[ProducedReasoning] = None
 
   // GPT-5.x / GPT-6.x are dispatched on the parsed minor version
   // (ChatCompletionSettingsConversions.gpt5Minor / gpt6Minor)
@@ -249,14 +276,26 @@ trait ChatCompletionBodyMaker {
       .unsupportedResponsesSettings(settings, "The chat completions API")
       .foreach(throw _)
 
-    // the retired o1-preview / o1-mini took no system messages
-    val messagesFinal =
-      if (ChatCompletionSettingsConversions.isO1PreviewOrMini(settings.model))
-        MessageConversions.systemToUserMessages(messagesAux)
-      else
-        messagesAux
+    // carried reasoning goes back on the assistant message that follows it, in the field it
+    // came in - only the reasoning texts this service's site returned (see
+    // producedChatReasoning); anything else (another provider's, a Responses item, Anthropic
+    // thinking) is left out
+    val messages =
+      ChatCompletionBodyMaker.withCarriedReasoning(messagesAux, producedChatReasoning)
 
-    val messageJsons = messagesFinal.map(Json.toJson(_)(messageWrites))
+    val messageJsons =
+      if (ChatCompletionSettingsConversions.isO1PreviewOrMini(settings.model))
+        // the retired o1-preview / o1-mini took no system messages (nor reasoning back)
+        MessageConversions
+          .systemToUserMessages(messages.map(_._1))
+          .map(Json.toJson(_)(messageWrites))
+      else
+        messages.map { case (message, reasoning) =>
+          ChatCompletionBodyMaker.withReasoning(
+            Json.toJson(message)(messageWrites).as[JsObject],
+            reasoning
+          )
+        }
 
     // the bare id, so the rules also apply to Bedrock's `openai.` / `us.openai.` ids; the
     // request itself still carries settings.model untouched
@@ -265,16 +304,28 @@ trait ChatCompletionBodyMaker {
     val settingsFinal = {
       import ChatCompletionSettingsConversions._
 
-      if (isO1PreviewOrMini(model)) o1Preview(settings)
-      else if (isOSeries(model)) o(settings)
-      else if (model == ModelId.chat_latest) chatLatest(settings)
-      else if (isGpt6ReasoningAlwaysOn(model)) gpt6(settings) // Astra, 6.1 Sol and newer
-      else if (gpt6Minor(model).isDefined) gpt6SolLuna(settings)
-      else if (isGpt5SearchApi(model)) gpt5SearchApi(settings)
-      else if (isMistralSwitchReasoning(model)) mistralSwitchReasoning(settings)
-      else if (isMistralGlm(model)) mistralGlm(settings)
-      else if (isMuseSparkOpen(model)) museSparkOpen(model)(settings)
-      else if (isMuseReasoning(model)) muse(settings)
+      if (isO1PreviewOrMini(model))
+        o1Preview(settings)
+      else if (isOSeries(model))
+        o(settings)
+      else if (model == ModelId.chat_latest)
+        chatLatest(settings)
+      else if (isGpt6ReasoningAlwaysOn(model)) // Astra, 6.1 Sol and newer
+        gpt6(settings)
+      else if (gpt6Minor(model).isDefined)
+        gpt6SolLuna(settings)
+      else if (isGpt5SearchApi(model))
+        gpt5SearchApi(settings)
+      else if (isMistralSwitchReasoning(model))
+        mistralSwitchReasoning(settings)
+      else if (isMistralGlm(model))
+        mistralGlm(settings)
+      else if (isMuseSparkOpen(model))
+        museSparkOpen(model)(settings)
+      else if (isMuseReasoning(model))
+        muse(settings)
+      else if (isMiniMaxFlash(model))
+        miniMaxFlash(settings)
       else
         gpt5Minor(model) match {
           case Some(0)                   => gpt5(settings)
@@ -392,6 +443,64 @@ trait ChatCompletionBodyMaker {
 }
 
 object ChatCompletionBodyMaker {
+
+  /**
+   * The messages without the carried [[ReasoningMessage]]s, each paired with the reasoning
+   * texts to send with it: those a ReasoningMessage carries go with the assistant message
+   * right after it - only those `produced` holds (the reasoning this service's site returned);
+   * without a registry none goes back.
+   */
+  def withCarriedReasoning(
+    messages: Seq[BaseMessage],
+    produced: Option[ProducedReasoning]
+  ): Seq[(BaseMessage, Seq[ReasoningBlock])] =
+    messages.foldRight(List.empty[(BaseMessage, Seq[ReasoningBlock])]) {
+      case (ReasoningMessage(blocks), following) =>
+        val texts = produced.toSeq.flatMap { registry =>
+          blocks.filter(block => block.text.isDefined && registry.contains(block))
+        }
+        following match {
+          case (next, noTexts) :: rest if noTexts.isEmpty && next.role == ChatRole.Assistant =>
+            (next, texts) :: rest
+          case _ => following
+        }
+
+      case (message, following) => (message, Nil) :: following
+    }
+
+  /**
+   * An assistant message's JSON with its reasoning texts back where each came from: a
+   * `reasoning_content` / `reasoning` field, or (`thinking`) a thinking chunk opening its
+   * `content` - Mistral's form (live 2026-10-26: Medium 3.5 reads it back).
+   */
+  def withReasoning(
+    message: JsObject,
+    texts: Seq[ReasoningBlock]
+  ): JsObject =
+    texts.foldLeft(message) {
+      (
+        json,
+        block
+      ) =>
+        val content = block.text.getOrElse("")
+        block.field.getOrElse("reasoning_content") match {
+          case ReasoningBlock.ThinkingChunk =>
+            val thinkingChunk = Json.obj(
+              "type" -> "thinking",
+              "thinking" -> Json.arr(Json.obj("type" -> "text", "text" -> content))
+            )
+            val chunks = (json \ "content").toOption match {
+              case Some(JsArray(existing)) => existing.toSeq
+              case Some(JsString(text)) if text.nonEmpty =>
+                Seq(Json.obj("type" -> "text", "text" -> text))
+              case _ => Nil
+            }
+            json ++ Json.obj("content" -> JsArray(thinkingChunk +: chunks))
+
+          case field =>
+            json ++ Json.obj(field -> ((json \ field).asOpt[String].getOrElse("") + content))
+        }
+    }
 
   def toolsUnsupportedMessage(model: String): String =
     s"Model '$model' does not support function tools (on the chat completions API nor the Responses API) - use a tool-capable model."

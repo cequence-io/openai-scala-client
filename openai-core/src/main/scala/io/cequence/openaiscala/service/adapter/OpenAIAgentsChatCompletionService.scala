@@ -38,6 +38,7 @@ import io.cequence.openaiscala.domain.{
   FunctionCallSpec,
   ImageURLContent,
   MessageSpec,
+  ReasoningMessage,
   SystemMessage,
   TextContent,
   ToolMessage,
@@ -234,11 +235,14 @@ final class OpenAIAgentsChatCompletionService(
   // ---- planning ----
 
   private def plan(
-    messages: Seq[BaseMessage],
+    allMessages: Seq[BaseMessage],
     tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
   ): Either[Resume, Create] = {
+    // a ReasoningMessage (carried reasoning) means nothing to a session
+    val messages = allMessages.filterNot(_.isInstanceOf[ReasoningMessage])
+
     if (settings.toolApprovalDecisions.nonEmpty)
       throw new OpenAIScalaClientException(
         "The Agents API chat adapter cannot resume a run paused for tool approval."

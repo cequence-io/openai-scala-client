@@ -48,9 +48,15 @@ object ResponsesChatCompletionSettingsOps {
       }
 
     /**
-     * Whether reasoning summaries (`reasoning.summary = "auto"`) are requested when
-     * `reasoning_effort` is set - the typed stream defaults to `true` so `ChatChunk.Thinking`
-     * chunks arrive; pass `false` to skip them.
+     * Whether reasoning summaries (`reasoning.summary = "auto"`) are requested from the
+     * Responses API - the readable reasoning, as `ChatChunk.Thinking` chunks on the typed
+     * stream and as the reply's `reasoningMessage.text` on a sync call (its reasoning blocks'
+     * `summary`). Set to `true`, every call asks, on an OpenAI reasoning model also without a
+     * `reasoning_effort`, and the full `OpenAIService` sends such a call through the Responses
+     * API (the chat completions API returns no reasoning text for OpenAI's models; a chat-only
+     * service ignores the flag); `false` never asks. Unset, the typed stream asks whenever
+     * `reasoning_effort` is set (not for a multi-agent run, which the API refuses summaries
+     * for) and a sync call does not. An easy prompt may get an empty summary.
      */
     def setResponsesReasoningSummary(flag: Boolean = true): CreateChatCompletionSettings =
       settings.copy(

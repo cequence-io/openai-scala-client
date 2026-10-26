@@ -136,14 +136,27 @@ object ChatCompletionSettingsConversions {
   }
 
   /**
+   * OpenAI's reasoning models on the Responses API - GPT-5.x (but `gpt-5-search-api`, which
+   * the Responses API does not serve: 400 "not supported with the Responses API", live
+   * 2026-10-26), GPT-6 and the o-series; Bedrock ids canonicalized. Their replies carry
+   * reasoning items: encrypted content and, when asked for, summaries.
+   */
+  def isOpenAIReasoningModel(model: String): Boolean =
+    gpt5Minor(model).isDefined && !isGpt5SearchApi(model) ||
+      gpt6Minor(model).isDefined ||
+      isOSeries(model)
+
+  /**
    * Whether a chat completion with these settings must be served by the Responses API,
    * whatever its tools: a call resuming a run paused for approval (the run is there -
    * `setToolApprovalDecisions`), carrying Responses-native tools (`setResponsesTools`), a
    * reasoning mode (`setResponsesReasoningMode`) or multi-agent execution
-   * (`setResponsesMultiAgent`) - parameters the chat completions API doesn't have - or asking
-   * for the Ultrafast service tier, which the chat completions API rejects for every model
-   * (400 "Invalid service_tier argument", live-verified 2026-09-29 - GPT-6 Astra serves it on
-   * the Responses API).
+   * (`setResponsesMultiAgent`) - parameters the chat completions API doesn't have -, asking an
+   * OpenAI reasoning model for reasoning summaries (`setResponsesReasoningSummary(true)` - the
+   * chat completions API returns no reasoning text for them), or asking for the Ultrafast
+   * service tier, which the chat completions API rejects for every model (400 "Invalid
+   * service_tier argument", live-verified 2026-09-29 - GPT-6 Astra serves it on the Responses
+   * API).
    */
   def chatRequiresResponsesAPI(settings: CreateChatCompletionSettings): Boolean = {
     val responsesSettings =
@@ -156,6 +169,8 @@ object ChatCompletionSettingsConversions {
     responsesSettings.responsesTools.nonEmpty ||
     responsesSettings.responsesReasoningMode.nonEmpty ||
     responsesSettings.responsesMultiAgent.nonEmpty ||
+    (responsesSettings.responsesReasoningSummary.contains(true) &&
+      isOpenAIReasoningModel(settings.model)) ||
     settings.service_tier.contains(ServiceTier.ultrafast)
   }
 
@@ -481,6 +496,10 @@ object ChatCompletionSettingsConversions {
       unsupported("top_logprobs", _.top_logprobs.isDefined, _.copy(top_logprobs = None))
     val verbosityUnsupported: FieldConversionDef =
       unsupported("verbosity", _.verbosity.isDefined, _.copy(verbosity = None))
+
+    // MiniMax-M3.1-Flash "does not support this field" (MiniMax's docs, 2026-10-24; not a 400)
+    val serviceTierUnsupported: FieldConversionDef =
+      unsupported("service_tier", _.service_tier.isDefined, _.copy(service_tier = None))
 
     // o1 and o3-mini (and their dated snapshots) still accept stop; o3 / o4-mini (and any newer
     // o-model) reject it
@@ -956,6 +975,27 @@ object ChatCompletionSettingsConversions {
       ),
       reasoningEffortTo(Set(ReasoningEffort.medium), ReasoningEffort.high),
       reasoningEffortTo(Set(ReasoningEffort.xhigh), ReasoningEffort.max)
+    )
+  )
+
+  // MiniMax-M3.1-Flash on MiniMax's direct API (api.minimax.io / api.minimaxi.com): it always
+  // thinks - reasoning_effort low..max per MiniMax's docs (2026-10-24), `max` when omitted. Live
+  // 2026-10-24 (an account without balance - the checks MiniMax runs before billing): `none` is a
+  // 400 ("requires adaptive thinking; reasoning effort none is not allowed", code 2013), so it is
+  // sent as low; `minimal` passed those checks but is not a documented value - sent as low too;
+  // `service_tier` passed them as well, yet Flash "does not support this field" - dropped.
+  // MiniMax-M3 ignores reasoning_effort (its thinking is switched with `thinking`; `none` passed
+  // the checks), so it is left alone
+  def isMiniMaxFlash(model: String): Boolean =
+    model.startsWith(NonOpenAIModelId.minimax_m3_1_flash)
+
+  val miniMaxFlash: SettingsConversion = generic(
+    Seq(
+      reasoningEffortTo(
+        Set(ReasoningEffort.none, ReasoningEffort.minimal),
+        ReasoningEffort.low
+      ),
+      FieldConversions.serviceTierUnsupported
     )
   )
 

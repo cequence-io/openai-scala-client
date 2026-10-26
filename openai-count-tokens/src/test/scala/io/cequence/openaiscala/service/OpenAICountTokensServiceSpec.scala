@@ -6,6 +6,8 @@ import io.cequence.openaiscala.domain.{
   BaseMessage,
   JsonSchema,
   ModelId,
+  ReasoningBlock,
+  ReasoningMessage,
   SystemMessage,
   UserMessage
 }
@@ -545,6 +547,38 @@ class OpenAICountTokensServiceSpec
         responseFunctionName = responseFunctionName,
         model = model
       )
+    }
+  }
+
+  "a ReasoningMessage" should {
+    val reasoning = ReasoningMessage(
+      Seq(ReasoningBlock(id = Some("rs_1"), encrypted = Some("enc")))
+    )
+
+    "count no tokens in a message call - not even the per-message overhead" in new TestCase {
+      val messages = chat(UserMessage("Hello"), AssistantMessage("Hi there!"))
+
+      for (model <- Seq(ModelId.gpt_4o, ModelId.gpt_4_0613, ModelId.gpt_3_5_turbo_0301)) {
+        withClue(model) {
+          val expected = countMessageTokens(model, messages)
+          expected should be > 3
+
+          countMessageTokens(model, messages :+ reasoning) shouldBe expected
+          countMessageTokens(model, reasoning +: messages) shouldBe expected
+          // only the priming of the reply is left
+          countMessageTokens(model, Seq(reasoning)) shouldBe countMessageTokens(model, Nil)
+          countMessageTokens(model, reasoning) shouldBe 0
+        }
+      }
+    }
+
+    "count no tokens in a function call count" in new TestCase {
+      val messages = chat(SystemMessage("Be brief."), UserMessage("Hello"))
+      val functions = Seq(weatherFunction)
+      val model = ModelId.gpt_3_5_turbo
+
+      countFunMessageTokens(model, messages :+ reasoning, functions, None) shouldBe
+        countFunMessageTokens(model, messages, functions, None)
     }
   }
 

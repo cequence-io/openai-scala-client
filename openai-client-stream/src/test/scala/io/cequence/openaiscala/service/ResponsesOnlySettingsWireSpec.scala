@@ -37,9 +37,10 @@ import scala.io.Source
 
 /**
  * What the chat completions API cannot serve goes to the Responses API: the Ultrafast service
- * tier, a reasoning mode (`setResponsesReasoningMode`) and GPT-6.1 Sol's function tools -
- * against a local server replaying Responses API answers recorded live (2026-09-29,
- * `gpt-6-astra` on the Ultrafast tier, `gpt-6.1-sol` in pro mode).
+ * tier, a reasoning mode (`setResponsesReasoningMode`), reasoning summaries
+ * (`setResponsesReasoningSummary`) and GPT-6.1 Sol's function tools - against a local server
+ * replaying Responses API answers recorded live (2026-09-29, `gpt-6-astra` on the Ultrafast
+ * tier, `gpt-6.1-sol` in pro mode; 2026-10-26, `gpt-6-luna` with a reasoning summary).
  */
 class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
@@ -59,6 +60,8 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
   private val proSse = resource("sol61-pro.sse")
   private val multiAgentJson = resource("sol61-multi-agent.json")
   private val multiAgentSse = resource("sol61-multi-agent.sse")
+  private val lunaSummaryJson = resource("luna-summary.json")
+  private val lunaSummarySse = resource("luna-summary.sse")
 
   private val chatBody =
     """{"id":"chatcmpl_1","object":"chat.completion","created":1700000000,"model":"gpt-6-astra",
@@ -115,6 +118,7 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
           val streamed = (body \ "stream").asOpt[Boolean].contains(true)
           val pro = (body \ "reasoning" \ "mode").asOpt[String].contains("pro")
           val multiAgent = (body \ "multi_agent").isDefined
+          val luna = (body \ "model").asOpt[String].contains(ModelId.gpt_6_luna)
 
           val (contentType, response) =
             if (!path.endsWith("/responses"))
@@ -122,12 +126,18 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
             else if (streamed)
               (
                 "text/event-stream",
-                if (multiAgent) multiAgentSse else if (pro) proSse else ultrafastSse
+                if (multiAgent) multiAgentSse
+                else if (pro) proSse
+                else if (luna) lunaSummarySse
+                else ultrafastSse
               )
             else
               (
                 "application/json",
-                if (multiAgent) multiAgentJson else if (pro) proJson else ultrafastJson
+                if (multiAgent) multiAgentJson
+                else if (pro) proJson
+                else if (luna) lunaSummaryJson
+                else ultrafastJson
               )
 
           exchange.getResponseHeaders.add("Content-Type", contentType)
@@ -270,6 +280,134 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
           include("setResponsesReasoningMode")
       }
       requests.size shouldBe before
+    }
+  }
+
+  "reasoning summaries (setResponsesReasoningSummary)" should {
+
+    val luna = CreateChatCompletionSettings(ModelId.gpt_6_luna)
+    val summarized = luna.setResponsesReasoningSummary()
+    val high = luna.copy(reasoning_effort = Some(ReasoningEffort.high))
+    // the summaries of the recorded replies (two calls - two summaries)
+    val recordedSummary =
+      (Json.parse(lunaSummaryJson) \ "output" \ 0 \ "summary" \ 0 \ "text").as[String]
+    val recordedStreamSummary = lunaSummarySse.linesIterator.collect {
+      case line if line.startsWith("data: ") => Json.parse(line.drop(6))
+    }.collectFirst {
+      case event
+          if (event \ "type").asOpt[String].contains("response.reasoning_summary_text.done") =>
+        (event \ "text").as[String]
+    }.getOrElse(fail("no summary in the recorded stream"))
+
+    "be asked for on a sync call - also without an effort - and come back as its reasoning" in {
+      val response = await(full.createChatCompletion(messages, summarized))
+      last._1 should endWith("/responses")
+      // a reasoning config just for the summary: the model's default effort
+      (last._2 \ "reasoning").as[JsObject] shouldBe Json.obj("summary" -> "auto")
+      response.contentHead shouldBe "693"
+      response.reasoningMessage.flatMap(_.text) shouldBe Some(recordedSummary)
+      response.reasoningMessage.toSeq.flatMap(_.blocks).flatMap(_.encrypted) should have size 1
+
+      val toolResponse = await(
+        full.createChatToolCompletion(
+          messages,
+          Seq(weather),
+          None,
+          high.setResponsesReasoningSummary()
+        )
+      )
+      last._1 should endWith("/responses")
+      (last._2 \ "reasoning").as[JsObject] shouldBe
+        Json.obj("effort" -> "high", "summary" -> "auto")
+      toolResponse.reasoningMessage.flatMap(_.text) shouldBe Some(recordedSummary)
+    }
+
+    "not be asked for on a sync call by default, nor anywhere when set to false" in {
+      await(full.createChatToolCompletion(messages, Seq(weather), None, high))
+      last._1 should endWith("/responses")
+      (last._2 \ "reasoning").as[JsObject] shouldBe Json.obj("effort" -> "high")
+
+      await(full.createChatCompletion(messages, luna))
+      last._1 should endWith("/chat/completions")
+
+      // the typed stream asks whenever reasoning is configured - unless told not to
+      await(
+        fullStreamed
+          .createChatToolCompletionStreamed(messages, Seq(weather), None, high)
+          .assembled
+      )
+      (last._2 \ "reasoning").as[JsObject] shouldBe
+        Json.obj("effort" -> "high", "summary" -> "auto")
+
+      await(
+        fullStreamed
+          .createChatToolCompletionStreamed(
+            messages,
+            Seq(weather),
+            None,
+            high.setResponsesReasoningSummary(false)
+          )
+          .assembled
+      )
+      last._1 should endWith("/responses")
+      (last._2 \ "reasoning").as[JsObject] shouldBe Json.obj("effort" -> "high")
+    }
+
+    "stream the summary as thinking - typed and OpenAI-shaped - via the Responses API" in {
+      val typed =
+        await(fullStreamed.createChatCompletionStreamedTyped(messages, summarized).assembled)
+      last._1 should endWith("/responses")
+      (last._2 \ "reasoning").as[JsObject] shouldBe Json.obj("summary" -> "auto")
+      typed.thinking shouldBe recordedStreamSummary
+      typed.text shouldBe "693"
+
+      val chunks =
+        await(
+          fullStreamed.createChatCompletionStreamed(messages, summarized).runWith(Sink.seq)
+        )
+      last._1 should endWith("/responses")
+      (last._2 \ "reasoning").as[JsObject] shouldBe Json.obj("summary" -> "auto")
+      chunks.flatMap(_.choices.flatMap(_.delta.reasoning_content)).mkString shouldBe
+        recordedStreamSummary
+      chunks.flatMap(_.choices.flatMap(_.delta.content)).mkString shouldBe "693"
+    }
+
+    "go to the Responses API for an OpenAI reasoning model only, and be ignored chat-only" in {
+      // the Responses API does not serve gpt-5-search-api (400)
+      Seq(ModelId.gpt_4_1_mini, ModelId.gpt_5_search_api).foreach { model =>
+        withClue(model) {
+          await(
+            full.createChatCompletion(
+              messages,
+              CreateChatCompletionSettings(model).setResponsesReasoningSummary()
+            )
+          )
+          last._1 should endWith("/chat/completions")
+          last._2.keys should not contain ResponsesReasoningSummaryParam
+        }
+      }
+
+      // a Bedrock id of a reasoning model
+      await(
+        full.createChatCompletion(
+          messages,
+          CreateChatCompletionSettings("us.openai.gpt-6.1-sol").setResponsesReasoningSummary()
+        )
+      )
+      last._1 should endWith("/responses")
+      (last._2 \ "reasoning" \ "summary").as[String] shouldBe "auto"
+
+      // the chat completions API has no reasoning summaries: the flag is not sent, the call
+      // is served
+      await(chatOnly.createChatCompletion(messages, summarized)).contentHead shouldBe "hi"
+      last._1 should endWith("/chat/completions")
+      last._2.keys should not contain ResponsesReasoningSummaryParam
+
+      await(
+        chatOnlyStreamed.createChatCompletionStreamed(messages, summarized).runWith(Sink.seq)
+      )
+      last._1 should endWith("/chat/completions")
+      last._2.keys should not contain ResponsesReasoningSummaryParam
     }
   }
 

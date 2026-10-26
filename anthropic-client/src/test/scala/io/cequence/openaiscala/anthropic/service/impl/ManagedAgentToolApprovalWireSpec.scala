@@ -6,7 +6,13 @@ import akka.stream.scaladsl.Sink
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
-import io.cequence.openaiscala.domain.UserMessage
+import io.cequence.openaiscala.domain.{
+  AssistantMessage,
+  BaseMessage,
+  ReasoningBlock,
+  ReasoningMessage,
+  UserMessage
+}
 import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.domain.response.ChatChunk.FinishReason
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
@@ -468,6 +474,29 @@ class ManagedAgentToolApprovalWireSpec
       assembled.toolResults.map(_.text) shouldBe Seq(Some("a.txt"))
       assembled.awaitingApproval shouldBe false
       assembled.finishReason shouldBe Some(FinishReason.stop)
+    }
+
+    "leave a ReasoningMessage out of the kickoff transcript" in {
+      reset()
+      script = _ => Seq(agentMessage("done"), idleEndTurn)
+      val reasoning = ReasoningMessage(
+        Seq(ReasoningBlock(id = Some("rs_1"), encrypted = Some("enc")))
+      )
+
+      // the texts of the user.message a conversation is sent as
+      def kickoffTexts(conversation: Seq[BaseMessage]): Seq[String] = {
+        posted = Nil
+        await(service.createChatCompletionStreamedTyped(conversation, settings).assembled)
+        val blocks = (posted.head.head \ "content").as[Seq[JsObject]]
+        blocks.map(block => (block \ "text").as[String])
+      }
+
+      kickoffTexts(
+        Seq(UserMessage("q1"), reasoning, AssistantMessage("a1"), UserMessage("q2"))
+      ) shouldBe Seq("User: q1", "Assistant: a1", "User: q2")
+
+      // the reasoning is no turn: a lone user message is still sent as it is
+      kickoffTexts(Seq(UserMessage("q"), reasoning)) shouldBe Seq("q")
     }
 
     "look up a pending call not seen in this stream in the session history" in {

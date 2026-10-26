@@ -34,9 +34,12 @@ object CreateChatCompletionSettingsOps {
       }
 
     /**
-     * Whether the model's thoughts are requested (`thinkingConfig.includeThoughts`) on the
-     * typed stream (`createChatToolCompletionStreamed`), so that `ChatChunk.Thinking` chunks
-     * arrive. Defaults to `true` there; the legacy chunk stream never requests thoughts.
+     * Whether the model's thoughts are requested (`thinkingConfig.includeThoughts`). The typed
+     * stream (`createChatToolCompletionStreamed`) defaults to `true`, so that
+     * `ChatChunk.Thinking` chunks arrive; the sync calls (`createChatCompletion`,
+     * `createChatToolCompletion`) ask for them only when set to `true` - they come back as the
+     * reply's reasoning (`response.reasoningMessage`), which the next round sends back. The
+     * legacy chunk stream never requests thoughts.
      */
     def setVertexAIIncludeThoughts(flag: Boolean = true): CreateChatCompletionSettings =
       settings.copy(

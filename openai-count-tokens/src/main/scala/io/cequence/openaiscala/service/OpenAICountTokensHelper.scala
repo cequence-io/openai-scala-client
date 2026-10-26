@@ -97,8 +97,12 @@ trait OpenAICountTokensHelper {
     val encoding = encodingFor(model)
     val (tokensPerMessage, tokensPerName) = tokensPerMessageAndName(model)
 
+    // a ReasoningMessage (carried reasoning) is never sent on the chat API
     val sum =
-      messages.map(countMessageTokensAux(tokensPerMessage, tokensPerName, encoding)).sum
+      messages
+        .filterNot(_.isInstanceOf[ReasoningMessage])
+        .map(countMessageTokensAux(tokensPerMessage, tokensPerName, encoding))
+        .sum
 
     sum + 3 // every reply is primed with <|start|>assistant<|message|>
   }
@@ -107,10 +111,15 @@ trait OpenAICountTokensHelper {
     model: String,
     message: BaseMessage
   ): Int = {
-    val encoding = encodingFor(model)
-    val (tokensPerMessage, tokensPerName) = tokensPerMessageAndName(model)
+    // a ReasoningMessage (carried reasoning) is never sent on the chat API
+    if (message.isInstanceOf[ReasoningMessage])
+      0
+    else {
+      val encoding = encodingFor(model)
+      val (tokensPerMessage, tokensPerName) = tokensPerMessageAndName(model)
 
-    countMessageTokensAux(tokensPerMessage, tokensPerName, encoding)(message)
+      countMessageTokensAux(tokensPerMessage, tokensPerName, encoding)(message)
+    }
   }
 
   private def countMessageTokensAux(
@@ -186,6 +195,9 @@ trait OpenAICountTokensHelper {
       case m: ToolMessage => count(m.tool_call_id) + countOpt(m.content)
       case m: FunMessage  => count(m.content)
       case m: MessageSpec => count(m.content)
+
+      // dropped by the public entry points before they get here
+      case _: ReasoningMessage => 0
     }
   }
 
@@ -198,10 +210,13 @@ trait OpenAICountTokensHelper {
     val encoding = encodingFor(model)
     val (tokensPerMessage, tokensPerName) = tokensPerMessageAndName(model)
 
+    // a ReasoningMessage (carried reasoning) is never sent on the chat API
+    val counted = messages.filterNot(_.isInstanceOf[ReasoningMessage])
+
     def countMessageTokens(message: BaseMessage) =
       countMessageTokensAux(tokensPerMessage, tokensPerName, encoding)(message)
 
-    val messagesTokensCount = messages
+    val messagesTokensCount = counted
       .foldLeft((false, 0)) { case ((paddedSystem, count), message) =>
         val (newPaddedFlag, paddedMessage) =
           if (message.role == ChatRole.System && !paddedSystem) {
@@ -222,7 +237,11 @@ trait OpenAICountTokensHelper {
       ._2
 
     val functionsTokensCount = functionsTokensEstimate(encoding, functions)
-    val systemRoleAdjustment = if (messages.exists(m => m.role == ChatRole.System)) -4 else 0
+    val systemRoleAdjustment =
+      if (counted.exists(m => m.role == ChatRole.System))
+        -4
+      else
+        0
     val responseFunctionNameCount =
       responseFunctionName.map(name => encoding.countTokens(name) + 4).getOrElse(0)
 

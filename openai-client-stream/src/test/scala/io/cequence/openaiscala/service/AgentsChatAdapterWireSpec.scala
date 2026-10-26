@@ -29,6 +29,8 @@ import io.cequence.openaiscala.domain.{
   ImageURLContent,
   JsonSchema,
   MessageSpec,
+  ReasoningBlock,
+  ReasoningMessage,
   SystemMessage,
   TextContent,
   ToolMessage,
@@ -271,6 +273,43 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
         Json.obj("type" -> "input_image", "image_url" -> "data:image/png;base64,AAA")
       )
       awaitDeleted(sessionIdOf(plainTurn), before)
+    }
+  }
+
+  "a history with a ReasoningMessage" should {
+
+    "be folded like the one without it" in {
+      val reasoning =
+        ReasoningMessage(
+          Seq(ReasoningBlock(id = Some("rs_1"), encrypted = Some("enc")))
+        )
+      val settings = CreateChatCompletionSettings("gpt-6-luna")
+
+      // the folded input of the session a history started
+      def inputOf(conversation: Seq[BaseMessage]): Seq[JsObject] = {
+        val before = requests.size
+        await(adapter.createChatCompletion(conversation, settings))
+        val create = requests.drop(before).find(_._2 == "/agents/sessions").get._3.get
+        awaitDeleted(sessionIdOf(plainTurn), before)
+        (create \ "input" \ 0 \ "content").as[Seq[JsObject]]
+      }
+
+      inputOf(
+        Seq(
+          UserMessage("Remember 7."),
+          reasoning,
+          io.cequence.openaiscala.domain.AssistantMessage("ok"),
+          UserMessage("What was it?")
+        )
+      ) shouldBe Seq(
+        Json.obj("type" -> "input_text", "text" -> "User: Remember 7."),
+        Json.obj("type" -> "input_text", "text" -> "Assistant: ok"),
+        Json.obj("type" -> "input_text", "text" -> "User: What was it?")
+      )
+
+      // it is no turn: a lone user message is still sent as it is
+      inputOf(Seq(UserMessage("Say hi in two words."), reasoning)) shouldBe
+        Seq(Json.obj("type" -> "input_text", "text" -> "Say hi in two words."))
     }
   }
 

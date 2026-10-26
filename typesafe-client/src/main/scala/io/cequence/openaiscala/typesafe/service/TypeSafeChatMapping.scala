@@ -25,6 +25,7 @@ import scala.util.Try
  *   - one user message and no instructions -> the state IS that message (text or JSON)
  *   - one user message with instructions -> `{"instructions": ..., "message": ...}`
  *   - several turns -> `{"instructions": ..., "conversation": [{"role", "content"}, ...]}`
+ *   - a `ReasoningMessage` (carried reasoning) -> left out
  *
  * Tool messages and an empty conversation are refused, and so is image content - unless the
  * host reads images (`toState(messages, images = true)`: TypeSafe's Jev since 2026-10-14,
@@ -60,12 +61,15 @@ object TypeSafeChatMapping {
     messages: Seq[BaseMessage],
     images: Boolean
   ): JsValue = {
-    val instructions = messages.collect {
+    // a ReasoningMessage (carried reasoning) has nothing to judge
+    val conversation = messages.filterNot(_.isInstanceOf[ReasoningMessage])
+
+    val instructions = conversation.collect {
       case SystemMessage(content, _)    => content
       case DeveloperMessage(content, _) => content
     }
 
-    val turns: Seq[(String, JsValue)] = messages.collect {
+    val turns: Seq[(String, JsValue)] = conversation.collect {
       case UserMessage(content, _) => "user" -> userContent(content)
       case UserSeqMessage(content, _) =>
         "user" -> userSeqContent(content, images)

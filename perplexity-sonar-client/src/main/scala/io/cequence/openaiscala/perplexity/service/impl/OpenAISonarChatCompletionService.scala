@@ -8,6 +8,7 @@ import io.cequence.openaiscala.domain.{
   AssistantMessage,
   BaseMessage,
   DeveloperMessage,
+  ReasoningMessage,
   SystemMessage,
   UserMessage
 }
@@ -62,7 +63,7 @@ private[service] class OpenAISonarChatCompletionService(
 
       underlying
         .createChatCompletion(
-          messages.map(toSonarMessage),
+          toSonarMessages(messages),
           toSonarSetting(settings)
         )
         .map(toOpenAIResponse(includeCitationsInTextResponse, addAHrefToCitations))
@@ -79,7 +80,7 @@ private[service] class OpenAISonarChatCompletionService(
 
       underlying
         .createChatCompletionStreamed(
-          messages.map(toSonarMessage),
+          toSonarMessages(messages),
           toSonarSetting(settings)
         )
         .map(toOpenAIChunkResponse(includeCitationsInTextResponse, addAHrefToCitations))
@@ -94,6 +95,10 @@ private[service] class OpenAISonarChatCompletionService(
     settings.extra_params
       .get(includeCitationsInTextResponseParam)
       .exists(_.asInstanceOf[Boolean])
+
+  // a ReasoningMessage (carried reasoning) means nothing to Sonar
+  private def toSonarMessages(messages: Seq[BaseMessage]): Seq[Message] =
+    messages.filterNot(_.isInstanceOf[ReasoningMessage]).map(toSonarMessage)
 
   private def toSonarMessage(message: BaseMessage): Message =
     message match {

@@ -9,6 +9,7 @@ import io.cequence.openaiscala.domain.{
   AssistantWebSearchMessage,
   BaseMessage,
   ChatRole,
+  ReasoningMessage,
   ToolCallChunkSpec
 }
 
@@ -49,6 +50,20 @@ case class ChatCompletionResponse(
         s"No content in the chat completion response ${id}."
       )
     )
+
+  /**
+   * The reasoning behind the (first choice's) reply, when the provider returned any - to be
+   * passed back next round, see [[ReasoningMessage]].
+   */
+  def reasoningMessage: Option[ReasoningMessage] =
+    choices.headOption.flatMap(_.reasoning)
+
+  /**
+   * The messages to append to the history for the next round: the reasoning (when there is
+   * any) followed by the reply's assistant message.
+   */
+  def historyMessages: Seq[BaseMessage] =
+    reasoningMessage.toSeq ++ choices.headOption.map(_.message)
 }
 
 case class ChatToolCompletionResponse(
@@ -72,6 +87,21 @@ case class ChatToolCompletionResponse(
     )
     .message
 
+  /**
+   * The reasoning behind the (first choice's) reply, when the provider returned any - to be
+   * passed back next round, see [[ReasoningMessage]].
+   */
+  def reasoningMessage: Option[ReasoningMessage] =
+    choices.headOption.flatMap(_.reasoning)
+
+  /**
+   * The messages to append to the history for the next round of a tool loop: the reasoning
+   * (when there is any) followed by the assistant's tool message. The adapter of the service
+   * that returned the reasoning sends it back, every other backend leaves it out.
+   */
+  def historyMessages: Seq[BaseMessage] =
+    reasoningMessage.toSeq :+ assistantToolMessage
+
   def toChatCompletionResponse: ChatCompletionResponse =
     ChatCompletionResponse(
       id = id,
@@ -86,11 +116,12 @@ case class ChatToolCompletionResponse(
           ),
           index = choice.index,
           finish_reason = choice.finish_reason,
-          logprobs = None
+          logprobs = None,
+          reasoning = choice.reasoning
         )
       },
       usage = usage,
-      originalResponse = None
+      originalResponse = originalResponse
     )
 }
 
@@ -139,7 +170,10 @@ case class ChatCompletionChoiceInfo(
   message: AssistantMessage,
   index: Int,
   finish_reason: Option[String],
-  logprobs: Option[Logprobs]
+  logprobs: Option[Logprobs],
+  // the reasoning behind the reply, when the provider returned any. Not part of the original
+  // (OpenAI) chat completion API: a field this library adds to carry other providers' reasoning
+  reasoning: Option[ReasoningMessage] = None
 ) extends BaseChatCompletionChoiceInfo[AssistantMessage]
 
 case class ChatWebSearchCompletionChoiceInfo(
@@ -152,7 +186,10 @@ case class ChatWebSearchCompletionChoiceInfo(
 case class ChatToolCompletionChoiceInfo(
   message: AssistantToolMessage,
   index: Int,
-  finish_reason: Option[String]
+  finish_reason: Option[String],
+  // the reasoning behind the reply, when the provider returned any. Not part of the original
+  // (OpenAI) chat completion API: a field this library adds to carry other providers' reasoning
+  reasoning: Option[ReasoningMessage] = None
 ) extends BaseChatCompletionChoiceInfo[AssistantToolMessage]
 
 case class ChatFunCompletionChoiceInfo(

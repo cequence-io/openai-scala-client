@@ -105,6 +105,63 @@ There is a new project [openai-scala-client-examples](../openai-examples/src/mai
   }
 ```
 
+- **Tool loops that keep the model's reasoning**. Every adapter that gets reasoning from its provider reads it into
+  the reply as a provider-neutral `ReasoningMessage` (`choice.reasoning`; `response.reasoningMessage` for the first
+  choice). Append `response.historyMessages` instead of the bare assistant message: that is the `ReasoningMessage`
+  followed by the assistant message. The next round converts it back to the provider's own form and sends it before
+  the reply, so the model keeps its chain of thought between rounds.
+
+  A `ReasoningBlock` is one case class whose fields are set as the provider returned them:
+
+  | Backend | Read from the reply (`ReasoningBlock` fields) | Sent back as |
+  |---|---|---|
+  | OpenAI Responses API (OpenAI, Bedrock's OpenAI models) | reasoning items: `id`, `summary`, `encrypted` (+ `text` where returned) | reasoning items |
+  | Anthropic API / Bedrock | thinking blocks: `text` + `signature`; redacted thinking: `encrypted` | thinking blocks opening the assistant turn |
+  | Gemini / Vertex AI | thought parts: `text` (+ `signature`) - sync calls only with `setGeminiIncludeThoughts()` / `setVertexAIIncludeThoughts()` (no `reasoning_effort` needed) | thought parts opening the model turn |
+  | Chat completions providers (DeepSeek, Fireworks, Mistral, Cerebras, Groq, ...) | `reasoning_content` / `reasoning`, Mistral's thinking chunks: `text` + `field` | the same field, or a thinking chunk |
+
+  The full OpenAI service sends tool calls of OpenAI's reasoning models to the Responses API (GPT-6 Astra / 6.1 Sol
+  always; GPT-6 Sol / Luna and GPT-5.6+ unless `reasoning_effort` is `none`; GPT-5.4 / 5.5 with an effort other than
+  `none`), and asks for their reasoning encrypted, since the adapter stores nothing (`store = false`).
+
+  OpenAI's reasoning is encrypted, not readable. For a readable version ask for reasoning summaries with
+  `settings.setResponsesReasoningSummary()`: the reply's `reasoningMessage.text` (the blocks' `summary`) - also
+  without a `reasoning_effort` (the model's default effort) and also without tools: the full service sends any call
+  carrying it for an OpenAI reasoning model through the Responses API (the chat completions API returns no reasoning
+  text for OpenAI's models; a chat-only service ignores the flag). The typed stream asks for summaries by default
+  whenever `reasoning_effort` is set. An easy question may get an empty summary (live 2026-10-26: GPT-6 Luna
+  summarized nothing on a one-step question, ~450 characters on a counting puzzle).
+
+  Where the reasoning goes:
+  - Back only to the service that returned it (a Responses / Anthropic / Gemini / Vertex AI service instance - the
+    merged `OpenAIServiceFactory.withStreaming()` service counts as one, its typed streams carry its sync calls'
+    reasoning; for the chat completions API, its base URL and credentials). Reasoning is bound to the provider and account that made it:
+    OpenAI's is a 400 on Bedrock and Bedrock's a 400 on OpenAI (live 2026-10-26). Build the service once and share it,
+    as usual: a service remembers its last 16,384 reasoning blocks.
+  - Another model on the same service is fine: OpenAI and Bedrock accept it (GPT-6 Luna, 6.1 Sol, 5.4-mini), and so
+    does Claude - Sonnet 5.5 and Opus 5.5 read Haiku 5.5's thinking, Haiku 5.5 reads Haiku 4.5's, Haiku 4.5 ignores
+    5.5's; nothing is refused, not even by a round with thinking turned off (live 2026-10-26).
+  - Any other service or backend leaves the `ReasoningMessage` out, so the same history survives a failover. The new
+    model just reasons afresh.
+  - Streams do not produce a `ReasoningMessage` yet.
+
+```scala
+  def loop(messages: Seq[BaseMessage]): Future[ChatToolCompletionResponse] =
+    service
+      .createChatToolCompletion(messages, tools, None, CreateChatCompletionSettings(ModelId.gpt_6_luna))
+      .flatMap { response =>
+        val calls = response.assistantToolMessage.tool_calls
+        if (calls.isEmpty)
+          Future.successful(response)
+        else
+          loop(
+            messages ++ response.historyMessages ++ calls.map { case (id, call: FunctionCallSpec) =>
+              ToolMessage(Some(runTool(call)), id, call.name)
+            }
+          )
+      }
+```
+
 - Create chat completion with **JSON/structured output**
 
 ```scala

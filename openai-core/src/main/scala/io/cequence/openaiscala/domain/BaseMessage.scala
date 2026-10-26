@@ -126,6 +126,76 @@ final case class AssistantToolMessage(
   override val nameOpt = name
 }
 
+/**
+ * The reasoning behind an assistant reply, in a provider-neutral form, kept so that the next
+ * round of a tool loop can pass it back. Every adapter that gets reasoning from its provider
+ * reads it into its reply's choices (`choice.reasoning`; `response.reasoningMessage` for the
+ * first) and `response.historyMessages` gives it followed by the assistant message - the
+ * messages to append to the history. On the next round the adapter of the service that
+ * returned it converts it back to its provider's form (a Responses API reasoning item, an
+ * Anthropic thinking block, ...) and sends it before the reply's message; every other service
+ * and backend leaves it out (reasoning is bound to the provider and account that made it).
+ *
+ * @param blocks
+ *   The reasoning blocks in the order the provider returned them
+ */
+final case class ReasoningMessage(
+  blocks: Seq[ReasoningBlock]
+) extends BaseMessage {
+  override val role = ChatRole.Assistant
+  override val nameOpt = None
+
+  /**
+   * The readable reasoning - thinking texts or summaries, blocks joined by a blank line - e.g.
+   * for a trace or a token budget; None when every block is opaque (encrypted or redacted).
+   */
+  def text: Option[String] = {
+    val texts = blocks.flatMap(_.readableText)
+    if (texts.nonEmpty)
+      Some(texts.mkString("\n\n"))
+    else
+      None
+  }
+}
+
+/**
+ * A block of a [[ReasoningMessage]], as its provider returned it - which fields are set
+ * depends on the provider:
+ *   - an OpenAI Responses API reasoning item (OpenAI's reasoning models, also on Bedrock):
+ *     `id`, `summary` (asked for with `reasoning.summary`), `text` (the raw reasoning, where
+ *     returned - e.g. gpt-oss) and `encrypted` (`include = ["reasoning.encrypted_content"]` -
+ *     what lets an unstored reply's reasoning be passed back)
+ *   - an Anthropic thinking block: `text` and `signature`; a redacted one: `encrypted` only
+ *   - a Gemini / Vertex AI thought: `text` (and a `signature`, if it carries one)
+ *   - a chat completions message's reasoning: `text` and `field` - where it came in, the
+ *     message field `reasoning_content` or `reasoning`, or [[ReasoningBlock.ThinkingChunk]]
+ *     for a thinking chunk of its `content` (Mistral) - and goes back: the providers that read
+ *     it back read their own form (live 2026-10-26: DeepSeek and Fireworks read
+ *     `reasoning_content`, Mistral its thinking chunks; Cerebras answers `reasoning_content`
+ *     with a 400 and takes `reasoning`)
+ *
+ * The adapter of the service that returned it converts it back to its provider's form.
+ */
+final case class ReasoningBlock(
+  text: Option[String] = None,
+  summary: Seq[String] = Nil,
+  signature: Option[String] = None,
+  encrypted: Option[String] = None,
+  id: Option[String] = None,
+  field: Option[String] = None
+) {
+
+  /** The block's readable text - its text, else its summary - if it has one. */
+  def readableText: Option[String] =
+    text.filter(_.nonEmpty).orElse(Some(summary.mkString("\n\n")).filter(_.nonEmpty))
+}
+
+object ReasoningBlock {
+
+  /** The `field` of reasoning that came as a thinking chunk of the message's `content`. */
+  val ThinkingChunk = "thinking"
+}
+
 final case class AssistantToolOutput(
   tool_call_id: String,
   // The contents of the message.
@@ -210,5 +280,6 @@ object BaseMessage {
       case ToolMessage(content, _, _)                  => content
       case FunMessage(content, _)                      => Some(content)
       case MessageSpec(_, content, _)                  => Some(content)
+      case _: ReasoningMessage                         => None
     }
 }

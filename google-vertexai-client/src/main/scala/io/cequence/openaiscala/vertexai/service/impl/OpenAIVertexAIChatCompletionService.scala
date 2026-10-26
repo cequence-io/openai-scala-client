@@ -49,7 +49,8 @@ import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.service.{
   OpenAIChatCompletionBatchService,
   OpenAIChatCompletionService,
-  OpenAIChatCompletionStreamedServiceExtra
+  OpenAIChatCompletionStreamedServiceExtra,
+  ProducedReasoning
 }
 import io.cequence.openaiscala.vertexai.domain.{
   FunctionDeclaration => VertexAIFunctionDeclaration,
@@ -81,6 +82,10 @@ private[service] class OpenAIVertexAIChatCompletionService(
 
   private val logger: Logger = Logger(LoggerFactory.getLogger(this.getClass))
 
+  // the thoughts this service returned - the only carried reasoning sent back, see
+  // ProducedReasoning
+  private val producedReasoning = ProducedReasoning.of(underlying)
+
   // label riding on every batch request line so results (returned in no particular order)
   // can be matched back to requests
   private val customIdLabel = "custom_id"
@@ -96,20 +101,23 @@ private[service] class OpenAIVertexAIChatCompletionService(
     settings: CreateChatCompletionSettings
   ): Future[ChatCompletionResponse] =
     ToolApprovalSettingsOps.refusingDecisions(settings, "The Vertex AI adapter") {
-      val model = createModel(messages, settings)
+      val model = createModel(messages, settings, requestedThoughts(settings))
 
       val javaFuture = model.generateContentAsync(
         toNonSystemVertexAI(
           messages.filter(message =>
             message.role != ChatRole.System && message.role != ChatRole.Developer
-          )
+          ),
+          producedReasoning.contains
         )
       )
       val scalaFuture: Future[GenerateContentResponse] =
         toScala(CompletableFuture.supplyAsync(() => javaFuture.get))
 
       scalaFuture.map { response =>
-        toOpenAI(response, settings.model)
+        val openAIResponse = toOpenAI(response, settings.model)
+        openAIResponse.choices.foreach(choice => producedReasoning.remember(choice.reasoning))
+        openAIResponse
       }.recoverWith(repackAsOpenAIException)
     }
 
@@ -120,14 +128,18 @@ private[service] class OpenAIVertexAIChatCompletionService(
     settings: CreateChatCompletionSettings
   ): Future[ChatToolCompletionResponse] =
     ToolApprovalSettingsOps.refusingDecisions(settings, "The Vertex AI adapter") {
-      val model =
-        createModel(messages, toVertexAIToolSettings(tools, responseToolChoice, settings))
+      val model = createModel(
+        messages,
+        toVertexAIToolSettings(tools, responseToolChoice, settings),
+        requestedThoughts(settings)
+      )
 
       val javaFuture = model.generateContentAsync(
         toNonSystemVertexAI(
           messages.filter(message =>
             message.role != ChatRole.System && message.role != ChatRole.Developer
-          )
+          ),
+          producedReasoning.contains
         )
       )
       val scalaFuture: Future[GenerateContentResponse] =
@@ -137,6 +149,10 @@ private[service] class OpenAIVertexAIChatCompletionService(
         toOpenAIToolResponse(response, settings.model)
       }.recoverWith(repackAsOpenAIException)
     }
+
+  // a sync call asks for thoughts (its reply's reasoning) only when told to
+  private def requestedThoughts(settings: CreateChatCompletionSettings): Boolean =
+    settings.vertexAIIncludeThoughts.contains(true)
 
   /**
    * Adds the OpenAI function tools (as Vertex function declarations, merged with any tools
@@ -284,7 +300,9 @@ private[service] class OpenAIVertexAIChatCompletionService(
         )
       }
 
-      val texts = parts.filter(p => p.hasText && p.getText.nonEmpty).map(_.getText)
+      // thought summaries are the reasoning, not the answer
+      val texts =
+        parts.filter(p => p.hasText && p.getText.nonEmpty && !p.getThought).map(_.getText)
 
       val message = AssistantToolMessage(
         content = if (texts.nonEmpty) Some(texts.mkString("\n")) else None,
@@ -295,7 +313,12 @@ private[service] class OpenAIVertexAIChatCompletionService(
       ChatToolCompletionChoiceInfo(
         message = message,
         index = candidate.getIndex,
-        finish_reason = Option(candidate.getFinishReason).map(_.toString)
+        finish_reason = Option(candidate.getFinishReason).map(_.toString),
+        reasoning = {
+          val reasoning = toReasoningMessage(candidate.getContent)
+          producedReasoning.remember(reasoning)
+          reasoning
+        }
       )
     }
 

@@ -1,7 +1,8 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
-import io.cequence.openaiscala.anthropic.domain.ChatRole
+import io.cequence.openaiscala.anthropic.domain.{ChatRole, Message}
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{
+  RedactedThinkingBlock,
   TextBlock,
   ThinkingBlock,
   ToolUseBlock
@@ -13,7 +14,16 @@ import io.cequence.openaiscala.anthropic.domain.settings.{OutputEffort, Thinking
 import io.cequence.openaiscala.anthropic.domain.tools.ToolChoice
 import io.cequence.openaiscala.domain.NonOpenAIModelId
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.openaiscala.domain.{AssistantToolMessage, FunctionCallSpec}
+import io.cequence.openaiscala.domain.{
+  AssistantMessage,
+  AssistantToolMessage,
+  BaseMessage,
+  FunctionCallSpec,
+  ReasoningBlock,
+  ReasoningMessage,
+  ToolMessage,
+  UserMessage
+}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettingsOps._
 import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, ReasoningEffort}
 import play.api.libs.json.Json
@@ -116,6 +126,122 @@ class AnthropicAsOpenAIServiceSpec extends AnyWordSpec with Matchers {
 
       exception.getMessage should include("call-1")
       exception.getMessage should include("lookup")
+    }
+
+    "leave a ReasoningMessage out - the history converts like the one without it" in {
+      val settings = CreateChatCompletionSettings(model = legacyThinkingModel)
+      val reasoning = ReasoningMessage(
+        Seq(ReasoningBlock(id = Some("rs_1"), encrypted = Some("enc")))
+      )
+
+      val history: Seq[BaseMessage] = Seq(
+        UserMessage("What's the weather in Oslo and in Paris?"),
+        AssistantToolMessage(
+          None,
+          None,
+          Seq(
+            "call_1" -> FunctionCallSpec("get_weather", """{"city":"Oslo"}"""),
+            "call_2" -> FunctionCallSpec("get_weather", """{"city":"Paris"}""")
+          )
+        ),
+        ToolMessage(Some("4C"), "call_1", "get_weather"),
+        ToolMessage(Some("9C"), "call_2", "get_weather")
+      )
+
+      val expected = toAnthropicMessages(history, settings)
+      expected.map(_.role) shouldBe Seq(ChatRole.User, ChatRole.Assistant, ChatRole.User)
+
+      // in front of the reply, where the Responses adapter's history puts it, and between the
+      // parallel tool results, which still merge into one user turn
+      toAnthropicMessages(history.patch(1, Seq(reasoning), 0), settings) shouldBe expected
+      toAnthropicMessages(history.patch(3, Seq(reasoning), 0), settings) shouldBe expected
+
+      toAnthropicMessages(Seq(reasoning), settings) shouldBe Nil
+    }
+
+    "open the next assistant turn with carried thinking - signed or redacted only" in {
+      val settings = CreateChatCompletionSettings(model = legacyThinkingModel)
+      val reasoning = ReasoningMessage(
+        Seq(
+          ReasoningBlock(text = Some("Oslo first."), signature = Some("sig-1")),
+          ReasoningBlock(encrypted = Some("opaque")),
+          ReasoningBlock(text = Some("unsigned - a Gemini thought")),
+          ReasoningBlock(text = Some("a chat completions text"))
+        )
+      )
+      val call = AssistantToolMessage(
+        Some("Checking."),
+        None,
+        Seq("call_1" -> FunctionCallSpec("get_weather", """{"city":"Oslo"}"""))
+      )
+
+      val messages = toAnthropicMessages(
+        Seq(
+          UserMessage("Weather in Oslo?"),
+          reasoning,
+          call,
+          ToolMessage(Some("4C"), "call_1", "get_weather")
+        ),
+        settings
+      )
+
+      messages(1) shouldBe Message.AssistantMessageContent(
+        Seq(
+          ContentBlockBase(ThinkingBlock("Oslo first.", "sig-1")),
+          ContentBlockBase(RedactedThinkingBlock("opaque")),
+          ContentBlockBase(TextBlock("Checking.")),
+          ContentBlockBase(ToolUseBlock("call_1", "get_weather", Json.obj("city" -> "Oslo")))
+        )
+      )
+
+      // a plain answer turn too
+      toAnthropicMessages(
+        Seq(UserMessage("Hi"), reasoning, AssistantMessage("Hello")),
+        settings
+      )(1) shouldBe Message.AssistantMessageContent(
+        Seq(
+          ContentBlockBase(ThinkingBlock("Oslo first.", "sig-1")),
+          ContentBlockBase(RedactedThinkingBlock("opaque")),
+          ContentBlockBase(TextBlock("Hello"))
+        )
+      )
+    }
+
+    "read a reply's thinking blocks as its reasoning" in {
+      val response = CreateMessageResponse(
+        id = "msg_1",
+        role = ChatRole.Assistant,
+        content = ContentBlocks(
+          Seq(
+            ContentBlockBase(ThinkingBlock("Oslo first.", "sig-1")),
+            ContentBlockBase(RedactedThinkingBlock("opaque")),
+            ContentBlockBase(TextBlock("It is 4C."))
+          )
+        ),
+        model = "claude-x",
+        stop_reason = Some("end_turn"),
+        stop_sequence = None,
+        usage = UsageInfo(
+          input_tokens = 10,
+          output_tokens = 5,
+          cache_creation_input_tokens = None,
+          cache_read_input_tokens = None
+        )
+      )
+
+      val openAI = toOpenAI(response)
+      openAI.reasoningMessage shouldBe Some(
+        ReasoningMessage(
+          Seq(
+            ReasoningBlock(text = Some("Oslo first."), signature = Some("sig-1")),
+            ReasoningBlock(encrypted = Some("opaque"))
+          )
+        )
+      )
+      openAI.historyMessages.map(_.getClass.getSimpleName) shouldBe Seq(
+        "ReasoningMessage",
+        "AssistantMessage"
+      )
     }
   }
 

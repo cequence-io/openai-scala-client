@@ -46,9 +46,14 @@ object CreateChatCompletionSettingsOps {
       }
 
     /**
-     * Whether thought summaries (`Part.Text(thought = true)`) should be requested - only
-     * honoured by the typed stream (`createChatToolCompletionStreamed`), which defaults to
-     * `true` whenever a thinking config is derived from `reasoning_effort`.
+     * Whether thought summaries (`Part.Text(thought = true)`) should be requested. The typed
+     * stream (`createChatToolCompletionStreamed`) defaults to `true` whenever a thinking
+     * config is derived from `reasoning_effort`; the sync calls ask for them only when set to
+     * `true` - they come back as the reply's reasoning (`response.reasoningMessage`), which
+     * the next round sends back. Set to `true`, every call asks a model that thinks (Gemini
+     * 2.5, 3.x and 4 do by default) with or without a `reasoning_effort`; a model that takes
+     * no thinking configuration (Gemini 2.0, Gemma, `gemini-2.5-flash-image`) is asked
+     * nothing.
      */
     def setGeminiIncludeThoughts(flag: Boolean = true): CreateChatCompletionSettings =
       settings.copy(

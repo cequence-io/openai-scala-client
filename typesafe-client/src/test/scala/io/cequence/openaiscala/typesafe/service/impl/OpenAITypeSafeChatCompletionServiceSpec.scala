@@ -342,6 +342,39 @@ class OpenAITypeSafeChatCompletionServiceSpec extends AnyWordSpec with Matchers 
       ).getMessage should include("At least one user")
     }
 
+    "leave a ReasoningMessage out - the state is that of the history without it" in {
+      val reasoning =
+        ReasoningMessage(
+          Seq(ReasoningBlock(id = Some("rs_1"), encrypted = Some("enc")))
+        )
+      val stub = new Stub(answers)
+      val service = TypeSafeServiceFactory.asOpenAI(stub)
+
+      def stateOf(messages: Seq[BaseMessage]): Option[JsValue] = {
+        await(service.createChatCompletion(messages, jsonSchemaSettings))
+        stub.lastState
+      }
+
+      // it is no turn: a lone user message stays the whole state
+      stateOf(Seq(UserMessage("I was charged twice!"), reasoning)) shouldBe
+        Some(JsString("I was charged twice!"))
+
+      val conversation: Seq[BaseMessage] = Seq(
+        SystemMessage("You triage support tickets."),
+        UserMessage("Hi"),
+        AssistantMessage("Hello, how can I help?"),
+        UserMessage("I was charged twice")
+      )
+      val expected = stateOf(conversation)
+      (expected.get \ "conversation").as[Seq[JsValue]] should have size 3
+
+      stateOf(conversation.patch(2, Seq(reasoning), 0)) shouldBe expected
+      stateOf(conversation :+ reasoning) shouldBe expected
+
+      // and so is the mapping preview
+      TypeSafeChatMapping.toState(Seq(reasoning, UserMessage("x"))) shouldBe JsString("x")
+    }
+
     "put the images of a user message into the state for a host that reads them" in {
       val stub = new Stub(answers)
       val service = TypeSafeServiceFactory.asOpenAI(stub, imageInput = true)

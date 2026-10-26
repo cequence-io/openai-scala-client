@@ -385,10 +385,15 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
     service: OpenAIService,
     val streamedServiceExtra: S,
     alsoClose: Seq[CloseableService] = Nil // e.g. a privately-created shared engine
-  ) extends OpenAIServiceWrapper {
+  ) extends OpenAIServiceWrapper
+      with ProducedReasoning.Delegate {
 
     override protected def delegate: CloseableServiceWrapper[OpenAIService] =
       SimpleServiceWrapper(service)
+
+    // the wrapped service serves the sync calls (its Responses adapter remembers the reasoning
+    // they return), so the Responses adapters over this wrapper - its typed streams' - share it
+    override def producedReasoningOwner: AnyRef = service
 
     // note that because we override the close method it's not delegated through the service wrapper
     override def close(): Unit = {
@@ -440,7 +445,8 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
 
     // the OpenAI-shaped chunks cannot carry approval requests or server-side tool activity -
     // a call resuming a paused run or carrying Responses-native tools is still refused there;
-    // the rest the Responses API must serve (a reasoning mode, the Ultrafast tier) goes to it
+    // the rest the Responses API must serve (a reasoning mode, reasoning summaries, the
+    // Ultrafast tier) goes to it
     override def createChatCompletionStreamed(
       messages: Seq[BaseMessage],
       settings: CreateChatCompletionSettings
@@ -492,7 +498,8 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
   private trait HasOpenAIFullStreamedExtra extends HasOpenAICoreStreamedExtra {
     self: OpenAIService =>
 
-    // the adapter's Future-based (non-streamed) methods are never used on this path
+    // the adapter's Future-based (non-streamed) methods are never used on this path; the
+    // reasoning it passes back is the wrapped service's (see OpenAIStreamedServiceWrapper)
     override protected lazy val responsesBackedTypedToolStream
       : Option[OpenAIChatCompletionStreamedServiceExtra] =
       Some(OpenAIResponsesChatCompletionService(this)(ExecutionContext.global))

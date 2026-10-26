@@ -31,6 +31,8 @@ import io.cequence.openaiscala.domain.{
   ImageURLContent,
   JsonSchema,
   NonOpenAIModelId,
+  ReasoningBlock,
+  ReasoningMessage,
   SystemMessage,
   TextContent,
   ToolMessage,
@@ -79,7 +81,8 @@ import io.cequence.openaiscala.service.{
   HasOpenAIConfig,
   OpenAIChatCompletionBatchService,
   OpenAIChatCompletionService,
-  OpenAIChatCompletionStreamedServiceExtra
+  OpenAIChatCompletionStreamedServiceExtra,
+  ProducedReasoning
 }
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -605,11 +608,40 @@ private[service] class OpenAIGeminiChatCompletionService(
   // the contents of a request: a function call whose signature is not remembered (an older
   // one, from another service, or built by hand) carries Google's placeholder on the models
   // that require a signature
+  // the thought summaries this service returned - the only carried reasoning sent back, see
+  // ProducedReasoning
+  private val producedReasoning = ProducedReasoning.of(underlying)
+
+  // carried reasoning opens the model turn that follows it as thought parts, as Gemini
+  // returned them (live 2026-10-26: Gemini 3.8 Flash and 2.5 Flash read them back - a tool
+  // loop's round 2 grew from 858 to 1,369 and from 149 to 891 input tokens); only thoughts this
+  // service returned, and none before anything but a model turn
+  private def withCarriedThoughts(messages: Seq[BaseMessage]): Seq[(Seq[Part], BaseMessage)] =
+    messages.foldRight(List.empty[(Seq[Part], BaseMessage)]) {
+      case (ReasoningMessage(blocks), following) =>
+        val thoughts = blocks.collect {
+          case block @ ReasoningBlock(Some(text), _, signature, _, _, _)
+              if producedReasoning.contains(block) =>
+            Part.Text(text, thought = Some(true), thoughtSignature = signature)
+        }
+        following match {
+          case (noThoughts, next) :: rest
+              if noThoughts.isEmpty && next.role == io.cequence.openaiscala.domain.ChatRole.Assistant =>
+            (thoughts, next) :: rest
+          case _ => following
+        }
+
+      case (message, following) => (Nil, message) :: following
+    }
+
   private def toGeminiContents(
     messages: Seq[BaseMessage],
     model: String
   ): Seq[Content] = {
-    val contents = messages.map(toGeminiContent)
+    val contents = withCarriedThoughts(messages).map { case (thoughts, message) =>
+      val content = toGeminiContent(message)
+      content.copy(parts = thoughts ++ content.parts)
+    }
     if (GeminiThinking.requiresFunctionCallSignatures(model))
       contents.map(OpenAIGeminiChatCompletionService.withPlaceholderSignatures)
     else contents
@@ -650,7 +682,7 @@ private[service] class OpenAIGeminiChatCompletionService(
 
         response <- underlying.generateContent(
           toGeminiContents(userMessages, settings.model),
-          geminiSettings
+          withRequestedThoughts(geminiSettings, settings)
         )
       } yield toOpenAIResponse(requireMcpCallsExecuted(response, mcp), mcp)
     }
@@ -773,41 +805,63 @@ private[service] class OpenAIGeminiChatCompletionService(
     settings: CreateChatCompletionSettings
   ): Future[ChatCompletionBatchInfo] = {
     // each inlined batch request is a full generateContent request and supports its own
-    // systemInstruction (see BatchRequestItem), so - unlike a shared, batch-wide one - a
-    // request's own system message no longer has to match every other request's
-    val representativeSystemMessage =
-      requests.headOption.flatMap(request => splitMessage(request.messages)._2)
+    // systemInstruction (see BatchRequestItem), so a request's own system message does not
+    // have to match any other request's
+    val systemMessages = requests.map(request => splitMessage(request.messages)._2)
+
+    // a cache created from a system message (enableCacheSystemMessage) holds that ONE message,
+    // so it may stand in for the per-request system message only when every request carries
+    // exactly that message - otherwise it would replace the others' own system prompts
+    val sharedSystemMessage =
+      systemMessages.headOption.flatten.filter(first =>
+        systemMessages.forall(_.contains(first))
+      )
+
+    if (
+      settings.getSystemCacheName.isEmpty && settings.isCacheSystemMessageEnabled &&
+      systemMessages.exists(_.isDefined) && sharedSystemMessage.isEmpty
+    )
+      logger.warn(
+        "The batched requests carry different system messages - not caching them, each request keeps its own."
+      )
 
     // handleCaching resolves the explicit-caching route, which is the one that works with
     // batches (implicit caching does not apply to Batch Mode): a cached-content reference
-    // (setSystemCacheName) - or a cache freshly created from the system message
-    // (enableCacheSystemMessage), taken from the first request - replaces the per-request
-    // system message for every item. This mirrors handleCaching's own branch selection, so
-    // that it agrees below on whether caching actually kicks in.
+    // (setSystemCacheName, taken as is - it replaces the per-request system messages) or a
+    // cache freshly created from the system message shared by all the requests
     val cachingActive =
       settings.getSystemCacheName.isDefined ||
-        (settings.isCacheSystemMessageEnabled && representativeSystemMessage.isDefined)
+        (settings.isCacheSystemMessageEnabled && sharedSystemMessage.isDefined)
 
-    val items = requests.map { request =>
-      val (userMessages, systemMessage) = splitMessage(request.messages)
+    val items = requests.zip(systemMessages).map { case (request, systemMessage) =>
+      val (userMessages, _) = splitMessage(request.messages)
       BatchRequestItem(
         key = request.customId,
         contents = toGeminiContents(userMessages, settings.model),
-        // while a cache is in use, the cached (or freshly cached) system message replaces
-        // the per-request one for every item, exactly as before - so no per-item override
-        // in that case; otherwise each item carries its own system message, if any
-        systemInstruction = if (cachingActive) None else systemMessage.map(toGeminiContent)
+        // while a cache is in use, the cached system message replaces the per-request one
+        // for every item, so no per-item override in that case; otherwise each item carries
+        // its own system message, if any
+        systemInstruction =
+          if (cachingActive)
+            None
+          else
+            systemMessage.map(toGeminiContent)
       )
     }
 
     (for {
-      // outside of caching, no batch-wide systemInstruction is passed on - each item now
-      // carries its own (see above), so one request's system prompt can no longer leak into
-      // another's
+      // outside of caching, no batch-wide systemInstruction is passed on - each item carries
+      // its own (see above), so one request's system prompt cannot leak into another's
       geminiSettings <- handleCaching(
-        if (cachingActive) representativeSystemMessage else None,
+        if (cachingActive)
+          sharedSystemMessage
+        else
+          None,
         Nil,
-        settings
+        if (cachingActive)
+          settings
+        else
+          settings.enableCacheSystemMessage(false)
       )
 
       batch <- underlying.createBatchGenerateContent(
@@ -945,6 +999,7 @@ private[service] class OpenAIGeminiChatCompletionService(
 
   private def splitMessage(messages: Seq[BaseMessage])
     : (Seq[BaseMessage], Option[BaseMessage]) = {
+    // a ReasoningMessage (carried reasoning) stays - toGeminiContents puts it back
     val (systemMessages, userMessages) = messages.partition {
       case _: SystemMessage    => true
       case _: DeveloperMessage => true
@@ -1348,12 +1403,33 @@ private[service] class OpenAIGeminiChatCompletionService(
           index = candidate.index.getOrElse(0),
           message = toOpenAIAssistantMessage(candidate.content, mcp),
           finish_reason = candidate.finishReason.map(_.toString),
-          logprobs = None
+          logprobs = None,
+          reasoning = rememberedReasoning(candidate.content)
         )
       },
       usage = Some(toOpenAIUsage(response.usageMetadata)),
       originalResponse = Some(response)
     )
+
+  // a candidate's thought summaries (returned when thoughts are included) as a
+  // ReasoningMessage, remembered as this service's - sent back as thought parts (see
+  // withCarriedThoughts); the function calls' signatures go back via FunctionCallSignatures
+  private def rememberedReasoning(content: Content): Option[ReasoningMessage] = {
+    val reasoning = toReasoningMessage(content)
+    producedReasoning.remember(reasoning)
+    reasoning
+  }
+
+  private def toReasoningMessage(content: Content): Option[ReasoningMessage] = {
+    val blocks = content.parts.collect {
+      case part: Part.Text if part.thought.contains(true) =>
+        ReasoningBlock(text = Some(part.text), signature = part.thoughtSignature)
+    }
+    if (blocks.nonEmpty)
+      Some(ReasoningMessage(blocks))
+    else
+      None
+  }
 
   private def toOpenAIChunkResponse(
     response: GenerateContentResponse
@@ -1512,18 +1588,44 @@ private[service] class OpenAIGeminiChatCompletionService(
     )
   }
 
-  // the typed stream exists to surface thinking, so thought summaries default to on
+  // a sync call asks for thought summaries (its reply's reasoning) only when told to
+  private def withRequestedThoughts(
+    base: GenerateContentSettings,
+    settings: CreateChatCompletionSettings
+  ): GenerateContentSettings =
+    if (settings.geminiIncludeThoughts.contains(true))
+      withThoughts(base, settings)
+    else
+      base
+
+  // the typed stream exists to surface thinking, so thought summaries default to on - within
+  // the thinking config a reasoning_effort derives; asked for explicitly
+  // (setGeminiIncludeThoughts(true)), they come from any model that thinks, which Gemini 2.5,
+  // 3.x and 4 do by default - so without a reasoning_effort a config carrying just the flag
   private def withThoughts(
     base: GenerateContentSettings,
     settings: CreateChatCompletionSettings
   ): GenerateContentSettings = {
     val includeThoughts = settings.geminiIncludeThoughts.getOrElse(true)
 
+    def ownConfig: Option[ThinkingConfig] =
+      if (!settings.geminiIncludeThoughts.contains(true))
+        None
+      else if (GeminiThinking.mode(settings.model) == GeminiThinking.Unsupported) {
+        logger.warn(
+          s"Model '${settings.model}' takes no thinking configuration - no thought summaries requested."
+        )
+        None
+      } else
+        Some(ThinkingConfig(includeThoughts = Some(true)))
+
     base.copy(
       generationConfig = base.generationConfig.map(config =>
         config.copy(
-          thinkingConfig =
-            config.thinkingConfig.map(_.copy(includeThoughts = Some(includeThoughts)))
+          thinkingConfig = config.thinkingConfig match {
+            case Some(thinking) => Some(thinking.copy(includeThoughts = Some(includeThoughts)))
+            case None           => ownConfig
+          }
         )
       )
     )
@@ -1545,7 +1647,7 @@ private[service] class OpenAIGeminiChatCompletionService(
         geminiSettings = withTools(baseSettings, tools, responseToolChoice, settings)
         response <- underlying.generateContent(
           toGeminiContents(userMessages, settings.model),
-          geminiSettings
+          withRequestedThoughts(geminiSettings, settings)
         )
       } yield toOpenAIToolResponse(
         requireMcpCallsExecuted(response, mcpCallRule(settings, tools)),
@@ -1585,7 +1687,8 @@ private[service] class OpenAIGeminiChatCompletionService(
       ChatToolCompletionChoiceInfo(
         message = message,
         index = candidate.index.getOrElse(0),
-        finish_reason = candidate.finishReason.map(_.toString)
+        finish_reason = candidate.finishReason.map(_.toString),
+        reasoning = rememberedReasoning(candidate.content)
       )
     }
 

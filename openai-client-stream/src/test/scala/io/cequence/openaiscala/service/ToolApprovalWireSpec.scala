@@ -579,17 +579,26 @@ class ToolApprovalWireSpec extends AnyWordSpec with Matchers with BeforeAndAfter
     }
 
     "never send the adapter-only settings keys to the chat completions API" in {
-      await(
-        full.createChatCompletion(
-          messages,
-          CreateChatCompletionSettings(ModelId.gpt_5_4).copy(extra_params =
-            Map("responses_reasoning_summary" -> true, "custom_flag" -> 1)
-          )
-        )
+      // `false` - `true` asks a reasoning model for summaries, through the Responses API
+      val settings = CreateChatCompletionSettings(ModelId.gpt_5_4)
+        .copy(extra_params = Map("responses_reasoning_summary" -> false, "custom_flag" -> 1))
+      // a chat-only service ignores `true`
+      val summarized = settings.copy(extra_params =
+        settings.extra_params + ("responses_reasoning_summary" -> true)
       )
-      val sent = lastBody("/chat/completions")
-      sent.keys should not contain "responses_reasoning_summary"
-      (sent \ "custom_flag").as[Int] shouldBe 1
+
+      Seq[() => Future[_]](
+        () => full.createChatCompletion(messages, settings),
+        () => chatOnly.createChatCompletion(messages, summarized)
+      ).foreach { call =>
+        val before = requests.size
+        await(call())
+        requests.size shouldBe before + 1
+        val (path, sent) = requests.last
+        path should endWith("/chat/completions")
+        sent.keys should not contain "responses_reasoning_summary"
+        (sent \ "custom_flag").as[Int] shouldBe 1
+      }
     }
   }
 }

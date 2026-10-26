@@ -9,6 +9,7 @@ import akka.NotUsed
 import io.cequence.openaiscala.service.{
   ClassifiedStreamingWSClient,
   HandleOpenAIErrorCodes,
+  ProducedReasoning,
   StreamingConsts
 }
 import akka.stream.scaladsl.Source
@@ -37,6 +38,11 @@ private[service] trait OpenAIChatCompletionServiceStreamedExtraImpl
 
   override protected type PEP = EndPoint
   override protected type PT = Param
+
+  // the reasoning texts this site (provider account) returned - the sync implementation's
+  // registry, so a history it answered passes its reasoning back here too
+  override protected lazy val producedChatReasoning: Option[ProducedReasoning] =
+    Some(ProducedReasoning.forSite(site))
 
   override def createChatCompletionStreamed(
     messages: Seq[BaseMessage],

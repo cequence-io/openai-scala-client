@@ -62,7 +62,8 @@ import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.service.{
   OpenAIChatCompletionBatchService,
   OpenAIChatCompletionService,
-  OpenAIChatCompletionStreamedServiceExtra
+  OpenAIChatCompletionStreamedServiceExtra,
+  ProducedReasoning
 }
 
 import java.{util => ju}
@@ -79,6 +80,30 @@ private[service] class OpenAIAnthropicChatCompletionService(
     with OpenAIChatCompletionBatchService {
 
   private val logger = LoggerFactory.getLogger(getClass)
+
+  // the thinking this service returned - the only reasoning sent back (signatures are bound to
+  // the provider and account that made them), see ProducedReasoning
+  private val producedReasoning = ProducedReasoning.of(underlying)
+
+  // the non-system messages as Anthropic messages, a carried ReasoningMessage cut to the
+  // (signed or redacted) thinking this service returned
+  protected def toAnthropicConversation(
+    messages: Seq[BaseMessage],
+    settings: CreateChatCompletionSettings
+  ): Seq[Message] =
+    toAnthropicMessages(
+      producedReasoning.carried(
+        messages.filter(!_.isSystem),
+        "The Anthropic Messages API adapter"
+      )(block => block.id.isEmpty && (block.signature.isDefined || block.encrypted.isDefined)),
+      settings
+    )
+
+  private def rememberingReasoning(response: ChatCompletionResponse)
+    : ChatCompletionResponse = {
+    producedReasoning.remember(response.reasoningMessage)
+    response
+  }
 
   /**
    * Creates a model response for the given chat conversation.
@@ -98,10 +123,10 @@ private[service] class OpenAIAnthropicChatCompletionService(
     ToolApprovalSettingsOps.refusingDecisions(settings, "The Anthropic Messages API adapter") {
       createMessageWithContinuation(
         toAnthropicSystemMessages(messages.filter(_.isSystem), settings) ++
-          toAnthropicMessages(messages.filter(!_.isSystem), settings),
+          toAnthropicConversation(messages, settings),
         toAnthropicSettings(settings),
         maxContinuations(settings)
-      ).map(toOpenAI).recoverWith(repackAsOpenAIException)
+      ).map(toOpenAI).map(rememberingReasoning).recoverWith(repackAsOpenAIException)
     }
 
   /**
@@ -129,7 +154,7 @@ private[service] class OpenAIAnthropicChatCompletionService(
       underlying
         .createMessageStreamedEvents(
           toAnthropicSystemMessages(messages.filter(_.isSystem), settings) ++
-            toAnthropicMessages(messages.filter(!_.isSystem), settings),
+            toAnthropicConversation(messages, settings),
           withSummarizedThinking(toAnthropicSettings(settings))
         )
         .via(toOpenAIChunks)
@@ -502,7 +527,7 @@ private[service] class OpenAIAnthropicChatCompletionService(
         messages.filter(_.isSystem) ++ extraSystemMessages,
         settings
       ) ++
-        toAnthropicMessages(messages.filter(!_.isSystem), settings)
+        toAnthropicConversation(messages, settings)
 
     (anthropicMessages, anthropicSettings)
   }
@@ -519,7 +544,7 @@ private[service] class OpenAIAnthropicChatCompletionService(
       MessageBatchRequest(
         customId = request.customId,
         messages = toAnthropicSystemMessages(request.messages.filter(_.isSystem), settings) ++
-          toAnthropicMessages(request.messages.filter(!_.isSystem), settings),
+          toAnthropicConversation(request.messages, settings),
         settings = anthropicSettings
       )
     }
@@ -620,6 +645,9 @@ private[service] class OpenAIAnthropicChatCompletionService(
       tool_calls = toolCalls
     )
 
+    val reasoning = toReasoningMessage(response)
+    producedReasoning.remember(reasoning)
+
     ChatToolCompletionResponse(
       id = response.id,
       created = new ju.Date(),
@@ -629,7 +657,8 @@ private[service] class OpenAIAnthropicChatCompletionService(
         ChatToolCompletionChoiceInfo(
           message = message,
           index = 0,
-          finish_reason = response.stop_reason
+          finish_reason = response.stop_reason,
+          reasoning = reasoning
         )
       ),
       usage = Some(toOpenAI(response.usage)),

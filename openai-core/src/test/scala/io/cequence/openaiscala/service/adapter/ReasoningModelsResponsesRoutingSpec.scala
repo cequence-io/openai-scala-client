@@ -3,6 +3,7 @@ package io.cequence.openaiscala.service.adapter
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain.responsesapi.ReasoningConfig
 import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, ReasoningEffort}
+import io.cequence.openaiscala.domain.settings.ResponsesChatCompletionSettingsOps._
 import io.cequence.openaiscala.domain.{JsonSchema, ModelId}
 import io.cequence.openaiscala.service.OpenAIResponsesService
 import io.cequence.wsclient.service.CloseableService
@@ -66,6 +67,69 @@ class ReasoningModelsResponsesRoutingSpec extends AnyWordSpec with Matchers {
         CreateChatCompletionSettings(ModelId.gpt_5_5),
         Seq(weather)
       ) shouldBe false
+    }
+  }
+
+  "isOpenAIReasoningModel" should {
+
+    "know OpenAI's reasoning models, also by a Bedrock id, but not gpt-5-search-api" in {
+      Seq(
+        ModelId.gpt_6_luna,
+        ModelId.gpt_6_1_sol,
+        ModelId.gpt_5_4_mini,
+        ModelId.gpt_5_mini,
+        ModelId.o3,
+        "us.openai.gpt-6.1-sol"
+      ).foreach { model =>
+        withClue(model) {
+          ChatCompletionSettingsConversions.isOpenAIReasoningModel(model) shouldBe true
+        }
+      }
+
+      Seq(
+        ModelId.gpt_4_1_mini,
+        ModelId.gpt_5_search_api,
+        ModelId.chat_latest,
+        "openai/gpt-5.4",
+        "claude-haiku-5-5"
+      ).foreach { model =>
+        withClue(model) {
+          ChatCompletionSettingsConversions.isOpenAIReasoningModel(model) shouldBe false
+        }
+      }
+    }
+  }
+
+  "chatRequiresResponsesAPI" should {
+
+    "take an OpenAI reasoning model asked for reasoning summaries, with or without tools" in {
+      val summarized =
+        CreateChatCompletionSettings(ModelId.gpt_6_luna).setResponsesReasoningSummary()
+
+      ChatCompletionSettingsConversions.chatRequiresResponsesAPI(summarized) shouldBe true
+      ChatCompletionSettingsConversions.chatToolsPreferResponsesAPI(summarized, Nil) shouldBe
+        true
+      // with 'none', the chat completions API would serve the tools - not the summaries
+      ChatCompletionSettingsConversions.chatToolsPreferResponsesAPI(
+        summarized.copy(reasoning_effort = Some(ReasoningEffort.none)),
+        Seq(weather)
+      ) shouldBe true
+      ChatCompletionSettingsConversions.chatRequiresResponsesAPI(
+        CreateChatCompletionSettings("us.openai.gpt-6.1-sol").setResponsesReasoningSummary()
+      ) shouldBe true
+    }
+
+    "leave the rest to the chat completions API" in {
+      Seq(
+        CreateChatCompletionSettings(ModelId.gpt_6_luna),
+        CreateChatCompletionSettings(ModelId.gpt_6_luna).setResponsesReasoningSummary(false),
+        CreateChatCompletionSettings(ModelId.gpt_4_1_mini).setResponsesReasoningSummary(),
+        CreateChatCompletionSettings(ModelId.gpt_5_search_api).setResponsesReasoningSummary()
+      ).foreach { settings =>
+        withClue(settings) {
+          ChatCompletionSettingsConversions.chatRequiresResponsesAPI(settings) shouldBe false
+        }
+      }
     }
   }
 

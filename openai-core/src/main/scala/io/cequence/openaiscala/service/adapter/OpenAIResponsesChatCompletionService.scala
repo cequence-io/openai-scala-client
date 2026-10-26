@@ -42,7 +42,8 @@ import io.cequence.openaiscala.service.{
   OpenAIChatCompletionService,
   OpenAIChatCompletionStreamedServiceExtra,
   OpenAIResponsesService,
-  OpenAIStreamedServiceExtra
+  OpenAIStreamedServiceExtra,
+  ProducedReasoning
 }
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.response.{
@@ -127,21 +128,11 @@ private[service] class OpenAIResponsesChatCompletionService(
     responsesSettings: CreateModelResponseSettings,
     settings: CreateChatCompletionSettings
   ): Source[ChatChunk, NotUsed] = {
-    // the typed stream to surface thinking - ask for reasoning summaries whenever
-    // reasoning is configured (unless the caller opted out, or runs multi-agent: the API
-    // rejects summaries with it - live 2026-09-30)
-    val multiAgent = responsesSettings.multiAgent.exists(_.enabled)
-    val withSummaries =
-      if (settings.responsesReasoningSummary.getOrElse(!multiAgent))
-        responsesSettings.copy(
-          reasoning = responsesSettings.reasoning.map(r =>
-            r.copy(summary = r.summary.orElse(Some("auto")))
-          )
-        )
-      else responsesSettings
-
     streamed
-      .createModelResponseStreamed(Inputs.Items(items: _*), withSummaries)
+      .createModelResponseStreamed(
+        Inputs.Items(items: _*),
+        withReasoningSummary(responsesSettings, settings, streamed = true)
+      )
       .via(ChatChunks.fromResponseEvents)
   }
 
@@ -178,10 +169,19 @@ private[service] class OpenAIResponsesChatCompletionService(
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
   ): Either[PausedCallsLookup, (Seq[Input], CreateModelResponseSettings)] = {
-    val (instructions, items) = convertMessages(messages)
-
     val allTools = OpenAIResponsesChatCompletionService.toResponsesTools(tools, settings)
     val decisions = settings.toolApprovalDecisions
+
+    // a run that may pause for approval is stored (unless the caller opted out), so its resume
+    // can continue it by id - the server keeps its reasoning and executed MCP calls
+    val approvalCapable =
+      toolApprovals && decisions.nonEmpty || toolApprovals && allTools.exists {
+        case mcp: MCPTool => mayAskForApproval(mcp)
+        case _            => false
+      }
+    val stored = settings.store.getOrElse(approvalCapable)
+
+    val (instructions, items) = convertMessages(carriedReasoning(messages, stored))
 
     if (!toolApprovals) {
       ToolApprovalSettingsOps.unsupportedDecisions(settings, serviceName).foreach(throw _)
@@ -223,15 +223,6 @@ private[service] class OpenAIResponsesChatCompletionService(
 
     val responsesSettings =
       toResponsesSettings(settings, instructions, allTools, responsesToolChoice)
-
-    // a run that may pause for approval is stored (unless the caller opted out), so its resume
-    // can continue it by id - the server keeps its reasoning and executed MCP calls
-    val approvalCapable =
-      toolApprovals && decisions.nonEmpty || toolApprovals && allTools.exists {
-        case mcp: MCPTool => mayAskForApproval(mcp)
-        case _            => false
-      }
-    val stored = settings.store.getOrElse(approvalCapable)
 
     if (decisions.isEmpty)
       Right((items, responsesSettings.copy(store = Some(stored))))
@@ -276,6 +267,23 @@ private[service] class OpenAIResponsesChatCompletionService(
       )
     }
   }
+
+  // the reasoning this service returned (shared with the service's other adapters) - the
+  // only reasoning sent back, see ProducedReasoning
+  private val producedReasoning = ProducedReasoning.of(underlying)
+
+  // the carried reasoning a request can pass back: only Responses items this service returned
+  // (another provider's or account's are a 400), and without `store` only with their encrypted
+  // content (one without it is looked up by id - a 404 when it was not stored). Another
+  // model's is fine: OpenAI and Bedrock accept it (live 2026-10-25, GPT-6 Luna <-> 6.1 Sol <->
+  // 5.4-mini, Bedrock's us. -> global. profiles)
+  private def carriedReasoning(
+    messages: Seq[BaseMessage],
+    stored: Boolean
+  ): Seq[BaseMessage] =
+    producedReasoning.carried(messages, serviceName) { block =>
+      block.id.isDefined && (stored || block.encrypted.isDefined)
+    }
 
   // whether a raw MCP tool may pause a run for approval: unset is the API default (always); a
   // filter asks unless nothing is 'always' and its 'never' names cover every allowed tool
@@ -354,7 +362,12 @@ private[service] class OpenAIResponsesChatCompletionService(
     toResponsesRequest(messages, Nil, None, settings).flatMap {
       case (items, responsesSettings) =>
         underlying
-          .createModelResponse(Inputs.Items(items: _*), responsesSettings)
+          .createModelResponse(
+            Inputs.Items(items: _*),
+            withEncryptedReasoning(
+              withReasoningSummary(responsesSettings, settings, streamed = false)
+            )
+          )
           .map(toOpenAIChatCompletionResponse)
     }
 
@@ -367,9 +380,63 @@ private[service] class OpenAIResponsesChatCompletionService(
     toResponsesRequest(messages, tools, responseToolChoice, settings).flatMap {
       case (items, responsesSettings) =>
         underlying
-          .createModelResponse(Inputs.Items(items: _*), responsesSettings)
+          .createModelResponse(
+            Inputs.Items(items: _*),
+            withEncryptedReasoning(
+              withReasoningSummary(responsesSettings, settings, streamed = false)
+            )
+          )
           .map(toOpenAIToolCompletionResponse)
     }
+
+  // a reply that is not stored returns its reasoning encrypted, so that the next round can
+  // pass it back (ReasoningMessage, the response's `historyMessages`) - asked of OpenAI's
+  // reasoning models (GPT-5.x, GPT-6, o-series) only; elsewhere the include is harmless (live
+  // 2026-10-25: gpt-4.1-mini, chat-latest, Bedrock mantle and Perplexity accept it)
+  private def withEncryptedReasoning(
+    settings: CreateModelResponseSettings
+  ): CreateModelResponseSettings =
+    if (
+      settings.store.contains(true) ||
+      !ChatCompletionSettingsConversions.isOpenAIReasoningModel(settings.model) ||
+      settings.include.contains(OpenAIResponsesChatCompletionService.EncryptedReasoning)
+    )
+      settings
+    else
+      settings.copy(
+        include = settings.include :+ OpenAIResponsesChatCompletionService.EncryptedReasoning
+      )
+
+  // reasoning summaries (`reasoning.summary = "auto"`) - the readable reasoning, as Thinking
+  // chunks on the typed stream and as the reply's `reasoningMessage.text` on a sync call:
+  // asked for when the caller sets `setResponsesReasoningSummary(true)` - an OpenAI reasoning
+  // model without a reasoning effort gets a reasoning config just for it (accepted, the
+  // model's default effort - live 2026-10-26) - and on the typed stream by default whenever
+  // reasoning is configured, unless it runs multi-agent (the API rejects summaries with it -
+  // live 2026-09-30); `false` never asks
+  private def withReasoningSummary(
+    responsesSettings: CreateModelResponseSettings,
+    settings: CreateChatCompletionSettings,
+    streamed: Boolean
+  ): CreateModelResponseSettings = {
+    val multiAgent = responsesSettings.multiAgent.exists(_.enabled)
+    val asked = settings.responsesReasoningSummary.getOrElse(streamed && !multiAgent)
+    val reasoning =
+      if (
+        settings.responsesReasoningSummary.contains(true) &&
+        ChatCompletionSettingsConversions.isOpenAIReasoningModel(responsesSettings.model)
+      )
+        responsesSettings.reasoning.orElse(Some(ReasoningConfig()))
+      else
+        responsesSettings.reasoning
+
+    if (asked)
+      responsesSettings.copy(
+        reasoning = reasoning.map(r => r.copy(summary = r.summary.orElse(Some("auto"))))
+      )
+    else
+      responsesSettings
+  }
 
   override def convertMessages(
     messages: Seq[BaseMessage]
@@ -405,6 +472,19 @@ private[service] class OpenAIResponsesChatCompletionService(
             )
         }
         Seq(Message.InputContent(inputContents, ChatRole.User))
+
+      // carried reasoning goes back as it came, before the reply's message and function calls
+      case ReasoningMessage(blocks) =>
+        blocks.flatMap { block =>
+          block.id.map(id =>
+            Reasoning(
+              id = id,
+              summary = block.summary.map(SummaryText(_)),
+              content = block.text.map(ReasoningText(_)).toSeq,
+              encryptedContent = block.encrypted
+            )
+          )
+        }
 
       case AssistantMessage(content, _, _) =>
         if (content.nonEmpty) Seq(Message.InputText(content, ChatRole.Assistant))
@@ -565,6 +645,8 @@ private[service] class OpenAIResponsesChatCompletionService(
     response: Response
   ): ChatCompletionResponse = {
     warnUnrepresentableOutputs(response)
+    val reasoning = reasoningOf(response)
+    producedReasoning.remember(reasoning)
 
     val (textOpt, refusalOpt) = extractTextAndRefusal(response)
     val finishReason =
@@ -587,7 +669,8 @@ private[service] class OpenAIResponsesChatCompletionService(
           ),
           index = 0,
           finish_reason = finishReason,
-          logprobs = None
+          logprobs = None,
+          reasoning = reasoning
         )
       ),
       usage = response.usage.map(toUsageInfo),
@@ -599,6 +682,8 @@ private[service] class OpenAIResponsesChatCompletionService(
     response: Response
   ): ChatToolCompletionResponse = {
     warnUnrepresentableOutputs(response)
+    val reasoning = reasoningOf(response)
+    producedReasoning.remember(reasoning)
 
     val functionCalls = response.outputFunctionCalls
     val toolCalls: Seq[(String, ToolCallSpec)] = functionCalls.map { fc =>
@@ -629,12 +714,33 @@ private[service] class OpenAIResponsesChatCompletionService(
             tool_calls = toolCalls
           ),
           index = 0,
-          finish_reason = finishReason
+          finish_reason = finishReason,
+          reasoning = reasoning
         )
       ),
       usage = response.usage.map(toUsageInfo),
       originalResponse = Some(response)
     )
+  }
+
+  // the reply's reasoning items, as a ReasoningMessage
+  private def reasoningOf(response: Response): Option[ReasoningMessage] = {
+    val blocks = response.output.collect { case reasoning: Reasoning =>
+      ReasoningBlock(
+        text =
+          if (reasoning.content.nonEmpty)
+            Some(reasoning.content.map(_.text).mkString("\n\n"))
+          else
+            None,
+        summary = reasoning.summary.map(_.text),
+        encrypted = reasoning.encryptedContent,
+        id = Some(reasoning.id)
+      )
+    }
+    if (blocks.nonEmpty)
+      Some(ReasoningMessage(blocks))
+    else
+      None
   }
 
   private def extractTextAndRefusal(
@@ -651,6 +757,8 @@ private[service] class OpenAIResponsesChatCompletionService(
     val unrepresented = response.output.collect {
       case _: Message.OutputContent => None
       case _: FunctionToolCall      => None
+      // carried to the next round by ReasoningMessage (the choice's `reasoning`)
+      case _: Reasoning => None
       // surfaced via ToolApprovalSettingsOps (response.toolApprovalRequests)
       case _: MCPApprovalRequest => None
       // a multi-agent run's internal delegation traffic
@@ -711,6 +819,9 @@ private[service] class OpenAIResponsesChatCompletionService(
 }
 
 object OpenAIResponsesChatCompletionService {
+
+  // the include that returns a reply's reasoning encrypted
+  private[service] val EncryptedReasoning = "reasoning.encrypted_content"
 
   /**
    * The Responses tools of a chat-completion request: function tools as `function`, the
