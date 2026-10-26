@@ -19,11 +19,15 @@ import scala.collection.mutable.ListBuffer
  * parses each payload as JSON. A pending event larger than `maxEventBytes` fails the stream
  * instead of buffering without bound.
  *
- * Built for large events (a frame may be up to [[StreamingConsts.maxFrameLength]], 32 MiB by
- * default): the pending event is a rope of the chunks that is never walked per chunk - only
- * the last 3 bytes plus the new chunk are searched for the next boundary - and an event is
- * read on its bytes (one compaction, the `data:` lines sliced from it, the payload parsed from
- * its bytes) rather than through String copies.
+ * Linear in the input, whatever the chunking: the pending event is a rope of the chunks that
+ * is never walked per chunk - only the last 3 bytes plus the new chunk are searched for the
+ * next boundary - and each incoming chunk is compacted ONCE and walked with a moving offset,
+ * one pass, every boundary search resuming where the previous boundary ended and every event a
+ * slice of that one copy. So a chunk holding thousands of tiny events (or a flood of blank
+ * lines) costs O(chunk size) time and memory, not O(events x chunk size). An event is read on
+ * its bytes (one compaction, the `data:` lines sliced from it, the payload parsed from its
+ * bytes) rather than through String copies. Built for large events too (a frame may be up to
+ * [[StreamingConsts.maxFrameLength]], 32 MiB by default).
  */
 object ServerSentEvents {
 
@@ -56,27 +60,39 @@ object ServerSentEvents {
 
         (chunk: ByteString) => {
           val events = ListBuffer.empty[ByteString]
-          var rest = chunk
-          var searching = true
+          // one copy per chunk (with the carry in front), walked once from left to right
+          val window = (carry ++ chunk).compact
+          var from = 0
+          var next = nextBoundary(window, 0)
 
-          while (searching) {
-            val window = (carry ++ rest).compact
-            nextBoundary(window) match {
-              case None =>
-                buffer = buffer ++ rest
-                carry = window.takeRight(3)
-                searching = false
+          while (next.isDefined) {
+            val (index, length) = next.get
 
-              case Some((index, length)) =>
-                // the boundary starts in the chunk, or straddles the chunk edge (in the carry)
-                events +=
-                  (if (index >= carry.length) buffer ++ rest.take(index - carry.length)
-                   else buffer.dropRight(carry.length - index))
-                buffer = ByteString.empty
-                carry = ByteString.empty
-                rest = window.drop(index + length)
-            }
+            // the first boundary closes the pending event (it starts in the chunk, or straddles
+            // the chunk edge, i.e. in the carry); later ones close events lying wholly in this
+            // chunk - slices of the one copy
+            events +=
+              (if (from > 0)
+                 window.slice(from, index)
+               else if (index >= carry.length)
+                 buffer ++ window.slice(carry.length, index)
+               else
+                 buffer.dropRight(carry.length - index))
+
+            if (from == 0)
+              buffer = ByteString.empty
+
+            from = index + length
+            next = nextBoundary(window, from)
           }
+
+          // what follows the last boundary is the new pending event
+          buffer =
+            if (from == 0)
+              buffer ++ window.drop(carry.length)
+            else
+              window.drop(from)
+          carry = window.drop(from).takeRight(3)
 
           if (buffer.length > maxEventBytes)
             throw error(StreamingConsts.frameTooLongMessage(maxEventBytes.toLong))
@@ -85,15 +101,36 @@ object ServerSentEvents {
         }
       }
 
-  private val delimiters = Seq("\r\n\r\n", "\n\n", "\r\r").map(ByteString(_))
+  private val NL = '\n'.toByte
+  private val CR = '\r'.toByte
 
-  // the earliest blank-line boundary in the window: (index, boundary length)
-  private def nextBoundary(window: ByteString): Option[(Int, Int)] =
-    delimiters
-      .map(delimiter => (window.indexOfSlice(delimiter), delimiter.length))
-      .filter(_._1 >= 0)
-      .sortBy(_._1)
-      .headOption
+  // the earliest blank-line boundary (`\n\n`, `\r\n\r\n` or `\r\r`) at or after `from`: (index,
+  // boundary length) - one linear pass, resumed by the caller where the previous boundary ended
+  private def nextBoundary(
+    window: ByteString,
+    from: Int
+  ): Option[(Int, Int)] = {
+    val n = window.length
+    var i = from
+    var found: Option[(Int, Int)] = None
+
+    while (found.isEmpty && i < n) {
+      val b = window(i)
+
+      if (b == NL && i + 1 < n && window(i + 1) == NL)
+        found = Some((i, 2))
+      else if (b == CR) {
+        if (i + 3 < n && window(i + 1) == NL && window(i + 2) == CR && window(i + 3) == NL)
+          found = Some((i, 4))
+        else if (i + 1 < n && window(i + 1) == CR)
+          found = Some((i, 2))
+      }
+
+      i += 1
+    }
+
+    found
+  }
 
   private val Data = ByteString("data:")
   private val Space = ByteString(" ")

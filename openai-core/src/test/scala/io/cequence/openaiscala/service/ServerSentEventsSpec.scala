@@ -161,5 +161,51 @@ class ServerSentEventsSpec extends AnyWordSpec with Matchers with BeforeAndAfter
       (decoded.head \ "text").as[String] should have length text.length
       seconds should be < 20.0
     }
+
+    "decode one huge chunk of blank lines in linear time" in {
+      // 256 KiB of '\n' in ONE chunk = 131,072 boundaries: the decoder used to copy and rescan
+      // the rest of the chunk once per boundary (quadratic)
+      val chunk = ByteString(Array.fill[Byte](256 * 1024)('\n'.toByte))
+
+      val start = System.nanoTime()
+      val decoded = decode(Seq(chunk))
+      val seconds = (System.nanoTime() - start) / 1e9
+
+      decoded shouldBe empty
+      seconds should be < 2.0
+    }
+
+    "decode one chunk of thousands of small events, in order, in linear time" in {
+      val count = 4096
+      val chunk = ByteString((0 until count).map(i => s"""data: {"i":$i}\n\n""").mkString)
+
+      val start = System.nanoTime()
+      val decoded = decode(Seq(chunk))
+      val seconds = (System.nanoTime() - start) / 1e9
+
+      decoded shouldBe (0 until count).map(i => Json.obj("i" -> i))
+      seconds should be < 2.0
+    }
+
+    "decode one chunk of comment-only events in linear time" in {
+      // 64 KiB of ':\n\n' (21,845 events, none carrying data) in a single chunk
+      val chunk = ByteString(":\n\n" * (64 * 1024 / 3))
+
+      val start = System.nanoTime()
+      val decoded = decode(Seq(chunk))
+      val seconds = (System.nanoTime() - start) / 1e9
+
+      decoded shouldBe empty
+      seconds should be < 2.0
+    }
+
+    "keep the events of a many-event chunk across a boundary the next chunk completes" in {
+      // events closed inside the chunk, then a pending one finished in the following chunk
+      val first = "data: {\"i\":1}\n\ndata: {\"i\":2}\r\n\r\ndata: {\"i\":3}\n"
+      val second = "\ndata: {\"i\":4}\r\r"
+
+      decode(Seq(ByteString(first), ByteString(second))) shouldBe
+        (1 to 4).map(i => Json.obj("i" -> i))
+    }
   }
 }
