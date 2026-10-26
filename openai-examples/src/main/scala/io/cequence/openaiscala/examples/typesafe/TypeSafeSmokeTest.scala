@@ -29,9 +29,11 @@ import scala.util.{Failure, Success, Try}
  *   - an explicit model (`jev-preview`), the request id header, usage
  *   - many questions in one call, many calls in parallel, a service on a shared engine, the
  *     retry adapter
+ *   - the input limits: a ~34k-token state is answered by the factory's default service (the
+ *     long-context header, 262,400 tokens) and refused by one without it (`longContext =
+ *     false`, the ~33k-token default) with `TypeSafeScalaTokenCountExceededException`
  *   - errors, natively: a bad key (`TypeSafeScalaUnauthorizedException` carrying the request
- *     id), an unknown model (`TypeSafeScalaApiUsageException`), the ~32k-token input limit
- *     (`TypeSafeScalaTokenCountExceededException`), a wrong path
+ *     id), an unknown model (`TypeSafeScalaApiUsageException`), a wrong path
  *     (`TypeSafeScalaNotFoundException`); through the OpenAI adapter the same errors as
  *     `OpenAIScala*` with the native cause; and the client-side checks that mirror the API's
  *     400s (fail before any I/O)
@@ -44,6 +46,9 @@ object TypeSafeSmokeTest {
   private val ticket =
     "Hi, I've been trying to connect my Stripe account for 3 days and it keeps failing. " +
       "I'm losing sales. Please help ASAP."
+
+  // ~34k tokens: over the standard ~33k-token input limit, well under the long-context one
+  private val hugeState = JsString((ticket + " ") * 1500)
 
   def main(args: Array[String]): Unit = {
     // the actor system only serves the retry adapter's scheduler
@@ -327,15 +332,28 @@ object TypeSafeSmokeTest {
           }
       }
 
-      _ <- section("~34k-token state -> TypeSafeScalaTokenCountExceededException") {
-        val huge = JsString((ticket + " ") * 1500)
-        service.systemOne(huge, Map("urgent" -> NoulQuestion("Is it urgent?"))).transform {
-          case Failure(e: TypeSafeScalaTokenCountExceededException) =>
-            check(e.errorType.contains("max_tokens_exceeded"), e.toString)
-            Success(e.getMessage)
-          case Failure(other) => Failure(other)
-          case Success(r)     => Failure(new AssertionError(s"accepted ${r.usage}"))
+      _ <- section("~34k-token state, the default long context -> answered") {
+        service.systemOne(hugeState, Map("urgent" -> NoulQuestion("Is it urgent?"))).map { r =>
+          val tokens = r.usage.input_tokens.getOrElse(0)
+          check(tokens > 33024, s"only $tokens input tokens - not over the standard limit")
+          s"answered over $tokens input tokens"
         }
+      }
+
+      _ <- section(
+        "~34k-token state without long context -> TypeSafeScalaTokenCountExceededException"
+      ) {
+        val standard = TypeSafeServiceFactory(longContext = false)
+        standard
+          .systemOne(hugeState, Map("urgent" -> NoulQuestion("Is it urgent?")))
+          .transform {
+            case Failure(e: TypeSafeScalaTokenCountExceededException) =>
+              check(e.errorType.contains("max_tokens_exceeded"), e.toString)
+              Success(e.getMessage)
+            case Failure(other) => Failure(other)
+            case Success(r)     => Failure(new AssertionError(s"accepted ${r.usage}"))
+          }
+          .andThen { case _ => standard.close() }
       }
 
       _ <- section("wrong base path -> TypeSafeScalaNotFoundException") {

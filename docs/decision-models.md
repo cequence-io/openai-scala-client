@@ -284,7 +284,10 @@ features - dreamer-ready, not yet production-grade in TypeSafe's words, each beh
   request.", to which the client adds why ("box questions need Jev 1.14 or later (e.g. jev-1.14.0)").
 - **Long context**: `DecisionProviderSettings.typeSafeLongContext` sends `TypeSafe-Danger-Zone-Long-Context: true` with
   every request - 262k tokens per request and per question instead of 64k / 32k, at the same price, slower and less
-  accurate past the defaults. `DecisionProvider.extraHeaders` carries it (or any header of your own).
+  accurate past the defaults. `DecisionProvider.extraHeaders` carries it (or any header of your own). The factory's own
+  Jev (`TypeSafeServiceFactory()`, `withEngine(engine)`, `asOpenAI()`) sends it by default since 1.6.1 - a short
+  request answers the same with or without it, in the same time and for the same tokens (live 2026-10-22) -
+  `longContext = false` leaves it out.
 
 ```scala
   val jev = TypeSafeServiceFactory(DecisionProviderSettings.typeSafe)
@@ -304,7 +307,8 @@ features - dreamer-ready, not yet production-grade in TypeSafe's words, each beh
   NoulQuestion(Some(Json.arr("Is the person in `door` the same as in this badge photo:", DecisionImage(badge))), None)
   ChoiceQuestion(ListMap("thumbs_up" -> Some(DecisionImage(thumb)), "none" -> Some(JsString("No gesture"))), Some(JsString("Which gesture is in `camera`?")))
 
-  val longJev = TypeSafeServiceFactory(DecisionProviderSettings.typeSafeLongContext)   // 262k tokens
+  val longJev = TypeSafeServiceFactory()                       // 262k tokens - long context is on by default
+  val jev64k = TypeSafeServiceFactory(longContext = false)     // the default limits, 64k / 32k
 ```
 
 The adapters take all of it. **JSON schema** (`asOpenAI()`, `decide[T]`): a chat message's image content goes into the
@@ -775,7 +779,7 @@ a protocol of its own; its preset translates the questions and answers, so every
 
 | Preset | Key | Models | Notes |
 |---|---|---|---|
-| `typeSafe` | `TYPESAFE_API_KEY` | `jev-latest`, `jev-preview` (Jev 1.14), `jev-1.13.0`, `jev-1.14.0` | the default of `TypeSafeServiceFactory()`; images as TypeSafe's assets, box questions on Jev 1.14; `typeSafeLongContext` for 262k tokens |
+| `typeSafe` | `TYPESAFE_API_KEY` | `jev-latest`, `jev-preview` (Jev 1.14), `jev-1.13.0`, `jev-1.14.0` | images as TypeSafe's assets, box questions on Jev 1.14; the standard limits, 64k tokens per request / 32k per question - `typeSafeLongContext`, the default of `TypeSafeServiceFactory()` since 1.6.1, sends the long-context header for 262k |
 | `liquid` | `LIQUID_API_KEY` | `d1` (default), `d1-ultra` | at most 128 questions; both read images (sent in a top-level `images` array) |
 | `perplexity` | `PERPLEXITY_API_KEY` (or `SONAR_API_KEY`) | `pplx-decider-v1.1-27b`, `pplx-decider-v1-27b` | `POST /v1/decisions`, images of any size, at most 128 questions |
 | `openRouter` | `OPENROUTER_API_KEY` | Jev, d1, Perplexity's deciders (+ the `~perplexity/pplx-decider-latest` alias), OpenAI's Luna, Microsoft-Decision-1, Cloudflare's Clef (+ Flash, Omni), Solar Decide (+ Flash), Mercury Decide (+ free), Tev1, Kev 4B, NACE's Drex (1.5, 2.0), Span-01 (+ Lite), Span-02, ScaleDown's Classify-1, Jev 1.14, d1-ultra | listed with `output_modalities=decisions`; images as `image_url` parts in the state (read by Clef Omni / Flash, Perplexity's decider, Luna, d1 and Mercury Decide; the others read them as text); Span-01 takes noul questions only (Span-02 all three kinds, and object states); `scaledown/` models get ScaleDown's text-only protocol |

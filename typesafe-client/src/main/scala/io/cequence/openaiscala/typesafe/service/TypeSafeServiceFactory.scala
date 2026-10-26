@@ -66,32 +66,53 @@ object TypeSafeServiceFactory extends EnvHelper {
    * @param timeouts
    *   client-level timeouts (milliseconds); the official SDKs default to 10 s per attempt,
    *   which System One's ~100 ms answers rarely approach
+   * @param longContext
+   *   whether every request opts in to TypeSafe's long context
+   *   (`TypeSafe-Danger-Zone-Long-Context: true` - 262,400 input tokens per question and per
+   *   request instead of 33,024 / ~65.8k, see `DecisionProviderSettings.typeSafeLongContext`);
+   *   on by default - a short request answers the same with or without it, in the same time
+   *   and for the same tokens (live 2026-10-22)
    */
   def apply(
     apiKey: String = getEnvValue(apiKeyEnvKey),
     baseUrl: String = baseUrlFromEnv,
     defaultModel: String = defaultModelFromEnv,
-    timeouts: Option[Timeouts] = None
+    timeouts: Option[Timeouts] = None,
+    longContext: Boolean = true
   )(
     implicit ec: ExecutionContext
   ): TypeSafeService =
-    new TypeSafeServiceImpl(apiKey, baseUrl, defaultModel, timeouts)
+    new TypeSafeServiceImpl(
+      apiKey,
+      baseUrl,
+      defaultModel,
+      timeouts,
+      provider = jevProvider(longContext)
+    )
 
   /**
    * A service on a CALLER-SUPPLIED, SITE-STATELESS engine - e.g. one shared with other
    * providers via `WSClientEngineRegistry()` / `StreamedEngineRegistry.outputStreamed()` - so
    * several services share one connection pool and actor system. Closing such a service does
    * NOT close the shared engine; close the engine once, when done with all services using it.
+   * `longContext` as for [[apply(apiKey* apply]] (on by default).
    */
   def withEngine(
     engine: WSClientEngine,
     apiKey: String = getEnvValue(apiKeyEnvKey),
     baseUrl: String = baseUrlFromEnv,
-    defaultModel: String = defaultModelFromEnv
+    defaultModel: String = defaultModelFromEnv,
+    longContext: Boolean = true
   )(
     implicit ec: ExecutionContext
   ): TypeSafeService =
-    new TypeSafeServiceImpl(apiKey, baseUrl, defaultModel, externalEngine = Some(engine))
+    new TypeSafeServiceImpl(
+      apiKey,
+      baseUrl,
+      defaultModel,
+      externalEngine = Some(engine),
+      provider = jevProvider(longContext)
+    )
 
   /**
    * System One behind the OpenAI chat-completion interface - structured output ONLY: every
@@ -102,17 +123,19 @@ object TypeSafeServiceFactory extends EnvHelper {
    * fast with an explanation. Made for `createChatCompletionWithJSON[T]` (pass the model in
    * `jsonSchemaModels`, or rely on the `jev-*` entries of `models-supporting-json-schema`).
    * The image content of user messages goes into the state - Jev reads images since 2026-10-14
-   * (`DecisionProviderSettings.typeSafe`).
+   * (`DecisionProviderSettings.typeSafe`). `longContext` as for [[apply(apiKey* apply]] (on by
+   * default).
    */
   def asOpenAI(
     apiKey: String = getEnvValue(apiKeyEnvKey),
     baseUrl: String = baseUrlFromEnv,
     defaultModel: String = defaultModelFromEnv,
-    timeouts: Option[Timeouts] = None
+    timeouts: Option[Timeouts] = None,
+    longContext: Boolean = true
   )(
     implicit ec: ExecutionContext
   ): OpenAIChatCompletionService =
-    asOpenAI(apply(apiKey, baseUrl, defaultModel, timeouts))
+    asOpenAI(apply(apiKey, baseUrl, defaultModel, timeouts, longContext))
 
   /**
    * The OpenAI adapter over an EXISTING service (e.g. one on a shared engine, or retrying):
@@ -475,6 +498,13 @@ object TypeSafeServiceFactory extends EnvHelper {
     implicit ec: ExecutionContext
   ): OpenAIChatCompletionService =
     asOpenAI(perplexity(apiKey, baseUrl, defaultModel, timeouts), imageInput = true)
+
+  // Jev with or without TypeSafe's long-context opt-in
+  private def jevProvider(longContext: Boolean): DecisionProvider =
+    if (longContext)
+      DecisionProviderSettings.typeSafeLongContext
+    else
+      DecisionProviderSettings.typeSafe
 
   private def baseUrlFromEnv: String = envOrElse(baseUrlEnvKey, defaultBaseUrl)
 

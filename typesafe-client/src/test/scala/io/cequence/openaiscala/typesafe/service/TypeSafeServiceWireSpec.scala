@@ -1144,7 +1144,8 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       )
       received.get.path shouldBe "/v1/systemone"
       received.get.headers("typesafe-danger-zone-images") shouldBe "true"
-      received.get.headers.get("typesafe-danger-zone-long-context") shouldBe None
+      // the factory's Jev opts in to long context by default
+      received.get.headers("typesafe-danger-zone-long-context") shouldBe "true"
       val body = Json.parse(received.get.body)
       val placeholder = (body \ "state" \ "photo").as[String]
       (body \ "assets" \ placeholder).get shouldBe Json.obj(
@@ -1313,6 +1314,23 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       await(longContext.listModels)
       received.get.headers("typesafe-danger-zone-long-context") shouldBe "true"
       longContext.close()
+    }
+
+    "send the long-context opt-in from the factory's Jev unless switched off" in {
+      respond(200, quickStartResponse)
+      await(service.systemOne("a long contract", questions))
+      received.get.headers("typesafe-danger-zone-long-context") shouldBe "true"
+
+      val defaultContext =
+        TypeSafeServiceFactory.withEngine(engine, "k", baseUrl, longContext = false)
+      respond(200, quickStartResponse)
+      await(defaultContext.systemOne("a short note", questions))
+      received.get.headers.get("typesafe-danger-zone-long-context") shouldBe None
+
+      respond(200, """{"models":[]}""")
+      await(defaultContext.listModels)
+      received.get.headers.get("typesafe-danger-zone-long-context") shouldBe None
+      defaultContext.close()
     }
 
     // a chat completion whose user message carries a picture, through an OpenAI adapter
