@@ -289,6 +289,9 @@ class MyCompletionService @Inject() (
   - **Scope:** `guardrails` guards `createChatCompletion` / `createChatToolCompletion` (and so the JSON helpers built on
     them). For a service that also streams, use `OpenAIServiceAdapters.guardrailsWithStreaming(...)`: it guards those
     calls and both streams, see below. Batches are not guarded.
+  - **What a reply's check covers:** everything the reply releases - its content, refusal and readable reasoning
+    (`choice.reasoning`: thinking, summaries, `reasoning_content`), so a tool-call-only reply that reasoned is checked
+    too; tool-call arguments are not checked. A flagged reply answered with the block message loses its reasoning.
 
 ```scala
   import io.cequence.openaiscala.domain.guardrails.{GuardrailAction, GuardrailCheck, ModelGuardrailSettings}
@@ -317,7 +320,13 @@ class MyCompletionService @Inject() (
 
   **Streams** - `guardrailsWithStreaming` starts a stream only once its input passed. With output guardrails, the
   reply is held back until the stream finishes, checked once, then released - so no unchecked text reaches the
-  consumer, and `outputReprompts` works as without streaming. Without output guardrails the stream passes through as it
+  consumer, and `outputReprompts` works as without streaming. The check covers everything the stream releases: the
+  answer, reasoning (Thinking / `reasoning_content`), refusals, server-side tool output, citations and further choices
+  (each choice's channels joined, so text split across deltas is checked whole), each text once - a code execution's
+  output is not checked again as its semantic-layer result, nor the answer again as the Responses API's
+  `content_part` events, nor a raw payload's ids and types; only tool-call arguments are not checked, as on the sync
+  path, which checks a choice's refusal and reasoning with its content. A reprompt quotes back only the
+  answer text; a flagged reply with no answer (a refusal-only reply) is blocked instead. Without output guardrails the stream passes through as it
   comes. A block fails the stream (`Reject`), or answers it with the block message and finish reason `content_filter`
   (`Respond`; the typed stream also carries the verdicts in an `Other("guardrail_block")` chunk).
 

@@ -20,6 +20,7 @@ import io.cequence.openaiscala.domain.{
   AssistantToolMessage,
   BaseMessage,
   ChatCompletionTool,
+  ReasoningMessage,
   UserMessage
 }
 import io.cequence.openaiscala.service.OpenAIChatCompletionService
@@ -108,7 +109,7 @@ private class GuardrailsAdapter[S <: OpenAIChatCompletionService](
               UsageInfo.sumOption(usageSoFar, replies.usage(response))
             )
 
-        runner.checkOutput(replies.texts(response), messages, attempt < reprompts).flatMap {
+        runner.checkOutput(replies.replies(response), messages, attempt < reprompts).flatMap {
           case OutputDecision.Pass =>
             Future.successful(responseFinal)
 
@@ -135,8 +136,11 @@ private class GuardrailsAdapter[S <: OpenAIChatCompletionService](
  */
 private trait GuardedReplies[R] {
 
-  /** The text of each choice, in choice order (a tool-call-only reply has none). */
-  def texts(response: R): Seq[String]
+  /**
+   * The reply of each choice, in choice order: what it releases (its content, refusal and
+   * readable reasoning) and its answer text (a tool-call-only reply has none).
+   */
+  def replies(response: R): Seq[Reply]
 
   def usage(response: R): Option[UsageInfo]
 
@@ -146,8 +150,8 @@ private trait GuardedReplies[R] {
   ): R
 
   /**
-   * The response with each choice whose text is `flagged` answered with `message` (finish
-   * reason `content_filter`), the other choices kept, the block attached.
+   * The response with each choice whose checked text is `flagged` answered with `message`
+   * (finish reason `content_filter`), the other choices kept, the block attached.
    */
   def blockedReplies(
     response: R,
@@ -168,11 +172,27 @@ private object GuardedReplies {
 
   import GuardrailsAdapter.{blockedId, ContentFilter}
 
+  // everything a choice releases, a line apart, as the streamed adapter checks a stream's reply:
+  // its text, then its refusal and the readable part of its reasoning (thinking, summaries,
+  // reasoning_content - opaque, encrypted reasoning has none)
+  private def releasedText(
+    texts: Seq[String],
+    reasoning: Option[ReasoningMessage]
+  ): String =
+    (texts ++ reasoning.flatMap(_.text)).filter(_.trim.nonEmpty).mkString("\n")
+
   implicit val chatReplies: GuardedReplies[ChatCompletionResponse] =
     new GuardedReplies[ChatCompletionResponse] {
 
-      override def texts(response: ChatCompletionResponse): Seq[String] =
-        response.choices.map(_.message.content)
+      override def replies(response: ChatCompletionResponse): Seq[Reply] =
+        response.choices.map(choice => Reply(checked(choice), choice.message.content))
+
+      // a refusal and the reasoning are released with the content, so they are checked with it
+      private def checked(choice: ChatCompletionChoiceInfo): String =
+        releasedText(
+          choice.message.content +: choice.message.refusal.toSeq,
+          choice.reasoning
+        )
 
       override def usage(response: ChatCompletionResponse): Option[UsageInfo] = response.usage
 
@@ -189,7 +209,10 @@ private object GuardedReplies {
       ): ChatCompletionResponse =
         response.copy(
           choices = response.choices.map { choice =>
-            if (flagged(choice.message.content)) answered(choice.index, message) else choice
+            if (flagged(checked(choice)))
+              answered(choice.index, message)
+            else
+              choice
           },
           originalResponse = Some(GuardrailBlock(verdicts, response.originalResponse))
         )
@@ -219,8 +242,14 @@ private object GuardedReplies {
   implicit val toolReplies: GuardedReplies[ChatToolCompletionResponse] =
     new GuardedReplies[ChatToolCompletionResponse] {
 
-      override def texts(response: ChatToolCompletionResponse): Seq[String] =
-        response.choices.flatMap(_.message.content)
+      // a tool-call-only reply without reasoning releases no text - nothing to check
+      override def replies(response: ChatToolCompletionResponse): Seq[Reply] =
+        response.choices.map(choice =>
+          Reply(checked(choice), choice.message.content.getOrElse(""))
+        )
+
+      private def checked(choice: ChatToolCompletionChoiceInfo): String =
+        releasedText(choice.message.content.toSeq, choice.reasoning)
 
       override def usage(response: ChatToolCompletionResponse): Option[UsageInfo] =
         response.usage
@@ -230,7 +259,7 @@ private object GuardedReplies {
         usage: Option[UsageInfo]
       ): ChatToolCompletionResponse = response.copy(usage = usage)
 
-      // a flagged choice's tool calls go with its text
+      // a flagged choice's tool calls (and reasoning) go with its text
       override def blockedReplies(
         response: ChatToolCompletionResponse,
         message: String,
@@ -239,8 +268,10 @@ private object GuardedReplies {
       ): ChatToolCompletionResponse =
         response.copy(
           choices = response.choices.map { choice =>
-            if (choice.message.content.exists(flagged)) answered(choice.index, message)
-            else choice
+            if (flagged(checked(choice)))
+              answered(choice.index, message)
+            else
+              choice
           },
           originalResponse = Some(GuardrailBlock(verdicts, response.originalResponse))
         )
@@ -272,9 +303,22 @@ private object GuardedReplies {
     }
 }
 
-/** A reply flagged by the output guardrails, with their blocking verdicts. */
+/**
+ * A reply as the output guardrails see it: `checked` is everything it releases - its answer,
+ * and its reasoning, refusal, tool output, ... - `answer` its answer text alone, the only part
+ * a reprompt quotes back.
+ */
+private final case class Reply(
+  checked: String,
+  answer: String
+)
+
+/**
+ * A reply flagged by the output guardrails (its checked text), with their blocking verdicts.
+ */
 private final case class Violation(
   reply: String,
+  answer: String,
   verdicts: Seq[GuardrailVerdict]
 ) {
   def unavailable: Boolean = verdicts.exists(_.unavailable)
@@ -291,12 +335,12 @@ private object OutputDecision {
   final case class AskAgain(violation: Violation) extends OutputDecision {
     def messages(original: Seq[BaseMessage]): Seq[BaseMessage] =
       original ++ Seq(
-        AssistantMessage(violation.reply),
+        AssistantMessage(violation.answer),
         UserMessage(GuardrailsAdapter.repromptMessage(violation.verdicts))
       )
   }
 
-  /** Block the flagged replies. */
+  /** Block the flagged replies (matched by their checked text). */
   final case class Block(violations: Seq[Violation]) extends OutputDecision {
     def verdicts: Seq[GuardrailVerdict] = violations.flatMap(_.verdicts)
 
@@ -326,30 +370,35 @@ private class GuardrailRunner(
     checkAll(input.map(guardrail => () => guardrail.checkInput(messages)))
 
   /**
-   * The output guardrails' decision on an attempt's replies, every reply checked by every
-   * guardrail at once: a flagged reply is asked for again while `canAskAgain` - unless a guard
-   * was unavailable - else blocked.
+   * The output guardrails' decision on an attempt's replies, every reply's checked text
+   * checked by every guardrail at once: a flagged reply is asked for again while `canAskAgain`
+   *   - unless a guard was unavailable or the reply has no answer text to quote back - else
+   *     blocked. A reply with only non-answer text (a refusal, reasoning) is checked too.
    */
   def checkOutput(
-    replies: Seq[String],
+    replies: Seq[Reply],
     messages: Seq[BaseMessage],
     canAskAgain: Boolean
   ): Future[OutputDecision] = {
-    val texts = replies.filter(_.trim.nonEmpty).distinct
+    val checked = replies.filter(_.checked.trim.nonEmpty).distinct
 
-    if (output.isEmpty || texts.isEmpty) Future.successful(OutputDecision.Pass)
+    if (output.isEmpty || checked.isEmpty)
+      Future.successful(OutputDecision.Pass)
     else
       Future
-        .traverse(texts) { text =>
-          checkAll(output.map(guardrail => () => guardrail.checkOutput(messages, text)))
-            .map(Violation(text, _))
+        .traverse(checked) { reply =>
+          checkAll(
+            output.map(guardrail => () => guardrail.checkOutput(messages, reply.checked))
+          ).map(Violation(reply.checked, reply.answer, _))
         }
         .map(_.filter(_.verdicts.nonEmpty))
         .map {
           case Nil =>
             OutputDecision.Pass
 
-          case violations @ (first +: _) if canAskAgain && !violations.exists(_.unavailable) =>
+          case violations @ (first +: _)
+              if canAskAgain && !violations.exists(_.unavailable) &&
+                first.answer.trim.nonEmpty =>
             logger.info(
               s"${GuardrailVerdict.describe(first.verdicts)} Asking for another reply."
             )

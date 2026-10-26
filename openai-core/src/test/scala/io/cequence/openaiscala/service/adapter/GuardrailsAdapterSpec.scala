@@ -27,7 +27,8 @@ class GuardrailsAdapterSpec extends AnyWordSpec with Matchers {
   private val usage =
     UsageInfo(prompt_tokens = 50, total_tokens = 60, completion_tokens = Some(10))
 
-  // replies with the scripted contents in turn and records the calls
+  // replies with the scripted contents in turn and records the calls; "<reply> ##reasoning:<text>"
+  // is a reply with that readable reasoning
   private class ScriptedChat(replies: String*) extends OpenAIChatCompletionService {
     private var remaining = replies.toList
     val calls = ListBuffer[Seq[BaseMessage]]()
@@ -45,15 +46,16 @@ class GuardrailsAdapterSpec extends AnyWordSpec with Matchers {
       messages: Seq[BaseMessage],
       settings: CreateChatCompletionSettings
     ): Future[ChatCompletionResponse] = {
-      val reply = next(messages)
+      val (reply, reasoning) = withReasoning(next(messages))
       Future.successful(
         ChatCompletionResponse(
           id = s"call-${calls.size}",
           created = new java.util.Date(0L),
           model = settings.model,
           system_fingerprint = None,
-          choices =
-            Seq(ChatCompletionChoiceInfo(AssistantMessage(reply), 0, Some("stop"), None)),
+          choices = Seq(
+            ChatCompletionChoiceInfo(assistant(reply), 0, Some("stop"), None, reasoning)
+          ),
           usage = Some(usage),
           originalResponse = Some("native")
         )
@@ -66,7 +68,7 @@ class GuardrailsAdapterSpec extends AnyWordSpec with Matchers {
       responseToolChoice: Option[String],
       settings: CreateChatCompletionSettings
     ): Future[ChatToolCompletionResponse] = {
-      val reply = next(messages)
+      val (reply, reasoning) = withReasoning(next(messages))
       val message =
         if (reply.startsWith("call:"))
           AssistantToolMessage(tool_calls = Seq("c1" -> FunctionCallSpec(reply.drop(5), "{}")))
@@ -77,13 +79,28 @@ class GuardrailsAdapterSpec extends AnyWordSpec with Matchers {
           created = new java.util.Date(0L),
           model = settings.model,
           system_fingerprint = None,
-          choices = Seq(ChatToolCompletionChoiceInfo(message, 0, Some("stop"))),
+          choices = Seq(ChatToolCompletionChoiceInfo(message, 0, Some("stop"), reasoning)),
           usage = Some(usage)
         )
       )
     }
 
     override def close(): Unit = closed = true
+
+    private def withReasoning(reply: String): (String, Option[ReasoningMessage]) =
+      reply.split(" ##reasoning:", 2) match {
+        case Array(text, reasoning) =>
+          (text, Some(ReasoningMessage(Seq(ReasoningBlock(text = Some(reasoning))))))
+        case _ =>
+          (reply, None)
+      }
+
+    // "refusal:<text>" - a reply with no content, only a refusal
+    private def assistant(reply: String) =
+      if (reply.startsWith("refusal:"))
+        AssistantMessage("", refusal = Some(reply.drop(8)))
+      else
+        AssistantMessage(reply)
   }
 
   // flags any text containing one of the words, as the check named by the word
@@ -347,6 +364,110 @@ class GuardrailsAdapterSpec extends AnyWordSpec with Matchers {
       blocked.choices.head.message.tool_calls shouldBe Nil
       blocked.choices.head.finish_reason shouldBe Some("content_filter")
       blocked.id shouldBe "call-2"
+    }
+
+    "check a reply's refusal with its content" in {
+      val chat = new ScriptedChat("refusal:I will not share the secret 42.")
+      val guard = new WordGuardrail("words", "secret")
+      val guarded = adapters.guardrails(
+        output = Seq(guard),
+        onViolation = GuardrailAction.respond("Blocked.")
+      )(chat)
+
+      val response = await(guarded.createChatCompletion(Seq(UserMessage("Tell me")), settings))
+
+      guard.checked shouldBe Seq("I will not share the secret 42.")
+      response.choices.map(_.message.content) shouldBe Seq("Blocked.")
+      response.choices.head.message.refusal shouldBe None
+    }
+
+    "check a reply's reasoning with its content - a secret restated there is blocked" in {
+      val chat = new ScriptedChat("I can't share that. ##reasoning:The secret code is 42.")
+      val guard = new WordGuardrail("words", "secret")
+      val guarded = adapters.guardrails(
+        output = Seq(guard),
+        onViolation = GuardrailAction.respond("Blocked.")
+      )(chat)
+
+      val response = await(guarded.createChatCompletion(Seq(UserMessage("Tell me")), settings))
+
+      guard.checked shouldBe Seq("I can't share that.\nThe secret code is 42.")
+      response.contentHead shouldBe "Blocked."
+      response.choices.head.finish_reason shouldBe Some("content_filter")
+      // the flagged reasoning is not released either
+      response.reasoningMessage shouldBe None
+      response.historyMessages shouldBe Seq(AssistantMessage("Blocked."))
+    }
+
+    "reject a reply whose reasoning is flagged" in {
+      val chat = new ScriptedChat("I can't share that. ##reasoning:The secret code is 42.")
+      val guarded = adapters.guardrails(
+        output = Seq(new WordGuardrail("words", "secret"))
+      )(chat)
+
+      an[OpenAIScalaGuardrailException] should be thrownBy
+        await(guarded.createChatCompletion(Seq(UserMessage("Tell me")), settings))
+    }
+
+    "release a clean reply with its reasoning" in {
+      val chat = new ScriptedChat("Paris. ##reasoning:France's capital is Paris.")
+      val guard = new WordGuardrail("words", "secret")
+      val guarded = adapters.guardrails(output = Seq(guard))(chat)
+
+      val response =
+        await(guarded.createChatCompletion(Seq(UserMessage("Capital?")), settings))
+
+      guard.checked shouldBe Seq("Paris.\nFrance's capital is Paris.")
+      response.contentHead shouldBe "Paris."
+      response.reasoningMessage.flatMap(_.text) shouldBe Some("France's capital is Paris.")
+    }
+
+    "ask again for a reply flagged by its reasoning, quoting its answer only" in {
+      val chat = new ScriptedChat(
+        "I can't share that. ##reasoning:The secret code is 42.",
+        "Ask the administrator. ##reasoning:Point them to the admin."
+      )
+      val guarded = adapters.guardrails(
+        output = Seq(new WordGuardrail("words", "secret")),
+        outputReprompts = 1
+      )(chat)
+
+      val response = await(guarded.createChatCompletion(Seq(UserMessage("Tell me")), settings))
+
+      response.contentHead shouldBe "Ask the administrator."
+      response.reasoningMessage.flatMap(_.text) shouldBe Some("Point them to the admin.")
+      chat.calls should have size 2
+      chat.calls(1).collect { case AssistantMessage(content, _, _) => content } shouldBe Seq(
+        "I can't share that."
+      )
+    }
+
+    "check a tool reply's reasoning, a tool-call-only one's too" in {
+      val chat = new ScriptedChat(
+        "call:weather ##reasoning:Oslo, as the user asked.",
+        "call:weather ##reasoning:The secret code is 42."
+      )
+      val guard = new WordGuardrail("words", "secret")
+      val guarded = adapters.guardrails(
+        output = Seq(guard),
+        onViolation = GuardrailAction.respond("Blocked.")
+      )(chat)
+      val tools = Seq(AssistantTool.FunctionTool("weather"))
+
+      val clean = await(
+        guarded.createChatToolCompletion(Seq(UserMessage("Weather?")), tools, None, settings)
+      )
+      clean.assistantToolMessage.tool_calls.map(_._1) shouldBe Seq("c1")
+      clean.reasoningMessage.flatMap(_.text) shouldBe Some("Oslo, as the user asked.")
+
+      val blocked = await(
+        guarded.createChatToolCompletion(Seq(UserMessage("Weather?")), tools, None, settings)
+      )
+      guard.checked shouldBe Seq("Oslo, as the user asked.", "The secret code is 42.")
+      blocked.assistantToolMessage.content shouldBe Some("Blocked.")
+      blocked.assistantToolMessage.tool_calls shouldBe Nil
+      blocked.choices.head.finish_reason shouldBe Some("content_filter")
+      blocked.reasoningMessage shouldBe None
     }
 
     "answer only the flagged replies of several choices" in {

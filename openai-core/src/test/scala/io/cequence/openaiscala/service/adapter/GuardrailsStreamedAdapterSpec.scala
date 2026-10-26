@@ -260,7 +260,8 @@ class GuardrailsStreamedAdapterSpec
       run(
         guarded.createChatCompletionStreamedTyped(Seq(UserMessage("Hi")), settings)
       ) shouldBe clean
-      guard.checked shouldBe Seq("Hi", "Hello world, this is fine.")
+      // the reasoning is checked with the answer - it is released as well
+      guard.checked shouldBe Seq("Hi", "Hello world, this is fine.\nLet me think.")
     }
 
     "hold the reply back until the stream finishes, and answer a flagged one with the block message" in {
@@ -354,6 +355,224 @@ class GuardrailsStreamedAdapterSpec
 
       chunks.collect { case ChatChunk.Text(text) => text } shouldBe Seq("Blocked.")
       chat.calls should have size 1
+    }
+
+    "check everything a typed stream releases, not only its answer" in {
+      def blockedText(script: Seq[ChatChunk]) = {
+        val guard = new WordGuardrail("words", "secret")
+        val guarded = adapters.guardrailsWithStreaming(
+          output = Seq(guard),
+          onViolation = GuardrailAction.respond("Blocked.")
+        )(new ScriptedStreams(script))
+
+        val chunks =
+          run(guarded.createChatCompletionStreamedTyped(Seq(UserMessage("Tell me")), settings))
+        chunks.collect { case ChatChunk.Text(text) => text }
+      }
+
+      val start = ChatChunk.Start("r1", "main-model")
+      val finish = ChatChunk.Finish(FinishReason.stop, Some("stop"))
+      val answer = ChatChunk.Text("Sorry, I can't share internal codes.")
+
+      // reasoning, split across deltas
+      blockedText(
+        Seq(
+          start,
+          ChatChunk.Thinking("The sec"),
+          ChatChunk.Thinking("ret is 42."),
+          answer,
+          finish
+        )
+      ) shouldBe Seq("Blocked.")
+      // a further choice
+      blockedText(
+        Seq(
+          start,
+          answer,
+          ChatChunk.Other(
+            "choice[1]",
+            Json.obj("delta" -> Json.obj("content" -> "The secret is 42."), "index" -> 1)
+          ),
+          finish
+        )
+      ) shouldBe Seq("Blocked.")
+      // a refusal-only reply
+      blockedText(Seq(start, ChatChunk.Refusal("Not the secret 42."), finish)) shouldBe
+        Seq("Blocked.")
+      // server-side tool output
+      blockedText(
+        Seq(
+          start,
+          ChatChunk
+            .ToolResult("t1", "search", Json.obj("page" -> "the secret is 42"), None, false),
+          answer,
+          finish
+        )
+      ) shouldBe Seq("Blocked.")
+      // a clean script still passes
+      blockedText(Seq(start, ChatChunk.Thinking("Fine."), answer, finish)) shouldBe
+        Seq(answer.text)
+    }
+
+    "check each released text once - not the events repeating it, nor ids and types" in {
+      val guard = new WordGuardrail("words", "secret")
+      val script = Seq(
+        ChatChunk.Start("r1", "main-model"),
+        ChatChunk.Thinking("Let me check."),
+        ChatChunk.Text("The answer."),
+        // a Responses API stream repeats its answer and its summary in these events
+        ChatChunk.Other(
+          "response.content_part.done",
+          Json.obj(
+            "type" -> "response.content_part.done",
+            "item_id" -> "msg_1",
+            "output_index" -> 0,
+            "part" -> Json.obj("type" -> "output_text", "text" -> "The answer.")
+          )
+        ),
+        ChatChunk.Other(
+          "response.reasoning_summary_part.done",
+          Json.obj(
+            "type" -> "response.reasoning_summary_part.done",
+            "item_id" -> "rs_1",
+            "part" -> Json.obj("type" -> "summary_text", "text" -> "Let me check.")
+          )
+        ),
+        // a server-side code execution: the tool-layer result and the semantic-layer one
+        ChatChunk.ToolResult(
+          "c1",
+          "bash_code_execution",
+          Json.obj(
+            "type" -> "bash_code_execution_result",
+            "stdout" -> "out",
+            "stderr" -> "err",
+            "return_code" -> 0
+          ),
+          Some("out\nerr"),
+          isError = false
+        ),
+        ChatChunk.CodeExecutionResult("c1", Some("out\nerr"), isError = false, Json.obj()),
+        // a status event: identifiers only
+        ChatChunk.Other(
+          "response.web_search_call.searching",
+          Json.obj(
+            "type" -> "response.web_search_call.searching",
+            "item_id" -> "ws_1",
+            "output_index" -> 1
+          )
+        ),
+        // a subagent's message: text no other chunk carries
+        ChatChunk.Other(
+          "subagent.message",
+          Json.obj(
+            "type" -> "message",
+            "id" -> "msg_2",
+            "role" -> "assistant",
+            "content" -> Json.arr(Json.obj("type" -> "output_text", "text" -> "A note."))
+          )
+        ),
+        ChatChunk.Finish(FinishReason.stop, Some("stop"))
+      )
+      val guarded = adapters.guardrailsWithStreaming(output = Seq(guard))(
+        new ScriptedStreams(script)
+      )
+
+      run(guarded.createChatCompletionStreamedTyped(Seq(UserMessage("Tell me")), settings))
+
+      guard.checked shouldBe Seq("The answer.\nLet me check.\nout\nerr\nA note.\n")
+    }
+
+    "check a server-side tool result without a textual view by its content's text" in {
+      val guard = new WordGuardrail("words", "secret")
+      val script = Seq(
+        ChatChunk.Start("r1", "main-model"),
+        ChatChunk.ToolResult(
+          "f1",
+          "web_fetch",
+          Json.obj(
+            "type" -> "web_fetch_result",
+            "url" -> "https://example.com",
+            "content" -> Json.obj(
+              "type" -> "document",
+              "source" -> Json.obj("type" -> "text", "data" -> "The secret is 42.")
+            )
+          ),
+          None,
+          isError = false
+        ),
+        ChatChunk.Text("Done."),
+        ChatChunk.Finish(FinishReason.stop, Some("stop"))
+      )
+      val guarded = adapters.guardrailsWithStreaming(
+        output = Seq(guard),
+        onViolation = GuardrailAction.respond("Blocked.")
+      )(new ScriptedStreams(script))
+
+      val chunks =
+        run(guarded.createChatCompletionStreamedTyped(Seq(UserMessage("Fetch it")), settings))
+
+      guard.checked shouldBe Seq("Done.\nhttps://example.com\nThe secret is 42.")
+      chunks.collect { case ChatChunk.Text(text) => text } shouldBe Seq("Blocked.")
+    }
+
+    "quote only the answer when asking again for a reply flagged by its reasoning" in {
+      val leakingThought = Seq(
+        ChatChunk.Start("r1", "main-model"),
+        ChatChunk.Thinking("The secret is 42."),
+        ChatChunk.Text("I can't share it."),
+        ChatChunk.Finish(FinishReason.stop, Some("stop"))
+      )
+      val chat = new ScriptedStreams(leakingThought, clean)
+      val guarded = adapters.guardrailsWithStreaming(
+        output = Seq(new WordGuardrail("words", "secret")),
+        outputReprompts = 1
+      )(chat)
+
+      run(guarded.createChatCompletionStreamedTyped(Seq(UserMessage("Tell me")), settings))
+
+      chat.calls(1)(1) shouldBe AssistantMessage("I can't share it.")
+    }
+
+    "check the OpenAI-shaped stream's reasoning" in {
+      def chunk(delta: ChunkMessageSpec) =
+        ChatCompletionChunkResponse(
+          "oa-3",
+          new java.util.Date(0L),
+          "main-model",
+          None,
+          Seq(ChatCompletionChoiceChunkInfo(delta, 0, None)),
+          None
+        )
+
+      val reasoning = Seq(
+        chunk(ChunkMessageSpec(None, None, reasoning_content = Some("The secret "))),
+        chunk(ChunkMessageSpec(None, None, reasoning_content = Some("is 42."))),
+        chunk(ChunkMessageSpec(None, Some("I can't share it.")))
+      )
+      val streams: OpenAIChatCompletionService with OpenAIChatCompletionStreamedServiceExtra =
+        new OpenAIChatCompletionService with OpenAIChatCompletionStreamedServiceExtra {
+          override def createChatCompletion(
+            messages: Seq[BaseMessage],
+            settings: CreateChatCompletionSettings
+          ): Future[ChatCompletionResponse] = Future.failed(new UnsupportedOperationException)
+
+          override def createChatCompletionStreamed(
+            messages: Seq[BaseMessage],
+            settings: CreateChatCompletionSettings
+          ): Source[ChatCompletionChunkResponse, NotUsed] = Source(reasoning.toList)
+
+          override def close(): Unit = ()
+        }
+      val guarded = adapters.guardrailsWithStreaming(
+        output = Seq(new WordGuardrail("words", "secret")),
+        onViolation = GuardrailAction.respond("Blocked.")
+      )(streams)
+
+      val chunks =
+        run(guarded.createChatCompletionStreamed(Seq(UserMessage("Tell me")), settings))
+
+      chunks.flatMap(_.choices.flatMap(_.delta.content)) shouldBe Seq("Blocked.")
+      chunks.flatMap(_.choices.flatMap(_.delta.reasoning_content)) shouldBe Nil
     }
 
     "answer only the flagged reply of several choices in the OpenAI-shaped stream" in {

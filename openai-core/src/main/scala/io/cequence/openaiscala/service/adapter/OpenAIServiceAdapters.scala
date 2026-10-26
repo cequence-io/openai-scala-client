@@ -68,8 +68,10 @@ object OpenAIServiceAdapters {
    * A stream starts only once the input guardrails passed. With output guardrails, its reply
    * is held back until the stream finishes, checked once, then released - so no unchecked text
    * reaches the consumer, and a flagged reply can be asked for again (`outputReprompts`), as
-   * without streaming; without output guardrails the stream passes through as it comes. A
-   * block either fails the stream with an
+   * without streaming; without output guardrails the stream passes through as it comes. The
+   * check covers everything released - the answer, reasoning, refusals, server-side tool
+   * output, citations and further choices; tool-call arguments are not checked, as on the sync
+   * path. A block either fails the stream with an
    * [[io.cequence.openaiscala.OpenAIScalaGuardrailException]] (`Reject`) or answers it with
    * the block message and finish reason `content_filter` (`Respond`; the typed stream also
    * carries the verdicts in an `Other("guardrail_block")` chunk).

@@ -20,10 +20,11 @@ import io.cequence.openaiscala.service.{
   OpenAIChatCompletionService,
   OpenAIChatCompletionStreamedServiceExtra
 }
-import play.api.libs.json.{JsObject, Json}
+import play.api.libs.json.{JsArray, JsObject, JsString, JsValue, Json}
 
 import java.util.Date
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
 
 /**
  * See [[OpenAIServiceAdapters.guardrailsWithStreaming]]: the calls that are not streamed go
@@ -126,7 +127,8 @@ private class GuardrailsStreamedAdapter(
       )
       .mapMaterializedValue(_ => NotUsed)
 
-  // the reply held back until the stream finishes, then checked once by the output guardrails;
+  // the reply held back until the stream finishes, then checked once by the output guardrails -
+  // everything it releases, not only the answer text;
   // a flagged one asked for again (up to `reprompts` times, the usage of all attempts summed)
   // unless a guard was unavailable
   private def checkedWhenFinished[C](
@@ -142,7 +144,12 @@ private class GuardrailsStreamedAdapter(
       // a restart voids everything before it
       val current = all.drop(all.lastIndexWhere(chunks.isRestart).max(0))
       val usage = UsageInfo.sumOption(usageSoFar, current.flatMap(chunks.usage).lastOption)
-      val decision = runner.checkOutput(chunks.replies(current), messages, attempt < reprompts)
+      val decision =
+        runner.checkOutput(
+          chunks.checkedReplies(current).map { case (_, reply) => reply },
+          messages,
+          attempt < reprompts
+        )
 
       Source.future(decision).flatMapConcat {
         // a reprompted stream reports the usage of every attempt
@@ -186,10 +193,17 @@ private object GuardrailsStreamedAdapter {
   /** How a stream's chunks carry the reply, and how a block is written in them. */
   trait StreamChunks[C] {
 
-    /** The text fragments of a chunk, by choice index. */
+    /** The answer text fragments of a chunk, by choice index. */
     def texts(chunk: C): Seq[(Int, String)]
 
-    /** The reply of each choice of a stream, by choice index, in choice order. */
+    /**
+     * The other text a chunk releases - reasoning, refusals, server-side tool output,
+     * citations, a typed stream's further choices, raw extras - as (choice index, channel,
+     * fragment). Tool-call arguments are not checked, as on the sync path.
+     */
+    def otherTexts(chunk: C): Seq[(Int, String, String)]
+
+    /** The answer of each choice of a stream, by choice index, in choice order. */
     def repliesByChoice(chunks: Seq[C]): Seq[(Int, String)] =
       chunks
         .flatMap(texts)
@@ -198,9 +212,34 @@ private object GuardrailsStreamedAdapter {
         .sortBy { case (index, _) => index }
         .map { case (index, parts) => index -> parts.map { case (_, text) => text }.mkString }
 
-    /** The reply of each choice of a stream, in choice order. */
-    def replies(chunks: Seq[C]): Seq[String] =
-      repliesByChoice(chunks).map { case (_, reply) => reply }
+    /**
+     * Each choice's reply as the output guardrails check it, in choice order: its answer, then
+     * each other channel - a channel's fragments joined as they came, so a text split across
+     * deltas is checked whole, the channels a line apart.
+     */
+    def checkedReplies(chunks: Seq[C]): Seq[(Int, Reply)] = {
+      val answers = repliesByChoice(chunks).toMap
+      val others = chunks.flatMap(otherTexts)
+      val indices = (answers.keys.toSeq ++ others.map { case (index, _, _) => index }).distinct
+
+      indices.sorted.map { index =>
+        val allChannels = others.collect { case (`index`, channel, _) => channel }.distinct
+        val channels = allChannels.filterNot(repeated(allChannels))
+        val texts = answers.get(index).toSeq ++ channels.map { channel =>
+          others.collect { case (`index`, `channel`, text) => text }.mkString
+        }
+        index -> Reply(
+          texts.filter(_.trim.nonEmpty).mkString("\n"),
+          answers.getOrElse(index, "")
+        )
+      }
+    }
+
+    /**
+     * The channels of a reply that repeat another of its channels, left out of its check (none
+     * by default).
+     */
+    protected def repeated(channels: Seq[String]): Set[String] = Set.empty
 
     def isRestart(chunk: C): Boolean
 
@@ -249,6 +288,96 @@ private object GuardrailsStreamedAdapter {
         case _                    => Nil
       }
 
+    override def otherTexts(chunk: ChatChunk): Seq[(Int, String, String)] =
+      chunk match {
+        case ChatChunk.Thinking(text) =>
+          Seq((0, "thinking", text))
+
+        case ChatChunk.Refusal(text) =>
+          Seq((0, "refusal", text))
+
+        // its textual view when it has one (the raw content carries the same and the payload's
+        // metadata), else the text of the raw content
+        case result: ChatChunk.ToolResult =>
+          val text = result.text.map(Seq(_)).getOrElse(stringLeaves(result.content))
+          Seq((0, s"tool_result:${result.callId}", text.mkString("\n")))
+
+        case execution: ChatChunk.CodeExecution =>
+          Seq((0, s"code:${execution.callId}", execution.code))
+
+        case result: ChatChunk.CodeExecutionResult =>
+          val text = result.output.map(Seq(_)).getOrElse(stringLeaves(result.raw))
+          Seq((0, s"code_result:${result.callId}", text.mkString("\n")))
+
+        case search: ChatChunk.WebSearch =>
+          Seq((0, s"web_search:${search.callId}", search.queries.mkString("\n")))
+
+        case result: ChatChunk.WebSearchResult =>
+          val lines = result.results.map(item => (item.title.toSeq :+ item.url).mkString(" "))
+          Seq((0, s"web_search_result:${result.callId}", lines.mkString("\n")))
+
+        case citation: ChatChunk.Citation =>
+          val text = (citation.citedText.toSeq ++ citation.title).mkString(" ")
+          Seq((0, "citations", text + "\n"))
+
+        // a further choice (OpenAI-compatible hosts): its delta, under its own index
+        case ChatChunk.Other(kind, raw) if kind.startsWith("choice[") =>
+          val index = choiceIndex(kind)
+          Seq("content", "reasoning_content", "reasoning", "refusal").flatMap { field =>
+            (raw \ "delta" \ field).asOpt[String].map(text => (index, field, text))
+          }
+
+        // a further candidate (Gemini, Vertex AI): its parts, under its own index
+        case ChatChunk.Other(kind, raw) if kind.startsWith("candidate[") =>
+          val index = choiceIndex(kind)
+          (raw \ "content" \ "parts").asOpt[Seq[JsValue]].getOrElse(Nil).flatMap { part =>
+            val channel =
+              if ((part \ "thought").asOpt[Boolean].contains(true))
+                "thought"
+              else
+                "text"
+            (part \ "text").asOpt[String].map(text => (index, channel, text))
+          }
+
+        case ChatChunk.Other(BlockKind, _) =>
+          Nil
+
+        // the events repeating text checked from its deltas (the answer, a reasoning summary)
+        case ChatChunk.Other(kind, _) if RepeatedTextEvents.contains(kind) =>
+          Nil
+
+        // anything else released raw (content.*, subagent messages, unknown events): its text
+        case ChatChunk.Other(kind, raw) =>
+          stringLeaves(raw).map(text => (0, s"other:$kind", text + "\n"))
+
+        case _ =>
+          Nil
+      }
+
+    // the semantic layer repeats the tool layer: a call's code execution or web search result
+    // is its ToolResult again (Anthropic, Gemini, Vertex AI emit both)
+    override protected def repeated(channels: Seq[String]): Set[String] =
+      channels.filter { channel =>
+        SemanticResultChannels.exists { prefix =>
+          channel.startsWith(prefix) &&
+          channels.contains("tool_result:" + channel.stripPrefix(prefix))
+        }
+      }.toSet
+
+    private val SemanticResultChannels = Seq("code_result:", "web_search_result:")
+
+    // Responses API events whose text the stream's deltas already carried
+    private val RepeatedTextEvents = Set(
+      "response.content_part.added",
+      "response.content_part.done",
+      "response.reasoning_summary_part.added",
+      "response.reasoning_summary_part.done"
+    )
+
+    // `choice[2]` / `candidate[2]` -> 2 (an unparsable index is checked as its own choice)
+    private def choiceIndex(kind: String): Int =
+      Try(kind.drop(kind.indexOf('[') + 1).takeWhile(_.isDigit).toInt).getOrElse(-1)
+
     override def isRestart(chunk: ChatChunk): Boolean = chunk.isInstanceOf[ChatChunk.Retry]
 
     override def idAndModel(chunk: ChatChunk): Option[(String, String)] =
@@ -278,7 +407,7 @@ private object GuardrailsStreamedAdapter {
           case _                    => chunks :+ ChatChunk.Usage(usage)
         }
 
-    // a typed stream has one reply - blocked as a whole
+    // a typed stream is blocked as a whole, whichever of its choices was flagged
     override def blockedReplies(
       message: String,
       verdicts: Seq[GuardrailVerdict],
@@ -313,6 +442,16 @@ private object GuardrailsStreamedAdapter {
     override def texts(chunk: ChatCompletionChunkResponse): Seq[(Int, String)] =
       chunk.choices.flatMap { choice =>
         choice.delta.content.filter(_.nonEmpty).map(choice.index -> _)
+      }
+
+    override def otherTexts(chunk: ChatCompletionChunkResponse): Seq[(Int, String, String)] =
+      chunk.choices.flatMap { choice =>
+        val delta = choice.delta
+        delta.reasoning_content.map(text => (choice.index, "reasoning_content", text)).toSeq ++
+          delta.reasoning.map(text => (choice.index, "reasoning", text)) ++
+          delta.content_chunks.getOrElse(Nil).flatMap { raw =>
+            stringLeaves(raw).map(text => (choice.index, "content_chunks", text + "\n"))
+          }
       }
 
     override def isRestart(chunk: ChatCompletionChunkResponse): Boolean = false
@@ -353,9 +492,9 @@ private object GuardrailsStreamedAdapter {
       flagged: String => Boolean,
       usage: Option[UsageInfo]
     ): Seq[ChatCompletionChunkResponse] = {
-      val replies = repliesByChoice(current)
+      val replies = checkedReplies(current)
       val flaggedIndices = replies.collect {
-        case (index, reply) if flagged(reply) => index
+        case (index, reply) if flagged(reply.checked) => index
       }.toSet
       val idAndModelOfStream = current.flatMap(idAndModel).headOption
 
@@ -431,6 +570,34 @@ private object GuardrailsStreamedAdapter {
       )
     }
   }
+
+  /**
+   * The text of a raw JSON value - its string leaves, in order - for the output check. Left
+   * out: a long string without whitespace (base64 data, a signature), which carries no text,
+   * and the identifier and status fields (`type`, `object`, `status`, `role`, `id`, `*_id`),
+   * which name the payload rather than release text.
+   */
+  def stringLeaves(json: JsValue): Seq[String] =
+    json match {
+      case JsString(text) =>
+        if (text.length > MaxOpaqueStringLength && !text.exists(_.isWhitespace))
+          Nil
+        else
+          Seq(text)
+      case JsArray(items) => items.toSeq.flatMap(stringLeaves)
+      case obj: JsObject =>
+        obj.fields.toSeq.flatMap { case (key, value) =>
+          if (MetadataFields.contains(key) || key.endsWith("_id"))
+            Nil
+          else
+            stringLeaves(value)
+        }
+      case _ => Nil
+    }
+
+  private val MaxOpaqueStringLength = 512
+
+  private val MetadataFields = Set("type", "object", "status", "role", "id")
 
   def verdictsJson(verdicts: Seq[GuardrailVerdict]): JsObject = {
     val stage: String = verdicts.headOption.fold("")(_.stage.toString)
