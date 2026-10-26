@@ -10,25 +10,34 @@ import io.cequence.openaiscala.service.{
 import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration._
 
-/** Requires MINIMAX_API_KEY. Optional arguments: model ID, then "china" for that region. */
+/**
+ * MiniMax's chat API, MiniMax-M3.1-Flash by default. Requires MINIMAX_API_KEY. Optional
+ * arguments: a model id (e.g. MiniMax-M3), then "china" for the China endpoint
+ * (api.minimaxi.com).
+ */
 object CreateMiniMaxChatCompletion {
-  private[minimax] def settings(args: Array[String]): CreateChatCompletionSettings =
-    CreateChatCompletionSettings(
-      args.headOption.getOrElse(NonOpenAIModelId.minimax_m3_1_flash)
-    )
 
   def main(args: Array[String]): Unit = {
     implicit val ec: ExecutionContext = ExecutionContext.global
+
+    val model = args.headOption.getOrElse(NonOpenAIModelId.minimax_m3_1_flash)
     val provider =
-      if (args.lift(1).contains("china")) ChatProviderSettings.minimaxChina
-      else ChatProviderSettings.minimax
+      if (args.lift(1).contains("china"))
+        ChatProviderSettings.minimaxChina
+      else
+        ChatProviderSettings.minimax
+
     val service = OpenAIChatCompletionServiceFactory(provider)
+
     try {
       val response = Await.result(
-        service.createChatCompletion(Seq(UserMessage("Hello!")), settings(args)),
+        service.createChatCompletion(
+          Seq(UserMessage("Hello!")),
+          CreateChatCompletionSettings(model)
+        ),
         2.minutes
       )
-      println(response)
+      println(response.contentHead)
     } finally service.close()
   }
 }

@@ -4,9 +4,16 @@ import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain.settings.{
   CreateChatCompletionSettings,
   ReasoningEffort,
+  ServiceTier,
   Verbosity
 }
-import io.cequence.openaiscala.domain.{JsonSchema, ModelId, SystemMessage, UserMessage}
+import io.cequence.openaiscala.domain.{
+  JsonSchema,
+  ModelId,
+  NonOpenAIModelId,
+  SystemMessage,
+  UserMessage
+}
 import io.cequence.openaiscala.service.adapter.ChatCompletionSettingsConversions
 import io.cequence.openaiscala.service.adapter.ChatCompletionSettingsConversions._
 import org.scalatest.matchers.should.Matchers
@@ -559,6 +566,43 @@ class ModelConversionsRoutingSpec extends AnyWordSpec with Matchers {
       Seq("stop", "logit_bias", "logprobs", "verbosity").foreach(key =>
         body.get(key) shouldBe defined
       )
+    }
+  }
+
+  "MiniMax's direct API (per MiniMax's docs)" should {
+
+    "never send none or minimal to MiniMax-M3.1-Flash - it always thinks, low is the lowest" in {
+      val flash = NonOpenAIModelId.minimax_m3_1_flash
+      effortSent(flash, ReasoningEffort.none) shouldBe Some("low")
+      effortSent(flash, ReasoningEffort.minimal) shouldBe Some("low")
+      Seq(
+        ReasoningEffort.low,
+        ReasoningEffort.medium,
+        ReasoningEffort.high,
+        ReasoningEffort.xhigh,
+        ReasoningEffort.max
+      ).foreach(effort => effortSent(flash, effort) shouldBe Some(effort.toString))
+      // omitted = MiniMax's own default (max)
+      maker.body(CreateChatCompletionSettings(flash)).get("reasoning_effort") shouldBe None
+    }
+
+    "drop service_tier on MiniMax-M3.1-Flash, which does not support it" in {
+      val body = maker.body(
+        CreateChatCompletionSettings(
+          NonOpenAIModelId.minimax_m3_1_flash,
+          service_tier = Some(ServiceTier.priority)
+        )
+      )
+      body.get("service_tier") shouldBe None
+    }
+
+    "leave MiniMax-M3 alone - it ignores reasoning_effort and serves service_tier" in {
+      val m3 = NonOpenAIModelId.minimax_m3
+      effortSent(m3, ReasoningEffort.none) shouldBe Some("none")
+      maker
+        .body(CreateChatCompletionSettings(m3, service_tier = Some(ServiceTier.priority)))
+        .get("service_tier")
+        .map(_.as[String]) shouldBe Some("priority")
     }
   }
 }

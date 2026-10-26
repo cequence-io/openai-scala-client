@@ -667,12 +667,13 @@ object NonOpenAIModelId {
 
   // Minimax
 
-  // MiniMax direct API (api.minimax.io / api.minimaxi.com) - current models, Flash first
+  // MiniMax direct API (api.minimax.io / api.minimaxi.com) - the models MiniMax's docs list
+  // (2026-10-24, 1M context each); Flash always thinks (`miniMaxFlash` conversions)
   val minimax_m3_1_flash = "MiniMax-M3.1-Flash" // MiniMax
   val minimax_m3 = "MiniMax-M3" // MiniMax
+  // no longer in the docs' supported-model table, still listed by /v1/models (2026-10-24)
+  val minimax_m2_7 = "MiniMax-M2.7" // MiniMax
 
-  // Legacy model IDs retained for explicit requests.
-  val minimax_m2_7 = "MiniMax-M2.7" // MiniMax direct API
   // MiniMax M2.x - MoE 230B total / 10B active, coding & agentic
   // Fireworks AI uses short form (full path: accounts/fireworks/models/minimax-m2*)
   val minimax_m2 = "minimax-m2" // Fireworks AI
