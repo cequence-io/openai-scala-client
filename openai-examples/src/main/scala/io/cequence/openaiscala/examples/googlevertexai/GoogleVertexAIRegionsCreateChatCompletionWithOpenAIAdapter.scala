@@ -72,7 +72,7 @@ object GoogleVertexAIRegionsCreateChatCompletionWithOpenAIAdapter
             )
           )
         )(
-          VertexAIServiceFactory.asOpenAI(location = location)
+          VertexAIServiceFactory.asOpenAI(location = Some(location))
         )
       }: _*
     )

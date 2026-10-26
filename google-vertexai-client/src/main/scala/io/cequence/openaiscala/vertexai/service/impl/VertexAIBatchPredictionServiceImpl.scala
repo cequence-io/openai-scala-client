@@ -9,7 +9,11 @@ import io.cequence.openaiscala.vertexai.domain.{
   CreateBatchPredictionJobSettings,
   ListBatchPredictionJobsResponse
 }
-import io.cequence.openaiscala.vertexai.service.VertexAIBatchPredictionService
+import io.cequence.openaiscala.vertexai.service.{
+  VertexAIBatchPredictionService,
+  VertexAILocation
+}
+import io.cequence.openaiscala.service.PathSegment
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
 import io.cequence.wsclient.domain.{
   CequenceWSException,
@@ -37,9 +41,10 @@ object BatchEndPoint {
   case class cancelBatchPredictionJob(jobId: String)
       extends BatchEndPoint(s"batchPredictionJobs/${stripPrefix(jobId)}:cancel")
 
-  // accept either a bare job id or a full resource name
+  // accept either a bare job id or a full resource name; the id is ONE path segment (escaped,
+  // "." / ".." / "" refused)
   private def stripPrefix(jobId: String): String =
-    jobId.split("/").last
+    PathSegment(jobId.split("/").lastOption.getOrElse(""))
 }
 
 sealed trait BatchParam extends EnumValue
@@ -67,9 +72,7 @@ private[service] object VertexAIBatchPredictionServiceImpl {
     projectId: String,
     location: String
   ): SiteBinding = {
-    val host =
-      if (location == "global") "aiplatform.googleapis.com"
-      else s"$location-aiplatform.googleapis.com"
+    val host = VertexAILocation.apiHost(location)
 
     val coreUrl = s"https://$host/v1/projects/$projectId/locations/$location/"
 
@@ -196,9 +199,11 @@ private[service] class VertexAIBatchPredictionServiceImpl(
     if (model.contains("/")) model else s"publishers/google/models/$model"
 
   override def getBatchPredictionJob(jobId: String): Future[BatchPredictionJob] =
-    execGET(
-      BatchEndPoint.batchPredictionJob(jobId)
-    ).map(_.asSafeJson[BatchPredictionJob])
+    PathSegment.inFuture {
+      execGET(
+        BatchEndPoint.batchPredictionJob(jobId)
+      ).map(_.asSafeJson[BatchPredictionJob])
+    }
 
   override def listBatchPredictionJobs(
     pageSize: Option[Int],
@@ -215,12 +220,16 @@ private[service] class VertexAIBatchPredictionServiceImpl(
     ).map(_.asSafeJson[ListBatchPredictionJobsResponse])
 
   override def cancelBatchPredictionJob(jobId: String): Future[Unit] =
-    execPOST(
-      BatchEndPoint.cancelBatchPredictionJob(jobId)
-    ).map(_ => ())
+    PathSegment.inFuture {
+      execPOST(
+        BatchEndPoint.cancelBatchPredictionJob(jobId)
+      ).map(_ => ())
+    }
 
   override def deleteBatchPredictionJob(jobId: String): Future[Unit] =
-    execDELETE(
-      BatchEndPoint.batchPredictionJob(jobId)
-    ).map(_ => ())
+    PathSegment.inFuture {
+      execDELETE(
+        BatchEndPoint.batchPredictionJob(jobId)
+      ).map(_ => ())
+    }
 }

@@ -19,16 +19,19 @@ object VertexAIServiceFactory extends EnvHelper {
   private val locationIdKey = "VERTEXAI_LOCATION"
 
   /**
-   * Create a new instance of the [[OpenAIChatCompletionService]] wrapping the AnthropicService
+   * Create a new instance of the [[OpenAIChatCompletionService]] wrapping Vertex AI
    *
    * @param projectId
    * @param location
+   *   GCP location: a region (`europe-west4`), a jurisdiction (`eu` / `us` - ML processing
+   *   stays within it) or `global`; defaults to the VERTEXAI_LOCATION env. variable, global
+   *   when unset - see [[VertexAILocation]]
    * @param ec
    * @return
    */
   def asOpenAI(
     projectId: String = getEnvValue(projectIdKey),
-    location: String = getEnvValue(locationIdKey)
+    location: Option[String] = Option(System.getenv(locationIdKey))
   )(
     implicit ec: ExecutionContext
   ): OpenAIChatCompletionStreamedService =
@@ -38,9 +41,16 @@ object VertexAIServiceFactory extends EnvHelper {
 
   private def apply(
     projectId: String = getEnvValue(projectIdKey),
-    location: String = getEnvValue(locationIdKey)
-  ): VertexAI =
-    new VertexAI(projectId, location)
+    location: Option[String] = Option(System.getenv(locationIdKey))
+  ): VertexAI = {
+    val resolvedLocation = VertexAILocation.resolve(location)
+    new VertexAI.Builder()
+      .setProjectId(projectId)
+      .setLocation(resolvedLocation)
+      // the SDK would derive <location>-aiplatform.googleapis.com, wrong for global / eu / us
+      .setApiEndpoint(VertexAILocation.apiHost(resolvedLocation))
+      .build()
+  }
 
   /**
    * Create a new instance of the [[OpenAIChatCompletionService]] wrapping VertexAI with the
@@ -57,7 +67,7 @@ object VertexAIServiceFactory extends EnvHelper {
   def asOpenAIWithBatchSupport(
     gcsBucket: String,
     projectId: String = getEnvValue(projectIdKey),
-    location: String = getEnvValue(locationIdKey),
+    location: Option[String] = Option(System.getenv(locationIdKey)),
     gcsPathPrefix: String = "openai-scala-client-batches",
     timeouts: Option[Timeouts] = None
   )(
@@ -83,19 +93,24 @@ object VertexAIServiceFactory extends EnvHelper {
    * @param projectId
    *   GCP project id (defaults to the VERTEXAI_PROJECT_ID env. variable)
    * @param location
-   *   GCP location, e.g. `us-central1` or `global` (defaults to the VERTEXAI_LOCATION env.
-   *   variable)
+   *   GCP location: a region (`europe-west4`), a jurisdiction (`eu` / `us` - ML processing
+   *   stays within it) or `global`; defaults to the VERTEXAI_LOCATION env. variable, global
+   *   when unset - see [[VertexAILocation]]
    * @param timeouts
    *   The explicit timeouts to use for the service (optional)
    */
   def batchPrediction(
     projectId: String = getEnvValue(projectIdKey),
-    location: String = getEnvValue(locationIdKey),
+    location: Option[String] = Option(System.getenv(locationIdKey)),
     timeouts: Option[Timeouts] = None
   )(
     implicit ec: ExecutionContext
   ): VertexAIBatchPredictionService =
-    new VertexAIBatchPredictionServiceImpl(projectId, location, timeouts)
+    new VertexAIBatchPredictionServiceImpl(
+      projectId,
+      VertexAILocation.resolve(location),
+      timeouts
+    )
 
   /**
    * [[batchPrediction]] variant on a CALLER-SUPPLIED, SITE-STATELESS engine - e.g. one shared
@@ -107,19 +122,20 @@ object VertexAIServiceFactory extends EnvHelper {
    * @param projectId
    *   GCP project id (defaults to the VERTEXAI_PROJECT_ID env. variable)
    * @param location
-   *   GCP location, e.g. `us-central1` or `global` (defaults to the VERTEXAI_LOCATION env.
-   *   variable)
+   *   GCP location: a region (`europe-west4`), a jurisdiction (`eu` / `us` - ML processing
+   *   stays within it) or `global`; defaults to the VERTEXAI_LOCATION env. variable, global
+   *   when unset - see [[VertexAILocation]]
    */
   def batchPredictionWithEngine(
     engine: WSClientEngine,
     projectId: String = getEnvValue(projectIdKey),
-    location: String = getEnvValue(locationIdKey)
+    location: Option[String] = Option(System.getenv(locationIdKey))
   )(
     implicit ec: ExecutionContext
   ): VertexAIBatchPredictionService =
     new VertexAIBatchPredictionServiceImpl(
       projectId,
-      location,
+      VertexAILocation.resolve(location),
       externalEngine = Some(engine)
     )
 }
