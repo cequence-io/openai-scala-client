@@ -20,12 +20,8 @@ lazy val commonSettings = Seq(
 
 def extraTestDependencies(scalaVersion: String) =
   CrossVersion.partialVersion(scalaVersion) match {
-    case Some((2, 12)) =>
-      Seq(
-        "com.typesafe.akka" %% "akka-actor-testkit-typed" % "2.6.1" % Test
-      )
-
-    case Some((2, 13)) =>
+    // Akka 2.6.20 on 2.12 too: ws-client 1.1.4 moved off 2.6.1, and Akka refuses mixed versions
+    case Some((2, _)) =>
       Seq(
         "com.typesafe.akka" %% "akka-actor-testkit-typed" % "2.6.20" % Test
       )
