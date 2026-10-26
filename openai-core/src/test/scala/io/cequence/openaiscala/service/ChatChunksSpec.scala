@@ -455,4 +455,119 @@ class ChatChunksSpec
         Seq("stop", "tool_calls", "length")
     }
   }
+
+  "ChatChunks.toOpenAIChunks and provider-executed calls" should {
+
+    def toolCallsOf(chunks: Seq[ChatCompletionChunkResponse]): Seq[ToolCallChunkSpec] =
+      chunks.flatMap(_.choices.flatMap(_.delta.tool_calls.getOrElse(Nil)))
+
+    def textOf(chunks: Seq[ChatCompletionChunkResponse]): String =
+      chunks.flatMap(_.choices.flatMap(_.delta.content)).mkString
+
+    def render(
+      typed: Seq[ChatChunk],
+      withStartChunk: Boolean
+    ): Seq[ChatCompletionChunkResponse] = {
+      val flow =
+        if (withStartChunk)
+          ChatChunks.toOpenAIChunks
+        else
+          ChatChunks.toOpenAIChunks("id-1", "model-1")
+
+      Source(typed.toList).via(flow).runWith(Sink.seq).futureValue
+    }
+
+    val serverSideOnly: Seq[ChatChunk] = Seq(
+      Start("id-1", "model-1"),
+      ToolCallStart(0, "mcp_1", "ask_wiki_question", serverSide = true),
+      ToolCallDelta(0, "{\"question\":"),
+      ToolCallDelta(0, "\"why?\"}"),
+      ToolCall(0, "mcp_1", "ask_wiki_question", "{\"question\":\"why?\"}", serverSide = true),
+      Text("Because."),
+      Finish(FinishReason.stop, Some("completed")),
+      Usage(usage)
+    )
+
+    "omit a server-side call with its argument fragments and keep the text" in {
+      Seq(true, false).foreach { withStartChunk =>
+        val chunks = render(serverSideOnly, withStartChunk)
+
+        toolCallsOf(chunks) shouldBe Nil
+        textOf(chunks) shouldBe "Because."
+        chunks.flatMap(_.choices.flatMap(_.finish_reason)) shouldBe Seq("stop")
+      }
+    }
+
+    "keep a client call next to a server-side one" in {
+      val typed = Seq(
+        Start("id-1", "model-1"),
+        ToolCallStart(0, "mcp_1", "ask_wiki_question", serverSide = true),
+        ToolCallStart(1, "call_1", "get_weather", serverSide = false),
+        ToolCallDelta(0, "{\"question\":\"why?\"}"),
+        ToolCallDelta(1, "{\"city\":"),
+        ToolCallDelta(1, "\"Oslo\"}"),
+        Finish(FinishReason.tool_calls, Some("tool_calls"))
+      )
+
+      Seq(true, false).foreach { withStartChunk =>
+        val calls = toolCallsOf(render(typed, withStartChunk))
+
+        calls.map(_.index).distinct shouldBe Seq(1)
+        calls.flatMap(_.id) shouldBe Seq("call_1")
+        calls.flatMap(_.function.flatMap(_.name)) shouldBe Seq("get_weather")
+        calls.flatMap(_.function.flatMap(_.arguments)).mkString shouldBe
+          "{\"city\":\"Oslo\"}"
+      }
+    }
+
+    "forget the dropped indexes on Retry" in {
+      val typed = Seq(
+        Start("id-1", "model-1"),
+        ToolCallStart(0, "mcp_1", "ask_wiki_question", serverSide = true),
+        ToolCallDelta(0, "{}"),
+        Retry(1),
+        ToolCallStart(1, "call_1", "get_weather", serverSide = false),
+        // the restarted attempt reuses index 0 for a client call
+        ToolCallDelta(0, "{\"late\":true}"),
+        Finish(FinishReason.tool_calls, Some("tool_calls"))
+      )
+
+      Seq(true, false).foreach { withStartChunk =>
+        val calls = toolCallsOf(render(typed, withStartChunk))
+
+        calls.map(_.index) shouldBe Seq(1, 0)
+        calls.flatMap(_.function.flatMap(_.arguments)) shouldBe Seq("", "{\"late\":true}")
+      }
+    }
+
+    "keep the dropped set per materialization" in {
+      val flow = ChatChunks.toOpenAIChunks
+      val opening = Seq[ChatChunk](
+        Start("id-1", "model-1"),
+        ToolCallStart(0, "mcp_1", "ask_wiki_question", serverSide = true)
+      )
+      val fragment = Seq[ChatChunk](Start("id-2", "model-1"), ToolCallDelta(0, "{}"))
+
+      Source(opening.toList).via(flow).runWith(Sink.seq).futureValue
+      val second = Source(fragment.toList).via(flow).runWith(Sink.seq).futureValue
+
+      toolCallsOf(second).map(_.index) shouldBe Seq(0)
+    }
+
+    "read back as Finish(stop) with no client tool calls for a server-side-only turn" in {
+      val roundTripped = Source(serverSideOnly.toList)
+        .via(ChatChunks.toOpenAIChunks)
+        .via(ChatChunks.fromOpenAIChunks)
+        .runWith(Sink.seq)
+        .futureValue
+
+      roundTripped.collect { case f: Finish => f.reason } shouldBe Seq(FinishReason.stop)
+      roundTripped.collect { case tc: ToolCall => tc } shouldBe Nil
+      roundTripped.collect { case t: ToolCallStart => t } shouldBe Nil
+
+      val assembled = roundTripped.foldLeft(AssembledChatCompletion.empty)(_ add _)
+
+      assembled.clientToolCalls shouldBe Nil
+    }
+  }
 }

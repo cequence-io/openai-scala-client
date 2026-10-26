@@ -589,6 +589,7 @@ object ChatChunks {
       var id = ""
       var model = ""
       val created = new ju.Date()
+      val clientCallsOnly = clientCallsOnlyFilter()
 
       (chunk: ChatChunk) => {
         chunk match {
@@ -597,23 +598,55 @@ object ChatChunks {
             model = chunkModel
           case _ =>
         }
-        toOpenAIChunk(id, model, created, chunk).toList
+        clientCallsOnly(chunk).flatMap(toOpenAIChunk(id, model, created, _).toList)
       }
     }
 
   /**
    * The reverse view: typed chunks rendered as OpenAI-shaped chunks (text -> `delta.content`,
-   * thinking -> `delta.reasoning_content`, tool-call start/deltas -> `delta.tool_calls`,
-   * finish -> `finish_reason`, usage -> a trailing usage-only chunk). Assembled
-   * [[ChatChunk.ToolCall]]s, tool results, citations and `Other` are not representable and are
-   * skipped.
+   * thinking -> `delta.reasoning_content`, client tool-call start/deltas ->
+   * `delta.tool_calls`, finish -> `finish_reason`, usage -> a trailing usage-only chunk).
+   * Assembled [[ChatChunk.ToolCall]]s, tool results, citations and `Other` are not
+   * representable and are skipped; so are provider-executed calls (`serverSide = true`: hosted
+   * MCP, multi-agent delegation, hosted shell / code interpreter / web search) with their
+   * argument fragments, because every `tool_calls` entry in the OpenAI format is a call the
+   * client has to run and answer. The typed stream carries them.
    */
   def toOpenAIChunks(
     id: String,
     model: String
-  ): Flow[ChatChunk, ChatCompletionChunkResponse, NotUsed] = {
-    val created = new ju.Date()
-    Flow[ChatChunk].mapConcat(chunk => toOpenAIChunk(id, model, created, chunk).toList)
+  ): Flow[ChatChunk, ChatCompletionChunkResponse, NotUsed] =
+    Flow[ChatChunk].statefulMapConcat { () =>
+      val created = new ju.Date()
+      val clientCallsOnly = clientCallsOnlyFilter()
+
+      (chunk: ChatChunk) =>
+        clientCallsOnly(chunk).flatMap(toOpenAIChunk(id, model, created, _).toList)
+    }
+
+  // Per materialization: remembers the indexes of provider-executed calls and drops their start
+  // and every later argument fragment. A Retry restarts the stream (and its ordinals), so it
+  // clears the set. Client calls keep their indexes.
+  private def clientCallsOnlyFilter(): ChatChunk => List[ChatChunk] = {
+    val serverSideCalls = mutable.Set.empty[Int]
+
+    (chunk: ChatChunk) =>
+      chunk match {
+        case ToolCallStart(index, _, _, true) =>
+          serverSideCalls += index
+          Nil
+        case ToolCallStart(index, _, _, false) =>
+          // an index is never shared, but be safe if a restart did not signal itself
+          serverSideCalls -= index
+          List(chunk)
+        case ToolCallDelta(index, _) if serverSideCalls.contains(index) =>
+          Nil
+        case _: Retry =>
+          serverSideCalls.clear()
+          List(chunk)
+        case _ =>
+          List(chunk)
+      }
   }
 
   private def toOpenAIChunk(
