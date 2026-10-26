@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
 import akka.NotUsed
-import io.cequence.openaiscala.service.StreamingConsts
+import io.cequence.openaiscala.service.{PathSegment, StreamingConsts}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.cequence.openaiscala.anthropic.domain.{
@@ -173,10 +173,12 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   }
 
   override def getMessageBatch(batchId: String): Future[MessageBatch] =
-    execGET(
-      EndPoint.messageBatches,
-      Some(batchId)
-    ).map(_.asSafeJson[MessageBatch])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.messageBatches,
+        Some(PathSegment(batchId))
+      ).map(_.asSafeJson[MessageBatch])
+    }
 
   override def listMessageBatches(
     limit: Option[Int],
@@ -195,42 +197,50 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   override def streamMessageBatchResults(
     batchId: String
   ): Source[MessageBatchIndividualResponse, NotUsed] =
-    execRawStream(
-      EndPoint.messageBatches,
-      "GET",
-      endPointParam = Some(s"$batchId/results")
-    ).via(StreamingConsts.framing("\n")) // a line carries a whole message response
-      .map(_.utf8String.trim)
-      .filter(_.nonEmpty)
-      .map(line => Json.parse(line).asSafe[MessageBatchIndividualResponse])
+    PathSegment.inSource {
+      execRawStream(
+        EndPoint.messageBatches,
+        "GET",
+        endPointParam = Some(s"${PathSegment(batchId)}/results")
+      ).via(StreamingConsts.framing("\n")) // a line carries a whole message response
+        .map(_.utf8String.trim)
+        .filter(_.nonEmpty)
+        .map(line => Json.parse(line).asSafe[MessageBatchIndividualResponse])
+    }
 
   override def retrieveMessageBatchResults(
     batchId: String
   ): Future[Seq[MessageBatchIndividualResponse]] =
-    execGET(
-      EndPoint.messageBatches,
-      Some(s"$batchId/results")
-    ).map(
-      _.string
-        .split("\n")
-        .toSeq
-        .map(_.trim)
-        .filter(_.nonEmpty)
-        .map(line => Json.parse(line).asSafe[MessageBatchIndividualResponse])
-    )
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.messageBatches,
+        Some(s"${PathSegment(batchId)}/results")
+      ).map(
+        _.string
+          .split("\n")
+          .toSeq
+          .map(_.trim)
+          .filter(_.nonEmpty)
+          .map(line => Json.parse(line).asSafe[MessageBatchIndividualResponse])
+      )
+    }
 
   override def cancelMessageBatch(batchId: String): Future[MessageBatch] =
-    execPOST(
-      EndPoint.messageBatches,
-      Some(s"$batchId/cancel"),
-      bodyParams = Nil
-    ).map(_.asSafeJson[MessageBatch])
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.messageBatches,
+        Some(s"${PathSegment(batchId)}/cancel"),
+        bodyParams = Nil
+      ).map(_.asSafeJson[MessageBatch])
+    }
 
   override def deleteMessageBatch(batchId: String): Future[MessageBatchDeleteResponse] =
-    execDELETE(
-      EndPoint.messageBatches,
-      Some(batchId)
-    ).map(_.asSafeJson[MessageBatchDeleteResponse])
+    PathSegment.inFuture {
+      execDELETE(
+        EndPoint.messageBatches,
+        Some(PathSegment(batchId))
+      ).map(_.asSafeJson[MessageBatchDeleteResponse])
+    }
 
   override def createSkill(
     displayTitle: Option[String],
@@ -274,30 +284,31 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     )
   }
 
-  override def getSkill(skillId: String): Future[Skill] = {
+  override def getSkill(skillId: String): Future[Skill] = PathSegment.inFuture {
     execGET(
       EndPoint.skills,
-      Some(skillId),
+      Some(PathSegment(skillId)),
       extraHeaders = skillHeaders
     ).map(
       _.asSafeJson[Skill]
     )
   }
 
-  override def deleteSkill(skillId: String): Future[DeleteSkillResponse] = {
-    execDELETE(
-      EndPoint.skills,
-      Some(skillId),
-      extraHeaders = skillHeaders
-    ).map(
-      _.asSafeJson[DeleteSkillResponse]
-    )
-  }
+  override def deleteSkill(skillId: String): Future[DeleteSkillResponse] =
+    PathSegment.inFuture {
+      execDELETE(
+        EndPoint.skills,
+        Some(PathSegment(skillId)),
+        extraHeaders = skillHeaders
+      ).map(
+        _.asSafeJson[DeleteSkillResponse]
+      )
+    }
 
   override def createSkillVersion(
     skillId: String,
     files: Seq[(File, String)]
-  ): Future[SkillVersion] = {
+  ): Future[SkillVersion] = PathSegment.inFuture {
     require(files.nonEmpty, "At least one file is required to create a skill version")
 
     val fileParams = files.map { case (file, filename) =>
@@ -306,7 +317,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
     execPOSTMultipart(
       EndPoint.skills,
-      endPointParam = Some(s"$skillId/versions"),
+      endPointParam = Some(s"${PathSegment(skillId)}/versions"),
       fileParams = fileParams,
       extraHeaders = skillHeaders
     ).map(
@@ -318,7 +329,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     skillId: String,
     page: Option[String],
     limit: Option[Int]
-  ): Future[ListSkillVersionsResponse] = {
+  ): Future[ListSkillVersionsResponse] = PathSegment.inFuture {
     val queryParams = Seq(
       Param.page -> page,
       Param.limit -> limit.map(_.toString)
@@ -326,7 +337,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
     execGET(
       EndPoint.skills,
-      Some(s"$skillId/versions"),
+      Some(s"${PathSegment(skillId)}/versions"),
       params = queryParams,
       extraHeaders = skillHeaders
     ).map(
@@ -337,10 +348,10 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   override def getSkillVersion(
     skillId: String,
     version: String
-  ): Future[SkillVersion] = {
+  ): Future[SkillVersion] = PathSegment.inFuture {
     execGET(
       EndPoint.skills,
-      Some(s"$skillId/versions/$version"),
+      Some(s"${PathSegment(skillId)}/versions/${PathSegment(version)}"),
       extraHeaders = skillHeaders
     ).map(
       _.asSafeJson[SkillVersion]
@@ -350,10 +361,10 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   override def deleteSkillVersion(
     skillId: String,
     version: String
-  ): Future[DeleteSkillVersionResponse] = {
+  ): Future[DeleteSkillVersionResponse] = PathSegment.inFuture {
     execDELETE(
       EndPoint.skills,
-      Some(s"$skillId/versions/$version"),
+      Some(s"${PathSegment(skillId)}/versions/${PathSegment(version)}"),
       extraHeaders = skillHeaders
     ).map(
       _.asSafeJson[DeleteSkillVersionResponse]
@@ -399,10 +410,10 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
   override def getFileMetadata(
     fileId: String
-  ): Future[Option[FileMetadata]] = {
+  ): Future[Option[FileMetadata]] = PathSegment.inFuture {
     execGETRich(
       EndPoint.files,
-      Some(fileId),
+      Some(PathSegment(fileId)),
       extraHeaders = fileBetaHeaders
     ).map { response =>
       handleNotFoundAndError(response).map(
@@ -413,10 +424,10 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
   override def downloadFile(
     fileId: String
-  ): Future[Option[Source[ByteString, _]]] = {
+  ): Future[Option[Source[ByteString, _]]] = PathSegment.inFuture {
     execGETRich(
       EndPoint.files,
-      Some(s"$fileId/content"),
+      Some(s"${PathSegment(fileId)}/content"),
       extraHeaders = fileBetaHeaders
     ).map { response =>
       handleNotFoundAndError(response).map(_.asSafeSource)
@@ -425,10 +436,10 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
   override def deleteFile(
     fileId: String
-  ): Future[FileDeleteResponse] = {
+  ): Future[FileDeleteResponse] = PathSegment.inFuture {
     execDELETE(
       EndPoint.files,
-      Some(fileId),
+      Some(PathSegment(fileId)),
       extraHeaders = fileBetaHeaders
     ).map(
       _.asSafeJson[FileDeleteResponse]
@@ -487,10 +498,10 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   override def getAgent(
     agentId: String,
     version: Option[Int]
-  ): Future[Agent] = {
+  ): Future[Agent] = PathSegment.inFuture {
     execGET(
       EndPoint.agents,
-      Some(agentId),
+      Some(PathSegment(agentId)),
       params = Seq(Param.version -> version.map(_.toString)),
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[Agent])
@@ -499,7 +510,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   override def updateAgent(
     agentId: String,
     settings: AnthropicUpdateAgentSettings
-  ): Future[Agent] = {
+  ): Future[Agent] = PathSegment.inFuture {
     val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
       Param.version -> Some(JsNumber(settings.version)),
       Param.name -> settings.name.map(JsString),
@@ -515,16 +526,16 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
     execPOST(
       EndPoint.agents,
-      Some(agentId),
+      Some(PathSegment(agentId)),
       bodyParams = bodyParams,
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[Agent])
   }
 
-  override def archiveAgent(agentId: String): Future[Agent] = {
+  override def archiveAgent(agentId: String): Future[Agent] = PathSegment.inFuture {
     execPOST(
       EndPoint.agents,
-      Some(s"$agentId/archive"),
+      Some(s"${PathSegment(agentId)}/archive"),
       bodyParams = Nil,
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[Agent])
@@ -534,7 +545,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     agentId: String,
     limit: Option[Int],
     page: Option[String]
-  ): Future[PagedResponse[Agent]] = {
+  ): Future[PagedResponse[Agent]] = PathSegment.inFuture {
     val queryParams = Seq(
       Param.limit -> limit.map(_.toString),
       Param.page -> page
@@ -542,7 +553,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
     execGET(
       EndPoint.agents,
-      Some(s"$agentId/versions"),
+      Some(s"${PathSegment(agentId)}/versions"),
       params = queryParams,
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[PagedResponse[Agent]])
@@ -602,16 +613,18 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   }
 
   override def getEnvironment(environmentId: String): Future[Environment] =
-    execGET(
-      EndPoint.environments,
-      Some(environmentId),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[Environment])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.environments,
+        Some(PathSegment(environmentId)),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[Environment])
+    }
 
   override def updateEnvironment(
     environmentId: String,
     settings: AnthropicUpdateEnvironmentSettings
-  ): Future[Environment] = {
+  ): Future[Environment] = PathSegment.inFuture {
     val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
       Param.config -> settings.config.map(Json.toJson(_)),
       Param.name -> settings.name.map(JsString),
@@ -622,7 +635,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
     execPOST(
       EndPoint.environments,
-      Some(environmentId),
+      Some(PathSegment(environmentId)),
       bodyParams = bodyParams,
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[Environment])
@@ -631,19 +644,23 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   override def deleteEnvironment(
     environmentId: String
   ): Future[EnvironmentDeleteResponse] =
-    execDELETE(
-      EndPoint.environments,
-      Some(environmentId),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[EnvironmentDeleteResponse])
+    PathSegment.inFuture {
+      execDELETE(
+        EndPoint.environments,
+        Some(PathSegment(environmentId)),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[EnvironmentDeleteResponse])
+    }
 
   override def archiveEnvironment(environmentId: String): Future[Environment] =
-    execPOST(
-      EndPoint.environments,
-      Some(s"$environmentId/archive"),
-      bodyParams = Nil,
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[Environment])
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.environments,
+        Some(s"${PathSegment(environmentId)}/archive"),
+        bodyParams = Nil,
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[Environment])
+    }
 
   // -- Self-hosted work queue --
 
@@ -652,34 +669,38 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     limit: Option[Int],
     page: Option[String]
   ): Future[PagedResponse[SelfHostedWork]] =
-    execGET(
-      EndPoint.environments,
-      Some(s"$environmentId/work"),
-      params = Seq(Param.limit -> limit.map(_.toString), Param.page -> page),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[PagedResponse[SelfHostedWork]])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.environments,
+        Some(s"${PathSegment(environmentId)}/work"),
+        params = Seq(Param.limit -> limit.map(_.toString), Param.page -> page),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[PagedResponse[SelfHostedWork]])
+    }
 
   override def getWork(
     environmentId: String,
     workId: String
   ): Future[SelfHostedWork] =
-    execGET(
-      EndPoint.environments,
-      Some(s"$environmentId/work/$workId"),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[SelfHostedWork])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.environments,
+        Some(s"${PathSegment(environmentId)}/work/${PathSegment(workId)}"),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[SelfHostedWork])
+    }
 
   override def pollWork(
     environmentId: String,
     blockMs: Option[Int],
     reclaimOlderThanMs: Option[Int],
     workerId: Option[String]
-  ): Future[SelfHostedWork] = {
+  ): Future[SelfHostedWork] = PathSegment.inFuture {
     val headers =
       managedAgentsHeaders ++ workerId.map(id => ("Anthropic-Worker-ID", id)).toSeq
     execGET(
       EndPoint.environments,
-      Some(s"$environmentId/work/poll"),
+      Some(s"${PathSegment(environmentId)}/work/poll"),
       params = Seq(
         Param.block_ms -> blockMs.map(_.toString),
         Param.reclaim_older_than_ms -> reclaimOlderThanMs.map(_.toString)
@@ -692,12 +713,14 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     environmentId: String,
     workId: String
   ): Future[SelfHostedWork] =
-    execPOST(
-      EndPoint.environments,
-      Some(s"$environmentId/work/$workId/ack"),
-      bodyParams = Nil,
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[SelfHostedWork])
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.environments,
+        Some(s"${PathSegment(environmentId)}/work/${PathSegment(workId)}/ack"),
+        bodyParams = Nil,
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[SelfHostedWork])
+    }
 
   override def recordWorkHeartbeat(
     environmentId: String,
@@ -705,47 +728,55 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     desiredTtlSeconds: Option[Int],
     expectedLastHeartbeat: Option[String]
   ): Future[WorkHeartbeatResponse] =
-    execPOST(
-      EndPoint.environments,
-      Some(s"$environmentId/work/$workId/heartbeat"),
-      params = Seq(
-        Param.desired_ttl_seconds -> desiredTtlSeconds.map(_.toString),
-        Param.expected_last_heartbeat -> expectedLastHeartbeat
-      ),
-      bodyParams = Nil,
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[WorkHeartbeatResponse])
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.environments,
+        Some(s"${PathSegment(environmentId)}/work/${PathSegment(workId)}/heartbeat"),
+        params = Seq(
+          Param.desired_ttl_seconds -> desiredTtlSeconds.map(_.toString),
+          Param.expected_last_heartbeat -> expectedLastHeartbeat
+        ),
+        bodyParams = Nil,
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[WorkHeartbeatResponse])
+    }
 
   override def stopWork(
     environmentId: String,
     workId: String,
     force: Option[Boolean]
   ): Future[SelfHostedWork] =
-    execPOST(
-      EndPoint.environments,
-      Some(s"$environmentId/work/$workId/stop"),
-      bodyParams = Seq(Param.force -> force.map(JsBoolean(_))),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[SelfHostedWork])
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.environments,
+        Some(s"${PathSegment(environmentId)}/work/${PathSegment(workId)}/stop"),
+        bodyParams = Seq(Param.force -> force.map(JsBoolean(_))),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[SelfHostedWork])
+    }
 
   override def updateWork(
     environmentId: String,
     workId: String,
     metadata: Map[String, Option[String]]
   ): Future[SelfHostedWork] =
-    execPOST(
-      EndPoint.environments,
-      Some(s"$environmentId/work/$workId"),
-      bodyParams = Seq(Param.metadata -> Some(metadataPatchJson(metadata))),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[SelfHostedWork])
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.environments,
+        Some(s"${PathSegment(environmentId)}/work/${PathSegment(workId)}"),
+        bodyParams = Seq(Param.metadata -> Some(metadataPatchJson(metadata))),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[SelfHostedWork])
+    }
 
   override def getWorkQueueStats(environmentId: String): Future[WorkQueueStats] =
-    execGET(
-      EndPoint.environments,
-      Some(s"$environmentId/work/stats"),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[WorkQueueStats])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.environments,
+        Some(s"${PathSegment(environmentId)}/work/stats"),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[WorkQueueStats])
+    }
 
   // ============================================================================
   // Managed Agents — sessions
@@ -812,16 +843,18 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   }
 
   override def getSession(sessionId: String): Future[Session] =
-    execGET(
-      EndPoint.sessions,
-      Some(sessionId),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[Session])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.sessions,
+        Some(PathSegment(sessionId)),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[Session])
+    }
 
   override def updateSession(
     sessionId: String,
     settings: AnthropicUpdateSessionSettings
-  ): Future[Session] = {
+  ): Future[Session] = PathSegment.inFuture {
     val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
       Param.title -> settings.title.map(JsString),
       Param.metadata -> settings.metadata.map(metadataPatchJson),
@@ -831,37 +864,41 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
     execPOST(
       EndPoint.sessions,
-      Some(sessionId),
+      Some(PathSegment(sessionId)),
       bodyParams = bodyParams,
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[Session])
   }
 
   override def deleteSession(sessionId: String): Future[SessionDeleteResponse] =
-    execDELETE(
-      EndPoint.sessions,
-      Some(sessionId),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[SessionDeleteResponse])
+    PathSegment.inFuture {
+      execDELETE(
+        EndPoint.sessions,
+        Some(PathSegment(sessionId)),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[SessionDeleteResponse])
+    }
 
   override def archiveSession(sessionId: String): Future[Session] =
-    execPOST(
-      EndPoint.sessions,
-      Some(s"$sessionId/archive"),
-      bodyParams = Nil,
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[Session])
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.sessions,
+        Some(s"${PathSegment(sessionId)}/archive"),
+        bodyParams = Nil,
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[Session])
+    }
 
   // -- Events --
 
   override def sendSessionEvents(
     sessionId: String,
     events: Seq[SessionEvent]
-  ): Future[Unit] = {
+  ): Future[Unit] = PathSegment.inFuture {
     val body = Json.obj("events" -> JsArray(events.map(Json.toJson(_))))
     execPOSTBody(
       EndPoint.sessions,
-      Some(s"$sessionId/events"),
+      Some(s"${PathSegment(sessionId)}/events"),
       body = body,
       extraHeaders = managedAgentsHeaders
     ).map(_ => ())
@@ -872,37 +909,43 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     limit: Option[Int],
     page: Option[String]
   ): Future[PagedResponse[SessionEventEnvelope]] =
-    execGET(
-      EndPoint.sessions,
-      Some(s"$sessionId/events"),
-      params = Seq(Param.limit -> limit.map(_.toString), Param.page -> page),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[PagedResponse[SessionEventEnvelope]])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.sessions,
+        Some(s"${PathSegment(sessionId)}/events"),
+        params = Seq(Param.limit -> limit.map(_.toString), Param.page -> page),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[PagedResponse[SessionEventEnvelope]])
+    }
 
   override def streamSessionEvents(
     sessionId: String
   ): Source[SessionEventEnvelope, NotUsed] =
-    // Raw SSE parsing instead of execJsonStream: the managed-agents stream sends frames
-    // without a `data:` line - an initial ": connected." comment and periodic heartbeats -
-    // which the generic JSON stream would reject as malformed JSON.
-    execRawStream(
-      EndPoint.sessions,
-      "GET",
-      endPointParam = Some(s"$sessionId/events/stream"),
-      extraHeaders = managedAgentsHeaders
-    ).via(StreamingConsts.framing("\n\n")) // an agent.message event can carry a long response
-      .mapConcat { frameBytes =>
-        // An SSE frame consists of `event:`/`id:` lines, comment lines (starting with ':'),
-        // and one or more `data:` lines (joined with a newline per the SSE spec).
-        val dataLines = frameBytes.utf8String.split("\n").toList.collect {
-          case line if line.startsWith("data:") => line.drop("data:".length).trim
-        }
+    PathSegment.inSource {
+      // Raw SSE parsing instead of execJsonStream: the managed-agents stream sends frames
+      // without a `data:` line - an initial ": connected." comment and periodic heartbeats -
+      // which the generic JSON stream would reject as malformed JSON.
+      execRawStream(
+        EndPoint.sessions,
+        "GET",
+        endPointParam = Some(s"${PathSegment(sessionId)}/events/stream"),
+        extraHeaders = managedAgentsHeaders
+      ).via(
+        StreamingConsts.framing("\n\n")
+      ) // an agent.message event can carry a long response
+        .mapConcat { frameBytes =>
+          // An SSE frame consists of `event:`/`id:` lines, comment lines (starting with ':'),
+          // and one or more `data:` lines (joined with a newline per the SSE spec).
+          val dataLines = frameBytes.utf8String.split("\n").toList.collect {
+            case line if line.startsWith("data:") => line.drop("data:".length).trim
+          }
 
-        if (dataLines.isEmpty) Nil
-        else List(Json.parse(dataLines.mkString("\n")))
-      }
-      .map(_.asOpt[SessionEventEnvelope])
-      .collect { case Some(e) => e }
+          if (dataLines.isEmpty) Nil
+          else List(Json.parse(dataLines.mkString("\n")))
+        }
+        .map(_.asOpt[SessionEventEnvelope])
+        .collect { case Some(e) => e }
+    }
 
   // -- Resources --
 
@@ -910,56 +953,66 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     sessionId: String,
     resource: SessionResource
   ): Future[SessionResource] =
-    execPOSTBody(
-      EndPoint.sessions,
-      Some(s"$sessionId/resources"),
-      body = Json.toJson(resource),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[SessionResource])
+    PathSegment.inFuture {
+      execPOSTBody(
+        EndPoint.sessions,
+        Some(s"${PathSegment(sessionId)}/resources"),
+        body = Json.toJson(resource),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[SessionResource])
+    }
 
   override def listSessionResources(
     sessionId: String,
     limit: Option[Int],
     page: Option[String]
   ): Future[PagedResponse[SessionResource]] =
-    execGET(
-      EndPoint.sessions,
-      Some(s"$sessionId/resources"),
-      params = Seq(Param.limit -> limit.map(_.toString), Param.page -> page),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[PagedResponse[SessionResource]])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.sessions,
+        Some(s"${PathSegment(sessionId)}/resources"),
+        params = Seq(Param.limit -> limit.map(_.toString), Param.page -> page),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[PagedResponse[SessionResource]])
+    }
 
   override def getSessionResource(
     sessionId: String,
     resourceId: String
   ): Future[SessionResource] =
-    execGET(
-      EndPoint.sessions,
-      Some(s"$sessionId/resources/$resourceId"),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[SessionResource])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.sessions,
+        Some(s"${PathSegment(sessionId)}/resources/${PathSegment(resourceId)}"),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[SessionResource])
+    }
 
   override def updateSessionResource(
     sessionId: String,
     resourceId: String,
     authorizationToken: String
   ): Future[SessionResource] =
-    execPOSTBody(
-      EndPoint.sessions,
-      Some(s"$sessionId/resources/$resourceId"),
-      body = Json.obj("authorization_token" -> authorizationToken),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[SessionResource])
+    PathSegment.inFuture {
+      execPOSTBody(
+        EndPoint.sessions,
+        Some(s"${PathSegment(sessionId)}/resources/${PathSegment(resourceId)}"),
+        body = Json.obj("authorization_token" -> authorizationToken),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[SessionResource])
+    }
 
   override def deleteSessionResource(
     sessionId: String,
     resourceId: String
   ): Future[Unit] =
-    execDELETE(
-      EndPoint.sessions,
-      Some(s"$sessionId/resources/$resourceId"),
-      extraHeaders = managedAgentsHeaders
-    ).map(_ => ())
+    PathSegment.inFuture {
+      execDELETE(
+        EndPoint.sessions,
+        Some(s"${PathSegment(sessionId)}/resources/${PathSegment(resourceId)}"),
+        extraHeaders = managedAgentsHeaders
+      ).map(_ => ())
+    }
 
   // -- Threads --
 
@@ -968,33 +1021,39 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     limit: Option[Int],
     page: Option[String]
   ): Future[PagedResponse[SessionThread]] =
-    execGET(
-      EndPoint.sessions,
-      Some(s"$sessionId/threads"),
-      params = Seq(Param.limit -> limit.map(_.toString), Param.page -> page),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[PagedResponse[SessionThread]])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.sessions,
+        Some(s"${PathSegment(sessionId)}/threads"),
+        params = Seq(Param.limit -> limit.map(_.toString), Param.page -> page),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[PagedResponse[SessionThread]])
+    }
 
   override def getSessionThread(
     sessionId: String,
     threadId: String
   ): Future[SessionThread] =
-    execGET(
-      EndPoint.sessions,
-      Some(s"$sessionId/threads/$threadId"),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[SessionThread])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.sessions,
+        Some(s"${PathSegment(sessionId)}/threads/${PathSegment(threadId)}"),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[SessionThread])
+    }
 
   override def archiveSessionThread(
     sessionId: String,
     threadId: String
   ): Future[SessionThread] =
-    execPOST(
-      EndPoint.sessions,
-      Some(s"$sessionId/threads/$threadId/archive"),
-      bodyParams = Nil,
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[SessionThread])
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.sessions,
+        Some(s"${PathSegment(sessionId)}/threads/${PathSegment(threadId)}/archive"),
+        bodyParams = Nil,
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[SessionThread])
+    }
 
   // ============================================================================
   // Managed Agents — deployments
@@ -1061,16 +1120,18 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   }
 
   override def getDeployment(deploymentId: String): Future[Deployment] =
-    execGET(
-      EndPoint.deployments,
-      Some(deploymentId),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[Deployment])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.deployments,
+        Some(PathSegment(deploymentId)),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[Deployment])
+    }
 
   override def updateDeployment(
     deploymentId: String,
     settings: AnthropicUpdateDeploymentSettings
-  ): Future[Deployment] = {
+  ): Future[Deployment] = PathSegment.inFuture {
     val agentJson = settings.agentId.map(agentRefJson(_, settings.agentVersion))
     val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
       Param.agent -> agentJson,
@@ -1086,43 +1147,51 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
     execPOST(
       EndPoint.deployments,
-      Some(deploymentId),
+      Some(PathSegment(deploymentId)),
       bodyParams = bodyParams,
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[Deployment])
   }
 
   override def archiveDeployment(deploymentId: String): Future[Deployment] =
-    execPOST(
-      EndPoint.deployments,
-      Some(s"$deploymentId/archive"),
-      bodyParams = Nil,
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[Deployment])
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.deployments,
+        Some(s"${PathSegment(deploymentId)}/archive"),
+        bodyParams = Nil,
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[Deployment])
+    }
 
   override def pauseDeployment(deploymentId: String): Future[Deployment] =
-    execPOST(
-      EndPoint.deployments,
-      Some(s"$deploymentId/pause"),
-      bodyParams = Nil,
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[Deployment])
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.deployments,
+        Some(s"${PathSegment(deploymentId)}/pause"),
+        bodyParams = Nil,
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[Deployment])
+    }
 
   override def unpauseDeployment(deploymentId: String): Future[Deployment] =
-    execPOST(
-      EndPoint.deployments,
-      Some(s"$deploymentId/unpause"),
-      bodyParams = Nil,
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[Deployment])
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.deployments,
+        Some(s"${PathSegment(deploymentId)}/unpause"),
+        bodyParams = Nil,
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[Deployment])
+    }
 
   override def runDeployment(deploymentId: String): Future[DeploymentRun] =
-    execPOST(
-      EndPoint.deployments,
-      Some(s"$deploymentId/run"),
-      bodyParams = Nil,
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[DeploymentRun])
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.deployments,
+        Some(s"${PathSegment(deploymentId)}/run"),
+        bodyParams = Nil,
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[DeploymentRun])
+    }
 
   override def listDeploymentRuns(
     deploymentId: String,
@@ -1172,49 +1241,55 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     ).map(_.asSafeJson[PagedResponse[Vault]])
 
   override def getVault(vaultId: String): Future[Vault] =
-    execGET(
-      EndPoint.vaults,
-      Some(vaultId),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[Vault])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.vaults,
+        Some(PathSegment(vaultId)),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[Vault])
+    }
 
   override def updateVault(
     vaultId: String,
     settings: AnthropicUpdateVaultSettings
-  ): Future[Vault] = {
+  ): Future[Vault] = PathSegment.inFuture {
     val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
       Param.display_name -> settings.displayName.map(JsString),
       Param.metadata -> settings.metadata.map(metadataPatchJson)
     )
     execPOST(
       EndPoint.vaults,
-      Some(vaultId),
+      Some(PathSegment(vaultId)),
       bodyParams = bodyParams,
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[Vault])
   }
 
   override def deleteVault(vaultId: String): Future[Unit] =
-    execDELETE(
-      EndPoint.vaults,
-      Some(vaultId),
-      extraHeaders = managedAgentsHeaders
-    ).map(_ => ())
+    PathSegment.inFuture {
+      execDELETE(
+        EndPoint.vaults,
+        Some(PathSegment(vaultId)),
+        extraHeaders = managedAgentsHeaders
+      ).map(_ => ())
+    }
 
   override def archiveVault(vaultId: String): Future[Vault] =
-    execPOST(
-      EndPoint.vaults,
-      Some(s"$vaultId/archive"),
-      bodyParams = Nil,
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[Vault])
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.vaults,
+        Some(s"${PathSegment(vaultId)}/archive"),
+        bodyParams = Nil,
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[Vault])
+    }
 
   // -- Credentials --
 
   override def createCredential(
     vaultId: String,
     settings: AnthropicCreateCredentialSettings
-  ): Future[Credential] = {
+  ): Future[Credential] = PathSegment.inFuture {
     val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
       Param.auth -> Some(Json.toJson(settings.auth)),
       Param.display_name -> settings.displayName.map(JsString),
@@ -1223,7 +1298,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     )
     execPOST(
       EndPoint.vaults,
-      Some(s"$vaultId/credentials"),
+      Some(s"${PathSegment(vaultId)}/credentials"),
       bodyParams = bodyParams,
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[Credential])
@@ -1235,32 +1310,36 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     limit: Option[Int],
     page: Option[String]
   ): Future[PagedResponse[Credential]] =
-    execGET(
-      EndPoint.vaults,
-      Some(s"$vaultId/credentials"),
-      params = Seq(
-        Param.include_archived -> includeArchived.map(_.toString),
-        Param.limit -> limit.map(_.toString),
-        Param.page -> page
-      ),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[PagedResponse[Credential]])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.vaults,
+        Some(s"${PathSegment(vaultId)}/credentials"),
+        params = Seq(
+          Param.include_archived -> includeArchived.map(_.toString),
+          Param.limit -> limit.map(_.toString),
+          Param.page -> page
+        ),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[PagedResponse[Credential]])
+    }
 
   override def getCredential(
     vaultId: String,
     credentialId: String
   ): Future[Credential] =
-    execGET(
-      EndPoint.vaults,
-      Some(s"$vaultId/credentials/$credentialId"),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[Credential])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.vaults,
+        Some(s"${PathSegment(vaultId)}/credentials/${PathSegment(credentialId)}"),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[Credential])
+    }
 
   override def updateCredential(
     vaultId: String,
     credentialId: String,
     settings: AnthropicUpdateCredentialSettings
-  ): Future[Credential] = {
+  ): Future[Credential] = PathSegment.inFuture {
     val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
       Param.auth -> settings.auth.map(Json.toJson(_)),
       Param.display_name -> settings.displayName.map(JsString),
@@ -1268,7 +1347,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     )
     execPOST(
       EndPoint.vaults,
-      Some(s"$vaultId/credentials/$credentialId"),
+      Some(s"${PathSegment(vaultId)}/credentials/${PathSegment(credentialId)}"),
       bodyParams = bodyParams,
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[Credential])
@@ -1278,33 +1357,41 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     vaultId: String,
     credentialId: String
   ): Future[Unit] =
-    execDELETE(
-      EndPoint.vaults,
-      Some(s"$vaultId/credentials/$credentialId"),
-      extraHeaders = managedAgentsHeaders
-    ).map(_ => ())
+    PathSegment.inFuture {
+      execDELETE(
+        EndPoint.vaults,
+        Some(s"${PathSegment(vaultId)}/credentials/${PathSegment(credentialId)}"),
+        extraHeaders = managedAgentsHeaders
+      ).map(_ => ())
+    }
 
   override def archiveCredential(
     vaultId: String,
     credentialId: String
   ): Future[Credential] =
-    execPOST(
-      EndPoint.vaults,
-      Some(s"$vaultId/credentials/$credentialId/archive"),
-      bodyParams = Nil,
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[Credential])
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.vaults,
+        Some(s"${PathSegment(vaultId)}/credentials/${PathSegment(credentialId)}/archive"),
+        bodyParams = Nil,
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[Credential])
+    }
 
   override def mcpOAuthValidateCredential(
     vaultId: String,
     credentialId: String
   ): Future[JsObject] =
-    execPOST(
-      EndPoint.vaults,
-      Some(s"$vaultId/credentials/$credentialId/mcp_oauth_validate"),
-      bodyParams = Nil,
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[JsObject])
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.vaults,
+        Some(
+          s"${PathSegment(vaultId)}/credentials/${PathSegment(credentialId)}/mcp_oauth_validate"
+        ),
+        bodyParams = Nil,
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[JsObject])
+    }
 
   // ============================================================================
   // Managed Agents — memory stores
@@ -1342,16 +1429,18 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     ).map(_.asSafeJson[PagedResponse[MemoryStore]])
 
   override def getMemoryStore(memoryStoreId: String): Future[MemoryStore] =
-    execGET(
-      EndPoint.memory_stores,
-      Some(memoryStoreId),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[MemoryStore])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.memory_stores,
+        Some(PathSegment(memoryStoreId)),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[MemoryStore])
+    }
 
   override def updateMemoryStore(
     memoryStoreId: String,
     settings: AnthropicUpdateMemoryStoreSettings
-  ): Future[MemoryStore] = {
+  ): Future[MemoryStore] = PathSegment.inFuture {
     val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
       Param.name -> settings.name.map(JsString),
       Param.description -> settings.description.map(JsString),
@@ -1359,26 +1448,30 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     )
     execPOST(
       EndPoint.memory_stores,
-      Some(memoryStoreId),
+      Some(PathSegment(memoryStoreId)),
       bodyParams = bodyParams,
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[MemoryStore])
   }
 
   override def deleteMemoryStore(memoryStoreId: String): Future[Unit] =
-    execDELETE(
-      EndPoint.memory_stores,
-      Some(memoryStoreId),
-      extraHeaders = managedAgentsHeaders
-    ).map(_ => ())
+    PathSegment.inFuture {
+      execDELETE(
+        EndPoint.memory_stores,
+        Some(PathSegment(memoryStoreId)),
+        extraHeaders = managedAgentsHeaders
+      ).map(_ => ())
+    }
 
   override def archiveMemoryStore(memoryStoreId: String): Future[MemoryStore] =
-    execPOST(
-      EndPoint.memory_stores,
-      Some(s"$memoryStoreId/archive"),
-      bodyParams = Nil,
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[MemoryStore])
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.memory_stores,
+        Some(s"${PathSegment(memoryStoreId)}/archive"),
+        bodyParams = Nil,
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[MemoryStore])
+    }
 
   // -- Memories --
 
@@ -1387,15 +1480,17 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     path: String,
     content: String
   ): Future[Memory] =
-    execPOST(
-      EndPoint.memory_stores,
-      Some(s"$memoryStoreId/memories"),
-      bodyParams = Seq(
-        Param.path -> Some(JsString(path)),
-        Param.content -> Some(JsString(content))
-      ),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[Memory])
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.memory_stores,
+        Some(s"${PathSegment(memoryStoreId)}/memories"),
+        bodyParams = Seq(
+          Param.path -> Some(JsString(path)),
+          Param.content -> Some(JsString(content))
+        ),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[Memory])
+    }
 
   override def listMemories(
     memoryStoreId: String,
@@ -1407,32 +1502,36 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     limit: Option[Int],
     page: Option[String]
   ): Future[PagedResponse[MemoryEntry]] =
-    execGET(
-      EndPoint.memory_stores,
-      Some(s"$memoryStoreId/memories"),
-      params = Seq(
-        Param.path_prefix -> pathPrefix,
-        Param.depth -> depth.map(_.toString),
-        Param.view -> view.map(_.toString),
-        Param.order_by -> orderBy,
-        Param.order -> order,
-        Param.limit -> limit.map(_.toString),
-        Param.page -> page
-      ),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[PagedResponse[MemoryEntry]])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.memory_stores,
+        Some(s"${PathSegment(memoryStoreId)}/memories"),
+        params = Seq(
+          Param.path_prefix -> pathPrefix,
+          Param.depth -> depth.map(_.toString),
+          Param.view -> view.map(_.toString),
+          Param.order_by -> orderBy,
+          Param.order -> order,
+          Param.limit -> limit.map(_.toString),
+          Param.page -> page
+        ),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[PagedResponse[MemoryEntry]])
+    }
 
   override def getMemory(
     memoryStoreId: String,
     memoryId: String,
     view: Option[MemoryView]
   ): Future[Memory] =
-    execGET(
-      EndPoint.memory_stores,
-      Some(s"$memoryStoreId/memories/$memoryId"),
-      params = Seq(Param.view -> view.map(_.toString)),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[Memory])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.memory_stores,
+        Some(s"${PathSegment(memoryStoreId)}/memories/${PathSegment(memoryId)}"),
+        params = Seq(Param.view -> view.map(_.toString)),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[Memory])
+    }
 
   override def updateMemory(
     memoryStoreId: String,
@@ -1440,7 +1539,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     content: Option[String],
     path: Option[String],
     expectedContentSha256: Option[String]
-  ): Future[Memory] = {
+  ): Future[Memory] = PathSegment.inFuture {
     val bodyParams: Seq[(Param, Option[JsValue])] = Seq(
       Param.content -> content.map(JsString),
       Param.path -> path.map(JsString),
@@ -1450,7 +1549,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     )
     execPOST(
       EndPoint.memory_stores,
-      Some(s"$memoryStoreId/memories/$memoryId"),
+      Some(s"${PathSegment(memoryStoreId)}/memories/${PathSegment(memoryId)}"),
       bodyParams = bodyParams,
       extraHeaders = managedAgentsHeaders
     ).map(_.asSafeJson[Memory])
@@ -1461,12 +1560,14 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     memoryId: String,
     expectedContentSha256: Option[String]
   ): Future[Unit] =
-    execDELETE(
-      EndPoint.memory_stores,
-      Some(s"$memoryStoreId/memories/$memoryId"),
-      params = Seq(Param.expected_content_sha256 -> expectedContentSha256),
-      extraHeaders = managedAgentsHeaders
-    ).map(_ => ())
+    PathSegment.inFuture {
+      execDELETE(
+        EndPoint.memory_stores,
+        Some(s"${PathSegment(memoryStoreId)}/memories/${PathSegment(memoryId)}"),
+        params = Seq(Param.expected_content_sha256 -> expectedContentSha256),
+        extraHeaders = managedAgentsHeaders
+      ).map(_ => ())
+    }
 
   // -- Memory versions --
 
@@ -1477,36 +1578,44 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     limit: Option[Int],
     page: Option[String]
   ): Future[PagedResponse[MemoryVersion]] =
-    execGET(
-      EndPoint.memory_stores,
-      Some(s"$memoryStoreId/memory_versions"),
-      params = Seq(
-        Param.memory_id -> memoryId,
-        Param.operation -> operation.map(_.toString),
-        Param.limit -> limit.map(_.toString),
-        Param.page -> page
-      ),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[PagedResponse[MemoryVersion]])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.memory_stores,
+        Some(s"${PathSegment(memoryStoreId)}/memory_versions"),
+        params = Seq(
+          Param.memory_id -> memoryId,
+          Param.operation -> operation.map(_.toString),
+          Param.limit -> limit.map(_.toString),
+          Param.page -> page
+        ),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[PagedResponse[MemoryVersion]])
+    }
 
   override def getMemoryVersion(
     memoryStoreId: String,
     memoryVersionId: String
   ): Future[MemoryVersion] =
-    execGET(
-      EndPoint.memory_stores,
-      Some(s"$memoryStoreId/memory_versions/$memoryVersionId"),
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[MemoryVersion])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.memory_stores,
+        Some(s"${PathSegment(memoryStoreId)}/memory_versions/${PathSegment(memoryVersionId)}"),
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[MemoryVersion])
+    }
 
   override def redactMemoryVersion(
     memoryStoreId: String,
     memoryVersionId: String
   ): Future[MemoryVersion] =
-    execPOST(
-      EndPoint.memory_stores,
-      Some(s"$memoryStoreId/memory_versions/$memoryVersionId/redact"),
-      bodyParams = Nil,
-      extraHeaders = managedAgentsHeaders
-    ).map(_.asSafeJson[MemoryVersion])
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.memory_stores,
+        Some(
+          s"${PathSegment(memoryStoreId)}/memory_versions/${PathSegment(memoryVersionId)}/redact"
+        ),
+        bodyParams = Nil,
+        extraHeaders = managedAgentsHeaders
+      ).map(_.asSafeJson[MemoryVersion])
+    }
 }

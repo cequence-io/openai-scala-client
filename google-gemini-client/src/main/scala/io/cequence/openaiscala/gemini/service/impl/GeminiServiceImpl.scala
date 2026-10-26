@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.gemini.service.impl
 
 import akka.NotUsed
-import io.cequence.openaiscala.service.ClassifiedStreamingWSClient
+import io.cequence.openaiscala.service.{ClassifiedStreamingWSClient, PathSegment}
 import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.gemini.JsonFormats._
@@ -87,17 +87,19 @@ private[service] class GeminiServiceImpl(
     contents: Seq[Content],
     settings: GenerateContentSettings
   ): Future[GenerateContentResponse] =
-    execPOST(
-      EndPoint.generateContent(settings.model),
-      bodyParams = createBodyParams(contents, settings)
-    ).map(
-      _.asSafeJson[GenerateContentResponse].copy(cachedContent = settings.cachedContent)
-    )
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.generateContent(settings.model),
+        bodyParams = createBodyParams(contents, settings)
+      ).map(
+        _.asSafeJson[GenerateContentResponse].copy(cachedContent = settings.cachedContent)
+      )
+    }
 
   override def generateContentStreamed(
     contents: Seq[Content],
     settings: GenerateContentSettings
-  ): Source[GenerateContentResponse, NotUsed] = {
+  ): Source[GenerateContentResponse, NotUsed] = PathSegment.inSource {
     execJsonStream(
       EndPoint.streamGenerateContent(settings.model),
       "POST",
@@ -175,7 +177,7 @@ private[service] class GeminiServiceImpl(
   override def updateCachedContent(
     name: String,
     expiration: Expiration
-  ): Future[CachedContent] = {
+  ): Future[CachedContent] = PathSegment.inFuture {
     val (updateMask, value) = expiration match {
       case Expiration.ExpireTime(value) =>
         (Param.expireTime, value)
@@ -197,16 +199,20 @@ private[service] class GeminiServiceImpl(
   }
 
   override def getCachedContent(name: String): Future[CachedContent] =
-    execGET(
-      EndPoint.cachedContents(name)
-    ).map(
-      _.asSafeJson[CachedContent]
-    )
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.cachedContents(name)
+      ).map(
+        _.asSafeJson[CachedContent]
+      )
+    }
 
   override def deleteCachedContent(name: String): Future[Unit] =
-    execDELETE(
-      EndPoint.cachedContents(name)
-    ).map(_ => ())
+    PathSegment.inFuture {
+      execDELETE(
+        EndPoint.cachedContents(name)
+      ).map(_ => ())
+    }
 
   // -- Batches (Batch Mode) --
 
@@ -216,7 +222,7 @@ private[service] class GeminiServiceImpl(
     settings: GenerateContentSettings,
     priority: Option[Long],
     useFileInput: Boolean
-  ): Future[GenerateContentBatch] = {
+  ): Future[GenerateContentBatch] = PathSegment.inFuture {
     require(requests.nonEmpty, "At least one batch request expected.")
 
     val keyedRequestBodies = requests.map { item =>
@@ -293,9 +299,11 @@ private[service] class GeminiServiceImpl(
   private val inlineBatchPayloadLimitBytes = 15L * 1024 * 1024
 
   override def getBatch(name: String): Future[GenerateContentBatch] =
-    execGET(
-      EndPoint.batches(name)
-    ).map(response => toBatch(response.json))
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.batches(name)
+      ).map(response => toBatch(response.json))
+    }
 
   override def listBatches(
     pageSize: Option[Int],
@@ -316,14 +324,18 @@ private[service] class GeminiServiceImpl(
     }
 
   override def cancelBatch(name: String): Future[Unit] =
-    execPOST(
-      EndPoint.cancelBatch(name)
-    ).map(_ => ())
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.cancelBatch(name)
+      ).map(_ => ())
+    }
 
   override def deleteBatch(name: String): Future[Unit] =
-    execDELETE(
-      EndPoint.batches(name)
-    ).map(_ => ())
+    PathSegment.inFuture {
+      execDELETE(
+        EndPoint.batches(name)
+      ).map(_ => ())
+    }
 
   // -- Files --
 
@@ -399,18 +411,22 @@ private[service] class GeminiServiceImpl(
   }
 
   override def getFile(name: String): Future[GeminiFile] =
-    execGET(
-      EndPoint.files(name)
-    ).map(_.asSafeJson[GeminiFile])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.files(name)
+      ).map(_.asSafeJson[GeminiFile])
+    }
 
   override def deleteFile(name: String): Future[Unit] =
-    execDELETE(
-      EndPoint.files(name)
-    ).map(_ => ())
+    PathSegment.inFuture {
+      execDELETE(
+        EndPoint.files(name)
+      ).map(_ => ())
+    }
 
   override def downloadFile(name: String): Future[String] = Future {
     blocking {
-      val fileId = name.stripPrefix("files/")
+      val fileId = PathSegment(name.stripPrefix("files/"))
       val connection = GeminiRawHttp.openConnection(
         s"${downloadBaseUrl}files/$fileId:download?alt=media",
         "GET",

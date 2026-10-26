@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
 import akka.NotUsed
-import io.cequence.openaiscala.service.StreamingConsts
+import io.cequence.openaiscala.service.{PathSegment, StreamingConsts}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.cequence.wsclient.service.ws.PlayJsonUtil
@@ -100,9 +100,17 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
   override protected type PEP = String
   override protected type PT = Param
 
-  private def invokeEndpoint(model: String) = s"model/$model/invoke"
+  // the model id (an id, an inference profile id or an ARN) is ONE path segment
+  private def invokeEndpoint(model: String) = s"model/${PathSegment(model)}/invoke"
   private def invokeWithResponseStreamEndpoint(model: String) =
-    s"model/$model/invoke-with-response-stream"
+    s"model/${PathSegment(model)}/invoke-with-response-stream"
+
+  // the path SigV4 signs: the segment as sent (already encoded once) encoded once more, as
+  // for any non-S3 AWS service - the same as the Bedrock batch-job paths
+  private def invokeSigningEndpoint(model: String) =
+    s"model/${rfc3986Encode(PathSegment(model))}/invoke"
+  private def invokeWithResponseStreamSigningEndpoint(model: String) =
+    s"model/${rfc3986Encode(PathSegment(model))}/invoke-with-response-stream"
   private val serviceName = "bedrock"
 
   private val bedrockAnthropicVersion = "bedrock-2023-05-31"
@@ -110,7 +118,7 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
   override def createMessage(
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings
-  ): Future[CreateMessageResponse] = {
+  ): Future[CreateMessageResponse] = PathSegment.inFuture {
     val bedrockSettings = relocateOutputFormatToOutputConfig(settings)
     val coreBodyParams =
       createBodyParamsForMessageCreation(
@@ -125,10 +133,11 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
 
     val jsBodyObject = toJsBodyObject(paramTuplesToStrings(bodyParams))
     val endpoint = invokeEndpoint(settings.model)
+    val signingEndpoint = invokeSigningEndpoint(settings.model)
 
     val extraSignatureHeaders = createSignatureHeaders(
       "POST",
-      createURL(Some(endpoint)),
+      createURL(Some(signingEndpoint)),
       headers = requestContext.authHeaders,
       jsBodyObject
     )
@@ -147,7 +156,7 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
   private def streamMessageEvents(
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings
-  ): Source[MessageStreamEvent, NotUsed] = {
+  ): Source[MessageStreamEvent, NotUsed] = PathSegment.inSource {
     val bedrockSettings = relocateOutputFormatToOutputConfig(settings)
     val coreBodyParams =
       createBodyParamsForMessageCreation(
@@ -163,10 +172,11 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
     val stringParams = paramTuplesToStrings(bodyParams)
     val jsBodyObject = toJsBodyObject(stringParams)
     val endpoint = invokeWithResponseStreamEndpoint(settings.model)
+    val signingEndpoint = invokeWithResponseStreamSigningEndpoint(settings.model)
 
     val extraHeaders = createSignatureHeaders(
       "POST",
-      createURL(Some(endpoint)),
+      createURL(Some(signingEndpoint)),
       headers = requestContext.authHeaders,
       jsBodyObject
     )

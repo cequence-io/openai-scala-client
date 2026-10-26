@@ -12,7 +12,7 @@ import io.cequence.openaiscala.domain.responsesapi.{
   Response,
   DeleteResponse => ResponsesAPIDeleteResponse
 }
-import io.cequence.openaiscala.service.OpenAIResponsesService
+import io.cequence.openaiscala.service.{OpenAIResponsesService, PathSegment}
 import play.api.libs.json.Json
 
 import scala.concurrent.Future
@@ -37,29 +37,35 @@ trait OpenAIResponseServiceImpl extends OpenAIResponsesService with OpenAIServic
     responseId: String,
     include: Seq[String]
   ): Future[Response] =
-    execGET(
-      EndPoint.responses,
-      endPointParam = Some(responseId),
-      params = Seq(
-        Param.include -> (if (include.nonEmpty) Some(include) else None)
-      )
-    ).map(_.asSafeJson[Response])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.responses,
+        endPointParam = Some(PathSegment(responseId)),
+        params = Seq(
+          Param.include -> (if (include.nonEmpty) Some(include) else None)
+        )
+      ).map(_.asSafeJson[Response])
+    }
 
   override def deleteModelResponse(
     responseId: String
   ): Future[ResponsesAPIDeleteResponse] =
-    execDELETE(
-      EndPoint.responses,
-      endPointParam = Some(responseId)
-    ).map(_.asSafeJson[ResponsesAPIDeleteResponse])
+    PathSegment.inFuture {
+      execDELETE(
+        EndPoint.responses,
+        endPointParam = Some(PathSegment(responseId))
+      ).map(_.asSafeJson[ResponsesAPIDeleteResponse])
+    }
 
   override def cancelModelResponse(
     responseId: String
   ): Future[Response] =
-    execPOST(
-      EndPoint.responses,
-      Some(s"$responseId/cancel")
-    ).map(_.asSafeJson[Response])
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.responses,
+        Some(s"${PathSegment(responseId)}/cancel")
+      ).map(_.asSafeJson[Response])
+    }
 
   override def getModelResponseInputTokenCounts(
     inputs: Inputs,
@@ -83,17 +89,19 @@ trait OpenAIResponseServiceImpl extends OpenAIResponsesService with OpenAIServic
     limit: Option[Int] = None,
     order: Option[SortOrder] = None
   ): Future[InputItemsResponse] =
-    execGET(
-      EndPoint.responses,
-      endPointParam = Some(s"$responseId/input_items"),
-      params = Seq(
-        Param.after -> after,
-        Param.before -> before,
-        Param.include -> (if (include.nonEmpty) Some(include) else None),
-        Param.limit -> limit,
-        Param.order -> order
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.responses,
+        endPointParam = Some(s"${PathSegment(responseId)}/input_items"),
+        params = Seq(
+          Param.after -> after,
+          Param.before -> before,
+          Param.include -> (if (include.nonEmpty) Some(include) else None),
+          Param.limit -> limit,
+          Param.order -> order
+        )
+      ).map(
+        _.asSafeJson[InputItemsResponse]
       )
-    ).map(
-      _.asSafeJson[InputItemsResponse]
-    )
+    }
 }

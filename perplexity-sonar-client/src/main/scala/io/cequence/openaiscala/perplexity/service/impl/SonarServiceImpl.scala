@@ -21,7 +21,7 @@ import io.cequence.openaiscala.perplexity.service.{
   PerplexityScalaClientUnknownHostException,
   SonarService
 }
-import io.cequence.openaiscala.service.ClassifiedStreamingWSClient
+import io.cequence.openaiscala.service.{ClassifiedStreamingWSClient, PathSegment}
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
 import io.cequence.wsclient.StreamResponseImplicits.StreamSafeOps
@@ -137,50 +137,61 @@ private[service] class SonarServiceImpl(
     )
 
   override def retrieveAgentResponse(responseId: String): Future[Option[AgentResponse]] =
-    execGETRich(
-      EndPoint.agent,
-      endPointParam = Some(responseId)
-    ).map(responseOrNone(_).map(_.asSafeJson[AgentResponse])).recoverWith(transportErrors)
+    PathSegment.inFuture {
+      execGETRich(
+        EndPoint.agent,
+        endPointParam = Some(PathSegment(responseId))
+      ).map(responseOrNone(_).map(_.asSafeJson[AgentResponse])).recoverWith(transportErrors)
+    }
 
   override def resumeAgentResponseStream(
     responseId: String,
     startingAfter: Option[Int]
   ): Source[AgentStreamEvent, NotUsed] =
-    agentEvents(
-      execRawStream(
-        EndPoint.agent,
-        "GET",
-        endPointParam = Some(responseId),
-        params = Seq(
-          Param.stream -> Some("true"),
-          Param.starting_after -> startingAfter.map(_.toString)
-        ),
-        extraHeaders = Seq("Accept" -> "text/event-stream")
+    PathSegment.inSource {
+      agentEvents(
+        execRawStream(
+          EndPoint.agent,
+          "GET",
+          endPointParam = Some(PathSegment(responseId)),
+          params = Seq(
+            Param.stream -> Some("true"),
+            Param.starting_after -> startingAfter.map(_.toString)
+          ),
+          extraHeaders = Seq("Accept" -> "text/event-stream")
+        )
       )
-    )
+    }
 
   override def cancelAgentResponse(responseId: String): Future[AgentCancelResponse] =
-    execPOSTRich(
-      EndPoint.agent,
-      endPointParam = Some(s"$responseId/cancel")
-    ).map(responseOrError(_).asSafeJson[AgentCancelResponse]).recoverWith(transportErrors)
+    PathSegment.inFuture {
+      execPOSTRich(
+        EndPoint.agent,
+        endPointParam = Some(s"${PathSegment(responseId)}/cancel")
+      ).map(responseOrError(_).asSafeJson[AgentCancelResponse]).recoverWith(transportErrors)
+    }
 
   override def listAgentResponseFiles(responseId: String): Future[Seq[AgentResponseFile]] =
-    execGETRich(
-      EndPoint.agent,
-      endPointParam = Some(s"$responseId/files")
-    ).map(rich =>
-      dataOf[AgentResponseFile](responseOrError(rich), s"v1/agent/$responseId/files")
-    ).recoverWith(transportErrors)
+    PathSegment.inFuture {
+      execGETRich(
+        EndPoint.agent,
+        endPointParam = Some(s"${PathSegment(responseId)}/files")
+      ).map(rich =>
+        dataOf[AgentResponseFile](responseOrError(rich), s"v1/agent/$responseId/files")
+      ).recoverWith(transportErrors)
+    }
 
   override def downloadAgentResponseFile(
     responseId: String,
     fileId: String
   ): Future[Option[Source[ByteString, _]]] =
-    execGETRich(
-      EndPoint.agent,
-      endPointParam = Some(s"$responseId/files/$fileId/content")
-    ).map(responseOrNone(_).map(_.asSafeSource)).recoverWith(transportErrors)
+    PathSegment.inFuture {
+      execGETRich(
+        EndPoint.agent,
+        endPointParam =
+          Some(s"${PathSegment(responseId)}/files/${PathSegment(fileId)}/content")
+      ).map(responseOrNone(_).map(_.asSafeSource)).recoverWith(transportErrors)
+    }
 
   override def listAgentModels: Future[Seq[AgentModel]] =
     execGETRich(EndPoint.models)

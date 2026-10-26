@@ -5,7 +5,7 @@ import akka.util.ByteString
 import io.cequence.openaiscala.domain.SortOrder
 import io.cequence.openaiscala.domain.agents.JsonFormats._
 import io.cequence.openaiscala.domain.agents._
-import io.cequence.openaiscala.service.OpenAIAgentsService
+import io.cequence.openaiscala.service.{OpenAIAgentsService, PathSegment}
 import io.cequence.wsclient.ResponseImplicits._
 import io.cequence.wsclient.StreamResponseImplicits._
 import play.api.libs.json.{JsObject, Json}
@@ -52,23 +52,29 @@ trait OpenAIAgentsServiceImpl extends OpenAIAgentsService with OpenAIServiceWSBa
     ).map(_.asSafeJson[AgentsPage[Agent]])
 
   override def getAgent(agentId: String): Future[Agent] =
-    execGET(EndPoint.agents, Some(agentId), extraHeaders = betaHeaders)
-      .map(_.asSafeJson[Agent])
+    PathSegment.inFuture {
+      execGET(EndPoint.agents, Some(PathSegment(agentId)), extraHeaders = betaHeaders)
+        .map(_.asSafeJson[Agent])
+    }
 
   override def updateAgent(
     agentId: String,
     settings: UpdateAgentSettings
   ): Future[Agent] =
-    execPOSTBody(
-      EndPoint.agents,
-      Some(agentId),
-      body = Json.toJsObject(settings),
-      extraHeaders = betaHeaders
-    ).map(_.asSafeJson[Agent])
+    PathSegment.inFuture {
+      execPOSTBody(
+        EndPoint.agents,
+        Some(PathSegment(agentId)),
+        body = Json.toJsObject(settings),
+        extraHeaders = betaHeaders
+      ).map(_.asSafeJson[Agent])
+    }
 
   override def deleteAgent(agentId: String): Future[AgentsDeleted] =
-    execDELETE(EndPoint.agents, Some(agentId), extraHeaders = betaHeaders)
-      .map(_.asSafeJson[AgentsDeleted])
+    PathSegment.inFuture {
+      execDELETE(EndPoint.agents, Some(PathSegment(agentId)), extraHeaders = betaHeaders)
+        .map(_.asSafeJson[AgentsDeleted])
+    }
 
   // ---- sessions ----
 
@@ -95,41 +101,53 @@ trait OpenAIAgentsServiceImpl extends OpenAIAgentsService with OpenAIServiceWSBa
     ).map(_.asSafeJson[AgentsPage[AgentSession]])
 
   override def getAgentSession(sessionId: String): Future[AgentSession] =
-    execGET(EndPoint.agent_sessions, Some(sessionId), extraHeaders = betaHeaders)
-      .map(_.asSafeJson[AgentSession])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.agent_sessions,
+        Some(PathSegment(sessionId)),
+        extraHeaders = betaHeaders
+      ).map(_.asSafeJson[AgentSession])
+    }
 
   override def updateAgentSession(
     sessionId: String,
     agent: Option[AgentConfig],
     metadata: Option[Map[String, String]]
-  ): Future[AgentSession] = {
+  ): Future[AgentSession] = PathSegment.inFuture {
     val body = JsObject(
       agent.map(a => "agent" -> Json.toJson(a)).toSeq ++
         metadata.map(m => "metadata" -> Json.toJson(m)).toSeq
     )
     execPOSTBody(
       EndPoint.agent_sessions,
-      Some(sessionId),
+      Some(PathSegment(sessionId)),
       body = body,
       extraHeaders = betaHeaders
     ).map(_.asSafeJson[AgentSession])
   }
 
   override def deleteAgentSession(sessionId: String): Future[AgentsDeleted] =
-    execDELETE(EndPoint.agent_sessions, Some(sessionId), extraHeaders = betaHeaders)
-      .map(_.asSafeJson[AgentsDeleted])
+    PathSegment.inFuture {
+      execDELETE(
+        EndPoint.agent_sessions,
+        Some(PathSegment(sessionId)),
+        extraHeaders = betaHeaders
+      ).map(_.asSafeJson[AgentsDeleted])
+    }
 
   override def sendAgentSessionEvents(
     sessionId: String,
     events: Seq[AgentSessionInput],
     idempotencyKey: Option[String]
   ): Future[Unit] =
-    execPOSTBody(
-      EndPoint.agent_sessions,
-      Some(s"$sessionId/events"),
-      body = Json.obj("events" -> events),
-      extraHeaders = betaHeaders ++ idempotencyKey.map("Idempotency-Key" -> _)
-    ).map(_ => ())
+    PathSegment.inFuture {
+      execPOSTBody(
+        EndPoint.agent_sessions,
+        Some(s"${PathSegment(sessionId)}/events"),
+        body = Json.obj("events" -> events),
+        extraHeaders = betaHeaders ++ idempotencyKey.map("Idempotency-Key" -> _)
+      ).map(_ => ())
+    }
 
   override def listAgentSessionItems(
     sessionId: String,
@@ -138,14 +156,17 @@ trait OpenAIAgentsServiceImpl extends OpenAIAgentsService with OpenAIServiceWSBa
     after: Option[String],
     subagentId: Option[String],
     turnId: Option[String]
-  ): Future[AgentsPage[AgentSessionItem]] = {
+  ): Future[AgentsPage[AgentSessionItem]] = PathSegment.inFuture {
+    val session = PathSegment(sessionId)
     val path = (subagentId, turnId) match {
       case (Some(subagent), Some(turn)) =>
-        Some(s"$sessionId/subagents/$subagent/turns/$turn/items")
-      case (Some(subagent), None) => Some(s"$sessionId/subagents/$subagent/items")
-      case (None, Some(_))        => None
-      case (None, None)           => Some(s"$sessionId/items")
+        Some(s"$session/subagents/${PathSegment(subagent)}/turns/${PathSegment(turn)}/items")
+      case (Some(subagent), None) =>
+        Some(s"$session/subagents/${PathSegment(subagent)}/items")
+      case (None, Some(_)) => None
+      case (None, None)    => Some(s"$session/items")
     }
+
     path match {
       // a failed Future, never a synchronous throw (it would escape .recover and the adapters)
       case None =>
@@ -171,27 +192,35 @@ trait OpenAIAgentsServiceImpl extends OpenAIAgentsService with OpenAIServiceWSBa
     after: Option[String],
     subagentId: Option[String]
   ): Future[AgentsPage[AgentTurn]] =
-    execGET(
-      EndPoint.agent_sessions,
-      Some(subagentId.fold(s"$sessionId/turns")(id => s"$sessionId/subagents/$id/turns")),
-      params = listParams(limit, order, after),
-      extraHeaders = betaHeaders
-    ).map(_.asSafeJson[AgentsPage[AgentTurn]])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.agent_sessions,
+        Some(
+          subagentId.fold(s"${PathSegment(sessionId)}/turns")(id =>
+            s"${PathSegment(sessionId)}/subagents/${PathSegment(id)}/turns"
+          )
+        ),
+        params = listParams(limit, order, after),
+        extraHeaders = betaHeaders
+      ).map(_.asSafeJson[AgentsPage[AgentTurn]])
+    }
 
   override def getAgentSessionTurn(
     sessionId: String,
     turnId: String,
     subagentId: Option[String]
   ): Future[AgentTurn] =
-    execGET(
-      EndPoint.agent_sessions,
-      Some(
-        subagentId.fold(s"$sessionId/turns/$turnId")(id =>
-          s"$sessionId/subagents/$id/turns/$turnId"
-        )
-      ),
-      extraHeaders = betaHeaders
-    ).map(_.asSafeJson[AgentTurn])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.agent_sessions,
+        Some(
+          subagentId.fold(s"${PathSegment(sessionId)}/turns/${PathSegment(turnId)}")(id =>
+            s"${PathSegment(sessionId)}/subagents/${PathSegment(id)}/turns/${PathSegment(turnId)}"
+          )
+        ),
+        extraHeaders = betaHeaders
+      ).map(_.asSafeJson[AgentTurn])
+    }
 
   override def listAgentSessionSubagents(
     sessionId: String,
@@ -199,22 +228,26 @@ trait OpenAIAgentsServiceImpl extends OpenAIAgentsService with OpenAIServiceWSBa
     order: Option[SortOrder],
     after: Option[String]
   ): Future[AgentsPage[AgentSubagent]] =
-    execGET(
-      EndPoint.agent_sessions,
-      Some(s"$sessionId/subagents"),
-      params = listParams(limit, order, after),
-      extraHeaders = betaHeaders
-    ).map(_.asSafeJson[AgentsPage[AgentSubagent]])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.agent_sessions,
+        Some(s"${PathSegment(sessionId)}/subagents"),
+        params = listParams(limit, order, after),
+        extraHeaders = betaHeaders
+      ).map(_.asSafeJson[AgentsPage[AgentSubagent]])
+    }
 
   override def getAgentSessionSubagent(
     sessionId: String,
     subagentId: String
   ): Future[AgentSubagent] =
-    execGET(
-      EndPoint.agent_sessions,
-      Some(s"$sessionId/subagents/$subagentId"),
-      extraHeaders = betaHeaders
-    ).map(_.asSafeJson[AgentSubagent])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.agent_sessions,
+        Some(s"${PathSegment(sessionId)}/subagents/${PathSegment(subagentId)}"),
+        extraHeaders = betaHeaders
+      ).map(_.asSafeJson[AgentSubagent])
+    }
 
   // ---- artifacts ----
 
@@ -225,42 +258,50 @@ trait OpenAIAgentsServiceImpl extends OpenAIAgentsService with OpenAIServiceWSBa
     after: Option[String],
     environmentId: Option[String]
   ): Future[AgentsPage[AgentSessionArtifact]] =
-    execGET(
-      EndPoint.agent_sessions,
-      Some(s"$sessionId/artifacts"),
-      params = listParams(limit, order, after) :+ (Param.environment_id -> environmentId),
-      extraHeaders = betaHeaders
-    ).map(_.asSafeJson[AgentsPage[AgentSessionArtifact]])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.agent_sessions,
+        Some(s"${PathSegment(sessionId)}/artifacts"),
+        params = listParams(limit, order, after) :+ (Param.environment_id -> environmentId),
+        extraHeaders = betaHeaders
+      ).map(_.asSafeJson[AgentsPage[AgentSessionArtifact]])
+    }
 
   override def getAgentSessionArtifact(
     sessionId: String,
     artifactId: String
   ): Future[AgentSessionArtifact] =
-    execGET(
-      EndPoint.agent_sessions,
-      Some(s"$sessionId/artifacts/$artifactId"),
-      extraHeaders = betaHeaders
-    ).map(_.asSafeJson[AgentSessionArtifact])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.agent_sessions,
+        Some(s"${PathSegment(sessionId)}/artifacts/${PathSegment(artifactId)}"),
+        extraHeaders = betaHeaders
+      ).map(_.asSafeJson[AgentSessionArtifact])
+    }
 
   override def getAgentSessionArtifactContent(
     sessionId: String,
     artifactId: String
   ): Future[Source[ByteString, _]] =
-    execGET(
-      EndPoint.agent_sessions,
-      Some(s"$sessionId/artifacts/$artifactId/content"),
-      extraHeaders = betaHeaders
-    ).map(_.asSafeSource)
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.agent_sessions,
+        Some(s"${PathSegment(sessionId)}/artifacts/${PathSegment(artifactId)}/content"),
+        extraHeaders = betaHeaders
+      ).map(_.asSafeSource)
+    }
 
   override def deleteAgentSessionArtifact(
     sessionId: String,
     artifactId: String
   ): Future[AgentsDeleted] =
-    execDELETE(
-      EndPoint.agent_sessions,
-      Some(s"$sessionId/artifacts/$artifactId"),
-      extraHeaders = betaHeaders
-    ).map(_.asSafeJson[AgentsDeleted])
+    PathSegment.inFuture {
+      execDELETE(
+        EndPoint.agent_sessions,
+        Some(s"${PathSegment(sessionId)}/artifacts/${PathSegment(artifactId)}"),
+        extraHeaders = betaHeaders
+      ).map(_.asSafeJson[AgentsDeleted])
+    }
 
   // ---- environments ----
 
@@ -287,30 +328,44 @@ trait OpenAIAgentsServiceImpl extends OpenAIAgentsService with OpenAIServiceWSBa
   override def getAgentEnvironmentTemplate(
     templateId: String
   ): Future[AgentEnvironmentTemplate] =
-    execGET(EndPoint.agent_environment_templates, Some(templateId), extraHeaders = betaHeaders)
-      .map(_.asSafeJson[AgentEnvironmentTemplate])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.agent_environment_templates,
+        Some(PathSegment(templateId)),
+        extraHeaders = betaHeaders
+      ).map(_.asSafeJson[AgentEnvironmentTemplate])
+    }
 
   override def updateAgentEnvironmentTemplate(
     templateId: String,
     settings: JsObject
   ): Future[AgentEnvironmentTemplate] =
-    execPOSTBody(
-      EndPoint.agent_environment_templates,
-      Some(templateId),
-      body = settings,
-      extraHeaders = betaHeaders
-    ).map(_.asSafeJson[AgentEnvironmentTemplate])
+    PathSegment.inFuture {
+      execPOSTBody(
+        EndPoint.agent_environment_templates,
+        Some(PathSegment(templateId)),
+        body = settings,
+        extraHeaders = betaHeaders
+      ).map(_.asSafeJson[AgentEnvironmentTemplate])
+    }
 
   override def deleteAgentEnvironmentTemplate(templateId: String): Future[AgentsDeleted] =
-    execDELETE(
-      EndPoint.agent_environment_templates,
-      Some(templateId),
-      extraHeaders = betaHeaders
-    ).map(_.asSafeJson[AgentsDeleted])
+    PathSegment.inFuture {
+      execDELETE(
+        EndPoint.agent_environment_templates,
+        Some(PathSegment(templateId)),
+        extraHeaders = betaHeaders
+      ).map(_.asSafeJson[AgentsDeleted])
+    }
 
   override def getAgentEnvironment(environmentId: String): Future[JsObject] =
-    execGET(EndPoint.agent_environments, Some(environmentId), extraHeaders = betaHeaders)
-      .map(_.asSafeJson[JsObject])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.agent_environments,
+        Some(PathSegment(environmentId)),
+        extraHeaders = betaHeaders
+      ).map(_.asSafeJson[JsObject])
+    }
 
   override def listAgentEnvironmentFiles(
     environmentId: String,
@@ -319,28 +374,32 @@ trait OpenAIAgentsServiceImpl extends OpenAIAgentsService with OpenAIServiceWSBa
     order: Option[SortOrder],
     page: Option[String]
   ): Future[JsObject] =
-    execGET(
-      EndPoint.agent_environments,
-      Some(s"$environmentId/files"),
-      params = Seq(
-        Param.path -> path,
-        Param.limit -> limit,
-        Param.order -> order.map(_.toString),
-        Param.page -> page
-      ),
-      extraHeaders = betaHeaders
-    ).map(_.asSafeJson[JsObject])
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.agent_environments,
+        Some(s"${PathSegment(environmentId)}/files"),
+        params = Seq(
+          Param.path -> path,
+          Param.limit -> limit,
+          Param.order -> order.map(_.toString),
+          Param.page -> page
+        ),
+        extraHeaders = betaHeaders
+      ).map(_.asSafeJson[JsObject])
+    }
 
   override def addAgentEnvironmentFile(
     environmentId: String,
     file: JsObject
   ): Future[JsObject] =
-    execPOSTBody(
-      EndPoint.agent_environments,
-      Some(s"$environmentId/files"),
-      body = file,
-      extraHeaders = betaHeaders
-    ).map(_.asSafeJson[JsObject])
+    PathSegment.inFuture {
+      execPOSTBody(
+        EndPoint.agent_environments,
+        Some(s"${PathSegment(environmentId)}/files"),
+        body = file,
+        extraHeaders = betaHeaders
+      ).map(_.asSafeJson[JsObject])
+    }
 }
 
 object OpenAIAgentsServiceImpl {

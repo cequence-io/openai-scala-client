@@ -22,7 +22,11 @@ import io.cequence.openaiscala.domain.agents.{
   CreateAgentSessionSettings,
   JsonFormats => AgentsJsonFormats
 }
-import io.cequence.openaiscala.service.{OpenAIStreamedServiceExtra, ServerSentEvents}
+import io.cequence.openaiscala.service.{
+  OpenAIStreamedServiceExtra,
+  PathSegment,
+  ServerSentEvents
+}
 import io.cequence.wsclient.JsonUtil.JsonOps
 import play.api.libs.json.{JsValue, Json}
 
@@ -74,14 +78,16 @@ private[service] trait OpenAICoreServiceStreamedExtraImpl
   override def streamAgentSessionEvents(
     sessionId: String
   ): Source[AgentSessionEvent, NotUsed] =
-    agentSessionEvents(
-      execRawStream(
-        EndPoint.agent_sessions,
-        "GET",
-        endPointParam = Some(s"$sessionId/events"),
-        extraHeaders = OpenAIAgentsServiceImpl.betaHeaders
+    PathSegment.inSource {
+      agentSessionEvents(
+        execRawStream(
+          EndPoint.agent_sessions,
+          "GET",
+          endPointParam = Some(s"${PathSegment(sessionId)}/events"),
+          extraHeaders = OpenAIAgentsServiceImpl.betaHeaders
+        )
       )
-    )
+    }
 
   // the session streams carry comment-only heartbeat frames - decoded by the SSE decoder, not
   // the JSON framing; an error body answering the request fails the stream classified

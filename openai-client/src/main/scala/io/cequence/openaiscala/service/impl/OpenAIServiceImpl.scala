@@ -14,7 +14,8 @@ import io.cequence.openaiscala.service.adapter.OpenAIResponsesChatCompletionServ
 import io.cequence.openaiscala.service.{
   HandleOpenAIErrorCodes,
   OpenAIChatCompletionService,
-  OpenAIService
+  OpenAIService,
+  PathSegment
 }
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits._
@@ -52,11 +53,13 @@ private[service] trait OpenAIServiceImpl
   override def retrieveModel(
     modelId: String
   ): Future[Option[ModelInfo]] =
-    execGETRich(
-      EndPoint.models,
-      Some(modelId)
-    ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafeJson[ModelInfo])
+    PathSegment.inFuture {
+      execGETRich(
+        EndPoint.models,
+        Some(PathSegment(modelId))
+      ).map { response =>
+        handleNotFoundAndError(response).map(_.asSafeJson[ModelInfo])
+      }
     }
 
   override def createChatFunCompletion(
@@ -111,7 +114,7 @@ private[service] trait OpenAIServiceImpl
     responseToolChoice: Option[ToolChoice] = None,
     settings: CreateRunSettings = DefaultSettings.CreateRun,
     stream: Boolean
-  ): Future[Run] = {
+  ): Future[Run] = PathSegment.inFuture {
     val coreParams = createBodyParamsForRun(settings, stream)
 
     val toolParam = toolParams(tools, responseToolChoice)
@@ -127,7 +130,7 @@ private[service] trait OpenAIServiceImpl
 
     execPOST(
       EndPoint.threads,
-      Some(s"$threadId/runs"),
+      Some(s"${PathSegment(threadId)}/runs"),
       bodyParams = coreParams ++ toolParam ++ runParams
     ).map(
       _.asSafeJson[Run]
@@ -174,19 +177,21 @@ private[service] trait OpenAIServiceImpl
     runId: String,
     metadata: Map[String, String]
   ): Future[Run] =
-    execPOST(
-      EndPoint.threads,
-      Some(s"$threadId/runs/$runId"),
-      bodyParams = jsonBodyParams(
-        Param.metadata -> (
-          if (metadata.nonEmpty)
-            Some(metadata)
-          else None
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.threads,
+        Some(s"${PathSegment(threadId)}/runs/${PathSegment(runId)}"),
+        bodyParams = jsonBodyParams(
+          Param.metadata -> (
+            if (metadata.nonEmpty)
+              Some(metadata)
+            else None
+          )
         )
+      ).map(
+        _.asSafeJson[Run]
       )
-    ).map(
-      _.asSafeJson[Run]
-    )
+    }
 
   @deprecated(
     "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
@@ -198,16 +203,20 @@ private[service] trait OpenAIServiceImpl
     toolOutputs: Seq[AssistantToolOutput],
     stream: Boolean
   ): Future[Run] =
-    execPOST(
-      EndPoint.threads,
-      Some(s"$threadId/runs/$runId/submit_tool_outputs"),
-      bodyParams = jsonBodyParams(
-        Param.tool_outputs -> Some(toolOutputs.map(Json.toJson(_)(assistantToolOutputFormat))),
-        Param.stream -> Some(stream)
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.threads,
+        Some(s"${PathSegment(threadId)}/runs/${PathSegment(runId)}/submit_tool_outputs"),
+        bodyParams = jsonBodyParams(
+          Param.tool_outputs -> Some(
+            toolOutputs.map(Json.toJson(_)(assistantToolOutputFormat))
+          ),
+          Param.stream -> Some(stream)
+        )
+      ).map(
+        _.asSafeJson[Run]
       )
-    ).map(
-      _.asSafeJson[Run]
-    )
+    }
 
   @deprecated(
     "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
@@ -216,10 +225,10 @@ private[service] trait OpenAIServiceImpl
   override def cancelRun(
     threadId: String,
     runId: String
-  ): Future[Run] = {
+  ): Future[Run] = PathSegment.inFuture {
     execPOST(
       EndPoint.threads,
-      Some(s"$threadId/runs/$runId/cancel")
+      Some(s"${PathSegment(threadId)}/runs/${PathSegment(runId)}/cancel")
     ).map(
       _.asSafeJson[Run]
     )
@@ -234,11 +243,13 @@ private[service] trait OpenAIServiceImpl
     threadId: String,
     runId: String
   ): Future[Option[Run]] =
-    execGETRich(
-      EndPoint.threads,
-      Some(s"$threadId/runs/$runId")
-    ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafeJson[Run])
+    PathSegment.inFuture {
+      execGETRich(
+        EndPoint.threads,
+        Some(s"${PathSegment(threadId)}/runs/${PathSegment(runId)}")
+      ).map { response =>
+        handleNotFoundAndError(response).map(_.asSafeJson[Run])
+      }
     }
 
   @deprecated(
@@ -250,12 +261,14 @@ private[service] trait OpenAIServiceImpl
     pagination: Pagination,
     order: Option[SortOrder] = None
   ): Future[Seq[Run]] =
-    execGET(
-      EndPoint.threads,
-      Some(s"$threadId/runs"),
-      params = paginationParams(pagination) :+ Param.order -> order
-    ).map { response =>
-      readAttribute(response.json, "data").asSafeArray[Run]
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.threads,
+        Some(s"${PathSegment(threadId)}/runs"),
+        params = paginationParams(pagination) :+ Param.order -> order
+      ).map { response =>
+        readAttribute(response.json, "data").asSafeArray[Run]
+      }
     }
 
   @deprecated(
@@ -267,11 +280,15 @@ private[service] trait OpenAIServiceImpl
     runId: String,
     stepId: String
   ): Future[Option[RunStep]] =
-    execGETRich(
-      EndPoint.threads,
-      Some(s"$threadID/runs/$runId/steps/$stepId")
-    ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafeJson[RunStep])
+    PathSegment.inFuture {
+      execGETRich(
+        EndPoint.threads,
+        Some(
+          s"${PathSegment(threadID)}/runs/${PathSegment(runId)}/steps/${PathSegment(stepId)}"
+        )
+      ).map { response =>
+        handleNotFoundAndError(response).map(_.asSafeJson[RunStep])
+      }
     }
 
   @deprecated(
@@ -284,12 +301,14 @@ private[service] trait OpenAIServiceImpl
     pagination: Pagination,
     order: Option[SortOrder]
   ): Future[Seq[RunStep]] =
-    execGET(
-      EndPoint.threads,
-      Some(s"$threadId/runs/$runId/steps"),
-      params = paginationParams(pagination) :+ Param.order -> order
-    ).map { response =>
-      readAttribute(response.json, "data").asSafeArray[RunStep]
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.threads,
+        Some(s"${PathSegment(threadId)}/runs/${PathSegment(runId)}/steps"),
+        params = paginationParams(pagination) :+ Param.order -> order
+      ).map { response =>
+        readAttribute(response.json, "data").asSafeArray[RunStep]
+      }
     }
 
   private def toolParams(
@@ -542,37 +561,45 @@ private[service] trait OpenAIServiceImpl
   override def deleteFile(
     fileId: String
   ): Future[DeleteResponse] =
-    execDELETERich(
-      EndPoint.files,
-      endPointParam = Some(fileId)
-    ).map(handleDeleteEndpointResponse)
+    PathSegment.inFuture {
+      execDELETERich(
+        EndPoint.files,
+        endPointParam = Some(PathSegment(fileId))
+      ).map(handleDeleteEndpointResponse)
+    }
 
   override def retrieveFile(
     fileId: String
   ): Future[Option[FileInfo]] =
-    execGETRich(
-      EndPoint.files,
-      endPointParam = Some(fileId)
-    ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafeJson[FileInfo])
+    PathSegment.inFuture {
+      execGETRich(
+        EndPoint.files,
+        endPointParam = Some(PathSegment(fileId))
+      ).map { response =>
+        handleNotFoundAndError(response).map(_.asSafeJson[FileInfo])
+      }
     }
 
   // because the output type here is string we need to do bit of a manual request building and calling
   override def retrieveFileContent(
     fileId: String
   ): Future[Option[String]] =
-    execGETRich(
-      endPoint = EndPoint.files,
-      endPointParam = Some(s"${fileId}/content")
-    ).map(response => handleNotFoundAndError(response).map(_.string))
+    PathSegment.inFuture {
+      execGETRich(
+        endPoint = EndPoint.files,
+        endPointParam = Some(s"${PathSegment(fileId)}/content")
+      ).map(response => handleNotFoundAndError(response).map(_.string))
+    }
 
   override def retrieveFileContentAsSource(
     fileId: String
   ): Future[Option[Source[ByteString, _]]] =
-    execGETRich(
-      endPoint = EndPoint.files,
-      endPointParam = Some(s"${fileId}/content")
-    ).map(response => handleNotFoundAndError(response).map(_.asSafeSource))
+    PathSegment.inFuture {
+      execGETRich(
+        endPoint = EndPoint.files,
+        endPointParam = Some(s"${PathSegment(fileId)}/content")
+      ).map(response => handleNotFoundAndError(response).map(_.asSafeSource))
+    }
 
   override def createVectorStore(
     fileIds: Seq[String],
@@ -595,16 +622,18 @@ private[service] trait OpenAIServiceImpl
     name: Option[String] = None,
     metadata: Map[String, Any]
   ): Future[VectorStore] =
-    execPOST(
-      EndPoint.vector_stores,
-      endPointParam = Some(vectorStoreId),
-      bodyParams = jsonBodyParams(
-        Param.name -> name,
-        Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.vector_stores,
+        endPointParam = Some(PathSegment(vectorStoreId)),
+        bodyParams = jsonBodyParams(
+          Param.name -> name,
+          Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
+        )
+      ).map(
+        _.asSafeJson[VectorStore]
       )
-    ).map(
-      _.asSafeJson[VectorStore]
-    )
+    }
 
   override def listVectorStores(
     pagination: Pagination,
@@ -620,36 +649,42 @@ private[service] trait OpenAIServiceImpl
   override def retrieveVectorStore(
     vectorStoreId: String
   ): Future[Option[VectorStore]] =
-    execGETRich(
-      EndPoint.vector_stores,
-      endPointParam = Some(vectorStoreId)
-    ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafeJson[VectorStore])
+    PathSegment.inFuture {
+      execGETRich(
+        EndPoint.vector_stores,
+        endPointParam = Some(PathSegment(vectorStoreId))
+      ).map { response =>
+        handleNotFoundAndError(response).map(_.asSafeJson[VectorStore])
+      }
     }
 
   override def deleteVectorStore(
     vectorStoreId: String
   ): Future[DeleteResponse] =
-    execDELETERich(
-      EndPoint.vector_stores,
-      endPointParam = Some(vectorStoreId)
-    ).map(handleDeleteEndpointResponse)
+    PathSegment.inFuture {
+      execDELETERich(
+        EndPoint.vector_stores,
+        endPointParam = Some(PathSegment(vectorStoreId))
+      ).map(handleDeleteEndpointResponse)
+    }
 
   override def createVectorStoreFile(
     vectorStoreId: String,
     fileId: String,
     chunkingStrategy: ChunkingStrategy = ChunkingStrategy.AutoChunkingStrategy
   ): Future[VectorStoreFile] =
-    execPOST(
-      EndPoint.vector_stores,
-      endPointParam = Some(s"$vectorStoreId/files"),
-      bodyParams = jsonBodyParams(
-        Param.file_id -> Some(fileId),
-        Param.chunking_strategy -> Some(Json.toJson(chunkingStrategy))
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.vector_stores,
+        endPointParam = Some(s"${PathSegment(vectorStoreId)}/files"),
+        bodyParams = jsonBodyParams(
+          Param.file_id -> Some(fileId),
+          Param.chunking_strategy -> Some(Json.toJson(chunkingStrategy))
+        )
+      ).map(
+        _.asSafeJson[VectorStoreFile]
       )
-    ).map(
-      _.asSafeJson[VectorStoreFile]
-    )
+    }
 
   override def listVectorStoreFiles(
     vectorStoreId: String,
@@ -657,23 +692,26 @@ private[service] trait OpenAIServiceImpl
     order: Option[SortOrder] = None,
     filter: Option[VectorStoreFileStatus] = None
   ): Future[Seq[VectorStoreFile]] =
-    execGET(
-      EndPoint.vector_stores,
-      endPointParam = Some(s"$vectorStoreId/files"),
-      params = paginationParams(pagination) :+
-        Param.order -> order :+
-        Param.filter -> filter
-    ).map { response =>
-      readAttribute(response.json, "data").asSafeArray[VectorStoreFile]
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.vector_stores,
+        endPointParam = Some(s"${PathSegment(vectorStoreId)}/files"),
+        params = paginationParams(pagination) :+
+          Param.order -> order :+
+          Param.filter -> filter
+      ).map { response =>
+        readAttribute(response.json, "data").asSafeArray[VectorStoreFile]
+      }
     }
 
   def retrieveVectorStoreFile(
     vectorStoreId: String,
     fileId: FileId
-  ): Future[VectorStoreFile] = {
+  ): Future[VectorStoreFile] = PathSegment.inFuture {
     execGET(
       EndPoint.vector_stores,
-      endPointParam = Some(s"$vectorStoreId/files/${fileId.file_id}")
+      endPointParam =
+        Some(s"${PathSegment(vectorStoreId)}/files/${PathSegment(fileId.file_id)}")
     ).map(
       _.asSafeJson[VectorStoreFile]
     )
@@ -683,10 +721,12 @@ private[service] trait OpenAIServiceImpl
     vectorStoreId: String,
     fileId: String
   ): Future[DeleteResponse] =
-    execDELETERich(
-      EndPoint.vector_stores,
-      endPointParam = Some(s"$vectorStoreId/files/$fileId")
-    ).map(handleDeleteEndpointResponse)
+    PathSegment.inFuture {
+      execDELETERich(
+        EndPoint.vector_stores,
+        endPointParam = Some(s"${PathSegment(vectorStoreId)}/files/${PathSegment(fileId)}")
+      ).map(handleDeleteEndpointResponse)
+    }
 
   override def createFineTune(
     training_file: String,
@@ -742,35 +782,41 @@ private[service] trait OpenAIServiceImpl
   override def retrieveFineTune(
     fineTuneId: String
   ): Future[Option[FineTuneJob]] =
-    execGETRich(
-      EndPoint.fine_tunes,
-      endPointParam = Some(fineTuneId)
-    ).map(response => handleNotFoundAndError(response).map(_.asSafeJson[FineTuneJob]))
+    PathSegment.inFuture {
+      execGETRich(
+        EndPoint.fine_tunes,
+        endPointParam = Some(PathSegment(fineTuneId))
+      ).map(response => handleNotFoundAndError(response).map(_.asSafeJson[FineTuneJob]))
+    }
 
   override def cancelFineTune(
     fineTuneId: String
   ): Future[Option[FineTuneJob]] =
-    execPOSTRich(
-      EndPoint.fine_tunes,
-      endPointParam = Some(s"$fineTuneId/cancel")
-    ).map(response => handleNotFoundAndError(response).map(_.asSafeJson[FineTuneJob]))
+    PathSegment.inFuture {
+      execPOSTRich(
+        EndPoint.fine_tunes,
+        endPointParam = Some(s"${PathSegment(fineTuneId)}/cancel")
+      ).map(response => handleNotFoundAndError(response).map(_.asSafeJson[FineTuneJob]))
+    }
 
   override def listFineTuneEvents(
     fineTuneId: String,
     after: Option[String] = None,
     limit: Option[Int] = None
   ): Future[Option[Seq[FineTuneEvent]]] =
-    execGETRich(
-      EndPoint.fine_tunes,
-      endPointParam = Some(s"$fineTuneId/events"),
-      params = Seq(
-        Param.after -> after,
-        Param.limit -> limit
-      )
-    ).map { richResponse =>
-      handleNotFoundAndError(richResponse).map(response =>
-        readAttribute(response.json, "data").asSafeArray[FineTuneEvent]
-      )
+    PathSegment.inFuture {
+      execGETRich(
+        EndPoint.fine_tunes,
+        endPointParam = Some(s"${PathSegment(fineTuneId)}/events"),
+        params = Seq(
+          Param.after -> after,
+          Param.limit -> limit
+        )
+      ).map { richResponse =>
+        handleNotFoundAndError(richResponse).map(response =>
+          readAttribute(response.json, "data").asSafeArray[FineTuneEvent]
+        )
+      }
     }
 
   override def listFineTuneCheckpoints(
@@ -778,26 +824,30 @@ private[service] trait OpenAIServiceImpl
     after: Option[String],
     limit: Option[Int]
   ): Future[Option[Seq[FineTuneCheckpoint]]] =
-    execGETRich(
-      EndPoint.fine_tunes,
-      endPointParam = Some(s"$fineTuneId/checkpoints"),
-      params = Seq(
-        Param.after -> after,
-        Param.limit -> limit
-      )
-    ).map { richResponse =>
-      handleNotFoundAndError(richResponse).map(response =>
-        readAttribute(response.json, "data").asSafeArray[FineTuneCheckpoint]
-      )
+    PathSegment.inFuture {
+      execGETRich(
+        EndPoint.fine_tunes,
+        endPointParam = Some(s"${PathSegment(fineTuneId)}/checkpoints"),
+        params = Seq(
+          Param.after -> after,
+          Param.limit -> limit
+        )
+      ).map { richResponse =>
+        handleNotFoundAndError(richResponse).map(response =>
+          readAttribute(response.json, "data").asSafeArray[FineTuneCheckpoint]
+        )
+      }
     }
 
   override def deleteFineTuneModel(
     modelId: String
   ): Future[DeleteResponse] =
-    execDELETERich(
-      EndPoint.models,
-      endPointParam = Some(modelId)
-    ).map(handleDeleteEndpointResponse)
+    PathSegment.inFuture {
+      execDELETERich(
+        EndPoint.models,
+        endPointParam = Some(PathSegment(modelId))
+      ).map(handleDeleteEndpointResponse)
+    }
 
   override def createModeration(
     input: String,
@@ -846,11 +896,13 @@ private[service] trait OpenAIServiceImpl
   override def retrieveThread(
     threadId: String
   ): Future[Option[Thread]] =
-    execGETRich(
-      EndPoint.threads,
-      Some(threadId)
-    ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafeJson[Thread])
+    PathSegment.inFuture {
+      execGETRich(
+        EndPoint.threads,
+        Some(PathSegment(threadId))
+      ).map { response =>
+        handleNotFoundAndError(response).map(_.asSafeJson[Thread])
+      }
     }
 
   @deprecated(
@@ -861,18 +913,20 @@ private[service] trait OpenAIServiceImpl
     threadId: String,
     metadata: Map[String, String]
   ): Future[Option[Thread]] =
-    execPOSTRich(
-      EndPoint.threads,
-      endPointParam = Some(threadId),
-      bodyParams = jsonBodyParams(
-        Param.metadata -> (
-          if (metadata.nonEmpty)
-            Some(metadata)
-          else None
+    PathSegment.inFuture {
+      execPOSTRich(
+        EndPoint.threads,
+        endPointParam = Some(PathSegment(threadId)),
+        bodyParams = jsonBodyParams(
+          Param.metadata -> (
+            if (metadata.nonEmpty)
+              Some(metadata)
+            else None
+          )
         )
-      )
-    ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafeJson[Thread])
+      ).map { response =>
+        handleNotFoundAndError(response).map(_.asSafeJson[Thread])
+      }
     }
 
   @deprecated(
@@ -882,10 +936,12 @@ private[service] trait OpenAIServiceImpl
   override def deleteThread(
     threadId: String
   ): Future[DeleteResponse] =
-    execDELETERich(
-      EndPoint.threads,
-      endPointParam = Some(threadId)
-    ).map(handleDeleteEndpointResponse)
+    PathSegment.inFuture {
+      execDELETERich(
+        EndPoint.threads,
+        endPointParam = Some(PathSegment(threadId))
+      ).map(handleDeleteEndpointResponse)
+    }
 
   @deprecated(
     "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
@@ -898,26 +954,28 @@ private[service] trait OpenAIServiceImpl
     attachments: Seq[Attachment] = Nil,
     metadata: Map[String, String] = Map()
   ): Future[ThreadFullMessage] =
-    execPOST(
-      EndPoint.threads,
-      endPointParam = Some(s"$threadId/messages"),
-      bodyParams = jsonBodyParams(
-        Param.role -> Some(role.toString),
-        Param.content -> Some(content),
+    PathSegment.inFuture {
+      execPOST(
+        EndPoint.threads,
+        endPointParam = Some(s"${PathSegment(threadId)}/messages"),
+        bodyParams = jsonBodyParams(
+          Param.role -> Some(role.toString),
+          Param.content -> Some(content),
 //        Param.attachments -> (
 //          if (attachments.nonEmpty)
 //            Some(Json.toJson(attachments))
 //          else None
 //        ),
-        Param.metadata -> (
-          if (metadata.nonEmpty)
-            Some(metadata)
-          else None
+          Param.metadata -> (
+            if (metadata.nonEmpty)
+              Some(metadata)
+            else None
+          )
         )
+      ).map(
+        _.asSafeJson[ThreadFullMessage]
       )
-    ).map(
-      _.asSafeJson[ThreadFullMessage]
-    )
+    }
 
   @deprecated(
     "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
@@ -927,11 +985,13 @@ private[service] trait OpenAIServiceImpl
     threadId: String,
     messageId: String
   ): Future[Option[ThreadFullMessage]] =
-    execGETRich(
-      EndPoint.threads,
-      endPointParam = Some(s"$threadId/messages/$messageId")
-    ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafeJson[ThreadFullMessage])
+    PathSegment.inFuture {
+      execGETRich(
+        EndPoint.threads,
+        endPointParam = Some(s"${PathSegment(threadId)}/messages/${PathSegment(messageId)}")
+      ).map { response =>
+        handleNotFoundAndError(response).map(_.asSafeJson[ThreadFullMessage])
+      }
     }
 
   @deprecated(
@@ -943,18 +1003,20 @@ private[service] trait OpenAIServiceImpl
     messageId: String,
     metadata: Map[String, String]
   ): Future[Option[ThreadFullMessage]] =
-    execPOSTRich(
-      EndPoint.threads,
-      endPointParam = Some(s"$threadId/messages/$messageId"),
-      bodyParams = jsonBodyParams(
-        Param.metadata -> (
-          if (metadata.nonEmpty)
-            Some(metadata)
-          else None
+    PathSegment.inFuture {
+      execPOSTRich(
+        EndPoint.threads,
+        endPointParam = Some(s"${PathSegment(threadId)}/messages/${PathSegment(messageId)}"),
+        bodyParams = jsonBodyParams(
+          Param.metadata -> (
+            if (metadata.nonEmpty)
+              Some(metadata)
+            else None
+          )
         )
-      )
-    ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafeJson[ThreadFullMessage])
+      ).map { response =>
+        handleNotFoundAndError(response).map(_.asSafeJson[ThreadFullMessage])
+      }
     }
 
   @deprecated(
@@ -966,12 +1028,14 @@ private[service] trait OpenAIServiceImpl
     pagination: Pagination = Pagination.default,
     order: Option[SortOrder]
   ): Future[Seq[ThreadFullMessage]] =
-    execGET(
-      EndPoint.threads,
-      endPointParam = Some(s"$threadId/messages"),
-      params = paginationParams(pagination) :+ Param.order -> order
-    ).map { response =>
-      readAttribute(response.json, "data").asSafeArray[ThreadFullMessage]
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.threads,
+        endPointParam = Some(s"${PathSegment(threadId)}/messages"),
+        params = paginationParams(pagination) :+ Param.order -> order
+      ).map { response =>
+        readAttribute(response.json, "data").asSafeArray[ThreadFullMessage]
+      }
     }
 
   @deprecated(
@@ -982,10 +1046,12 @@ private[service] trait OpenAIServiceImpl
     threadId: String,
     messageId: String
   ): Future[DeleteResponse] =
-    execDELETERich(
-      EndPoint.threads,
-      endPointParam = Some(s"$threadId/messages/$messageId")
-    ).map(handleDeleteEndpointResponse)
+    PathSegment.inFuture {
+      execDELETERich(
+        EndPoint.threads,
+        endPointParam = Some(s"${PathSegment(threadId)}/messages/${PathSegment(messageId)}")
+      ).map(handleDeleteEndpointResponse)
+    }
 
   @deprecated(
     "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
@@ -996,11 +1062,15 @@ private[service] trait OpenAIServiceImpl
     messageId: String,
     fileId: String
   ): Future[Option[ThreadMessageFile]] =
-    execGETRich(
-      EndPoint.threads,
-      endPointParam = Some(s"$threadId/messages/$messageId/files/$fileId")
-    ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafeJson[ThreadMessageFile])
+    PathSegment.inFuture {
+      execGETRich(
+        EndPoint.threads,
+        endPointParam = Some(
+          s"${PathSegment(threadId)}/messages/${PathSegment(messageId)}/files/${PathSegment(fileId)}"
+        )
+      ).map { response =>
+        handleNotFoundAndError(response).map(_.asSafeJson[ThreadMessageFile])
+      }
     }
 
   @deprecated(
@@ -1013,12 +1083,15 @@ private[service] trait OpenAIServiceImpl
     pagination: Pagination,
     order: Option[SortOrder]
   ): Future[Seq[ThreadMessageFile]] =
-    execGET(
-      EndPoint.threads,
-      endPointParam = Some(s"$threadId/messages/$messageId/files"),
-      params = paginationParams(pagination) :+ Param.order -> order
-    ).map { response =>
-      readAttribute(response.json, "data").asSafeArray[ThreadMessageFile]
+    PathSegment.inFuture {
+      execGET(
+        EndPoint.threads,
+        endPointParam =
+          Some(s"${PathSegment(threadId)}/messages/${PathSegment(messageId)}/files"),
+        params = paginationParams(pagination) :+ Param.order -> order
+      ).map { response =>
+        readAttribute(response.json, "data").asSafeArray[ThreadMessageFile]
+      }
     }
 
   @deprecated(
@@ -1075,11 +1148,13 @@ private[service] trait OpenAIServiceImpl
     "1.4.0"
   )
   override def retrieveAssistant(assistantId: String): Future[Option[Assistant]] =
-    execGETRich(
-      EndPoint.assistants,
-      Some(assistantId)
-    ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafeJson[Assistant])
+    PathSegment.inFuture {
+      execGETRich(
+        EndPoint.assistants,
+        Some(PathSegment(assistantId))
+      ).map { response =>
+        handleNotFoundAndError(response).map(_.asSafeJson[Assistant])
+      }
     }
 
   @deprecated(
@@ -1096,20 +1171,22 @@ private[service] trait OpenAIServiceImpl
     fileIds: Seq[String],
     metadata: Map[String, String]
   ): Future[Option[Assistant]] =
-    execPOSTRich(
-      EndPoint.assistants,
-      endPointParam = Some(assistantId),
-      bodyParams = jsonBodyParams(
-        Param.model -> model,
-        Param.name -> name,
-        Param.description -> description,
-        Param.instructions -> instructions,
-        Param.tools -> Some(Json.toJson(tools)),
-        Param.file_ids -> (if (fileIds.nonEmpty) Some(fileIds) else None),
-        Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
-      )
-    ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafeJson[Assistant])
+    PathSegment.inFuture {
+      execPOSTRich(
+        EndPoint.assistants,
+        endPointParam = Some(PathSegment(assistantId)),
+        bodyParams = jsonBodyParams(
+          Param.model -> model,
+          Param.name -> name,
+          Param.description -> description,
+          Param.instructions -> instructions,
+          Param.tools -> Some(Json.toJson(tools)),
+          Param.file_ids -> (if (fileIds.nonEmpty) Some(fileIds) else None),
+          Param.metadata -> (if (metadata.nonEmpty) Some(metadata) else None)
+        )
+      ).map { response =>
+        handleNotFoundAndError(response).map(_.asSafeJson[Assistant])
+      }
     }
 
   @deprecated(
@@ -1117,10 +1194,12 @@ private[service] trait OpenAIServiceImpl
     "1.4.0"
   )
   override def deleteAssistant(assistantId: String): Future[DeleteResponse] =
-    execDELETERich(
-      EndPoint.assistants,
-      endPointParam = Some(assistantId)
-    ).map(handleDeleteEndpointResponse)
+    PathSegment.inFuture {
+      execDELETERich(
+        EndPoint.assistants,
+        endPointParam = Some(PathSegment(assistantId))
+      ).map(handleDeleteEndpointResponse)
+    }
 
   @deprecated(
     "The Assistants API (assistants, threads, messages, runs) was shut down by OpenAI on 2026-08-26 - use the Responses API: createModelResponse / createModelResponseStreamed",
@@ -1130,10 +1209,12 @@ private[service] trait OpenAIServiceImpl
     assistantId: String,
     fileId: String
   ): Future[DeleteResponse] =
-    execDELETERich(
-      EndPoint.assistants,
-      endPointParam = Some(s"$assistantId/files/$fileId")
-    ).map(handleDeleteEndpointResponse)
+    PathSegment.inFuture {
+      execDELETERich(
+        EndPoint.assistants,
+        endPointParam = Some(s"${PathSegment(assistantId)}/files/${PathSegment(fileId)}")
+      ).map(handleDeleteEndpointResponse)
+    }
 
   private def handleDeleteEndpointResponse(richResponse: RichResponse): DeleteResponse = {
     handleNotFoundAndError(richResponse)
@@ -1185,12 +1266,14 @@ private[service] trait OpenAIServiceImpl
     ).map(_.asSafeJson[Batch])
 
   override def retrieveBatch(batchId: String): Future[Option[Batch]] =
-    asSafeJsonIfFound[Batch](
-      execGETRich(
-        EndPoint.batches,
-        Some(batchId)
+    PathSegment.inFuture {
+      asSafeJsonIfFound[Batch](
+        execGETRich(
+          EndPoint.batches,
+          Some(PathSegment(batchId))
+        )
       )
-    )
+    }
 
   override def retrieveBatchFile(batchId: String): Future[Option[FileInfo]] =
     for {
@@ -1223,12 +1306,14 @@ private[service] trait OpenAIServiceImpl
     }
 
   override def cancelBatch(batchId: String): Future[Option[Batch]] =
-    asSafeJsonIfFound[Batch](
-      execPOSTRich(
-        EndPoint.batches,
-        endPointParam = Some(s"$batchId/cancel")
+    PathSegment.inFuture {
+      asSafeJsonIfFound[Batch](
+        execPOSTRich(
+          EndPoint.batches,
+          endPointParam = Some(s"${PathSegment(batchId)}/cancel")
+        )
       )
-    )
+    }
 
   override def listBatches(
     pagination: Pagination = Pagination.default,

@@ -7,6 +7,7 @@ import io.cequence.openaiscala.anthropic.domain.{
   ListBatchInferenceJobsResponse
 }
 import io.cequence.openaiscala.anthropic.service.AnthropicBedrockBatchInferenceService
+import io.cequence.openaiscala.service.PathSegment
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
 import io.cequence.wsclient.domain.{EnumValue, NamedEnumValue, SiteBinding}
 import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithEngine
@@ -129,16 +130,17 @@ private[service] class AnthropicBedrockBatchInferenceServiceImpl(
     }
   }
 
-  override def getBatchInferenceJob(jobIdentifier: String): Future[BatchInferenceJob] = {
-    val encodedId = encodeOnce(jobIdentifier)
-    val endpoint = BedrockBatchEndPoint.get(encodedId)
-    // the canonical request signed for SigV4 needs the path segment doubly URI-encoded - see
-    // the scaladoc on encodeOnce below
-    val extraHeaders =
-      signedHeaders("GET", s"model-invocation-job/${encodeOnce(encodedId)}", "")
+  override def getBatchInferenceJob(jobIdentifier: String): Future[BatchInferenceJob] =
+    PathSegment.inFuture {
+      val encodedId = encodeOnce(PathSegment.validate(jobIdentifier))
+      val endpoint = BedrockBatchEndPoint.get(encodedId)
+      // the canonical request signed for SigV4 needs the path segment doubly URI-encoded - see
+      // the scaladoc on encodeOnce below
+      val extraHeaders =
+        signedHeaders("GET", s"model-invocation-job/${encodeOnce(encodedId)}", "")
 
-    execGET(endpoint, extraHeaders = extraHeaders).map(_.asSafeJson[BatchInferenceJob])
-  }
+      execGET(endpoint, extraHeaders = extraHeaders).map(_.asSafeJson[BatchInferenceJob])
+    }
 
   override def listBatchInferenceJobs(
     maxResults: Option[Int],
@@ -162,14 +164,15 @@ private[service] class AnthropicBedrockBatchInferenceServiceImpl(
       .map(_.asSafeJson[ListBatchInferenceJobsResponse])
   }
 
-  override def stopBatchInferenceJob(jobIdentifier: String): Future[Unit] = {
-    val encodedId = encodeOnce(jobIdentifier)
-    val endpoint = BedrockBatchEndPoint.stop(encodedId)
-    val extraHeaders =
-      signedHeaders("POST", s"model-invocation-job/${encodeOnce(encodedId)}/stop", "")
+  override def stopBatchInferenceJob(jobIdentifier: String): Future[Unit] =
+    PathSegment.inFuture {
+      val encodedId = encodeOnce(PathSegment.validate(jobIdentifier))
+      val endpoint = BedrockBatchEndPoint.stop(encodedId)
+      val extraHeaders =
+        signedHeaders("POST", s"model-invocation-job/${encodeOnce(encodedId)}/stop", "")
 
-    execPOST(endpoint, extraHeaders = extraHeaders).map(_ => ())
-  }
+      execPOST(endpoint, extraHeaders = extraHeaders).map(_ => ())
+    }
 
   // Get/Stop's jobIdentifier pattern documents that a bare 12-char id is accepted alongside the
   // full ARN - live-verified that only the full ARN actually works. The ARN's colons/slashes

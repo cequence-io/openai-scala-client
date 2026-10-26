@@ -24,6 +24,7 @@ import io.cequence.openaiscala.service.{
   ClassifiedStreamingWSClient,
   OpenAIResponsesService,
   OpenAIStreamedServiceExtra,
+  PathSegment,
   ResponsesToolApprovalsUnsupported
 }
 import io.cequence.wsclient.JsonUtil.JsonOps
@@ -98,9 +99,11 @@ private[service] class PerplexityResponsesServiceImpl(
     responseId: String,
     include: Seq[String]
   ): Future[Response] =
-    execGET(EndPoint.responses, endPointParam = Some(responseId))
-      .map(_.asSafeJson[Response])
-      .recoverWith(transportErrors)
+    PathSegment.inFuture {
+      execGET(EndPoint.responses, endPointParam = Some(PathSegment(responseId)))
+        .map(_.asSafeJson[Response])
+        .recoverWith(transportErrors)
+    }
 
   override def createModelResponseStreamed(
     inputs: Inputs,

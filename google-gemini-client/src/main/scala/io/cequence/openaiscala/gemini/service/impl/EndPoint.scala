@@ -1,26 +1,35 @@
 package io.cequence.openaiscala.gemini.service.impl
 
+import io.cequence.openaiscala.service.PathSegment
 import io.cequence.wsclient.domain.{EnumValue, NamedEnumValue}
 
 sealed abstract class EndPoint(value: String = "") extends NamedEnumValue(value)
 
 object EndPoint {
   case class generateContent(model: String)
-      extends EndPoint(s"models/${stripModelsPrefix(model)}:generateContent")
+      extends EndPoint(s"models/${PathSegment(stripModelsPrefix(model))}:generateContent")
   case class streamGenerateContent(model: String)
-      extends EndPoint(s"models/${stripModelsPrefix(model)}:streamGenerateContent")
+      extends EndPoint(
+        s"models/${PathSegment(stripModelsPrefix(model))}:streamGenerateContent"
+      )
   case class batchGenerateContent(model: String)
-      extends EndPoint(s"models/${stripModelsPrefix(model)}:batchGenerateContent")
+      extends EndPoint(
+        s"models/${PathSegment(stripModelsPrefix(model))}:batchGenerateContent"
+      )
   case object models extends EndPoint
   case object batches extends EndPoint
-  case class batches(name: String) extends EndPoint(s"batches/${stripBatchesPrefix(name)}")
+  case class batches(name: String)
+      extends EndPoint(s"batches/${PathSegment(stripBatchesPrefix(name))}")
   case class cancelBatch(name: String)
-      extends EndPoint(s"batches/${stripBatchesPrefix(name)}:cancel")
+      extends EndPoint(s"batches/${PathSegment(stripBatchesPrefix(name))}:cancel")
   case object cachedContents extends EndPoint
   case class cachedContents(name: String)
-      extends EndPoint(s"cachedContents/${stripCachedContentsPrefix(name)}")
-  case class files(name: String) extends EndPoint(s"files/${stripFilesPrefix(name)}")
+      extends EndPoint(s"cachedContents/${PathSegment(stripCachedContentsPrefix(name))}")
+  case class files(name: String)
+      extends EndPoint(s"files/${PathSegment(stripFilesPrefix(name))}")
 
+  // every caller-supplied id below goes through PathSegment, so it stays ONE path segment
+  // (a '/', '?' or '#' in it is escaped, '.' / '..' / "" refused) - after the known prefix strip
   private def stripCachedContentsPrefix(name: String): String =
     name.stripPrefix("cachedContents/")
 
