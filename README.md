@@ -55,7 +55,7 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 | [Google Gemini](https://ai.google.dev/) | Full | Yes | Yes | Google's models |
 | [Google Vertex AI](https://cloud.google.com/vertex-ai) | Full | Yes | Yes | Gemini models |
 | [Grok](https://x.ai/) | Full | Yes | – | x.AI models |
-| [Groq](https://wow.groq.com/) | Full ³ | Yes, MCP and server-side tools too | Yes | Fast inference |
+| [Groq](https://groq.com/) | Full ³ | Yes, MCP and server-side tools too | Yes | Fast inference |
 | [Meta Model API](https://dev.meta.ai/) 🔥 | Full ⁶ | Yes | – | Muse Wonder, Muse Spark (open weights: Muse Spark Open on Together, Fireworks, OpenRouter, Vercel) ⁶ |
 | [MiniMax](https://www.minimax.io/) | Varies ⁴ | – | – | Chinese provider (global and China) |
 | [Mistral](https://mistral.ai/) | Full | – | – | Open-source leader |

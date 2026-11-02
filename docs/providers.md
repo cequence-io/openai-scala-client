@@ -263,7 +263,7 @@ Then you can obtain a service in one of the following ways.
 ```
    See [Decision-model providers](decision-models.md#decision-model-providers-) below.
 
-8. [Groq](https://wow.groq.com/) - requires `GROQ_API_KEY`
+8. [Groq](https://groq.com/) - requires `GROQ_API_KEY`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.groq)
   // or with streaming
