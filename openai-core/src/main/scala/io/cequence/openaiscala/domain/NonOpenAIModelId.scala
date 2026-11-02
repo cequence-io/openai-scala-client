@@ -674,10 +674,15 @@ object NonOpenAIModelId {
   // Minimax
 
   // MiniMax direct API (api.minimax.io / api.minimaxi.com) - the models MiniMax's docs list
-  // (2026-10-24, 1M context each); Flash always thinks (`miniMaxFlash` conversions)
+  // (2026-10-24, 1M context each); Flash always thinks (`miniMaxFlash` conversions), M3 thinks
+  // into `content` unless `reasoning_split` (`miniMaxM3` conversions)
   val minimax_m3_1_flash = "MiniMax-M3.1-Flash" // MiniMax
   val minimax_m3 = "MiniMax-M3" // MiniMax
-  // no longer in the docs' supported-model table, still listed by /v1/models (2026-10-24)
+  @deprecated(
+    "MiniMax retired M2.7 on its direct API - a 404 \"The model is no longer available.\" " +
+      "(2026-11-02, every M2.x id it still lists) - use minimax_m3 or minimax_m3_1_flash",
+    "1.6.1"
+  )
   val minimax_m2_7 = "MiniMax-M2.7" // MiniMax
 
   // MiniMax M2.x - MoE 230B total / 10B active, coding & agentic

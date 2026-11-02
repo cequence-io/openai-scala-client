@@ -367,9 +367,16 @@ or with streaming
    On the [chat API](https://platform.minimax.io/docs/api-reference/text-openai-api) Flash always thinks:
    `reasoning_effort` takes `low` .. `max` (`max` when omitted); the client sends `none` (a 400 on Flash) and the
    undocumented `minimal` as `low` and drops `service_tier`, which Flash does not support, and
-   `thinking = {"type": "disabled"}` (via `extra_params`) is a 400 on Flash. M3 ignores the effort and thinks by
-   default - `extra_params = Map("thinking" -> Map("type" -> "disabled"))` turns it off, `"adaptive"` back on.
-   (MiniMax's docs, 2026-10-24; the two 400s confirmed live.)
+   `thinking = {"type": "disabled"}` (via `extra_params`) is a 400 on Flash. M3 thinks by default and writes its
+   thinking into `content` as `<think>...</think>` unless `reasoning_split` is set, so the client sends
+   `reasoning_split: true`: the thinking arrives as the choice's `reasoning` (`Thinking` on the typed stream) and is
+   carried back in a tool loop. M3 accepts `reasoning_effort = none` but thinks anyway, so the client sends `none` as
+   `thinking = {"type": "disabled"}` (`extra_params` of your own - a `thinking` or a `reasoning_split` - win). Both
+   models accept `stop` and `logprobs` and ignore them - the client drops them with a warning; strict `json_schema` is
+   accepted but not enforced, so the JSON helpers use JSON-object mode. MiniMax's direct API answers every M2.x id it
+   still lists with a 404 "no longer available". (Live 2026-11-02:
+   [MiniMaxSmokeTest](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/minimax/MiniMaxSmokeTest.scala),
+   all 20 sections on Flash and M3.)
 
    MiniMax also exposes an Anthropic-compatible endpoint, reachable via the Anthropic client's escape hatch:
 ```scala

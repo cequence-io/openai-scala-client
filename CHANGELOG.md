@@ -26,6 +26,14 @@ compatible with 1.6.0 (the factory methods' signatures changed).
   2026-10-22, strict `json_schema` failed 7-9 of 20 calls with a 400 `json_validate_failed` (free prose, broken JSON),
   through the client 10 of 20; JSON-object mode answered 66 of 66, through the client 20 of 20.
   `enforceMode = Some(json_schema)` still forces the native mode.
+- MiniMax-M3 on MiniMax's chat API (`ChatProviderSettings.minimax` / `minimaxChina`): every request carries
+  `reasoning_split: true` (unless `extra_params` set it), so the thinking comes back as the choice's `reasoning` and
+  the typed stream's `Thinking` instead of `<think>...</think>` at the start of `content` - live 2026-11-02 M3 wrote it
+  into the content without the flag, also in JSON mode, where the JSON helper (reading from the first `{`) could
+  take a draft quoted in the thinking for the answer. `reasoning_effort = none` is sent as `thinking.type = disabled`
+  (M3 accepts `none` and thinks anyway); a `thinking` of the caller's own wins. On M3 and M3.1-Flash `stop`,
+  `logprobs` and `top_logprobs` are dropped with a warning - MiniMax accepts and ignores them (the text ran past the
+  stop string, no logprobs came back).
 
 - claude-agent-client: the CLI is started with `--setting-sources user` (new `ClaudeAgentSettings.settingSources`,
   default `Some(Seq("user"))`), so it no longer loads anything the working directory brings: `.claude/settings.json` /
@@ -139,6 +147,14 @@ compatible with 1.6.0 (the factory methods' signatures changed).
   `minimaxChina`, and the Anthropic-compatible endpoint via `customInstance`; contributed in #131): 1M context, always
   thinks - `reasoning_effort` low..max (`max` when omitted); `none` (a 400, confirmed live) and the undocumented
   `minimal` are sent as `low`, and `service_tier` (not supported on Flash) is dropped. `CreateMiniMaxChatCompletion`.
+  Live 2026-11-02 (a raw probe of 47 cases per model, then `examples/minimax/MiniMaxSmokeTest`, 20 of 20 on Flash and
+  M3): `minimal` is accepted and thinks like `low`; strict `json_schema` is accepted but NOT enforced on either model
+  (`{"answer": 391}` for a schema requiring `result` and `unit`), so neither is in `models-supporting-json-schema` and
+  the JSON helpers use JSON-object mode (parsed right on both); forced `tool_choice` (`required` / a named function)
+  and `parallel_tool_calls = false` are ignored; images only as data URLs. Both models' reasoning is carried in a tool
+  loop (`ReasoningCarrySmokeTest chat`: round 2 read 2,358 vs 596 input tokens with vs without it on Flash, 7,969 vs
+  592 on M3). `NonOpenAIModelId.minimax_m2_7` is deprecated: MiniMax answers every M2.x id it still lists with a 404
+  "no longer available".
 - **GPT-6.1 Terra** (`ModelId.gpt_6_1_terra`, released 2026-10-26; on Bedrock `us.` / `global.` +
   `ModelId.bedrock_openai_gpt_6_1_terra`): the tier between Luna and Sol - 1,050,000 tokens of context, text + images
   in, $1 / $5 per 1M tokens. Unlike GPT-6.1 Sol it keeps GPT-6 Sol / Luna's rules (measured live 2026-10-29 on OpenAI

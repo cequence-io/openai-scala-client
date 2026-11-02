@@ -505,7 +505,8 @@ object ChatCompletionSettingsConversions {
     val verbosityUnsupported: FieldConversionDef =
       unsupported("verbosity", _.verbosity.isDefined, _.copy(verbosity = None))
 
-    // MiniMax-M3.1-Flash "does not support this field" (MiniMax's docs, 2026-10-24; not a 400)
+    // MiniMax-M3.1-Flash "does not support this field" (MiniMax's docs, 2026-10-24; accepted
+    // live 2026-11-02, not a 400)
     val serviceTierUnsupported: FieldConversionDef =
       unsupported("service_tier", _.service_tier.isDefined, _.copy(service_tier = None))
 
@@ -1008,14 +1009,20 @@ object ChatCompletionSettingsConversions {
 
   // MiniMax-M3.1-Flash on MiniMax's direct API (api.minimax.io / api.minimaxi.com): it always
   // thinks - reasoning_effort low..max per MiniMax's docs (2026-10-24), `max` when omitted. Live
-  // 2026-10-24 (an account without balance - the checks MiniMax runs before billing): `none` is a
-  // 400 ("requires adaptive thinking; reasoning effort none is not allowed", code 2013), so it is
-  // sent as low; `minimal` passed those checks but is not a documented value - sent as low too;
-  // `service_tier` passed them as well, yet Flash "does not support this field" - dropped.
-  // MiniMax-M3 ignores reasoning_effort (its thinking is switched with `thinking`; `none` passed
-  // the checks), so it is left alone
+  // 2026-11-02 (raw, 47 cases): `none` is a 400 ("requires adaptive thinking; reasoning effort
+  // none is not allowed", code 2013), so it is sent as low; `minimal` is accepted though not
+  // listed ("allowed: low, medium, high, xhigh, max") and thinks like low - sent as low too;
+  // `service_tier` is accepted, yet Flash "does not support this field" per the docs - dropped;
+  // `stop` and `logprobs` are accepted and IGNORED (the text runs past the stop string, no
+  // logprobs come back) - dropped with a warning rather than silently lost, on M3 too
   def isMiniMaxFlash(model: String): Boolean =
     model.startsWith(NonOpenAIModelId.minimax_m3_1_flash)
+
+  private val miniMaxIgnoredFields = Seq(
+    FieldConversions.stopUnsupported,
+    FieldConversions.logProbsUnsupported,
+    FieldConversions.topLogprobsUnsupported
+  )
 
   val miniMaxFlash: SettingsConversion = generic(
     Seq(
@@ -1024,7 +1031,42 @@ object ChatCompletionSettingsConversions {
         ReasoningEffort.low
       ),
       FieldConversions.serviceTierUnsupported
-    )
+    ) ++ miniMaxIgnoredFields
+  )
+
+  // MiniMax-M3 on MiniMax's direct API, live 2026-11-02 (raw): it writes its thinking INTO
+  // `content` as `<think>...</think>` (a JSON answer starts with it) unless `reasoning_split =
+  // true` - then the thinking comes as `reasoning_content` plus `reasoning_details` (sync and
+  // stream), and either is read back in a tool loop (round 2 prompt tokens 653 -> 807) - so the
+  // split is sent unless extra_params set it. Its reasoning_effort is accepted (none / minimal
+  // too) but `none` does not stop the thinking (86-124 reasoning tokens) - only `thinking.type =
+  // disabled` does (`enabled` is a 400, "allowed: adaptive, disabled"), so none is sent as that,
+  // unless extra_params set a `thinking`. n > 1 is a 400, left to the API
+  def isMiniMaxM3(model: String): Boolean =
+    model.startsWith(NonOpenAIModelId.minimax_m3) && !isMiniMaxFlash(model)
+
+  val miniMaxM3: SettingsConversion = generic(
+    Seq(
+      FieldConversionDef(
+        !_.extra_params.contains("reasoning_split"),
+        settings =>
+          settings.copy(extra_params = settings.extra_params + ("reasoning_split" -> true)),
+        None
+      ),
+      FieldConversionDef(
+        settings =>
+          settings.reasoning_effort.contains(ReasoningEffort.none) &&
+            !settings.extra_params.contains("thinking"),
+        settings =>
+          settings.copy(
+            reasoning_effort = None,
+            extra_params = settings.extra_params + ("thinking" -> Map("type" -> "disabled"))
+          ),
+        Some(settings =>
+          s"${settings.model} model keeps thinking with reasoning_effort 'none', sending thinking.type 'disabled' instead."
+        )
+      )
+    ) ++ miniMaxIgnoredFields
   )
 
   private def groqConversions(

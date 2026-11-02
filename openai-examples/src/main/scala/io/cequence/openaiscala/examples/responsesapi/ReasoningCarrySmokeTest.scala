@@ -52,7 +52,8 @@ import scala.util.{Failure, Success, Try}
  *     (`setVertexAIIncludeThoughts()`; `VERTEXAI_PROJECT_ID`, optional `VERTEXAI_LOCATION`,
  *     Google application-default credentials)
  *   - `chat`: chat completions providers - DeepSeek (`reasoning_content`), Fireworks gpt-oss
- *     (`reasoning_content`), Mistral Medium (thinking chunks)
+ *     (`reasoning_content`), Mistral Medium (thinking chunks), MiniMax-M3.1-Flash and
+ *     MiniMax-M3 (`reasoning_content`; M3 with the `reasoning_split` its conversion sends)
  *
  * Each carry section checks that round 2 with the reasoning reads more input tokens than round
  * 2 without it, i.e. that it was sent and read. A model sometimes answers without reasoning -
@@ -60,7 +61,7 @@ import scala.util.{Failure, Success, Try}
  * exit code is 1 if any failed. Args: `[responses] [anthropic] [gemini] [vertex] [chat]` (all
  * by default). Requires the keys of the groups run: `OPENAI_SCALA_CLIENT_API_KEY` and a
  * Bedrock API key (`AWS_BEARER_TOKEN_BEDROCK`), `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`,
- * `DEEPSEEK_API_KEY` / `FIREWORKS_API_KEY` / `MISTRAL_API_KEY`.
+ * `DEEPSEEK_API_KEY` / `FIREWORKS_API_KEY` / `MISTRAL_API_KEY` / `MINIMAX_API_KEY`.
  */
 object ReasoningCarrySmokeTest {
 
@@ -495,6 +496,16 @@ object ReasoningCarrySmokeTest {
         "Mistral mistral-medium-latest",
         ChatProviderSettings.mistral,
         CreateChatCompletionSettings("mistral-medium-latest", reasoning_effort = high)
+      )
+      chatSection(
+        "MiniMax MiniMax-M3.1-Flash",
+        ChatProviderSettings.minimax,
+        CreateChatCompletionSettings(NonOpenAIModelId.minimax_m3_1_flash)
+      )
+      chatSection(
+        "MiniMax MiniMax-M3",
+        ChatProviderSettings.minimax,
+        CreateChatCompletionSettings(NonOpenAIModelId.minimax_m3)
       )
     }
 

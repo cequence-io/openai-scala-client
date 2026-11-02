@@ -328,6 +328,8 @@ trait ChatCompletionBodyMaker {
         muse(settings)
       else if (isMiniMaxFlash(model))
         miniMaxFlash(settings)
+      else if (isMiniMaxM3(model))
+        miniMaxM3(settings)
       else
         gpt5Minor(model) match {
           case Some(0)                   => gpt5(settings)

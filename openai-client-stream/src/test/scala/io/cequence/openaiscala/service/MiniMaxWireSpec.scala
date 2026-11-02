@@ -148,16 +148,21 @@ class MiniMaxWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
       } finally service.close()
     }
 
-    "keep M3, M2.7 and custom ids, and M3's thinking switch from extra_params" in {
+    "keep M3 and custom ids, split M3's thinking, and keep its thinking switch from extra_params" in {
       val service = OpenAIChatCompletionServiceFactory(localUrl("china", "/v1/"))
       try {
         Seq(
           NonOpenAIModelId.minimax_m3,
-          NonOpenAIModelId.minimax_m2_7,
           "saved-custom-model"
         ).foreach { model =>
           await(service.createChatCompletion(messages, CreateChatCompletionSettings(model)))
           (lastBody \ "model").as[String] shouldBe model
+          val split =
+            if (model == NonOpenAIModelId.minimax_m3)
+              Some(true)
+            else
+              None
+          (lastBody \ "reasoning_split").asOpt[Boolean] shouldBe split
         }
 
         Seq("adaptive", "disabled").foreach { mode =>

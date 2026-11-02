@@ -70,7 +70,7 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 ¹ No prompt caching in batches.\
 ² Through `bedrock-mantle` or `bedrock-runtime`.\
 ³ Cerebras: `gpt-oss-120b`, `qwen-3.8-27b`; Groq: `openai/gpt-oss-*`, `qwen/qwen3.x-27b`.\
-⁴ `json_schema` on M2.7 and newer, per MiniMax's docs.\
+⁴ JSON-object mode: M3 / M3.1-Flash accept strict `json_schema` but do not enforce it (live 2026-11-02).\
 ⁵ Perplexity's Sonar chat completions retired on 2026-09-27 (see [Services and providers](docs/providers.md)).\
 ⁶ `ChatProviderSettings.meta` (`MODEL_API_KEY`); Muse Wonder (2026-10-12) and Muse Spark live-verified with strict `json_schema`, tools and streams (see [Services and providers](docs/providers.md)).\
 🔥 New in 1.6.0.

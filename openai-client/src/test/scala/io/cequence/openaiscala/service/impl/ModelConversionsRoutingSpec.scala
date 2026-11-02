@@ -18,7 +18,7 @@ import io.cequence.openaiscala.service.adapter.ChatCompletionSettingsConversions
 import io.cequence.openaiscala.service.adapter.ChatCompletionSettingsConversions._
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import play.api.libs.json.{JsValue, Json}
+import play.api.libs.json.{JsObject, JsValue, Json}
 
 /**
  * The per-model routing and conversions of `ChatCompletionBodyMaker`, pinned to what the live
@@ -669,13 +669,58 @@ class ModelConversionsRoutingSpec extends AnyWordSpec with Matchers {
       body.get("service_tier") shouldBe None
     }
 
-    "leave MiniMax-M3 alone - it ignores reasoning_effort and serves service_tier" in {
+    "split MiniMax-M3's thinking out of the content and send none as thinking disabled" in {
       val m3 = NonOpenAIModelId.minimax_m3
-      effortSent(m3, ReasoningEffort.none) shouldBe Some("none")
+      def extra(settings: CreateChatCompletionSettings): JsObject =
+        maker.body(settings).get(Param.extra_params.toString).fold(Json.obj())(_.as[JsObject])
+
+      val plain = extra(CreateChatCompletionSettings(m3))
+      (plain \ "reasoning_split").as[Boolean] shouldBe true
+      (plain \ "thinking").isDefined shouldBe false
+
+      // none still thinks (live), only thinking.type = disabled stops it
+      val none =
+        CreateChatCompletionSettings(m3, reasoning_effort = Some(ReasoningEffort.none))
+      maker.body(none).get("reasoning_effort") shouldBe None
+      (extra(none) \ "thinking" \ "type").as[String] shouldBe "disabled"
+      Seq(ReasoningEffort.low, ReasoningEffort.high, ReasoningEffort.max).foreach(effort =>
+        effortSent(m3, effort) shouldBe Some(effort.toString)
+      )
+
+      // the caller's own choices win
+      val own = CreateChatCompletionSettings(
+        m3,
+        reasoning_effort = Some(ReasoningEffort.none),
+        extra_params = Map("reasoning_split" -> false, "thinking" -> Map("type" -> "adaptive"))
+      )
+      (extra(own) \ "reasoning_split").as[Boolean] shouldBe false
+      (extra(own) \ "thinking" \ "type").as[String] shouldBe "adaptive"
+      effortSent(m3, ReasoningEffort.none) shouldBe None
+      maker.body(own).get("reasoning_effort").map(_.as[String]) shouldBe Some("none")
+
       maker
         .body(CreateChatCompletionSettings(m3, service_tier = Some(ServiceTier.priority)))
         .get("service_tier")
         .map(_.as[String]) shouldBe Some("priority")
+      // Flash is not M3, though its id starts with it
+      (extra(CreateChatCompletionSettings(NonOpenAIModelId.minimax_m3_1_flash)) \
+        "reasoning_split").isDefined shouldBe false
+    }
+
+    "drop stop and logprobs, which MiniMax accepts and ignores" in {
+      Seq(NonOpenAIModelId.minimax_m3_1_flash, NonOpenAIModelId.minimax_m3).foreach { model =>
+        val body = maker.body(
+          CreateChatCompletionSettings(
+            model,
+            stop = Seq("5"),
+            logprobs = Some(true),
+            top_logprobs = Some(2),
+            temperature = Some(0.5)
+          )
+        )
+        Seq("stop", "logprobs", "top_logprobs").foreach(key => body.get(key) shouldBe None)
+        body.get("temperature").map(_.as[Double]) shouldBe Some(0.5)
+      }
     }
   }
 }
