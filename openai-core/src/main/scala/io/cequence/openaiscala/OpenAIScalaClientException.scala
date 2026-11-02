@@ -4,6 +4,8 @@ import io.cequence.openaiscala.domain.guardrails.{GuardrailStage, GuardrailVerdi
 import io.cequence.openaiscala.domain.response.ChatCompletionResponse
 import io.cequence.wsclient.domain.CequenceWSException
 
+import scala.concurrent.duration.FiniteDuration
+
 object Retryable {
 
   def unapply(
@@ -54,6 +56,57 @@ class OpenAIScalaClientTimeoutException(
 ) extends OpenAIScalaClientException(message, cause) {
   def this(message: String) = this(message, null)
 }
+
+/**
+ * A single try of a model failover chain exceeded its time limit
+ * (`FailoverPolicy.attemptTimeout` or the time left to the policy's deadline). The call itself
+ * may still be running and billed; the chain moves on to the next model without retrying this
+ * one. Deliberately NOT [[Retryable]] and NOT a subtype of
+ * [[OpenAIScalaClientTimeoutException]]: a chain that ends with it already gave every model
+ * its try, and a retry around the whole call would run the chain again while the abandoned
+ * calls are still running (and billed).
+ */
+class OpenAIScalaAttemptTimeoutException(
+  message: String,
+  val model: String,
+  val limit: FiniteDuration
+) extends OpenAIScalaClientException(message)
+
+/**
+ * A model must not be used for this request. Thrown by a guard (from
+ * `FailoverPolicy.wrapAttempt`, synchronously or as a failed Future, or by a decorating
+ * service). The failover chain fails over at once, NEVER retries it on the same model (even
+ * with `retryOnAnyError` - like a timeout) and logs the failover at WARN by default (no stack
+ * trace, see `FailoverPolicy.failoverLogLevel`). Generic, so not [[Retryable]].
+ */
+class OpenAIScalaModelSkippedException(
+  message: String,
+  val model: String,
+  cause: Throwable
+) extends OpenAIScalaClientException(message, cause) {
+  def this(
+    message: String,
+    model: String
+  ) = this(message, model, null)
+}
+
+/**
+ * A model failover chain was stopped by its policy (the stop flag or the deadline) before it
+ * could make another try. Deliberately NOT [[Retryable]].
+ *
+ * @param attempts
+ *   tries made so far
+ * @param byDeadline
+ *   true if the deadline was the reason, false for the stop flag
+ * @param cause
+ *   the most recent error of the chain, or null if there was none
+ */
+class OpenAIScalaChainStoppedException(
+  message: String,
+  val attempts: Int,
+  val byDeadline: Boolean,
+  cause: Throwable
+) extends OpenAIScalaClientException(message, cause)
 
 /**
  * A chat-completion call succeeded at the HTTP level but its content could not be parsed as /

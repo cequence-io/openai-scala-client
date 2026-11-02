@@ -427,6 +427,96 @@ There is a new project [openai-scala-client-examples](../openai-examples/src/mai
 ```
 
 
+### Failover policy
+
+Every failover call (`createChatCompletionWithFailover`, `createChatCompletionWithFailoverSettings`,
+`createChatCompletionWithJSON`, `createChatCompletionWithJSONFullResponse`) takes a last parameter
+`policy: FailoverPolicy`. The default changes nothing; the fields:
+
+| Field | What it does |
+| --- | --- |
+| `attemptTimeout` | Limit of ONE HTTP try (not of a model's whole ladder of retries). A try over the limit is abandoned and the chain moves on to the next model. |
+| `deadline` | A `scala.concurrent.duration.Deadline`: no new try once overdue; the time left also caps a try's limit. |
+| `shouldStop` | A flag (`() => Boolean`) checked before every new try, also after a backoff sleep. |
+| `parseRetries` | JSON helpers: how many times the SAME model is asked again (no backoff) after an unparseable answer. |
+| `failoverOnParseError` | JSON helpers: after the re-asks go to the next model; otherwise the `OpenAIScalaJsonParseException` fails the call, as before. |
+| `onAttempt` | An `AttemptListener` called with the `AttemptInfo` (requested model, model index, try number, kind: `First` / `TransientRetry` / `ParseReask`) and the `AttemptOutcome` (`Answered`, `Unparseable`, `Failed`, `TimedOut`, `LateAnswer`, `LateFailure`) of every try - for usage accounting. |
+| `wrapAttempt` | An `AttemptWrapper` around the RAW call of every try (not the timeout race), e.g. an in-flight counter that still sees a timed-out call until it really lands. |
+| `finalError` | Picks the error of a chain that ran out of models from each model's final error, in chain order. `FailoverPolicy.lastError` (default) or `FailoverPolicy.tokenCountExceededFirst`. |
+| `failoverLogLevel` | `Throwable => FailoverLogLevel` (`Error` / `Warn` / `Info` / `Debug`): the level of the failover line after a model's last error, and of the final "no more models" line. `Error` logs the stack trace, the other levels the message plus `Reason: <error message>`. Default `FailoverLogLevel.default`: `Warn` for `OpenAIScalaModelSkippedException`, `Error` for everything else. |
+
+Per try, in this order: the deadline is checked, then the stop flag (either one fails the chain with
+`OpenAIScalaChainStoppedException`, whose `byDeadline` tells which, `attempts` how many tries were made and
+whose cause is the most recent error); then the call is made with a limit of the smaller of `attemptTimeout` and the
+time left to the deadline (rounded up to the millisecond, so no try starts after the deadline). A try over its limit
+fails with `OpenAIScalaAttemptTimeoutException`, and a timed-out try is **never retried on the same model** (a hung
+model tends to hang again, even with `retryOnAnyError`) - the chain fails over at once. The exception is deliberately
+not `Retryable` (nor an `OpenAIScalaClientTimeoutException`): a retry around the whole call would run the chain again
+while the abandoned calls still run. A synchronous throw of the call is not retried either.
+
+A timed-out call keeps running, and the provider bills it. When it finally lands the listener gets `LateAnswer`
+(with the response and its usage) or `LateFailure`. The listener may therefore be called **concurrently**, from other
+threads, so it must be thread-safe; a throwing listener is logged and ignored. A caller that sums the usage of the
+final response as well as the listener's outcomes must not count the answered try twice.
+
+A guard that rules a model out for a request (a budget, a data-residency rule, a feature the model lacks) throws
+`OpenAIScalaModelSkippedException(message, model)` - from `wrapAttempt`, synchronously or as a failed Future, or from a
+decorating service. The chain fails over at once, **never retries it on the same model** (even with `retryOnAnyError`,
+like a timeout), reports `Failed(skip)` to the listener and logs the failover at `WARN` without a stack trace. To give
+your own exception a level, map it and fall back to the default:
+
+```scala
+  import io.cequence.openaiscala.OpenAIScalaModelSkippedException
+  import io.cequence.openaiscala.service.{AttemptInfo, AttemptWrapper, FailoverLogLevel, FailoverPolicy}
+
+  val policy = FailoverPolicy(
+    wrapAttempt = (info: AttemptInfo, call: () => Future[ChatCompletionResponse]) =>
+      if (overBudget(info.requestedModel))
+        Future.failed(new OpenAIScalaModelSkippedException("over budget", info.requestedModel))
+      else
+        call(),
+    failoverLogLevel = {
+      case _: MyQuotaException => FailoverLogLevel.Info
+      case e                   => FailoverLogLevel.default(e)
+    }
+  )
+```
+
+The JSON helpers choose the JSON mode **per model**: a failover model gets native `json_schema` or JSON-object mode
+(the schema appended to the prompt) by `jsonSchemaModels` / `enforceMode` / the config's list for ITS OWN id, instead
+of inheriting the primary model's choice. A failover model's request is prepared only when the chain reaches it; one
+that cannot be prepared fails that model's try (reported as `Failed`) and the chain moves on.
+
+```scala
+  import io.cequence.openaiscala.service.{AttemptListener, AttemptOutcome, FailoverPolicy}
+  import scala.concurrent.duration._
+
+  val policy = FailoverPolicy(
+    attemptTimeout = Some(30.seconds),
+    deadline = Some(2.minutes.fromNow),
+    parseRetries = 1,
+    failoverOnParseError = true,
+    onAttempt = (info, outcome) =>
+      outcome match {
+        case AttemptOutcome.Answered(r) => println(s"${info.requestedModel}: ${r.usage}")
+        case AttemptOutcome.LateAnswer(r) => println(s"${info.requestedModel} (late, billed): ${r.usage}")
+        case other => println(s"${info.requestedModel}: $other")
+      },
+    finalError = FailoverPolicy.tokenCountExceededFirst
+  )
+
+  service.createChatCompletionWithJSON[Capital](
+    messages,
+    CreateChatCompletionSettings(ModelId.gpt_5_5),
+    failoverModels = Seq(ModelId.gpt_5_4_mini),
+    policy = policy
+  )
+```
+
+Live walkthrough: [FailoverPolicySmokeTest](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/FailoverPolicySmokeTest.scala)
+(timeout with a late answer, a JSON chain over a missing model, the stop flag, a deadline).
+
+
 ## Provider features: tools, reasoning, attachments
 
 - **Anthropic** - tool use (requires `openai-scala-anthropic-client` lib). Supports tools such as

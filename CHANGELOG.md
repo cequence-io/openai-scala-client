@@ -34,6 +34,15 @@ compatible with 1.6.0 (the factory methods' signatures changed).
   (M3 accepts `none` and thinks anyway); a `thinking` of the caller's own wins. On M3 and M3.1-Flash `stop`,
   `logprobs` and `top_logprobs` are dropped with a warning - MiniMax accepts and ignores them (the text ran past the
   stop string, no logprobs came back).
+- The JSON helpers (`createChatCompletionWithJSON` / `...FullResponse`) choose the JSON mode PER MODEL of a failover
+  chain: each of `failoverModels` gets native `json_schema` or JSON-object mode (the schema appended to the prompt) by
+  its own id (`jsonSchemaModels` / `enforceMode` / `models-supporting-json-schema`). Every failover model used to
+  inherit the first model's choice - `json_schema` sent to a model that does not take it, or the schema in the prompt
+  of one that does. A failover model's request is prepared only when the chain reaches it; one that cannot be prepared
+  (e.g. a deprecated `MessageSpec` as the last message, which JSON-object mode cannot append the schema to) fails
+  that model's try and the chain moves on. The reply is parsed per try now (see "Failover policy" below); by default a
+  parse failure still fails the call with the `OpenAIScalaJsonParseException`, without failover. A refused
+  `enforceMode = Some(text)` fails the returned Future instead of throwing (still before `filterModels` runs).
 
 - claude-agent-client: the CLI is started with `--setting-sources user` (new `ClaudeAgentSettings.settingSources`,
   default `Some(Seq("user"))`), so it no longer loads anything the working directory brings: `.claude/settings.json` /
@@ -89,6 +98,37 @@ compatible with 1.6.0 (the factory methods' signatures changed).
 
 ### New features
 
+- **Failover policy**: the failover helpers (`createChatCompletionWithFailover`, `...WithFailoverSettings`,
+  `createChatCompletionWithJSON`, `...WithJSONFullResponse`) take a last parameter `policy: FailoverPolicy`
+  (`io.cequence.openaiscala.service`); `FailoverPolicy.default` changes nothing.
+  - `attemptTimeout` limits ONE try. A try over it is abandoned and the chain fails over at once - never retried on
+    the same model (`OpenAIScalaAttemptTimeoutException` - deliberately not retryable and not a timeout subtype, so a
+    retry around the whole call does not run the chain again while the abandoned calls still run) - while transient
+    errors keep the `maxRetries` ladder.
+  - `deadline` (no new try once overdue; the time left caps a try's limit) and `shouldStop` (checked before every
+    try, also after a backoff sleep) stop the chain with `OpenAIScalaChainStoppedException` (not retryable;
+    `byDeadline`, `attempts`, the last error as its cause).
+  - `parseRetries` asks the same model again after an unparseable JSON answer, `failoverOnParseError` then moves on
+    to the next model.
+  - `onAttempt` sees every try - `AttemptInfo(requestedModel, modelIndex, tryNumber, kind)` and its outcome
+    (`Answered`, `Unparseable`, `Failed`, `TimedOut`, then `LateAnswer` / `LateFailure` when an abandoned call lands -
+    billed, with its usage); it may be called concurrently. `wrapAttempt` wraps every raw call (an in-flight counter
+    sees an abandoned call until it lands). `finalError` picks the error of a chain that ran out of models
+    (`FailoverPolicy.lastError` by default, `tokenCountExceededFirst`).
+  - `failoverLogLevel` (`Throwable => FailoverLogLevel` - `Error` / `Warn` / `Info` / `Debug`) sets the level of the
+    "Initiating failover" line and of the final "No more failover inputs" one per error; only `Error` logs the stack
+    trace. A guard that rules a model out for a request throws the new `OpenAIScalaModelSkippedException(message,
+    model)` - from `wrapAttempt` or a decorating service: the chain fails over at once, never retries it on the same
+    model (even with `retryOnAnyError`) and logs it at WARN by default (`FailoverLogLevel.default`); map your own
+    exceptions to a level with a partial function falling back to the default.
+  - One retry engine (core, private) now runs `retryOnFailure` (and so the retry adapters), `retryOnFailureOrFailover`
+    and the failover helpers - the retry ladder is implemented once. `retryOnFailure` behaves exactly as before
+    (pinned by the unchanged `RetryHelpersSpec`); `retryOnFailureOrFailover` takes the same `failoverLogLevel` as a
+    new last parameter, and its failover line no longer doubles a trailing period ("X failed. after retries!").
+  - Pinned by `FailoverPolicySpec`; live 2026-11-02 `examples/FailoverPolicySmokeTest`, 4 of 4: gpt-5.4 at effort
+    xhigh abandoned after 4 s, gpt-5.4-mini answered, the abandoned call's late answer (264 output tokens) reached the
+    listener; a JSON chain over a missing model; the stop flag (no call); a 1.5 s deadline; a guard skipping the
+    first model.
 - Tool loops keep the model's reasoning between rounds, on every backend that returns it.
   - Every adapter reads its provider's reasoning into the reply as the new provider-neutral message type
     `ReasoningMessage(blocks)` - `choice.reasoning`, `response.reasoningMessage` for the first choice. A

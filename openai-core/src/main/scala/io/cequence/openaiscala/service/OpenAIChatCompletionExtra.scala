@@ -67,7 +67,8 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       maxRetries: Option[Int] = Some(defaultMaxRetries),
       retryOnAnyError: Boolean = false,
       failureMessage: String,
-      filterModels: Option[Seq[String] => Future[Seq[String]]] = None
+      filterModels: Option[Seq[String] => Future[Seq[String]]] = None,
+      policy: FailoverPolicy = FailoverPolicy.default
     )(
       implicit ec: ExecutionContext,
       scheduler: Scheduler
@@ -79,9 +80,18 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
         maxRetries,
         retryOnAnyError,
         failureMessage,
-        filterModels
+        filterModels,
+        policy
       )
 
+    /**
+     * Same as [[createChatCompletionWithFailover]], with a full settings object per failover
+     * model.
+     *
+     * @param policy
+     *   Tunes the chain - per-try timeout, deadline / stop flag, attempt listener, final-error
+     *   rule (see [[FailoverPolicy]]); the default changes nothing.
+     */
     def createChatCompletionWithFailoverSettings(
       messages: Seq[BaseMessage],
       settings: CreateChatCompletionSettings,
@@ -89,13 +99,33 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       maxRetries: Option[Int] = Some(defaultMaxRetries),
       retryOnAnyError: Boolean = false,
       failureMessage: String,
-      filterModels: Option[Seq[String] => Future[Seq[String]]] = None
+      filterModels: Option[Seq[String] => Future[Seq[String]]] = None,
+      policy: FailoverPolicy = FailoverPolicy.default
     )(
       implicit ec: ExecutionContext,
       scheduler: Scheduler
-    ): Future[ChatCompletionResponse] = {
-      val allSettingsInOrder = settings +: failoverSettings
+    ): Future[ChatCompletionResponse] =
+      for {
+        filteredSettings <- filterSettings(settings +: failoverSettings, filterModels)
 
+        response <- FailoverChain.run[ChatCompletionResponse](
+          openAIChatCompletionService,
+          filteredSettings.map(FailoverChain.Step(messages, _)),
+          accept = response => Right(response),
+          policy = policy,
+          retrySettings = RetrySettings(maxRetries = maxRetries.getOrElse(0)),
+          isRetryable = isRetryable(retryOnAnyError),
+          failureMessage = failureMessage,
+          logger = logger
+        )
+      } yield response
+
+    private def filterSettings(
+      allSettingsInOrder: Seq[CreateChatCompletionSettings],
+      filterModels: Option[Seq[String] => Future[Seq[String]]]
+    )(
+      implicit ec: ExecutionContext
+    ): Future[Seq[CreateChatCompletionSettings]] =
       for {
         filteredSettings <- filterModels match {
           case Some(filter) =>
@@ -114,26 +144,9 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
                 "At least one model/settings must remain after filtering."
               )
             )
-          else Future.successful(())
-
-        response <- {
-          implicit val retrySettings: RetrySettings =
-            RetrySettings(maxRetries = maxRetries.getOrElse(0))
-
-          (openAIChatCompletionService
-            .createChatCompletion(messages, _))
-            .retryOnFailureOrFailover(
-              // model is used only for logging
-              normalAndFailoverInputsAndMessages =
-                filteredSettings.map(settings => (settings, settings.model)),
-              failureMessage = Some(failureMessage),
-              log = Some(logger.warn),
-              isRetryable = isRetryable(retryOnAnyError),
-              includeExceptionMessage = true
-            )
-        }
-      } yield response
-    }
+          else
+            Future.successful(())
+      } yield filteredSettings
 
     /**
      * Creates a chat completion that returns a JSON-parseable response and converts it to the
@@ -182,6 +195,12 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
      *   the lists. `text` is refused.
      * @param parseJson
      *   Custom JSON parsing function (defaults to standard parser with error handling)
+     * @param policy
+     *   Tunes the chain (see [[FailoverPolicy]]): per-try timeout, deadline / stop flag,
+     *   attempt listener, `parseRetries` (re-asks of the same model on an unparseable answer)
+     *   and `failoverOnParseError`. Each failover model gets its OWN mode - native
+     *   `json_schema` or JSON-object with the schema in the prompt - by the lists /
+     *   `enforceMode`.
      * @return
      *   Future containing the parsed response of type T
      */
@@ -195,7 +214,8 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       jsonSchemaModels: Seq[String] = Nil,
       enforceMode: Option[ChatCompletionResponseFormatType] = None,
       parseJson: String => JsValue = defaultParseJsonOrRepair,
-      filterModels: Option[Seq[String] => Future[Seq[String]]] = None
+      filterModels: Option[Seq[String] => Future[Seq[String]]] = None,
+      policy: FailoverPolicy = FailoverPolicy.default
     )(
       implicit ec: ExecutionContext,
       scheduler: Scheduler
@@ -210,7 +230,8 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
         jsonSchemaModels,
         enforceMode,
         parseJson,
-        filterModels
+        filterModels,
+        policy
       ).map(_._1)
 
     /**
@@ -238,7 +259,8 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       jsonSchemaModels: Seq[String] = Nil,
       enforceMode: Option[ChatCompletionResponseFormatType] = None,
       parseJson: String => JsValue = defaultParseJsonOrRepair,
-      filterModels: Option[Seq[String] => Future[Seq[String]]] = None
+      filterModels: Option[Seq[String] => Future[Seq[String]]] = None,
+      policy: FailoverPolicy = FailoverPolicy.default
     )(
       implicit ec: ExecutionContext,
       scheduler: Scheduler
@@ -249,54 +271,86 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
 
       val settingsWithSchema = withInferredSchema[T](settings, taskNameForLoggingFinal)
 
-      val (messagesFinal, settingsFinal) = if (settingsWithSchema.jsonSchema.isDefined) {
-        handleOutputJsonSchema(
-          messages,
-          settingsWithSchema,
-          taskNameForLoggingFinal,
-          jsonSchemaModels,
-          enforceMode
+      val allSettings =
+        settingsWithSchema +: failoverModels.map(model =>
+          settingsWithSchema.copy(model = model)
         )
-      } else {
-        (messages, settingsWithSchema)
+
+      // both failure flavors (unparseable JSON and JSON-to-T conversion) surface as
+      // OpenAIScalaJsonParseException carrying the response, so callers can account for
+      // the token usage of the failed attempt (it was billed by the provider)
+      def accept(
+        response: ChatCompletionResponse
+      ): Either[OpenAIScalaJsonParseException, (T, ChatCompletionResponse)] = {
+        val outcome = Try(parseJsonResponse[T](response, taskNameForLoggingFinal, parseJson))
+
+        outcome match {
+          case Success(Right(result)) =>
+            logger.debug(
+              s"${taskNameForLoggingFinal.capitalize} finished in " + (new java.util.Date().getTime - start.getTime) + " ms."
+            )
+            Right(result)
+
+          case Success(Left(errorMessage)) =>
+            Left(new OpenAIScalaJsonParseException(errorMessage, response))
+
+          case Failure(e) =>
+            Left(
+              new OpenAIScalaJsonParseException(
+                s"${taskNameForLoggingFinal.capitalize} failed - the response content could not be parsed as JSON (even after repair): ${e.getMessage}",
+                response,
+                e
+              )
+            )
+        }
       }
 
-      openAIChatCompletionService
-        .createChatCompletionWithFailover(
-          messagesFinal,
-          settingsFinal,
-          failoverModels,
-          maxRetries,
-          retryOnAnyError,
-          failureMessage = s"${taskNameForLoggingFinal.capitalize} failed.",
-          filterModels
-        )
-        .flatMap { response =>
-          val outcome = Try(parseJsonResponse[T](response, taskNameForLoggingFinal, parseJson))
+      // once per call, on the caller's thread: the enforceMode refusal (before filterModels
+      // runs) and the models taking json_schema (the config's list unless given)
+      val jsonSchemaModelsFinal = Try {
+        if (settingsWithSchema.jsonSchema.isDefined) {
+          requireJsonEnforceMode(enforceMode)
 
-          logger.debug(
-            s"${taskNameForLoggingFinal.capitalize} finished in " + (new java.util.Date().getTime - start.getTime) + " ms."
+          if (jsonSchemaModels.nonEmpty)
+            jsonSchemaModels
+          else
+            getJsonSchemaModelsFromConfig()
+        } else
+          jsonSchemaModels
+      }
+
+      // each model gets its own JSON mode (json_schema vs JSON-object with the schema in the
+      // prompt), prepared only when the chain reaches it
+      def step(s: CreateChatCompletionSettings): FailoverChain.Step =
+        if (s.jsonSchema.isDefined) {
+          val (messagesFinal, settingsFinal) = handleOutputJsonSchema(
+            messages,
+            s,
+            taskNameForLoggingFinal,
+            jsonSchemaModelsFinal.get,
+            enforceMode
           )
 
-          // both failure flavors (unparseable JSON and JSON-to-T conversion) surface as
-          // OpenAIScalaJsonParseException carrying the response, so callers can account for
-          // the token usage of the failed attempt (it was billed by the provider)
-          outcome match {
-            case Success(Right(result)) => Future.successful(result)
+          FailoverChain.Step(messagesFinal, settingsFinal)
+        } else
+          FailoverChain.Step(messages, s)
 
-            case Success(Left(errorMessage)) =>
-              Future.failed(new OpenAIScalaJsonParseException(errorMessage, response))
+      for {
+        _ <- Future.fromTry(jsonSchemaModelsFinal)
 
-            case Failure(e) =>
-              Future.failed(
-                new OpenAIScalaJsonParseException(
-                  s"${taskNameForLoggingFinal.capitalize} failed - the response content could not be parsed as JSON (even after repair): ${e.getMessage}",
-                  response,
-                  e
-                )
-              )
-          }
-        }
+        filteredSettings <- filterSettings(allSettings, filterModels)
+
+        result <- FailoverChain.runLazy[(T, ChatCompletionResponse)](
+          openAIChatCompletionService,
+          filteredSettings.map(s => new FailoverChain.LazyStep(s.model, () => step(s))),
+          accept = accept,
+          policy = policy,
+          retrySettings = RetrySettings(maxRetries = maxRetries.getOrElse(0)),
+          isRetryable = isRetryable(retryOnAnyError),
+          failureMessage = s"${taskNameForLoggingFinal.capitalize} failed.",
+          logger = logger
+        )
+      } yield result
     }
 
     private def isRetryable(
@@ -705,6 +759,14 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
         case None => settings
       }
 
+  private def requireJsonEnforceMode(
+    enforceMode: Option[ChatCompletionResponseFormatType]
+  ): Unit =
+    require(
+      !enforceMode.contains(ChatCompletionResponseFormatType.text),
+      "enforceMode takes json_schema or json_object - text asks for no JSON."
+    )
+
   /**
    * The messages and settings of a JSON call: native `json_schema` (`response_format:
    * json_schema`, the schema sent as it is) for a model listed in `jsonSchemaModels` - or,
@@ -720,10 +782,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
     jsonSchemaModels: Seq[String] = Nil,
     enforceMode: Option[ChatCompletionResponseFormatType] = None
   ): (Seq[BaseMessage], CreateChatCompletionSettings) = {
-    require(
-      !enforceMode.contains(ChatCompletionResponseFormatType.text),
-      "enforceMode takes json_schema or json_object - text asks for no JSON."
-    )
+    requireJsonEnforceMode(enforceMode)
 
     // Use explicitly provided JSON schema models if available,
     // otherwise fall back to models configured in openai-scala-client.conf

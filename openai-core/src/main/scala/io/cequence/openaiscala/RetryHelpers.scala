@@ -1,14 +1,13 @@
 package io.cequence.openaiscala
 
 import akka.actor.Scheduler
-import akka.pattern.after
 import io.cequence.openaiscala.RetryHelpers.{RetrySettings, retry}
+import io.cequence.openaiscala.service.FailoverLogLevel
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Random
-import scala.util.control.NonFatal
 
 object RetryHelpers {
   private val random = new Random()
@@ -46,37 +45,21 @@ object RetryHelpers {
     scheduler: Scheduler,
     retrySettings: RetrySettings
   ): Future[T] = {
-    def retryAux(attempt: Int): Future[T] =
-      try {
-        if (attempt < maxAttempts) {
-          fun().recoverWith {
-            case e: Throwable if isRetryable(e) =>
-              val failureMessagePart =
-                failureMessage.map(message => message.stripSuffix(".") + ". ").getOrElse("")
-
-              val exceptionMessagePart = if (includeExceptionMessage) {
-                val msg = Option(e.getMessage).getOrElse("Unknown error")
-                s" Error: ${msg.stripSuffix(".")}."
-              } else ""
-
-              log.foreach(
-                _(
-                  s"${failureMessagePart}Attempt ${attempt}.${exceptionMessagePart} Retrying..."
-                )
-              )
-
-              after(delay(attempt - 1), scheduler) {
-                retryAux(attempt + 1)
-              }
-          }
-        } else {
-          fun()
-        }
-      } catch {
-        case NonFatal(error) => Future.failed(error)
-      }
-
-    retryAux(1)
+    RetryEngine.run[Unit, T, Nothing, T](
+      Seq(((), "")),
+      _ => fun(),
+      RetryEngine.Config[T, Nothing, T](
+        accept = (r: T) => Right(r),
+        // the count comes from maxAttempts, only the backoff from the settings (as before)
+        retrySettings = retrySettings.copy(maxRetries = maxAttempts - 1),
+        isRetryable = isRetryable,
+        neverRetry = (_: Throwable) => false,
+        failureMessage = failureMessage,
+        labelLines = false,
+        includeExceptionMessage = includeExceptionMessage,
+        log = log
+      )
+    )
   }
 
   final case class RetrySettings(
@@ -138,87 +121,32 @@ trait RetryHelpers {
         case Retryable(_) => true
         case _            => false
       },
-      includeExceptionMessage: Boolean = false
-    )(
-      implicit retrySettings: RetrySettings,
-      ec: ExecutionContext,
-      scheduler: Scheduler
-    ): Future[T] =
-      retryOnFailureOrFailoverAux(
-        None,
-        normalAndFailoverInputsAndMessages,
-        failureMessage,
-        log,
-        isRetryable,
-        includeExceptionMessage
-      )
-
-    private def retryOnFailureOrFailoverAux(
-      lastException: Option[Throwable],
-      inputsAndMessagesToTryInOrder: Seq[(IN, String)],
-      failureMessage: Option[String] = None,
-      log: Option[String => Unit] = Some(println),
-      isRetryable: Throwable => Boolean = {
-        case Retryable(_) => true
-        case _            => false
-      },
-      includeExceptionMessage: Boolean = false
+      includeExceptionMessage: Boolean = false,
+      failoverLogLevel: Throwable => FailoverLogLevel = FailoverLogLevel.default
     )(
       implicit retrySettings: RetrySettings,
       ec: ExecutionContext,
       scheduler: Scheduler
     ): Future[T] = {
       assert(
-        inputsAndMessagesToTryInOrder.nonEmpty || lastException.nonEmpty,
+        normalAndFailoverInputsAndMessages.nonEmpty,
         "At least one input or last exception must be defined!"
       )
 
-      inputsAndMessagesToTryInOrder match {
-        case Nil =>
-          val lastExceptionActual = lastException.getOrElse(
-            throw new OpenAIScalaClientException(
-              "Should never happen. No last exception provided!"
-            )
-          )
-
-          logger.error(
-            s"No more failover inputs to try! Throwing the last error: ${lastExceptionActual.getMessage}"
-          )
-
-          Future.failed(lastExceptionActual)
-
-        case _ =>
-          val (input, inputLogMessage) = inputsAndMessagesToTryInOrder.head
-
-          (f(input))
-            .retryOnFailure(
-              failureMessage.map(message => s"${inputLogMessage} - ${message}"),
-              log,
-              isRetryable,
-              includeExceptionMessage
-            )
-            .recoverWith { case e: Throwable =>
-              val errorMessage = failureMessage
-                .map(message => s"${inputLogMessage} - ${message} after retries!")
-                .getOrElse(
-                  s"${inputLogMessage} failed after retries!"
-                )
-
-              logger.error(
-                s"$errorMessage Initiating failover to ${inputsAndMessagesToTryInOrder.tail.map(_._2).headOption.getOrElse("N/A")}.",
-                e
-              )
-
-              retryOnFailureOrFailoverAux(
-                Some(e),
-                inputsAndMessagesToTryInOrder.tail,
-                failureMessage,
-                log,
-                isRetryable,
-                includeExceptionMessage
-              )
-            }
-      }
+      RetryEngine.run[IN, T, Nothing, T](
+        normalAndFailoverInputsAndMessages,
+        f,
+        RetryEngine.Config[T, Nothing, T](
+          accept = (r: T) => Right(r),
+          retrySettings = retrySettings,
+          isRetryable = isRetryable,
+          failoverLogLevel = failoverLogLevel,
+          failureMessage = failureMessage,
+          includeExceptionMessage = includeExceptionMessage,
+          log = log,
+          logFailover = Some(RetryEngine.slf4jFailoverLog(logger))
+        )
+      )
     }
   }
 }
