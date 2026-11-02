@@ -263,7 +263,7 @@ Then you can obtain a service in one of the following ways.
 ```
    See [Decision-model providers](decision-models.md#decision-model-providers-) below.
 
-8. [Groq](https://wow.groq.com/) - requires `GROQ_API_KEY"`
+8. [Groq](https://wow.groq.com/) - requires `GROQ_API_KEY`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.groq)
   // or with streaming
@@ -285,14 +285,14 @@ Then you can obtain a service in one of the following ways.
    models. Note the two surfaces report provider-executed tools differently: `/chat/completions` returns a non-OpenAI
    `executed_tools` array, while `/responses` emits typed output items instead.
 
-9. [Grok](https://x.ai) - requires `GROK_API_KEY"`
+9. [Grok](https://x.ai) - requires `GROK_API_KEY`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.grok)
   // or with streaming
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.grok)
 ```
 
-10. [Fireworks AI](https://fireworks.ai/) - requires `FIREWORKS_API_KEY"`
+10. [Fireworks AI](https://fireworks.ai/) - requires `FIREWORKS_API_KEY`
 ```scala
   val service = OpenAIChatCompletionServiceFactory(ChatProviderSettings.fireworks)
   // or with streaming

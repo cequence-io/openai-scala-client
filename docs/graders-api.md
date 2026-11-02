@@ -42,7 +42,7 @@ Evaluating model outputs with OpenAI's graders.
     }
 ```
 
-- Count expected used tokens before calling `createChatCompletions` or `createChatFunCompletions`, this helps you select proper model and reduce costs. This is an experimental feature and it may not work for all models. Requires `openai-scala-count-tokens` lib.
+- Count expected used tokens before calling `createChatCompletion` or `createChatFunCompletion`, which helps you select a proper model and reduce costs. This is an experimental feature and may not work for all models. It requires the `openai-scala-count-tokens` library.
 
 An example how to count message tokens:
 ```scala
