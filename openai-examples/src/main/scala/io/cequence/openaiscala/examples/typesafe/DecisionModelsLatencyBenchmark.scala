@@ -148,7 +148,11 @@ object DecisionModelsLatencyBenchmark {
         "liquid",
         Some(DecisionProviderSettings.liquid),
         env("LIQUID_API_KEY"),
-        fixed(DecisionModelId.liquid_d1, DecisionModelId.liquid_d1_ultra)
+        fixed(
+          DecisionModelId.liquid_d1_1,
+          DecisionModelId.liquid_d1,
+          DecisionModelId.liquid_d1_ultra
+        )
       ),
       Host(
         "perplexity",

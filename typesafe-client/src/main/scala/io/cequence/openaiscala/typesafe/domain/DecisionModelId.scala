@@ -45,10 +45,15 @@ object DecisionModelId {
   val liquid_d1_free: String = NonOpenAIModelId.liquid_d1_free
 
   /**
-   * Liquid AI's d1, which also reads images (in a top-level `images` array) - the default of
-   * `TypeSafeServiceFactory.liquid`.
+   * Liquid AI's d1, which also reads images (in a top-level `images` array).
    */
   val liquid_d1: String = NonOpenAIModelId.liquid_d1
+
+  /**
+   * Liquid AI's d1.1 (2026-10-27), d1's successor: text and images like d1, $0.02 / 1M input
+   * tokens - the default of `TypeSafeServiceFactory.liquid`, as of Liquid's own API.
+   */
+  val liquid_d1_1: String = NonOpenAIModelId.liquid_d1_1
 
   /**
    * Liquid AI's d1-ultra (2026-10-15), its strongest decision model: text and images like d1,
@@ -127,6 +132,13 @@ object DecisionModelId {
   val openrouter_jev_1_14: String = NonOpenAIModelId.openrouter_jev_1_14
   val openrouter_liquid_d1_ultra: String = NonOpenAIModelId.openrouter_liquid_d1_ultra
   val openrouter_span_02: String = NonOpenAIModelId.openrouter_span_02
+  val openrouter_liquid_d1_1: String = NonOpenAIModelId.openrouter_liquid_d1_1
+  val openrouter_liquid_d1_latest: String = NonOpenAIModelId.openrouter_liquid_d1_latest
+  val openrouter_liquid_d1_ultra_latest: String =
+    NonOpenAIModelId.openrouter_liquid_d1_ultra_latest
+  val openrouter_baseten_elephant_1: String = NonOpenAIModelId.openrouter_baseten_elephant_1
+  val openrouter_baseten_mammoth_1: String = NonOpenAIModelId.openrouter_baseten_mammoth_1
+  val openrouter_drex_max: String = NonOpenAIModelId.openrouter_drex_max
   val openrouter_solar_decide_flash: String = NonOpenAIModelId.openrouter_solar_decide_flash
   val openrouter_mercury_decide: String = NonOpenAIModelId.openrouter_mercury_decide
   val openrouter_solar_decide: String = NonOpenAIModelId.openrouter_solar_decide
@@ -146,9 +158,15 @@ object DecisionModelId {
   val vercel_laya: String = NonOpenAIModelId.vercel_laya
   val vercel_laya_free: String = NonOpenAIModelId.vercel_laya_free
   val vercel_scaledown_classify_1: String = NonOpenAIModelId.vercel_scaledown_classify_1
+  val vercel_baseten_elephant_1: String = NonOpenAIModelId.vercel_baseten_elephant_1
+  val vercel_baseten_mammoth_1: String = NonOpenAIModelId.vercel_baseten_mammoth_1
+  val vercel_liquid_d1_ultra: String = NonOpenAIModelId.vercel_liquid_d1_ultra
+  val vercel_pplx_decider_v1_2: String = NonOpenAIModelId.vercel_pplx_decider_v1_2
+  val vercel_pplx_decider_flash_v1_2: String = NonOpenAIModelId.vercel_pplx_decider_flash_v1_2
 
   // SubQ Snap (`DecisionProviderSettings.subq`)
   val subq_snap_preview: String = NonOpenAIModelId.subq_snap_preview
+  val subq_snap_1_1: String = NonOpenAIModelId.subq_snap_1_1
 
   /**
    * ScaleDown's Classify, pinned to version 1 (2026-10-13) - see

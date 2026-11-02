@@ -28,11 +28,18 @@ object ChatCompletionSettingsConversions {
     isGpt6ReasoningAlwaysOn(model)
 
   /**
-   * GPT-6 Astra - the first GPT-6 tier that rejects reasoning_effort 'none' and function tools
-   * on the chat completions API (Sol/Luna follow the GPT-5.6 rules).
+   * GPT-6 Astra (any minor) - the first GPT-6 tier that rejects reasoning_effort 'none' and
+   * function tools on the chat completions API (Sol/Luna follow the GPT-5.6 rules).
    */
   def isGpt6Astra(model: String): Boolean =
-    canonicalOpenAIModel(model).startsWith("gpt-6-astra")
+    gpt6Tier(model).contains("astra")
+
+  // `gpt-6[.<minor>]-<tier>` (Bedrock ids canonicalized): the tier - astra, sol, terra, luna
+  private val gpt6TierRegex = "^gpt-6(?:\\.\\d+)?[a-z]*-([a-z]+)".r
+
+  /** The tier of a GPT-6 model id (`gpt-6.1-terra` -> terra), or None for anything else. */
+  def gpt6Tier(model: String): Option[String] =
+    gpt6TierRegex.findFirstMatchIn(canonicalOpenAIModel(model)).map(_.group(1))
 
   /**
    * The minor version of a GPT-6 model id (`gpt-6-sol` -> 0, `gpt-6.1-sol` -> 1, Bedrock ids
@@ -41,14 +48,15 @@ object ChatCompletionSettingsConversions {
   def gpt6Minor(model: String): Option[Int] = minorVersion(gpt6VersionRegex, model)
 
   /**
-   * The GPT-6 models whose reasoning is always on: GPT-6 Astra and GPT-6.1 (Sol - and, like
-   * the GPT-5 minors, any newer GPT-6 minor gets the newest measured rules). They reject
-   * reasoning_effort 'none' and 'minimal' on both APIs, so function tools - which the chat
-   * completions API accepts only with 'none' - are Responses-API-only (live-verified
-   * 2026-09-29, incl. Bedrock's `global.openai.gpt-6.1-sol`).
+   * The GPT-6 models whose reasoning is always on, by TIER: GPT-6 Astra and GPT-6.1+ Sol. They
+   * reject reasoning_effort 'none' and 'minimal' on both APIs, so function tools - which the
+   * chat completions API accepts only with 'none' - are Responses-API-only (live-verified
+   * 2026-09-29, incl. Bedrock's `global.openai.gpt-6.1-sol`). GPT-6.1 Terra keeps the Sol/Luna
+   * rules - 'none' and tools with 'none' accepted on both hosts (live 2026-10-29, OpenAI and
+   * Bedrock `us.openai.gpt-6.1-terra`) - so a newer minor of the other tiers gets them too.
    */
   def isGpt6ReasoningAlwaysOn(model: String): Boolean =
-    isGpt6Astra(model) || gpt6Minor(model).exists(_ >= 1)
+    isGpt6Astra(model) || gpt6Minor(model).exists(_ >= 1) && gpt6Tier(model).contains("sol")
 
   /**
    * [[chatToolsRequireResponsesAPI]] for a concrete tool list: besides the model rule, the
@@ -733,8 +741,8 @@ object ChatCompletionSettingsConversions {
   // must be sent as max_completion_tokens, and reasoning_effort on chat completions accepts
   // only low/medium/high/xhigh - 'max' is Responses-API-only, while 'minimal' AND 'none' are
   // rejected by both APIs (unlike GPT-5.6, which still accepts 'none' on chat completions).
-  // GPT-6.1 Sol follows exactly these rules (live-verified 2026-09-29) - see
-  // isGpt6ReasoningAlwaysOn.
+  // GPT-6.1 Sol follows exactly these rules (live-verified 2026-09-29), GPT-6.1 Terra does not
+  // (the Sol/Luna rules) - see isGpt6ReasoningAlwaysOn.
   val gpt6: SettingsConversion = generic(
     Seq(
       maxTokensToMaxCompletionTokens,
@@ -773,7 +781,8 @@ object ChatCompletionSettingsConversions {
    * `reasoning_effort` for the RESPONSES API, where the chat-completions conversions above
    * don't apply. Live-verified 2026-09-22 (and 2026-09-29 for GPT-6.1 Sol): GPT-5.6 and GPT-6
    * accept 'max' there (so it is kept) but reject 'minimal' (-> 'low'); GPT-6 Astra and
-   * GPT-6.1 Sol also reject 'none' (-> 'low'). Other models are passed through unchanged.
+   * GPT-6.1 Sol also reject 'none' (-> 'low'), GPT-6.1 Terra takes it (live 2026-10-29). Other
+   * models are passed through unchanged.
    */
   def responsesReasoningEffort(
     model: String,
@@ -829,8 +838,9 @@ object ChatCompletionSettingsConversions {
   // Mistral's reasoning models take reasoning_effort as a switch (live 2026-10-07): Large 4 and
   // every alias of Medium 3.5 and Small 4 (incl. magistral-* and mistral-vibe-cli-*) accept only
   // `none` and `high` - the other values are 400s; Mistral-hosted GLM 5.3 (zai-glm-5 / -5-3 /
-  // -latest) only `low`, `high` and `max`, so it cannot turn reasoning off (GLM 5.2 takes every
-  // value). Large 4 and GLM 5.3 reason by default, the others do not.
+  // -latest) and GLM 5.3 Flash (zai-glm-5-3-flash, listed 2026-10-29) only `low`, `high` and
+  // `max`, so they cannot turn reasoning off (GLM 5.2 takes every value). Large 4 and GLM 5.3
+  // reason by default, the others do not.
   private val mistralSwitchReasoningModels = Set(
     NonOpenAIModelId.mistral_medium_2604,
     NonOpenAIModelId.mistral_medium_3_5,
@@ -852,7 +862,12 @@ object ChatCompletionSettingsConversions {
       mistralSwitchReasoningModels.contains(model)
 
   private val mistralGlmModels =
-    Set(NonOpenAIModelId.mistral_zai_glm_5_3, "zai-glm-5", "zai-glm-latest")
+    Set(
+      NonOpenAIModelId.mistral_zai_glm_5_3,
+      "zai-glm-5",
+      "zai-glm-latest",
+      NonOpenAIModelId.mistral_zai_glm_5_3_flash
+    )
 
   def isMistralGlm(model: String): Boolean = mistralGlmModels.contains(model)
 
@@ -882,6 +897,19 @@ object ChatCompletionSettingsConversions {
         ),
         ReasoningEffort.high
       )
+    )
+  )
+
+  // Mistral-hosted DeepSeek V4.1 Flash 1017 (`deepseek-v4-1-flash-1017`, listed 2026-10-29 -
+  // DeepSeek's own API and OpenRouter take every value): `none`, `low`, `high`, `xhigh` and
+  // `max`; `minimal` and `medium` are 400s (live 2026-10-29)
+  def isMistralDeepSeek(model: String): Boolean =
+    model.startsWith(NonOpenAIModelId.mistral_deepseek_v4_1_flash_1017)
+
+  val mistralDeepSeek: SettingsConversion = generic(
+    Seq(
+      reasoningEffortTo(Set(ReasoningEffort.minimal), ReasoningEffort.low),
+      reasoningEffortTo(Set(ReasoningEffort.medium), ReasoningEffort.high)
     )
   )
 

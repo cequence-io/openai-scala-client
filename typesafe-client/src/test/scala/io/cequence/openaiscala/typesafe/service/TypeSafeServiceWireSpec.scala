@@ -245,7 +245,8 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
 
       received.get.path shouldBe "/decisions/v1/systemone"
       received.get.headers("authorization") shouldBe "Bearer liquid_k"
-      (Json.parse(received.get.body) \ "model").as[String] shouldBe DecisionModelId.liquid_d1
+      // d1.1, Liquid's own default since 2026-10-27
+      (Json.parse(received.get.body) \ "model").as[String] shouldBe DecisionModelId.liquid_d1_1
       liquid.close()
     }
 
@@ -925,7 +926,8 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       received.get.path shouldBe "/v1/systemone"
       received.get.headers("authorization") shouldBe "Bearer subq_k"
       val body = Json.parse(received.get.body)
-      (body \ "model").as[String] shouldBe DecisionModelId.subq_snap_preview
+      // SubQ Snap 1.1, SubQ's default decision model
+      (body \ "model").as[String] shouldBe DecisionModelId.subq_snap_1_1
       // the image lifted out of the state, as an object with the bare base64
       (body \ "state").get shouldBe Json.arr("A photo.", "[image 1]")
       (body \ "images").get shouldBe Json.arr(
@@ -940,7 +942,8 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
 
       // a fixed listing, no request
       respond(200, "{}")
-      await(subq.listModels).map(_.name) shouldBe Seq(DecisionModelId.subq_snap_preview)
+      await(subq.listModels).map(_.name) shouldBe
+        Seq(DecisionModelId.subq_snap_1_1, DecisionModelId.subq_snap_preview)
       received shouldBe None
 
       // over its context: a 400 with TypeSafe's detail shape

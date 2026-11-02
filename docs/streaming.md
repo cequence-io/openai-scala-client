@@ -102,8 +102,8 @@ of tool calls mid-stream.
   server-error subtype, so `Retryable` through the adapter - the retry adapter re-issues it) on the plain call instead of an empty answer. See
   [GoogleGeminiCreateChatToolCompletionStreamedWithMcpServers](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/googlegemini/GoogleGeminiCreateChatToolCompletionStreamedWithMcpServers.scala).
 
-  GPT-5.6 and GPT-6 Sol / Luna accept function tools on the chat completions API only with `reasoning_effort = none`, and GPT-6
-  Astra and GPT-6.1 Sol only on the Responses API - so the full `OpenAIServiceFactory()` / `.withStreaming()` service routes their
+  GPT-5.6, GPT-6 Sol / Luna and GPT-6.1 Terra accept function tools on the chat completions API only with
+  `reasoning_effort = none`, and GPT-6 Astra and GPT-6.1 Sol only on the Responses API - so the full `OpenAIServiceFactory()` / `.withStreaming()` service routes their
   tool calls and typed tool streams through the Responses API automatically, which keeps the requested reasoning (only an explicit
   `reasoning_effort = none` stays on chat completions). A chat-only service forces `none` instead (Astra / 6.1 Sol fail fast).
   The same routing serves `settings.setResponsesReasoningMode(ReasoningMode.pro)` (GPT-6 pro mode),

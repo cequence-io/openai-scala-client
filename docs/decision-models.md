@@ -355,16 +355,16 @@ setting in TypeSafe's console, not an API flag.
 
 ## Liquid AI (d1) 💧
 
-[Liquid AI](https://www.liquid.ai/)'s decision models - **d1** (launched 2026-09-30) and the stronger **d1-ultra**
-(2026-10-15) - are served on the **same System One API as TypeSafe's Jev** - the same `state` + typed `questions` in,
+[Liquid AI](https://www.liquid.ai/)'s decision models - **d1** (launched 2026-09-30), its successor **d1.1** (2026-10-27,
+the same price) and the stronger **d1-ultra** (2026-10-15) - are served on the **same System One API as TypeSafe's Jev** - the same `state` + typed `questions` in,
 calibrated probabilities out - so the TypeSafe lib (`openai-scala-typesafe-client`) talks to them unchanged; only the host,
 the key and the model differ:
 
 | | Status |
 |---|---|
-| Decisions - native `systemOne`, `listModels` (`TypeSafeServiceFactory.liquid()`) | ✅ works (`d1` by default, `d1-ultra`; the free tier `d1:free` was removed on 2026-10-14) |
+| Decisions - native `systemOne`, `listModels` (`TypeSafeServiceFactory.liquid()`) | ✅ works (`d1.1` by default since 1.6.1 - Liquid's own default -, `d1`, `d1-ultra`; the free tier `d1:free` was removed on 2026-10-14) |
 | Decisions as structured output - the OpenAI adapter (`TypeSafeServiceFactory.liquidAsOpenAI()`, `json_schema` only) | ✅ works |
-| Images - `d1` and `d1-ultra` | ✅ works, natively and through both OpenAI adapters |
+| Images - `d1.1`, `d1` and `d1-ultra` | ✅ works, natively and through both OpenAI adapters (`d1.1` live 2026-10-29: `LiquidD1SmokeTest` and `LiquidD1ImagesSmokeTest model=d1.1` all passed - a blue photo 0.998, two images told apart by order, ~200-250 ms) |
 | Open d1 - the open-weight d1-3B and d1-omni-600M on a local llama.cpp (`DecisionProviderSettings.llamaCpp`) | ⏳ the provider works (live with other decision models); llama.cpp b11476 cannot load d1 yet |
 | Chat - Liquid's OpenAI-compatible surface (`ChatProviderSettings.liquid`, `https://api.liquid.ai/openai/v1/`) | ❌ answers, but lists no chat models for a free-tier key (the LFM chat models are on OpenRouter) |
 
@@ -638,7 +638,10 @@ them like any other host: `POST https://ai-gateway.vercel.sh/typesafe/v1/systemo
 under the team's AI Gateway → API keys, in `AI_GATEWAY_API_KEY`; a Vercel account token is a 401), the models listed at
 `GET /typesafe/v1/models` in TypeSafe's shape - `typesafe-ai/jev` (the bare `jev` too), `liquid/d1` (text and images),
 `microsoft/microsoft-decision-1`, `openai/gpt-6-luna-decisions` and Convai Innovations' `convaiinnovations/laya` /
-`laya-free` - and billed through the gateway, which reports the routing, the cost and a `generationId` in the response's
+`laya-free`, and since October `liquid/d1-ultra`, Perplexity's `perplexity/pplx-decider-v1.2` / `-flash-v1.2` and
+Baseten's `baseten/elephant-1` (9B) / `baseten/mammoth-1` (27B, both released 2026-10-21) - all five answered a free-tier
+team on 2026-10-29 (Elephant-1 / Mammoth-1 judged the review below a defect at 0.977 / 0.989, ~259 input tokens) - and
+billed through the gateway, which reports the routing, the cost and a `generationId` in the response's
 `provider_metadata.gateway` (the request id is the `x-vercel-id` header). Images go as `image_url` parts in the state
 array, as the gateway's AI SDK sends them.
 
@@ -666,7 +669,8 @@ cases, paced to the free tier.
 
 ## SubQ Snap 📜
 
-🔥 SubQ Snap (`subq-snap-preview`, Subquadratic, public preview since 2026-10-12) is a long-context decision model on
+🔥 SubQ Snap (`subq-snap-preview`, Subquadratic, public preview since 2026-10-12; **SubQ Snap 1.1** - `subq-snap-1.1`, the
+preset's default since 1.6.1, SubQ's own default decision model, also in public preview - next to it) is a long-context decision model on
 TypeSafe's System One protocol: `POST https://api.subq.ai/v1/systemone` with a `Bearer` key in `SUBQ_API_KEY`, $0.05 per
 1M input tokens, output free. `DecisionProviderSettings.subq` reaches it like Jev - every routine runs on it (`decide[T]`,
 re-ranking, the guardrails, the OpenAI interface):
@@ -780,11 +784,11 @@ a protocol of its own; its preset translates the questions and answers, so every
 | Preset | Key | Models | Notes |
 |---|---|---|---|
 | `typeSafe` | `TYPESAFE_API_KEY` | `jev-latest`, `jev-preview` (Jev 1.14), `jev-1.13.0`, `jev-1.14.0` | images as TypeSafe's assets, box questions on Jev 1.14; the standard limits, 64k tokens per request / 32k per question - `typeSafeLongContext`, the default of `TypeSafeServiceFactory()` since 1.6.1, sends the long-context header for 262k |
-| `liquid` | `LIQUID_API_KEY` | `d1` (default), `d1-ultra` | at most 128 questions; both read images (sent in a top-level `images` array) |
+| `liquid` | `LIQUID_API_KEY` | `d1.1` (default), `d1`, `d1-ultra` | at most 128 questions; all read images (sent in a top-level `images` array) |
 | `perplexity` | `PERPLEXITY_API_KEY` (or `SONAR_API_KEY`) | `pplx-decider-v1.1-27b`, `pplx-decider-v1-27b` | `POST /v1/decisions`, images of any size, at most 128 questions |
-| `openRouter` | `OPENROUTER_API_KEY` | Jev, d1, Perplexity's deciders (+ the `~perplexity/pplx-decider-latest` alias), OpenAI's Luna, Microsoft-Decision-1, Cloudflare's Clef (+ Flash, Omni), Solar Decide (+ Flash), Mercury Decide (+ free), Tev1, Kev 4B, NACE's Drex (1.5, 2.0), Span-01 (+ Lite), Span-02, ScaleDown's Classify-1, Jev 1.14, d1-ultra | listed with `output_modalities=decisions`; images as `image_url` parts in the state (read by Clef Omni / Flash, Perplexity's decider, Luna, d1 and Mercury Decide; the others read them as text); Span-01 takes noul questions only (Span-02 all three kinds, and object states); `scaledown/` models get ScaleDown's text-only protocol |
-| `vercel` | `AI_GATEWAY_API_KEY` | `typesafe-ai/jev`, `liquid/d1`, `microsoft/microsoft-decision-1`, `openai/gpt-6-luna-decisions`, `convaiinnovations/laya` (+ free), `scaledown/scaledown-classify-1` | `https://ai-gateway.vercel.sh/typesafe/`, images in the state; a free-tier team gets Laya and ScaleDown at 5 requests per minute, the rest needs paid credits |
-| `subq` | `SUBQ_API_KEY` | `subq-snap-preview` | `https://api.subq.ai/`, at most 295,957 input tokens, up to 4 images as `{mediaType, base64}` objects in a top-level `images` array |
+| `openRouter` | `OPENROUTER_API_KEY` | Jev, d1, Perplexity's deciders (+ the `~perplexity/pplx-decider-latest` alias), OpenAI's Luna, Microsoft-Decision-1, Cloudflare's Clef (+ Flash, Omni), Solar Decide (+ Flash), Mercury Decide (+ free), Tev1, Kev 4B, NACE's Drex (1.5, 2.0), Span-01 (+ Lite), Span-02, ScaleDown's Classify-1, Jev 1.14, d1-ultra, and since 2026-10-21 / 27 d1.1 (+ the `~liquid/d1-latest` / `~liquid/d1-ultra-latest` aliases), Baseten's Elephant-1 / Mammoth-1 and NACE's Drex Max (listed, not called - no credits) | listed with `output_modalities=decisions`; images as `image_url` parts in the state (read by Clef Omni / Flash, Perplexity's decider, Luna, d1 and Mercury Decide; the others read them as text); Span-01 takes noul questions only (Span-02 all three kinds, and object states); `scaledown/` models get ScaleDown's text-only protocol |
+| `vercel` | `AI_GATEWAY_API_KEY` | `typesafe-ai/jev` (`jev`, `jev-1.13.0`, `jev-1.14.0`), `liquid/d1`, `liquid/d1-ultra`, `microsoft/microsoft-decision-1`, `openai/gpt-6-luna-decisions`, `perplexity/pplx-decider-v1.2` (+ Flash), `baseten/elephant-1`, `baseten/mammoth-1`, `convaiinnovations/laya` (+ free), `scaledown/scaledown-classify-1` | `https://ai-gateway.vercel.sh/typesafe/`, images in the state; a free-tier team gets Laya, ScaleDown, Baseten's two, d1-ultra and Perplexity's v1.2 deciders at 5 requests per minute (live 2026-10-29), the rest needs paid credits |
+| `subq` | `SUBQ_API_KEY` | `subq-snap-1.1` (default), `subq-snap-preview` | `https://api.subq.ai/`, at most 295,957 input tokens, up to 4 images as `{mediaType, base64}` objects in a top-level `images` array |
 | `scaleDown` | `SCALEDOWN_API_KEY` | `classify-1`, `classify` | `https://api.scaledown.xyz/`, `POST /v1/scaledown`, the key in `x-api-key`; text only (ScaleDown's protocol) plus one image as the state's document; TLS 1.3 only (see above) |
 | `microsoftFoundry(endpoint, deployment)` | `FOUNDRY_API_KEY` | your deployment of Microsoft-Decision-1 (`decision-1` by default; `listModels` lists them) | your Foundry resource, `POST /providers/microsoft/v1/systemone`; at most 255 questions, 64k tokens, no images |
 | `openAI` | `OPENAI_SCALA_CLIENT_API_KEY` (or `OPENAI_API_KEY`) | `gpt-6-luna` | OpenAI's own protocol (translated), images, at most 200 questions; a refusal arrives as `UnknownAnswer("refusal", ...)` |

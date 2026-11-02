@@ -239,27 +239,43 @@ class ChatCompletionSettingsConversionsSpec extends AnyWordSpec with Matchers {
       ) shouldBe ReasoningEffort.minimal
     }
 
-    "give GPT-6.1 (and any newer minor) the always-reasoning Astra rules" in {
+    "give Astra and GPT-6.1+ Sol the always-reasoning rules - by tier, not by minor" in {
       import ChatCompletionSettingsConversions._
       Seq(
         ModelId.gpt_6_astra,
         ModelId.gpt_6_1_sol,
         "global." + ModelId.bedrock_openai_gpt_6_1_sol,
-        "gpt-6.2-luna"
+        "gpt-6.2-sol",
+        "gpt-6.1-astra",
+        "gpt-6-astra-2026-08-27"
       ).foreach { model =>
         withClue(model) {
           isGpt6ReasoningAlwaysOn(model) shouldBe true
           chatToolsRequireResponsesAPI(model) shouldBe true
           chatToolsForceNoReasoning(model) shouldBe false
+          responsesReasoningEffort(model, ReasoningEffort.none) shouldBe ReasoningEffort.low
         }
       }
-      Seq(ModelId.gpt_6_sol, ModelId.gpt_6_luna, ModelId.gpt_5_6_sol).foreach { model =>
+      // GPT-6.1 Terra keeps the Sol/Luna rules (live 2026-10-29), and so does a newer Luna
+      Seq(
+        ModelId.gpt_6_sol,
+        ModelId.gpt_6_luna,
+        ModelId.gpt_5_6_sol,
+        ModelId.gpt_6_1_terra,
+        "us." + ModelId.bedrock_openai_gpt_6_1_terra,
+        "gpt-6.2-luna"
+      ).foreach { model =>
         withClue(model) {
           isGpt6ReasoningAlwaysOn(model) shouldBe false
           chatToolsRequireResponsesAPI(model) shouldBe false
           chatToolsForceNoReasoning(model) shouldBe true
+          responsesReasoningEffort(model, ReasoningEffort.none) shouldBe ReasoningEffort.none
         }
       }
+      gpt6Tier(ModelId.gpt_6_1_terra) shouldBe Some("terra")
+      gpt6Tier("global." + ModelId.bedrock_openai_gpt_6_1_sol) shouldBe Some("sol")
+      gpt6Tier("gpt-6o") shouldBe None
+      gpt6Tier(ModelId.gpt_5_6_terra) shouldBe None
     }
   }
 

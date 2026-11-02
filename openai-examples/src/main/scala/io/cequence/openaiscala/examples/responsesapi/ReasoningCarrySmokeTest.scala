@@ -184,6 +184,25 @@ object ReasoningCarrySmokeTest {
       }
     }
 
+    // OpenAI's GPT-6 at times returns a reasoning item with an EMPTY summary although one was
+    // asked for (raw, 2026-10-29: 1 of 3 identical calls) - so a reply that reasoned but
+    // summarized nothing is asked again, at most 3 times; one without reasoning is not
+    def summarized[T](attempt: () => (T, Option[ReasoningMessage])): (T, String) = {
+      def go(n: Int): (T, String) = {
+        val (result, reasoning) = attempt()
+        if (reasoning.forall(_.text.nonEmpty))
+          (
+            result,
+            if (n == 1) "first try" else s"try $n of 3 - the earlier ones summarized nothing"
+          )
+        else if (n < 3)
+          go(n + 1)
+        else
+          sys.error(s"reasoned but summarized nothing in 3 tries: ${reasoning.map(describe)}")
+      }
+      go(1)
+    }
+
     // round 1 sync, then round 2 as a typed stream - with and without the carried reasoning
     def carryIntoStream(
       service: OpenAIChatCompletionService with OpenAIChatCompletionStreamedServiceExtra,
@@ -280,6 +299,25 @@ object ReasoningCarrySmokeTest {
           )._2
         }
 
+        // GPT-6.1 Terra (2026-10-26): the Sol / Luna rules - a tool call with an effort goes
+        // through the Responses API
+        section("OpenAI gpt-6.1-terra") {
+          carry(
+            openAI,
+            CreateChatCompletionSettings(ModelId.gpt_6_1_terra, reasoning_effort = high)
+          )._2
+        }
+
+        section("Bedrock us.openai.gpt-6.1-terra") {
+          carry(
+            bedrock,
+            CreateChatCompletionSettings(
+              "us." + ModelId.bedrock_openai_gpt_6_1_terra,
+              reasoning_effort = high
+            )
+          )._2
+        }
+
         section("Bedrock us.openai.gpt-6.1-sol") {
           val (first, message) = carry(bedrock, bedrockSolSettings)
           bedrockFirst = Some(first)
@@ -331,17 +369,22 @@ object ReasoningCarrySmokeTest {
         }
 
         section("OpenAI gpt-6-luna, plain chat completion with summaries asked (no effort)") {
-          val response = await(
-            openAI.createChatCompletion(
-              Seq(puzzle),
-              CreateChatCompletionSettings(ModelId.gpt_6_luna).setResponsesReasoningSummary()
+          val (response, tries) = summarized { () =>
+            val response = await(
+              openAI.createChatCompletion(
+                Seq(puzzle),
+                CreateChatCompletionSettings(ModelId.gpt_6_luna).setResponsesReasoningSummary()
+              )
             )
-          )
-          // the chat completions API returns no reasoning for OpenAI's models
-          val summary = response.reasoningMessage
-            .flatMap(_.text)
-            .getOrElse(sys.error("no reasoning summary - not answered by the Responses API?"))
-          s"${response.reasoningMessage.map(describe).getOrElse("")}: " +
+            // the chat completions API returns no reasoning for OpenAI's models
+            require(
+              response.reasoningMessage.isDefined,
+              "no reasoning at all - not answered by the Responses API?"
+            )
+            (response, response.reasoningMessage)
+          }
+          val summary = response.reasoningMessage.flatMap(_.text).getOrElse("")
+          s"${response.reasoningMessage.map(describe).getOrElse("")} ($tries): " +
             s"${summary.take(80).replace('\n', ' ')}...; answer: ${response.contentHead}"
         }
 
@@ -357,12 +400,11 @@ object ReasoningCarrySmokeTest {
           )
         ).foreach { case (name, (service, settings)) =>
           section(s"$name, summaries asked (no effort), carried") {
-            val (first, message) = carry(service, settings.setResponsesReasoningSummary())
-            require(
-              first.reasoningMessage.forall(_.text.nonEmpty),
-              s"round 1 reasoned but summarized nothing: $message"
-            )
-            message
+            val ((_, message), tries) = summarized { () =>
+              val (first, message) = carry(service, settings.setResponsesReasoningSummary())
+              ((first, message), first.reasoningMessage)
+            }
+            s"$message ($tries)"
           }
         }
       } finally {

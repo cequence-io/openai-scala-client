@@ -381,6 +381,12 @@ object NonOpenAIModelId {
   val mistral_vibe_cli_with_tools = "mistral-vibe-cli-with-tools" // Mistral (coding agent)
   // Mistral-hosted Z.ai GLM 5.3 (listed 2026-09-29; aliases "zai-glm-5", "zai-glm-latest")
   val mistral_zai_glm_5_3 = "zai-glm-5-3"
+  // Mistral-hosted Z.ai GLM 5.3 Flash (listed 2026-10-29, 1M context, vision; effort low /
+  // high / max only, like GLM 5.3)
+  val mistral_zai_glm_5_3_flash = "zai-glm-5-3-flash"
+  // Mistral-hosted DeepSeek V4.1 Flash 1017 (listed 2026-10-29, 1M context, vision; effort
+  // none / low / high / xhigh / max - minimal and medium are 400s there)
+  val mistral_deepseek_v4_1_flash_1017 = "deepseek-v4-1-flash-1017"
   val mistral_zai_glm_5_2 = "zai-glm-5-2" // Mistral-hosted Z.ai GLM 5.2 (also "glm-5-2")
   // Mistral (Lean 4 proof engineering) - "labs-leanstral-1-5" is now an alias of 1.5.1
   val labs_leanstral_1_5_1 = "labs-leanstral-1-5-1"
@@ -1126,6 +1132,9 @@ object NonOpenAIModelId {
   // question; $0.02 / 1M input tokens by its `usage.cost` on 2026-10-15 (was $0.04 on
   // 2026-10-07); 65,536 tokens per question's prompt
   val liquid_d1 = "d1"
+  // d1.1 (listed 2026-10-27), d1's successor and Liquid's hosted default: text and images like
+  // d1, $0.02 / 1M input tokens, 65,536 tokens of context (OpenRouter's listing)
+  val liquid_d1_1 = "d1.1"
   // d1-ultra (2026-10-15, "our most powerful decision model" on a larger open-weight base, 44
   // languages, 65 on Artificial Analysis' Decision Index): text and images like d1 (the
   // `images` array), $0.042 / 1M input tokens, every question billed as its own prompt (the
@@ -1210,6 +1219,16 @@ object NonOpenAIModelId {
   val openrouter_jev_1_14 = "typesafe/jev-1.14"
   val openrouter_liquid_d1_ultra = "liquid/d1-ultra"
   val openrouter_span_02 = "respan/span-02"
+  // listed 2026-10-21 / 27: Liquid's d1.1 and the rolling aliases of its d1 / d1-ultra families
+  // (`~liquid/d1-latest` = d1.1), Baseten's Elephant-1 (9B, Qwen3.5-9B base, $0.035 / 1M) and
+  // Mammoth-1 (27B, Qwen3.5-27B base, $0.10 / 1M; both text only, 16,384 tokens of context) and
+  // NACE AI's Drex Max (Drex 2.0's successor, text + up to 4 images, 262k context, $0.06 / 1M)
+  val openrouter_liquid_d1_1 = "liquid/d1.1"
+  val openrouter_liquid_d1_latest = "~liquid/d1-latest"
+  val openrouter_liquid_d1_ultra_latest = "~liquid/d1-ultra-latest"
+  val openrouter_baseten_elephant_1 = "baseten/elephant-1"
+  val openrouter_baseten_mammoth_1 = "baseten/mammoth-1"
+  val openrouter_drex_max = "nace-ai/drex-max"
 
   // decision models on Vercel AI Gateway - TypeSafe's protocol at `POST
   // https://ai-gateway.vercel.sh/typesafe/v1/systemone` (typesafe-client's
@@ -1223,12 +1242,22 @@ object NonOpenAIModelId {
   val vercel_laya_free = "convaiinnovations/laya-free"
   // ScaleDown's Classify-1 (2026-10-13), open to a free-tier team; text only, as on OpenRouter
   val vercel_scaledown_classify_1 = "scaledown/scaledown-classify-1"
+  // listed by 2026-10-29 and answered on a free-tier team that day: Baseten's Elephant-1 /
+  // Mammoth-1 (2026-10-21, text only), Liquid's d1-ultra and Perplexity's v1.2 deciders (Jev, d1,
+  // Microsoft-Decision-1 and Luna still need paid credits there)
+  val vercel_baseten_elephant_1 = "baseten/elephant-1"
+  val vercel_baseten_mammoth_1 = "baseten/mammoth-1"
+  val vercel_liquid_d1_ultra = "liquid/d1-ultra"
+  val vercel_pplx_decider_v1_2 = "perplexity/pplx-decider-v1.2"
+  val vercel_pplx_decider_flash_v1_2 = "perplexity/pplx-decider-flash-v1.2"
 
   // SubQ Snap (Subquadratic, public preview since 2026-10-12) - a long-context decision model
   // on TypeSafe's protocol at `POST https://api.subq.ai/v1/systemone` (typesafe-client's
   // `DecisionProviderSettings.subq`): text + up to 4 images, at most 295,957 input tokens (its
   // own count, live 2026-10-12), $0.05 / 1M
   val subq_snap_preview = "subq-snap-preview"
+  // SubQ Snap 1.1 (listed by 2026-10-29, public preview) - SubQ's default decision model
+  val subq_snap_1_1 = "subq-snap-1.1"
 
   // ScaleDown's Classify (2026-10-13), a Constrained Decoding Model: TypeSafe's protocol in text
   // only at `POST https://api.scaledown.xyz/v1/scaledown` (typesafe-client's

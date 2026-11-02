@@ -30,5 +30,6 @@ object TypeSafeServiceConsts {
 
   val liquidApiKeyEnvKey = "LIQUID_API_KEY"
 
-  val liquidDefaultModel: String = DecisionModelId.liquid_d1
+  // d1.1 (2026-10-27) - Liquid's own default, d1's successor at the same price
+  val liquidDefaultModel: String = DecisionModelId.liquid_d1_1
 }

@@ -310,9 +310,9 @@ trait ChatCompletionBodyMaker {
         o(settings)
       else if (model == ModelId.chat_latest)
         chatLatest(settings)
-      else if (isGpt6ReasoningAlwaysOn(model)) // Astra, 6.1 Sol and newer
+      else if (isGpt6ReasoningAlwaysOn(model)) // Astra, 6.1+ Sol
         gpt6(settings)
-      else if (gpt6Minor(model).isDefined)
+      else if (gpt6Minor(model).isDefined) // Sol / Luna, 6.1 Terra
         gpt6SolLuna(settings)
       else if (isGpt5SearchApi(model))
         gpt5SearchApi(settings)
@@ -320,6 +320,8 @@ trait ChatCompletionBodyMaker {
         mistralSwitchReasoning(settings)
       else if (isMistralGlm(model))
         mistralGlm(settings)
+      else if (isMistralDeepSeek(model))
+        mistralDeepSeek(settings)
       else if (isMuseSparkOpen(model))
         museSparkOpen(model)(settings)
       else if (isMuseReasoning(model))

@@ -55,11 +55,11 @@ import scala.util.control.NonFatal
  *     between the benchmark's calls and the bounded retries (a run fails in about a minute and
  *     a half when d1 is unavailable).
  *
- * Requires `LIQUID_API_KEY`; `model=<id>` picks the model (`d1` by default, `d1-ultra` - the
- * free tier `d1:free` of the results above was removed on 2026-10-14). On its launch day d1
- * answered 429 `model_unavailable` for a while, so the functional calls go through the retry
- * adapter (a 429 is transient there); the benchmark times the plain service and counts failed
- * calls instead.
+ * Requires `LIQUID_API_KEY`; `model=<id>` picks the model (`d1.1` by default since 2026-10-29,
+ * `d1`, `d1-ultra` - the free tier `d1:free` of the results above was removed on 2026-10-14).
+ * On its launch day d1 answered 429 `model_unavailable` for a while, so the functional calls
+ * go through the retry adapter (a 429 is transient there); the benchmark times the plain
+ * service and counts failed calls instead.
  */
 object LiquidD1SmokeTest {
 
@@ -146,7 +146,7 @@ object LiquidD1SmokeTest {
       args
         .find(_.startsWith("model="))
         .map(_.drop("model=".length))
-        .getOrElse(DecisionModelId.liquid_d1)
+        .getOrElse(DecisionModelId.liquid_d1_1)
     val liquid = TypeSafeServiceFactory.liquid(defaultModel = model)
     val d1 = TypeSafeServiceAdapters.retry(
       liquid,

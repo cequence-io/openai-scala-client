@@ -20,6 +20,12 @@ class DecisionModelIdSpec extends AnyWordSpec with Matchers {
       DecisionModelId.microsoft_decision_1 shouldBe NonOpenAIModelId.microsoft_decision_1
       DecisionModelId.openrouter_clef_omni shouldBe NonOpenAIModelId.openrouter_clef_omni
       DecisionModelId.vercel_laya_free shouldBe NonOpenAIModelId.vercel_laya_free
+      // added 2026-10-29
+      DecisionModelId.liquid_d1_1 shouldBe "d1.1"
+      DecisionModelId.subq_snap_1_1 shouldBe "subq-snap-1.1"
+      DecisionModelId.openrouter_baseten_mammoth_1 shouldBe "baseten/mammoth-1"
+      DecisionModelId.vercel_baseten_elephant_1 shouldBe "baseten/elephant-1"
+      DecisionModelId.openrouter_drex_max shouldBe "nace-ai/drex-max"
     }
 
     "keep its 1.4.0 name as a deprecated alias of the same object" in {

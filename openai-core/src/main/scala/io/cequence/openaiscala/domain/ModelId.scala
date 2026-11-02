@@ -786,6 +786,15 @@ object ModelId {
   // (createChatToolCompletion is routed there). Responses API `reasoning.mode = pro` works.
   val gpt_6_1_sol = "gpt-6.1-sol"
 
+  // GPT-6.1 Terra (released 2026-10-26, created 2026-10-13; live-verified 2026-10-29): the
+  // mid tier between Luna and Sol - 1,050,000 context, text + image in, $1 / $5 per 1M tokens.
+  // Unlike GPT-6.1 Sol it keeps the GPT-6 Sol/Luna rules: reasoning_effort none (kept on both
+  // APIs) / low / medium / high / xhigh on chat completions, 'max' Responses-API-only,
+  // 'minimal' rejected everywhere; all sampling params rejected; function tools on chat
+  // completions only with 'none'. Responses API `reasoning.mode = pro` works (OpenRouter
+  // serves it as `openai/gpt-6.1-terra-pro`); the Ultrafast tier is a 400 on both APIs.
+  val gpt_6_1_terra = "gpt-6.1-terra"
+
   val gpt_5_6_sol = "gpt-5.6-sol"
   val gpt_5_6_terra = "gpt-5.6-terra"
   val gpt_5_6_luna = "gpt-5.6-luna"
@@ -810,6 +819,11 @@ object ModelId {
   // that Bedrock's chat completions also accept effort 'max' (still converted to 'xhigh'
   // here) and Bedrock rejects `reasoning.mode` and the `fast` service tier.
   val bedrock_openai_gpt_6_1_sol = "openai.gpt-6.1-sol"
+  // GPT-6.1 Terra (live-verified 2026-10-29 on bedrock-runtime `/openai/v1`): `us.` (us-east-1,
+  // us-west-2) and `global.` (also from eu-central-1), no `eu.`, the bare id not on-demand.
+  // The OpenAI rules, plus Bedrock's: chat completions take effort 'max' too (still converted
+  // to 'xhigh'), and reject `n` > 1, the priority / flex / fast tiers and `reasoning.mode`.
+  val bedrock_openai_gpt_6_1_terra = "openai.gpt-6.1-terra"
   val bedrock_openai_gpt_5_6_sol = "openai.gpt-5.6-sol"
   val bedrock_openai_gpt_5_6_terra = "openai.gpt-5.6-terra"
   val bedrock_openai_gpt_5_6_luna = "openai.gpt-5.6-luna"

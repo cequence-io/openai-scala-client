@@ -158,6 +158,13 @@ object DecisionImageAdaptersSmokeTest {
       ),
       Target(
         "liquid",
+        "d1.1",
+        Reads,
+        Seq("LIQUID_API_KEY"),
+        () => DecisionProviderSettings.liquid
+      ),
+      Target(
+        "liquid",
         "d1",
         Reads,
         Seq("LIQUID_API_KEY"),
@@ -169,6 +176,13 @@ object DecisionImageAdaptersSmokeTest {
         Reads,
         Seq("LIQUID_API_KEY"),
         () => DecisionProviderSettings.liquid
+      ),
+      Target(
+        "subq",
+        "subq-snap-1.1",
+        Reads,
+        Seq("SUBQ_API_KEY"),
+        () => DecisionProviderSettings.subq
       ),
       Target(
         "subq",

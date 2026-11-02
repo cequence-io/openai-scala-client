@@ -131,11 +131,11 @@ class ModelConversionsRoutingSpec extends AnyWordSpec with Matchers {
       }
     }
 
-    "give GPT-6.1 Sol (also on Bedrock, and newer GPT-6 minors) the Astra rules, not Sol's" in {
+    "give GPT-6.1 Sol (also on Bedrock, and newer Sol minors) the Astra rules, not Sol's" in {
       Seq(
         ModelId.gpt_6_1_sol,
         "global." + ModelId.bedrock_openai_gpt_6_1_sol,
-        "gpt-6.2-luna"
+        "gpt-6.2-sol"
       ).foreach { model =>
         withClue(model) {
           // measured 2026-09-29: low / medium / high / xhigh only on chat completions
@@ -162,6 +162,55 @@ class ModelConversionsRoutingSpec extends AnyWordSpec with Matchers {
       }
       // GPT-6 Sol itself keeps 'none'
       effortSent(ModelId.gpt_6_sol, ReasoningEffort.none) shouldBe Some("none")
+    }
+
+    "give GPT-6.1 Terra (also on Bedrock) the GPT-6 Sol / Luna rules, not 6.1 Sol's" in {
+      Seq(
+        ModelId.gpt_6_1_terra,
+        "us." + ModelId.bedrock_openai_gpt_6_1_terra,
+        "global." + ModelId.bedrock_openai_gpt_6_1_terra
+      ).foreach { model =>
+        withClue(model) {
+          // measured 2026-10-29: none / low / medium / high / xhigh on chat completions
+          effortSent(model, ReasoningEffort.none) shouldBe Some("none")
+          effortSent(model, ReasoningEffort.minimal) shouldBe Some("low")
+          effortSent(model, ReasoningEffort.max) shouldBe Some("xhigh")
+          effortSent(model, ReasoningEffort.xhigh) shouldBe Some("xhigh")
+
+          val body = maker.body(
+            CreateChatCompletionSettings(
+              model,
+              max_tokens = Some(100),
+              temperature = Some(0.2),
+              top_p = Some(0.5),
+              logprobs = Some(true),
+              stop = Seq("xyz")
+            )
+          )
+          body.get("max_tokens") shouldBe None
+          (body(Param.extra_params.toString) \ "max_completion_tokens").as[Int] shouldBe 100
+          // the default value, which it accepts (live 2026-10-29)
+          body("temperature") shouldBe Json.toJson(1d)
+          body("top_p") shouldBe Json.toJson(1d)
+          body.get("logprobs") shouldBe None
+          body.get("stop") shouldBe None
+
+          // function tools on chat completions need 'none' - a full service sends any other
+          // effort through the Responses API, a chat-only one forces 'none'
+          chatToolsRequireResponsesAPI(model) shouldBe false
+          chatToolsPreferResponsesAPI(
+            CreateChatCompletionSettings(model, reasoning_effort = Some(ReasoningEffort.high)),
+            Seq(weather)
+          ) shouldBe true
+          chatToolsPreferResponsesAPI(
+            CreateChatCompletionSettings(model, reasoning_effort = Some(ReasoningEffort.none)),
+            Seq(weather)
+          ) shouldBe false
+          maker.tools(CreateChatCompletionSettings(model)).reasoning_effort shouldBe Some(
+            ReasoningEffort.none
+          )
+        }
+      }
     }
 
     "give a future GPT-5 minor the newest (5.6) rules, not the oldest" in {
@@ -456,8 +505,32 @@ class ModelConversionsRoutingSpec extends AnyWordSpec with Matchers {
       effortSent("zai-glm-latest", ReasoningEffort.medium) shouldBe Some("high")
       effortSent("zai-glm-5", ReasoningEffort.xhigh) shouldBe Some("max")
       effortSent("zai-glm-5-3", ReasoningEffort.max) shouldBe Some("max")
+      // GLM 5.3 Flash (2026-10-29) the same
+      effortSent(NonOpenAIModelId.mistral_zai_glm_5_3_flash, ReasoningEffort.none) shouldBe
+        Some("low")
+      effortSent(NonOpenAIModelId.mistral_zai_glm_5_3_flash, ReasoningEffort.medium) shouldBe
+        Some("high")
       // GLM 5.2 takes every value
       effortSent("zai-glm-5-2", ReasoningEffort.medium) shouldBe Some("medium")
+    }
+
+    "keep the Mistral-hosted DeepSeek V4.1 Flash off minimal and medium" in {
+      val deepSeek = NonOpenAIModelId.mistral_deepseek_v4_1_flash_1017
+      effortSent(deepSeek, ReasoningEffort.minimal) shouldBe Some("low")
+      effortSent(deepSeek, ReasoningEffort.medium) shouldBe Some("high")
+      Seq(
+        ReasoningEffort.none,
+        ReasoningEffort.low,
+        ReasoningEffort.high,
+        ReasoningEffort.xhigh,
+        ReasoningEffort.max
+      ).foreach(effort => effortSent(deepSeek, effort) shouldBe Some(effort.toString))
+      // OpenRouter's id of the same model takes every value
+      effortSent(
+        NonOpenAIModelId.openrouter_deepseek_v4_1_flash_1017,
+        ReasoningEffort.medium
+      ) shouldBe
+        Some("medium")
     }
 
     "leave Large 3 alone - the API's 400 for any effort is clear" in {

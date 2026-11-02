@@ -121,7 +121,7 @@ There is a new project [openai-scala-client-examples](../openai-examples/src/mai
   | Chat completions providers (DeepSeek, Fireworks, Mistral, Cerebras, Groq, ...) | `reasoning_content` / `reasoning`, Mistral's thinking chunks: `text` + `field` | the same field, or a thinking chunk |
 
   The full OpenAI service sends tool calls of OpenAI's reasoning models to the Responses API (GPT-6 Astra / 6.1 Sol
-  always; GPT-6 Sol / Luna and GPT-5.6+ unless `reasoning_effort` is `none`; GPT-5.4 / 5.5 with an effort other than
+  always; GPT-6 Sol / Luna, 6.1 Terra and GPT-5.6+ unless `reasoning_effort` is `none`; GPT-5.4 / 5.5 with an effort other than
   `none`), and asks for their reasoning encrypted, since the adapter stores nothing (`store = false`).
 
   OpenAI's reasoning is encrypted, not readable. For a readable version ask for reasoning summaries with
@@ -130,7 +130,8 @@ There is a new project [openai-scala-client-examples](../openai-examples/src/mai
   carrying it for an OpenAI reasoning model through the Responses API (the chat completions API returns no reasoning
   text for OpenAI's models; a chat-only service ignores the flag). The typed stream asks for summaries by default
   whenever `reasoning_effort` is set. An easy question may get an empty summary (live 2026-10-26: GPT-6 Luna
-  summarized nothing on a one-step question, ~450 characters on a counting puzzle).
+  summarized nothing on a one-step question, ~450 characters on a counting puzzle), and now and then a reasoned one does
+  too (2026-10-29: one of three identical calls).
 
   Where the reasoning goes:
   - Back only to the service that returned it (a Responses / Anthropic / Gemini / Vertex AI service instance - the

@@ -23,8 +23,8 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.control.NonFatal
 
 /**
- * Live walkthrough of Liquid AI's image-reading decision models - `d1` by default,
- * `model=<id>` for another (`d1-ultra`) - the provider sends a state's image parts in a
+ * Live walkthrough of Liquid AI's image-reading decision models - `d1.1` by default,
+ * `model=<id>` for another (`d1`, `d1-ultra`) - the provider sends a state's image parts in a
  * top-level `images` array, an `[image n]` marker left where each stood:
  *
  *   1. the models Liquid lists, with what each reads
@@ -64,7 +64,7 @@ object LiquidD1ImagesSmokeTest {
       args
         .find(_.startsWith("model="))
         .map(_.drop("model=".length))
-        .getOrElse(DecisionModelId.liquid_d1)
+        .getOrElse(DecisionModelId.liquid_d1_1)
     val d1 = TypeSafeServiceFactory.liquid(defaultModel = model)
     val d1AsOpenAI = TypeSafeServiceFactory.liquidAsOpenAI(defaultModel = model)
 

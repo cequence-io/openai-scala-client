@@ -14,6 +14,13 @@ compatible with 1.6.0 (the factory methods' signatures changed).
   input tokens instead of 33,024 per question / ~65.8k in all; `longContext = false` keeps the default limits. Live
   2026-10-22: a short request answers the same with or without the header, in the same time and for the same tokens.
   `TypeSafeServiceFactory(DecisionProviderSettings.typeSafe)` is unchanged (no header).
+- GPT-6's always-reasoning rules (`isGpt6ReasoningAlwaysOn` - `none` sent as `low`, function tools Responses-only)
+  go by tier now: GPT-6 Astra and GPT-6.1+ Sol. Every `gpt-6.<minor>` with a minor of 1 or more used to get them, so
+  GPT-6.1 Terra - which takes `none` and tools with `none` on chat completions - lost its `none` and had its tool
+  calls refused by chat-only services; a newer Luna or Terra gets the Sol / Luna rules too. `gpt6Tier` reads the tier.
+- TypeSafe-client presets follow their hosts' new defaults: `DecisionProviderSettings.liquid` /
+  `TypeSafeServiceFactory.liquid*` ask Liquid's d1.1 (was d1), `DecisionProviderSettings.subq` SubQ Snap 1.1 (was SubQ
+  Snap Preview, still listed); pass `defaultModel` / a model per call for the old ones.
 - Groq's `qwen/qwen3.8-27b` left `models-supporting-json-schema`: the JSON helpers ask it in JSON-object mode with the
   schema in the prompt. Groq lists it under strict structured outputs but does not constrain its decoding - live
   2026-10-22, strict `json_schema` failed 7-9 of 20 calls with a 400 `json_validate_failed` (free prose, broken JSON),
@@ -132,6 +139,33 @@ compatible with 1.6.0 (the factory methods' signatures changed).
   `minimaxChina`, and the Anthropic-compatible endpoint via `customInstance`; contributed in #131): 1M context, always
   thinks - `reasoning_effort` low..max (`max` when omitted); `none` (a 400, confirmed live) and the undocumented
   `minimal` are sent as `low`, and `service_tier` (not supported on Flash) is dropped. `CreateMiniMaxChatCompletion`.
+- **GPT-6.1 Terra** (`ModelId.gpt_6_1_terra`, released 2026-10-26; on Bedrock `us.` / `global.` +
+  `ModelId.bedrock_openai_gpt_6_1_terra`): the tier between Luna and Sol - 1,050,000 tokens of context, text + images
+  in, $1 / $5 per 1M tokens. Unlike GPT-6.1 Sol it keeps GPT-6 Sol / Luna's rules (measured live 2026-10-29 on OpenAI
+  and Bedrock): `reasoning_effort` `none` works on both APIs, `minimal` is sent as `low`, `max` as `xhigh` on chat
+  completions (kept on the Responses API), sampling parameters are dropped, and function tools stay on chat
+  completions with `none` - the full service sends a tool call with any other effort through the Responses API, a
+  chat-only service forces `none`. `reasoning.mode = pro` works (`setResponsesReasoningMode`; OpenRouter serves it as
+  `openai/gpt-6.1-terra-pro`); the Ultrafast tier is a 400. In `models-supporting-json-schema`. Live through the
+  client: `OpenAIConversionsAudit` 25 of 25 cases, a tool loop with its reasoning carried on OpenAI and Bedrock.
+- **Mistral-hosted GLM 5.3 Flash and DeepSeek V4.1 Flash 1017** (`NonOpenAIModelId.mistral_zai_glm_5_3_flash` /
+  `mistral_deepseek_v4_1_flash_1017`, listed 2026-10-29, 1M context, vision): GLM 5.3 Flash takes `reasoning_effort`
+  `low` / `high` / `max` only, like GLM 5.3 (none / minimal -> low, medium -> high, xhigh -> max); the DeepSeek takes
+  everything but `minimal` (-> low) and `medium` (-> high) there. Both enforce a strict `json_schema` and are in
+  `models-supporting-json-schema`.
+- **Decision models** (typesafe-client; all in `models-supporting-json-schema` but Perplexity's, whose deciders stay out
+  by design):
+  - Liquid's **d1.1** (`DecisionModelId.liquid_d1_1`, 2026-10-27): d1's successor at the same price ($0.02 / 1M input
+    tokens), text and images - the `liquid` default now. Live 2026-10-29: `LiquidD1SmokeTest` and
+    `LiquidD1ImagesSmokeTest model=d1.1` passed (natively and through the OpenAI adapter).
+  - SubQ's **Snap 1.1** (`DecisionModelId.subq_snap_1_1`): SubQ's default decision model (public preview) and the
+    `subq` default now, next to Snap Preview. Live 2026-10-29: `SubQSnapSmokeTest` passed all 11 sections on it (images,
+    a ~95k-token state, the token-limit refusal, the OpenAI interface).
+  - On OpenRouter (listed 2026-10-21 / 27; not called - the test account has no credits): `liquid/d1.1`, the rolling
+    `~liquid/d1-latest` / `~liquid/d1-ultra-latest`, Baseten's `baseten/elephant-1` (9B) / `baseten/mammoth-1` (27B)
+    and NACE's `nace-ai/drex-max` (Drex 2.0's successor, images too) - `openrouter_*` constants.
+  - On Vercel AI Gateway (`vercel_*`): Baseten's Elephant-1 / Mammoth-1, `liquid/d1-ultra` and Perplexity's v1.2
+    deciders - all five answered a free-tier team on 2026-10-29 (`VercelAIGatewaySmokeTest`).
 
 ### Fixed
 

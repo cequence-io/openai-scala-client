@@ -331,9 +331,15 @@ object DecisionProviderSettings {
   val subq: DecisionProvider = DecisionProvider(
     "https://api.subq.ai/",
     "SUBQ_API_KEY",
-    DecisionModelId.subq_snap_preview,
+    DecisionModelId.subq_snap_1_1,
     models = DecisionModelListing.Fixed(
       Seq(
+        ModelMetadata(
+          DecisionModelId.subq_snap_1_1,
+          "SubQ Snap 1.1 - SubQ's default decision model (public preview), the successor of SubQ Snap Preview.",
+          "2026-10-29",
+          Some(Seq("text", "image"))
+        ),
         ModelMetadata(
           DecisionModelId.subq_snap_preview,
           "SubQ Snap Preview - a long-context decision model (text + up to 4 images, at most 295,957 input tokens).",

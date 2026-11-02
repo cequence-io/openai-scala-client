@@ -31,14 +31,15 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 /**
- * Live walkthrough of SubQ Snap (`subq-snap-preview`, Subquadratic's long-context decision
- * model, public preview since 2026-10-12) through `DecisionProviderSettings.subq`: SubQ's docs
- * example (a noul gate, the owning team as a choice, a score with its legend), an object
- * state, the typed `decide[T]`, the OpenAI interface with the schema inferred from a case
- * class, images (as SubQ's `{mediaType, base64}` objects - lifted out of the state, and from a
- * chat message), a ~95k-token state, its token limit (295,957 tokens) and two refusals. Needs
- * `SUBQ_API_KEY`; every section prints PASS/FAIL, the exit code is 1 if any failed (~$0.02 per
- * run, mostly the long states).
+ * Live walkthrough of SubQ Snap (`subq-snap-1.1` - the preset's default since 2026-10-29 - and
+ * `subq-snap-preview`, Subquadratic's long-context decision models, public preview since
+ * 2026-10-12) through `DecisionProviderSettings.subq`: SubQ's docs example (a noul gate, the
+ * owning team as a choice, a score with its legend), an object state, the typed `decide[T]`,
+ * the OpenAI interface with the schema inferred from a case class, images (as SubQ's
+ * `{mediaType, base64}` objects - lifted out of the state, and from a chat message), a
+ * ~95k-token state, its token limit (295,957 tokens) and two refusals. Needs `SUBQ_API_KEY`;
+ * every section prints PASS/FAIL, the exit code is 1 if any failed (~$0.02 per run, mostly the
+ * long states).
  */
 object SubQSnapSmokeTest {
 
@@ -171,7 +172,10 @@ object SubQSnapSmokeTest {
     val run = for {
       _ <- section("the models - a fixed list, its /v1/models may list the chat model too") {
         service.listModels.map { models =>
-          check(models.map(_.name) == Seq("subq-snap-preview"), s"listed $models")
+          check(
+            models.map(_.name) == Seq("subq-snap-1.1", "subq-snap-preview"),
+            s"listed $models"
+          )
           models
             .map(m => s"${m.name} (${m.input_modalities.getOrElse(Nil).mkString("+")})")
             .mkString
