@@ -481,12 +481,12 @@ class ModelConversionsRoutingSpec extends AnyWordSpec with Matchers {
 
   "Mistral's reasoning models" should {
 
-    "take reasoning_effort as a switch - none or high (Large 4, Medium 3.5, Small 4)" in {
+    "take reasoning_effort as a switch - none or high (Medium 3.5, Small 4)" in {
       Seq(
-        "mistral-large-4",
-        "mistral-large-4-0",
         "mistral-medium-3.5",
-        "magistral-small-latest"
+        "mistral-medium-latest",
+        "magistral-small-latest",
+        "mistral-small-2603"
       ).foreach { model =>
         effortSent(model, ReasoningEffort.none) shouldBe Some("none")
         effortSent(model, ReasoningEffort.minimal) shouldBe Some("none")
@@ -497,6 +497,18 @@ class ModelConversionsRoutingSpec extends AnyWordSpec with Matchers {
           ReasoningEffort.max
         ).foreach(effort => effortSent(model, effort) shouldBe Some("high"))
         effortSent(model, ReasoningEffort.high) shouldBe Some("high")
+      }
+    }
+
+    "keep Large 4 within low / medium / high - it always reasons (since 2026-11)" in {
+      Seq("mistral-large-4", "mistral-large-4-0").foreach { model =>
+        effortSent(model, ReasoningEffort.none) shouldBe Some("low")
+        effortSent(model, ReasoningEffort.minimal) shouldBe Some("low")
+        effortSent(model, ReasoningEffort.low) shouldBe Some("low")
+        effortSent(model, ReasoningEffort.medium) shouldBe Some("medium")
+        effortSent(model, ReasoningEffort.high) shouldBe Some("high")
+        effortSent(model, ReasoningEffort.xhigh) shouldBe Some("high")
+        effortSent(model, ReasoningEffort.max) shouldBe Some("high")
       }
     }
 

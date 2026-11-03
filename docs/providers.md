@@ -329,8 +329,9 @@ Then you can obtain a service in one of the following ways.
 ```
    **Mistral Large 4** (`NonOpenAIModelId.mistral_large_4`, public preview since 2026-10-06) reasons by default and
    then answers `content` as a list of thinking / text chunks - read as the text (and as `Thinking` + `Text` on the typed
-   stream), so the usual calls work unchanged. `reasoning_effort` is a switch on Mistral's reasoning models (Large 4,
-   Medium 3.5, Small 4: `none` / `high`; GLM 5.3: `low` / `high` / `max`) and other values are mapped onto it. See
+   stream), so the usual calls work unchanged. Mistral's reasoning models take few `reasoning_effort` values and the
+   others are mapped onto them: Large 4 `low` / `medium` / `high` (it always reasons - `none` is sent as `low`; until
+   November 2026 it took `none` / `high`), Medium 3.5 and Small 4 `none` / `high`, GLM 5.3 `low` / `high` / `max`. See
    [MistralLarge4SmokeTest](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/mistral/MistralLarge4SmokeTest.scala).
 
 15. [Ollama](https://ollama.com/)

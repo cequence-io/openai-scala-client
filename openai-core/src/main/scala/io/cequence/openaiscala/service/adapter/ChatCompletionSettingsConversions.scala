@@ -836,12 +836,13 @@ object ChatCompletionSettingsConversions {
 
   val o1Preview: SettingsConversion = generic(o1PreviewConversions)
 
-  // Mistral's reasoning models take reasoning_effort as a switch (live 2026-10-07): Large 4 and
-  // every alias of Medium 3.5 and Small 4 (incl. magistral-* and mistral-vibe-cli-*) accept only
-  // `none` and `high` - the other values are 400s; Mistral-hosted GLM 5.3 (zai-glm-5 / -5-3 /
-  // -latest) and GLM 5.3 Flash (zai-glm-5-3-flash, listed 2026-10-29) only `low`, `high` and
-  // `max`, so they cannot turn reasoning off (GLM 5.2 takes every value). Large 4 and GLM 5.3
-  // reason by default, the others do not.
+  // Mistral's reasoning models take reasoning_effort as a switch (live 2026-10-07, re-probed
+  // 2026-11-03): every alias of Medium 3.5 and Small 4 (incl. magistral-* and mistral-vibe-cli-*)
+  // accepts only `none` and `high` - the other values are 400s; Mistral-hosted GLM 5.3 (zai-glm-5
+  // / -5-3 / -latest) and GLM 5.3 Flash (zai-glm-5-3-flash, listed 2026-10-29) only `low`, `high`
+  // and `max`, so they cannot turn reasoning off (GLM 5.2 takes every value). Large 4 took the
+  // switch too until Mistral changed it (see `mistralLarge4`). Large 4 and GLM 5.3 reason by
+  // default, the others do not.
   private val mistralSwitchReasoningModels = Set(
     NonOpenAIModelId.mistral_medium_2604,
     NonOpenAIModelId.mistral_medium_3_5,
@@ -859,8 +860,14 @@ object ChatCompletionSettingsConversions {
   )
 
   def isMistralSwitchReasoning(model: String): Boolean =
-    model.startsWith(NonOpenAIModelId.mistral_large_4) ||
-      mistralSwitchReasoningModels.contains(model)
+    mistralSwitchReasoningModels.contains(model)
+
+  // Mistral Large 4 (`mistral-large-4` / `-4-0`): `low`, `medium` and `high` (re-probed
+  // 2026-11-03 - `none`, `minimal`, `xhigh` and `max` are 400s; on 2026-10-07 it took only `none`
+  // and `high`, so a `none` sent then is refused now). It always reasons: `none` / `minimal` go
+  // out as `low`, `xhigh` / `max` as `high`.
+  def isMistralLarge4(model: String): Boolean =
+    model.startsWith(NonOpenAIModelId.mistral_large_4)
 
   private val mistralGlmModels =
     Set(
@@ -898,6 +905,16 @@ object ChatCompletionSettingsConversions {
         ),
         ReasoningEffort.high
       )
+    )
+  )
+
+  val mistralLarge4: SettingsConversion = generic(
+    Seq(
+      reasoningEffortTo(
+        Set(ReasoningEffort.none, ReasoningEffort.minimal),
+        ReasoningEffort.low
+      ),
+      reasoningEffortTo(Set(ReasoningEffort.xhigh, ReasoningEffort.max), ReasoningEffort.high)
     )
   )
 

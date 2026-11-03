@@ -345,6 +345,8 @@ trait ChatCompletionBodyMaker {
         gpt6SolLuna(settings)
       else if (isGpt5SearchApi(model))
         gpt5SearchApi(settings)
+      else if (isMistralLarge4(model))
+        mistralLarge4(settings)
       else if (isMistralSwitchReasoning(model))
         mistralSwitchReasoning(settings)
       else if (isMistralGlm(model))

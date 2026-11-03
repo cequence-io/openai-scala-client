@@ -64,6 +64,11 @@ compatible with 1.6.0 (the factory methods' signatures changed).
   - a sealed trait's case objects keep their DECLARATION order when each level of the hierarchy is declared in one
     object (typically the trait's companion) - they were sorted by name; case objects at a package's top level stay
     sorted on both Scala versions (Scala 2's runtime reflection cannot see their order).
+- Mistral Large 4 (`mistral-large-4` / `-4-0`): `reasoning_effort` `none` / `minimal` go out as `low`, `low` / `medium`
+  as they are, `xhigh` / `max` as `high`. Mistral changed the model's accepted values to `low` / `medium` / `high`
+  (re-probed 2026-11-03; it took only `none` / `high` in October), so the `none` the library sent for `none` /
+  `minimal` was a 400 and `low` / `medium` were raised to `high`. Large 4 always reasons now. Medium 3.5 and Small 4
+  still take `none` / `high`.
 - Function tools with derived parameters (`FunctionTool(parameters = jsonSchemaFor[T]())`):
   - a NON-strict tool on the chat completions API sends its parameters as given (an `Option` field required and
     nullable), except to Cerebras, Together and Meta's Model API, which get the `Option` fields the pre-1.6.1 way - their

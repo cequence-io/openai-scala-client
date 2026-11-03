@@ -36,8 +36,9 @@ import scala.util.{Failure, Success, Try}
  *
  *   - it reasons by default and then answers `content` as a list of thinking / text chunks,
  *     read as the text (sync) and as `Thinking` + `Text` (typed stream)
- *   - `reasoning_effort` only `none` / `high`: the others are mapped (`low` -> `high`,
- *     `minimal` -> `none`)
+ *   - `reasoning_effort` only `low` / `medium` / `high` (since 2026-11; it took only `none` /
+ *     `high` before): the others are mapped (`none` / `minimal` -> `low`, `xhigh` / `max` ->
+ *     `high`) - it always reasons
  *   - tools, json_schema structured output and images
  *
  * Every section prints PASS/FAIL and the run continues; the exit code is 1 if any failed.
@@ -125,10 +126,9 @@ object MistralLarge4SmokeTest {
 
     val all = for {
       _ <- section(s"$model: reasoning by default (chunked content)")(answer(None))
-      _ <- section(s"$model: reasoning_effort=none (plain content)")(
-        answer(Some(ReasoningEffort.none))
-      )
-      _ <- section(s"$model: reasoning_effort=low -> high")(answer(Some(ReasoningEffort.low)))
+      _ <- section(s"$model: reasoning_effort=none -> low")(answer(Some(ReasoningEffort.none)))
+      _ <- section(s"$model: reasoning_effort=medium")(answer(Some(ReasoningEffort.medium)))
+      _ <- section(s"$model: reasoning_effort=max -> high")(answer(Some(ReasoningEffort.max)))
 
       _ <- section(s"$model: typed stream (Thinking + Text)") {
         mistral.createChatCompletionStreamedTyped(arithmetic, settings).runWith(Sink.seq).map {
@@ -179,7 +179,7 @@ object MistralLarge4SmokeTest {
           .map(c => s"parsed=$c")
       }
 
-      _ <- section(s"$model: an image (reasoning off)") {
+      _ <- section(s"$model: an image (least reasoning)") {
         mistral
           .createChatCompletion(
             Seq(
