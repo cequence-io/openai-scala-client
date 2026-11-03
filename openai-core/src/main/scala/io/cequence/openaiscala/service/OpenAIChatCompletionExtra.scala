@@ -955,27 +955,30 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       case Right(schema) => schema
     }
 
-    // set "additionalProperties" -> false on "object" types if strict
-    def addFlagAux(map: Map[String, Any]): Map[String, Any] = {
-      val newMap = map.map { case (key, value) =>
-        val unwrappedValue = value match {
-          case Some(value) => value
-          case other       => other
-        }
-
-        val newValue = unwrappedValue match {
-          case obj: Map[String, Any] =>
-            addFlagAux(obj)
-
-          case other =>
-            other
-        }
-        key -> newValue
+    // "additionalProperties" -> false on every "object" type - also inside arrays (`anyOf`, how
+    // an Option field derives) and on a nullable object (`"type": ["object", "null"]`)
+    def addFlag(value: Any): Any =
+      value match {
+        case Some(inner)                      => addFlag(inner)
+        case map: Map[String, Any] @unchecked => addFlagAux(map)
+        case seq: scala.collection.Seq[_]     => seq.map(addFlag)
+        case other                            => other
       }
 
-      if (Seq("object", Some("object")).contains(map.getOrElse("type", ""))) {
+    def isObject(tpe: Any): Boolean =
+      tpe match {
+        case Some(inner)                  => isObject(inner)
+        case "object"                     => true
+        case seq: scala.collection.Seq[_] => seq.contains("object")
+        case _                            => false
+      }
+
+    def addFlagAux(map: Map[String, Any]): Map[String, Any] = {
+      val newMap = map.map { case (key, value) => key -> addFlag(value) }
+
+      if (map.get("type").exists(isObject))
         newMap + ("additionalProperties" -> false)
-      } else
+      else
         newMap
     }
 

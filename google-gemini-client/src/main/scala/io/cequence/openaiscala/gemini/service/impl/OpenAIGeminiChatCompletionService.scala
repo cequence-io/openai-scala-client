@@ -103,6 +103,7 @@ import io.cequence.wsclient.JsonUtil
 import com.typesafe.scalalogging.Logger
 import io.cequence.openaiscala.gemini.domain.SchemaType
 import org.slf4j.LoggerFactory
+import io.cequence.openaiscala.JsonFormats.jsonSchemaFormat
 import play.api.libs.json.{JsObject, Json}
 
 import scala.collection.immutable.Traversable
@@ -1385,8 +1386,24 @@ private[service] class OpenAIGeminiChatCompletionService(
         items = Some(toGeminiJSONSchema(items))
       )
 
-    case _ =>
-      throw new OpenAIScalaClientException("Unsupported JSON schema type for Gemini.")
+    // a schema or null: Gemini's flag - live 2026-11-03 it answered a {"type": "NULL"} branch of
+    // an anyOf with "" or "None", never null
+    case JsonSchema.Nullable(inner) =>
+      toGeminiJSONSchema(inner).copy(nullable = Some(true))
+
+    // a union: Gemini's own anyOf (live 2026-11-03: objects and string | integer answered right)
+    case JsonSchema.AnyOf(schemas, description) =>
+      val (nulls, others) = schemas.partition(_.isInstanceOf[JsonSchema.Null])
+      Schema(
+        `type` = SchemaType.TYPE_UNSPECIFIED,
+        description = description,
+        nullable =
+          if (nulls.nonEmpty)
+            Some(true)
+          else
+            None,
+        anyOf = Some(others.map(toGeminiJSONSchema))
+      )
   }
 
   private def toOpenAIResponse(
@@ -1559,11 +1576,17 @@ private[service] class OpenAIGeminiChatCompletionService(
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
   ): GenerateContentSettings = {
+    // the parameters as a JSON Schema (Gemini's parametersJsonSchema), not Gemini's OpenAPI
+    // schema: live 2026-11-03 a derived schema's optional fields (anyOf with null) came back
+    // null on 2.5 Flash, 2.5 Flash-Lite, 3.8 Flash and gemini-flash-latest (24 of 24), where
+    // the OpenAPI form with nullable: true got placeholders ("normal", 0, "") from 2.5
+    // Flash-Lite every time and from 2.5 Flash 1 in 3, and the not-required form was worse
+    // still (3.x filled every field); closed objects and an empty object were accepted
     val functionDeclarations = tools.collect { case ft: FunctionTool =>
       FunctionDeclaration(
         name = ft.name,
         description = ft.description.getOrElse(""),
-        parameters = Some(toGeminiJSONSchema(ft.parameters))
+        parametersJsonSchema = Some(Json.toJson(ft.parameters)(jsonSchemaFormat))
       )
     }
 

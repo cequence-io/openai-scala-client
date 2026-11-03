@@ -54,7 +54,9 @@ import io.cequence.openaiscala.domain.response.{
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import io.cequence.wsclient.service.CloseableService
+import io.cequence.wsclient.JsonUtil
 import org.slf4j.LoggerFactory
+import play.api.libs.json.Json
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
@@ -568,8 +570,22 @@ private[service] class OpenAIResponsesChatCompletionService(
 
       case ChatCompletionResponseFormatType.json_schema =>
         settings.jsonSchema.map { schemaDef =>
-          schemaDef.structure match {
+          // a map-form schema is read as a typed one, so the model sees it
+          val typedSchema: Option[JsonSchema] = schemaDef.structure match {
             case Left(schema) =>
+              Some(schema)
+
+            case Right(map) =>
+              Try(
+                Json
+                  .toJson(map)(JsonUtil.StringAnyMapFormat)
+                  .validate[JsonSchema](io.cequence.openaiscala.JsonFormats.jsonSchemaReads)
+                  .asOpt
+              ).toOption.flatten
+          }
+
+          typedSchema match {
+            case Some(schema) =>
               val newSchema =
                 if (schemaDef.strict)
                   OpenAIChatCompletionExtra.toStrictSchema(schema)
@@ -583,9 +599,10 @@ private[service] class OpenAIResponsesChatCompletionService(
                   strict = Some(schemaDef.strict)
                 )
               )
-            case Right(_) =>
+
+            case None =>
               logger.warn(
-                "Responses API adapter: Map-based JSON schema not supported, using json_object format instead"
+                "Responses API adapter: the map-based JSON schema could not be read as a typed schema and is NOT sent, using json_object format instead"
               )
               TextResponseConfig(ResponseFormat.JsonObject)
           }

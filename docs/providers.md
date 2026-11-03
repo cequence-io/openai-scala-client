@@ -211,8 +211,9 @@ Then you can obtain a service in one of the following ways.
   val chat = SonarServiceFactory.agentAsOpenAI()
   chat.createChatToolCompletion(messages, tools, settings = CreateChatCompletionSettings("openai/gpt-5.4-mini"))
 ```
-   Perplexity answers `json_object` with an empty `{}`, so pass `enforceMode = Some(ChatCompletionResponseFormatType.json_schema)`
-   to `createChatCompletionWithJSON` (its `provider/model` ids are not in `models-supporting-json-schema`);
+   `createChatCompletionWithJSON` works as is: its `provider/model` ids are not in `models-supporting-json-schema`, so
+   the schema goes into the prompt, and the adapter sends no `json_object` format (Perplexity answers that with an empty
+   `{}`); `enforceMode = Some(ChatCompletionResponseFormatType.json_schema)` sends the schema natively;
    web search rides on `createChatToolCompletion` / the typed stream with `settings.setResponsesTools(Seq(WebSearchTool()))`.
 
    Also `createAgentResponseStreamed` (typed `AgentStreamEvent`s), `retrieveAgentResponse`, `resumeAgentResponseStream`

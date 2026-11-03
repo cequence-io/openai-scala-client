@@ -10,6 +10,31 @@ class PartJsonSpec extends AnyWordSpecLike with Matchers {
 
   "Part JSON codec" should {
 
+    "keep the nulls of a function call's args - top level, nested, in arrays" in {
+      val json = Json.obj(
+        "functionCall" -> Json.obj(
+          "name" -> "create_ticket",
+          "args" -> Json.obj(
+            "hours" -> play.api.libs.json.JsNull,
+            "reporter" -> Json.obj("name" -> "Ann", "email" -> play.api.libs.json.JsNull),
+            "followUps" -> Json.arr(
+              Json.obj("name" -> "Cara", "phone" -> play.api.libs.json.JsNull)
+            )
+          )
+        )
+      )
+
+      val part = json.as[Part]
+      part match {
+        case call: Part.FunctionCall =>
+          call.args("hours") shouldBe None
+          // written back as null, not "" (ws-client's StringAnyMapFormat reads a null as "")
+          Json.toJson(call.args)(io.cequence.wsclient.JsonUtil.StringAnyMapFormat) shouldBe
+            (json \ "functionCall" \ "args").get
+        case other => fail(s"not a function call: $other")
+      }
+    }
+
     "round-trip a plain text part" in {
       val part: Part = Part.Text("hello")
       val json = Json.toJson(part)

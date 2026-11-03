@@ -2,6 +2,7 @@ package io.cequence.openaiscala.gemini.domain
 
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.wsclient.domain.EnumValue
+import play.api.libs.json.JsValue
 
 sealed trait Tool {
   val prefix: ToolPrefix
@@ -88,12 +89,20 @@ object ToolPrefix {
  *   Optional. Describes the output from this function in JSON Schema format. Reflects the Open
  *   API 3.03 Response Object. The Schema defines the type used for the response value of the
  *   function.
+ * @param parametersJsonSchema
+ *   Optional. The parameters as a JSON Schema (`anyOf`, `type` arrays and the rest of the
+ *   standard) instead of `parameters` - the two exclude each other. The OpenAI adapter sends a
+ *   function tool's parameters this way: live 2026-11-03 a derived schema's optional fields
+ *   (`anyOf` with null) came back null on 2.5 Flash, 2.5 Flash-Lite, 3.8 Flash and
+ *   `gemini-flash-latest` (24 of 24 calls), where `parameters` with `nullable: true` got
+ *   placeholders from 2.5 Flash-Lite (0 of 3) and 2.5 Flash (1 of 3).
  */
 case class FunctionDeclaration(
   name: String,
   description: String,
   parameters: Option[Schema] = None,
-  response: Option[Schema] = None
+  response: Option[Schema] = None,
+  parametersJsonSchema: Option[JsValue] = None
 )
 
 /**

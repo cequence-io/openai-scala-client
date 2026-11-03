@@ -61,13 +61,22 @@ trait JsonFormats {
   private implicit val inlineDataPartFormat: Format[Part.InlineData] =
     Json.format[Part.InlineData]
 
+  // a function call's args and a function response as maps that keep their nulls (read as
+  // None, written back as null): ws-client's StringAnyMapFormat reads a null as "" at any depth,
+  // so an Option the model answered with null came back as Some("") or a type error (live
+  // 2026-11-03, Gemini 3.8 Flash tool calls with a derived schema's nullable fields)
+  private val nullKeepingMapFormat: Format[Map[String, Any]] = Format(
+    Reads(_.validate[JsObject].map(JsonUtil.jsObjectToMapWithNull(nullValue = None))),
+    JsonUtil.StringAnyMapFormat
+  )
+
   private implicit val functionCallPartFormat: Format[Part.FunctionCall] = {
-    implicit val mapFormat = JsonUtil.StringAnyMapFormat
+    implicit val mapFormat: Format[Map[String, Any]] = nullKeepingMapFormat
     Json.format[Part.FunctionCall]
   }
 
   private implicit val functionResponsePartFormat: Format[Part.FunctionResponse] = {
-    implicit val mapFormat = JsonUtil.StringAnyMapFormat
+    implicit val mapFormat: Format[Map[String, Any]] = nullKeepingMapFormat
     Json.format[Part.FunctionResponse]
   }
 

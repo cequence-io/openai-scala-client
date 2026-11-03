@@ -56,15 +56,8 @@ object FunctionCallOpenAISerializer {
   private def formatNumber(value: Double): String =
     if (value.isWhole && math.abs(value) < 1e15) value.toLong.toString else value.toString
 
-  private def extractDescription(schema: JsonSchema): Option[String] = schema match {
-    case JsonSchema.String(description, _)        => description
-    case JsonSchema.Number(description, _, _, _)  => description
-    case JsonSchema.Integer(description, _, _, _) => description
-    case JsonSchema.Boolean(description)          => description
-    case JsonSchema.Object(_, _, _, desc)         => desc
-    case JsonSchema.Array(_, desc)                => desc
-    case _                                        => None
-  }
+  private def extractDescription(schema: JsonSchema): Option[String] =
+    JsonSchema.descriptionOf(schema)
 
   private def formatType(
     schema: JsonSchema,
@@ -87,6 +80,8 @@ object FunctionCallOpenAISerializer {
       "{" + "\n" + formatObjectProperties(obj, indent + 2) + "\n" + "}"
     case JsonSchema.Array(items, _) =>
       formatType(items, indent) + "[]"
+    case JsonSchema.AnyOf(schemas, _) =>
+      schemas.map(formatType(_, indent)).mkString(" | ")
     case _ => "any"
   }
 }

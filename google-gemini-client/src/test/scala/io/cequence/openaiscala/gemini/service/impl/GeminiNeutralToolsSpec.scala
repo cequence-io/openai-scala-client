@@ -183,6 +183,43 @@ class GeminiNeutralToolsSpec extends AnyWordSpec with Matchers with ScalaFutures
         .flatten shouldBe Seq("deepwiki")
     }
 
+    "send a function tool's parameters as a JSON Schema - nullable fields as anyOf" in {
+      val captor = ArgumentCaptor.forClass(classOf[GenerateContentSettings])
+      val (service, underlying) = adapter(captor)
+      val parameters = JsonSchema.Object(
+        Seq(
+          "city" -> JsonSchema.String(Some("The city")),
+          "zip" -> JsonSchema.Nullable(JsonSchema.String(Some("Postal code, null if unknown")))
+        ),
+        Seq("city", "zip")
+      )
+
+      service
+        .createChatToolCompletion(
+          Seq(UserMessage("hi")),
+          Seq(FunctionTool("get_weather", Some("Weather"), parameters)),
+          None,
+          CreateChatCompletionSettings(NonOpenAIModelId.gemini_2_5_flash)
+        )
+        .futureValue
+
+      verify(underlying).generateContent(any(), captor.capture())
+      val declaration = captor.getValue.tools
+        .getOrElse(Nil)
+        .collect { case t: Tool.FunctionDeclarations => t.functionDeclarations }
+        .flatten
+        .head
+
+      declaration.parameters shouldBe None
+      declaration.parametersJsonSchema shouldBe Some(
+        play.api.libs.json.Json.toJson[JsonSchema](parameters)(
+          io.cequence.openaiscala.JsonFormats.jsonSchemaFormat
+        )
+      )
+      (declaration.parametersJsonSchema.get \ "properties" \ "zip" \ "anyOf").isDefined shouldBe
+        true
+    }
+
     "fail fast when an MCPServerTool is combined with a function tool" in {
       val captor = ArgumentCaptor.forClass(classOf[GenerateContentSettings])
       val (service, _) = adapter(captor)

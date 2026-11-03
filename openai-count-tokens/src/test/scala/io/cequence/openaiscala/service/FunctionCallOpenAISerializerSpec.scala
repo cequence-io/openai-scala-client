@@ -37,5 +37,25 @@ class FunctionCallOpenAISerializerSpec extends AnyWordSpec with Matchers {
       text should include regex "unit\\??: \"g\" \\| \"kg\""
       text should not include "minimum"
     }
+
+    "render a nullable field as its type or null, with its description" in {
+      val text = FunctionCallOpenAISerializer.formatFunctionDefinitions(
+        Seq(
+          FunctionTool(
+            name = "note",
+            parameters = JsonSchema.Object(
+              properties = Seq(
+                "comment" -> JsonSchema.Nullable(JsonSchema.String(Some("A comment"))),
+                "unit" -> JsonSchema.Nullable(JsonSchema.String(`enum` = Seq("g", "kg")))
+              ),
+              required = Seq("comment", "unit")
+            )
+          )
+        )
+      )
+
+      text should include("// A comment\ncomment: string | null,")
+      text should include("unit: \"g\" | \"kg\" | null,")
+    }
   }
 }

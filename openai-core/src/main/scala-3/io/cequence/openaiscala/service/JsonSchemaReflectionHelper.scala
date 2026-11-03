@@ -1,6 +1,11 @@
 package io.cequence.openaiscala.service
 
-import io.cequence.openaiscala.domain.{JsonSchema, JsonSchemaDescription, JsonSchemaRange}
+import io.cequence.openaiscala.domain.{
+  JsonSchema,
+  JsonSchemaDescription,
+  JsonSchemaIgnore,
+  JsonSchemaRange
+}
 import io.cequence.openaiscala.service.JsonSchemaShape._
 
 import scala.quoted.*
@@ -16,8 +21,10 @@ import scala.quoted.*
  *     `UUID` / `URI` / `URL` / `Locale` / `Currency` / `File` / `Path` / the `java.time` values,
  *     `Duration`s and `Period`s (Scala's `Duration` too) -> string; `java.util.Date` -> string,
  *     or a number with `dateAsNumber`
- *   - `Option[T]` / `java.util.Optional[T]` -> `T`, the field not required (OpenAI's strict
- *     mode requires every field, so use `strict = false` with optional fields)
+ *   - `Option[T]` / `java.util.Optional[T]` -> `T` or null, the field required (a
+ *     [[io.cequence.openaiscala.domain.JsonSchema.Nullable]], written as `anyOf` with null -
+ *     what OpenAI's strict mode needs; Play JSON reads null as `None`). Before 1.6.1 the field
+ *     was `T`, not required, which strict mode refuses - `nullableOptions = false` keeps that
  *   - `Seq` / `List` / `Set` / `Vector` / `Array` / any Scala `Iterable` or Java `Iterable`
  *     (`java.util.List`, `Set`, ...) -> array
  *   - a value class (`extends AnyVal`) -> its underlying type, as `Json.valueFormat` writes it
@@ -27,13 +34,17 @@ import scala.quoted.*
  *   - a case class -> object, its fields in declaration order (type parameters resolved)
  *   - a string enum: an `Enumeration` (declaration order), a Java enum (declaration order),
  *     a Scala 3 `enum` of singleton cases (declaration order), a sealed trait or class whose
- *     subclasses are all case objects (sorted) - the values are their `toString`s, so a case
- *     object overriding it (e.g. a `NamedEnumValue`) contributes its own name
+ *     subclasses are all case objects - in declaration order when each level of the hierarchy
+ *     is declared in one object (e.g. the case objects in the trait's companion), else sorted
+ *     (as on Scala 2, whose runtime reflection cannot see the order of a package's members) -
+ *     the values are their `toString`s, so a case object overriding it (e.g. a
+ *     `NamedEnumValue`) contributes its own name
  *   - [[io.cequence.openaiscala.domain.JsonSchemaDescription]] on a class or field ->
  *     `description`; [[io.cequence.openaiscala.domain.JsonSchemaRange]] on a numeric field ->
- *     `minimum` / `maximum`
+ *     `minimum` / `maximum`; [[io.cequence.openaiscala.domain.JsonSchemaIgnore]] on a field
+ *     leaves it out (it must be an `Option` or have a default value)
  *
- * An `Either`, a sealed hierarchy with case classes (no `anyOf` here), a tuple or a recursive
+ * An `Either`, a sealed hierarchy with case classes (not derived as an `anyOf`), a tuple or a recursive
  * case class is refused - on Scala 2 when called, on Scala 3 at compile time. Pass arguments
  * by name: Scala 2's `useRuntimeMirror` does not exist here.
  */
@@ -44,13 +55,23 @@ trait JsonSchemaReflectionHelper {
    *   a `java.util.Date` as a number (epoch millis - Play JSON's default format) rather than
    *   a string
    * @param explicitTypes
-   *   schemas by field name, used instead of the derived ones (at any depth)
+   *   schemas by field name, used instead of the derived ones (at any depth); an `Option`
+   *   field's is made nullable
+   * @param nullableOptions
+   *   an `Option` field as a required field that may be null (default) rather than as its
+   *   inner type, not required
    */
   inline def jsonSchemaFor[T](
     dateAsNumber: Boolean = false,
-    explicitTypes: Map[String, JsonSchema] = Map()
+    explicitTypes: Map[String, JsonSchema] = Map(),
+    nullableOptions: Boolean = true
   ): JsonSchema =
-    JsonSchemaShape.toJsonSchema(JsonSchemaMacros.shapeOf[T], dateAsNumber, explicitTypes)
+    JsonSchemaShape.toJsonSchema(
+      JsonSchemaMacros.shapeOf[T],
+      dateAsNumber,
+      explicitTypes,
+      nullableOptions
+    )
 }
 
 object JsonSchemaReflectionHelper extends JsonSchemaReflectionHelper
@@ -139,6 +160,7 @@ object JsonSchemaMacros {
     val enumerationValueClass = TypeRepr.of[Enumeration#Value].typeSymbol
     val descriptionClass = TypeRepr.of[JsonSchemaDescription].typeSymbol
     val rangeClass = TypeRepr.of[JsonSchemaRange].typeSymbol
+    val ignoreClass = TypeRepr.of[JsonSchemaIgnore].typeSymbol
 
     def unsupported(
       tpe: TypeRepr,
@@ -214,7 +236,7 @@ object JsonSchemaMacros {
       else if (symbol == defn.ArrayClass)
         '{ ArrayShape(${ shapeOf(tpe.typeArgs.head, path) }) }
       else if (tpe.derivesFrom(eitherClass))
-        unsupported(tpe, "an Either - no anyOf here; use a case class with two optional fields")
+        unsupported(tpe, "an Either - not derived (Play JSON writes no standard form of it); use a case class with two Option fields, or a JsonSchemaOf of your own with a JsonSchema.AnyOf")
       else if (
         symbol.isClassDef && tpe.derivesFrom(defn.AnyValClass) && !symbol.flags.is(Flags.Module)
       )
@@ -229,10 +251,11 @@ object JsonSchemaMacros {
         else
           objectShape(tpe, symbol, symbol :: path)
       } else if (symbol.flags.is(Flags.Enum) && symbol.isClassDef)
-        '{ JsonSchemaShape.enumShape(${ Expr.ofSeq(singletonValues(tpe, symbol)) }) }
-      else if (symbol.flags.is(Flags.Sealed))
-        '{ JsonSchemaShape.sortedEnumShape(${ Expr.ofSeq(singletonValues(tpe, symbol)) }) }
-      else
+        '{ JsonSchemaShape.enumShape(${ Expr.ofSeq(singletonValues(tpe, symbol)._1) }) }
+      else if (symbol.flags.is(Flags.Sealed)) {
+        val (values, ordered) = singletonValues(tpe, symbol)
+        '{ JsonSchemaShape.sealedEnumShape(${ Expr.ofSeq(values) }, ${ Expr(ordered) }) }
+      } else
         unsupported(tpe, "")
     }
 
@@ -258,10 +281,29 @@ object JsonSchemaMacros {
     ): Expr[JsonSchemaShape] = {
       val constructorParams = symbol.primaryConstructor.paramSymss.flatten.filter(_.isTerm)
 
-      val fields = symbol.caseFields.map { field =>
-        val annotations =
-          constructorParams.find(_.name == field.name).toList.flatMap(_.annotations) ++
-            field.annotations
+      def annotationsOf(field: Symbol) =
+        constructorParams.find(_.name == field.name).toList.flatMap(_.annotations) ++
+          field.annotations
+
+      // a field marked @JsonSchemaIgnore - refused unless it is an Option or has a default
+      def ignored(field: Symbol): Boolean = {
+        val marked = annotation(annotationsOf(field), ignoreClass).isDefined
+        val fieldType = strip(tpe.memberType(field))
+        val optional = fieldType.derivesFrom(optionClass) || fieldType.derivesFrom(optionalClass)
+        val withDefault =
+          constructorParams.find(_.name == field.name).exists(_.flags.is(Flags.HasDefault))
+
+        if (marked && !optional && !withDefault)
+          unsupported(
+            tpe,
+            s"the field ${field.name} is marked @JsonSchemaIgnore but is neither an Option nor has a default value - the answer could not be read back without it"
+          )
+        else
+          marked
+      }
+
+      val fields = symbol.caseFields.filterNot(ignored).map { field =>
+        val annotations = annotationsOf(field)
         val (minimum, maximum) = rangeOf(annotations)
 
         '{
@@ -295,12 +337,21 @@ object JsonSchemaMacros {
         (symbol.flags.is(Flags.Module) && isStaticObject(symbol.owner))
 
     // the singleton cases of an enum / the case objects of a sealed hierarchy (nested sealed
-    // types flattened), by `toString` when the schema is built, each with its description
+    // types flattened), by `toString` when the schema is built, each with its description, and
+    // whether their declaration order is known: `children` keeps it, but the rule is Scala 2's
+    // (whose runtime reflection sees it only within one class or object) - so both versions
+    // derive the same schema
     def singletonValues(
       tpe: TypeRepr,
       symbol: Symbol
-    ): List[Expr[(String, Option[String])]] =
-      symbol.children.flatMap { child =>
+    ): (List[Expr[(String, Option[String])]], Boolean) = {
+      val children = symbol.children
+      val ordered = children.map(_.owner).distinct match {
+        case List(owner) => owner.isClassDef && !owner.isPackageDef
+        case _           => false
+      }
+
+      val levels = children.map { child =>
         // a case object's annotation sits on its class or its value, an enum case's on the case
         def described(value: Expr[String]) = {
           val annotations =
@@ -314,9 +365,9 @@ object JsonSchemaMacros {
         // String.valueOf, not `.toString` - see the Java enum above (a toString declared
         // without parentheses fails as `toString()`)
         if (child.isTerm)
-          described('{ String.valueOf(${ Ref(child).asExprOf[Any] }) })
+          (described('{ String.valueOf(${ Ref(child).asExprOf[Any] }) }), true)
         else if (child.flags.is(Flags.Module))
-          described('{ String.valueOf(${ Ref(child.companionModule).asExprOf[Any] }) })
+          (described('{ String.valueOf(${ Ref(child.companionModule).asExprOf[Any] }) }), true)
         else if (child.flags.is(Flags.Sealed))
           singletonValues(tpe, child)
         else
@@ -325,6 +376,9 @@ object JsonSchemaMacros {
             s"a sealed hierarchy or enum with the class ${child.name} - only case objects and singleton enum cases make a string enum"
           )
       }
+
+      (levels.flatMap(_._1), ordered && levels.forall(_._2))
+    }
 
     shapeOf(TypeRepr.of[T], Nil)
   }

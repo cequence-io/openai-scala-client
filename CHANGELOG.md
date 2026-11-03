@@ -44,6 +44,51 @@ compatible with 1.6.0 (the factory methods' signatures changed).
   parse failure still fails the call with the `OpenAIScalaJsonParseException`, without failover. A refused
   `enforceMode = Some(text)` fails the returned Future instead of throwing (still before `filterModels` runs).
 
+- Derived JSON schemas (`jsonSchemaFor[T]`, `JsonSchemaOf[T]`, the JSON helpers' inferred schema, `decide[T]`):
+  - an `Option` (or `java.util.Optional`) field is REQUIRED and may be null - `JsonSchema.Nullable(inner)`, a union of
+    the schema and `Null` (see `JsonSchema.AnyOf` below), written as `{"anyOf": [<inner>, {"type": "null"}],
+    "description": ...}` - instead of its type left out of `required`. A
+    class with optional fields now takes OpenAI's strict mode (the inferred schema is `strict = true` for it), and the
+    model answers `null` for a missing value (`Json.format` reads it as `None`). `jsonSchemaFor(nullableOptions =
+    false)` derives the old shape; an `explicitTypes` schema of an `Option` field is made nullable too. Measured
+    2026-11-03 (strict `json_schema` responses, a null and a value per field kind): OpenAI, Anthropic, Gemini's OpenAI
+    endpoint, Mistral, Groq, Fireworks, Together, Cerebras, xAI and Meta take and honour the `anyOf` form (in tool
+    parameters some hosts do not - see the function tools entry below) - the
+    shorter `"type": [<t>, "null"]` is a 400 on Anthropic next to an `enum`, and an `enum` without `null` forces a
+    value on OpenAI, Groq, Fireworks, Cerebras and xAI; OpenAPI's `nullable: true` (not JSON Schema) is a 400 on
+    Anthropic and Cerebras and ignored by OpenAI, Fireworks, Together, xAI and Meta. The native Gemini and Vertex AI
+    adapters send an `Option` field as its type with `nullable: true` (Gemini answered an `anyOf` null branch with ""
+    or "None"; with `nullable` 2.5 Flash and `gemini-flash-latest` answered null for every missing value, where the
+    old not-required form got placeholders such as "null" from 2.5 Flash - only 2.5 Flash-Lite still sometimes fills
+    a missing optional OBJECT with one); the decision-model planner asks the field as its type.
+  - a sealed trait's case objects keep their DECLARATION order when each level of the hierarchy is declared in one
+    object (typically the trait's companion) - they were sorted by name; case objects at a package's top level stay
+    sorted on both Scala versions (Scala 2's runtime reflection cannot see their order).
+- Function tools with derived parameters (`FunctionTool(parameters = jsonSchemaFor[T]())`):
+  - a NON-strict tool on the chat completions API sends its parameters as given (an `Option` field required and
+    nullable), except to Cerebras, Together and Meta's Model API, which get the `Option` fields the pre-1.6.1 way - their
+    type, not required (`JsonSchema.optionalFields`). Measured 2026-11-03, 6 calls per form on a derived schema: those
+    three mishandle a nullable union in tool parameters (Cerebras / Together gpt-oss-120b sent a nullable object as a
+    string - 3 and 1 of 6 right, Together also 500s; Meta Muse sent top-level nullable parameters as the string "null"
+    - 3 of 6) and answered 6 of 6 with the optional form, while the others need the nullable form (Groq 6 vs 1 - its
+    tool-call validator 400s a null for an optional field -, Fireworks 6 vs 0, xAI 6 vs 4, Mistral 6 vs 5, OpenAI 6 vs
+    6). A strict tool keeps the required + nullable form, closed (see Fixed);
+  - Gemini gets a tool's parameters as a JSON Schema (`FunctionDeclaration.parametersJsonSchema`, new) instead of its
+    OpenAPI schema: live 2026-11-03 the optional fields came back null on 2.5 Flash, 2.5 Flash-Lite, 3.8 Flash and
+    `gemini-flash-latest` in 24 of 24 calls, where the OpenAPI form with `nullable: true` got placeholders ("normal", 0,
+    "") from 2.5 Flash-Lite every time and from 2.5 Flash 1 in 3. JSON responses keep the OpenAPI `responseSchema`
+    (both forms answered 24 of 24). Vertex AI's tools are unchanged (not measured - no access).
+- `JsonSchema` is a schema of one JSON type - the new `JsonSchema.Typed` (`Object`, `Array`, `String`, `Number`,
+  `Integer`, `Boolean`, `Null`) - or a union, the new `JsonSchema.AnyOf(schemas, description)` (JSON Schema's `anyOf`).
+  `type` moved from `JsonSchema` to `Typed` (a union has no single type): `schema.type` on a `JsonSchema` no longer
+  compiles - match on `JsonSchema.Typed`. Code that walks `JsonSchema` values meets the new case. The reader takes
+  `anyOf` as written and a `type` array as a union (one branch per type) - both used to fail; `oneOf` / `allOf` are
+  still refused. Reading keeps only the keywords `JsonSchema` models (as it always did for a single type): a
+  `JsonSchemaDef` read from JSON whose optional field is an `anyOf` / type array used to stay a raw map
+  (`eitherJsonSchemaFormat`'s fallback) and kept every keyword - it is typed now, so e.g. a `format` or `pattern` in
+  it is dropped. To pass a foreign schema on verbatim, keep it as the map form (`Right(Map)`). Live 2026-11-03, a strict union of two objects answered right through OpenAI (chat completions and
+  the Responses API), the Claude API, Bedrock, Gemini (its own `anyOf`), Groq, Cerebras and Mistral; OpenAI refuses
+  `anyOf` at a schema's root; a decision model takes only the nullable form.
 - claude-agent-client: the CLI is started with `--setting-sources user` (new `ClaudeAgentSettings.settingSources`,
   default `Some(Seq("user"))`), so it no longer loads anything the working directory brings: `.claude/settings.json` /
   `settings.local.json` (hooks, permission rules, environment - the hooks ran host commands at session start,
@@ -98,6 +143,10 @@ compatible with 1.6.0 (the factory methods' signatures changed).
 
 ### New features
 
+- **`@JsonSchemaIgnore`** (`io.cequence.openaiscala.domain`) leaves a case class field out of a derived JSON schema - a
+  field your code sets, never asked of the model. It must be an `Option` or have a default value, else the derivation
+  refuses it (Scala 2 when called, Scala 3 at compile time); a default needs `Json.using[Json.WithDefaultValues]` to
+  read the answer back.
 - **Failover policy**: the failover helpers (`createChatCompletionWithFailover`, `...WithFailoverSettings`,
   `createChatCompletionWithJSON`, `...WithJSONFullResponse`) take a last parameter `policy: FailoverPolicy`
   (`io.cequence.openaiscala.service`); `FailoverPolicy.default` changes nothing.
@@ -224,6 +273,28 @@ compatible with 1.6.0 (the factory methods' signatures changed).
     deciders - all five answered a free-tier team on 2026-10-29 (`VercelAIGatewaySmokeTest`).
 
 ### Fixed
+
+- Gemini: a function call's arguments (and a function response) lost their nulls - read with ws-client's
+  `StringAnyMapFormat`, which turns a JSON null into "" at any depth - so an argument the model answered null came
+  back as `Some("")` or failed to read (`error.expected.jsnumber`). Live 2026-11-03 Gemini 3.8 Flash answered a derived
+  tool's optional fields with null and the adapter handed over "". Nulls are kept now (written back as null).
+- A strict function tool (`FunctionTool(strict = Some(true))`) on the chat completions API went out with its objects
+  open: OpenAI, Cerebras and Meta answer 400 "'additionalProperties' is required to be supplied and to be false". It is
+  closed now (`toStrictSchema`), as the Responses API path already did.
+- Perplexity's Agent API behind `agentAsOpenAI` answers `text.format = json_object` with an empty `{}`, and the JSON
+  helper used that format for every Perplexity model (its `provider/model` ids are not in
+  `models-supporting-json-schema`). The format is dropped now - the schema is already in the prompt, and live the same
+  request without it answered right.
+- The Responses chat adapter sent a map-form `json_schema` (`JsonSchemaDef(..., Right(map))`) as `json_object` without
+  the schema (in schema mode the JSON helper does not put it in the prompt, so the model never saw it). It is read as a
+  typed schema now and sent as `json_schema`; one that cannot be read falls back as before, with a clearer warning.
+- A strict `json_schema` on the chat completions API (OpenAI and every OpenAI-compatible provider) closed only the
+  objects reached through other objects: one inside an array - an `anyOf` branch of a caller's map-form schema, now
+  also a derived `Option` field's - kept no `additionalProperties: false`, which OpenAI, Groq and Cerebras refuse with
+  a 400. The body now uses the shared `OpenAIChatCompletionExtra.toStrictSchema`, which walks arrays and closes a
+  nullable object (`"type": ["object", "null"]`) too.
+- The `JsonSchema` reader kept an object's properties in their order only up to four - it read them into a `Map`, so
+  a schema read from JSON (e.g. a tool's `parameters`) with five or more properties came back reordered.
 
 - Streamed output guardrails (`guardrailsWithStreaming`) checked only the answer text but released everything else
   unchecked - reasoning (`Thinking` / `reasoning_content`), a typed stream's further choices, refusals, server-side

@@ -22,6 +22,9 @@ import io.cequence.wsclient.domain.EnumValue
  *   Optional. Required properties of Type.OBJECT.
  * @param items
  *   Optional. Schema of the elements of Type.ARRAY.
+ * @param anyOf
+ *   Optional. The value must be valid against at least one of these schemas (`type` then
+ *   `TYPE_UNSPECIFIED`).
  */
 case class Schema(
   `type`: SchemaType,
@@ -31,7 +34,8 @@ case class Schema(
   `enum`: Option[Seq[String]] = None,
   properties: Option[Map[String, Schema]] = None,
   required: Option[Seq[String]] = None,
-  items: Option[Schema] = None
+  items: Option[Schema] = None,
+  anyOf: Option[Seq[Schema]] = None
 )
 
 sealed trait SchemaType extends EnumValue

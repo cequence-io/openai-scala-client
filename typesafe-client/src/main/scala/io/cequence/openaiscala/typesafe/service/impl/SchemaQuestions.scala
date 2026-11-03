@@ -30,8 +30,10 @@ import scala.collection.immutable.ListMap
  * Questions are named by their paths (`questionName`).
  *
  * The property `description` is the question's instructions (a humanised property name when
- * there is none); `required` is moot since every question is answered. A nullable type
- * (`["string", "null"]`) is treated as its non-null type - System One always answers.
+ * there is none); `required` is moot since every question is answered. A nullable type is
+ * asked as its non-null type, since System One always answers: `["string", "null"]`, a `null`
+ * in its enum, or an `anyOf` of a schema and `{"type": "null"}` (how an `Option` field
+ * derives).
  *
  * '''Confidence fields.''' A `number` property named `<base>_confidence` or `<base>Confidence`
  * (case-sensitive suffix) with a sibling `<base>` in the same object - at any depth - asks for
@@ -130,8 +132,9 @@ private[typesafe] object SchemaQuestions {
 
     def slot(
       path: Seq[String],
-      schema: JsValue
+      nullableSchema: JsValue
     ): Slot = {
+      val schema = nonNull(nullableSchema)
       val description = (schema \ "description").asOpt[String].filter(_.trim.nonEmpty)
       val name = humanize(path.lastOption.getOrElse("value"))
       val instructions = description.getOrElse(name)
@@ -204,7 +207,8 @@ private[typesafe] object SchemaQuestions {
             }
 
           case Some("array") =>
-            (schema \ "items").toOption.flatMap(stringEnum) match {
+            // items of a nullable type (`Seq[Option[E]]`) are asked as their type too
+            (schema \ "items").toOption.map(nonNull).flatMap(stringEnum) match {
               case Some(Right(options)) if options.nonEmpty =>
                 // each option's question with its own description, not every option's
                 val (own, byValue) = valueDescriptions(options)
@@ -234,7 +238,7 @@ private[typesafe] object SchemaQuestions {
 
                 properties.fields.foreach {
                   case (name, sub)
-                      if baseOf.contains(name) && !typeOf(sub).contains("number") =>
+                      if baseOf.contains(name) && !typeOf(nonNull(sub)).contains("number") =>
                     unsupported(
                       path :+ name,
                       s"a confidence field (of '${baseOf(name)}') must be a number"
@@ -459,7 +463,7 @@ private[typesafe] object SchemaQuestions {
   // those stay ordinary numbers (refused when free, score questions with a range or an enum)
   private def isBox(schema: JsValue): Boolean =
     (schema \ "properties").asOpt[JsObject].exists { properties =>
-      properties.keys == BoxEdges && properties.values.forall(isFraction)
+      properties.keys == BoxEdges && properties.values.map(nonNull).forall(isFraction)
     }
 
   private def isFraction(schema: JsValue): Boolean =
@@ -467,6 +471,51 @@ private[typesafe] object SchemaQuestions {
       (schema \ "minimum").asOpt[Double].contains(0d) &&
       (schema \ "maximum").asOpt[Double].contains(1d) &&
       (schema \ "enum").toOption.isEmpty
+
+  // `{"anyOf": [X, {"type": "null"}]}` (a derived Option field) -> X, with the wrapper's
+  // description unless X has one of its own - the rule of core's `JsonSchema.Nullable`, here
+  // on the raw JSON, which may also be a map-form schema or one read back from a prompt;
+  // anything else as is
+  private def nonNull(schema: JsValue): JsValue =
+    schema match {
+      case obj: JsObject =>
+        (obj \ "anyOf").asOpt[JsArray].map(_.value.toSeq) match {
+          case Some(branches) =>
+            branches.partition(isNullType) match {
+              case (Seq(_), Seq(inner: JsObject)) =>
+                val description =
+                  (obj \ "description").toOption.filter(_ =>
+                    (inner \ "description").asOpt[String].isEmpty
+                  )
+                description.fold(inner)(desc => inner + ("description" -> desc))
+              case _ => schema
+            }
+          case None => schema
+        }
+      case _ => schema
+    }
+
+  // `{"type": "null"}` or `{"type": ["null"]}`
+  private def isNullType(schema: JsValue): Boolean =
+    (schema \ "type").toOption.exists {
+      case JsString(t) => t == "null"
+      case JsArray(ts) => ts.nonEmpty && ts.forall(_ == JsString("null"))
+      case _           => false
+    }
+
+  // the enum's values, a `null` dropped when the type allows it (a nullable enum's null is not
+  // an option - System One always answers); a null under a type that does not allow it stays,
+  // so it is refused like any other value of the wrong type
+  private def enumValues(schema: JsValue): Option[Seq[JsValue]] =
+    (schema \ "enum").asOpt[JsArray].map { values =>
+      val nullable =
+        (schema \ "type").asOpt[JsArray].exists(_.value.contains(JsString("null")))
+
+      if (nullable)
+        values.value.toSeq.filterNot(_ == JsNull)
+      else
+        values.value.toSeq
+    }
 
   // `type` is a string or an array of them (nullable types) - the non-null one wins
   private def typeOf(schema: JsValue): Option[String] =
@@ -483,23 +532,29 @@ private[typesafe] object SchemaQuestions {
   // None = no enum; Left = an enum with non-string values (refused, not silently trimmed);
   // duplicates are folded so the option count, the questions and the output agree
   private def stringEnum(schema: JsValue): Option[Either[String, Seq[String]]] =
-    (schema \ "enum").asOpt[JsArray].map { values =>
-      val strings = values.value.toSeq.collect { case JsString(s) => s }
-      if (strings.size == values.value.size) Right(strings.distinct)
-      else Left("a string enum with non-string values")
+    enumValues(schema).map { values =>
+      val strings = values.collect { case JsString(s) => s }
+
+      if (strings.size == values.size)
+        Right(strings.distinct)
+      else
+        Left("a string enum with non-string values")
     }
 
   private def numericLevels(schema: JsValue): Either[String, Seq[BigDecimal]] =
-    (schema \ "enum").asOpt[JsArray] match {
+    enumValues(schema) match {
       case Some(values) =>
-        val numbers = values.value.toSeq.collect { case JsNumber(n) => n }
-        if (numbers.size != values.value.size) Left("a numeric enum with non-numeric values")
+        val numbers = values.collect { case JsNumber(n) => n }
+
+        if (numbers.size != values.size)
+          Left("a numeric enum with non-numeric values")
         else if (numbers.distinct.size > MaxScoreLevels)
           Left(
             s"a numeric enum with ${numbers.distinct.size} values - a score allows at most " +
               s"$MaxScoreLevels levels"
           )
-        else Right(numbers.distinct.sorted)
+        else
+          Right(numbers.distinct.sorted)
 
       case None =>
         (

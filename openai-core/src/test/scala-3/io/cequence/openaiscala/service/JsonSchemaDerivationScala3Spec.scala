@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.service
 
-import io.cequence.openaiscala.domain.{JsonSchema, JsonSchemaDescription}
+import io.cequence.openaiscala.domain.{JsonSchema, JsonSchemaDescription, JsonSchemaIgnore}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -32,11 +32,19 @@ object JsonSchemaScala3Types {
     @JsonSchemaDescription("How does the customer feel?") mood: Mood
   )
 
+  case class Moods(
+    @JsonSchemaDescription("The mood, if stated") mood: Option[Mood],
+    @JsonSchemaDescription("Moods seen") seen: Seq[Mood],
+    @JsonSchemaDescription("Moods named, if any") named: Option[Seq[Mood]],
+    @JsonSchemaIgnore previous: Option[Mood] = None
+  )
+
   case class WithShape(shape: Shape)
   case class WithMap(counts: Map[String, Int])
   case class Tree(children: Seq[Tree])
   case class WithTuple(pair: (String, Int))
   case class WithEither(value: Either[String, Int])
+  case class IgnoredRequired(@JsonSchemaIgnore id: String)
 }
 
 class JsonSchemaDerivationScala3Spec extends AnyWordSpec with Matchers with JsonSchemaReflectionHelper {
@@ -72,6 +80,29 @@ class JsonSchemaDerivationScala3Spec extends AnyWordSpec with Matchers with Json
       )
     }
 
+    "carry an enum's value descriptions on an optional field's union and a list's description" in {
+      val values = Seq("Happy", "Angry", "Neutral")
+      val lines = "- Happy: Happy with the product\n- Angry: Angry or frustrated"
+
+      jsonSchemaFor[Moods]() shouldBe JsonSchema.Object(
+        Seq(
+          "mood" -> JsonSchema.AnyOf(
+            Seq(JsonSchema.String(`enum` = values), JsonSchema.Null()),
+            Some(s"The mood, if stated\n$lines")
+          ),
+          "seen" -> JsonSchema.Array(
+            JsonSchema.String(`enum` = values),
+            Some(s"Moods seen\n$lines")
+          ),
+          "named" -> JsonSchema.AnyOf(
+            Seq(JsonSchema.Array(JsonSchema.String(`enum` = values)), JsonSchema.Null()),
+            Some(s"Moods named, if any\n$lines")
+          )
+        ),
+        required = Seq("mood", "seen", "named")
+      )
+    }
+
     "refuse unsupported types at compile time" in {
       def errors(code: List[Error]) = code.map(_.message).mkString("\n")
 
@@ -80,6 +111,9 @@ class JsonSchemaDerivationScala3Spec extends AnyWordSpec with Matchers with Json
       errors(typeCheckErrors("jsonSchemaFor[WithEither]()")) should include("- an Either")
       errors(typeCheckErrors("jsonSchemaFor[WithShape]()")) should include(
         "- a sealed hierarchy or enum with the class Circle"
+      )
+      errors(typeCheckErrors("jsonSchemaFor[IgnoredRequired]()")) should include(
+        "the field id is marked @JsonSchemaIgnore but is neither an Option nor has a default value"
       )
       // a well-typed call compiles - a map is an open object since 1.5.0
       typeCheckErrors("jsonSchemaFor[Paint]()") shouldBe Nil

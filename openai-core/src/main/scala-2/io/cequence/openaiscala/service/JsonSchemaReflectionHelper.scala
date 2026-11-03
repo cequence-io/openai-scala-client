@@ -1,7 +1,12 @@
 package io.cequence.openaiscala.service
 
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.openaiscala.domain.{JsonSchema, JsonSchemaDescription, JsonSchemaRange}
+import io.cequence.openaiscala.domain.{
+  JsonSchema,
+  JsonSchemaDescription,
+  JsonSchemaIgnore,
+  JsonSchemaRange
+}
 import io.cequence.openaiscala.service.JsonSchemaShape._
 
 import scala.reflect.runtime.universe._
@@ -17,8 +22,10 @@ import scala.util.Try
  *     `UUID` / `URI` / `URL` / `Locale` / `Currency` / `File` / `Path` / the `java.time`
  *     values, `Duration`s and `Period`s (Scala's `Duration` too) -> string; `java.util.Date`
  * -> string, or a number with `dateAsNumber`
- *   - `Option[T]` / `java.util.Optional[T]` -> `T`, the field not required (OpenAI's strict
- *     mode requires every field, so use `strict = false` with optional fields)
+ *   - `Option[T]` / `java.util.Optional[T]` -> `T` or null, the field required (a
+ *     [[io.cequence.openaiscala.domain.JsonSchema.Nullable]], written as `anyOf` with null -
+ *     what OpenAI's strict mode needs; Play JSON reads null as `None`). Before 1.6.1 the field
+ *     was `T`, not required, which strict mode refuses - `nullableOptions = false` keeps that
  *   - `Seq` / `List` / `Set` / `Vector` / `Array` / any Scala `Iterable` or Java `Iterable`
  *     (`java.util.List`, `Set`, ...) -> array
  *   - a value class (`extends AnyVal`) -> its underlying type, as `Json.valueFormat` writes it
@@ -28,15 +35,20 @@ import scala.util.Try
  *   - a case class -> object, its fields in declaration order (type parameters resolved)
  *   - a string enum: an `Enumeration` (declaration order), a Java enum (declaration order), a
  *     Scala 3 `enum` of singleton cases (declaration order), a sealed trait or class whose
- *     subclasses are all case objects (sorted) - the values are their `toString`s, so a case
- *     object overriding it (e.g. a `NamedEnumValue`) contributes its own name
+ *     subclasses are all case objects - in declaration order when each level of the hierarchy
+ *     is declared in one object (e.g. the case objects in the trait's companion), else sorted
+ *     (runtime reflection cannot see the order of a package's members, so Scala 3 sorts those
+ *     too) - the values are their `toString`s, so a case object overriding it (e.g. a
+ *     `NamedEnumValue`) contributes its own name
  *   - [[io.cequence.openaiscala.domain.JsonSchemaDescription]] on a class or field ->
  *     `description`; [[io.cequence.openaiscala.domain.JsonSchemaRange]] on a numeric field ->
- *     `minimum` / `maximum`
+ *     `minimum` / `maximum`; [[io.cequence.openaiscala.domain.JsonSchemaIgnore]] on a field
+ *     leaves it out (it must be an `Option` or have a default value)
  *
- * An `Either`, a sealed hierarchy with case classes (no `anyOf` here), a tuple or a recursive
- * case class is refused - on Scala 2 when called (an [[OpenAIScalaClientException]]), on Scala
- * 3 at compile time. Pass arguments by name: `useRuntimeMirror` exists on Scala 2 only.
+ * An `Either`, a sealed hierarchy with case classes (not derived as an `anyOf`), a tuple or a
+ * recursive case class is refused - on Scala 2 when called (an
+ * [[OpenAIScalaClientException]]), on Scala 3 at compile time. Pass arguments by name:
+ * `useRuntimeMirror` exists on Scala 2 only.
  */
 trait JsonSchemaReflectionHelper {
 
@@ -47,12 +59,17 @@ trait JsonSchemaReflectionHelper {
    * @param useRuntimeMirror
    *   reflect with this class's class loader rather than the type tag's mirror (Scala 2 only)
    * @param explicitTypes
-   *   schemas by field name, used instead of the derived ones (at any depth)
+   *   schemas by field name, used instead of the derived ones (at any depth); an `Option`
+   *   field's is made nullable
+   * @param nullableOptions
+   *   an `Option` field as a required field that may be null (default) rather than as its
+   *   inner type, not required
    */
   def jsonSchemaFor[T: TypeTag](
     dateAsNumber: Boolean = false,
     useRuntimeMirror: Boolean = false,
-    explicitTypes: Map[String, JsonSchema] = Map()
+    explicitTypes: Map[String, JsonSchema] = Map(),
+    nullableOptions: Boolean = true
   ): JsonSchema = {
     val mirror =
       if (useRuntimeMirror) runtimeMirror(getClass.getClassLoader) else typeTag[T].mirror
@@ -60,7 +77,8 @@ trait JsonSchemaReflectionHelper {
     JsonSchemaShape.toJsonSchema(
       JsonSchemaReflection.shapeOf(typeOf[T], mirror),
       dateAsNumber,
-      explicitTypes
+      explicitTypes,
+      nullableOptions
     )
   }
 }
@@ -152,7 +170,10 @@ private object JsonSchemaReflection {
     else if (symbol == definitions.ArrayClass)
       ArrayShape(shapeOf(tpe.typeArgs.head, mirror, path))
     else if (tpe <:< typeOf[Either[_, _]])
-      unsupported(tpe, "an Either - no anyOf here; use a case class with two optional fields")
+      unsupported(
+        tpe,
+        "an Either - not derived (Play JSON writes no standard form of it); use a case class with two Option fields, or a JsonSchemaOf of your own with a JsonSchema.AnyOf"
+      )
     else if (symbol.isClass && symbol.asClass.isDerivedValueClass)
       valueClassShape(tpe, mirror, path)
     else if (symbol.isClass && symbol.asClass.isCaseClass && !symbol.isModuleClass) {
@@ -162,9 +183,10 @@ private object JsonSchemaReflection {
         unsupported(tpe, "a recursive type")
       else
         objectShape(tpe, mirror, symbol :: path)
-    } else if (symbol.isClass && symbol.asClass.isSealed)
-      JsonSchemaShape.sortedEnumShape(singletonValues(tpe, symbol.asClass, mirror))
-    else
+    } else if (symbol.isClass && symbol.asClass.isSealed) {
+      val (values, ordered) = singletonValues(tpe, symbol.asClass, mirror)
+      JsonSchemaShape.sealedEnumShape(values, ordered)
+    } else
       unsupported(tpe, "")
   }
 
@@ -183,7 +205,9 @@ private object JsonSchemaReflection {
       .collectFirst { case method: MethodSymbol if method.isPrimaryConstructor => method }
       .getOrElse(unsupported(tpe, "a case class without a primary constructor"))
 
-    val fields = constructor.paramLists.headOption.getOrElse(Nil).map { param =>
+    val params = constructor.paramLists.headOption.getOrElse(Nil)
+
+    val fields = params.filterNot(ignored(tpe, _)).map { param =>
       val paramType = param.typeSignature.substituteTypes(symbol.typeParams, tpe.typeArgs)
       val (minimum, maximum) = range(param.annotations)
 
@@ -237,15 +261,61 @@ private object JsonSchemaReflection {
   ): Option[Seq[String]] =
     Try(JsonSchemaShape.javaEnumValues(mirror.runtimeClass(tpe))).toOption
 
+  // a field marked @JsonSchemaIgnore - refused unless it is an Option or has a default value
+  private def ignored(
+    tpe: Type,
+    param: Symbol
+  ): Boolean = {
+    val marked = param.annotations.exists(_.tree.tpe =:= typeOf[JsonSchemaIgnore])
+    val optional =
+      param.typeSignature <:< typeOf[Option[_]] ||
+        param.typeSignature <:< typeOf[java.util.Optional[_]]
+
+    if (marked && !optional && !param.asTerm.isParamWithDefault)
+      unsupported(
+        tpe,
+        s"the field ${param.name.decodedName} is marked @JsonSchemaIgnore but is neither an Option nor has a default value - the answer could not be read back without it"
+      )
+    else
+      marked
+  }
+
+  // a sealed class's direct subclasses in declaration order - known when they are all declared
+  // in one class or object, whose declarations keep their order at runtime (a package's do not)
+  private def declarationOrdered(children: Seq[Symbol]): Option[Seq[Symbol]] =
+    children.map(_.owner).distinct match {
+      case Seq(owner) if owner.isClass && !owner.isPackageClass =>
+        val declared = owner.typeSignature.decls.sorted
+        val indexes = children.map { child =>
+          // a case object is declared as its module
+          declared.indexOf(
+            if (child.isModuleClass)
+              child.asClass.module
+            else
+              child
+          )
+        }
+
+        if (indexes.forall(_ >= 0))
+          Some(children.zip(indexes).sortBy(_._2).map(_._1))
+        else
+          None
+
+      case _ => None
+    }
+
   // the case objects of a sealed hierarchy (nested sealed traits flattened), by `toString`, each
-  // with its description
+  // with its description, in declaration order if every level's is known (the flag)
   private def singletonValues(
     tpe: Type,
     symbol: ClassSymbol,
     mirror: Mirror
-  ): Seq[(String, Option[String])] = {
+  ): (Seq[(String, Option[String])], Boolean) = {
     symbol.typeSignature
-    symbol.knownDirectSubclasses.toSeq.flatMap { child =>
+    val children = symbol.knownDirectSubclasses.toSeq
+    val ordered = declarationOrdered(children)
+
+    val levels = ordered.getOrElse(children).map { child =>
       val childClass = child.asClass
       if (childClass.isModuleClass) {
         val module = childClass.module.asModule
@@ -254,10 +324,13 @@ private object JsonSchemaReflection {
         module.typeSignature
         // a case object reflection cannot reach (declared in a class) by its name - what its
         // toString gives unless overridden
-        Seq(
-          Try(mirror.reflectModule(module).instance.toString)
-            .getOrElse(module.name.decodedName.toString) ->
-            description(childClass.annotations ++ module.annotations)
+        (
+          Seq(
+            Try(mirror.reflectModule(module).instance.toString)
+              .getOrElse(module.name.decodedName.toString) ->
+              description(childClass.annotations ++ module.annotations)
+          ),
+          true
         )
       } else if (childClass.isSealed)
         singletonValues(tpe, childClass, mirror)
@@ -267,6 +340,8 @@ private object JsonSchemaReflection {
           s"a sealed hierarchy with the class ${child.name} - only case objects make a string enum"
         )
     }
+
+    (levels.flatMap(_._1), ordered.isDefined && levels.forall(_._2))
   }
 
   private def annotationArgs(

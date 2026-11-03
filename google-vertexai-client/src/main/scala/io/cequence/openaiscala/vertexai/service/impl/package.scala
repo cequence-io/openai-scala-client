@@ -19,7 +19,6 @@ import com.google.cloud.vertexai.api.{
 import com.google.protobuf.{ByteString, Struct, Value}
 import com.google.protobuf.util.JsonFormat
 import com.typesafe.scalalogging.Logger
-import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.{
   AssistantMessage,
   AssistantToolMessage,
@@ -604,10 +603,17 @@ package object impl extends io.cequence.openaiscala.service.HasOpenAIConfig {
         description.foreach(b.setDescription)
         b.setItems(toVertexJSONSchema(items))
 
-      case _ =>
-        throw new OpenAIScalaClientException(
-          "Unsupported JSON schema type for Google Vertex."
-        )
+      // a schema or null: the schema's flag, as for Gemini (see its adapter)
+      case JsonSchema.Nullable(inner) =>
+        builder.mergeFrom(toVertexJSONSchema(inner)).setNullable(true)
+
+      case JsonSchema.AnyOf(schemas, description) =>
+        val (nulls, others) = schemas.partition(_.isInstanceOf[JsonSchema.Null])
+        builder.setType(Type.TYPE_UNSPECIFIED)
+        description.foreach(builder.setDescription)
+        others.foreach(schema => builder.addAnyOf(toVertexJSONSchema(schema)))
+        if (nulls.nonEmpty)
+          builder.setNullable(true)
     }
 
     builder.build()
@@ -744,6 +750,7 @@ package object impl extends io.cequence.openaiscala.service.HasOpenAIConfig {
     schema.description.foreach(builder.setDescription)
     schema.nullable.foreach(builder.setNullable)
     schema.`enum`.foreach(_.foreach(builder.addEnum))
+    schema.anyOf.foreach(_.foreach(branch => builder.addAnyOf(toVertexSchema(branch))))
 
     schema.properties.foreach { props =>
       val propsMap = props.map { case (key, s) =>

@@ -32,3 +32,19 @@ final class JsonSchemaRange(
   val min: Double,
   val max: Double
 ) extends StaticAnnotation
+
+/**
+ * Leaves a case class field out of the JSON schema `JsonSchemaReflectionHelper.jsonSchemaFor`
+ * derives - for a field the model is never asked for (set by your code afterwards). The field
+ * must be an `Option` or have a default value, or the derivation refuses it (on Scala 2 when
+ * called, on Scala 3 at compile time): the answer is read without it, so `Json.format` reads
+ * an `Option` as `None`, and a default needs `Json.using[Json.WithDefaultValues].format`.
+ *
+ * {{{
+ * case class Change(
+ *   text: Option[String],
+ *   @JsonSchemaIgnore style: Option[String] = None
+ * )
+ * }}}
+ */
+final class JsonSchemaIgnore extends StaticAnnotation

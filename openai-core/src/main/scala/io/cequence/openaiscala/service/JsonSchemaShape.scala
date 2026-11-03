@@ -40,7 +40,10 @@ object JsonSchemaShape {
     descriptions: Map[String, String] = Map()
   ) extends JsonSchemaShape
 
-  /** The inner type, its field not required. */
+  /**
+   * An `Option` - a required field that may be null ([[JsonSchema.Nullable]]), or, with
+   * `nullableOptions = false`, the inner type with its field not required.
+   */
   final case class OptionShape(inner: JsonSchemaShape) extends JsonSchemaShape
 
   final case class ArrayShape(items: JsonSchemaShape) extends JsonSchemaShape
@@ -57,6 +60,20 @@ object JsonSchemaShape {
     minimum: Option[Double] = None,
     maximum: Option[Double] = None
   )
+
+  /**
+   * The case objects of a sealed hierarchy as an enum: in declaration order when that order is
+   * known (`ordered` - every case object declared in one object, see the derivations), else
+   * sorted by value.
+   */
+  def sealedEnumShape(
+    options: Seq[(String, Option[String])],
+    ordered: Boolean
+  ): EnumShape =
+    if (ordered)
+      enumShape(options)
+    else
+      sortedEnumShape(options)
 
   /** An enum of these values, each with its description if it has one - sorted by value. */
   def sortedEnumShape(options: Seq[(String, Option[String])]): EnumShape = {
@@ -87,13 +104,28 @@ object JsonSchemaShape {
    *   a `java.util.Date` as a number (epoch millis - Play JSON's default format) rather than a
    *   string
    * @param explicitTypes
-   *   schemas by field name, used instead of the derived ones (at any depth)
+   *   schemas by field name, used instead of the derived ones (at any depth); an `Option`
+   *   field's is made nullable
+   * @param nullableOptions
+   *   an `Option` field as a required field that may be null ([[JsonSchema.Nullable]], what
+   *   OpenAI's strict mode needs) rather than as its inner type, not required (the derivation
+   *   before 1.6.1)
    */
   def toJsonSchema(
     shape: JsonSchemaShape,
     dateAsNumber: Boolean = false,
-    explicitTypes: Map[String, JsonSchema] = Map()
+    explicitTypes: Map[String, JsonSchema] = Map(),
+    nullableOptions: Boolean = true
   ): JsonSchema = {
+
+    def orNull(
+      shape: JsonSchemaShape,
+      schema: JsonSchema
+    ): JsonSchema =
+      shape match {
+        case _: OptionShape if nullableOptions => JsonSchema.Nullable(schema)
+        case _                                 => schema
+      }
 
     def convert(
       shape: JsonSchemaShape,
@@ -133,7 +165,7 @@ object JsonSchemaShape {
           JsonSchema.String(withValueDescriptions(description, values, descriptions), values)
 
         case OptionShape(inner) =>
-          convert(inner, description, minimum, maximum)
+          orNull(shape, convert(inner, description, minimum, maximum))
 
         // a multi-select: the values' descriptions go with the field's own
         case ArrayShape(EnumShape(values, descriptions)) if descriptions.nonEmpty =>
@@ -147,16 +179,17 @@ object JsonSchemaShape {
 
         case ObjectShape(fields, classDescription) =>
           val properties = fields.map { field =>
-            field.name -> explicitTypes.getOrElse(
-              field.name,
-              convert(field.shape, field.description, field.minimum, field.maximum)
-            )
+            field.name -> explicitTypes
+              .get(field.name)
+              .map(orNull(field.shape, _))
+              .getOrElse(convert(field.shape, field.description, field.minimum, field.maximum))
           }
 
           JsonSchema.Object(
             properties,
             required = fields.collect {
-              case field if !field.shape.isInstanceOf[OptionShape] => field.name
+              case field if nullableOptions || !field.shape.isInstanceOf[OptionShape] =>
+                field.name
             },
             description = description.orElse(classDescription)
           )

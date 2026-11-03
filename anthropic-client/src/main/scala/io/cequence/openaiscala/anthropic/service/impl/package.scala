@@ -586,6 +586,9 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
         case array: JsonSchema.Array =>
           array.copy(items = aux(path :+ "[]", array.items))
 
+        case union: JsonSchema.AnyOf =>
+          union.copy(schemas = union.schemas.map(aux(path, _)))
+
         case other => other
       }
 

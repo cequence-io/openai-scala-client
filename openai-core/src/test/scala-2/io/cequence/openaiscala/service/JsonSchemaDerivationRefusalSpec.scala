@@ -1,6 +1,7 @@
 package io.cequence.openaiscala.service
 
 import io.cequence.openaiscala.OpenAIScalaClientException
+import io.cequence.openaiscala.domain.JsonSchemaIgnore
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -22,6 +23,7 @@ object JsonSchemaRefusalTypes {
   case class WithTuple(pair: (String, Int))
   case class WithEither(value: Either[String, Int])
   case class WithShape(shape: Shape)
+  case class IgnoredRequired(@JsonSchemaIgnore id: String)
 }
 
 // Scala 2 refuses an unsupported type when called; Scala 3 at compile time (see the scala-3
@@ -54,14 +56,20 @@ class JsonSchemaDerivationRefusalSpec
       refusal(jsonSchemaFor[WithShape]()) should include("a sealed hierarchy")
     }
 
-    "name the case objects it cannot reach" in {
+    "refuse to leave out a field that is neither an Option nor has a default" in {
+      refusal(jsonSchemaFor[IgnoredRequired]()) should include(
+        "the field id is marked @JsonSchemaIgnore but is neither an Option nor has a default value"
+      )
+    }
+
+    "name the case objects it cannot reach, in declaration order (declared in one class)" in {
       val kennel = new Kennel
       jsonSchemaFor[kennel.Dog]()
         .asInstanceOf[io.cequence.openaiscala.domain.JsonSchema.Object]
         .properties
         .toMap
         .apply("size") shouldBe
-        io.cequence.openaiscala.domain.JsonSchema.String(None, Seq("Large", "Small"))
+        io.cequence.openaiscala.domain.JsonSchema.String(None, Seq("Small", "Large"))
     }
   }
 }

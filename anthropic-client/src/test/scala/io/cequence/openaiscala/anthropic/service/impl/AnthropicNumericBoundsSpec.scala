@@ -25,7 +25,9 @@ class AnthropicNumericBoundsSpec extends AnyWordSpec with Matchers {
       "scores" -> JsonSchema.Array(JsonSchema.Number(maximum = Some(10))),
       "nested" -> JsonSchema.Object(
         properties = Seq("weight" -> JsonSchema.Number(minimum = Some(0)))
-      )
+      ),
+      // an Option field
+      "rating" -> JsonSchema.Nullable(JsonSchema.Integer(maximum = Some(10)))
     )
   )
 
@@ -34,7 +36,7 @@ class AnthropicNumericBoundsSpec extends AnyWordSpec with Matchers {
     "strip minimum / maximum everywhere, naming the paths, and keep everything else" in {
       val (sanitized, dropped) = dropNumericBounds(nested)
 
-      dropped shouldBe Seq("stars", "scores.[]", "nested.weight")
+      dropped shouldBe Seq("stars", "scores.[]", "nested.weight", "rating")
 
       val properties = sanitized.asInstanceOf[JsonSchema.Object].properties.toMap
       properties("stars") shouldBe JsonSchema.Integer(Some("Stars"))
@@ -45,6 +47,7 @@ class AnthropicNumericBoundsSpec extends AnyWordSpec with Matchers {
       properties("nested") shouldBe JsonSchema.Object(
         properties = Seq("weight" -> JsonSchema.Number())
       )
+      properties("rating") shouldBe JsonSchema.Nullable(JsonSchema.Integer())
     }
 
     "leave a schema without bounds untouched" in {

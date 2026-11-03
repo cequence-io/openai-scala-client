@@ -14,8 +14,9 @@ import scala.util.{Failure, Success, Try}
  *   - `T`'s [[JsonSchemaOf]] - an instance of your own in scope, or the one derived from a
  *     case class with its `@JsonSchemaDescription` / `@JsonSchemaRange` annotations - as a
  *     `JsonSchemaDef` named after the type, `strict` only when OpenAI's strict mode takes the
- *     schema (every field required, no open object): an `Option` field or a `Map` makes it
- *     `strict = false`;
+ *     schema (every field required, no open object): a `Map` makes it `strict = false`, an
+ *     `Option` field does not (since 1.6.1 it derives as a required field that may be null -
+ *     `JsonSchema.Nullable`);
  *   - nothing for a JSON value (`JsValue`, `JsObject`, ...), a type whose schema is not an
  *     object with fields (an array, a string, a map, an enum), a type that does not derive (an
  *     `Either`, a sealed hierarchy of case classes, a tuple) and an abstract `T` - the call
@@ -112,6 +113,8 @@ object InferredJsonSchema extends InferredJsonSchemaDerivation {
         obj.properties.forall { case (_, fieldSchema) => strictCompatible(fieldSchema) }
 
       case array: JsonSchema.Array => strictCompatible(array.items)
+
+      case union: JsonSchema.AnyOf => union.schemas.forall(strictCompatible)
 
       case _ => true
     }

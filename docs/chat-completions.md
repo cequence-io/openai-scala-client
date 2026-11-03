@@ -271,18 +271,33 @@ There is a new project [openai-scala-client-examples](../openai-examples/src/mai
 ```
 
 - **JSON schema derived from a case class** - `jsonSchemaFor[T]()` (`JsonSchemaReflectionHelper`; runtime reflection on
-  Scala 2, a macro on Scala 3 - the same call and the same schema on both). Fields map to their JSON types (`Option` = not
-  required, collections = arrays, nested case classes = objects, type parameters resolved); `Enumeration`s, Java enums,
-  Scala 3 `enum`s and sealed traits of case objects become string enums; `@JsonSchemaDescription` and
-  `@JsonSchemaRange(min, max)` add descriptions and numeric bounds. A described case object or enum case adds a
+  Scala 2, a macro on Scala 3 - the same call and the same schema on both). Fields map to their JSON types (collections =
+  arrays, nested case classes = objects, type parameters resolved); `Enumeration`s, Java enums, Scala 3 `enum`s and
+  sealed traits of case objects become string enums; `@JsonSchemaDescription` and `@JsonSchemaRange(min, max)` add
+  descriptions and numeric bounds, 🔥 `@JsonSchemaIgnore` leaves a field out (one the model is never asked for - it
+  must be an `Option` or have a default value; a default needs `Json.using[Json.WithDefaultValues].format` to read the
+  answer). 🔥 An `Option` field is REQUIRED and may be null (`JsonSchema.Nullable`, a union of its type and null -
+  JSON Schema's `anyOf`, `JsonSchema.AnyOf` - written as `{"anyOf": [<type>, {"type": "null"}]}`), so a class with
+  optional fields takes OpenAI's strict mode, and the model
+  answers `null` where it has nothing - `Json.format` reads that as `None` (`jsonSchemaFor(nullableOptions = false)`
+  derives an `Option` as before 1.6.1: its type, not required - which strict mode refuses). Measured 2026-11-03 with
+  strict `json_schema`: OpenAI, Anthropic, Gemini's OpenAI endpoint, Mistral, Groq, Fireworks, Together, Cerebras,
+  xAI and Meta all take the `anyOf` form and answer null or a value. The native Gemini and Vertex AI adapters send an
+  `Option` field as its type with `nullable: true` (Gemini answers an `anyOf` null branch with "" or "None"), other
+  unions as their own `anyOf`; a decision model asks the field as its type (it always answers). Function tools: a
+  strict tool goes out required and nullable, its objects closed; a non-strict one as given, except to Cerebras,
+  Together and Meta's Model API, which mishandle a nullable union in tool parameters and get the `Option` fields the
+  pre-1.6.1 way (optional, of their type); Gemini gets tool parameters as a JSON Schema. 🔥 A sealed trait's case objects keep their declaration order
+  when each level of the hierarchy is declared in one object (typically the trait's companion); case objects at a
+  package's top level are sorted by name on both Scala versions (Scala 2's runtime reflection cannot see their
+  order). A described case object or enum case adds a
   "- value: description" line to its field's description, since a JSON schema enum has no place for value descriptions. The commonly used Scala and Java types are covered: the boxed and `java.math` numbers, `UUID` / `URI` / `URL` / `Locale` /
   `Currency` / `File` / `Path`, the `java.time` values, `Duration`s and `Period`s (Scala's `Duration` too) as strings,
   `java.util.Optional` like `Option`, `java.util.List` / `Set` / any Java `Iterable` as arrays, a value class
   (`extends AnyVal`) as its underlying type (as `Json.valueFormat` writes it), and a `Map[String, V]` / `java.util.Map` as an
   open object (`additionalProperties: true`; the value type is not expressed, and OpenAI's strict mode closes every object -
   a map needs `strict = false`). An `Either`, a tuple, a sealed hierarchy with case classes or a recursive type is refused
-  (Scala 3: at compile time); an `Enumeration` declared in a class stays a plain string. OpenAI's strict mode requires every field, so use
-  `strict = false` with `Option` fields. APIs that need a type's schema take it as a `JsonSchemaOf[T]`, derived the same
+  (Scala 3: at compile time); an `Enumeration` declared in a class stays a plain string. APIs that need a type's schema take it as a `JsonSchemaOf[T]`, derived the same
   way unless you put an instance of your own in scope (`JsonSchemaOf.instance(schema)`).
 
 ```scala
@@ -315,7 +330,8 @@ There is a new project [openai-scala-client-examples](../openai-examples/src/mai
 - 🔥 **Or let the JSON helper infer the schema from `T`** - with no `jsonSchema` in the settings, `createChatCompletionWithJSON[T]`
   (and `createChatCompletionWithJSONFullResponse[T]` / `createChatCompletionBatchWithJSON[T]`) asks with the schema of `T`:
   the case class above with its annotations, as a `JsonSchemaDef` named after the type (`CapitalsResponse`). It is
-  `strict` unless OpenAI's strict mode would refuse it - an `Option` field or a `Map` makes it `strict = false`. The rules
+  `strict` unless OpenAI's strict mode would refuse it - a `Map` makes it `strict = false` (an `Option` field no longer
+  does: it is a required field that may be null). The rules
   (`InferredJsonSchema`, the same on Scala 2 and 3):
   - the settings' own `jsonSchema` always wins, so schemas built at runtime work as before;
   - a `JsonSchemaOf[T]` of your own in scope is used instead of the derived schema

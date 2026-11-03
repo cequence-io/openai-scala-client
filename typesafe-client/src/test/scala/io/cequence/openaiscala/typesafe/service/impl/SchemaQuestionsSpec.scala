@@ -7,6 +7,8 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json._
 
+import scala.collection.immutable.ListMap
+
 class SchemaQuestionsSpec extends AnyWordSpec with Matchers {
 
   import SchemaQuestions._
@@ -75,6 +77,143 @@ class SchemaQuestionsSpec extends AnyWordSpec with Matchers {
       plan.questions("stars") shouldBe ScoreQuestion("Star rating", "1", "2", "3", "4", "5")
       plan.questions("weight") shouldBe ScoreQuestion("Weight", "0.25", "0.5", "1")
       plan.questions("nullable") shouldBe NoulQuestion("Nullable")
+    }
+
+    "ask a nullable field (an Option - anyOf with null, or a null in an enum) as its type" in {
+      val typed: JsonSchema = JsonSchema.Object(
+        properties = Seq(
+          "team" -> JsonSchema.Nullable(
+            JsonSchema.String(Some("Which team"), `enum` = Seq("billing", "sales"))
+          ),
+          "urgent" -> JsonSchema.Nullable(JsonSchema.Boolean()),
+          "urgent_confidence" -> JsonSchema.Nullable(JsonSchema.Number()),
+          "customer" -> JsonSchema.Nullable(
+            JsonSchema.Object(Seq("angry" -> JsonSchema.Boolean(Some("Angry?"))))
+          )
+        ),
+        required = Seq("team", "urgent", "urgent_confidence", "customer")
+      )
+      val plan =
+        SchemaQuestions.plan(Json.toJson[Either[JsonSchema, Map[String, Any]]](Left(typed)))
+
+      plan.questions shouldBe Map(
+        // the description moved to the anyOf wrapper still reads as the instructions
+        "team" -> ChoiceQuestion.ofLabels("Which team", "billing", "sales"),
+        "urgent" -> NoulQuestion("Urgent"),
+        "customer.angry" -> NoulQuestion("Angry?")
+      )
+
+      SchemaQuestions
+        .plan(
+          Json.parse(
+            """{"type":"object","properties":{
+              |  "unit":{"type":["string","null"],"enum":["F","C",null]}
+              |}}""".stripMargin
+          )
+        )
+        .questions("unit") shouldBe ChoiceQuestion.ofLabels("Unit", "F", "C")
+    }
+
+    "unwrap a nullable type anywhere - list items, box edges, a numeric enum, both null spellings" in {
+      def nullable(inner: JsObject) =
+        Json.obj("anyOf" -> Json.arr(inner, Json.obj("type" -> "null")))
+      val fraction = Json.obj("type" -> "number", "minimum" -> 0, "maximum" -> 1)
+
+      val plan = SchemaQuestions.plan(
+        Json.obj(
+          "type" -> "object",
+          "properties" -> Json.obj(
+            // Seq[Option[Topic]]
+            "topics" -> Json.obj(
+              "type" -> "array",
+              "items" -> nullable(Json.obj("type" -> "string", "enum" -> Seq("a", "b")))
+            ),
+            // a box whose edges are Option[Double] in 0..1
+            "mug" -> Json.obj(
+              "type" -> "object",
+              "description" -> "The mug",
+              "properties" -> Json.obj(
+                "top" -> nullable(fraction),
+                "bottom" -> nullable(fraction),
+                "left" -> nullable(fraction),
+                "right" -> nullable(fraction)
+              )
+            ),
+            "stars" -> Json.obj(
+              "type" -> Json.arr("integer", "null"),
+              "enum" -> Json.arr(1, 2, JsNull),
+              "description" -> "Stars"
+            ),
+            // a null branch spelled as a one-element type array
+            "flag" -> Json.obj(
+              "anyOf" -> Json
+                .arr(Json.obj("type" -> "boolean"), Json.obj("type" -> Json.arr("null")))
+            ),
+            // a branch's "description": null takes the wrapper's
+            "urgent" -> Json.obj(
+              "anyOf" -> Json.arr(
+                Json.obj("type" -> "boolean", "description" -> JsNull),
+                Json.obj("type" -> "null")
+              ),
+              "description" -> "Is it urgent?"
+            )
+          )
+        )
+      )
+
+      plan.questions.keySet shouldBe Set(
+        "topics.[a]",
+        "topics.[b]",
+        "mug",
+        "stars",
+        "flag",
+        "urgent"
+      )
+      plan.questions("mug") shouldBe BoxQuestion("The mug")
+      plan.questions("stars") shouldBe ScoreQuestion("Stars", "1", "2")
+      plan.questions("flag") shouldBe NoulQuestion("Flag")
+      plan.questions("urgent") shouldBe NoulQuestion("Is it urgent?")
+
+      // a null under a type that does not allow it is still refused
+      val e = the[IllegalArgumentException] thrownBy SchemaQuestions.plan(
+        Json.parse(
+          """{"type":"object","properties":{"n":{"type":"integer","enum":[1,null]}}}"""
+        )
+      )
+      e.getMessage should include("n: a numeric enum with non-numeric values")
+    }
+
+    "keep the value descriptions of a nullable enum and a nullable multi-select" in {
+      val lines = "- high: Needs action now\n- low: Can wait"
+      val values = Seq("high", "medium", "low")
+      val typed: JsonSchema = JsonSchema.Object(
+        Seq(
+          "escalation" -> JsonSchema.Nullable(
+            JsonSchema.String(Some(s"The level it may escalate to\n$lines"), values)
+          ),
+          "named" -> JsonSchema.Nullable(
+            JsonSchema.Array(JsonSchema.String(`enum` = values), Some(s"Levels named\n$lines"))
+          )
+        ),
+        Seq("escalation", "named")
+      )
+
+      val plan =
+        SchemaQuestions.plan(Json.toJson[Either[JsonSchema, Map[String, Any]]](Left(typed)))
+
+      plan.questions("escalation") shouldBe ChoiceQuestion(
+        ListMap(
+          "high" -> Some(JsString("Needs action now")),
+          "medium" -> None,
+          "low" -> Some(JsString("Can wait"))
+        ),
+        Some(JsString("The level it may escalate to"))
+      )
+      plan.questions("named.[high]") shouldBe
+        NoulQuestion("Does 'high' apply? (Levels named)\n- high: Needs action now")
+      plan.questions("named.[medium]") shouldBe NoulQuestion(
+        "Does 'medium' apply? (Levels named)"
+      )
     }
 
     "take the typed Integer / Number constraints too" in {

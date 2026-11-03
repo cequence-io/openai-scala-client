@@ -39,6 +39,8 @@ import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettin
 import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtraAkka}
 import play.api.libs.json.{JsObject, Json}
 
+import org.slf4j.LoggerFactory
+
 import java.net.UnknownHostException
 import java.util.concurrent.TimeoutException
 import scala.concurrent.{ExecutionContext, Future}
@@ -62,6 +64,8 @@ private[service] class PerplexityResponsesServiceImpl(
     with OpenAIStreamedServiceExtra
     with ResponsesToolApprovalsUnsupported
     with ClassifiedStreamingWSClient {
+
+  private val logger = LoggerFactory.getLogger(getClass)
 
   override protected type PEP = EndPoint
   override protected type PT = Param
@@ -131,9 +135,26 @@ private[service] class PerplexityResponsesServiceImpl(
     inputs: Inputs,
     settings: CreateModelResponseSettings,
     stream: Boolean
-  ): JsObject =
-    Json.toJsObject(settings.copy(stream = Some(stream)))(createModelResponseSettingsFormat) ++
+  ): JsObject = {
+    // Perplexity answers text.format = json_object with an empty {} (json_schema works)
+    val jsonObjectDropped =
+      settings.text.exists(_.format == ResponseFormat.JsonObject)
+
+    if (jsonObjectDropped)
+      logger.debug(
+        "Perplexity Responses: dropping text.format = json_object (answered with an empty object)"
+      )
+
+    val effective =
+      if (jsonObjectDropped)
+        settings.copy(text = None)
+      else
+        settings
+
+    Json
+      .toJsObject(effective.copy(stream = Some(stream)))(createModelResponseSettingsFormat) ++
       Json.obj("input" -> inputsWrites.writes(inputs))
+  }
 
   private def transportErrors[T]: PartialFunction[Throwable, Future[T]] = {
     case e @ (_: CequenceWSTimeoutException | _: TimeoutException) =>

@@ -15,6 +15,10 @@ import io.cequence.openaiscala.domain.responsesapi.{
   ReasoningMode
 }
 import io.cequence.openaiscala.domain.settings.{
+  ChatCompletionResponseFormatType,
+  JsonSchemaDef
+}
+import io.cequence.openaiscala.domain.settings.{
   CreateChatCompletionSettings,
   ReasoningEffort,
   ServiceTier
@@ -599,6 +603,45 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
       )
       call.isSuccess shouldBe true
       intercept[OpenAIScalaClientException](await(call.get))
+    }
+  }
+
+  "a map-form JSON schema" should {
+
+    "reach the Responses API as a typed json_schema format, closed when strict" in {
+      val map: Map[String, Any] = Map(
+        "type" -> "object",
+        "properties" -> Map(
+          "city" -> Map("type" -> "string"),
+          "address" -> Map(
+            "type" -> "object",
+            "properties" -> Map("zip" -> Map("type" -> "string")),
+            "required" -> Seq("zip")
+          ),
+          "note" -> Map("anyOf" -> Seq(Map("type" -> "string"), Map("type" -> "null")))
+        ),
+        "required" -> Seq("city", "address", "note")
+      )
+
+      val settings = pro.copy(
+        response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
+        jsonSchema = Some(JsonSchemaDef("place", strict = true, Right(map)))
+      )
+
+      await(full.createChatCompletion(messages, settings))
+      last._1 should endWith("/responses")
+
+      val format = last._2 \ "text" \ "format"
+      (format \ "type").as[String] shouldBe "json_schema"
+      (format \ "name").as[String] shouldBe "place"
+      (format \ "strict").as[Boolean] shouldBe true
+
+      val schema = format \ "schema"
+      (schema \ "additionalProperties").as[Boolean] shouldBe false
+      (schema \ "properties" \ "address" \ "additionalProperties").as[Boolean] shouldBe false
+      (schema \ "properties" \ "address" \ "properties" \ "zip" \ "type")
+        .as[String] shouldBe "string"
+      (schema \ "properties" \ "note" \ "anyOf").as[Seq[JsObject]].size shouldBe 2
     }
   }
 }

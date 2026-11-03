@@ -1735,23 +1735,41 @@ object JsonFormats {
     implicit val numberWrites = Json.writes[JsonSchema.Number]
     implicit val integerWrites = Json.writes[JsonSchema.Integer]
     implicit val booleanWrites = Json.writes[JsonSchema.Boolean]
-    //    implicit val nullWrites = Json.writes[JsonSchema.Null]
 
-    def writesAux(o: JsonSchema): JsValue = {
-      val typeValueJson = o.`type`.toString
+    def withDescription(
+      json: JsObject,
+      description: Option[String]
+    ): JsObject =
+      description.fold(json)(desc => json + ("description" -> toJson(desc)))
 
-      val json: JsObject = o match {
+    def withoutEmptyEnum(json: JsObject): JsObject =
+      if ((json \ "enum").asOpt[JsArray].exists(_.value.isEmpty))
+        json - "enum"
+      else
+        json
+
+    def writesAux(o: JsonSchema): JsObject =
+      o match {
+        case union: JsonSchema.AnyOf =>
+          withDescription(
+            Json.obj("anyOf" -> JsArray(union.schemas.map(writesAux))),
+            union.description
+          )
+
+        case typed: JsonSchema.Typed =>
+          writesTyped(typed) ++ Json.obj("type" -> typed.`type`.toString)
+      }
+
+    def writesTyped(o: JsonSchema.Typed): JsObject =
+      o match {
         case c: JsonSchema.String =>
-          val json = Json.toJson(c).as[JsObject]
-          if ((json \ "enum").asOpt[Seq[String]].exists(_.isEmpty)) json - "enum" else json
+          withoutEmptyEnum(Json.toJsObject(c))
 
         case c: JsonSchema.Number =>
-          val json = Json.toJsObject(c)
-          if (c.`enum`.isEmpty) json - "enum" else json
+          withoutEmptyEnum(Json.toJsObject(c))
 
         case c: JsonSchema.Integer =>
-          val json = Json.toJsObject(c)
-          if (c.`enum`.isEmpty) json - "enum" else json
+          withoutEmptyEnum(Json.toJsObject(c))
 
         case c: JsonSchema.Boolean =>
           Json.toJsObject(c)
@@ -1772,24 +1790,11 @@ object JsonFormats {
             case None        => baseObj
           }
 
-          c.description match {
-            case Some(desc) => withAdditional + ("description" -> toJson(desc))
-            case None       => withAdditional
-          }
+          withDescription(withAdditional, c.description)
 
         case c: JsonSchema.Array =>
-          val baseObj = Json.obj(
-            "items" -> writesAux(c.items)
-          )
-
-          c.description match {
-            case Some(desc) => baseObj + ("description" -> toJson(desc))
-            case None       => baseObj
-          }
+          withDescription(Json.obj("items" -> writesAux(c.items)), c.description)
       }
-
-      json ++ Json.obj("type" -> typeValueJson)
-    }
 
     (o: JsonSchema) => writesAux(o)
   }
@@ -1818,7 +1823,64 @@ object JsonFormats {
     implicit val booleanReads: Reads[JsonSchema.Boolean] = Json.reads[JsonSchema.Boolean]
     //    implicit val nullReads = Json.reads[JsonSchema.Null]
 
-    def readsAux(o: JsValue): JsResult[JsonSchema] = {
+    def readsAux(o: JsValue): JsResult[JsonSchema] =
+      o match {
+        case obj: JsObject =>
+          ((obj \ "anyOf").toOption, (obj \ "type").toOption) match {
+            // as written
+            case (Some(JsArray(branches)), _) =>
+              sequence(branches.toSeq.map(readsAux))
+                .map(JsonSchema.AnyOf(_, (obj \ "description").asOpt[String]))
+
+            // several types: one branch per type, the description on the union
+            case (None, Some(JsArray(types))) =>
+              val branches = types.toSeq.map { tpe =>
+                // a value of another type in an enum (e.g. a nullable enum's null) is dropped
+                val enumOfType =
+                  (obj \ "enum").asOpt[JsArray].fold(obj - "description") { values =>
+                    (obj - "description") + ("enum" -> JsArray(
+                      values.value.filter(v => jsonTypeOf(v).contains(tpe))
+                    ))
+                  }
+                readsTyped(enumOfType + ("type" -> tpe))
+              }
+
+              sequence(branches).map { schemas =>
+                val description = (obj \ "description").asOpt[String]
+                schemas match {
+                  case Seq(single) => JsonSchema.withDescription(single, description)
+                  case _           => JsonSchema.AnyOf(schemas, description)
+                }
+              }
+
+            case _ => readsTyped(o)
+          }
+
+        case _ => readsTyped(o)
+      }
+
+    // all the schemas, or the first failure
+    def sequence(results: Seq[JsResult[JsonSchema]]): JsResult[Vector[JsonSchema]] =
+      results.foldLeft(JsSuccess(Vector.empty[JsonSchema]): JsResult[Vector[JsonSchema]]) {
+        (
+          acc,
+          result
+        ) => acc.flatMap(done => result.map(done :+ _))
+      }
+
+    // the JSON type names a value is valid for
+    def jsonTypeOf(value: JsValue): Seq[JsValue] =
+      value match {
+        case JsNull                         => Seq(JsString("null"))
+        case _: JsString                    => Seq(JsString("string"))
+        case _: JsBoolean                   => Seq(JsString("boolean"))
+        case n: JsNumber if n.value.isWhole => Seq(JsString("integer"), JsString("number"))
+        case _: JsNumber                    => Seq(JsString("number"))
+        case _: JsArray                     => Seq(JsString("array"))
+        case _: JsObject                    => Seq(JsString("object"))
+      }
+
+    def readsTyped(o: JsValue): JsResult[JsonSchema] = {
       (o \ "type")
         .asOpt[JsonType]
         .map {
@@ -1841,9 +1903,10 @@ object JsonFormats {
             (o \ "properties")
               .asOpt[JsObject]
               .map { propertiesJson =>
+                // in their order (a Map would reorder more than four)
                 val propertiesResults = propertiesJson.fields.map { case (key, jsValue) =>
                   (key, readsAux(jsValue))
-                }.toMap
+                }
 
                 val propertiesErrors = propertiesResults.collect { case (_, JsError(errors)) =>
                   errors

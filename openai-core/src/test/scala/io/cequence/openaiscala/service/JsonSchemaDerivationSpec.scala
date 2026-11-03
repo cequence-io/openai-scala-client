@@ -11,11 +11,17 @@ import io.cequence.openaiscala.domain.{
   ChatRole,
   JsonSchema,
   JsonSchemaDescription,
+  JsonSchemaIgnore,
   JsonSchemaRange
 }
 import play.api.libs.json.{Json, Writes}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+
+// case objects declared at a package's top level - their order is not known (sorted)
+sealed trait PackageLevelShade
+case object Zinc extends PackageLevelShade
+case object Amber extends PackageLevelShade
 
 // top-level, so Scala 2's runtime reflection reaches the objects
 object JsonSchemaDerivationTypes {
@@ -123,6 +129,78 @@ object JsonSchemaDerivationTypes {
     `class-name`: Int
   )
 
+  // a hierarchy declared level by level in objects - in declaration order, flattened
+  sealed trait Mood
+
+  object Mood {
+    case object Calm extends Mood
+    sealed trait Upset extends Mood
+
+    object Upset {
+      case object Sad extends Upset
+      case object Angry extends Upset
+    }
+
+    case object Happy extends Mood
+  }
+
+  case class Moods(
+    mood: Mood,
+    shade: PackageLevelShade
+  )
+
+  // the annotations on every kind of field
+  sealed trait Level
+
+  object Level {
+    @JsonSchemaDescription("Needs action now") case object high extends Level
+    case object medium extends Level
+    @JsonSchemaDescription("Can wait") case object low extends Level
+  }
+
+  object Channel extends Enumeration {
+    val email, phone, chat = Value
+  }
+
+  @JsonSchemaDescription("Where it happened")
+  case class Place(
+    @JsonSchemaDescription("The city") city: String,
+    @JsonSchemaDescription("Postal code, if known") zip: Option[String]
+  )
+
+  @JsonSchemaDescription("An incident")
+  case class Incident(
+    @JsonSchemaDescription("How bad") level: Level,
+    @JsonSchemaDescription("The level it may escalate to") escalation: Option[Level],
+    @JsonSchemaDescription("Levels mentioned") mentioned: Seq[Level],
+    @JsonSchemaDescription("Levels the customer named, if any") named: Option[Seq[Level]],
+    @JsonSchemaDescription("Contact channel") channel: Channel.Value,
+    @JsonSchemaDescription("Preferred channel, if any") preferred: Option[Channel.Value],
+    @JsonSchemaDescription("Time unit") unit: java.util.concurrent.TimeUnit,
+    @JsonSchemaDescription("Fallback unit, if any")
+    fallbackUnit: Option[java.util.concurrent.TimeUnit],
+    @JsonSchemaDescription("Hours to fix") @JsonSchemaRange(1, 48) hours: Int,
+    @JsonSchemaDescription("Hours spent, if known") @JsonSchemaRange(0, 100) spent: Option[
+      Int
+    ],
+    @JsonSchemaDescription("Confidence, if known") @JsonSchemaRange(0, 1) score: Option[
+      Double
+    ],
+    @JsonSchemaDescription("Ratings, if any") @JsonSchemaRange(1, 5) ratings: Option[Seq[Int]],
+    @JsonSchemaDescription("Urgent, if stated") urgent: Option[Boolean],
+    place: Option[Place],
+    @JsonSchemaIgnore internal: Option[Level] = None,
+    @JsonSchemaIgnore source: Channel.Value = Channel.email
+  )
+
+  // fields the model is never asked for
+  case class Change(
+    text: Option[String],
+    @JsonSchemaIgnore style: Option[String] = None,
+    @JsonSchemaIgnore revision: Int = 1,
+    @JsonSchemaIgnore author: Option[String]
+  )
+
   // an Enumeration declared in a class - no reflection reaches its values
   class Palette {
     object Color extends Enumeration {
@@ -158,10 +236,17 @@ class JsonSchemaDerivationSpec
       "capital" -> JsonSchema.String(Some("The capital city")),
       "populationMil" -> JsonSchema.Integer(minimum = Some(0), maximum = Some(2000)),
       "ratioOfMenToWomen" -> JsonSchema.Number(),
-      "nickname" -> JsonSchema.String(),
+      "nickname" -> JsonSchema.Nullable(JsonSchema.String()),
       "languages" -> JsonSchema.Array(JsonSchema.String())
     ),
-    required = Seq("country", "capital", "populationMil", "ratioOfMenToWomen", "languages"),
+    required = Seq(
+      "country",
+      "capital",
+      "populationMil",
+      "ratioOfMenToWomen",
+      "nickname",
+      "languages"
+    ),
     description = Some("A country and its capital")
   )
 
@@ -169,6 +254,16 @@ class JsonSchemaDerivationSpec
 
     "derive an object from a case class, with descriptions, ranges and optional fields" in {
       jsonSchemaFor[Country]() shouldBe countrySchema
+    }
+
+    "derive an optional field as its type, not required, with nullableOptions = false" in {
+      jsonSchemaFor[Country](nullableOptions = false) shouldBe countrySchema.copy(
+        properties = countrySchema.properties.map {
+          case ("nickname", _) => "nickname" -> JsonSchema.String()
+          case other           => other
+        },
+        required = countrySchema.required.filterNot(_ == "nickname")
+      )
     }
 
     "derive nested case classes in collections" in {
@@ -181,8 +276,9 @@ class JsonSchemaDerivationSpec
     "derive enums, collections and the other value types" in {
       jsonSchemaFor[Review]() shouldBe JsonSchema.Object(
         properties = Seq(
-          "sentiment" -> JsonSchema.String(`enum` = Seq("Mixed", "Negative", "Positive")),
-          "severity" -> JsonSchema.String(`enum` = Seq("high", "low")),
+          // case objects declared in one object: in declaration order
+          "sentiment" -> JsonSchema.String(`enum` = Seq("Positive", "Negative", "Mixed")),
+          "severity" -> JsonSchema.Nullable(JsonSchema.String(`enum` = Seq("low", "high"))),
           "animal" -> JsonSchema.String(`enum` = Seq("Dog", "Wolf")),
           "weekday" -> JsonSchema.String(`enum` = Seq("Mon", "Tue", "Wed")),
           "unit" -> JsonSchema.String(
@@ -207,6 +303,7 @@ class JsonSchemaDerivationSpec
         ),
         required = Seq(
           "sentiment",
+          "severity",
           "animal",
           "weekday",
           "unit",
@@ -230,10 +327,10 @@ class JsonSchemaDerivationSpec
       jsonSchemaFor[Extras]() shouldBe JsonSchema.Object(
         properties = Seq(
           "user" -> JsonSchema.String(),
-          "points" -> JsonSchema.Integer(),
+          "points" -> JsonSchema.Nullable(JsonSchema.Integer()),
           "counts" -> JsonSchema.Object(Nil, Nil, additionalProperties = Some(true)),
           "props" -> JsonSchema.Object(Nil, Nil, additionalProperties = Some(true)),
-          "nickname" -> JsonSchema.String(),
+          "nickname" -> JsonSchema.Nullable(JsonSchema.String()),
           "items" -> JsonSchema.Array(JsonSchema.Integer()),
           "labels" -> JsonSchema.Array(JsonSchema.String()),
           "uri" -> JsonSchema.String(),
@@ -249,8 +346,10 @@ class JsonSchemaDerivationSpec
         ),
         required = Seq(
           "user",
+          "points",
           "counts",
           "props",
+          "nickname",
           "items",
           "labels",
           "uri",
@@ -274,15 +373,15 @@ class JsonSchemaDerivationSpec
         Seq(
           "item" -> countrySchema,
           "items" -> JsonSchema.Array(countrySchema),
-          "maybe" -> countrySchema
+          "maybe" -> JsonSchema.Nullable(countrySchema)
         ),
-        required = Seq("item", "items")
+        required = Seq("item", "items", "maybe")
       )
     }
 
     "write the descriptions of an enum's values into the field's description" in {
-      val values = Seq("Routine", "Unknown", "Urgent")
-      val lines = "- Routine: Can wait a week\n- Urgent: Needs a reply today"
+      val values = Seq("Urgent", "Routine", "Unknown")
+      val lines = "- Urgent: Needs a reply today\n- Routine: Can wait a week"
 
       jsonSchemaFor[Ticket]() shouldBe JsonSchema.Object(
         Seq(
@@ -292,9 +391,9 @@ class JsonSchemaDerivationSpec
             JsonSchema.String(`enum` = values),
             Some(s"Which priorities were mentioned?\n$lines")
           ),
-          "previous" -> JsonSchema.String(Some(lines), values)
+          "previous" -> JsonSchema.Nullable(JsonSchema.String(Some(lines), values))
         ),
-        required = Seq("priority", "mentioned")
+        required = Seq("priority", "mentioned", "previous")
       )
     }
 
@@ -332,18 +431,20 @@ class JsonSchemaDerivationSpec
 
       schema.properties.toMap shouldBe Map(
         "color" -> JsonSchema.String(),
-        "shade" -> JsonSchema.String()
+        "shade" -> JsonSchema.Nullable(JsonSchema.String())
       )
-      schema.required shouldBe Seq("color")
+      schema.required shouldBe Seq("color", "shade")
     }
 
     "take an enum's values as its enumFormat writes them" in {
       val properties =
         jsonSchemaFor[LibraryEnums]().asInstanceOf[JsonSchema.Object].properties.toMap
 
-      def values(schema: JsonSchema) = schema match {
-        case JsonSchema.String(_, values)                      => values
-        case JsonSchema.Array(JsonSchema.String(_, values), _) => values
+      // as sets - the order is the declaration order
+      def values(schema: JsonSchema): Seq[String] = schema match {
+        case JsonSchema.String(_, values)                      => values.sorted
+        case JsonSchema.Array(JsonSchema.String(_, values), _) => values.sorted
+        case JsonSchema.Nullable(inner)                        => values(inner)
         case other => fail(s"Not a string enum: $other")
       }
 
@@ -371,6 +472,144 @@ class JsonSchemaDerivationSpec
       values(properties("verbosity")) shouldBe written[Verbosity](
         Seq(Verbosity.low, Verbosity.medium, Verbosity.high)
       )
+    }
+
+    "carry the annotations on every kind of field - plain, optional, in collections" in {
+      val levels = Seq("high", "medium", "low")
+      val lines = "- high: Needs action now\n- low: Can wait"
+      val channels = Seq("email", "phone", "chat")
+      val units = java.util.concurrent.TimeUnit.values().toSeq.map(_.name)
+
+      def orNull(
+        schema: JsonSchema,
+        description: String
+      ) = JsonSchema.AnyOf(Seq(schema, JsonSchema.Null()), Some(description))
+
+      val schema = jsonSchemaFor[Incident]()
+
+      schema shouldBe JsonSchema.Object(
+        Seq(
+          "level" -> JsonSchema.String(Some(s"How bad\n$lines"), levels),
+          // a nullable field's description - the value lines too - on the union
+          "escalation" -> orNull(
+            JsonSchema.String(`enum` = levels),
+            s"The level it may escalate to\n$lines"
+          ),
+          "mentioned" -> JsonSchema.Array(
+            JsonSchema.String(`enum` = levels),
+            Some(s"Levels mentioned\n$lines")
+          ),
+          "named" -> orNull(
+            JsonSchema.Array(JsonSchema.String(`enum` = levels)),
+            s"Levels the customer named, if any\n$lines"
+          ),
+          "channel" -> JsonSchema.String(Some("Contact channel"), channels),
+          "preferred" -> orNull(
+            JsonSchema.String(`enum` = channels),
+            "Preferred channel, if any"
+          ),
+          "unit" -> JsonSchema.String(Some("Time unit"), units),
+          "fallbackUnit" -> orNull(JsonSchema.String(`enum` = units), "Fallback unit, if any"),
+          "hours" -> JsonSchema.Integer(Some("Hours to fix"), Some(1), Some(48)),
+          "spent" -> orNull(
+            JsonSchema.Integer(None, Some(0), Some(100)),
+            "Hours spent, if known"
+          ),
+          "score" -> orNull(JsonSchema.Number(None, Some(0), Some(1)), "Confidence, if known"),
+          // a range on a numeric collection goes to its items
+          "ratings" -> orNull(
+            JsonSchema.Array(JsonSchema.Integer(None, Some(1), Some(5))),
+            "Ratings, if any"
+          ),
+          "urgent" -> orNull(JsonSchema.Boolean(), "Urgent, if stated"),
+          // a nested class's own description, on the union
+          "place" -> orNull(
+            JsonSchema.Object(
+              Seq(
+                "city" -> JsonSchema.String(Some("The city")),
+                "zip" -> orNull(JsonSchema.String(), "Postal code, if known")
+              ),
+              Seq("city", "zip")
+            ),
+            "Where it happened"
+          )
+        ),
+        required = Seq(
+          "level",
+          "escalation",
+          "mentioned",
+          "named",
+          "channel",
+          "preferred",
+          "unit",
+          "fallbackUnit",
+          "hours",
+          "spent",
+          "score",
+          "ratings",
+          "urgent",
+          "place"
+        ),
+        description = Some("An incident")
+      )
+
+      // written and read back unchanged
+      Json.toJson(schema).as[JsonSchema] shouldBe schema
+
+      // the old shape keeps the annotations on the field's own schema
+      val old =
+        jsonSchemaFor[Incident](nullableOptions = false).asInstanceOf[JsonSchema.Object]
+      old.properties.toMap.apply("escalation") shouldBe
+        JsonSchema.String(Some(s"The level it may escalate to\n$lines"), levels)
+      old.properties.toMap.apply("ratings") shouldBe
+        JsonSchema.Array(JsonSchema.Integer(None, Some(1), Some(5)), Some("Ratings, if any"))
+      old.properties.toMap.apply("place") shouldBe JsonSchema.Object(
+        Seq(
+          "city" -> JsonSchema.String(Some("The city")),
+          "zip" -> JsonSchema.String(Some("Postal code, if known"))
+        ),
+        Seq("city"),
+        description = Some("Where it happened")
+      )
+      old.required should not contain "escalation"
+    }
+
+    "keep the declaration order of a hierarchy declared in objects, sort a package's" in {
+      jsonSchemaFor[Moods]() shouldBe JsonSchema.Object(
+        Seq(
+          "mood" -> JsonSchema.String(`enum` = Seq("Calm", "Sad", "Angry", "Happy")),
+          "shade" -> JsonSchema.String(`enum` = Seq("Amber", "Zinc"))
+        ),
+        required = Seq("mood", "shade")
+      )
+    }
+
+    "make an explicit schema of an optional field nullable" in {
+      val nickname = JsonSchema.String(Some("A short name"), Seq("Ace", "Bee"))
+      val schema = jsonSchemaFor[Country](explicitTypes = Map("nickname" -> nickname))
+
+      schema.asInstanceOf[JsonSchema.Object].properties.toMap.apply("nickname") shouldBe
+        JsonSchema.Nullable(nickname)
+    }
+
+    "leave out the fields marked @JsonSchemaIgnore" in {
+      jsonSchemaFor[Change]() shouldBe JsonSchema.Object(
+        Seq("text" -> JsonSchema.Nullable(JsonSchema.String())),
+        required = Seq("text")
+      )
+    }
+
+    "write an optional field as anyOf with null, its description on the wrapper" in {
+      val json = Json.toJson(jsonSchemaFor[Ticket]())
+
+      (json \ "properties" \ "previous").get shouldBe Json.obj(
+        "anyOf" -> Json.arr(
+          Json.obj("enum" -> Seq("Urgent", "Routine", "Unknown"), "type" -> "string"),
+          Json.obj("type" -> "null")
+        ),
+        "description" -> "- Urgent: Needs a reply today\n- Routine: Can wait a week"
+      )
+      (json \ "required").as[Seq[String]] shouldBe Seq("priority", "mentioned", "previous")
     }
 
     "give a type's schema as a JsonSchemaOf, unless one of your own is in scope" in {

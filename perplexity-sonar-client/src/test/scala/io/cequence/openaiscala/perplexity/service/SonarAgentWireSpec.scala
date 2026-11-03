@@ -540,6 +540,52 @@ class SonarAgentWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAl
       } finally chat.close()
     }
 
+    "drop a json_object text format from the request but keep json_schema" in {
+      import io.cequence.openaiscala.domain.responsesapi.{
+        CreateModelResponseSettings,
+        Inputs,
+        ResponseFormat,
+        TextResponseConfig
+      }
+
+      val direct =
+        new io.cequence.openaiscala.perplexity.service.impl.PerplexityResponsesServiceImpl(
+          "test-key",
+          baseUrl,
+          Some(engine)
+        )
+      try {
+        replyJson(200, perplexityResponse)
+
+        def send(format: ResponseFormat) = {
+          await(
+            direct.createModelResponse(
+              Inputs.Text("hi"),
+              CreateModelResponseSettings(
+                "openai/gpt-5.4-mini",
+                text = Some(TextResponseConfig(format))
+              )
+            )
+          )
+          Json.parse(lastRequest.body)
+        }
+
+        (send(ResponseFormat.JsonObject) \ "text" \ "format").toOption shouldBe None
+
+        val schemaBody = send(
+          ResponseFormat.JsonSchemaSpec(
+            schema = io.cequence.openaiscala.domain.JsonSchema.Object(
+              properties = Seq("a" -> io.cequence.openaiscala.domain.JsonSchema.String()),
+              required = Seq("a")
+            ),
+            name = Some("s"),
+            strict = Some(true)
+          )
+        )
+        (schemaBody \ "text" \ "format" \ "type").as[String] shouldBe "json_schema"
+      } finally direct.close()
+    }
+
     "repack Perplexity errors onto the shared OpenAI exceptions, the Perplexity one as the cause" in {
       val chat =
         SonarServiceFactory.agentAsOpenAI(apiKey = "test-key", baseUrl = Some(baseUrl))

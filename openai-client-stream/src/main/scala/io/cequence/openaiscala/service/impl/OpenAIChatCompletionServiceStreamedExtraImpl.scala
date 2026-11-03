@@ -44,6 +44,9 @@ private[service] trait OpenAIChatCompletionServiceStreamedExtraImpl
   override protected lazy val producedChatReasoning: Option[ProducedReasoning] =
     Some(ProducedReasoning.forSite(site))
 
+  override protected lazy val optionalToolFields: Boolean =
+    ChatCompletionBodyMaker.optionalToolFieldHost(site.coreUrl)
+
   override def createChatCompletionStreamed(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings

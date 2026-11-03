@@ -7,6 +7,7 @@ import io.cequence.openaiscala.domain.{
   BaseMessage,
   ChatCompletionTool,
   ChatRole,
+  JsonSchema,
   ModelId,
   ReasoningBlock,
   ReasoningMessage
@@ -18,7 +19,11 @@ import io.cequence.openaiscala.service.adapter.{
   ChatCompletionSettingsConversions,
   MessageConversions
 }
-import io.cequence.openaiscala.service.{OpenAIChatCompletionService, ProducedReasoning}
+import io.cequence.openaiscala.service.{
+  OpenAIChatCompletionExtra,
+  OpenAIChatCompletionService,
+  ProducedReasoning
+}
 import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.ResponseImplicits._
 import org.slf4j.LoggerFactory
@@ -101,6 +106,9 @@ private[service] trait OpenAIChatCompletionServiceImpl
   // implementation; see ChatCompletionBodyMaker.withCarriedReasoning
   override protected lazy val producedChatReasoning: Option[ProducedReasoning] =
     Some(ProducedReasoning.forSite(site))
+
+  override protected lazy val optionalToolFields: Boolean =
+    ChatCompletionBodyMaker.optionalToolFieldHost(site.coreUrl)
 
   /**
    * The Responses-backed chat completion of this service, when it also serves the Responses
@@ -197,6 +205,13 @@ trait ChatCompletionBodyMaker {
    */
   protected def producedChatReasoning: Option[ProducedReasoning] = None
 
+  /**
+   * Whether a non-strict function tool's nullable fields go out as optional ones
+   * (`JsonSchema.optionalFields`) - for the hosts that mishandle a nullable union in tool
+   * parameters, see [[ChatCompletionBodyMaker.optionalToolFieldHost]]. False by default.
+   */
+  protected def optionalToolFields: Boolean = false
+
   // GPT-5.x / GPT-6.x are dispatched on the parsed minor version
   // (ChatCompletionSettingsConversions.gpt5Minor / gpt6Minor)
 
@@ -239,7 +254,21 @@ trait ChatCompletionBodyMaker {
   ): Seq[(Param, Option[JsValue])] = {
     val toolJsons: Seq[Map[String, Object]] = tools.map {
       case tool: AssistantTool.FunctionTool =>
-        Map("type" -> "function", "function" -> Json.toJson(tool))
+        // strict: OpenAI / Cerebras / Meta 400 an open object, so every object is closed;
+        // non-strict: as given, but the nullable fields as optional ones for the hosts that
+        // mishandle a nullable union in tool parameters (ChatCompletionBodyMaker.optionalToolFieldHost)
+        val parameters =
+          if (tool.strict.contains(true))
+            OpenAIChatCompletionExtra.toStrictSchema(tool.parameters)
+          else if (optionalToolFields)
+            JsonSchema.optionalFields(tool.parameters)
+          else
+            tool.parameters
+
+        Map(
+          "type" -> "function",
+          "function" -> Json.toJson(tool.copy(parameters = parameters))
+        )
       case other =>
         // MCPServerTool / SkillTool: Responses API only - never silently dropped
         throw new OpenAIScalaClientException(
@@ -396,41 +425,15 @@ trait ChatCompletionBodyMaker {
     settings: CreateChatCompletionSettings
   ): Map[String, Any] =
     settings.jsonSchema.map { case JsonSchemaDef(name, strict, structure) =>
-      val schemaMap: Map[String, Any] = structure match {
-        case Left(schema) =>
-          val json = Json.toJson(schema).as[JsObject]
-          JsonUtil.toValueMap(json)
-
-        case Right(schema) => schema
-      }
-
-      val adjustedSchema: Map[String, Any] = if (strict) {
-        // set "additionalProperties" -> false on "object" types if strict
-        def addFlagAux(map: Map[String, Any]): Map[String, Any] = {
-          val newMap = map.map { case (key, value) =>
-            val unwrappedValue = value match {
-              case Some(value) => value
-              case other       => other
-            }
-
-            val newValue = unwrappedValue match {
-              case obj: Map[String, Any] =>
-                addFlagAux(obj)
-
-              case other =>
-                other
-            }
-            key -> newValue
+      // strict: "additionalProperties" -> false on every object, as OpenAI's strict mode needs
+      val adjustedSchema: Map[String, Any] =
+        if (strict)
+          OpenAIChatCompletionExtra.toStrictSchema(structure)
+        else
+          structure match {
+            case Left(schema)  => JsonUtil.toValueMap(Json.toJson(schema).as[JsObject])
+            case Right(schema) => schema
           }
-
-          if (Seq("object", Some("object")).contains(map.getOrElse("type", ""))) {
-            newMap + ("additionalProperties" -> false)
-          } else
-            newMap
-        }
-
-        addFlagAux(schemaMap)
-      } else schemaMap
 
       Map(
         "type" -> "json_schema",
@@ -447,6 +450,22 @@ trait ChatCompletionBodyMaker {
 }
 
 object ChatCompletionBodyMaker {
+
+  // the hosts whose non-strict tool parameters mishandle a nullable union (anyOf with null) -
+  // live 2026-11-03, 6 calls per form on a derived schema: Cerebras and Together gpt-oss-120b
+  // sent a nullable object as a string (3 and 1 of 6 right; Together also 500
+  // harmony_parsing_failed), Meta Muse top-level nullable parameters as the string "null" (3 of
+  // 6) - the optional form (`JsonSchema.optionalFields`) 6 of 6 on each; elsewhere the anyOf
+  // form is the better one: Groq 6 vs 1 (its tool-call validator 400s a null for an optional
+  // field), Fireworks 6 vs 0 (placeholders), xAI 6 vs 4, Mistral 6 vs 5, OpenAI 6 vs 6
+  private val optionalToolFieldHosts =
+    Seq("api.cerebras.ai", "api.together.xyz", "api.meta.ai")
+
+  /**
+   * Whether a service at this base URL gets a non-strict tool's nullable fields as optional.
+   */
+  def optionalToolFieldHost(coreUrl: String): Boolean =
+    optionalToolFieldHosts.exists(coreUrl.contains)
 
   /**
    * The messages without the carried [[ReasoningMessage]]s, each paired with the reasoning

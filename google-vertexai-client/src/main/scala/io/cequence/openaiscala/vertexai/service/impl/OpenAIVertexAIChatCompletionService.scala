@@ -275,8 +275,22 @@ private[service] class OpenAIVertexAIChatCompletionService(
           items = Some(toVertexAISchema(items))
         )
 
-      case _ =>
-        VertexAISchema(`type` = VertexAISchemaType.TYPE_UNSPECIFIED)
+      // a schema or null: the schema's flag, as for Gemini (see its adapter)
+      case JsonSchema.Nullable(inner) =>
+        toVertexAISchema(inner).copy(nullable = Some(true))
+
+      case JsonSchema.AnyOf(schemas, description) =>
+        val (nulls, others) = schemas.partition(_.isInstanceOf[JsonSchema.Null])
+        VertexAISchema(
+          `type` = VertexAISchemaType.TYPE_UNSPECIFIED,
+          description = description,
+          nullable =
+            if (nulls.nonEmpty)
+              Some(true)
+            else
+              None,
+          anyOf = Some(others.map(toVertexAISchema))
+        )
     }
 
   private def toOpenAIToolResponse(

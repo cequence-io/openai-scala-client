@@ -111,8 +111,8 @@ class InferredJsonSchemaSpec
       }
     }
 
-    "infer a non-strict schema for an optional field or a map" in {
-      inferred[WithOption].map(_.strict) shouldBe Some(false)
+    "infer a strict schema for an optional field (required, may be null), not for a map" in {
+      inferred[WithOption].map(_.strict) shouldBe Some(true)
       inferred[WithMap].map(_.strict) shouldBe Some(false)
     }
 
@@ -171,6 +171,11 @@ class InferredJsonSchemaSpec
       ) shouldBe false
       InferredJsonSchema.strictCompatible(
         JsonSchema.Array(
+          JsonSchema.Object(properties = Nil, additionalProperties = Some(true))
+        )
+      ) shouldBe false
+      InferredJsonSchema.strictCompatible(
+        JsonSchema.Nullable(
           JsonSchema.Object(properties = Nil, additionalProperties = Some(true))
         )
       ) shouldBe false
