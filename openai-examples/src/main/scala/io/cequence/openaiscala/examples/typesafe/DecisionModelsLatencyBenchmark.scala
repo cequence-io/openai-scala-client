@@ -29,13 +29,14 @@ import scala.util.control.NonFatal
  * (`OPENAI_SCALA_CLIENT_API_KEY`), Microsoft Foundry (`FOUNDRY_API_KEY` + `FOUNDRY_BASE_URL`,
  * the deployments of `FOUNDRY_MODEL`'s model), OpenRouter (`OPENROUTER_API_KEY`, every
  * decision model it lists), Vercel AI Gateway (`AI_GATEWAY_API_KEY`, its decision list, paced
- * to a free tier's 5 requests per minute), SubQ (`SUBQ_API_KEY`), ScaleDown
- * (`SCALEDOWN_API_KEY`) and a local llama.cpp server when one answers at
- * `http://127.0.0.1:8080/` - the others are reported as skipped. Arguments: `runs=<n>` timed
- * calls per cell (5, plus an untimed warm-up), `counts=1,3,10,20,40`, `only=<host,...>`,
- * `models=<substring,...>`, `budget=<seconds>` - a model whose call took longer skips the
- * larger counts (15), `pace=<ms>` between calls (250; Foundry's deployments are paced to their
- * 50 requests per minute). A full run makes ~700 calls and costs a few cents at most.
+ * to a free tier's 5 requests per minute), SubQ (`SUBQ_API_KEY`), Sarvam (`SARVAM_API_KEY`),
+ * Bespoke (`BESPOKE_API_KEY`), ScaleDown (`SCALEDOWN_API_KEY`) and a local llama.cpp server
+ * when one answers at `http://127.0.0.1:8080/` - the others are reported as skipped.
+ * Arguments: `runs=<n>` timed calls per cell (5, plus an untimed warm-up),
+ * `counts=1,3,10,20,40`, `only=<host,...>`, `models=<substring,...>`, `budget=<seconds>` - a
+ * model whose call took longer skips the larger counts (15), `pace=<ms>` between calls (250;
+ * Foundry's deployments are paced to their 50 requests per minute). A full run makes ~700
+ * calls and costs a few cents at most.
  *
  * Live 2026-10-09 (24 models on 6 hosts, 640 calls in 10 minutes; the table is in
  * `docs/decision-models.md`): Cloudflare's Clef Omni, Jev, OpenAI's Luna (directly), Liquid's
@@ -197,6 +198,18 @@ object DecisionModelsLatencyBenchmark {
         "subq",
         Some(DecisionProviderSettings.subq),
         env("SUBQ_API_KEY"),
+        listed
+      ),
+      Host(
+        "sarvam",
+        Some(DecisionProviderSettings.sarvam),
+        env("SARVAM_API_KEY"),
+        listed
+      ),
+      Host(
+        "bespoke",
+        Some(DecisionProviderSettings.bespoke),
+        env("BESPOKE_API_KEY"),
         listed
       ),
       Host(

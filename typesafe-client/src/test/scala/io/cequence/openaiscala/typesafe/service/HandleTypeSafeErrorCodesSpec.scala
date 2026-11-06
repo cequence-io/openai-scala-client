@@ -317,6 +317,103 @@ class HandleTypeSafeErrorCodesSpec extends AnyWordSpec with Matchers {
     }
   }
 
+  "Sarvam's error bodies ({\"error\": {message, code, request_id, param}} with string codes)" should {
+    // the shapes from Sarvam's docs and one live 403 (2026-11-04); the rest not provoked
+
+    "be classified by status, errorType the string code" in {
+      val tooLong = toException(
+        422,
+        """{"error":{"message":"question 'q' encodes to 40026 tokens, over the 32768-token limit of this server","code":"unprocessable_entity_error","request_id":"20261104_a"}}"""
+      )
+      tooLong shouldBe a[TypeSafeScalaTokenCountExceededException]
+      tooLong.errorType shouldBe Some("unprocessable_entity_error")
+
+      val extra = toException(
+        422,
+        """{"error":{"message":"questions.urgent.noul.instruction: Extra inputs are not permitted","code":"unprocessable_entity_error","request_id":"20261104_b","param":"questions.urgent.noul.instruction"}}"""
+      )
+      extra shouldBe a[TypeSafeScalaInvalidRequestException]
+      extra.errorType shouldBe Some("unprocessable_entity_error")
+      extra.getMessage should include("Extra inputs are not permitted")
+
+      val noKey = toException(
+        403,
+        """{"error":{"message":"Invalid or missing authentication credentials","code":"invalid_api_key_error","request_id":"20261104_c"}}""",
+        Some("20261104_c")
+      )
+      noKey shouldBe a[TypeSafeScalaUnauthorizedException]
+      noKey.errorType shouldBe Some("invalid_api_key_error")
+      noKey.requestId shouldBe Some("20261104_c")
+
+      val noCredits = toException(
+        402,
+        """{"error":{"message":"Insufficient quota","code":"insufficient_quota_error","request_id":"20261104_d"}}"""
+      )
+      noCredits shouldBe a[TypeSafeScalaApiUsageException]
+      noCredits.errorType shouldBe Some("insufficient_quota_error")
+
+      val overloaded = toException(
+        503,
+        """{"error":{"message":"Model overloaded","code":"model_overloaded","request_id":"20261104_e"}}"""
+      )
+      overloaded shouldBe a[TypeSafeScalaEngineOverloadedException]
+      overloaded.errorType shouldBe Some("model_overloaded")
+    }
+
+    "match only Sarvam's own token-limit wording, not any '-token limit'" in {
+      // the live 422 (2026-11-04)
+      toException(
+        422,
+        """{"error":{"message":"question 'b' encodes to 38030 tokens, over the 32768-token limit of this server","code":"unprocessable_entity_error","request_id":"20261104_f"}}"""
+      ) shouldBe a[TypeSafeScalaTokenCountExceededException]
+
+      // a validation message that merely mentions a token limit stays a validation error
+      toException(
+        422,
+        """{"error":{"message":"max output-token limit must be positive","code":"unprocessable_entity_error","request_id":"20261104_g"}}"""
+      ) shouldBe a[TypeSafeScalaInvalidRequestException]
+    }
+  }
+
+  "Bespoke's error bodies ({\"detail\": \"<message>\", \"request_id\"} - a plain-string detail)" should {
+    // the 401 is live (2026-11-05, no key); the rest are the documented statuses, not provoked
+
+    "be classified by status" in {
+      val noKey = toException(
+        401,
+        """{"detail":"API key required","request_id":"2d0778a4-1684-40e8-b405-05858b0ee7ee"}""",
+        Some("2d0778a4-1684-40e8-b405-05858b0ee7ee")
+      )
+      noKey shouldBe a[TypeSafeScalaUnauthorizedException]
+      noKey.getMessage should include("API key required")
+      noKey.requestId shouldBe Some("2d0778a4-1684-40e8-b405-05858b0ee7ee")
+
+      toException(
+        402,
+        """{"detail":"Not enough credit","request_id":"r2"}"""
+      ) shouldBe a[TypeSafeScalaApiUsageException]
+
+      val failed = toException(422, """{"detail":"Nimble request failed","request_id":"r3"}""")
+      failed shouldBe a[TypeSafeScalaInvalidRequestException]
+      failed.getMessage should include("Nimble request failed")
+
+      toException(
+        429,
+        """{"detail":"Too many concurrent requests","request_id":"r4"}"""
+      ) shouldBe a[TypeSafeScalaRateLimitException]
+
+      toException(
+        529,
+        """{"detail":"The service is busy","request_id":"r5"}"""
+      ) shouldBe a[TypeSafeScalaEngineOverloadedException]
+
+      toException(
+        502,
+        """{"detail":"Model error","request_id":"r6"}"""
+      ) shouldBe a[TypeSafeScalaServerErrorException]
+    }
+  }
+
   "Vercel AI Gateway's error bodies (its own checks flat, the gateway's in OpenAI's shape)" should {
     // collected against ai-gateway.vercel.sh/typesafe on 2026-10-10
 

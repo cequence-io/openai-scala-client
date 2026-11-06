@@ -168,6 +168,13 @@ object DecisionModelId {
   val subq_snap_preview: String = NonOpenAIModelId.subq_snap_preview
   val subq_snap_1_1: String = NonOpenAIModelId.subq_snap_1_1
 
+  // Sarvam Prism (`DecisionProviderSettings.sarvam`, 2026-11-03)
+  val sarvam_prism: String = NonOpenAIModelId.sarvam_prism
+
+  // Bespoke Labs' Nimble (`DecisionProviderSettings.bespoke`, launched ~2026-10-18)
+  val bespoke_nimble_latest: String = NonOpenAIModelId.bespoke_nimble_latest
+  val bespoke_nimble_v4_max: String = NonOpenAIModelId.bespoke_nimble_v4_max
+
   /**
    * ScaleDown's Classify, pinned to version 1 (2026-10-13) - see
    * `DecisionProviderSettings.scaleDown`.

@@ -703,6 +703,72 @@ owning team, a score with its legend), an object state, `decide[Triage]`, the Op
 from a case class, a blue square both ways, a ~95k-token state, the token limit and two refusals - all 11 sections
 passed on Scala 2.13 and 3.
 
+## Sarvam Prism 🔥
+
+🔥 Sarvam Prism (`sarvam-prism`, announced 2026-11-03) is Sarvam's System-1 decision model, built on Sarvam 105B, for English,
+ten Indian languages and Hinglish. It speaks TypeSafe's System One protocol: `POST https://api.sarvam.ai/v2/systemone`, the
+key in `SARVAM_API_KEY` and sent as an `api-subscription-key` header (`Authorization: Bearer` works too). Sarvam prices it at
+INR 4 per 1M input tokens, output free (`output_tokens` is always 0), the state counted once per request; it claims a 71.8
+average over three decision indices (Jev Decision Index 67.0, a recreation of the Artificial Analysis Decision Index 65.9, an
+Indian-language benchmark 82.5) and a median of 44 ms. Measured from Europe on 2026-11-04 (`DecisionModelsLatencyBenchmark
+only=sarvam`, a TCP connect of 55-80 ms) a call took ~0.5 s at 1-20 questions and 0.9 s at 40, for 58 input tokens at one
+question and 1,700 at 40; Sarvam's docs example answered as documented (billing 0.80, severity 3.83, urgent 0.978).
+
+```scala
+  val prism = TypeSafeServiceFactory(DecisionProviderSettings.sarvam)                 // SARVAM_API_KEY
+  prism.systemOne("मुझसे दो बार पैसे काटे गए हैं।", questions)
+
+  val asOpenAI = TypeSafeServiceFactory.asOpenAI(DecisionProviderSettings.sarvam)     // json_schema structured output
+```
+
+The request is `model`, `state` and `questions` (an object or array state is rendered as compact JSON); generation fields
+(`temperature`, `max_tokens`, `stream`) and an `images` field are 422s, any other unknown top-level field is ignored, an unknown
+key inside a question is a 422. An image part in the state is read as text, so the preset sends no images
+(`DecisionImages.Unsupported`: the chat adapter refuses image content before sending); no box questions, no streaming. A
+choice takes 2..255 options, a score 2..10 levels (strings or objects, answered with a `legend`; numbers are a 422), no cap on
+the number of questions (130 answered); 32,768 tokens per question (state + question + options, never truncated - a 422 "question 'q' encodes to N
+tokens, over the 32768-token limit of this server", a `TypeSafeScalaTokenCountExceededException`) and 60 s per request (a 503
+`model_overloaded`). Errors are `{"error": {"message", "code", "request_id", "param"}}` with string codes (`invalid_request_error`
+400, `insufficient_quota_error` 402, `invalid_api_key_error` 403, `not_found_error` 404 for an unknown model,
+`unprocessable_entity_error` 422, `rate_limit_exceeded_error` 429, `model_call_failed` 502, `model_overloaded` 503); the code is
+the exception's `errorType` and the `x-request-id` header (also on errors) its request id. Its `GET /v2/models` is public but lists
+Sarvam's chat models too, so the preset's list is fixed. `examples/typesafe/SarvamPrismSmokeTest` walks Sarvam's docs example (a
+choice, a score with its legend, a noul), an object and a Hindi state, `decide[Triage]`, the OpenAI JSON and Decisions interfaces
+and the refusals - all 11 sections passed on 2026-11-04.
+
+## Bespoke Nimble 🔥
+
+🔥 Bespoke Labs' Nimble (launched ~2026-10-18, "decision models outperforming Jev") speaks TypeSafe's System One protocol:
+`POST https://api.bespokelabs.ai/v1/systemone`, `Authorization: Bearer` with `BESPOKE_API_KEY` (keys at
+console.bespokelabs.ai/home/keys; a new account gets $1 of credit on email verification). Models: `nimble-latest` (the default,
+today `nimble-v4-max`, moves to newer models) and `nimble-v4-max` (27B, a Qwen3.8-27B base, weights CC BY-NC 4.0); `nimble-v4`
+(now pointing to `nimble-v4-max`) and `nimble-v3` are deprecated. $0.04 per 1M input tokens, output free, the shared text (state +
+questions) billed once per request. On the S1Bench suite (bench.jakecuth.com, read 2026-11-05) `nimble-v4-max` scored 0.783
+macro accuracy over six suites against Jev 1.13's published 0.768, with an ECE of 0.024 and a median of 0.84 s; the then 9B
+`nimble-v4` scored 0.764 at 0.23 s.
+
+> Not verified live: there was no key when this was written (new sign-ups go on a wait list) - the preset, the wire shapes and the error handling follow Bespoke's
+> docs (quickstart, limits and errors, pricing, `openapi.yaml`, read 2026-11-05) and one live 401 without a key
+> (`{"detail":"API key required","request_id":...}`).
+
+```scala
+  val nimble = TypeSafeServiceFactory(DecisionProviderSettings.bespoke)                // BESPOKE_API_KEY
+  nimble.systemOne("The customer was charged twice and asks for a refund.", questions)
+
+  val asOpenAI = TypeSafeServiceFactory.asOpenAI(DecisionProviderSettings.bespoke)     // json_schema structured output
+```
+
+Limits per the docs: a 1 MiB body (413), 1..64 questions per request (the preset's `maxQuestions`, refused before sending), a choice
+of 2..255 options, a score of 2..255 level strings (the client's domain caps levels at 10), 256k prompt tokens per question
+including the state (never truncated - a 422), and a concurrency of 4 per organization until the first credit purchase, then 100
+(429 with `Retry-After`). No images (`DecisionImages.Unsupported`: the chat adapter refuses image content before sending), no
+box questions, and no model listing (`GET /v1/models` is a 404), so the preset's list is fixed. Errors are `{"detail": "<message>",
+"request_id": ...}` with a plain-string detail: 401, 402 (not enough credit), 413, 422 ("Nimble request failed" comes from the
+model itself - a prompt that is too long or an unknown model name - and stays an `InvalidRequest`), 429, 502 (model error, retry),
+503 / 529 (starting, busy; `Retry-After`), 504. Every response carries `x-request-id` and the same id in `x-typesafe-request-id`.
+`examples/typesafe/NimbleSmokeTest [model=nimble-v4-max]` walks the quickstart example, a score, an object state, `decide[Triage]`,
+the OpenAI JSON and Decisions interfaces and the refusals - not run yet (needs a key).
+
 ## ScaleDown Classify 🧮
 
 🔥 ScaleDown's Constrained Decoding Models (launched 2026-10-13) answer one task each without a generative loop, and
@@ -789,6 +855,8 @@ a protocol of its own; its preset translates the questions and answers, so every
 | `openRouter` | `OPENROUTER_API_KEY` | Jev, d1, Perplexity's deciders (+ the `~perplexity/pplx-decider-latest` alias), OpenAI's Luna, Microsoft-Decision-1, Cloudflare's Clef (+ Flash, Omni), Solar Decide (+ Flash), Mercury Decide (+ free), Tev1, Kev 4B, NACE's Drex (1.5, 2.0), Span-01 (+ Lite), Span-02, ScaleDown's Classify-1, Jev 1.14, d1-ultra, and since 2026-10-21 / 27 d1.1 (+ the `~liquid/d1-latest` / `~liquid/d1-ultra-latest` aliases), Baseten's Elephant-1 / Mammoth-1 and NACE's Drex Max (listed, not called - no credits) | listed with `output_modalities=decisions`; images as `image_url` parts in the state (read by Clef Omni / Flash, Perplexity's decider, Luna, d1 and Mercury Decide; the others read them as text); Span-01 takes noul questions only (Span-02 all three kinds, and object states); `scaledown/` models get ScaleDown's text-only protocol |
 | `vercel` | `AI_GATEWAY_API_KEY` | `typesafe-ai/jev` (`jev`, `jev-1.13.0`, `jev-1.14.0`), `liquid/d1`, `liquid/d1-ultra`, `microsoft/microsoft-decision-1`, `openai/gpt-6-luna-decisions`, `perplexity/pplx-decider-v1.2` (+ Flash), `baseten/elephant-1`, `baseten/mammoth-1`, `convaiinnovations/laya` (+ free), `scaledown/scaledown-classify-1` | `https://ai-gateway.vercel.sh/typesafe/`, images in the state; a free-tier team gets Laya, ScaleDown, Baseten's two, d1-ultra and Perplexity's v1.2 deciders at 5 requests per minute (live 2026-10-29), the rest needs paid credits |
 | `subq` | `SUBQ_API_KEY` | `subq-snap-1.1` (default), `subq-snap-preview` | `https://api.subq.ai/`, at most 295,957 input tokens, up to 4 images as `{mediaType, base64}` objects in a top-level `images` array |
+| `sarvam` 🔥 | `SARVAM_API_KEY` | `sarvam-prism` | `https://api.sarvam.ai/`, `POST /v2/systemone`, the key in `api-subscription-key`; text only, no question cap, 32,768 tokens per question |
+| `bespoke` 🔥 | `BESPOKE_API_KEY` | `nimble-latest` (default), `nimble-v4-max` | `https://api.bespokelabs.ai/`, `POST /v1/systemone`, Bearer; text only, at most 64 questions, 256k tokens per question; not verified live |
 | `scaleDown` | `SCALEDOWN_API_KEY` | `classify-1`, `classify` | `https://api.scaledown.xyz/`, `POST /v1/scaledown`, the key in `x-api-key`; text only (ScaleDown's protocol) plus one image as the state's document; TLS 1.3 only (see above) |
 | `microsoftFoundry(endpoint, deployment)` | `FOUNDRY_API_KEY` | your deployment of Microsoft-Decision-1 (`decision-1` by default; `listModels` lists them) | your Foundry resource, `POST /providers/microsoft/v1/systemone`; at most 255 questions, 64k tokens, no images |
 | `openAI` | `OPENAI_SCALA_CLIENT_API_KEY` (or `OPENAI_API_KEY`) | `gpt-6-luna` | OpenAI's own protocol (translated), images, at most 200 questions; a refusal arrives as `UnknownAnswer("refusal", ...)` |

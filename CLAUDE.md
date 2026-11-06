@@ -257,6 +257,49 @@ The codebase is organized into multiple SBT subprojects with clear dependency re
     with an image, `d1:free` refused - all passed, 420-730 ms) and `LlamaCppDecisionsSmokeTest [model]` (all passed with
     `Laya-Q8_0`). Pinned by `DecisionCodecSpec`, `DecisionImageSpec` (`lift`) and four cases in `TypeSafeServiceWireSpec`.
 - **Decision models listed 2026-10-21 .. 29** (typesafe-client): SubQ's `subq-snap-1.1` (SubQ's default decision model per its llms.txt, public preview; the `subq` preset's default since then, `subq-snap-preview` still listed; live `SubQSnapSmokeTest` 11/11 on it - docs example in ~1 s, images, ~95k tokens in 1.9 s, the ~300k-token refusal); Liquid's `d1.1` (2026-10-27, d1's successor, $0.02 / 1M, text + image - the `liquid` preset's / `liquidDefaultModel` default since then, Liquid's own default; `/decisions/v1/models` lists d1, d1.1, d1-ultra; live `LiquidD1SmokeTest` + `LiquidD1ImagesSmokeTest model=d1.1` all passed, blue photo 0.998, ~200-250 ms); OpenRouter (32 decision models that day, NOT called - the test account has 0 credits): `liquid/d1.1`, `~liquid/d1-latest`, `~liquid/d1-ultra-latest`, Baseten's `baseten/elephant-1` (9B, Qwen3.5-9B base, $0.035 / 1M) / `baseten/mammoth-1` (27B, Qwen3.5-27B, $0.10 / 1M; both text only, 16k context, from Baseten's Base Labs), NACE's `nace-ai/drex-max` (Drex 2.0's successor, text + up to 4 images, 262k, $0.06 / 1M); Vercel AI Gateway now lists those two Baseten models, `liquid/d1-ultra`, `perplexity/pplx-decider-v1.2` / `-flash-v1.2` (v1.1-27b gone) and `jev` / `jev-1.13.0` / `jev-1.14.0` - a FREE-tier team got answers from Laya, ScaleDown, both Baseten models (the review: defect 0.977 / 0.989, ~259 tokens), d1-ultra and both v1.2 deciders (2026-10-29), Jev / d1 / Microsoft / Luna 403 paid-tier. ScaleDown's listing also has compress / extract / summarize (text output - not decision models, left out by the listing's modalities)
+- **Sarvam Prism** (typesafe-client, 2026-11-04; announced 2026-11-03, docs.sarvam.ai/api-reference/decisions/systemone.md
+  and /api/token-factory/models/sarvam-prism.md - every page as `.md`, index at docs.sarvam.ai/llms.txt): `sarvam-prism`,
+  "a System-1 decision model built on Sarvam 105B" (English, 10 Indian languages, Hinglish; claims 71.8 over Jev's
+  index / an AA-index recreation / an Indian-language benchmark, median 44 ms; INR 4 per 1M input, output free).
+  `DecisionProviderSettings.sarvam` = `https://api.sarvam.ai/` + `v2/systemone`, `SARVAM_API_KEY` in an
+  `api-subscription-key` header (`Authorization: Bearer` works too - live), `Fixed` listing (the public `GET /v2/models`
+  lists Sarvam's chat models as well, the decision one only by `"type": "decision"`), `DecisionImages.Unsupported`,
+  request id `x-request-id` (also in error bodies). Live 2026-11-04 (raw probes, then `examples/typesafe/SarvamPrismSmokeTest`
+  11/11): the docs example answered as documented (billing 0.80 / severity 3.83 / urgent 0.978, 153 tokens; probabilities
+  unrounded); `temperature` 422 "temperature is not part of this API, use /v1/decisions for it" (`/v1/decisions` is a
+  404), an `images` field 422, any other unknown top-level field IGNORED, an unknown key inside a question 422; an
+  `image_url` part in the state is read as TEXT (0.37, 61 tokens) - hence no images; score levels strings or OBJECTS (an
+  object level is answered, its legend the compact JSON; numbers 422), 2..255 options / 2..10 levels (each a 422
+  outside), a box 422, an empty question key accepted, a null / number state 422, 130 questions answered; 32,768 tokens
+  PER question - a ~38k-token state 422 "question 'b' encodes to 38030 tokens, over the 32768-token limit of this
+  server" (no `param`; `exceedsContext` matches that wording - `encodes to N tokens, over the N-token limit` - not any `-token limit`, a review finding); 60 s per request (503 `model_overloaded`, per the docs);
+  errors `{"error": {message, code, request_id, param}}` with string codes (400 `invalid_request_error` for bad JSON, 403
+  `invalid_api_key_error`, 404 `not_found_error` "Model 'x' not found.", 422 `unprocessable_entity_error`). Latency from
+  Europe (`DecisionModelsLatencyBenchmark only=sarvam`, TCP connect 55-80 ms): median ~0.5 s at 1-20 questions, 0.9 s
+  at 40 - not 44 ms; input tokens 58 / 1,700 at 1 / 40 questions. Pinned by `TypeSafeServiceWireSpec` /
+  `HandleTypeSafeErrorCodesSpec` cases; benchmark host `sarvam`. Sarvam's `/v2` Token Factory also serves
+  OpenAI-compatible chat models (Sarvam 105B, GLM 5.3, Kimi K3, DeepSeek V4.x, MiMo, Gemma 4) - not integrated.
+- **Bespoke Labs' Nimble** (typesafe-client, 2026-11-05; launched ~2026-10-18; docs.bespokelabs.ai/llms.txt, every page as
+  `.md`, OpenAPI at /api-reference/openapi.yaml): `nimble-latest` (= `nimble-v4-max` today, moves on), `nimble-v4-max`
+  (27B, Qwen3.8-27B base, CC BY-NC weights; the 9B Nimble is Apache-2.0 and on Ollama as `nimble`), `nimble-v4` / `-v3`
+  deprecated (v4 now points to v4-max). `DecisionProviderSettings.bespoke` = `https://api.bespokelabs.ai/` +
+  `v1/systemone`, Bearer `BESPOKE_API_KEY` (their name), `Fixed` listing (`GET /v1/models` is a 404), `maxQuestions` 64,
+  `DecisionImages.Unsupported`, the default request id headers (it sends `x-request-id` AND `x-typesafe-request-id`).
+  Per the docs / spec: 1 MiB body (413), choice 2..255 options, score 2..255 level strings (our domain caps at 10), 256k
+  prompt tokens per question, concurrency 4 per organization until its first credit purchase (then 100; 429 with
+  `Retry-After`), errors `{"detail": "<message>", "request_id"}` - a 422 "Nimble request failed" is the model's own
+  (an over-long prompt OR an unknown model: left InvalidRequest), 502 / 503 / 504 / 529 retryable; $0.04 / 1M input,
+  $1 free credit on sign-up (sign-ups go on a wait list - no key yet). Live only without a key (2026-11-05): 401 `{"detail":"API key required","request_id"}`.
+  NOT verified live otherwise; pinned by `TypeSafeServiceWireSpec` / `HandleTypeSafeErrorCodesSpec`; walkthrough
+  `examples/typesafe/NimbleSmokeTest [model=...]`; benchmark host `bespoke`. Found via S1Bench live
+  (bench.jakecuth.com - JSON at `/data`: six public suites vs Jev 1.13's published 0.768 macro; 2026-11-05 hosted:
+  SubQ Snap 1.1 0.825, Mercury Decide free 0.802, nimble-v4-max 0.783, Jev 1.14 0.770, the then-9B nimble-v4 0.764;
+  self-hosted pplx-decider-v1.2 0.835). Other hosts of the protocol seen there / in its links, not integrated:
+  Featherless' Simple Jev demo (`https://simple-jev-demo-api.featherless.ai/v1/systemone` - also `/v1/classifier` -, NO
+  key, 2k-token context, 2 req/s, eight `featherless-ai/*-classifier` models; live 2026-11-05 a noul / choice / score
+  request answered in TypeSafe's shape with a `legend`), Ollama 0.35+ locally (`http://localhost:11434/v1/systemone`,
+  no key; nimble, tev1, clef, clef-flash - Clef reads images from an `images` field; choice 2..26 options) and Ollama's
+  cloud (`https://ollama.com/v1/systemone`, `OLLAMA_API_KEY`, 64 questions, 4 images, 65,536 tokens).
 - **Liquid's d1-ultra** (typesafe-client, 2026-10-15; www.liquid.ai/blog/d1-ultra - "our most powerful decision
   model", a larger open-weight base, 44 languages, 65 on Artificial Analysis' Decision Index; Liquid's own API only,
   "soon" on OpenRouter / Vercel - neither listed it that day; OpenRouter lists and answers `liquid/d1-ultra` since 2026-10-16):

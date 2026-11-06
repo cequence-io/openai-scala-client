@@ -247,6 +247,26 @@ compatible with 1.6.0 (the factory methods' signatures changed).
 
 ### New models
 
+- **Bespoke Labs' Nimble** (`DecisionModelId.bespoke_nimble_latest` = `nimble-latest`, today `nimble-v4-max`;
+  `bespoke_nimble_v4_max`; launched ~2026-10-18): TypeSafe's protocol at `POST https://api.bespokelabs.ai/v1/systemone` -
+  the preset `DecisionProviderSettings.bespoke` (`BESPOKE_API_KEY`, Bearer; text only, at most 64 questions per
+  request - refused before sending -, a fixed model list; $0.04 per 1M input tokens, output free); in
+  `models-supporting-json-schema`. S1Bench live (bench.jakecuth.com, 2026-11-05) scores `nimble-v4-max` 0.783 macro
+  accuracy over its six suites vs Jev 1.13's published 0.768, with the lowest calibration error of the hosted models
+  (ECE 0.024; SubQ Snap 1.1 0.027). Built from Bespoke's docs and OpenAPI spec, pinned by wire and error specs - NOT
+  verified live (no key yet: new sign-ups go on a wait list); `examples/typesafe/NimbleSmokeTest` is the walkthrough.
+- **Sarvam Prism** (`DecisionModelId.sarvam_prism` = `sarvam-prism`, announced 2026-11-03): Sarvam's System-1 decision
+  model built on Sarvam 105B (English, ten Indian languages and Hinglish; ₹4 per 1M input tokens, output free), on
+  TypeSafe's protocol at `POST https://api.sarvam.ai/v2/systemone` - the preset `DecisionProviderSettings.sarvam`
+  (`SARVAM_API_KEY`, sent in an `api-subscription-key` header; text only, a fixed model list), so
+  `TypeSafeServiceFactory(DecisionProviderSettings.sarvam)`, `asOpenAI(...)`, `asOpenAIDecisions(...)` and `decide[T]`
+  work with it; in `models-supporting-json-schema`. Its 422 "question 'q' encodes to N tokens, over the 32768-token
+  limit" is a `TypeSafeScalaTokenCountExceededException`. Live 2026-11-04 (`examples/typesafe/SarvamPrismSmokeTest`,
+  11 of 11): Sarvam's docs example answered as documented (billing 0.80, severity 3.83, urgent 0.978), a Hindi state,
+  `decide[T]`, both OpenAI interfaces; ~0.5 s per call at 1-20 questions and 0.9 s at 40 from Europe
+  (`DecisionModelsLatencyBenchmark only=sarvam`), not the 44 ms Sarvam quotes. An image part in the state is read as
+  text, so the preset sends no images (the chat adapter refuses image content).
+
 - **MiniMax-M3.1-Flash** (`NonOpenAIModelId.minimax_m3_1_flash`, MiniMax's direct API - `ChatProviderSettings.minimax` /
   `minimaxChina`, and the Anthropic-compatible endpoint via `customInstance`; contributed in #131): 1M context, always
   thinks - `reasoning_effort` low..max (`max` when omitted); `none` (a 400, confirmed live) and the undocumented

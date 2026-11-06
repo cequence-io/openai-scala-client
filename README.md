@@ -92,6 +92,8 @@ decisions, re-ranking, the `json_schema`-only chat adapter) on OpenAI's. No tool
 | [OpenAI Decisions](https://developers.openai.com/api/docs/guides/decisions) | gpt-6-luna, images too | `asOpenAI(DecisionProviderSettings.openAI)` |
 | [Vercel AI Gateway](https://vercel.com/docs/ai-gateway/sdks-and-apis/typesafe) | Jev, d1 (images too), Microsoft-Decision-1, OpenAI's Luna; on the free tier Convai's Laya, ScaleDown's Classify-1, Baseten's Elephant-1 / Mammoth-1, d1-ultra and Perplexity's v1.2 deciders 🔥 | `asOpenAI(DecisionProviderSettings.vercel)` |
 | [SubQ](https://docs.subq.ai/) 🔥 | SubQ Snap 1.1 (the default) and Snap Preview (public preview; long context - 295,957 input tokens, up to 4 images) | `asOpenAI(DecisionProviderSettings.subq)` |
+| [Sarvam](https://docs.sarvam.ai/) 🔥 | Sarvam Prism (English, ten Indian languages and Hinglish) | `asOpenAI(DecisionProviderSettings.sarvam)` |
+| [Bespoke Labs](https://docs.bespokelabs.ai/) 🔥 | Nimble (`nimble-latest` = Nimble v4 Max, 27B; text only, at most 64 questions) | `asOpenAI(DecisionProviderSettings.bespoke)` |
 | [ScaleDown](https://docs.scaledown.ai/) 🔥 | Classify (a constrained decoding model; text plus one document, 1M context) | `asOpenAI(DecisionProviderSettings.scaleDown)` |
 | [Microsoft Foundry](https://ai.azure.com/catalog/models/microsoft-decision-1) | Microsoft-Decision-1 (public preview; your own deployment in a Foundry resource) | `microsoftFoundryAsOpenAI()` |
 

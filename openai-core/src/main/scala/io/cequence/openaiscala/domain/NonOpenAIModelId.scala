@@ -1264,6 +1264,18 @@ object NonOpenAIModelId {
   // SubQ Snap 1.1 (listed by 2026-10-29, public preview) - SubQ's default decision model
   val subq_snap_1_1 = "subq-snap-1.1"
 
+  // Sarvam Prism (announced 2026-11-03): Sarvam's System-1 decision model on Sarvam 105B,
+  // English, 10 Indian languages and Hinglish, TypeSafe's protocol at
+  // `POST https://api.sarvam.ai/v2/systemone` (typesafe-client's `DecisionProviderSettings.sarvam`)
+  val sarvam_prism = "sarvam-prism"
+
+  // Bespoke Labs' Nimble decision models (launched ~2026-10-18): TypeSafe's protocol at
+  // `POST https://api.bespokelabs.ai/v1/systemone` (typesafe-client's
+  // `DecisionProviderSettings.bespoke`); `nimble-latest` moves to newer models, today it is
+  // `nimble-v4-max` (27B)
+  val bespoke_nimble_latest = "nimble-latest"
+  val bespoke_nimble_v4_max = "nimble-v4-max"
+
   // ScaleDown's Classify (2026-10-13), a Constrained Decoding Model: TypeSafe's protocol in text
   // only at `POST https://api.scaledown.xyz/v1/scaledown` (typesafe-client's
   // `DecisionProviderSettings.scaleDown`, key in `x-api-key`); text + one document (an image or a

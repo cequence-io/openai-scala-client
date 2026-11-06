@@ -145,6 +145,18 @@ object DecisionContextLatencyBenchmark {
         listed
       ),
       Host(
+        "sarvam",
+        Some(DecisionProviderSettings.sarvam),
+        env("SARVAM_API_KEY"),
+        listed
+      ),
+      Host(
+        "bespoke",
+        Some(DecisionProviderSettings.bespoke),
+        env("BESPOKE_API_KEY"),
+        listed
+      ),
+      Host(
         "openrouter",
         Some(DecisionProviderSettings.openRouter),
         env("OPENROUTER_API_KEY"),

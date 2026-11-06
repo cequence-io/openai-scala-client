@@ -26,6 +26,11 @@ class DecisionModelIdSpec extends AnyWordSpec with Matchers {
       DecisionModelId.openrouter_baseten_mammoth_1 shouldBe "baseten/mammoth-1"
       DecisionModelId.vercel_baseten_elephant_1 shouldBe "baseten/elephant-1"
       DecisionModelId.openrouter_drex_max shouldBe "nace-ai/drex-max"
+      // added 2026-11-04
+      DecisionModelId.sarvam_prism shouldBe "sarvam-prism"
+      // added 2026-11-05
+      DecisionModelId.bespoke_nimble_latest shouldBe "nimble-latest"
+      DecisionModelId.bespoke_nimble_v4_max shouldBe "nimble-v4-max"
     }
 
     "keep its 1.4.0 name as a deprecated alias of the same object" in {

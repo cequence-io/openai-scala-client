@@ -354,6 +354,85 @@ object DecisionProviderSettings {
   )
 
   /**
+   * Sarvam Prism (`sarvam-prism`, announced 2026-11-03; `SARVAM_API_KEY`): Sarvam's System-1
+   * decision model built on Sarvam 105B (English, 10 Indian languages and Hinglish),
+   * TypeSafe's protocol at `POST https://api.sarvam.ai/v2/systemone`, the key in an
+   * `api-subscription-key` header (`Authorization: Bearer` works too), INR 4 per 1M input
+   * tokens, output free. Live 2026-11-04: generation fields (`temperature`) and an `images`
+   * field are 422s, other unknown top-level fields are ignored, an unknown key inside a
+   * question is a 422; an image part in the state is read as text (no images); score levels
+   * are 2..10 strings or objects (numbers a 422), a choice 2..255 options, no question cap
+   * (130 answered), 32,768 tokens per question (state + question + options, never truncated -
+   * a 422 "question 'b' encodes to 38030 tokens, over the 32768-token limit of this server"),
+   * 60 s per request (a 503 `model_overloaded`, per the docs). Errors are `{"error":
+   * {"message", "code", "request_id", "param"}}` with string codes (`invalid_api_key_error`,
+   * `unprocessable_entity_error`, `not_found_error`, ...), the request id in `x-request-id`.
+   * Its `/v2/models` is public but lists Sarvam's chat models too, so the list is fixed here.
+   */
+  val sarvam: DecisionProvider = DecisionProvider(
+    "https://api.sarvam.ai/",
+    "SARVAM_API_KEY",
+    DecisionModelId.sarvam_prism,
+    decisionsPath = "v2/systemone",
+    models = DecisionModelListing.Fixed(
+      Seq(
+        ModelMetadata(
+          DecisionModelId.sarvam_prism,
+          "Sarvam Prism - a System-1 decision model built on Sarvam 105B (English, 10 Indian languages and Hinglish).",
+          "2026-11-03",
+          Some(Seq("text"))
+        )
+      )
+    ),
+    images = DecisionImages.Unsupported,
+    requestIdHeaders = Seq("x-request-id"),
+    name = Some("sarvam"),
+    apiKeyHeader = Some("api-subscription-key")
+  )
+
+  /**
+   * Bespoke Labs' Nimble decision models (`BESPOKE_API_KEY`, launched ~2026-10-18; NOT
+   * verified live - no key yet, the facts are from Bespoke's docs read 2026-11-05):
+   * `nimble-latest` (the default, today `nimble-v4-max`, moves to newer models) and
+   * `nimble-v4-max` (27B on a Qwen3.8-27B base, weights CC BY-NC 4.0); `nimble-v4` and
+   * `nimble-v3` are deprecated. TypeSafe's System One protocol at `POST
+   * https://api.bespokelabs.ai/v1/systemone`, `Authorization: Bearer`, $0.04 per 1M input
+   * tokens, output free, the shared text billed once per request. Limits per the docs: 1 MiB
+   * body (413), 1..64 questions per request (`maxQuestions`), choice 2..255 options, score
+   * 2..255 level strings, 256k prompt tokens per question including the state (never
+   * truncated; a 422), concurrency 4 per organization until the first credit purchase, then
+   * 100 (429 with `Retry-After`). No images, no box questions, no model listing (`GET
+   * /v1/models` is a 404), so the list is fixed. Errors are `{"detail": "<message>",
+   * "request_id": ...}` (a plain-string detail): 401, 402 (credit), 413, 422 ("Nimble request
+   * failed" comes from the model itself - a too long prompt or an unknown model), 429, 502,
+   * 503 / 529, 504; the request id is in `x-request-id` and `x-typesafe-request-id`.
+   */
+  val bespoke: DecisionProvider = DecisionProvider(
+    "https://api.bespokelabs.ai/",
+    "BESPOKE_API_KEY",
+    DecisionModelId.bespoke_nimble_latest,
+    models = DecisionModelListing.Fixed(
+      Seq(
+        ModelMetadata(
+          DecisionModelId.bespoke_nimble_latest,
+          "Nimble - Bespoke's latest decision model (today nimble-v4-max).",
+          "2026-10-18",
+          Some(Seq("text"))
+        ),
+        ModelMetadata(
+          DecisionModelId.bespoke_nimble_v4_max,
+          "Nimble v4 Max - Bespoke's 27B decision model (Qwen3.8-27B base).",
+          "2026-10-18",
+          Some(Seq("text"))
+        )
+      )
+    ),
+    maxQuestions = Some(64),
+    images = DecisionImages.Unsupported,
+    name = Some("bespoke")
+  )
+
+  /**
    * ScaleDown's Constrained Decoding Models (`SCALEDOWN_API_KEY`, launched 2026-10-13):
    * `classify-1` (the default) and `classify` (the latest version - the same model today) at
    * `POST https://api.scaledown.xyz/v1/scaledown`, the key in an `x-api-key` header, in

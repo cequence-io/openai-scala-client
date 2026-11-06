@@ -966,6 +966,205 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       subq.close()
     }
 
+    // Sarvam's documented example (docs.sarvam.ai, read 2026-11-04) - not recorded live
+    val sarvamResponse =
+      """{"model":"sarvam-prism","answers":{"department":{"type":"choice","choice":"billing","confidence":0.7065,"probabilities":{"billing":0.8044,"sales":0.0087,"technical":0.1869}},"severity":{"type":"score","confidence":0.916,"legend":{"0":"trivial","1":"minor","2":"moderate","3":"major","4":"critical"},"probabilities":{"0":0.0026,"1":0.0033,"2":0.0115,"3":0.1245,"4":0.8581},"score":3.8321},"urgent":{"type":"noul","noul":0.9782}},"usage":{"input_tokens":153,"output_tokens":0}}"""
+
+    "serve Sarvam Prism - /v2/systemone, the api-subscription-key header, a fixed listing, text only" in {
+      val sarvam = TypeSafeServiceFactory.withEngine(
+        engine,
+        DecisionProviderSettings.sarvam.copy(baseUrl = baseUrl),
+        "sarvam_k"
+      )
+      DecisionProviderSettings.sarvam.readsImages shouldBe false
+      DecisionProviderSettings.sarvam.boxQuestions shouldBe false
+      DecisionProviderSettings.sarvam.defaultModel shouldBe "sarvam-prism"
+      val questions: Map[String, Question] = Map(
+        "department" -> ChoiceQuestion(
+          "Which team should handle this?",
+          "billing" -> "Payments or invoices",
+          "sales" -> "New business enquiries",
+          "technical" -> "Bugs or outages"
+        ),
+        "severity" -> ScoreQuestion(
+          "Rate the severity.",
+          "trivial",
+          "minor",
+          "moderate",
+          "major",
+          "critical"
+        ),
+        "urgent" -> NoulQuestion("Is this urgent and revenue-impacting?")
+      )
+      val state =
+        "My Stripe integration stopped working and all checkout payments are failing."
+
+      respond(200, sarvamResponse, Map("x-request-id" -> "20261104_abc"))
+      val response = await(sarvam.systemOne(state, questions))
+      received.get.method shouldBe "POST"
+      received.get.path shouldBe "/v2/systemone"
+      received.get.headers("api-subscription-key") shouldBe "sarvam_k"
+      received.get.headers.get("authorization") shouldBe None
+
+      val body = Json.parse(received.get.body).as[JsObject]
+      body.keys shouldBe Set("model", "state", "questions")
+      (body \ "model").as[String] shouldBe "sarvam-prism"
+      (body \ "state").as[String] shouldBe state
+      // a score's criteria is a list of level strings
+      (body \ "questions" \ "severity" \ "criteria").get shouldBe
+        Json.arr("trivial", "minor", "moderate", "major", "critical")
+      (body \ "questions" \ "department" \ "criteria" \ "billing").as[String] shouldBe
+        "Payments or invoices"
+      (body \ "questions" \ "urgent" \ "type").as[String] shouldBe "noul"
+
+      response.noul("urgent").noul shouldBe 0.9782
+      val department = response.choice("department")
+      department.choice shouldBe "billing"
+      department.confidence shouldBe 0.7065
+      department.probabilities("technical") shouldBe 0.1869
+      val severity = response.score("severity")
+      severity.score shouldBe 3.8321
+      severity.confidence shouldBe 0.916
+      severity.legend(4) shouldBe JsString("critical")
+      severity.probabilities(4) shouldBe 0.8581
+      response.usage.input_tokens shouldBe Some(153)
+      response.usage.output_tokens shouldBe Some(0)
+      response.requestId shouldBe Some("20261104_abc")
+
+      // a fixed listing, no request
+      respond(200, "{}")
+      await(sarvam.listModels).map(_.name) shouldBe Seq("sarvam-prism")
+      received shouldBe None
+
+      // the chat adapter refuses an image up front: the host reads none
+      the[io.cequence.openaiscala.OpenAIScalaClientException] thrownBy
+        await(
+          io.cequence.openaiscala.typesafe.service.TypeSafeServiceFactory
+            .asOpenAI(sarvam)
+            .createChatCompletion(
+              Seq(
+                io.cequence.openaiscala.domain.UserSeqMessage(
+                  Seq(
+                    io.cequence.openaiscala.domain.TextContent("A photo."),
+                    io.cequence.openaiscala.domain.ImageURLContent(pngDataUrl(64, 64))
+                  )
+                )
+              ),
+              io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings(
+                "sarvam-prism"
+              )
+            )
+        )
+      received shouldBe None
+
+      // an over-long question: a 422 with Sarvam's error shape
+      respond(
+        422,
+        """{"error":{"message":"question 'urgent' encodes to 40026 tokens, over the 32768-token limit of this server","code":"unprocessable_entity_error","request_id":"20261104_x"}}"""
+      )
+      the[TypeSafeScalaTokenCountExceededException]
+        .thrownBy(await(sarvam.systemOne(state, questions)))
+        .errorType shouldBe Some("unprocessable_entity_error")
+      sarvam.close()
+    }
+
+    // Bespoke's quickstart example (docs.bespokelabs.ai, read 2026-11-05) - not recorded live
+    val bespokeResponse =
+      """{"model":"nimble-latest","answers":{"refund":{"type":"noul","noul":0.998},"department":{"type":"choice","choice":"billing","probabilities":{"billing":1.0,"technical":0.0},"confidence":1.0}},"usage":{"input_tokens":241,"output_tokens":3}}"""
+
+    "serve Bespoke's Nimble - /v1/systemone, Bearer, a fixed listing, a 64-question cap, text only" in {
+      val bespoke = TypeSafeServiceFactory.withEngine(
+        engine,
+        DecisionProviderSettings.bespoke.copy(baseUrl = baseUrl),
+        "bespoke_k"
+      )
+      DecisionProviderSettings.bespoke.readsImages shouldBe false
+      DecisionProviderSettings.bespoke.boxQuestions shouldBe false
+      DecisionProviderSettings.bespoke.defaultModel shouldBe "nimble-latest"
+      DecisionProviderSettings.bespoke.maxQuestions shouldBe Some(64)
+      val bespokeQuestions: Map[String, Question] = Map(
+        "refund" -> NoulQuestion("Does the customer request a refund?"),
+        "department" -> ChoiceQuestion(
+          "Which department should handle this request?",
+          "billing" -> "Charges, payments and refunds",
+          "technical" -> "Software bugs and outages"
+        )
+      )
+      val state =
+        "The customer was charged twice and asks for a refund. The service still works."
+
+      respond(
+        200,
+        bespokeResponse,
+        Map("x-request-id" -> "req-b1", "x-typesafe-request-id" -> "req-b1")
+      )
+      val response = await(bespoke.systemOne(state, bespokeQuestions))
+      received.get.method shouldBe "POST"
+      received.get.path shouldBe "/v1/systemone"
+      received.get.headers("authorization") shouldBe "Bearer bespoke_k"
+
+      val body = Json.parse(received.get.body).as[JsObject]
+      body.keys shouldBe Set("model", "state", "questions")
+      (body \ "model").as[String] shouldBe "nimble-latest"
+      (body \ "state").as[String] shouldBe state
+      (body \ "questions" \ "department" \ "criteria" \ "billing").as[String] shouldBe
+        "Charges, payments and refunds"
+
+      response.noul("refund").noul shouldBe 0.998
+      val department = response.choice("department")
+      department.choice shouldBe "billing"
+      department.confidence shouldBe 1.0
+      department.probabilities("billing") shouldBe 1.0
+      department.probabilities("technical") shouldBe 0.0
+      response.usage.input_tokens shouldBe Some(241)
+      response.usage.output_tokens shouldBe Some(3)
+      response.requestId shouldBe Some("req-b1")
+
+      // a fixed listing, no request
+      respond(200, "{}")
+      await(bespoke.listModels).map(_.name) shouldBe Seq("nimble-latest", "nimble-v4-max")
+      received shouldBe None
+
+      // 65 questions: refused before I/O
+      val many: Map[String, Question] =
+        (1 to 65).map(i => s"q$i" -> (NoulQuestion(s"Question $i?"): Question)).toMap
+      the[IllegalArgumentException]
+        .thrownBy(bespoke.systemOne(state, many))
+        .getMessage should include("bespoke takes at most 64 questions")
+      received shouldBe None
+
+      // an image through the chat adapter: refused before I/O
+      the[io.cequence.openaiscala.OpenAIScalaClientException] thrownBy
+        await(
+          io.cequence.openaiscala.typesafe.service.TypeSafeServiceFactory
+            .asOpenAI(bespoke)
+            .createChatCompletion(
+              Seq(
+                io.cequence.openaiscala.domain.UserSeqMessage(
+                  Seq(
+                    io.cequence.openaiscala.domain.TextContent("A photo."),
+                    io.cequence.openaiscala.domain.ImageURLContent(pngDataUrl(64, 64))
+                  )
+                )
+              ),
+              io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings(
+                "nimble-latest"
+              )
+            )
+        )
+      received shouldBe None
+
+      // a plain-string detail
+      respond(
+        401,
+        """{"detail":"API key required","request_id":"2d0778a4-1684-40e8-b405-05858b0ee7ee"}"""
+      )
+      the[TypeSafeScalaUnauthorizedException]
+        .thrownBy(await(bespoke.systemOne(state, bespokeQuestions)))
+        .getMessage should include("API key required")
+      bespoke.close()
+    }
+
     // recorded through OpenRouter on 2026-10-13 (ScaleDown's own answer, as relayed)
     val scaleDownResponse =
       """{"model":"classify-1","answers":{"defect":{"type":"noul","noul":0.9481502334676174},"sentiment":{"type":"choice","choice":"mixed","probabilities":{"positive":0.006024675083653423,"mixed":0.9853046969340996,"negative":0.008670627982247088},"confidence":0.9853046969340996}},"usage":{"input_tokens":714,"output_tokens":3,"cost":0.00002856}}"""
@@ -1196,6 +1395,8 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
         DecisionProviderSettings.liquid,
         DecisionProviderSettings.perplexity,
         DecisionProviderSettings.subq,
+        DecisionProviderSettings.sarvam,
+        DecisionProviderSettings.bespoke,
         DecisionProviderSettings.openRouter,
         DecisionProviderSettings.vercel,
         DecisionProviderSettings.microsoftFoundry(baseUrl)
