@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.7.0 (unreleased)
+## 1.7.0 (2026-11-06)
 
 The 2026-10-19 - 2026-11-06 work since v1.6.0: tool loops keep the model's reasoning between rounds on every backend
 that returns it (a provider-neutral `ReasoningMessage`); a failover policy - a time limit per try, a deadline, a stop
