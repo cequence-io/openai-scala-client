@@ -131,7 +131,17 @@ compatible with 1.6.0 (the factory methods' signatures changed).
 - Sync tool and chat completions through the Responses API adapter (`store = false`) on OpenAI's reasoning models ask
   for `include = ["reasoning.encrypted_content"]`. A reply that reasoned is bigger by its encrypted reasoning: live,
   1-8k characters per item on GPT-6, up to 63k on gpt-5.4-mini at effort high.
-- ws-client 1.1.4 (from 1.1.3; security hardening):
+- ws-client 1.1.5 (from 1.1.3; security hardening - 1.1.4, then 1.1.5):
+  - Query parameters are percent-encoded (1.1.5). The Play engine put parameter keys and values into the URL as they
+    were: a `#` cut the query off, `&` and `=` split a value, and `+` read as a space - e.g. a pagination token or a
+    cursor with such characters. A query written into the endpoint itself is still sent byte for byte.
+  - A proxy's reply to `CONNECT` other than 200 fails the request (1.1.5). It used to be taken as the HTTPS site's own
+    response, so a proxy - or anyone on the plain-HTTP hop to it - could answer for the site.
+  - A response that does not match its expected JSON fails with a short excerpt of it (at most 500 characters, 1.1.5).
+    The error used to carry the whole value pretty-printed twice, which for a large response could exhaust the heap.
+  - Live 2026-11-06 with 1.1.5: `ProviderConnectivitySmokeTest` listed, chatted and streamed through 22 hosts with no
+    TLS or connection failure; Bedrock's batch listing paged with a token holding `+`, `/` and `=` (its signed query
+    goes out as written); Gemini's model listing paged one model at a time.
   - The Play engine keeps no cookie jar: it used to keep ONE cookie store per engine, so on a shared engine
     (`withEngine`) a `Set-Cookie` that one provider or tenant received was sent on later requests of every other
     service with a matching host. `Set-Cookie` still shows up in the response headers, but nothing is stored or

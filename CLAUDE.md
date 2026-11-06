@@ -867,7 +867,7 @@ val service = OpenAIServiceFactory(apiKey = "sk-...")
 ```
 
 Since the ws-client 1.0 engine-discovery migration (`io.cequence:ws-client-*`, a real Maven
-Central release since 2026-07 - no longer a SNAPSHOT; currently 1.1.4, see
+Central release since 2026-07 - no longer a SNAPSHOT; currently 1.1.5, see
 `project/Dependencies.scala`), EACH service created via the plain factories owns a dedicated ActorSystem (created
 eagerly, ~10 threads; its threads are daemon so a leaked service cannot block JVM exit).
 `service.close()` terminates both the HTTP client and that system. Build services ONCE and
@@ -882,7 +882,7 @@ with a structured `CequenceWSHttpStatusException(statusCode, body)` - it is NOT 
 stream data. Since 1.1.2 a transport failure of a Play stream keeps its cause and is classified
 along the cause chain (a wrapped timeout -> `CequenceWSTimeoutException`, an unknown host ->
 `CequenceWSUnknownHostException`; ws-client's `StreamFailures`). Since 1.1.3 comment-only and blank SSE frames
-(OpenRouter's `: OPENROUTER PROCESSING` keep-alives) are skipped instead of failing the stream (`StreamedKeepAliveWireSpec`). Since 1.1.4 (2026-10-25) the Play engines keep no cookie jar (one store per engine leaked a provider's `Set-Cookie` to every service on a shared engine), never follow redirects, cap decompressed responses at 256 MiB, and stream incrementally on Scala 3. Every streamed service extends `ClassifiedStreamingWSClient` (openai-core) and
+(OpenRouter's `: OPENROUTER PROCESSING` keep-alives) are skipped instead of failing the stream (`StreamedKeepAliveWireSpec`). Since 1.1.4 (2026-10-25) the Play engines keep no cookie jar (one store per engine leaked a provider's `Set-Cookie` to every service on a shared engine), never follow redirects, cap decompressed responses at 256 MiB, and stream incrementally on Scala 3. Since 1.1.5 (2026-11-05) the Play engines percent-encode query parameter keys and values (they went out verbatim - a `#` cut the query off, `&` / `=` split a value, `+` read as a space; a query written into the endpoint string is still sent byte for byte, which Bedrock batch's SigV4-signed list query relies on), fail a proxy's non-200 reply to CONNECT, `asSafe` errors carry a bounded excerpt of the mismatching JSON (the whole value pretty-printed twice could exhaust the heap); its json-repair change (a valid JSON value decoded with `Json.parse`) does not touch the JSON helpers, which call `Json.parse` first and repair only what it refuses. Live 2026-11-06 on 1.1.5: `ProviderConnectivitySmokeTest` 22 targets without a TLS / connection failure (only account errors: Novita balance, SambaNova key, an OpenRouter free model's upstream 429), Bedrock batch listing paged with a `nextToken` holding `+` / `/` / `=` and `nameContains = a+b` (signature accepted), Gemini's model list paged by one (tokens ending in `=`), five decision hosts answered. Every streamed service extends `ClassifiedStreamingWSClient` (openai-core) and
 streams through its SERVICE-level `execJsonStream` / `execRawStream(endPoint, ...)` (ws-client's
 `WSClientWithEngineOutputStreamingBase`), which route that failure through the service's
 `handleErrorCodes` (`mapHttpStatusErrors`); free-form JSON bodies go in as `Param.Raw(name)`.
