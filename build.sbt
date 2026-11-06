@@ -7,8 +7,8 @@ val scala3 = "3.2.2"
 
 ThisBuild / organization := "io.cequence"
 ThisBuild / scalaVersion := scala213
-ThisBuild / version := "1.7.0"
-ThisBuild / isSnapshot := false
+ThisBuild / version := "1.7.1-SNAPSHOT"
+ThisBuild / isSnapshot := true
 
 lazy val commonSettings = Seq(
   libraryDependencies += "org.scalactic" %% "scalactic" % "3.2.16",
