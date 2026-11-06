@@ -105,7 +105,7 @@ There is a new project [openai-scala-client-examples](../openai-examples/src/mai
   }
 ```
 
-- **Tool loops that keep the model's reasoning**. Every adapter that gets reasoning from its provider reads it into
+- 🔥 **Tool loops that keep the model's reasoning**. Every adapter that gets reasoning from its provider reads it into
   the reply as a provider-neutral `ReasoningMessage` (`choice.reasoning`; `response.reasoningMessage` for the first
   choice). Append `response.historyMessages` instead of the bare assistant message: that is the `ReasoningMessage`
   followed by the assistant message. The next round converts it back to the provider's own form and sends it before
@@ -280,14 +280,14 @@ There is a new project [openai-scala-client-examples](../openai-examples/src/mai
   JSON Schema's `anyOf`, `JsonSchema.AnyOf` - written as `{"anyOf": [<type>, {"type": "null"}]}`), so a class with
   optional fields takes OpenAI's strict mode, and the model
   answers `null` where it has nothing - `Json.format` reads that as `None` (`jsonSchemaFor(nullableOptions = false)`
-  derives an `Option` as before 1.6.1: its type, not required - which strict mode refuses). Measured 2026-11-03 with
+  derives an `Option` as before 1.7.0: its type, not required - which strict mode refuses). Measured 2026-11-03 with
   strict `json_schema`: OpenAI, Anthropic, Gemini's OpenAI endpoint, Mistral, Groq, Fireworks, Together, Cerebras,
   xAI and Meta all take the `anyOf` form and answer null or a value. The native Gemini and Vertex AI adapters send an
   `Option` field as its type with `nullable: true` (Gemini answers an `anyOf` null branch with "" or "None"), other
   unions as their own `anyOf`; a decision model asks the field as its type (it always answers). Function tools: a
   strict tool goes out required and nullable, its objects closed; a non-strict one as given, except to Cerebras,
   Together and Meta's Model API, which mishandle a nullable union in tool parameters and get the `Option` fields the
-  pre-1.6.1 way (optional, of their type); Gemini gets tool parameters as a JSON Schema. 🔥 A sealed trait's case objects keep their declaration order
+  pre-1.7.0 way (optional, of their type); Gemini gets tool parameters as a JSON Schema. 🔥 A sealed trait's case objects keep their declaration order
   when each level of the hierarchy is declared in one object (typically the trait's companion); case objects at a
   package's top level are sorted by name on both Scala versions (Scala 2's runtime reflection cannot see their
   order). A described case object or enum case adds a
@@ -327,7 +327,7 @@ There is a new project [openai-scala-client-examples](../openai-examples/src/mai
     .map(_.capitals.foreach(println))
 ```
 
-- 🔥 **Or let the JSON helper infer the schema from `T`** - with no `jsonSchema` in the settings, `createChatCompletionWithJSON[T]`
+- **Or let the JSON helper infer the schema from `T`** - with no `jsonSchema` in the settings, `createChatCompletionWithJSON[T]`
   (and `createChatCompletionWithJSONFullResponse[T]` / `createChatCompletionBatchWithJSON[T]`) asks with the schema of `T`:
   the case class above with its annotations, as a `JsonSchemaDef` named after the type (`CapitalsResponse`). It is
   `strict` unless OpenAI's strict mode would refuse it - a `Map` makes it `strict = false` (an `Option` field no longer
@@ -445,7 +445,7 @@ There is a new project [openai-scala-client-examples](../openai-examples/src/mai
 
 ### Failover policy
 
-Every failover call (`createChatCompletionWithFailover`, `createChatCompletionWithFailoverSettings`,
+🔥 Every failover call (`createChatCompletionWithFailover`, `createChatCompletionWithFailoverSettings`,
 `createChatCompletionWithJSON`, `createChatCompletionWithJSONFullResponse`) takes a last parameter
 `policy: FailoverPolicy`. The default changes nothing; the fields:
 

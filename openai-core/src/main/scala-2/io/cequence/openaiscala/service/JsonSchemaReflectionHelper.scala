@@ -24,7 +24,7 @@ import scala.util.Try
  * -> string, or a number with `dateAsNumber`
  *   - `Option[T]` / `java.util.Optional[T]` -> `T` or null, the field required (a
  *     [[io.cequence.openaiscala.domain.JsonSchema.Nullable]], written as `anyOf` with null -
- *     what OpenAI's strict mode needs; Play JSON reads null as `None`). Before 1.6.1 the field
+ *     what OpenAI's strict mode needs; Play JSON reads null as `None`). Before 1.7.0 the field
  *     was `T`, not required, which strict mode refuses - `nullableOptions = false` keeps that
  *   - `Seq` / `List` / `Set` / `Vector` / `Array` / any Scala `Iterable` or Java `Iterable`
  *     (`java.util.List`, `Set`, ...) -> array

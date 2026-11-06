@@ -109,7 +109,7 @@ object JsonSchemaShape {
    * @param nullableOptions
    *   an `Option` field as a required field that may be null ([[JsonSchema.Nullable]], what
    *   OpenAI's strict mode needs) rather than as its inner type, not required (the derivation
-   *   before 1.6.1)
+   *   before 1.7.0)
    */
   def toJsonSchema(
     shape: JsonSchemaShape,

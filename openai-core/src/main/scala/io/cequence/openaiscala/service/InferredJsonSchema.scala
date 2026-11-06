@@ -15,7 +15,7 @@ import scala.util.{Failure, Success, Try}
  *     case class with its `@JsonSchemaDescription` / `@JsonSchemaRange` annotations - as a
  *     `JsonSchemaDef` named after the type, `strict` only when OpenAI's strict mode takes the
  *     schema (every field required, no open object): a `Map` makes it `strict = false`, an
- *     `Option` field does not (since 1.6.1 it derives as a required field that may be null -
+ *     `Option` field does not (since 1.7.0 it derives as a required field that may be null -
  *     `JsonSchema.Nullable`);
  *   - nothing for a JSON value (`JsValue`, `JsObject`, ...), a type whose schema is not an
  *     object with fields (an array, a string, a map, an enum), a type that does not derive (an

@@ -208,7 +208,7 @@ object JsonSchema {
   /**
    * The schema with each required nullable property (`Nullable(inner)` - how an `Option` field
    * derives) as an optional property of its inner schema, the form derivations made before
-   * 1.6.1 (`nullableOptions = false`): for providers' non-strict modes, where some hosts
+   * 1.7.0 (`nullableOptions = false`): for providers' non-strict modes, where some hosts
    * mishandle a nullable union in tool parameters. Applied at every depth - object properties,
    * array items, union branches.
    */

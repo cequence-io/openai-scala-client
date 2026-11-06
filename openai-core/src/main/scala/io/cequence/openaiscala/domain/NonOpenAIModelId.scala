@@ -681,7 +681,7 @@ object NonOpenAIModelId {
   @deprecated(
     "MiniMax retired M2.7 on its direct API - a 404 \"The model is no longer available.\" " +
       "(2026-11-02, every M2.x id it still lists) - use minimax_m3 or minimax_m3_1_flash",
-    "1.6.1"
+    "1.7.0"
   )
   val minimax_m2_7 = "MiniMax-M2.7" // MiniMax
 

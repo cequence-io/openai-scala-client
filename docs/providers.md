@@ -87,7 +87,7 @@ Then you can obtain a service in one of the following ways.
 ```
 
   The GPT-6 models on the runtime host take an inference profile id - `us.openai.gpt-6.1-sol`,
-  `global.openai.gpt-6-luna`, `us.openai.gpt-6.1-terra` (GPT-6.1 Terra, `global.` too; live 2026-10-29): the bare `openai.gpt-6.1-sol` / `openai.gpt-6-sol` / `openai.gpt-6-luna` are a 400
+  `global.openai.gpt-6-luna`, `us.openai.gpt-6.1-terra` (🔥 GPT-6.1 Terra, `global.` too; live 2026-10-29): the bare `openai.gpt-6.1-sol` / `openai.gpt-6-sol` / `openai.gpt-6-luna` are a 400
   "on-demand throughput isn't supported" in every region tried (us-east-1, us-east-2, us-west-2, eu-central-1,
   eu-north-1, eu-west-1; live 2026-10-26), and `eu.openai.gpt-6.1-sol` an invalid id in eu-central-1. The mantle
   host serves the bare ids instead, in us-east-1 only of those regions (404 elsewhere).
@@ -150,7 +150,7 @@ Then you can obtain a service in one of the following ways.
   // or with an explicit location
   val euService = VertexAIServiceFactory.asOpenAI(location = Some("eu"))
 ```
-   The location picks the endpoint (`VertexAILocation`; chat, streams and batch prediction alike):
+   🔥 The location picks the endpoint (`VertexAILocation`; chat, streams and batch prediction alike):
 
    | `location` | Endpoint | ML processing |
    |---|---|---|
@@ -167,7 +167,7 @@ Then you can obtain a service in one of the following ways.
 ```scala
   val service = GeminiServiceFactory.asOpenAI()
 ```
-   🔥 **Gemini 4 Argon** (`NonOpenAIModelId.gemini_4_argon`, on the Gemini API since 2026-10-13): `reasoning_effort` maps
+   **Gemini 4 Argon** (`NonOpenAIModelId.gemini_4_argon`, on the Gemini API since 2026-10-13): `reasoning_effort` maps
    to the thinking levels LOW / MEDIUM / HIGH (`none` / `minimal` go as LOW - MINIMAL is a 400 on Argon, assumed for the
    Gemini 4 family until a member takes it), json_schema, function tools, Google Search, code execution and images work
    through the adapter and its typed stream (`examples/googlegemini/Gemini4ArgonSmokeTest` - 19 sections, all passed;
@@ -257,14 +257,14 @@ Then you can obtain a service in one of the following ways.
 ```
    System One (`jev`) is a decision model, not a chat model - see [TypeSafe AI (Jev)](decision-models.md#typesafe-ai-jev-) below for the questions / answers API and what the OpenAI adapter does.
 
-   [Liquid AI](https://www.liquid.ai/)'s decision models **d1** (launched 2026-09-30) and 🔥 **d1-ultra** (2026-10-15) serve the same System One API, so the same lib reaches them with `LIQUID_API_KEY`:
+   [Liquid AI](https://www.liquid.ai/)'s decision models **d1** (launched 2026-09-30), 🔥 **d1.1** (2026-10-27, the default) and **d1-ultra** (2026-10-15) serve the same System One API, so the same lib reaches them with `LIQUID_API_KEY`:
 ```scala
-  val d1 = TypeSafeServiceFactory.liquid()              // native System One service (d1 by default)
+  val d1 = TypeSafeServiceFactory.liquid()              // native System One service (d1.1 by default)
   val d1Service = TypeSafeServiceFactory.liquidAsOpenAI() // json_schema structured output
 ```
    See [Liquid AI (d1)](decision-models.md#liquid-ai-d1-) below - what works, and d1 vs Jev.
 
-   Perplexity's multimodal decision models - 🔥 **pplx-decider-v1.2** (27B) and **pplx-decider-flash-v1.2** (4B), both 2026-10-16, and the older v1.1 / v1 - take the same questions - and images - on its Decisions API, with `PERPLEXITY_API_KEY`:
+   Perplexity's multimodal decision models - **pplx-decider-v1.2** (27B) and **pplx-decider-flash-v1.2** (4B), both 2026-10-16, and the older v1.1 / v1 - take the same questions - and images - on its Decisions API, with `PERPLEXITY_API_KEY`:
 ```scala
   val decider = TypeSafeServiceFactory.perplexity()                 // native, POST /v1/decisions
   val deciderService = TypeSafeServiceFactory.perplexityAsOpenAI()  // json_schema structured output, images in user messages
@@ -380,7 +380,7 @@ or with streaming
    The provider settings pick only the endpoint and the key, so pass a MiniMax model explicitly - see the
    [MiniMax example](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/minimax/CreateMiniMaxChatCompletion.scala)
    (Flash by default, a model id as its first argument).
-   On the [chat API](https://platform.minimax.io/docs/api-reference/text-openai-api) Flash always thinks:
+   🔥 On the [chat API](https://platform.minimax.io/docs/api-reference/text-openai-api) Flash always thinks:
    `reasoning_effort` takes `low` .. `max` (`max` when omitted); the client sends `none` (a 400 on Flash) and the
    undocumented `minimal` as `low` and drops `service_tier`, which Flash does not support, and
    `thinking = {"type": "disabled"}` (via `extra_params`) is a 400 on Flash. M3 thinks by default and writes its
@@ -436,7 +436,7 @@ or with streaming
 
 17. [Meta Model API](https://dev.meta.ai/) - requires `MODEL_API_KEY` (the variable Meta's docs use)
 
-   🔥 **Muse Wonder** (`muse-wonder-1.0`, preview since 2026-10-12 - Meta's most capable model, for coding and long-horizon
+   **Muse Wonder** (`muse-wonder-1.0`, preview since 2026-10-12 - Meta's most capable model, for coding and long-horizon
    agentic work) and **Muse Spark** (`muse-spark-1.3` / `1.2` / `1.1`, a `-contributor` id for the cheaper Contributor mode,
    in which your prompts may train Meta's models) over OpenAI's chat completions: text, image, video, audio and PDF in, a
    1,048,576-token context, tools, `json_schema` with constrained decoding. They always reason, privately (the reply carries
@@ -459,7 +459,7 @@ or with streaming
    stream failed on the `: OPENROUTER PROCESSING` keep-alive comments OpenRouter sends while a slow model works, which
    1.1.3 skips.
 
-   🔥 **Muse Spark Open** (2026-10-15, [Meta's post](https://x.com/AIatMeta/status/2110779754274292212)) is the open-weight
+   **Muse Spark Open** (2026-10-15, [Meta's post](https://x.com/AIatMeta/status/2110779754274292212)) is the open-weight
    Muse Spark - 816B total / 42B active parameters, a 1M-token context, text, image, video and audio in - NOT on the Meta
    Model API but on Together (`NonOpenAIModelId.meta_models_muse_spark_open_816b_a42b`), Fireworks
    (`accounts/fireworks/models/` + `NonOpenAIModelId.muse_spark_open`), OpenRouter and Vercel's AI Gateway
@@ -482,7 +482,7 @@ or with streaming
    0.5 s to 2 minutes a call, Fireworks' `max` once in 49 s. Through OpenRouter (`meta/muse-spark-open`, 1M context) it
    passed all 9 too on 2026-10-16, once `none` went as `minimal`.
 
-18. [OpenRouter](https://openrouter.ai/) 🔥 - requires `OPENROUTER_API_KEY`
+18. [OpenRouter](https://openrouter.ai/) - requires `OPENROUTER_API_KEY`
 ```scala
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.openRouter)
   service.createChatCompletion(messages, CreateChatCompletionSettings(NonOpenAIModelId.tencent_hy4_preview))
@@ -492,7 +492,7 @@ or with streaming
    (runs of whitespace, once an empty field) while the JSON helper's JSON-object mode answered 5 of 5, so it is not listed
    under `models-supporting-json-schema`. Its text may end in a stray `</think:opensource>` tag.
 
-19. [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) 🔥 - requires `AI_GATEWAY_API_KEY` (a key of the gateway, `vck_...`;
+19. [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) - requires `AI_GATEWAY_API_KEY` (a key of the gateway, `vck_...`;
     a Vercel account token is a 401)
 ```scala
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.vercel)

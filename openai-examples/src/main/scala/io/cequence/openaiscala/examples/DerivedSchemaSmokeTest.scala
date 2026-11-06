@@ -90,7 +90,7 @@ object DerivedSchemaTypes {
 }
 
 /**
- * Derived JSON schemas end to end (1.6.1): an `Option` field is a REQUIRED field that may be
+ * Derived JSON schemas end to end (1.7.0): an `Option` field is a REQUIRED field that may be
  * null (`JsonSchema.Nullable`, written as `anyOf` with null), so the JSON helper's inferred
  * schema is `strict`; a sealed enum keeps its declaration order; `@JsonSchemaIgnore` leaves a
  * field out. Each provider gets `createChatCompletionWithJSON[LineChanges]` with NO schema in

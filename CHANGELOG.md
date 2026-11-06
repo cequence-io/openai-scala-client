@@ -1,12 +1,47 @@
 # Changelog
 
-## 1.6.1 (unreleased)
+## 1.7.0 (unreleased)
+
+The 2026-10-19 - 2026-11-06 work since v1.6.0: tool loops keep the model's reasoning between rounds on every backend
+that returns it (a provider-neutral `ReasoningMessage`); a failover policy - a time limit per try, a deadline, a stop
+flag, parse retries - over one retry engine; derived JSON schemas with required, nullable `Option` fields
+(`JsonSchema.AnyOf`) and `@JsonSchemaIgnore`; Gemini's URL context tool and Vertex AI's global, EU and US endpoints;
+GPT-6.1 Terra, MiniMax-M3.1-Flash and Mistral-hosted GLM 5.3 Flash / DeepSeek V4.1 Flash 1017; Sarvam Prism, Bespoke
+Labs' Nimble, Liquid's d1.1 and SubQ Snap 1.1 as decision models; and ws-client 1.1.5. Security fixes: an id is one URL
+path segment, streamed guardrails check everything a reply releases, OpenAI-shaped streams leave out provider-executed
+tool calls, the Claude CLI no longer loads a working directory's settings and hooks, and the HTTP engine keeps no
+cookies and follows no redirects.
 
 ### ⚠️ Upgrading from 1.6.0
 
-**Source break** - Vertex AI: the factories' `location` is an `Option[String]` (default `VERTEXAI_LOCATION`, which is
-now optional; none = `global`) - `location = "us-central1"` becomes `location = Some("us-central1")`. Not binary
-compatible with 1.6.0 (the factory methods' signatures changed).
+Not binary compatible with 1.6.0 - recompile against 1.7.0.
+
+**Source breaks**:
+- Vertex AI: the factories' `location` is an `Option[String]` (default `VERTEXAI_LOCATION`, which is now optional;
+  none = `global`) - `location = "us-central1"` becomes `location = Some("us-central1")`.
+- `JsonSchema` is a schema of one JSON type - the new `JsonSchema.Typed` (`Object`, `Array`, `String`, `Number`,
+  `Integer`, `Boolean`, `Null`) - or a union, the new `JsonSchema.AnyOf(schemas, description)` (JSON Schema's `anyOf`).
+  `type` moved from `JsonSchema` to `Typed` (a union has no single type): `schema.type` on a `JsonSchema` no longer
+  compiles - match on `JsonSchema.Typed`. Code that walks `JsonSchema` values meets the new case. The reader takes
+  `anyOf` as written and a `type` array as a union (one branch per type) - both used to fail; `oneOf` / `allOf` are
+  still refused. Reading keeps only the keywords `JsonSchema` models (as it always did for a single type): a
+  `JsonSchemaDef` read from JSON whose optional field is an `anyOf` / type array used to stay a raw map
+  (`eitherJsonSchemaFormat`'s fallback) and kept every keyword - it is typed now, so e.g. a `format` or `pattern` in
+  it is dropped. To pass a foreign schema on verbatim, keep it as the map form (`Right(Map)`). Live 2026-11-03, a
+  strict union of two objects answered right through OpenAI (chat completions and the Responses API), the Claude API,
+  Bedrock, Gemini (its own `anyOf`), Groq, Cerebras and Mistral; OpenAI refuses `anyOf` at a schema's root; a
+  decision model takes only the nullable form.
+- `ChatCompletionChoiceInfo` and `ChatToolCompletionChoiceInfo` have a new last field, `reasoning:
+  Option[ReasoningMessage] = None` (a binary break; source compatible except for positional patterns). A chat
+  completion's JSON choice gains `reasoning_blocks` when it carries reasoning.
+- `BaseMessage` has a new subtype, `ReasoningMessage` (see "New features"). An exhaustive match on `BaseMessage` needs
+  a case for it; the compiler warns about a missing one.
+
+**Binary breaks** (source compatible - new parameters and fields with defaults): the failover helpers' `policy` and
+`retryOnFailureOrFailover`'s `failoverLogLevel` (see "New features"), `jsonSchemaFor`'s `nullableOptions`, the Jev
+factory methods' `longContext` (`TypeSafeServiceFactory`), `ClaudeAgentSettings.settingSources`,
+`AnthropicOAuthProfileTokenProvider`'s `connectTimeout` / `refreshTimeout` / `lockWaitTimeout`, and Gemini's
+`Candidate.urlContextMetadata` and `FunctionDeclaration.parametersJsonSchema`.
 
 **Behavior changes**:
 - TypeSafe: the factory's Jev (`TypeSafeServiceFactory()`, `withEngine(engine, ...)`, `asOpenAI(...)`) opts in to long
@@ -43,7 +78,6 @@ compatible with 1.6.0 (the factory methods' signatures changed).
   that model's try and the chain moves on. The reply is parsed per try now (see "Failover policy" below); by default a
   parse failure still fails the call with the `OpenAIScalaJsonParseException`, without failover. A refused
   `enforceMode = Some(text)` fails the returned Future instead of throwing (still before `filterModels` runs).
-
 - Derived JSON schemas (`jsonSchemaFor[T]`, `JsonSchemaOf[T]`, the JSON helpers' inferred schema, `decide[T]`):
   - an `Option` (or `java.util.Optional`) field is REQUIRED and may be null - `JsonSchema.Nullable(inner)`, a union of
     the schema and `Null` (see `JsonSchema.AnyOf` below), written as `{"anyOf": [<inner>, {"type": "null"}],
@@ -71,7 +105,7 @@ compatible with 1.6.0 (the factory methods' signatures changed).
   still take `none` / `high`.
 - Function tools with derived parameters (`FunctionTool(parameters = jsonSchemaFor[T]())`):
   - a NON-strict tool on the chat completions API sends its parameters as given (an `Option` field required and
-    nullable), except to Cerebras, Together and Meta's Model API, which get the `Option` fields the pre-1.6.1 way - their
+    nullable), except to Cerebras, Together and Meta's Model API, which get the `Option` fields the pre-1.7.0 way - their
     type, not required (`JsonSchema.optionalFields`). Measured 2026-11-03, 6 calls per form on a derived schema: those
     three mishandle a nullable union in tool parameters (Cerebras / Together gpt-oss-120b sent a nullable object as a
     string - 3 and 1 of 6 right, Together also 500s; Meta Muse sent top-level nullable parameters as the string "null"
@@ -83,17 +117,6 @@ compatible with 1.6.0 (the factory methods' signatures changed).
     `gemini-flash-latest` in 24 of 24 calls, where the OpenAPI form with `nullable: true` got placeholders ("normal", 0,
     "") from 2.5 Flash-Lite every time and from 2.5 Flash 1 in 3. JSON responses keep the OpenAPI `responseSchema`
     (both forms answered 24 of 24). Vertex AI's tools are unchanged (not measured - no access).
-- `JsonSchema` is a schema of one JSON type - the new `JsonSchema.Typed` (`Object`, `Array`, `String`, `Number`,
-  `Integer`, `Boolean`, `Null`) - or a union, the new `JsonSchema.AnyOf(schemas, description)` (JSON Schema's `anyOf`).
-  `type` moved from `JsonSchema` to `Typed` (a union has no single type): `schema.type` on a `JsonSchema` no longer
-  compiles - match on `JsonSchema.Typed`. Code that walks `JsonSchema` values meets the new case. The reader takes
-  `anyOf` as written and a `type` array as a union (one branch per type) - both used to fail; `oneOf` / `allOf` are
-  still refused. Reading keeps only the keywords `JsonSchema` models (as it always did for a single type): a
-  `JsonSchemaDef` read from JSON whose optional field is an `anyOf` / type array used to stay a raw map
-  (`eitherJsonSchemaFormat`'s fallback) and kept every keyword - it is typed now, so e.g. a `format` or `pattern` in
-  it is dropped. To pass a foreign schema on verbatim, keep it as the map form (`Right(Map)`). Live 2026-11-03, a strict union of two objects answered right through OpenAI (chat completions and
-  the Responses API), the Claude API, Bedrock, Gemini (its own `anyOf`), Groq, Cerebras and Mistral; OpenAI refuses
-  `anyOf` at a schema's root; a decision model takes only the nullable form.
 - claude-agent-client: the CLI is started with `--setting-sources user` (new `ClaudeAgentSettings.settingSources`,
   default `Some(Seq("user"))`), so it no longer loads anything the working directory brings: `.claude/settings.json` /
   `settings.local.json` (hooks, permission rules, environment - the hooks ran host commands at session start,
@@ -115,11 +138,6 @@ compatible with 1.6.0 (the factory methods' signatures changed).
   service) omit provider-executed tool calls (hosted MCP, multi-agent delegation, hosted shell / code interpreter /
   web search): they came out as client `tool_calls`, which a consumer would try to run and answer. The typed stream
   still carries them (`ToolCall(serverSide = true)`).
-- `BaseMessage` has a new subtype, `ReasoningMessage` (see "New features"). An exhaustive match on `BaseMessage` needs
-  a case for it; the compiler warns about a missing one.
-- `ChatCompletionChoiceInfo` and `ChatToolCompletionChoiceInfo` have a new last field, `reasoning:
-  Option[ReasoningMessage] = None` (a binary break; source compatible except for positional patterns). A chat
-  completion's JSON choice gains `reasoning_blocks` when it carries reasoning.
 - A chat completions reply's `reasoning_content` / `reasoning` (and Mistral's thinking chunks) is read into the choice's
   `reasoning`, and sent back on the next round to the same base URL and credentials when the history carries it (see
   "New features").
@@ -276,7 +294,6 @@ compatible with 1.6.0 (the factory methods' signatures changed).
   `decide[T]`, both OpenAI interfaces; ~0.5 s per call at 1-20 questions and 0.9 s at 40 from Europe
   (`DecisionModelsLatencyBenchmark only=sarvam`), not the 44 ms Sarvam quotes. An image part in the state is read as
   text, so the preset sends no images (the chat adapter refuses image content).
-
 - **MiniMax-M3.1-Flash** (`NonOpenAIModelId.minimax_m3_1_flash`, MiniMax's direct API - `ChatProviderSettings.minimax` /
   `minimaxChina`, and the Anthropic-compatible endpoint via `customInstance`; contributed in #131): 1M context, always
   thinks - `reasoning_effort` low..max (`max` when omitted); `none` (a 400, confirmed live) and the undocumented
@@ -352,7 +369,6 @@ compatible with 1.6.0 (the factory methods' signatures changed).
   nullable object (`"type": ["object", "null"]`) too.
 - The `JsonSchema` reader kept an object's properties in their order only up to four - it read them into a `Map`, so
   a schema read from JSON (e.g. a tool's `parameters`) with five or more properties came back reordered.
-
 - Streamed output guardrails (`guardrailsWithStreaming`) checked only the answer text but released everything else
   unchecked - reasoning (`Thinking` / `reasoning_content`), a typed stream's further choices, refusals, server-side
   tool output and citations - so a secret the guard blocks in the answer reached the consumer in the reasoning

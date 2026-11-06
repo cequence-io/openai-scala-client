@@ -126,7 +126,7 @@ object DerivedSchemaProvidersTypes {
 }
 
 /**
- * Derived JSON schemas (1.6.1: `Option` fields required and nullable, sealed enums in
+ * Derived JSON schemas (1.7.0: `Option` fields required and nullable, sealed enums in
  * declaration order, `@JsonSchemaIgnore`) across the major providers and paths - a wider sweep
  * than `DerivedSchemaSmokeTest`. Groups (`groups=` to pick):
  *   - `json`: `createChatCompletionWithJSON[Ticket]`, the schema inferred, native
