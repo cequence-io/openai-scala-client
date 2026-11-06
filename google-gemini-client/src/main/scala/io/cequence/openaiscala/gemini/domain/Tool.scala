@@ -37,6 +37,16 @@ object Tool {
   }
 
   /**
+   * URL context: Gemini fetches the URLs named in the prompt (up to 20 per request) and
+   * answers from their content. Each URL's retrieval status comes back in the candidate's
+   * `urlContextMetadata`, the pages used in its `groundingMetadata`; the fetched content is
+   * billed as `toolUsePromptTokenCount`. Combinable with [[GoogleSearch]]. No fields.
+   */
+  case object UrlContext extends Tool {
+    override val prefix: ToolPrefix = ToolPrefix.urlContext
+  }
+
+  /**
    * Remote MCP servers the Gemini backend connects to directly and whose tools it can invoke
    * server-side (no client-side tool loop needed). Only streamable-HTTP transport is
    * supported. Note: custom HTTP headers (e.g. auth) can be passed via the transport.
@@ -56,13 +66,15 @@ object ToolPrefix {
   case object codeExecution extends ToolPrefix
   case object googleSearch extends ToolPrefix
   case object mcpServers extends ToolPrefix
+  case object urlContext extends ToolPrefix
 
   def values: Seq[ToolPrefix] = Seq(
     functionDeclarations,
     googleSearchRetrieval,
     codeExecution,
     googleSearch,
-    mcpServers
+    mcpServers,
+    urlContext
   )
 
   def of(value: String): ToolPrefix = values.find(_.toString() == value).getOrElse {

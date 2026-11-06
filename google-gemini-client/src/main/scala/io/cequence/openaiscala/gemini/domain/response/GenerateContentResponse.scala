@@ -60,6 +60,11 @@ case class GenerateContentResponse(
  *   Output only. Log-likelihood scores for the response tokens and top tokens.
  * @param index
  *   Output only. Index of the candidate in the list of response candidates.
+ * @param urlContextMetadata
+ *   Output only. What the URL context tool
+ *   ([[io.cequence.openaiscala.gemini.domain.Tool.UrlContext]]) fetched - one entry per URL,
+ *   with its retrieval status. In a stream it comes once, on a chunk that depends on the model
+ *   (live 2026-11-04: the first on 2.5 Flash / Flash-Lite, the last on 3.8 Flash and 4 Argon).
  */
 case class Candidate(
   content: Content,
@@ -71,8 +76,35 @@ case class Candidate(
   groundingMetadata: Option[GroundingMetadata] = None,
   avgLogprobs: Option[Double] = None,
   logprobsResult: Option[LogprobsResult] = None,
-  index: Option[Int] = None
+  index: Option[Int] = None,
+  urlContextMetadata: Option[UrlContextMetadata] = None
 )
+
+/**
+ * The URLs the URL context tool fetched for a candidate.
+ */
+case class UrlContextMetadata(
+  urlMetadata: Seq[UrlMetadata] = Nil
+)
+
+/**
+ * One URL the URL context tool fetched.
+ *
+ * @param retrievedUrl
+ *   The URL fetched - not always the one asked for: live 2026-11-04, a prompt naming
+ *   `https://www.rfc-editor.org/rfc/rfc2606` came back as `.../info/rfc2606/` from 3.8 Flash
+ *   and 4 Argon.
+ * @param urlRetrievalStatus
+ *   `URL_RETRIEVAL_STATUS_SUCCESS`, `URL_RETRIEVAL_STATUS_ERROR`,
+ *   `URL_RETRIEVAL_STATUS_PAYWALL`, `URL_RETRIEVAL_STATUS_UNSAFE` or
+ *   `URL_RETRIEVAL_STATUS_UNSPECIFIED` - kept as text, so a new status never fails a response.
+ */
+case class UrlMetadata(
+  retrievedUrl: String = "",
+  urlRetrievalStatus: String = ""
+) {
+  def succeeded: Boolean = urlRetrievalStatus == "URL_RETRIEVAL_STATUS_SUCCESS"
+}
 
 sealed trait FinishReason extends EnumValue
 

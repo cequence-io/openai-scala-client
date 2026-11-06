@@ -735,4 +735,66 @@ class ModelConversionsRoutingSpec extends AnyWordSpec with Matchers {
       }
     }
   }
+
+  "Gemini (Google's OpenAI-compatible endpoint, live 2026-11-04)" should {
+
+    def sent(
+      model: String,
+      presence: Option[Double] = None,
+      frequency: Option[Double] = None,
+      n: Option[Int] = None
+    ): Map[String, JsValue] =
+      maker.body(
+        CreateChatCompletionSettings(
+          model,
+          presence_penalty = presence,
+          frequency_penalty = frequency,
+          n = n,
+          temperature = Some(0.3)
+        )
+      )
+
+    "drop both penalties on every Gemini - non-zero ones are 400s, frequency_penalty even 0" in {
+      Seq(
+        NonOpenAIModelId.gemini_2_5_flash,
+        "gemini-3.8-flash",
+        "gemini-flash-latest",
+        "gemini-4-argon",
+        "google/gemini-3.8-flash"
+      ).foreach { model =>
+        Seq(Some(0.5), Some(0d)).foreach { value =>
+          val body = sent(model, presence = value, frequency = value)
+          body.get("presence_penalty") shouldBe None
+          body.get("frequency_penalty") shouldBe None
+          body.get("temperature").map(_.as[Double]) shouldBe Some(0.3)
+        }
+      }
+    }
+
+    "keep several candidates on Gemini 2.x only" in {
+      sent(NonOpenAIModelId.gemini_2_5_flash, n = Some(2)).get("n").map(_.as[Int]) shouldBe
+        Some(2)
+      Seq("gemini-3.8-flash", "gemini-3.1-flash-lite", "gemini-flash-latest", "gemini-4-argon")
+        .foreach(model => sent(model, n = Some(2)).get("n") shouldBe None)
+      sent("gemini-3.8-flash", n = Some(1)).get("n").map(_.as[Int]) shouldBe Some(1)
+    }
+
+    "leave Gemma alone - other hosts serve it with penalties and n" in {
+      val body =
+        sent("gemma-4-31b-it", presence = Some(0.5), frequency = Some(0.5), n = Some(2))
+      body.get("presence_penalty").map(_.as[Double]) shouldBe Some(0.5)
+      body.get("frequency_penalty").map(_.as[Double]) shouldBe Some(0.5)
+      body.get("n").map(_.as[Int]) shouldBe Some(2)
+      isGemini("gemma-4-31b-it") shouldBe false
+      isGemini("models/gemini-2.5-flash") shouldBe true
+      // an id of slashes alone is no Gemini (the old split('/').last threw on it)
+      isGemini("/") shouldBe false
+      isMuseSparkOpen("//") shouldBe false
+      maker
+        .body(CreateChatCompletionSettings("/", n = Some(2)))
+        .get("n")
+        .map(_.as[Int]) shouldBe
+        Some(2)
+    }
+  }
 }

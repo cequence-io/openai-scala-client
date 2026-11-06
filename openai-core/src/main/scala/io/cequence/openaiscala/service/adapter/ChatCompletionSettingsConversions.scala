@@ -986,7 +986,7 @@ object ChatCompletionSettingsConversions {
   // Fireworks and the template refuse verbosity, so it is dropped there; n > 1 is a 400 on
   // Fireworks only - left to the API
   def isMuseSparkOpen(model: String): Boolean =
-    model.split('/').last.toLowerCase.startsWith("muse-spark-open")
+    lastSegment(model).toLowerCase.startsWith("muse-spark-open")
 
   private val museSparkOpenFireworks: SettingsConversion = generic(
     Seq(
@@ -1084,6 +1084,77 @@ object ChatCompletionSettingsConversions {
         )
       )
     ) ++ miniMaxIgnoredFields
+  )
+
+  // Gemini on Google's API, live 2026-11-04 on 11 models (2.5 Flash / Flash-Lite / Pro, 3.1
+  // Flash-Lite, 3.1 Pro preview, 3.5 / 3.8 Flash, gemini-flash-latest / -flash-lite-latest, 4
+  // Argon, Gemma 4 31B), natively and through its OpenAI-compatible endpoint alike: a non-zero
+  // presence / frequency penalty is a 400 on every one ("Penalty is not enabled for this
+  // model"), and the OpenAI endpoint does not know `frequency_penalty` at all (a 400 "Unknown name
+  // \"frequency_penalty\"" even for 0) - so both are dropped, with a warning unless 0. More than
+  // one candidate (`n` / `candidateCount` > 1) works on Gemini 2.x only; every newer model, the
+  // `-latest` aliases and Gemma 4 answer a 400 "Multiple candidates is not enabled for this
+  // model" - dropped there with a warning (the reply has one choice)
+
+  /**
+   * Whether the chat completions body gets the [[gemini]] rules: an id whose last `/` segment
+   * starts with `gemini-` (Google serves every Gemini, whichever host routes it). A Gemma id
+   * is left alone - other hosts serve Gemma with penalties and `n`.
+   */
+  def isGemini(model: String): Boolean = lastSegment(model).startsWith("gemini-")
+
+  // the id after its last `/` ("" for an id ending in one - `split('/').last` threw on "/")
+  private def lastSegment(model: String) = model.substring(model.lastIndexOf('/') + 1)
+
+  private def geminiTakesSeveralCandidates(model: String) =
+    lastSegment(model).startsWith("gemini-2.")
+
+  private def geminiPenaltyDropped(
+    name: String,
+    value: CreateChatCompletionSettings => Option[Double],
+    drop: CreateChatCompletionSettings => CreateChatCompletionSettings
+  ) = Seq(
+    FieldConversionDef(
+      value(_).exists(_ != 0),
+      drop,
+      Some(settings =>
+        s"${settings.model} model doesn't support $name (Gemini answers a 400), dropping it."
+      ),
+      warning = true
+    ),
+    // 0 is a no-op, yet the OpenAI endpoint refuses even that for frequency_penalty
+    FieldConversionDef(value(_).contains(0), drop, None)
+  )
+
+  private val severalCandidatesUnsupported = FieldConversionDef(
+    _.n.exists(_ > 1),
+    _.copy(n = None),
+    Some { settings =>
+      val n = settings.n.getOrElse(1)
+      s"${settings.model} model returns one candidate only (n > 1 is a 400), dropping n = $n."
+    },
+    warning = true
+  )
+
+  /**
+   * The settings Gemini refuses, for any model on Google's API (the Gemini adapter applies it
+   * to every model, Gemma included; the chat completions body to [[isGemini]] ids).
+   */
+  def gemini(model: String): SettingsConversion = generic(
+    geminiPenaltyDropped(
+      "presence_penalty",
+      _.presence_penalty,
+      _.copy(presence_penalty = None)
+    ) ++ geminiPenaltyDropped(
+      "frequency_penalty",
+      _.frequency_penalty,
+      _.copy(frequency_penalty = None)
+    ) ++ (
+      if (geminiTakesSeveralCandidates(model))
+        Nil
+      else
+        Seq(severalCandidatesUnsupported)
+    )
   )
 
   private def groqConversions(

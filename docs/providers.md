@@ -173,7 +173,21 @@ Then you can obtain a service in one of the following ways.
    through the adapter and its typed stream (`examples/googlegemini/Gemini4ArgonSmokeTest` - 19 sections, all passed;
    `GeminiThinkingAudit gemini-4-argon` - every effort). The listing says 32,768 output tokens, but a larger `max_tokens`
    is accepted (OpenRouter serves ~944k through AI Studio). Like every Gemini model, Argon refuses presence / frequency
-   penalties, and like Gemini 3 it returns one candidate (`n` > 1 is a 400).
+   penalties, and like Gemini 3 it returns one candidate (`n` > 1 is a 400) - the adapter (and the chat completions
+   body for a `gemini-*` id, e.g. on Google's OpenAI-compatible endpoint) drops both with a warning; `n` > 1 is kept on
+   Gemini 2.x, which answers several candidates.
+
+   🔥 **URL context** (`Tool.UrlContext`): Gemini fetches the URLs named in the prompt (up to 20) and answers from them.
+```scala
+  service.createChatCompletion(
+    Seq(UserMessage("What does https://www.rfc-editor.org/rfc/rfc2606 reserve?")),
+    CreateChatCompletionSettings("gemini-3.8-flash").setGeminiTools(Seq(Tool.UrlContext))
+  )
+```
+   Each URL's retrieval status comes in the candidate's `urlContextMetadata` - in the sync reply's `originalResponse`
+   (the native `GenerateContentResponse`), on the typed stream as `ChatChunk.Other("urlContextMetadata", ...)`; the
+   pages used arrive as citations, the fetched content is billed as prompt tokens. Live on 2.5 Flash, 3.8 Flash and 4
+   Argon (`examples/googlegemini/GeminiUrlContextSmokeTest`).
 
    Gemini 3+ (and Argon) refuse a tool loop's function call sent back without the **thought signature** it came with
    (400 "Function call is missing a thought_signature in functionCall parts"), which an OpenAI-shaped assistant message

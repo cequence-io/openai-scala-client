@@ -234,6 +234,16 @@ compatible with 1.6.0 (the factory methods' signatures changed).
     1,858 vs 248, Mistral Medium 14,749 vs 211. A failover between OpenAI and Bedrock is answered in both directions.
     The Vertex AI section got a 403 `PERMISSION_DENIED` for the test credentials; Vertex AI is verified through the
     SDK with a stubbed transport only.
+- **Gemini's URL context tool** (`gemini.domain.Tool.UrlContext`, sent as `{"urlContext": {}}`): Gemini fetches the
+  URLs named in the prompt (up to 20) and answers from them; combinable with `Tool.GoogleSearch`. Natively
+  (`GenerateContentSettings.tools`) and through the adapter (`settings.setGeminiTools(Seq(Tool.UrlContext))`). Each
+  URL's retrieval status comes back in the new `Candidate.urlContextMetadata` (`UrlContextMetadata` / `UrlMetadata` -
+  `retrievedUrl`, `urlRetrievalStatus` as text, `succeeded`), on the adapter's sync reply in `originalResponse` and on
+  its typed stream as `ChatChunk.Other("urlContextMetadata", ...)`; the pages used arrive as citations (the grounding
+  metadata), the fetched content is billed as tool-use prompt tokens (in the adapter's `prompt_tokens`). Live
+  2026-11-04 on 2.5 Flash, 3.8 Flash and 4 Argon (`examples/googlegemini/GeminiUrlContextSmokeTest`, 15 of 15 with the
+  item under "Fixed"): a fetch that failed reported `URL_RETRIEVAL_STATUS_ERROR`, and 3.x / Argon may fetch another
+  URL than the one asked for (`.../rfc/rfc2606` came back as `.../info/rfc2606/`).
 
 ### New models
 
@@ -279,6 +289,18 @@ compatible with 1.6.0 (the factory methods' signatures changed).
 
 ### Fixed
 
+- Gemini refuses two OpenAI settings the library passed through, so such a call failed with a 400. Live 2026-11-04 on
+  11 models (2.5 Flash / Flash-Lite / Pro, 3.1 Flash-Lite, 3.1 Pro preview, 3.5 / 3.8 Flash, the `-latest` aliases,
+  4 Argon, Gemma 4), natively and through Google's OpenAI-compatible endpoint:
+  - a non-zero `presence_penalty` / `frequency_penalty` is a 400 on every model ("Penalty is not enabled for this
+    model"), and the OpenAI endpoint does not know `frequency_penalty` at all (a 400 even for 0) - both are dropped
+    now, with a warning unless 0;
+  - `n` > 1 (`candidateCount`) works on Gemini 2.x only and is a 400 on every newer model ("Multiple candidates is not
+    enabled for this model") - dropped there with a warning, so the reply has one choice.
+
+  One rule, `ChatCompletionSettingsConversions.gemini(model)`: the Gemini adapter applies it to every model (Gemma
+  too - it is Google's API), the chat completions body to `gemini-*` ids (`isGemini`, any host - Google serves every
+  Gemini; a Gemma id is left alone, other hosts take penalties for it).
 - Gemini: a function call's arguments (and a function response) lost their nulls - read with ws-client's
   `StringAnyMapFormat`, which turns a JSON null into "" at any depth - so an argument the model answered null came
   back as `Some("")` or failed to read (`error.expected.jsnumber`). Live 2026-11-03 Gemini 3.8 Flash answered a derived

@@ -56,7 +56,8 @@ import io.cequence.openaiscala.gemini.JsonFormats.{
   batchRpcErrorReads,
   candidateFormat,
   generateContentResponseFormat,
-  partFormat
+  partFormat,
+  urlContextMetadataFormat
 }
 import io.cequence.openaiscala.domain.response.ChatChunk
 import akka.stream.scaladsl.Flow
@@ -77,6 +78,7 @@ import io.cequence.openaiscala.gemini.service.{
   GeminiScalaMcpCallNotExecutedException,
   GeminiService
 }
+import io.cequence.openaiscala.service.adapter.ChatCompletionSettingsConversions
 import io.cequence.openaiscala.service.{
   HasOpenAIConfig,
   OpenAIChatCompletionBatchService,
@@ -347,6 +349,12 @@ private[impl] object OpenAIGeminiChatCompletionService {
                     raw = Json.obj("uri" -> chunk.web.uri, "title" -> chunk.web.title)
                   )
                 }
+              }
+
+              // the URL context tool's fetches with their statuses (the pages it used are in
+              // the grounding above, so this adds what failed - kept raw)
+              candidate.urlContextMetadata.foreach { metadata =>
+                out += ChatChunk.Other("urlContextMetadata", Json.toJson(metadata))
               }
 
               candidate.finishReason.foreach { finishReason =>
@@ -1112,9 +1120,11 @@ private[service] class OpenAIGeminiChatCompletionService(
     }
 
   private def toGeminiSettings(
-    settings: CreateChatCompletionSettings,
+    settingsAux: CreateChatCompletionSettings,
     systemMessage: Option[BaseMessage]
   ): GenerateContentSettings = {
+    // penalties and several candidates are 400s (the latter but on Gemini 2.x) - dropped
+    val settings = ChatCompletionSettingsConversions.gemini(settingsAux.model)(settingsAux)
 
     // handle json schema
     val responseFormat =

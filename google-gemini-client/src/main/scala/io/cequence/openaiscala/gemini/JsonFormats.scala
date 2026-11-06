@@ -214,6 +214,7 @@ trait JsonFormats {
       case p: Tool.GoogleSearchRetrieval => toJsonWithPrefix(Json.toJson(p))
       case Tool.CodeExecution            => toJsonWithPrefix(Json.obj()) // empty object
       case Tool.GoogleSearch             => toJsonWithPrefix(Json.obj()) // empty object
+      case Tool.UrlContext               => toJsonWithPrefix(Json.obj()) // empty object
       case p: Tool.McpServers            => Json.toJson(p) // no prefix (field name matches)
     }
   }
@@ -228,6 +229,7 @@ trait JsonFormats {
         case ToolPrefix.googleSearchRetrieval => prefixJson.as[Tool.GoogleSearchRetrieval]
         case ToolPrefix.codeExecution         => Tool.CodeExecution // no fields
         case ToolPrefix.googleSearch          => Tool.GoogleSearch // no fields
+        case ToolPrefix.urlContext            => Tool.UrlContext // no fields
         case ToolPrefix.mcpServers            => json.as[Tool.McpServers]
         case _ => throw new OpenAIScalaClientException(s"Unknown tool type: $prefixFieldName")
       }
@@ -338,6 +340,10 @@ trait JsonFormats {
   implicit val groundingChunkFormat: Format[GroundingChunk] = Json.format[GroundingChunk]
   implicit val groundingMetadataFormat: Format[GroundingMetadata] =
     Json.using[Json.WithDefaultValues].format[GroundingMetadata]
+  implicit val urlMetadataFormat: Format[UrlMetadata] =
+    Json.using[Json.WithDefaultValues].format[UrlMetadata]
+  implicit val urlContextMetadataFormat: Format[UrlContextMetadata] =
+    Json.using[Json.WithDefaultValues].format[UrlContextMetadata]
 
   private implicit val semanticRetrieverChunkFormat
     : Format[AttributionSourceId.SemanticRetrieverChunk] =
@@ -416,7 +422,8 @@ trait JsonFormats {
       (__ \ "groundingMetadata").writeNullable[GroundingMetadata] and
       (__ \ "avgLogprobs").writeNullable[Double] and
       (__ \ "logprobsResult").lazyWriteNullable[LogprobsResult](logprobsResultWrites) and
-      (__ \ "index").formatNullable[Int]
+      (__ \ "index").formatNullable[Int] and
+      (__ \ "urlContextMetadata").writeNullable[UrlContextMetadata]
   )(
     // somehow unlift(Candidate.unapply) is not working in Scala3
     (x: Candidate) =>
@@ -430,7 +437,8 @@ trait JsonFormats {
         x.groundingMetadata,
         x.avgLogprobs,
         x.logprobsResult,
-        x.index
+        x.index,
+        x.urlContextMetadata
       )
   )
 
@@ -444,7 +452,8 @@ trait JsonFormats {
       (__ \ "groundingMetadata").readNullable[GroundingMetadata] and
       (__ \ "avgLogprobs").readNullable[Double] and
       (__ \ "logprobsResult").lazyReadNullable[LogprobsResult](logprobsResultReads) and
-      (__ \ "index").readNullable[Int]
+      (__ \ "index").readNullable[Int] and
+      (__ \ "urlContextMetadata").readNullable[UrlContextMetadata]
   )(Candidate.apply _)
 
   implicit lazy val candidateFormat: Format[Candidate] =
