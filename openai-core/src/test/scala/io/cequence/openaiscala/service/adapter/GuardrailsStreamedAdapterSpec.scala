@@ -1,9 +1,6 @@
 package io.cequence.openaiscala.service.adapter
 
-import akka.NotUsed
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.OpenAIScalaGuardrailException
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.guardrails._
@@ -33,14 +30,11 @@ class GuardrailsStreamedAdapterSpec
     with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("guardrails-streamed-spec")
-  private implicit val materializer: Materializer = Materializer(system)
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(10, Seconds), interval = Span(20, Millis))
 
   override def afterAll(): Unit = {
-    system.terminate()
     ()
   }
 
@@ -86,16 +80,14 @@ class GuardrailsStreamedAdapterSpec
       tools: Seq[ChatCompletionTool],
       responseToolChoice: Option[String],
       settings: CreateChatCompletionSettings
-    ): Source[ChatChunk, NotUsed] =
-      Source.lazySource(() => Source(next(messages).toList)).mapMaterializedValue(_ => NotUsed)
+    ): AsyncStream[ChatChunk] =
+      AsyncStream.defer(AsyncStream.fromIterable(next(messages).toList))
 
     override def createChatCompletionStreamed(
       messages: Seq[BaseMessage],
       settings: CreateChatCompletionSettings
-    ): Source[ChatCompletionChunkResponse, NotUsed] =
-      Source
-        .lazySource(() => Source(next(messages).flatMap(openAIChunk).toList))
-        .mapMaterializedValue(_ => NotUsed)
+    ): AsyncStream[ChatCompletionChunkResponse] =
+      AsyncStream.defer(AsyncStream.fromIterable(next(messages).flatMap(openAIChunk).toList))
 
     override def close(): Unit = ()
   }
@@ -158,15 +150,15 @@ class GuardrailsStreamedAdapterSpec
       verdict(GuardrailStage.Output, reply)
   }
 
-  private def run[T](source: Source[T, NotUsed]): Seq[T] =
-    source.runWith(Sink.seq).futureValue
+  private def run[T](source: AsyncStream[T]): Seq[T] =
+    source.runToSeq.futureValue
 
   // the elements before a failure, then the failure
-  private def runToFailure[T](source: Source[T, NotUsed]): (Seq[T], Throwable) = {
+  private def runToFailure[T](source: AsyncStream[T]): (Seq[T], Throwable) = {
     val all = source
       .map(Right(_): Either[Throwable, T])
       .recover { case e => Left(e) }
-      .runWith(Sink.seq)
+      .runToSeq
       .futureValue
     (all.collect { case Right(chunk) => chunk }, all.collectFirst { case Left(e) => e }.orNull)
   }
@@ -559,7 +551,8 @@ class GuardrailsStreamedAdapterSpec
           override def createChatCompletionStreamed(
             messages: Seq[BaseMessage],
             settings: CreateChatCompletionSettings
-          ): Source[ChatCompletionChunkResponse, NotUsed] = Source(reasoning.toList)
+          ): AsyncStream[ChatCompletionChunkResponse] =
+            AsyncStream.fromIterable(reasoning.toList)
 
           override def close(): Unit = ()
         }
@@ -609,7 +602,8 @@ class GuardrailsStreamedAdapterSpec
           override def createChatCompletionStreamed(
             messages: Seq[BaseMessage],
             settings: CreateChatCompletionSettings
-          ): Source[ChatCompletionChunkResponse, NotUsed] = Source(twoChoices.toList)
+          ): AsyncStream[ChatCompletionChunkResponse] =
+            AsyncStream.fromIterable(twoChoices.toList)
 
           override def close(): Unit = ()
         }

@@ -5,7 +5,5 @@ name := "openai-scala-client-stream"
 description := "Stream support for the OpenAI Scala client."
 
 libraryDependencies ++= Seq(
-  "io.cequence" %% "ws-client-core" % wsClient,
-  "io.cequence" %% "ws-client-play-akka" % wsClient,
-  "io.cequence" %% "ws-client-play-akka-stream" % wsClient
+  "io.cequence" %% "ws-client-core" % wsClient
 )

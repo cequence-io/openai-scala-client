@@ -1,9 +1,8 @@
 package io.cequence.openaiscala.service
 
-import akka.NotUsed
-import akka.stream.scaladsl.{Flow, Source}
-import akka.util.ByteString
 import io.cequence.openaiscala.OpenAIScalaClientException
+import io.cequence.wsclient.stream.AsyncStream.Step
+import io.cequence.wsclient.stream.{AsyncPipe, Bytes}
 import play.api.libs.json.{JsValue, Json}
 
 import java.nio.charset.StandardCharsets
@@ -19,15 +18,18 @@ import scala.collection.mutable.ListBuffer
  * parses each payload as JSON. A pending event larger than `maxEventBytes` fails the stream
  * instead of buffering without bound.
  *
- * Linear in the input, whatever the chunking: the pending event is a rope of the chunks that
- * is never walked per chunk - only the last 3 bytes plus the new chunk are searched for the
- * next boundary - and each incoming chunk is compacted ONCE and walked with a moving offset,
- * one pass, every boundary search resuming where the previous boundary ended and every event a
- * slice of that one copy. So a chunk holding thousands of tiny events (or a flood of blank
- * lines) costs O(chunk size) time and memory, not O(events x chunk size). An event is read on
- * its bytes (one compaction, the `data:` lines sliced from it, the payload parsed from its
- * bytes) rather than through String copies. Built for large events too (a frame may be up to
- * [[StreamingConsts.maxFrameLength]], 32 MiB by default).
+ * Linear in the input, whatever the chunking: each run keeps ONE growable buffer (grown
+ * geometrically, its framed prefix compacted away only when it would otherwise grow), every
+ * byte is copied into it once and scanned once - the search for the next boundary resumes
+ * where the previous one stopped, minus the 3 bytes a boundary (the longest, `\r\n\r\n`, is 4
+ * bytes) may straddle. A chunk holding thousands of tiny events (or a flood of blank lines)
+ * costs O(chunk size), and a multi-MB event arriving in small chunks O(event size) - a
+ * whole-buffer search per chunk made a 1 MiB event in 8 KiB chunks take 21 s (measured
+ * 2026-10-08), a tail search on a rope of the chunks 11 s for 64 MiB in 1460-byte chunks
+ * (2026-10-09). An event is read on its bytes in the buffer (its `data:` lines located there,
+ * the payload copied once and parsed from its bytes) rather than through String copies. Built
+ * for large events too (a frame may be up to [[StreamingConsts.maxFrameLength]], 32 MiB by
+ * default).
  */
 object ServerSentEvents {
 
@@ -44,86 +46,125 @@ object ServerSentEvents {
   def jsonPayloads(
     maxEventBytes: Int = DefaultMaxEventBytes,
     error: String => Throwable = new OpenAIScalaClientException(_)
-  ): Flow[ByteString, JsValue, NotUsed] =
-    Flow[ByteString]
-      .concat(Source.single(ByteString("\n\n"))) // flush a trailing event
-      .statefulMapConcat { () =>
-        // the pending event: the chunks so far as a rope, searched as they arrived, so it holds
-        // no boundary - and a copy of its last (at most) 3 bytes, where alone a chunk can
-        // complete a boundary (the longest, `\r\n\r\n`, is 4 bytes). Only `carry ++ chunk` is
-        // searched: an `indexOfSlice` or `drop` on the rope walks its fragments, which made a
-        // multi-MB event cubic in its chunks with a whole-buffer search (1 MiB in 8 KiB chunks:
-        // 21 s) and still quadratic with a tail search that dropped into the rope (64 MiB in
-        // 1460-byte chunks: 11 s, against 0.9 s this way - measured 2026-10-09)
-        var buffer = ByteString.empty
-        var carry = ByteString.empty
+  ): AsyncPipe[Bytes, JsValue] =
+    AsyncPipe
+      .of[Bytes]
+      .stateful(() => new EventSplitter(maxEventBytes, error))(
+        (
+          splitter,
+          chunk
+        ) => Step(splitter, splitter.push(chunk)),
+        splitter => splitter.finish()
+      )
 
-        (chunk: ByteString) => {
-          val events = ListBuffer.empty[ByteString]
-          // one copy per chunk (with the carry in front), walked once from left to right
-          val window = (carry ++ chunk).compact
-          var from = 0
-          var next = nextBoundary(window, 0)
+  // the per-run state: the pending bytes in one growable buffer
+  private final class EventSplitter(
+    maxEventBytes: Int,
+    error: String => Throwable
+  ) {
+    private var buffer = new Array[Byte](InitialCapacity)
+    private var start = 0 // the first byte of the pending event
+    private var end = 0 // the end of the buffered bytes
+    private var scanFrom = 0 // no boundary starts before this index
 
-          while (next.isDefined) {
-            val (index, length) = next.get
+    def push(chunk: Bytes): List[JsValue] = {
+      append(chunk)
 
-            // the first boundary closes the pending event (it starts in the chunk, or straddles
-            // the chunk edge, i.e. in the carry); later ones close events lying wholly in this
-            // chunk - slices of the one copy
-            events +=
-              (if (from > 0)
-                 window.slice(from, index)
-               else if (index >= carry.length)
-                 buffer ++ window.slice(carry.length, index)
-               else
-                 buffer.dropRight(carry.length - index))
+      val payloads = ListBuffer.empty[JsValue]
+      var next = nextBoundary(buffer, math.max(start, scanFrom), end)
 
-            if (from == 0)
-              buffer = ByteString.empty
-
-            from = index + length
-            next = nextBoundary(window, from)
-          }
-
-          // what follows the last boundary is the new pending event
-          buffer =
-            if (from == 0)
-              buffer ++ window.drop(carry.length)
-            else
-              window.drop(from)
-          carry = window.drop(from).takeRight(3)
-
-          if (buffer.length > maxEventBytes)
-            throw error(StreamingConsts.frameTooLongMessage(maxEventBytes.toLong))
-
-          events.toList.flatMap(dataOf(_, error))
-        }
+      while (next >= 0) {
+        val index = next & 0xffffffffL
+        val boundary = (next >>> 32).toInt
+        dataOf(buffer, start, index.toInt, error).foreach(payloads += _)
+        start = index.toInt + boundary
+        next = nextBoundary(buffer, start, end)
       }
+
+      // a boundary may straddle the chunk edge: its first (at most) 3 bytes are already here
+      scanFrom = math.max(start, end - 3)
+
+      if (end - start > maxEventBytes)
+        throw error(StreamingConsts.frameTooLongMessage(maxEventBytes.toLong))
+
+      if (start == end)
+        reset()
+
+      payloads.toList
+    }
+
+    // the trailing event without a blank line after it
+    def finish(): List[JsValue] =
+      if (start == end)
+        Nil
+      else
+        dataOf(buffer, start, end, error).toList
+
+    // appends the chunk - compacting the framed prefix away first, if that makes room, and
+    // growing geometrically otherwise
+    private def append(chunk: Bytes): Unit = {
+      val length = chunk.length
+      if (length > 0) {
+        val pending = end - start
+
+        if (start > 0 && end + length > buffer.length) {
+          System.arraycopy(buffer, start, buffer, 0, pending)
+          scanFrom -= start
+          start = 0
+          end = pending
+        }
+
+        if (end + length > buffer.length) {
+          val needed = end.toLong + length
+          if (needed > Int.MaxValue - 8)
+            throw error(StreamingConsts.frameTooLongMessage(maxEventBytes.toLong))
+          val grown = math.max(needed, math.min(buffer.length.toLong * 2, Int.MaxValue - 8L))
+          buffer = java.util.Arrays.copyOf(buffer, grown.toInt)
+        }
+
+        chunk.asByteBuffer.get(buffer, end, length)
+        end += length
+      }
+    }
+
+    // nothing pending: start over at the front, and let a buffer a large event grew go
+    private def reset(): Unit = {
+      start = 0
+      end = 0
+      scanFrom = 0
+      if (buffer.length > RetainedCapacity)
+        buffer = new Array[Byte](InitialCapacity)
+    }
+  }
+
+  private val InitialCapacity = 4096
+  private val RetainedCapacity = 1024 * 1024
 
   private val NL = '\n'.toByte
   private val CR = '\r'.toByte
+  private val Colon = ':'.toByte
 
-  // the earliest blank-line boundary (`\n\n`, `\r\n\r\n` or `\r\r`) at or after `from`: (index,
-  // boundary length) - one linear pass, resumed by the caller where the previous boundary ended
+  // the earliest blank-line boundary (`\n\n`, `\r\n\r\n` or `\r\r`) at or after `from`, below
+  // `until`: its index in the low 32 bits and its length in the high ones, or -1 - one linear
+  // pass, resumed by the caller where the previous boundary ended
   private def nextBoundary(
-    window: ByteString,
-    from: Int
-  ): Option[(Int, Int)] = {
-    val n = window.length
+    bytes: Array[Byte],
+    from: Int,
+    until: Int
+  ): Long = {
     var i = from
-    var found: Option[(Int, Int)] = None
+    var found = -1L
 
-    while (found.isEmpty && i < n) {
-      val b = window(i)
+    while (found < 0 && i < until) {
+      val b = bytes(i)
 
-      if (b == NL && i + 1 < n && window(i + 1) == NL)
-        found = Some((i, 2))
+      if (b == NL && i + 1 < until && bytes(i + 1) == NL)
+        found = (2L << 32) | i
       else if (b == CR) {
-        if (i + 3 < n && window(i + 1) == NL && window(i + 2) == CR && window(i + 3) == NL)
-          found = Some((i, 4))
-        else if (i + 1 < n && window(i + 1) == CR)
-          found = Some((i, 2))
+        if (i + 3 < until && bytes(i + 1) == NL && bytes(i + 2) == CR && bytes(i + 3) == NL)
+          found = (4L << 32) | i
+        else if (i + 1 < until && bytes(i + 1) == CR)
+          found = (2L << 32) | i
       }
 
       i += 1
@@ -132,85 +173,133 @@ object ServerSentEvents {
     found
   }
 
-  private val Data = ByteString("data:")
-  private val Space = ByteString(" ")
-  private val Newline = ByteString("\n")
-  private val Done = ByteString("[DONE]")
+  private val Data = ascii("data:")
+  private val Done = ascii("[DONE]")
   private val fieldNames = Seq("data", "event", "id", "retry")
-  private val bareFields = fieldNames.map(ByteString(_))
-  private val fieldPrefixes = fieldNames.map(name => ByteString(name + ":"))
+  private val bareFields = fieldNames.map(ascii)
+  private val fieldPrefixes = fieldNames.map(name => ascii(name + ":"))
 
-  // the joined `data:` payload of one event, parsed, if any (and not the [DONE] terminator); a
-  // block that is not SSE at all - a JSON error body answering the request, an HTML gateway
-  // page - is returned whole (JSON) or fails the stream, so an error is never silently dropped
+  private def ascii(s: String): Array[Byte] = s.getBytes(StandardCharsets.US_ASCII)
+
+  // the joined `data:` payload of the event in bytes(from, until), parsed, if any (and not the
+  // [DONE] terminator); a block that is not SSE at all - a JSON error body answering the
+  // request, an HTML gateway page - is returned whole (JSON) or fails the stream, so an error
+  // is never silently dropped
   private def dataOf(
-    event: ByteString,
+    bytes: Array[Byte],
+    from: Int,
+    until: Int,
     error: String => Throwable
   ): Option[JsValue] = {
-    val bytes = event.compact
-    val lines = linesOf(bytes).filter(_.nonEmpty)
-    val nonSse = lines.filterNot(line => line.head == ':'.toByte || isField(line))
+    val lines = linesOf(bytes, from, until).filter { case (s, e) => e > s }
+    val nonSse = lines.exists { case (s, e) =>
+      bytes(s) != Colon && !isField(bytes, s, e)
+    }
 
-    if (nonSse.nonEmpty) {
-      val text = bytes.decodeString(StandardCharsets.UTF_8).trim
+    if (nonSse) {
+      val text = new String(bytes, from, until - from, StandardCharsets.UTF_8).trim
       if (text.startsWith("{") || text.startsWith("["))
         Some(Json.parse(text))
       else
         throw error(s"Expected a server-sent event stream but got: ${text.take(500)}")
     } else {
       val data = lines.collect {
-        case line if line.startsWith(Data) =>
-          val value = line.drop(Data.length)
-          if (value.startsWith(Space)) value.drop(1) else value
+        case (s, e) if startsWith(bytes, s, e, Data) =>
+          val valueStart = s + Data.length
+          if (valueStart < e && bytes(valueStart) == ' '.toByte)
+            (valueStart + 1, e)
+          else
+            (valueStart, e)
       }
-      val payload = trimmed(joined(data))
+      val payload = trimmed(joined(bytes, data))
 
-      if (payload.isEmpty || payload == Done) None
-      else Some(Json.parse(payload.toArray))
+      if (payload.isEmpty || java.util.Arrays.equals(payload, Done))
+        None
+      else
+        Some(Json.parse(payload))
     }
   }
 
-  // the event's lines, split on `\r\n`, `\n` or `\r` (slices, no copies)
-  private def linesOf(bytes: ByteString): List[ByteString] = {
-    val lines = ListBuffer.empty[ByteString]
-    val n = bytes.length
-    var start = 0
-    var i = 0
-    while (i < n) {
+  // the lines of bytes(from, until), split on `\r\n`, `\n` or `\r`, as (start, end) ranges
+  private def linesOf(
+    bytes: Array[Byte],
+    from: Int,
+    until: Int
+  ): List[(Int, Int)] = {
+    val lines = ListBuffer.empty[(Int, Int)]
+    var start = from
+    var i = from
+    while (i < until) {
       val b = bytes(i)
-      if (b == '\n'.toByte || b == '\r'.toByte) {
-        lines += bytes.slice(start, i)
-        if (b == '\r'.toByte && i + 1 < n && bytes(i + 1) == '\n'.toByte) i += 1
+      if (b == NL || b == CR) {
+        lines += ((start, i))
+        if (b == CR && i + 1 < until && bytes(i + 1) == NL)
+          i += 1
         i += 1
         start = i
-      } else i += 1
+      } else
+        i += 1
     }
-    if (start < n) lines += bytes.slice(start, n)
+    if (start < until)
+      lines += ((start, until))
     lines.toList
   }
 
-  private def isField(line: ByteString): Boolean =
-    bareFields.exists(_ == line) || fieldPrefixes.exists(line.startsWith(_))
+  private def startsWith(
+    bytes: Array[Byte],
+    from: Int,
+    until: Int,
+    prefix: Array[Byte]
+  ): Boolean =
+    until - from >= prefix.length && {
+      var j = 0
+      while (j < prefix.length && bytes(from + j) == prefix(j)) j += 1
+      j == prefix.length
+    }
 
-  // the data lines joined with a newline (a rope of the slices; one copy at parse time)
-  private def joined(data: List[ByteString]): ByteString =
+  private def isField(
+    bytes: Array[Byte],
+    from: Int,
+    until: Int
+  ): Boolean =
+    bareFields.exists(field =>
+      until - from == field.length && startsWith(bytes, from, until, field)
+    ) ||
+      fieldPrefixes.exists(startsWith(bytes, from, until, _))
+
+  // the data lines joined with a newline - one copy
+  private def joined(
+    bytes: Array[Byte],
+    data: List[(Int, Int)]
+  ): Array[Byte] =
     data match {
-      case Nil => ByteString.empty
-      case head :: tail =>
-        tail.foldLeft(head)(
-          (
-            acc,
-            line
-          ) => acc ++ Newline ++ line
-        )
+      case Nil =>
+        Array.emptyByteArray
+
+      case _ =>
+        val size = data.map { case (s, e) => e - s }.sum + data.size - 1
+        val out = new Array[Byte](size)
+        var at = 0
+        data.zipWithIndex.foreach { case ((s, e), index) =>
+          if (index > 0) {
+            out(at) = NL
+            at += 1
+          }
+          System.arraycopy(bytes, s, out, at, e - s)
+          at += e - s
+        }
+        out
     }
 
   // ASCII whitespace (and control characters, as String.trim) cut from both ends
-  private def trimmed(bytes: ByteString): ByteString = {
+  private def trimmed(bytes: Array[Byte]): Array[Byte] = {
     var start = 0
     var end = bytes.length
     while (start < end && (bytes(start) & 0xff) <= ' ') start += 1
     while (end > start && (bytes(end - 1) & 0xff) <= ' ') end -= 1
-    bytes.slice(start, end)
+    if (start == 0 && end == bytes.length)
+      bytes
+    else
+      java.util.Arrays.copyOfRange(bytes, start, end)
   }
 }

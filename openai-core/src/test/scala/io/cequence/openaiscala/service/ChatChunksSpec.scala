@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.service
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.JsonFormats.chatChunkFormat
 import io.cequence.openaiscala.domain.response.ChatChunk._
 import io.cequence.openaiscala.domain.response._
@@ -28,14 +26,11 @@ class ChatChunksSpec
     with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("chat-chunks-spec")
-  private implicit val materializer: Materializer = Materializer(system)
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
 
   override def afterAll(): Unit = {
-    system.terminate()
     ()
   }
 
@@ -86,7 +81,11 @@ class ChatChunksSpec
     UsageInfo(prompt_tokens = 12, total_tokens = 20, completion_tokens = Some(8))
 
   private def run(chunks: ChatCompletionChunkResponse*): Seq[ChatChunk] =
-    Source(chunks.toList).via(ChatChunks.fromOpenAIChunks).runWith(Sink.seq).futureValue
+    AsyncStream
+      .fromIterable(chunks.toList)
+      .via(ChatChunks.fromOpenAIChunks)
+      .runToSeq
+      .futureValue
 
   "ChatChunks.fromOpenAIChunks" should {
 
@@ -217,10 +216,11 @@ class ChatChunksSpec
         Usage(usage)
       )
 
-      val roundTripped = Source(typed.toList)
+      val roundTripped = AsyncStream
+        .fromIterable(typed.toList)
         .via(ChatChunks.toOpenAIChunks("id-1", "model-1"))
         .via(ChatChunks.fromOpenAIChunks)
-        .runWith(Sink.seq)
+        .runToSeq
         .futureValue
 
       roundTripped shouldBe Seq(
@@ -333,33 +333,37 @@ class ChatChunksSpec
     }
 
     "fold a typed stream, ignoring argument deltas and excluding server-side calls from the assistant message" in {
-      val assembled = Source(
-        List[ChatChunk](
-          Start("id", "model"),
-          Thinking("a"),
-          Thinking("b"),
-          Text("Hello"),
-          Text(" world"),
-          ThinkingSignature("s1"),
-          ToolCallStart(0, "c1", "f", serverSide = false),
-          ThinkingSignature("sig-c1", Some("c1")),
-          ToolCallDelta(0, "{\"x\":1}"),
-          ToolCall(0, "c1", "f", "{\"x\":1}", serverSide = false),
-          ToolCall(1, "srv", "web_search", "{}", serverSide = true),
-          ToolResult("srv", "web_search", Json.obj(), Some("r"), isError = false),
-          WebSearch("srv", Seq("q")),
-          WebSearchResult("srv", Nil, Json.obj()),
-          CodeExecution("ce", None, "x"),
-          CodeExecutionResult("ce", None, isError = true, Json.obj()),
-          Image(None, None, Some("u")),
-          Refusal("no"),
-          Refusal("pe"),
-          Citation(None, Some("u"), None, Json.obj()),
-          Other("ping", Json.obj()),
-          Finish(FinishReason.tool_calls, Some("tool_use")),
-          Usage(usage)
+      val assembled = AsyncStream
+        .fromIterable(
+          List[ChatChunk](
+            Start("id", "model"),
+            Thinking("a"),
+            Thinking("b"),
+            Text("Hello"),
+            Text(" world"),
+            ThinkingSignature("s1"),
+            ToolCallStart(0, "c1", "f", serverSide = false),
+            ThinkingSignature("sig-c1", Some("c1")),
+            ToolCallDelta(0, "{\"x\":1}"),
+            ToolCall(0, "c1", "f", "{\"x\":1}", serverSide = false),
+            ToolCall(1, "srv", "web_search", "{}", serverSide = true),
+            ToolResult("srv", "web_search", Json.obj(), Some("r"), isError = false),
+            WebSearch("srv", Seq("q")),
+            WebSearchResult("srv", Nil, Json.obj()),
+            CodeExecution("ce", None, "x"),
+            CodeExecutionResult("ce", None, isError = true, Json.obj()),
+            Image(None, None, Some("u")),
+            Refusal("no"),
+            Refusal("pe"),
+            Citation(None, Some("u"), None, Json.obj()),
+            Other("ping", Json.obj()),
+            Finish(FinishReason.tool_calls, Some("tool_use")),
+            Usage(usage)
+          )
         )
-      ).runWith(ChatChunk.assembleSink).futureValue
+        .via(ChatChunk.assembleSink)
+        .runHead
+        .futureValue
 
       assembled.id shouldBe Some("id")
       assembled.text shouldBe "Hello world"
@@ -390,9 +394,13 @@ class ChatChunksSpec
     }
 
     "expose the legacy text view through the source ops" in {
-      val texts = Source(
-        List[ChatChunk](Start("i", "m"), Text("a"), Thinking("x"), Text("b"))
-      ).texts.runWith(Sink.seq).futureValue
+      val texts = AsyncStream
+        .fromIterable(
+          List[ChatChunk](Start("i", "m"), Text("a"), Thinking("x"), Text("b"))
+        )
+        .texts
+        .runToSeq
+        .futureValue
 
       texts shouldBe Seq("a", "b")
     }
@@ -419,37 +427,52 @@ class ChatChunksSpec
         Finish(FinishReason.stop, None)
       )
 
-      def source = Source(chunks)
+      def source = AsyncStream.fromIterable(chunks)
 
-      source.thinkingTexts.runWith(Sink.seq).futureValue shouldBe Seq("t1", "t2")
-      source.toolCalls.runWith(Sink.seq).futureValue shouldBe Seq(toolCall)
-      source.toolResults.runWith(Sink.seq).futureValue shouldBe Seq(toolResult)
-      source.citations.runWith(Sink.seq).futureValue shouldBe Seq(citation)
-      source.codeExecutions.runWith(Sink.seq).futureValue shouldBe Seq(codeExecution)
-      source.webSearches.runWith(Sink.seq).futureValue shouldBe Seq(webSearch)
-      source.images.runWith(Sink.seq).futureValue shouldBe Seq(image)
+      source.thinkingTexts.runToSeq.futureValue shouldBe Seq("t1", "t2")
+      source.toolCalls.runToSeq.futureValue shouldBe Seq(toolCall)
+      source.toolResults.runToSeq.futureValue shouldBe Seq(toolResult)
+      source.citations.runToSeq.futureValue shouldBe Seq(citation)
+      source.codeExecutions.runToSeq.futureValue shouldBe Seq(codeExecution)
+      source.webSearches.runToSeq.futureValue shouldBe Seq(webSearch)
+      source.images.runToSeq.futureValue shouldBe Seq(image)
     }
 
-    "fold an empty stream and reuse the sink across materializations" in {
+    "fold an empty stream and reuse the pipe across runs" in {
       val sink = ChatChunk.assembleSink
 
-      Source.empty[ChatChunk].runWith(sink).futureValue shouldBe AssembledChatCompletion.empty
-      Source(List[ChatChunk](Text("a"))).runWith(sink).futureValue.text shouldBe "a"
-      Source(List[ChatChunk](Text("b"))).runWith(sink).futureValue.text shouldBe "b"
+      AsyncStream.empty[ChatChunk].via(sink).runHead.futureValue shouldBe
+        AssembledChatCompletion.empty
+      AsyncStream
+        .fromIterable(List[ChatChunk](Text("a")))
+        .via(sink)
+        .runHead
+        .futureValue
+        .text shouldBe "a"
+      AsyncStream
+        .fromIterable(List[ChatChunk](Text("b")))
+        .via(sink)
+        .runHead
+        .futureValue
+        .text shouldBe "b"
     }
   }
 
   "ChatChunks.toOpenAIChunks finish reasons" should {
 
     "normalize a provider-specific finish reason to the OpenAI vocabulary" in {
-      val chunks = Source(
-        List[ChatChunk](
-          Start("id", "m"),
-          Finish(FinishReason.stop, Some("completed")),
-          Finish(FinishReason.tool_calls, Some("tool_calls")),
-          Finish(FinishReason.length, Some("max_output_tokens"))
+      val chunks = AsyncStream
+        .fromIterable(
+          List[ChatChunk](
+            Start("id", "m"),
+            Finish(FinishReason.stop, Some("completed")),
+            Finish(FinishReason.tool_calls, Some("tool_calls")),
+            Finish(FinishReason.length, Some("max_output_tokens"))
+          )
         )
-      ).via(ChatChunks.toOpenAIChunks).runWith(Sink.seq).futureValue
+        .via(ChatChunks.toOpenAIChunks)
+        .runToSeq
+        .futureValue
 
       chunks.flatMap(_.choices.flatMap(_.finish_reason)) shouldBe
         Seq("stop", "tool_calls", "length")
@@ -474,7 +497,7 @@ class ChatChunksSpec
         else
           ChatChunks.toOpenAIChunks("id-1", "model-1")
 
-      Source(typed.toList).via(flow).runWith(Sink.seq).futureValue
+      AsyncStream.fromIterable(typed.toList).via(flow).runToSeq.futureValue
     }
 
     val serverSideOnly: Seq[ChatChunk] = Seq(
@@ -540,7 +563,7 @@ class ChatChunksSpec
       }
     }
 
-    "keep the dropped set per materialization" in {
+    "keep the dropped set per run" in {
       val flow = ChatChunks.toOpenAIChunks
       val opening = Seq[ChatChunk](
         Start("id-1", "model-1"),
@@ -548,17 +571,18 @@ class ChatChunksSpec
       )
       val fragment = Seq[ChatChunk](Start("id-2", "model-1"), ToolCallDelta(0, "{}"))
 
-      Source(opening.toList).via(flow).runWith(Sink.seq).futureValue
-      val second = Source(fragment.toList).via(flow).runWith(Sink.seq).futureValue
+      AsyncStream.fromIterable(opening.toList).via(flow).runToSeq.futureValue
+      val second = AsyncStream.fromIterable(fragment.toList).via(flow).runToSeq.futureValue
 
       toolCallsOf(second).map(_.index) shouldBe Seq(0)
     }
 
     "read back as Finish(stop) with no client tool calls for a server-side-only turn" in {
-      val roundTripped = Source(serverSideOnly.toList)
+      val roundTripped = AsyncStream
+        .fromIterable(serverSideOnly.toList)
         .via(ChatChunks.toOpenAIChunks)
         .via(ChatChunks.fromOpenAIChunks)
-        .runWith(Sink.seq)
+        .runToSeq
         .futureValue
 
       roundTripped.collect { case f: Finish => f.reason } shouldBe Seq(FinishReason.stop)

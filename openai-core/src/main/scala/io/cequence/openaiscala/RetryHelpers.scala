@@ -1,6 +1,6 @@
 package io.cequence.openaiscala
 
-import akka.actor.Scheduler
+import io.cequence.wsclient.concurrent.AsyncScheduler
 import io.cequence.openaiscala.RetryHelpers.{RetrySettings, retry}
 import io.cequence.openaiscala.service.FailoverLogLevel
 import org.slf4j.LoggerFactory
@@ -42,7 +42,7 @@ object RetryHelpers {
     includeExceptionMessage: Boolean = false
   )(
     implicit ec: ExecutionContext,
-    scheduler: Scheduler,
+    scheduler: AsyncScheduler,
     retrySettings: RetrySettings
   ): Future[T] = {
     RetryEngine.run[Unit, T, Nothing, T](
@@ -97,7 +97,7 @@ trait RetryHelpers {
     )(
       implicit retrySettings: RetrySettings,
       ec: ExecutionContext,
-      scheduler: Scheduler
+      scheduler: AsyncScheduler
     ): Future[T] = {
       retry(
         () => op,
@@ -126,7 +126,7 @@ trait RetryHelpers {
     )(
       implicit retrySettings: RetrySettings,
       ec: ExecutionContext,
-      scheduler: Scheduler
+      scheduler: AsyncScheduler
     ): Future[T] = {
       assert(
         normalAndFailoverInputsAndMessages.nonEmpty,

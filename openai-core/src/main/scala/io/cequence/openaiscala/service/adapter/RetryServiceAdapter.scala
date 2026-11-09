@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.service.adapter
 
-import akka.actor.Scheduler
+import io.cequence.wsclient.concurrent.AsyncScheduler
 import io.cequence.openaiscala.RetryHelpers
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import io.cequence.wsclient.service.CloseableService
@@ -16,7 +16,7 @@ private class RetryServiceAdapter[+S <: CloseableService](
 )(
   implicit ec: ExecutionContext,
   retrySettings: RetrySettings,
-  scheduler: Scheduler
+  scheduler: AsyncScheduler
 ) extends ServiceWrapper[S]
     with CloseableService
     with FunctionNameHelper

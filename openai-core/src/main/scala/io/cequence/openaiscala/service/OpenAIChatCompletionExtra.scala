@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.service
 
-import akka.actor.Scheduler
+import io.cequence.wsclient.concurrent.{AsyncScheduler, Futures}
 import io.cequence.jsonrepair.JsonRepair
 import io.cequence.openaiscala.JsonFormats.eitherJsonSchemaFormat
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
@@ -71,7 +71,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       policy: FailoverPolicy = FailoverPolicy.default
     )(
       implicit ec: ExecutionContext,
-      scheduler: Scheduler
+      scheduler: AsyncScheduler
     ): Future[ChatCompletionResponse] =
       createChatCompletionWithFailoverSettings(
         messages,
@@ -103,7 +103,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       policy: FailoverPolicy = FailoverPolicy.default
     )(
       implicit ec: ExecutionContext,
-      scheduler: Scheduler
+      scheduler: AsyncScheduler
     ): Future[ChatCompletionResponse] =
       for {
         filteredSettings <- filterSettings(settings +: failoverSettings, filterModels)
@@ -218,7 +218,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       policy: FailoverPolicy = FailoverPolicy.default
     )(
       implicit ec: ExecutionContext,
-      scheduler: Scheduler
+      scheduler: AsyncScheduler
     ): Future[T] =
       createChatCompletionWithJSONFullResponse[T](
         messages,
@@ -263,7 +263,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       policy: FailoverPolicy = FailoverPolicy.default
     )(
       implicit ec: ExecutionContext,
-      scheduler: Scheduler
+      scheduler: AsyncScheduler
     ): Future[(T, ChatCompletionResponse)] = {
       val start = new java.util.Date()
 
@@ -429,7 +429,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       deleteBatchAfterUse: Boolean = false
     )(
       implicit ec: ExecutionContext,
-      scheduler: Scheduler
+      scheduler: AsyncScheduler
     ): Future[Seq[ChatCompletionBatchResultItem]] = {
       val deadline = timeout.map(t => System.currentTimeMillis() + t.toMillis)
       val model = settings.model
@@ -449,7 +449,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
             logger.debug(
               s"Chat-completion batch '$batchId' still in progress (${info.providerStatus}) - polling again in $pollingInterval."
             )
-            akka.pattern.after(pollingInterval, scheduler)(pollUntilDone(batchId))
+            Futures.after(pollingInterval)(pollUntilDone(batchId))(scheduler, ec)
           }
         }
 
@@ -537,7 +537,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       parseJson: String => JsValue = defaultParseJsonOrRepair
     )(
       implicit ec: ExecutionContext,
-      scheduler: Scheduler
+      scheduler: AsyncScheduler
     ): Future[Seq[ChatCompletionBatchTypedResultItem[T]]] = {
       require(
         requests.map(_.customId).distinct.size == requests.size,

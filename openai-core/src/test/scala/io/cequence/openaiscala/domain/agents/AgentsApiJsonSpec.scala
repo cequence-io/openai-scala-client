@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.domain.agents
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.domain.agents.AgentSessionEvent._
 import io.cequence.openaiscala.domain.agents.JsonFormats._
 import io.cequence.openaiscala.domain.responsesapi.MultiAgentConfig
@@ -30,14 +28,11 @@ class AgentsApiJsonSpec
     with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("agents-api-json")
-  private implicit val materializer: Materializer = Materializer(system)
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
 
   override def afterAll(): Unit = {
-    system.terminate()
     ()
   }
 
@@ -147,9 +142,10 @@ class AgentsApiJsonSpec
       val followUp = events("sub-1.sse")
       // a subscription could deliver the idle of the previous turn first
       val previousIdle = events("basic.sse").last
-      val out = Source((previousIdle +: (followUp :+ events("basic.sse").head)).toList)
+      val out = AsyncStream
+        .fromIterable((previousIdle +: (followUp :+ events("basic.sse").head)).toList)
         .via(AgentSessionEvents.untilSettled())
-        .runWith(Sink.seq)
+        .runToSeq
         .futureValue
 
       out.head shouldBe previousIdle
@@ -160,9 +156,10 @@ class AgentsApiJsonSpec
 
     "optionally end at requires_action" in {
       val paused = events("tool-1.sse")
-      Source((paused :+ paused.head).toList)
+      AsyncStream
+        .fromIterable((paused :+ paused.head).toList)
         .via(AgentSessionEvents.untilSettled(stopOnRequiresAction = true))
-        .runWith(Sink.seq)
+        .runToSeq
         .futureValue shouldBe paused
     }
   }

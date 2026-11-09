@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.service.adapter
 
-import akka.NotUsed
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Flow, Source}
 import io.cequence.openaiscala.JsonFormats.jsonSchemaFormat
 import io.cequence.openaiscala.domain.agents.AgentSessionEvent.{
   ItemAdded,
@@ -62,6 +59,9 @@ import io.cequence.openaiscala.{
   OpenAIScalaUnauthorizedException
 }
 import io.cequence.wsclient.JsonUtil
+import io.cequence.wsclient.concurrent.{AsyncScheduler, Futures}
+import io.cequence.wsclient.stream.AsyncStream.Step
+import io.cequence.wsclient.stream.{AsyncPipe, AsyncStream}
 import org.slf4j.LoggerFactory
 import play.api.libs.json.{JsObject, JsValue, Json}
 
@@ -125,7 +125,7 @@ final class OpenAIAgentsChatCompletionService(
   deleteSessionsAfterUse: Boolean = true
 )(
   implicit ec: ExecutionContext,
-  materializer: Materializer
+  scheduler: AsyncScheduler
 ) extends OpenAIChatCompletionService
     with OpenAIChatCompletionStreamedServiceExtra {
 
@@ -203,7 +203,7 @@ final class OpenAIAgentsChatCompletionService(
   override def createChatCompletionStreamed(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
-  ): Source[ChatCompletionChunkResponse, NotUsed] =
+  ): AsyncStream[ChatCompletionChunkResponse] =
     createChatToolCompletionStreamed(messages, Nil, None, settings).via(
       ChatChunks.toOpenAIChunks
     )
@@ -213,9 +213,9 @@ final class OpenAIAgentsChatCompletionService(
     tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
-  ): Source[ChatChunk, NotUsed] =
+  ): AsyncStream[ChatChunk] =
     Try(plan(messages, tools, responseToolChoice, settings)) match {
-      case Failure(e)             => Source.failed(e)
+      case Failure(e)             => AsyncStream.failed(e)
       case Success(Left(resume))  => resumeTurn(resume)
       case Success(Right(create)) => startTurn(create)
     }
@@ -487,24 +487,18 @@ final class OpenAIAgentsChatCompletionService(
 
   // ---- the turns ----
 
-  private def startTurn(create: Create): Source[ChatChunk, NotUsed] =
-    Source.lazySource { () =>
+  // nothing is sent before the stream is run; each run is a new session (a new turn)
+  private def startTurn(create: Create): AsyncStream[ChatChunk] =
+    AsyncStream.defer {
       val state = new TurnState(create.model, None, Set.empty, Set.empty, 0)
       underlying
         .createAgentSessionStreamed(create.settings, create.input)
-        .via(turnFlow(state, resumedFrom = None, posted = noPost))
-        .watchTermination() {
-          (
-            _,
-            done
-          ) =>
-            done.onComplete(_ => settleOnTermination(state, resumedFrom = None, noPost))
-            NotUsed
-        }
-    }.mapMaterializedValue(_ => NotUsed)
+        .via(turnPipe(state, resumedFrom = None, posted = noPost))
+        .onTerminate(_ => settleOnTermination(state, resumedFrom = None, noPost))
+    }
 
-  private def resumeTurn(resume: Resume): Source[ChatChunk, NotUsed] =
-    Source.lazySource { () =>
+  private def resumeTurn(resume: Resume): AsyncStream[ChatChunk] =
+    AsyncStream.defer {
       val paused = resume.paused
 
       val results = resume.toolOutputs.map { output =>
@@ -536,34 +530,26 @@ final class OpenAIAgentsChatCompletionService(
           }
         case false => Future.successful(())
       }
-      akka.pattern.after(3.seconds, materializer.system.scheduler)(
-        Future.successful(live.trySuccess(true))
-      )
+      Futures.after(3.seconds)(Future.successful(live.trySuccess(true)))
 
-      Source
+      AsyncStream
         .single(Start(paused.sessionId, paused.model): ChatChunk)
         .concat(
           underlying
             .streamAgentSessionEvents(paused.sessionId)
             .map { event => live.trySuccess(true); event }
-            .via(turnFlow(state, resumedFrom = Some(paused), posted))
-            .merge(Source.future(posted).flatMapConcat(_ => Source.empty[ChatChunk]))
+            .via(turnPipe(state, resumedFrom = Some(paused), posted))
+            // the stream completes only once the results are posted, and fails if they cannot
+            // be (the session then stays paused - resumable with the same results)
+            .concurrently(() => posted, awaitCompletion = true)
         )
-        .watchTermination() {
-          (
-            _,
-            done
-          ) =>
-            done.onComplete { _ =>
-              live.trySuccess(false)
-              // an in-flight POST decides whether the session is still paused
-              posted.onComplete(_ =>
-                settleOnTermination(state, resumedFrom = Some(paused), posted)
-              )
-            }
-            NotUsed
+        .onTerminate { _ =>
+          live.trySuccess(false)
+          // an in-flight POST decides whether the session is still paused
+          posted
+            .onComplete(_ => settleOnTermination(state, resumedFrom = Some(paused), posted))
         }
-    }.mapMaterializedValue(_ => NotUsed)
+    }
 
   private val noPost = Future.successful(())
 
@@ -655,30 +641,33 @@ final class OpenAIAgentsChatCompletionService(
 
   // ends the turn's chunks at its end marker, where the session is settled (see finishTurn) -
   // the stream completes once that has; an event stream that completes before the end fails
-  // (a sentinel after the upstream - `concat` demands its second source eagerly, so a lazy
-  // check there would run up front)
-  private def turnFlow(
+  // (the stage's end hook runs only when the upstream completes, i.e. without an end marker)
+  private def turnPipe(
     state: TurnState,
     resumedFrom: Option[PausedSession],
     posted: Future[Unit]
-  ): Flow[AgentSessionEvent, ChatChunk, NotUsed] =
-    Flow[AgentSessionEvent]
-      .map(Option(_))
-      .concat(Source.single(None))
-      .mapConcat {
-        case Some(event) =>
+  ): AsyncPipe[AgentSessionEvent, ChatChunk] =
+    AsyncPipe
+      .of[AgentSessionEvent]
+      .stateful(() => ())(
+        (
+          _,
+          event
+        ) => {
           val chunks = state.onEvent(event)
           if (state.ended) finishTurn(state, resumedFrom, posted)
-          chunks
-        case None =>
-          if (state.ended) Nil
+          Step((), chunks)
+        },
+        _ =>
+          if (state.ended)
+            Nil
           else
             throw new OpenAIScalaServerErrorException(
               "The Agents API session event stream closed before the turn ended."
             )
-      }
+      )
       .takeWhile(_.isLeft, inclusive = true)
-      .mapAsync(1) {
+      .evalMap {
         case Left(chunk) => Future.successful(Option(chunk))
         case Right(_)    => state.settlement.future.map(_ => Option.empty[ChatChunk])
       }
@@ -696,7 +685,7 @@ object OpenAIAgentsChatCompletionService {
     deleteSessionsAfterUse: Boolean = true
   )(
     implicit ec: ExecutionContext,
-    materializer: Materializer
+    scheduler: AsyncScheduler
   ): OpenAIAgentsChatCompletionService =
     new OpenAIAgentsChatCompletionService(
       underlying,

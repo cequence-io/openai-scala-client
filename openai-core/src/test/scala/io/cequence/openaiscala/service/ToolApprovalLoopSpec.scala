@@ -1,10 +1,7 @@
 package io.cequence.openaiscala.service
 
-import akka.NotUsed
-import akka.actor.ActorSystem
-import akka.pattern.{after => delayed}
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import io.cequence.wsclient.stream.AsyncStream
+import io.cequence.wsclient.concurrent.Futures
 import io.cequence.openaiscala.domain.response.ChatChunk._
 import io.cequence.openaiscala.domain.response.{
   AssembledChatCompletion,
@@ -36,14 +33,11 @@ class ToolApprovalLoopSpec
     with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("tool-approval-loop-spec")
-  private implicit val materializer: Materializer = Materializer(system)
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(10, Seconds), interval = Span(20, Millis))
 
   override def afterAll(): Unit = {
-    system.terminate()
     ()
   }
 
@@ -100,18 +94,20 @@ class ToolApprovalLoopSpec
   )
 
   // the fake provider: a round is picked by the run its decisions resume (None = a fresh run)
-  private final class FakeRuns(rounds: (Option[String], Source[ChatChunk, NotUsed])*) {
+  private final class FakeRuns(rounds: (Option[String], AsyncStream[ChatChunk])*) {
     private val byRun = rounds.toMap
     @volatile var sent: Vector[CreateChatCompletionSettings] = Vector.empty
 
-    def stream(roundSettings: CreateChatCompletionSettings): Source[ChatChunk, NotUsed] = {
+    def stream(roundSettings: CreateChatCompletionSettings): AsyncStream[ChatChunk] = {
       synchronized { sent :+= roundSettings }
       byRun(roundSettings.toolApprovalDecisions.headOption.map(_.request.runId))
     }
   }
 
   private def runs(rounds: (Option[String], List[ChatChunk])*) =
-    new FakeRuns(rounds.map { case (run, chunks) => run -> Source(chunks) }: _*)
+    new FakeRuns(rounds.map { case (run, chunks) =>
+      run -> AsyncStream.fromIterable(chunks)
+    }: _*)
 
   private def threeRounds =
     runs(None -> round0, Some("run1") -> round1, Some("run2") -> round2)
@@ -133,11 +129,11 @@ class ToolApprovalLoopSpec
     decider: Decider,
     maxRounds: Int = ToolApprovalLoop.DefaultMaxRounds,
     callSettings: CreateChatCompletionSettings = settings
-  ): Source[ChatChunk, NotUsed] =
+  ): AsyncStream[ChatChunk] =
     ToolApprovalLoop(callSettings, decider.decide, maxRounds)(fake.stream)
 
-  private def run(source: Source[ChatChunk, NotUsed]): Seq[ChatChunk] =
-    source.runWith(Sink.seq).futureValue
+  private def run(source: AsyncStream[ChatChunk]): Seq[ChatChunk] =
+    source.runToSeq.futureValue
 
   private def assemble(chunks: Seq[ChatChunk]): AssembledChatCompletion =
     chunks.foldLeft(AssembledChatCompletion.empty)(_ add _)
@@ -203,7 +199,7 @@ class ToolApprovalLoopSpec
       val decider = new Decider(r => {
         val now = inFlight.incrementAndGet()
         maxInFlight.synchronized(maxInFlight.set(math.max(maxInFlight.get, now)))
-        delayed(50.millis, system.scheduler) {
+        Futures.after(50.millis) {
           inFlight.decrementAndGet()
           Future.successful(r.approve)
         }
@@ -217,13 +213,13 @@ class ToolApprovalLoopSpec
     "ask only once the paused round completed - never for a failed or cancelled one" in {
       val gate = Promise[Unit]()
       val gated = new FakeRuns(
-        None -> (Source(round0) ++
-          Source.futureSource(gate.future.map(_ => Source.empty[ChatChunk]))),
-        Some("run1") -> Source(List(Text("done"), stopped))
+        None -> (AsyncStream.fromIterable(round0) ++
+          AsyncStream.futureStream(gate.future.map(_ => AsyncStream.empty[ChatChunk]))),
+        Some("run1") -> AsyncStream.fromIterable(List(Text("done"), stopped))
       )
       val decider = new Decider()
 
-      val result = joined(gated, decider).runWith(Sink.seq)
+      val result = joined(gated, decider).runToSeq
       Thread.sleep(200)
       decider.asked shouldBe empty // everything streamed, but the round is still open
       gate.success(())
@@ -231,9 +227,11 @@ class ToolApprovalLoopSpec
       decider.asked shouldBe Seq(askA, askB)
 
       val boom = new RuntimeException("stream broke")
-      val failing = new FakeRuns(None -> (Source(round0) ++ Source.failed[ChatChunk](boom)))
+      val failing = new FakeRuns(
+        None -> (AsyncStream.fromIterable(round0) ++ AsyncStream.failed[ChatChunk](boom))
+      )
       val failDecider = new Decider()
-      joined(failing, failDecider).runWith(Sink.ignore).failed.futureValue shouldBe boom
+      joined(failing, failDecider).runDrain.failed.futureValue shouldBe boom
 
       val cancelDecider = new Decider()
       val cancelled = threeRounds
@@ -245,7 +243,7 @@ class ToolApprovalLoopSpec
       cancelled.sent should have size 1
     }
 
-    "send nothing before it is materialized, and run a fresh loop per materialization" in {
+    "send nothing before it is run, and run a fresh loop per run" in {
       val fake = threeRounds
       val decider = new Decider()
       val source = joined(fake, decider)
@@ -305,7 +303,7 @@ class ToolApprovalLoopSpec
       val boom = new RuntimeException("no human around")
 
       def failure(answer: ToolApprovalRequest => Future[ToolApprovalDecision]): Throwable =
-        joined(threeRounds, new Decider(answer)).runWith(Sink.ignore).failed.futureValue
+        joined(threeRounds, new Decider(answer)).runDrain.failed.futureValue
 
       failure(_ => Future.failed(boom)) shouldBe boom
       failure(_ => throw boom) shouldBe boom
@@ -337,11 +335,12 @@ class ToolApprovalLoopSpec
         None -> round0,
         Some("run1") -> List(Text("par"), Retry(2), Text("done"), stopped)
       )
-      joined(retriedResume, new Decider())
-        .runWith(Sink.ignore)
-        .failed
-        .futureValue
-        .getMessage should include("resumed tool-approval round was restarted")
+      joined(
+        retriedResume,
+        new Decider()
+      ).runDrain.failed.futureValue.getMessage should include(
+        "resumed tool-approval round was restarted"
+      )
     }
 
     "resume with the caller's own decisions first, then answer the next pause" in {

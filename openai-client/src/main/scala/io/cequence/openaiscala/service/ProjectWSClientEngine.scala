@@ -23,8 +23,8 @@ object ProjectWSClientEngine {
    * Creates a SITE-STATELESS engine via classpath self-discovery (`WSClientEngineRegistry`) -
    * the backend is whichever `ws-client` engine module is on the classpath (selectable
    * explicitly with `-Dws-client.engine=<id>`). The discovered engine owns its execution
-   * environment, so no materializer or execution context is needed here. One engine serves any
-   * number of sites/providers - pair it with a [[siteBinding]] per provider.
+   * environment, so no execution context is needed here. One engine serves any number of
+   * sites/providers - pair it with a [[siteBinding]] per provider.
    */
   def apply(
     transportSettings: TransportSettings = TransportSettings()

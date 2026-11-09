@@ -1,18 +1,17 @@
 package io.cequence.openaiscala.service.impl
 
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.domain.ChatCompletionTool
 import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.service.ChatChunks
 import io.cequence.openaiscala.service.adapter.ChatCompletionSettingsConversions
 
-import akka.NotUsed
 import io.cequence.openaiscala.service.{
   ClassifiedStreamingWSClient,
   HandleOpenAIErrorCodes,
   ProducedReasoning,
   StreamingConsts
 }
-import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.BaseMessage
@@ -50,7 +49,7 @@ private[service] trait OpenAIChatCompletionServiceStreamedExtraImpl
   override def createChatCompletionStreamed(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
-  ): Source[ChatCompletionChunkResponse, NotUsed] =
+  ): AsyncStream[ChatCompletionChunkResponse] =
     unsupportedToolApprovalDecisions(settings)
       .orElse(
         ResponsesChatCompletionSettingsOps
@@ -58,7 +57,7 @@ private[service] trait OpenAIChatCompletionServiceStreamedExtraImpl
             settings,
             "The OpenAI-shaped createChatCompletionStreamed"
           )
-          .map(Source.failed)
+          .map(AsyncStream.failed)
       )
       .getOrElse(
         execChunkStream(createBodyParamsForChatCompletion(messages, settings, stream = true))
@@ -77,34 +76,34 @@ private[service] trait OpenAIChatCompletionServiceStreamedExtraImpl
   // a run paused for approval lives on the Responses API - not reachable from here
   private def unsupportedToolApprovalDecisions(
     settings: CreateChatCompletionSettings
-  ): Option[Source[Nothing, NotUsed]] =
+  ): Option[AsyncStream[Nothing]] =
     ToolApprovalSettingsOps
       .unsupportedDecisions(
         settings,
         "A chat-only streamed OpenAI service (chat completions API)"
       )
-      .map(Source.failed)
+      .map(AsyncStream.failed)
 
   override def createChatToolCompletionStreamed(
     messages: Seq[BaseMessage],
     tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
-  ): Source[ChatChunk, NotUsed] =
+  ): AsyncStream[ChatChunk] =
     if (settings.toolApprovalDecisions.nonEmpty)
-      unsupportedToolApprovalDecisions(settings).getOrElse(Source.empty)
+      unsupportedToolApprovalDecisions(settings).getOrElse(AsyncStream.empty)
     else if (unsupportedResponsesSettings(settings).isDefined)
-      Source.failed(unsupportedResponsesSettings(settings).get)
+      AsyncStream.failed(unsupportedResponsesSettings(settings).get)
     else if (
       tools.nonEmpty && ChatCompletionSettingsConversions.chatToolsUnsupported(settings.model)
     )
-      Source.failed(
+      AsyncStream.failed(
         new OpenAIScalaClientException(
           ChatCompletionBodyMaker.toolsUnsupportedMessage(settings.model)
         )
       )
     else if (tools.nonEmpty && chatToolsRequireResponsesAPI(settings.model, tools))
-      Source.failed(
+      AsyncStream.failed(
         new OpenAIScalaClientException(
           ChatCompletionBodyMaker.responsesOnlyToolsMessage(settings.model, tools) +
             " Use the full streamed OpenAIService (OpenAIServiceFactory.withStreaming()), which routes such typed tool streams through the Responses API automatically, " +
@@ -125,7 +124,7 @@ private[service] trait OpenAIChatCompletionServiceStreamedExtraImpl
 
   private def execChunkStream(
     bodyParams: Seq[(Param, Option[JsValue])]
-  ): Source[ChatCompletionChunkResponse, NotUsed] =
+  ): AsyncStream[ChatCompletionChunkResponse] =
     execJsonStream(
       EndPoint.chat_completions,
       "POST",

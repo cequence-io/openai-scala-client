@@ -1,8 +1,7 @@
 package io.cequence.openaiscala.service.impl
 
+import io.cequence.wsclient.stream.{AsyncStream, Bytes}
 import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
 import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.Batch.BatchRow.buildBatchRows
@@ -19,7 +18,6 @@ import io.cequence.openaiscala.service.{
 }
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits._
-import io.cequence.wsclient.StreamResponseImplicits.StreamSafeOps
 import io.cequence.wsclient.domain.RichResponse
 import play.api.libs.json.{JsObject, JsValue, Json, Reads}
 
@@ -433,9 +431,10 @@ private[service] trait OpenAIServiceImpl
   def createAudioSpeech(
     input: String,
     settings: CreateSpeechSettings = DefaultSettings.CreateSpeech
-  ): Future[Source[ByteString, _]] =
-    execPOST(
+  ): Future[AsyncStream[Bytes]] =
+    execStreamDownloadExisting(
       EndPoint.audio_speech,
+      "POST",
       bodyParams = jsonBodyParams(
         Param.input -> Some(input),
         Param.model -> Some(settings.model),
@@ -445,7 +444,7 @@ private[service] trait OpenAIServiceImpl
         Param.response_format -> settings.response_format.map(_.toString),
         Param.stream_format -> settings.stream_format.map(_.toString)
       )
-    ).map(_.asSafeSource)
+    )
 
   override def createAudioTranscription(
     file: File,
@@ -593,12 +592,13 @@ private[service] trait OpenAIServiceImpl
 
   override def retrieveFileContentAsSource(
     fileId: String
-  ): Future[Option[Source[ByteString, _]]] =
+  ): Future[Option[AsyncStream[Bytes]]] =
     PathSegment.inFuture {
-      execGETRich(
-        endPoint = EndPoint.files,
+      execStreamDownload(
+        EndPoint.files,
+        "GET",
         endPointParam = Some(s"${PathSegment(fileId)}/content")
-      ).map(response => handleNotFoundAndError(response).map(_.asSafeSource))
+      )
     }
 
   override def createVectorStore(

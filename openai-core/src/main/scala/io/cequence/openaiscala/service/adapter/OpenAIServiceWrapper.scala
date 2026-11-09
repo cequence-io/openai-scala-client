@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.service.adapter
 
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
+import io.cequence.wsclient.stream.{AsyncStream, Bytes}
 import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.graders.Grader
@@ -259,7 +258,7 @@ trait OpenAIServiceWrapper
   override def createAudioSpeech(
     input: String,
     settings: CreateSpeechSettings
-  ): Future[Source[ByteString, _]] = wrap(
+  ): Future[AsyncStream[Bytes]] = wrap(
     _.createAudioSpeech(input, settings)
   )
 
@@ -340,7 +339,7 @@ trait OpenAIServiceWrapper
 
   override def retrieveFileContentAsSource(
     fileId: String
-  ): Future[Option[Source[ByteString, _]]] = wrap(
+  ): Future[Option[AsyncStream[Bytes]]] = wrap(
     _.retrieveFileContentAsSource(fileId)
   )
 
@@ -853,7 +852,7 @@ trait OpenAIServiceWrapper
   override def getAgentSessionArtifactContent(
     sessionId: String,
     artifactId: String
-  ): Future[Source[ByteString, _]] =
+  ): Future[AsyncStream[Bytes]] =
     wrap(_.getAgentSessionArtifactContent(sessionId, artifactId))
 
   override def deleteAgentSessionArtifact(

@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.service
 
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
+import io.cequence.wsclient.stream.{AsyncStream, Bytes}
 import io.cequence.openaiscala.domain.Batch._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
@@ -230,7 +229,9 @@ trait OpenAIService
    *
    * @param settings
    * @return
-   *   The audio file content.
+   *   The audio file content: the future completes once the response started, with a
+   *   SINGLE-RUN stream of the body (run or cancel it - an abandoned one holds its
+   *   connection).
    * @see
    *   <a href="https://platform.openai.com/docs/api-reference/audio/createSpeech">OpenAI
    *   Doc</a>
@@ -238,7 +239,7 @@ trait OpenAIService
   def createAudioSpeech(
     input: String,
     settings: CreateSpeechSettings = DefaultSettings.CreateSpeech
-  ): Future[Source[ByteString, _]]
+  ): Future[AsyncStream[Bytes]]
 
   /**
    * Transcribes audio into the input language.
@@ -445,12 +446,14 @@ trait OpenAIService
   ): Future[Option[String]]
 
   /**
-   * Returns the contents of the specified file as an Akka source.
+   * Returns the contents of the specified file as a byte stream (binary-safe on every engine).
    *
    * @param fileId
    *   The ID of the file to use for this request
    * @return
-   *   file content or None if not found
+   *   file content or None if not found: the future completes once the response started, with
+   *   a SINGLE-RUN stream of the body (run or cancel it - an abandoned one holds its
+   *   connection)
    *
    * @see
    *   <a href="https://platform.openai.com/docs/api-reference/files/retrieve-content">OpenAI
@@ -458,7 +461,7 @@ trait OpenAIService
    */
   def retrieveFileContentAsSource(
     fileId: String
-  ): Future[Option[Source[ByteString, _]]]
+  ): Future[Option[AsyncStream[Bytes]]]
 
   /**
    * Creates a job that fine-tunes a specified model from a given dataset. Response includes

@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.service
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.ChatCompletionTool.MCPServerTool
@@ -33,7 +30,7 @@ import io.cequence.openaiscala.domain.{
 }
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.wsclient.domain.WsRequestContext
-import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
+import io.cequence.openaiscala.testkit.TestEngines
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -56,8 +53,6 @@ import scala.io.Source
 class ToolApprovalWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("tool-approval-wire")
-  private implicit val materializer: Materializer = Materializer(system)
 
   private def resource(name: String): String = {
     val source = Source.fromResource(s"tool-approval/$name")
@@ -116,7 +111,7 @@ class ToolApprovalWireSpec extends AnyWordSpec with Matchers with BeforeAndAfter
       .getOrElse(fail(s"no $pathSuffix call"))
 
   private val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
-  private val engine = StreamedEngineRegistry.outputStreamed(TransportSettings())
+  private val engine = TestEngines.streaming()
   private lazy val coreUrl = s"http://localhost:${server.getAddress.getPort}/"
   private val context = WsRequestContext(authHeaders = Seq("Authorization" -> "Bearer k"))
 
@@ -193,7 +188,6 @@ class ToolApprovalWireSpec extends AnyWordSpec with Matchers with BeforeAndAfter
     chatOnlyStreamed.close()
     engine.close()
     server.stop(0)
-    Await.result(system.terminate(), 10.seconds)
     ()
   }
 
@@ -233,7 +227,7 @@ class ToolApprovalWireSpec extends AnyWordSpec with Matchers with BeforeAndAfter
       val chunks = await(
         fullStreamed
           .createChatToolCompletionStreamed(messages, Seq(deepwiki), None, settings)
-          .runWith(Sink.seq)
+          .runToSeq
       )
 
       val pending = chunks.collect { case r: ChatChunk.ToolApprovalRequest => r }
@@ -302,7 +296,7 @@ class ToolApprovalWireSpec extends AnyWordSpec with Matchers with BeforeAndAfter
             asked.add(request)
             Future.successful(request.approve)
           }
-          .runWith(Sink.seq)
+          .runToSeq
       )
 
       asked.size shouldBe 2
@@ -431,9 +425,7 @@ class ToolApprovalWireSpec extends AnyWordSpec with Matchers with BeforeAndAfter
 
       intercept[OpenAIScalaClientException](
         await(
-          fullStreamed
-            .createChatCompletionStreamedTyped(messages, decisions)
-            .runWith(Sink.ignore)
+          fullStreamed.createChatCompletionStreamedTyped(messages, decisions).runDrain
         )
       ).getMessage should include("same tools")
 
@@ -494,9 +486,7 @@ class ToolApprovalWireSpec extends AnyWordSpec with Matchers with BeforeAndAfter
       ).getMessage should include("setResponsesTools")
       intercept[OpenAIScalaClientException](
         await(
-          chatOnlyStreamed
-            .createChatCompletionStreamedTyped(messages, rawMcp)
-            .runWith(Sink.ignore)
+          chatOnlyStreamed.createChatCompletionStreamedTyped(messages, rawMcp).runDrain
         )
       ).getMessage should include("setResponsesTools")
 
@@ -509,10 +499,9 @@ class ToolApprovalWireSpec extends AnyWordSpec with Matchers with BeforeAndAfter
       val before = requests.size
       Seq[() => Future[_]](
         () => chatOnly.createChatCompletion(messages, rawMcp),
-        () => fullStreamed.createChatCompletionStreamed(messages, rawMcp).runWith(Sink.ignore),
+        () => fullStreamed.createChatCompletionStreamed(messages, rawMcp).runDrain,
         () => full.createChatFunCompletion(messages, Nil, None, rawMcp),
-        () =>
-          chatOnlyStreamed.createChatCompletionStreamed(messages, rawMcp).runWith(Sink.ignore)
+        () => chatOnlyStreamed.createChatCompletionStreamed(messages, rawMcp).runDrain
       ).foreach { call =>
         intercept[OpenAIScalaClientException](await(call())).getMessage should
           include("setResponsesTools")
@@ -561,14 +550,8 @@ class ToolApprovalWireSpec extends AnyWordSpec with Matchers with BeforeAndAfter
       val before = requests.size
 
       Seq[() => Future[_]](
-        () =>
-          chatOnlyStreamed
-            .createChatCompletionStreamedTyped(messages, decisions)
-            .runWith(Sink.ignore),
-        () =>
-          chatOnlyStreamed
-            .createChatCompletionStreamed(messages, decisions)
-            .runWith(Sink.ignore),
+        () => chatOnlyStreamed.createChatCompletionStreamedTyped(messages, decisions).runDrain,
+        () => chatOnlyStreamed.createChatCompletionStreamed(messages, decisions).runDrain,
         () => chatOnly.createChatToolCompletion(messages, Nil, None, decisions),
         () => chatOnly.createChatCompletion(messages, decisions)
       ).foreach { call =>

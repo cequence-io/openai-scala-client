@@ -1,7 +1,5 @@
 package io.cequence.openaiscala
 
-import akka.actor.{ActorSystem, Scheduler}
-import akka.testkit.TestKit
 import io.cequence.openaiscala.RetryHelpers.{RetrySettings, delay, retry}
 import org.mockito.Mockito._
 import org.scalatestplus.mockito.MockitoSugar
@@ -16,8 +14,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 
 class RetryHelpersSpec
-    extends TestKit(ActorSystem("RetryHelpersSpec"))
-    with AnyWordSpecLike
+    extends AnyWordSpecLike
     with Matchers
     with BeforeAndAfterAll
     with MockitoSugar
@@ -26,10 +23,6 @@ class RetryHelpersSpec
   val successfulResult = 42
 
   implicit val patience: PatienceConfig = PatienceConfig(timeout = 10.seconds)
-
-  override def afterAll(): Unit = {
-    TestKit.shutdownActorSystem(system)
-  }
 
   "RetrySettings" should {
     "allow easy configuration of a constant interval" in {
@@ -121,8 +114,6 @@ class RetryHelpersSpec
     }
 
   }
-
-  implicit val scheduler: Scheduler = system.scheduler
 
   override def patienceConfig: PatienceConfig = patience
   implicit val retrySettings: RetrySettings = RetrySettings(

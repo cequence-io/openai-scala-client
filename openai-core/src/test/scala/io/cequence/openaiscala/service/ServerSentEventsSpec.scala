@@ -1,9 +1,6 @@
 package io.cequence.openaiscala.service
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
-import akka.util.ByteString
+import io.cequence.wsclient.stream.{AsyncStream, Bytes}
 import io.cequence.openaiscala.OpenAIScalaClientException
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
@@ -22,23 +19,26 @@ import scala.concurrent.duration._
  */
 class ServerSentEventsSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
-  private implicit val system: ActorSystem = ActorSystem("server-sent-events-spec")
-  private implicit val materializer: Materializer = Materializer(system)
+  private implicit val ec: scala.concurrent.ExecutionContext =
+    scala.concurrent.ExecutionContext.global
 
-  override protected def afterAll(): Unit = {
-    Await.result(system.terminate(), 10.seconds)
-    ()
-  }
+  // the bytes in chunks of `size` (views, no copies)
+  private def grouped(
+    bytes: Bytes,
+    size: Int
+  ): List[Bytes] =
+    (0 until bytes.length by size).map(i => bytes.slice(i, i + size)).toList
 
   private def decode(
-    chunks: Seq[ByteString],
+    chunks: Seq[Bytes],
     maxEventBytes: Int = ServerSentEvents.DefaultMaxEventBytes,
     error: String => Throwable = new OpenAIScalaClientException(_)
   ): Seq[JsValue] =
     Await.result(
-      Source(chunks.toList)
+      AsyncStream
+        .fromIterable(chunks.toList)
         .via(ServerSentEvents.jsonPayloads(maxEventBytes, error))
-        .runWith(Sink.seq),
+        .runToSeq,
       60.seconds
     )
 
@@ -46,7 +46,7 @@ class ServerSentEventsSpec extends AnyWordSpec with Matchers with BeforeAndAfter
     chunks: Seq[String],
     maxEventBytes: Int = ServerSentEvents.DefaultMaxEventBytes
   ): Seq[JsValue] =
-    decode(chunks.map(ByteString(_)), maxEventBytes)
+    decode(chunks.map(Bytes.utf8(_)), maxEventBytes)
 
   private val eventA = """{"type":"a","sequence_number":1}"""
   private val eventB = """{"type":"b","sequence_number":2,"text":"x\ny"}"""
@@ -74,11 +74,11 @@ class ServerSentEventsSpec extends AnyWordSpec with Matchers with BeforeAndAfter
       val expected = Seq(Json.obj("n" -> 1), Json.obj("n" -> 2), Json.obj("n" -> 3))
 
       // one event per chunking: whole, every byte its own chunk, and every two-chunk split
-      decode(Seq(ByteString(stream))) shouldBe expected
-      decode(stream.map(c => ByteString(c.toString))) shouldBe expected
+      decode(Seq(Bytes.utf8(stream))) shouldBe expected
+      decode(stream.map(c => Bytes.utf8(c.toString))) shouldBe expected
       for (i <- 0 to stream.length)
         withClue(s"split at $i: ") {
-          decode(Seq(ByteString(stream.take(i)), ByteString(stream.drop(i)))) shouldBe expected
+          decode(Seq(Bytes.utf8(stream.take(i)), Bytes.utf8(stream.drop(i)))) shouldBe expected
         }
     }
 
@@ -103,9 +103,9 @@ class ServerSentEventsSpec extends AnyWordSpec with Matchers with BeforeAndAfter
 
     "keep multi-byte UTF-8 characters intact across chunk borders" in {
       val json = """{"type":"a","sequence_number":1,"delta":"Ørsted – 東京"}"""
-      val bytes = ByteString(s"data: $json\n\n")
+      val bytes = Bytes.utf8(s"data: $json\n\n")
 
-      decode(bytes.grouped(3).toList) shouldBe Seq(Json.parse(json))
+      decode(grouped(bytes, 3)) shouldBe Seq(Json.parse(json))
     }
 
     "pass a non-SSE JSON body (an error answering the request) through whole" in {
@@ -133,13 +133,13 @@ class ServerSentEventsSpec extends AnyWordSpec with Matchers with BeforeAndAfter
     "fail with the exception a module passes" in {
       intercept[ModuleException] {
         decode(
-          Seq(ByteString("<html>502</html>")),
+          Seq(Bytes.utf8("<html>502</html>")),
           error = new ModuleException(_)
         )
       }.getMessage should include("502")
       intercept[ModuleException] {
         decode(
-          Seq(ByteString("data: {\"type\":\"" + ("x" * 200))),
+          Seq(Bytes.utf8("data: {\"type\":\"" + ("x" * 200))),
           maxEventBytes = 100,
           error = new ModuleException(_)
         )
@@ -150,8 +150,8 @@ class ServerSentEventsSpec extends AnyWordSpec with Matchers with BeforeAndAfter
       // a 2 MiB event in 8 KiB chunks: a search of the whole buffer per chunk took minutes
       // here (1 MiB: 21 s); the carried-window search takes well under a second
       val text = "A" * (2 * 1024 * 1024)
-      val event = ByteString(s"""data: {"text":"$text"}""" + "\n\n")
-      val chunks = event.grouped(8 * 1024).toList
+      val event = Bytes.utf8(s"""data: {"text":"$text"}""" + "\n\n")
+      val chunks = grouped(event, 8 * 1024)
 
       val start = System.nanoTime()
       val decoded = decode(chunks)
@@ -162,10 +162,26 @@ class ServerSentEventsSpec extends AnyWordSpec with Matchers with BeforeAndAfter
       seconds should be < 20.0
     }
 
+    "decode a 16 MiB event in 1460-byte chunks (TCP-sized) in linear time" in {
+      // a tail search on a rope of the chunks was quadratic here (64 MiB: 11 s, against 0.9 s
+      // with the carried window - measured 2026-10-09); the per-run buffer is linear too
+      val parts = Seq.fill(16 * 1024)("\"" + ("x" * 1018) + "\"")
+      val event = Bytes.utf8(s"""data: {"parts":[${parts.mkString(",")}]}""" + "\n\n")
+      val chunks = grouped(event, 1460)
+
+      val start = System.nanoTime()
+      val decoded = decode(chunks, maxEventBytes = 64 * 1024 * 1024)
+      val seconds = (System.nanoTime() - start) / 1e9
+
+      decoded should have size 1
+      (decoded.head \ "parts").as[Seq[String]] should have size parts.size.toLong
+      seconds should be < 10.0
+    }
+
     "decode one huge chunk of blank lines in linear time" in {
       // 256 KiB of '\n' in ONE chunk = 131,072 boundaries: the decoder used to copy and rescan
       // the rest of the chunk once per boundary (quadratic)
-      val chunk = ByteString(Array.fill[Byte](256 * 1024)('\n'.toByte))
+      val chunk = Bytes(Array.fill[Byte](256 * 1024)('\n'.toByte))
 
       val start = System.nanoTime()
       val decoded = decode(Seq(chunk))
@@ -177,7 +193,7 @@ class ServerSentEventsSpec extends AnyWordSpec with Matchers with BeforeAndAfter
 
     "decode one chunk of thousands of small events, in order, in linear time" in {
       val count = 4096
-      val chunk = ByteString((0 until count).map(i => s"""data: {"i":$i}\n\n""").mkString)
+      val chunk = Bytes.utf8((0 until count).map(i => s"""data: {"i":$i}\n\n""").mkString)
 
       val start = System.nanoTime()
       val decoded = decode(Seq(chunk))
@@ -189,7 +205,7 @@ class ServerSentEventsSpec extends AnyWordSpec with Matchers with BeforeAndAfter
 
     "decode one chunk of comment-only events in linear time" in {
       // 64 KiB of ':\n\n' (21,845 events, none carrying data) in a single chunk
-      val chunk = ByteString(":\n\n" * (64 * 1024 / 3))
+      val chunk = Bytes.utf8(":\n\n" * (64 * 1024 / 3))
 
       val start = System.nanoTime()
       val decoded = decode(Seq(chunk))
@@ -204,7 +220,7 @@ class ServerSentEventsSpec extends AnyWordSpec with Matchers with BeforeAndAfter
       val first = "data: {\"i\":1}\n\ndata: {\"i\":2}\r\n\r\ndata: {\"i\":3}\n"
       val second = "\ndata: {\"i\":4}\r\r"
 
-      decode(Seq(ByteString(first), ByteString(second))) shouldBe
+      decode(Seq(Bytes.utf8(first), Bytes.utf8(second))) shouldBe
         (1 to 4).map(i => Json.obj("i" -> i))
     }
   }

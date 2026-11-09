@@ -1,11 +1,10 @@
 package io.cequence.openaiscala.service
 
-import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.service.impl.OpenAIChatCompletionServiceStreamedExtraImpl
 import io.cequence.wsclient.domain.{SiteBinding, WsRequestContext}
-import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
+import io.cequence.wsclient.service.spi.TransportSettings
 import io.cequence.wsclient.service.ws.Timeouts
-import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtraAkka}
+import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamCore}
 
 import scala.concurrent.ExecutionContext
 
@@ -28,21 +27,13 @@ object OpenAIChatCompletionStreamedServiceFactory
   )(
     implicit ec: ExecutionContext
   ): OpenAIChatCompletionStreamedServiceExtra =
-    engine match {
-      case streamed: WSClientOutputStreamExtraAkka =>
-        new OpenAIChatCompletionStreamedServiceExtraEngineImpl(
-          streamed,
-          ProjectWSClientEngine.siteBinding(coreUrl, requestContext)
-        )
-      case _ =>
-        throw new OpenAIScalaClientException(
-          "The streamed service factory requires an engine with Source-typed output streaming " +
-            s"(WSClientOutputStreamExtraAkka) but got ${engine.getClass.getName}."
-        )
-    }
+    new OpenAIChatCompletionStreamedServiceExtraEngineImpl(
+      StreamingEngines.require(engine),
+      ProjectWSClientEngine.siteBinding(coreUrl, requestContext)
+    )
 
   private final class OpenAIChatCompletionStreamedServiceExtraEngineImpl(
-    override protected val engine: WSClientEngine with WSClientOutputStreamExtraAkka,
+    override protected val engine: WSClientEngine with WSClientOutputStreamCore,
     protected val site: SiteBinding
   )(
     implicit val ec: ExecutionContext
@@ -60,8 +51,8 @@ object OpenAIChatCompletionStreamedServiceFactory
   ) extends OpenAIChatCompletionServiceStreamedExtraImpl {
     // a private classpath-discovered engine with output streaming (SSE) support, owned (and
     // closed) by this service
-    override protected val engine: WSClientEngine with WSClientOutputStreamExtraAkka =
-      StreamedEngineRegistry.outputStreamed(
+    override protected val engine: WSClientEngine with WSClientOutputStreamCore =
+      StreamingEngines.outputStreamed(
         TransportSettings(timeouts = timeouts.getOrElse(Timeouts()))
       )
 

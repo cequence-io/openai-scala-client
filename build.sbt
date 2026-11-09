@@ -7,73 +7,72 @@ val scala3 = "3.2.2"
 
 ThisBuild / organization := "io.cequence"
 ThisBuild / scalaVersion := scala213
-ThisBuild / version := "1.7.1-SNAPSHOT"
+ThisBuild / version := "2.0.0-SNAPSHOT"
 ThisBuild / isSnapshot := true
 
 lazy val commonSettings = Seq(
   libraryDependencies += "org.scalactic" %% "scalactic" % "3.2.16",
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.16" % Test,
   libraryDependencies += "org.scalatestplus" %% "mockito-4-11" % "3.2.16.0" % Test,
-  libraryDependencies ++= extraTestDependencies(scalaVersion.value),
+  // logging is the caller's choice since 2.0.0 - logback only for our own tests
+  libraryDependencies += "ch.qos.logback" % "logback-classic" % Dependencies.Versions.logback % Test,
+  scalacOptions += "-feature",
   crossScalaVersions := List(scala212, scala213, scala3)
 )
 
-def extraTestDependencies(scalaVersion: String) =
-  CrossVersion.partialVersion(scalaVersion) match {
-    // Akka 2.6.20 on 2.12 too: ws-client 1.1.4 moved off 2.6.1, and Akka refuses mixed versions
-    case Some((2, _)) =>
-      Seq(
-        "com.typesafe.akka" %% "akka-actor-testkit-typed" % "2.6.20" % Test
-      )
-
-    case Some((3, _)) =>
-      Seq(
-        // because of conflicting cross-version suffixes 2.13 vs 3 - scala-java8-compat, etc
-        "com.typesafe.akka" % "akka-actor-testkit-typed_2.13" % "2.6.20" % Test
-      )
-
-    case _ =>
-      Nil
-  }
+// unpublished test support shared by every module's tests (stream runners, test engines)
+lazy val testkit = (project in file("openai-testkit")).settings(
+  (commonSettings ++ Seq(
+    name := "openai-scala-testkit",
+    publish / skip := true,
+    libraryDependencies ++= Seq(
+      "io.cequence" %% "ws-client-core" % Dependencies.Versions.wsClient,
+      "org.scalatest" %% "scalatest" % "3.2.16"
+    )
+  )) *
+)
 
 lazy val core =
-  (project in file("openai-core")).settings(commonSettings *)
+  (project in file("openai-core")).settings(commonSettings *).dependsOn(testkit % Test)
 
 lazy val client =
-  (project in file("openai-client")).settings(commonSettings *).dependsOn(core).aggregate(core)
+  (project in file("openai-client"))
+    .settings(commonSettings *)
+    .dependsOn(core, testkit % Test)
+    .aggregate(core)
 
 lazy val client_stream = (project in file("openai-client-stream"))
   .settings(commonSettings *)
-  .dependsOn(client)
+  .dependsOn(client, testkit % Test)
   .aggregate(client)
 
 // note that for anthropic_client we provide a streaming extension within the module as well
 lazy val anthropic_client = (project in file("anthropic-client"))
   .settings(commonSettings *)
-  .dependsOn(core)
+  .dependsOn(core, testkit % Test)
   .aggregate(core, client, client_stream)
 
 lazy val google_vertexai_client = (project in file("google-vertexai-client"))
   .settings(commonSettings *)
-  .dependsOn(core)
+  .dependsOn(core, testkit % Test)
   .aggregate(core, client, client_stream)
 
 lazy val google_gemini_client = (project in file("google-gemini-client"))
   .settings(commonSettings *)
-  .dependsOn(core)
+  .dependsOn(core, testkit % Test)
   .aggregate(core, client, client_stream)
 
 // note that for perplexity_client we provide a streaming extension within the module as well
 lazy val perplexity_sonar_client = (project in file("perplexity-sonar-client"))
   .settings(commonSettings *)
-  .dependsOn(core)
+  .dependsOn(core, testkit % Test)
   .aggregate(core, client, client_stream)
 
 // TypeSafe AI System One API (typed decisions, not chat) - plain request/response, no streaming,
 // so it needs neither the OpenAI client nor the stream module
 lazy val typesafe_client = (project in file("typesafe-client"))
   .settings(commonSettings *)
-  .dependsOn(core)
+  .dependsOn(core, testkit % Test)
   .aggregate(core)
 
 // subprocess transport (spawns the `claude` CLI) - no ws-client/HTTP engine involved; depends
@@ -81,7 +80,7 @@ lazy val typesafe_client = (project in file("typesafe-client"))
 // embedded Anthropic Messages API objects the CLI emits
 lazy val claude_agent_client = (project in file("claude-agent-client"))
   .settings(commonSettings *)
-  .dependsOn(core, anthropic_client)
+  .dependsOn(core, anthropic_client, testkit % Test)
   .aggregate(core, anthropic_client)
 
 lazy val count_tokens = (project in file("openai-count-tokens"))

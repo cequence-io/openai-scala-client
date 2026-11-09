@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.domain.responsesapi
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.domain.response.ChatChunk._
 import io.cequence.openaiscala.domain.responsesapi.JsonFormats._
@@ -29,14 +27,11 @@ class MultiAgentResponsesSpec
     with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("multi-agent-responses")
-  private implicit val materializer: Materializer = Materializer(system)
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
 
   override def afterAll(): Unit = {
-    system.terminate()
     ()
   }
 
@@ -122,7 +117,11 @@ class MultiAgentResponsesSpec
 
     "stream the root agent's answer and the delegation as server-side tool calls" in {
       val chunks: Seq[ChatChunk] =
-        Source(events.toList).via(ChatChunks.fromResponseEvents).runWith(Sink.seq).futureValue
+        AsyncStream
+          .fromIterable(events.toList)
+          .via(ChatChunks.fromResponseEvents)
+          .runToSeq
+          .futureValue
 
       // only the root agent's text, never the subagents' (their deltas interleave with it)
       chunks.collect { case Text(text) => text }.mkString shouldBe

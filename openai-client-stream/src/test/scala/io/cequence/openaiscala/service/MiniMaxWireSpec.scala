@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.service
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.{
@@ -32,8 +29,6 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 class MiniMaxWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("minimax-wire")
-  private implicit val materializer: Materializer = Materializer(system)
 
   private val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
   @volatile private var lastBody: JsObject = Json.obj()
@@ -77,7 +72,6 @@ class MiniMaxWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
   override protected def afterAll(): Unit = {
     server.stop(0)
-    Await.result(system.terminate(), 10.seconds)
     ()
   }
 
@@ -185,7 +179,7 @@ class MiniMaxWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
             Seq(TextContent("Describe"), ImageURLContent("https://example.com/image.png"))
           )
         )
-        await(service.createChatCompletionStreamed(media, flash).runWith(Sink.seq))
+        await(service.createChatCompletionStreamed(media, flash).runToSeq)
 
         (lastBody \ "stream").as[Boolean] shouldBe true
         (lastBody \ "model").as[String] shouldBe "MiniMax-M3.1-Flash"

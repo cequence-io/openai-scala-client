@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.service.impl
 
-import akka.NotUsed
-import akka.stream.scaladsl.Source
+import io.cequence.wsclient.stream.{AsyncStream, Bytes}
 import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.settings._
@@ -15,7 +14,6 @@ import io.cequence.openaiscala.domain.responsesapi.{
   Inputs,
   ResponseStreamEvent
 }
-import akka.util.ByteString
 import io.cequence.openaiscala.domain.agents.{
   AgentInput,
   AgentSessionEvent,
@@ -48,7 +46,7 @@ private[service] trait OpenAICoreServiceStreamedExtraImpl
   override def createCompletionStreamed(
     prompt: String,
     settings: CreateCompletionSettings
-  ): Source[TextCompletionResponse, NotUsed] =
+  ): AsyncStream[TextCompletionResponse] =
     execJsonStream(
       EndPoint.completions,
       "POST",
@@ -61,7 +59,7 @@ private[service] trait OpenAICoreServiceStreamedExtraImpl
   override def createAgentSessionStreamed(
     settings: CreateAgentSessionSettings,
     input: AgentInput
-  ): Source[AgentSessionEvent, NotUsed] =
+  ): AsyncStream[AgentSessionEvent] =
     agentSessionEvents(
       execRawStream(
         EndPoint.agent_sessions,
@@ -77,7 +75,7 @@ private[service] trait OpenAICoreServiceStreamedExtraImpl
 
   override def streamAgentSessionEvents(
     sessionId: String
-  ): Source[AgentSessionEvent, NotUsed] =
+  ): AsyncStream[AgentSessionEvent] =
     PathSegment.inSource {
       agentSessionEvents(
         execRawStream(
@@ -92,8 +90,8 @@ private[service] trait OpenAICoreServiceStreamedExtraImpl
   // the session streams carry comment-only heartbeat frames - decoded by the SSE decoder, not
   // the JSON framing; an error body answering the request fails the stream classified
   private def agentSessionEvents(
-    bytes: Source[ByteString, NotUsed]
-  ): Source[AgentSessionEvent, NotUsed] =
+    bytes: AsyncStream[Bytes]
+  ): AsyncStream[AgentSessionEvent] =
     bytes.via(ServerSentEvents.jsonPayloads()).map { json =>
       if ((json \ "type").isEmpty) inBandStreamError(json).foreach(throw _)
       json.asSafe[AgentSessionEvent](AgentsJsonFormats.agentSessionEventReads)
@@ -102,7 +100,7 @@ private[service] trait OpenAICoreServiceStreamedExtraImpl
   override def createModelResponseStreamed(
     inputs: Inputs,
     settings: CreateModelResponseSettings
-  ): Source[ResponseStreamEvent, NotUsed] = {
+  ): AsyncStream[ResponseStreamEvent] = {
     val body =
       Json.toJsObject(settings.copy(stream = Some(true)))(createModelResponseSettingsFormat) ++
         Json.obj("input" -> inputsWrites.writes(inputs))

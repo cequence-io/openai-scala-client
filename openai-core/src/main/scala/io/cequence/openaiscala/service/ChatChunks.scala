@@ -1,7 +1,5 @@
 package io.cequence.openaiscala.service
 
-import akka.NotUsed
-import akka.stream.scaladsl.Flow
 import io.cequence.openaiscala.JsonFormats.chatCompletionChoiceChunkInfoFormat
 import io.cequence.openaiscala.domain.{ChatRole, FunctionCallChunkSpec, ToolCallChunkSpec}
 import io.cequence.openaiscala.domain.response.ChatChunk._
@@ -21,6 +19,7 @@ import io.cequence.openaiscala.domain.responsesapi.{
   ResponseStreamEvent,
   UsageInfo => ResponsesUsageInfo
 }
+import io.cequence.wsclient.stream.AsyncPipe
 import play.api.libs.json.{JsArray, JsNull, JsObject, JsString, JsValue, Json}
 
 import java.{util => ju}
@@ -50,8 +49,8 @@ object ChatChunks {
    * 2026-09-29), as do OpenAI-compatible providers such as Together AI; the provider's own
    * value stays in `providerReason`.
    */
-  def fromOpenAIChunks: Flow[ChatCompletionChunkResponse, ChatChunk, NotUsed] =
-    Flow[ChatCompletionChunkResponse].statefulMapConcat { () =>
+  def fromOpenAIChunks: AsyncPipe[ChatCompletionChunkResponse, ChatChunk] =
+    AsyncPipe.of[ChatCompletionChunkResponse].statefulMapConcat { () =>
       var started = false
       val pending = mutable.LinkedHashMap.empty[Int, PendingToolCall]
       // some providers (e.g. Groq) put the usage on the final content chunk AND on the trailing
@@ -173,8 +172,8 @@ object ChatChunks {
    * [[OpenAIScalaClientException]]; lifecycle notifications and unknown events pass through as
    * [[ChatChunk.Other]].
    */
-  def fromResponseEvents: Flow[ResponseStreamEvent, ChatChunk, NotUsed] =
-    Flow[ResponseStreamEvent].statefulMapConcat { () =>
+  def fromResponseEvents: AsyncPipe[ResponseStreamEvent, ChatChunk] =
+    AsyncPipe.of[ResponseStreamEvent].statefulMapConcat { () =>
       import ResponseStreamEvent._
 
       var toolCount = 0
@@ -323,8 +322,8 @@ object ChatChunks {
                   serverSide = true
                 )
               // reported once complete, on output_item.done
-              case "message" | "reasoning" | "mcp_approval_request" |
-                  "multi_agent_call_output" | "agent_message" =>
+              case "message" | "reasoning" |
+                  "mcp_approval_request" | "multi_agent_call_output" | "agent_message" =>
                 Nil
               case other => List(Other(s"output_item.$other", raw))
             }
@@ -584,8 +583,8 @@ object ChatChunks {
    * [[toOpenAIChunks(id:String,model:String)*]] taking the id / model from the stream's own
    * [[ChatChunk.Start]] chunk.
    */
-  def toOpenAIChunks: Flow[ChatChunk, ChatCompletionChunkResponse, NotUsed] =
-    Flow[ChatChunk].statefulMapConcat { () =>
+  def toOpenAIChunks: AsyncPipe[ChatChunk, ChatCompletionChunkResponse] =
+    AsyncPipe.of[ChatChunk].statefulMapConcat { () =>
       var id = ""
       var model = ""
       val created = new ju.Date()
@@ -615,8 +614,8 @@ object ChatChunks {
   def toOpenAIChunks(
     id: String,
     model: String
-  ): Flow[ChatChunk, ChatCompletionChunkResponse, NotUsed] =
-    Flow[ChatChunk].statefulMapConcat { () =>
+  ): AsyncPipe[ChatChunk, ChatCompletionChunkResponse] =
+    AsyncPipe.of[ChatChunk].statefulMapConcat { () =>
       val created = new ju.Date()
       val clientCallsOnly = clientCallsOnlyFilter()
 
@@ -624,7 +623,7 @@ object ChatChunks {
         clientCallsOnly(chunk).flatMap(toOpenAIChunk(id, model, created, _).toList)
     }
 
-  // Per materialization: remembers the indexes of provider-executed calls and drops their start
+  // Per run: remembers the indexes of provider-executed calls and drops their start
   // and every later argument fragment. A Retry restarts the stream (and its ordinals), so it
   // clears the set. Client calls keep their indexes.
   private def clientCallsOnlyFilter(): ChatChunk => List[ChatChunk] = {

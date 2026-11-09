@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.service
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import io.cequence.openaiscala.JsonFormats.{messageReads, messageWrites}
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
@@ -21,7 +18,7 @@ import io.cequence.openaiscala.domain.{
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.openaiscala.service.adapter.OpenAIResponsesChatCompletionService
 import io.cequence.wsclient.domain.WsRequestContext
-import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
+import io.cequence.openaiscala.testkit.TestEngines
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -45,8 +42,6 @@ import scala.io.Source
 class ReasoningCarryWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("reasoning-carry-wire")
-  private implicit val materializer: Materializer = Materializer(system)
 
   private case class Received(
     path: String,
@@ -56,7 +51,7 @@ class ReasoningCarryWireSpec extends AnyWordSpec with Matchers with BeforeAndAft
   private val received = mutable.ArrayBuffer.empty[Received]
 
   private val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
-  private val engine = StreamedEngineRegistry.outputStreamed(TransportSettings())
+  private val engine = TestEngines.streaming()
   private lazy val coreUrl = s"http://localhost:${server.getAddress.getPort}/"
   private val context = WsRequestContext(authHeaders = Seq("Authorization" -> "Bearer k"))
 
@@ -168,7 +163,6 @@ class ReasoningCarryWireSpec extends AnyWordSpec with Matchers with BeforeAndAft
     chatOtherAccount.close()
     engine.close()
     server.stop(0)
-    system.terminate()
     ()
   }
 
@@ -328,7 +322,7 @@ class ReasoningCarryWireSpec extends AnyWordSpec with Matchers with BeforeAndAft
               None,
               luna
             )
-            .runWith(Sink.seq)
+            .runToSeq
         )
         chunks should not be empty
 

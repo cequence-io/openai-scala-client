@@ -1,12 +1,12 @@
 package io.cequence.openaiscala.domain.response
 
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
+import io.cequence.wsclient.stream.{AsyncPipe, AsyncStream}
+import io.cequence.wsclient.stream.AsyncStream.Step
 import io.cequence.openaiscala.domain.FunctionCallSpec
 import io.cequence.wsclient.domain.EnumValue
 import play.api.libs.json.JsValue
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
  * One provider-neutral event of a streamed chat completion, as returned by
@@ -361,54 +361,55 @@ object ChatChunk {
   }
 
   /**
-   * Folds a typed stream into an [[AssembledChatCompletion]] (linear in the streamed size - a
-   * fresh mutable builder per materialization).
+   * Folds a typed stream into ONE [[AssembledChatCompletion]] when it completes (linear in the
+   * streamed size - a fresh mutable builder per run): `stream.via(assembleSink)` is a
+   * one-element stream (run it with `runHead`, or natively on your backend).
    */
-  def assembleSink: Sink[ChatChunk, Future[AssembledChatCompletion]] =
-    Flow[ChatChunk]
-      .fold(Option.empty[AssembledChatCompletion.Builder]) {
+  def assembleSink: AsyncPipe[ChatChunk, AssembledChatCompletion] =
+    AsyncPipe
+      .of[ChatChunk]
+      .stateful(() => Option.empty[AssembledChatCompletion.Builder])(
         (
           acc,
           chunk
-        ) =>
-          Some(acc.getOrElse(new AssembledChatCompletion.Builder).add(chunk))
-      }
-      .map(_.fold(AssembledChatCompletion.empty)(_.result()))
-      .toMat(Sink.head)(Keep.right)
+        ) => Step(Some(acc.getOrElse(new AssembledChatCompletion.Builder).add(chunk))),
+        acc => acc.fold(AssembledChatCompletion.empty)(_.result()) :: Nil
+      )
 
   /**
    * Convenience views over a typed stream. Being defined in the companion, they are found by
    * implicit scope without an import.
    */
-  implicit class ChatChunkSourceOps[Mat](private val source: Source[ChatChunk, Mat])
+  implicit class ChatChunkStreamOps(private val stream: AsyncStream[ChatChunk])
       extends AnyVal {
 
-    /** The legacy text-only view (`Source[String, _]` of answer fragments). */
-    def texts: Source[String, Mat] = source.collect { case Text(t) => t }
+    /** The legacy text-only view (the answer fragments). */
+    def texts: AsyncStream[String] = stream.collect { case Text(t) => t }
 
-    def thinkingTexts: Source[String, Mat] = source.collect { case Thinking(t) => t }
+    def thinkingTexts: AsyncStream[String] = stream.collect { case Thinking(t) => t }
 
-    def toolCalls: Source[ToolCall, Mat] = source.collect { case tc: ToolCall => tc }
+    def toolCalls: AsyncStream[ToolCall] = stream.collect { case tc: ToolCall => tc }
 
-    def toolResults: Source[ToolResult, Mat] = source.collect { case tr: ToolResult => tr }
+    def toolResults: AsyncStream[ToolResult] = stream.collect { case tr: ToolResult => tr }
 
-    def citations: Source[Citation, Mat] = source.collect { case c: Citation => c }
+    def citations: AsyncStream[Citation] = stream.collect { case c: Citation => c }
 
-    def codeExecutions: Source[CodeExecution, Mat] = source.collect { case c: CodeExecution =>
+    def codeExecutions: AsyncStream[CodeExecution] = stream.collect { case c: CodeExecution =>
       c
     }
 
-    def webSearches: Source[WebSearch, Mat] = source.collect { case w: WebSearch => w }
+    def webSearches: AsyncStream[WebSearch] = stream.collect { case w: WebSearch => w }
 
-    def images: Source[Image, Mat] = source.collect { case i: Image => i }
+    def images: AsyncStream[Image] = stream.collect { case i: Image => i }
 
-    def toolApprovalRequests: Source[ToolApprovalRequest, Mat] = source.collect {
+    def toolApprovalRequests: AsyncStream[ToolApprovalRequest] = stream.collect {
       case r: ToolApprovalRequest => r
     }
 
+    /** Runs the stream and folds it into an [[AssembledChatCompletion]]. */
     def assembled(
-      implicit materializer: Materializer
+      implicit ec: ExecutionContext
     ): Future[AssembledChatCompletion] =
-      source.runWith(assembleSink)
+      stream.via(assembleSink).runHead
   }
 }

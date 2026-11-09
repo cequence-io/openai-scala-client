@@ -1,9 +1,6 @@
 package io.cequence.openaiscala.service
 
-import akka.NotUsed
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Flow, Sink, Source}
+import io.cequence.wsclient.stream.{AsyncPipe, AsyncStream}
 import io.cequence.openaiscala.domain.response.ChatChunk._
 import io.cequence.openaiscala.domain.response.{ChatChunk, ChatCompletionChunkResponse}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
@@ -29,14 +26,11 @@ class StreamedWrappersDelegationSpec
     with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("streamed-wrappers-delegation")
-  private implicit val materializer: Materializer = Materializer(system)
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
 
   override def afterAll(): Unit = {
-    system.terminate()
     ()
   }
 
@@ -45,16 +39,16 @@ class StreamedWrappersDelegationSpec
     override def createChatCompletionStreamed(
       messages: Seq[BaseMessage],
       settings: CreateChatCompletionSettings
-    ): Source[ChatCompletionChunkResponse, NotUsed] =
-      Source.failed(new IllegalStateException("legacy path must not be used"))
+    ): AsyncStream[ChatCompletionChunkResponse] =
+      AsyncStream.failed(new IllegalStateException("legacy path must not be used"))
 
     override def createChatToolCompletionStreamed(
       messages: Seq[BaseMessage],
       tools: Seq[ChatCompletionTool],
       responseToolChoice: Option[String],
       settings: CreateChatCompletionSettings
-    ): Source[ChatChunk, NotUsed] =
-      Source(
+    ): AsyncStream[ChatChunk] =
+      AsyncStream.fromIterable(
         List[ChatChunk](
           Start(name, settings.model),
           Text(
@@ -68,8 +62,8 @@ class StreamedWrappersDelegationSpec
 
   private val messages = Seq(UserMessage("hi"))
 
-  private def collect(source: Source[ChatChunk, NotUsed]): Seq[ChatChunk] =
-    source.runWith(Sink.seq).futureValue
+  private def collect(source: AsyncStream[ChatChunk]): Seq[ChatChunk] =
+    source.runToSeq.futureValue
 
   "the streamed router" should {
     "dispatch by model and apply the mapped model name" in {
@@ -129,7 +123,7 @@ class StreamedWrappersDelegationSpec
         val view = service.responsesAsChatCompletion
         view should not be null
 
-        // never materialized - only the wiring / implicit resolution is exercised here
+        // never run - only the wiring / implicit resolution is exercised here
         val source = service.createChatToolCompletionStreamedViaResponses(
           messages,
           Nil,
@@ -161,8 +155,8 @@ class StreamedWrappersDelegationSpec
 
       val transformed = OpenAIChatCompletionStreamedOutputConversionAdapter(
         converted,
-        Flow[Seq[io.cequence.openaiscala.domain.response.ChunkMessageSpec]],
-        Flow[ChatChunk].map {
+        AsyncPipe.identity[Seq[io.cequence.openaiscala.domain.response.ChunkMessageSpec]],
+        AsyncPipe.of[ChatChunk].map {
           case Text(t) => Text(t.toUpperCase)
           case other   => other
         }

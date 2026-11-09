@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.service.adapter
 
-import akka.NotUsed
-import akka.stream.scaladsl.Source
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.domain.guardrails.{GuardrailAction, GuardrailVerdict}
 import io.cequence.openaiscala.domain.response.{
   ChatChunk,
@@ -70,7 +69,7 @@ private class GuardrailsStreamedAdapter(
   override def createChatCompletionStreamed(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
-  ): Source[ChatCompletionChunkResponse, NotUsed] =
+  ): AsyncStream[ChatCompletionChunkResponse] =
     guarded(
       messages,
       new OpenAIChunks(settings.model),
@@ -85,7 +84,7 @@ private class GuardrailsStreamedAdapter(
     tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
-  ): Source[ChatChunk, NotUsed] =
+  ): AsyncStream[ChatChunk] =
     guarded(
       messages,
       new TypedChunks(settings.model),
@@ -102,30 +101,29 @@ private class GuardrailsStreamedAdapter(
     chunks: StreamChunks[C],
     reprompts: Int
   )(
-    stream: Seq[BaseMessage] => Source[C, NotUsed]
-  ): Source[C, NotUsed] =
-    Source
-      .futureSource(
-        runner.checkInput(messages).map {
-          case Nil if !runner.hasOutput =>
-            stream(messages)
+    stream: Seq[BaseMessage] => AsyncStream[C]
+  ): AsyncStream[C] =
+    // the input guardrails run per run of the stream - before the provider stream is created
+    AsyncStream.futureStream(
+      runner.checkInput(messages).map {
+        case Nil if !runner.hasOutput =>
+          stream(messages)
 
-          case Nil =>
-            checkedWhenFinished(
-              messages,
-              chunks,
-              stream,
-              reprompts,
-              messages,
-              attempt = 0,
-              usageSoFar = None
-            )
+        case Nil =>
+          checkedWhenFinished(
+            messages,
+            chunks,
+            stream,
+            reprompts,
+            messages,
+            attempt = 0,
+            usageSoFar = None
+          )
 
-          case verdicts =>
-            blocked(verdicts)(chunks.blocked(_, verdicts, idAndModel = None, usage = None))
-        }
-      )
-      .mapMaterializedValue(_ => NotUsed)
+        case verdicts =>
+          blocked(verdicts)(chunks.blocked(_, verdicts, idAndModel = None, usage = None))
+      }
+    )
 
   // the reply held back until the stream finishes, then checked once by the output guardrails -
   // everything it releases, not only the answer text;
@@ -134,12 +132,12 @@ private class GuardrailsStreamedAdapter(
   private def checkedWhenFinished[C](
     messages: Seq[BaseMessage],
     chunks: StreamChunks[C],
-    stream: Seq[BaseMessage] => Source[C, NotUsed],
+    stream: Seq[BaseMessage] => AsyncStream[C],
     reprompts: Int,
     callMessages: Seq[BaseMessage],
     attempt: Int,
     usageSoFar: Option[UsageInfo]
-  ): Source[C, NotUsed] =
+  ): AsyncStream[C] =
     stream(callMessages).fold(Vector.empty[C])(_ :+ _).flatMapConcat { all =>
       // a restart voids everything before it
       val current = all.drop(all.lastIndexWhere(chunks.isRestart).max(0))
@@ -151,13 +149,13 @@ private class GuardrailsStreamedAdapter(
           attempt < reprompts
         )
 
-      Source.future(decision).flatMapConcat {
+      AsyncStream.future(decision).flatMapConcat {
         // a reprompted stream reports the usage of every attempt
         case OutputDecision.Pass =>
           val released =
             if (attempt == 0) current
             else usage.fold[Seq[C]](current)(chunks.withTotalUsage(current, _))
-          Source(released.toList)
+          AsyncStream.fromIterable(released.toList)
 
         case again: OutputDecision.AskAgain =>
           checkedWhenFinished(
@@ -181,8 +179,10 @@ private class GuardrailsStreamedAdapter(
     verdicts: Seq[GuardrailVerdict]
   )(
     answer: String => Seq[C]
-  ): Source[C, NotUsed] =
-    runner.block(verdicts)(answer).fold(Source.failed, chunks => Source(chunks.toList))
+  ): AsyncStream[C] =
+    runner
+      .block(verdicts)(answer)
+      .fold(AsyncStream.failed[C](_), chunks => AsyncStream.fromIterable(chunks.toList))
 }
 
 private object GuardrailsStreamedAdapter {

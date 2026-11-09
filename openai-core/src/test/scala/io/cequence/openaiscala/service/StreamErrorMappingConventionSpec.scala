@@ -7,13 +7,14 @@ import java.io.File
 import scala.io.Source
 
 /**
- * A repo-wide convention check: an ENGINE-level stream call (`engine.execJsonStream(site,
- * ...)` / `execRawStream(site, ...)`) fails a non-2xx answer with an UNCLASSIFIED
- * `CequenceWSHttpStatusException`, so services stream through the service-level methods of
- * [[ClassifiedStreamingWSClient]] instead - or, where an engine-level call is unavoidable,
- * follow it with `.mapError(mapHttpStatusErrors)`. This spec scans every module's main sources
- * and fails on an engine-level stream call without that mapping (engine implementations, which
- * merely delegate, are exempt).
+ * A repo-wide convention check: an ENGINE-level stream call (`engine.execJsonAsyncStream(site,
+ * ...)` / `execRawAsyncStream(site, ...)`, the publisher variants and the pre-2.0
+ * `execJsonStream(site, ...)` / `execRawStream(site, ...)`) fails a non-2xx answer with an
+ * UNCLASSIFIED `CequenceWSHttpStatusException`, so services stream through the service-level
+ * methods of [[ClassifiedStreamingWSClient]] instead - or, where an engine-level call is
+ * unavoidable, follow it with `.mapError(mapHttpStatusErrors)`. This spec scans every module's
+ * main sources and fails on an engine-level stream call without that mapping (engine
+ * implementations, which merely delegate, are exempt).
  */
 class StreamErrorMappingConventionSpec extends AnyWordSpec with Matchers {
 
@@ -22,7 +23,7 @@ class StreamErrorMappingConventionSpec extends AnyWordSpec with Matchers {
 
   // an engine-level stream call: its first argument is the site binding
   private val engineLevelStreamCall =
-    """\.exec(?:Json|Raw)Stream(?:Publisher)?\(\s*site\b""".r
+    """\.exec(?:Json|Raw)(?:Async)?Stream(?:Publisher)?\(\s*site\b""".r
 
   // how far after the call the mapping must appear (the call's arguments + the chain start)
   private val MappingWindow = 1500

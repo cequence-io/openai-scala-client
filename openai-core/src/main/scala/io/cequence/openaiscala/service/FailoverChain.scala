@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.service
 
-import akka.actor.Scheduler
+import io.cequence.wsclient.concurrent.AsyncScheduler
 import io.cequence.openaiscala.RetryEngine.Outcome
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import io.cequence.openaiscala.{OpenAIScalaJsonParseException, RetryEngine}
@@ -48,7 +48,7 @@ private[openaiscala] object FailoverChain {
     logger: Logger
   )(
     implicit ec: ExecutionContext,
-    scheduler: Scheduler
+    scheduler: AsyncScheduler
   ): Future[A] =
     runLazy(
       service,
@@ -72,7 +72,7 @@ private[openaiscala] object FailoverChain {
     logger: Logger
   )(
     implicit ec: ExecutionContext,
-    scheduler: Scheduler
+    scheduler: AsyncScheduler
   ): Future[A] = {
     require(steps.nonEmpty, "At least one step is required.")
 

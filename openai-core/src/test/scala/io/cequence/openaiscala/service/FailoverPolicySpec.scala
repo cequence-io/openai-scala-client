@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.service
 
-import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import io.cequence.openaiscala.{
   OpenAIScalaAttemptTimeoutException,
@@ -57,14 +56,11 @@ class FailoverPolicySpec
   import FailoverPolicySpec._
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("failover-policy-spec")
-  private implicit val scheduler: Scheduler = system.scheduler
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(20, Seconds), interval = Span(25, Millis))
 
   override def afterAll(): Unit = {
-    system.terminate()
     ()
   }
 

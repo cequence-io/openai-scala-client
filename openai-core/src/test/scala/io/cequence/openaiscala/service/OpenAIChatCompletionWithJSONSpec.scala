@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.service
 
-import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.OpenAIScalaJsonParseException
 import io.cequence.openaiscala.domain.response.{
   ChatCompletionChoiceInfo,
@@ -40,14 +39,11 @@ class OpenAIChatCompletionWithJSONSpec
   import OpenAIChatCompletionWithJSONSpec._
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("chat-completion-with-json-spec")
-  private implicit val scheduler: Scheduler = system.scheduler
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
 
   override def afterAll(): Unit = {
-    system.terminate()
     ()
   }
 

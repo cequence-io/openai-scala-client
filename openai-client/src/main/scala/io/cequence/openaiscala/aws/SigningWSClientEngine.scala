@@ -1,13 +1,11 @@
 package io.cequence.openaiscala.aws
 
-import akka.NotUsed
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.wsclient.domain.{RichResponse, SiteBinding, WsRequestContext}
+import io.cequence.wsclient.domain.{RichResponse, SiteBinding}
 import io.cequence.wsclient.service.spi.TransportSettings
-import io.cequence.wsclient.service.ws.{FilePart, PlayJsonUtil}
-import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtraAkka}
+import io.cequence.wsclient.service.ws.FilePart
+import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamCore}
+import io.cequence.wsclient.stream.{AsyncStream, Bytes, DeferredPublisher}
 import play.api.libs.json.JsValue
 
 import java.io.File
@@ -33,9 +31,16 @@ import scala.util.{Failure, Success, Try}
  * Notes for maintainers:
  *   - The forwarded [[SiteBinding]] has its `authHeaders` cleared, because the engine appends
  *     `extraHeaders` to them; leaving a static `Authorization` there would send two.
- *   - Signing is EAGER, including for streamed calls, because the underlying engine issues the
- *     HTTP request when the method is called rather than when the `Source` is materialized.
- *   - A signing failure (e.g. missing credentials) is returned as a failed `Future` / `Source`
+ *   - The signed `Host` header is not forwarded - the HTTP client derives it from the URL (the
+ *     same value), and the JDK client refuses a caller-set one.
+ *   - The URL and body are signed as the underlying engine renders them - its own `wireUrl` /
+ *     `renderJsonBody` (ws-client 1.2.0+), so the signature matches the bytes on the wire on
+ *     every engine (query encoding and JSON escaping differ between engines).
+ *   - Streams are signed PER RUN (inside `AsyncStream.defer`, at the moment the request goes
+ *     out - the signature carries a timestamp), and keep the underlying engine's native stream
+ *     (an Akka engine's `Source` stays native for an Akka consumer). The `Flow.Publisher`
+ *     variants are signed when they are subscribed.
+ *   - A signing failure (e.g. missing credentials) is returned as a failed `Future` / stream
  *     rather than thrown, matching what callers expect from the async API.
  *   - Multipart and raw-file uploads cannot be signed here: their bytes (and the multipart
  *     boundary) are generated inside the HTTP engine, so they cannot be hashed beforehand.
@@ -47,7 +52,6 @@ class SigningWSClientEngine private[aws] (
   protected val credentials: AwsCredentialsProvider,
   protected val region: String,
   protected val awsService: String,
-  protected val renderJson: JsValue => String,
   protected val signedSites: SiteBinding => Boolean,
   protected val ownsUnderlying: Boolean
 )(
@@ -66,34 +70,24 @@ class SigningWSClientEngine private[aws] (
       credentials,
       region,
       awsService,
-      renderJson,
       signedSites,
       ownsUnderlying = true
     )
 
   override def close(): Unit = if (ownsUnderlying) underlying.close()
 
-  // -- signing ---------------------------------------------------------------
+  // the wire format is the underlying engine's (a stacked signer signs what it sends)
+  override def renderJsonBody(json: JsValue): String = underlying.renderJsonBody(json)
 
-  /**
-   * Reproduces the URL the underlying engine composes: `site.createURL(...)` plus a query
-   * string built from `params` FIRST and then the context's `extraParams`, with no
-   * percent-encoding (matching ws-client's own behaviour).
-   */
-  private[aws] def wireUrl(
+  override def wireUrl(
     site: SiteBinding,
     endPoint: String,
     endPointParam: Option[String],
-    params: Seq[(String, Option[Any])],
-    ctx: WsRequestContext
-  ): String = {
-    val all = params ++ ctx.extraParams.map { case (k, v) => (k, Some(v: Any)) }
-    val queryString = all.collect { case (k, Some(v)) => s"$k=$v" }.mkString("&")
-    val base = site.createURL(Some(endPoint), endPointParam)
-    if (queryString.isEmpty) base
-    else if (base.contains("?")) s"$base&$queryString"
-    else s"$base?$queryString"
-  }
+    params: Seq[(String, Option[Any])]
+  ): String =
+    underlying.wireUrl(site, endPoint, endPointParam, params)
+
+  // -- signing ---------------------------------------------------------------
 
   /** The site to forward (auth headers stripped) and the headers to forward. */
   protected def prepare(
@@ -108,10 +102,15 @@ class SigningWSClientEngine private[aws] (
     if (!signedSites(site)) Success((site, extraHeaders))
     else
       Try {
-        // evaluated exactly once per request, so a rotating context is read consistently
+        // evaluated exactly once per request, so a rotating context is read consistently: the
+        // forwarded site carries the evaluated context (no context function)
         val ctx = site.requestContextFn()
         val creds = credentials.resolve()
-        val url = wireUrl(site, endPoint, endPointParam, params, ctx)
+        val stripped = site.copy(
+          requestContext = ctx.copy(authHeaders = Nil),
+          requestContextFun = None
+        )
+        val url = underlying.wireUrl(stripped, endPoint, endPointParam, params)
 
         val signature = AwsSigV4
           .signedHeaders(
@@ -126,11 +125,10 @@ class SigningWSClientEngine private[aws] (
             sessionToken = creds.sessionToken
           )
           .toSeq
-
-        val stripped = site.copy(
-          requestContext = ctx.copy(authHeaders = Nil),
-          requestContextFun = None
-        )
+          // `Host` is signed (derived from the URL) but never forwarded: every HTTP client sets
+          // it from the URL itself, and some refuse a caller-set one (the JDK client throws
+          // "restricted header name")
+          .filterNot { case (name, _) => name.equalsIgnoreCase("host") }
 
         (stripped, extraHeaders ++ signature)
       }
@@ -147,8 +145,8 @@ class SigningWSClientEngine private[aws] (
 
   /** The sync engine always serializes a body, so an empty parameter list signs as `{}`. */
   protected def jsonBody(bodyParams: Seq[(String, Option[JsValue])]): String =
-    // the trait's own concrete implementation - identical to the one the engine will use
-    renderJson(toJsBodyObject(bodyParams))
+    // the body object as every engine builds it, rendered as the underlying engine sends it
+    underlying.renderJsonBody(toJsBodyObject(bodyParams))
 
   /** The streamed engine attaches a body only when there are params, so empty signs as "". */
   protected def streamBody(bodyParams: Seq[(String, Option[JsValue])]): String =
@@ -304,7 +302,15 @@ class SigningWSClientEngine private[aws] (
     acceptableStatusCodes: Seq[Int]
   ): Future[RichResponse] =
     signedFuture(
-      prepare(site, "POST", endPoint, endPointParam, params, renderJson(body), extraHeaders)
+      prepare(
+        site,
+        "POST",
+        endPoint,
+        endPointParam,
+        params,
+        underlying.renderJsonBody(body),
+        extraHeaders
+      )
     ) {
       (
         s,
@@ -331,7 +337,15 @@ class SigningWSClientEngine private[aws] (
     acceptableStatusCodes: Seq[Int]
   ): Future[RichResponse] =
     signedFuture(
-      prepare(site, "PUT", endPoint, endPointParam, params, renderJson(body), extraHeaders)
+      prepare(
+        site,
+        "PUT",
+        endPoint,
+        endPointParam,
+        params,
+        underlying.renderJsonBody(body),
+        extraHeaders
+      )
     ) {
       (
         s,
@@ -411,11 +425,10 @@ class SigningWSClientEngine private[aws] (
 
 /** The signing decorator over a streaming-capable engine - adds the signed stream methods. */
 class SigningStreamedWSClientEngine private[aws] (
-  protected val streamedUnderlying: WSClientEngine with WSClientOutputStreamExtraAkka,
+  protected val streamedUnderlying: WSClientEngine with WSClientOutputStreamCore,
   credentials: AwsCredentialsProvider,
   region: String,
   awsService: String,
-  renderJson: JsValue => String,
   signedSites: SiteBinding => Boolean,
   ownsUnderlying: Boolean
 )(
@@ -425,38 +438,26 @@ class SigningStreamedWSClientEngine private[aws] (
       credentials,
       region,
       awsService,
-      renderJson,
       signedSites,
       ownsUnderlying
     )
-    with WSClientOutputStreamExtraAkka {
+    with WSClientOutputStreamCore {
 
   override def copy(
     transportSettings: TransportSettings,
     reuseExecContext: Boolean
-  ): WSClientEngine with WSClientOutputStreamExtraAkka =
+  ): WSClientEngine with WSClientOutputStreamCore =
     new SigningStreamedWSClientEngine(
       streamedUnderlying.copy(transportSettings, reuseExecContext),
       credentials,
       region,
       awsService,
-      renderJson,
       signedSites,
       ownsUnderlying = true
     )
 
-  private def failedPublisher[T](e: Throwable): Flow.Publisher[T] =
-    new Flow.Publisher[T] {
-      override def subscribe(subscriber: Flow.Subscriber[_ >: T]): Unit = {
-        subscriber.onSubscribe(new Flow.Subscription {
-          override def request(n: Long): Unit = ()
-          override def cancel(): Unit = ()
-        })
-        subscriber.onError(e)
-      }
-    }
-
-  override def execJsonStream(
+  // signed per run, when the request goes out; the underlying engine's (native) stream is kept
+  override def execJsonAsyncStream(
     site: SiteBinding,
     endPoint: String,
     method: String,
@@ -468,34 +469,36 @@ class SigningStreamedWSClientEngine private[aws] (
     maxFrameLength: Option[Int],
     stripPrefix: Option[String],
     stripSuffix: Option[String]
-  ): Source[JsValue, NotUsed] =
-    prepare(
-      site,
-      method,
-      endPoint,
-      endPointParam,
-      params,
-      streamBody(bodyParams),
-      extraHeaders
-    ) match {
-      case Success((s, h)) =>
-        streamedUnderlying.execJsonStream(
-          s,
-          endPoint,
-          method,
-          endPointParam,
-          params,
-          bodyParams,
-          h,
-          framingDelimiter,
-          maxFrameLength,
-          stripPrefix,
-          stripSuffix
-        )
-      case Failure(e) => Source.failed(e)
-    }
+  ): AsyncStream[JsValue] =
+    AsyncStream.defer(
+      prepare(
+        site,
+        method,
+        endPoint,
+        endPointParam,
+        params,
+        streamBody(bodyParams),
+        extraHeaders
+      ) match {
+        case Success((s, h)) =>
+          streamedUnderlying.execJsonAsyncStream(
+            s,
+            endPoint,
+            method,
+            endPointParam,
+            params,
+            bodyParams,
+            h,
+            framingDelimiter,
+            maxFrameLength,
+            stripPrefix,
+            stripSuffix
+          )
+        case Failure(e) => AsyncStream.failed(e)
+      }
+    )
 
-  override def execRawStream(
+  override def execRawAsyncStream(
     site: SiteBinding,
     endPoint: String,
     method: String,
@@ -503,28 +506,30 @@ class SigningStreamedWSClientEngine private[aws] (
     params: Seq[(String, Option[Any])],
     bodyParams: Seq[(String, Option[JsValue])],
     extraHeaders: Seq[(String, String)]
-  ): Source[ByteString, NotUsed] =
-    prepare(
-      site,
-      method,
-      endPoint,
-      endPointParam,
-      params,
-      streamBody(bodyParams),
-      extraHeaders
-    ) match {
-      case Success((s, h)) =>
-        streamedUnderlying.execRawStream(
-          s,
-          endPoint,
-          method,
-          endPointParam,
-          params,
-          bodyParams,
-          h
-        )
-      case Failure(e) => Source.failed(e)
-    }
+  ): AsyncStream[Bytes] =
+    AsyncStream.defer(
+      prepare(
+        site,
+        method,
+        endPoint,
+        endPointParam,
+        params,
+        streamBody(bodyParams),
+        extraHeaders
+      ) match {
+        case Success((s, h)) =>
+          streamedUnderlying.execRawAsyncStream(
+            s,
+            endPoint,
+            method,
+            endPointParam,
+            params,
+            bodyParams,
+            h
+          )
+        case Failure(e) => AsyncStream.failed(e)
+      }
+    )
 
   override def execJsonStreamPublisher(
     site: SiteBinding,
@@ -539,16 +544,16 @@ class SigningStreamedWSClientEngine private[aws] (
     stripPrefix: Option[String],
     stripSuffix: Option[String]
   ): Flow.Publisher[JsValue] =
-    prepare(
-      site,
-      method,
-      endPoint,
-      endPointParam,
-      params,
-      streamBody(bodyParams),
-      extraHeaders
-    ) match {
-      case Success((s, h)) =>
+    signedOnSubscribe(
+      prepare(
+        site,
+        method,
+        endPoint,
+        endPointParam,
+        params,
+        streamBody(bodyParams),
+        extraHeaders
+      ).map { case (s, h) =>
         streamedUnderlying.execJsonStreamPublisher(
           s,
           endPoint,
@@ -562,8 +567,8 @@ class SigningStreamedWSClientEngine private[aws] (
           stripPrefix,
           stripSuffix
         )
-      case Failure(e) => failedPublisher(e)
-    }
+      }
+    )
 
   override def execRawStreamPublisher(
     site: SiteBinding,
@@ -574,16 +579,16 @@ class SigningStreamedWSClientEngine private[aws] (
     bodyParams: Seq[(String, Option[JsValue])],
     extraHeaders: Seq[(String, String)]
   ): Flow.Publisher[ByteBuffer] =
-    prepare(
-      site,
-      method,
-      endPoint,
-      endPointParam,
-      params,
-      streamBody(bodyParams),
-      extraHeaders
-    ) match {
-      case Success((s, h)) =>
+    signedOnSubscribe(
+      prepare(
+        site,
+        method,
+        endPoint,
+        endPointParam,
+        params,
+        streamBody(bodyParams),
+        extraHeaders
+      ).map { case (s, h) =>
         streamedUnderlying.execRawStreamPublisher(
           s,
           endPoint,
@@ -593,8 +598,14 @@ class SigningStreamedWSClientEngine private[aws] (
           bodyParams,
           h
         )
-      case Failure(e) => failedPublisher(e)
-    }
+      }
+    )
+
+  // a cold, single-shot publisher: signed (and the underlying publisher created) when the
+  // first subscriber arrives; a signing failure is delivered as onError, a second subscriber
+  // is rejected (the publishers of the engine contract are single-shot)
+  private def signedOnSubscribe[T](create: => Try[Flow.Publisher[T]]): Flow.Publisher[T] =
+    new DeferredPublisher[T](() => create.get)
 }
 
 object SigningWSClientEngine {
@@ -608,13 +619,11 @@ object SigningWSClientEngine {
     }
 
   /**
-   * Wraps `underlying` so that every request it makes to an AWS host is SigV4-signed. Returns
-   * a [[SigningStreamedWSClientEngine]] when `underlying` streams, a plain
-   * [[SigningWSClientEngine]] otherwise - so it works on the base client classpath too.
+   * Wraps `underlying` so that every request it makes to an AWS host is SigV4-signed - over
+   * the URL and body exactly as `underlying` sends them (its `wireUrl` / `renderJsonBody`).
+   * Returns a [[SigningStreamedWSClientEngine]] when `underlying` streams, a plain
+   * [[SigningWSClientEngine]] otherwise.
    *
-   * @param renderJson
-   *   must render a body byte-for-byte as the underlying engine will send it; the default is
-   *   ws-client's own stringifier.
    * @param signedSites
    *   which sites get signed; defaults to AWS hosts only, which is what makes sharing the
    *   engine with non-AWS providers safe.
@@ -626,20 +635,18 @@ object SigningWSClientEngine {
     credentials: AwsCredentialsProvider,
     region: String,
     awsService: String = "bedrock",
-    renderJson: JsValue => String = PlayJsonUtil.wsClientStringify,
     signedSites: SiteBinding => Boolean = awsSitesOnly,
     ownsUnderlying: Boolean = true
   )(
     implicit ec: ExecutionContext
   ): WSClientEngine =
     underlying match {
-      case streamed: WSClientEngine with WSClientOutputStreamExtraAkka =>
+      case streamed: WSClientEngine with WSClientOutputStreamCore =>
         new SigningStreamedWSClientEngine(
           streamed,
           credentials,
           region,
           awsService,
-          renderJson,
           signedSites,
           ownsUnderlying
         )
@@ -649,7 +656,6 @@ object SigningWSClientEngine {
           credentials,
           region,
           awsService,
-          renderJson,
           signedSites,
           ownsUnderlying
         )

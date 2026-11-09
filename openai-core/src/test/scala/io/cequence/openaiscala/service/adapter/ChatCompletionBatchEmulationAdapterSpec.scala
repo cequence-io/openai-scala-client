@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.service.adapter
 
-import akka.actor.{ActorSystem, Scheduler}
+import io.cequence.wsclient.concurrent.Futures
 import io.cequence.openaiscala.domain.response.{
   ChatCompletionChoiceInfo,
   ChatCompletionResponse
@@ -34,14 +34,11 @@ class ChatCompletionBatchEmulationAdapterSpec
     with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("batch-emulation-spec")
-  private implicit val scheduler: Scheduler = system.scheduler
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
 
   override def afterAll(): Unit = {
-    system.terminate()
     ()
   }
 
@@ -174,7 +171,7 @@ class ChatCompletionBatchEmulationAdapterSpec
           val current = inFlight.incrementAndGet()
           maxObserved.updateAndGet(prev => math.max(prev, current))
 
-          akka.pattern.after(50.millis, scheduler) {
+          Futures.after(50.millis) {
             inFlight.decrementAndGet()
             Future.successful(response(settings.model, "ok"))
           }

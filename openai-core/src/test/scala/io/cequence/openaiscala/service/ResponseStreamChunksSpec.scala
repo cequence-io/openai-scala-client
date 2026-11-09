@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.service
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.response.ChatChunk._
 import io.cequence.openaiscala.domain.response.ChatChunk
@@ -29,14 +27,11 @@ class ResponseStreamChunksSpec
     with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("response-stream-chunks")
-  private implicit val materializer: Materializer = Materializer(system)
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
 
   override def afterAll(): Unit = {
-    system.terminate()
     ()
   }
 
@@ -151,7 +146,11 @@ class ResponseStreamChunksSpec
   }
 
   private def run(events: ResponseStreamEvent*): Seq[ChatChunk] =
-    Source(events.toList).via(ChatChunks.fromResponseEvents).runWith(Sink.seq).futureValue
+    AsyncStream
+      .fromIterable(events.toList)
+      .via(ChatChunks.fromResponseEvents)
+      .runToSeq
+      .futureValue
 
   "ChatChunks.fromResponseEvents" should {
 
@@ -247,9 +246,10 @@ class ResponseStreamChunksSpec
       val failed = event(
         """{"type":"response.failed","sequence_number":5,"response":{"id":"resp_1","status":"failed","error":{"code":"server_error","message":"boom"},"output":[]}}"""
       )
-      val ex = Source(List(created, failed))
+      val ex = AsyncStream
+        .fromIterable(List(created, failed))
         .via(ChatChunks.fromResponseEvents)
-        .runWith(Sink.seq)
+        .runToSeq
         .failed
         .futureValue
       ex shouldBe an[OpenAIScalaClientException]
@@ -258,9 +258,10 @@ class ResponseStreamChunksSpec
       val err = event(
         """{"type":"error","code":"rate_limit","message":"slow down","sequence_number":3}"""
       )
-      Source(List(created, err))
+      AsyncStream
+        .fromIterable(List(created, err))
         .via(ChatChunks.fromResponseEvents)
-        .runWith(Sink.seq)
+        .runToSeq
         .failed
         .futureValue
         .getMessage should include("slow down")

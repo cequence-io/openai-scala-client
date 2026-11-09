@@ -303,7 +303,7 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts with HasOpenAICo
     try ownedEngineInstance(signing, coreUrl, WsRequestContext())
     catch {
       case NonFatal(e) =>
-        // the engine was built for this service only - do not orphan its actor system
+        // the engine was built for this service only - do not orphan it
         signing.close()
         throw e
     }
@@ -380,11 +380,12 @@ trait OpenAIServiceFactoryHelper[F] extends OpenAIServiceConsts with HasOpenAICo
 
   /**
    * Creates the service on a CALLER-SUPPLIED, SITE-STATELESS engine - ONE engine (one
-   * connection pool, one actor system) can back any number of services/providers; the service
-   * holds its own site binding (built here from the api key) and feeds it into every call.
-   * Closing such a service does NOT close the shared engine - close the engine once, when done
-   * with all services using it. Factories producing streaming services require an engine with
-   * `Source`-typed output streaming (`WSClientOutputStreamExtraAkka`) and fail fast otherwise.
+   * connection pool and execution environment) can back any number of services/providers; the
+   * service holds its own site binding (built here from the api key) and feeds it into every
+   * call. Closing such a service does NOT close the shared engine - close the engine once,
+   * when done with all services using it. Factories producing streaming services require an
+   * engine with output streaming (`WSClientOutputStreamCore`: jdk, zio-http, play-akka-stream,
+   * play-pekko-stream, pekko-http) and fail fast otherwise.
    */
   def withEngine(
     engine: WSClientEngine,
@@ -437,12 +438,12 @@ trait RawWsServiceFactory[F] {
 
   /**
    * Creates the service on a CALLER-SUPPLIED, SITE-STATELESS engine - ONE engine (one
-   * connection pool, one actor system) can back any number of services/providers; the service
-   * holds its own site binding (from the given core URL and request context) and feeds it into
-   * every call. Closing such a service does NOT close the shared engine - close the engine
-   * once, when done with all services using it. Factories producing streaming services require
-   * an engine with `Source`-typed output streaming (`WSClientOutputStreamExtraAkka`) and fail
-   * fast otherwise.
+   * connection pool and execution environment) can back any number of services/providers; the
+   * service holds its own site binding (from the given core URL and request context) and feeds
+   * it into every call. Closing such a service does NOT close the shared engine - close the
+   * engine once, when done with all services using it. Factories producing streaming services
+   * require an engine with output streaming (`WSClientOutputStreamCore`: jdk, zio-http,
+   * play-akka-stream, play-pekko-stream, pekko-http) and fail fast otherwise.
    */
   def withEngine(
     engine: WSClientEngine,

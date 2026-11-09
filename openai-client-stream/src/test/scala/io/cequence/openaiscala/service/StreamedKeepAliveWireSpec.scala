@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.service
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import io.cequence.wsclient.stream.AsyncStream
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import io.cequence.openaiscala.domain.UserMessage
 import io.cequence.openaiscala.domain.response.ChatChunk
@@ -10,7 +8,7 @@ import io.cequence.openaiscala.domain.response.ChatChunk.FinishReason
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.wsclient.domain.WsRequestContext
-import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
+import io.cequence.openaiscala.testkit.TestEngines
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -31,13 +29,11 @@ import scala.concurrent.{Await, ExecutionContext}
 class StreamedKeepAliveWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("streamed-keep-alive-wire")
-  private implicit val materializer: Materializer = Materializer(system)
 
   @volatile private var sse: String = ""
 
   private val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
-  private val engine = StreamedEngineRegistry.outputStreamed(TransportSettings())
+  private val engine = TestEngines.streaming()
 
   private lazy val service = OpenAIServiceFactory.withStreaming.customEngineInstance(
     engine,
@@ -66,12 +62,11 @@ class StreamedKeepAliveWireSpec extends AnyWordSpec with Matchers with BeforeAnd
     service.close()
     engine.close()
     server.stop(0)
-    Await.result(system.terminate(), 10.seconds)
     ()
   }
 
-  private def run[T](stream: Source[T, _]): Seq[T] =
-    Await.result(stream.runWith(Sink.seq), 30.seconds)
+  private def run[T](stream: AsyncStream[T]): Seq[T] =
+    Await.result(stream.runToSeq, 30.seconds)
 
   private def recorded: String = {
     val source =

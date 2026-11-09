@@ -9,8 +9,7 @@ import io.cequence.openaiscala.domain.response.{
 }
 import io.cequence.openaiscala.domain.responsesapi.Response
 import io.cequence.openaiscala.domain.responsesapi.tools.mcp.MCPApprovalRequest
-import akka.NotUsed
-import akka.stream.scaladsl.Source
+import io.cequence.wsclient.stream.AsyncStream
 import play.api.libs.json.Json
 
 import scala.concurrent.Future
@@ -181,9 +180,9 @@ object ToolApprovalSettingsOps {
     settings: CreateChatCompletionSettings,
     service: String
   )(
-    body: => Source[T, NotUsed]
-  ): Source[T, NotUsed] =
+    body: => AsyncStream[T]
+  ): AsyncStream[T] =
     unsupportedDecisions(settings, service).fold(
-      Try(body).fold(e => Source.failed[T](e), identity)
-    )(e => Source.failed[T](e))
+      Try(body).fold(e => AsyncStream.failed[T](e), identity)
+    )(e => AsyncStream.failed[T](e))
 }

@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.service
 
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.domain.agents.{
   AgentInput,
   AgentSessionEvent,
@@ -12,8 +13,6 @@ import io.cequence.openaiscala.domain.responsesapi.{
   ResponseStreamEvent
 }
 
-import akka.NotUsed
-import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response.{
   ChatCompletionChunkResponse,
@@ -47,7 +46,7 @@ trait OpenAIStreamedServiceExtra
   def createCompletionStreamed(
     prompt: String,
     settings: CreateCompletionSettings = DefaultSettings.CreateCompletion
-  ): Source[TextCompletionResponse, NotUsed]
+  ): AsyncStream[TextCompletionResponse]
 
   /**
    * Creates a completion for the chat message(s) with streamed results. Note that this is
@@ -65,7 +64,7 @@ trait OpenAIStreamedServiceExtra
   def createChatCompletionStreamed(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
-  ): Source[ChatCompletionChunkResponse, NotUsed]
+  ): AsyncStream[ChatCompletionChunkResponse]
 
   /**
    * Creates a model response (Responses API) with streamed results: every server-sent event as
@@ -83,7 +82,7 @@ trait OpenAIStreamedServiceExtra
   def createModelResponseStreamed(
     inputs: Inputs,
     settings: CreateModelResponseSettings = DefaultSettings.CreateModelResponse
-  ): Source[ResponseStreamEvent, NotUsed]
+  ): AsyncStream[ResponseStreamEvent]
 
   /**
    * The Responses API stream as provider-neutral typed [[ChatChunk]]s (text, reasoning
@@ -93,7 +92,7 @@ trait OpenAIStreamedServiceExtra
   final def createModelResponseStreamedTyped(
     inputs: Inputs,
     settings: CreateModelResponseSettings = DefaultSettings.CreateModelResponse
-  ): Source[ChatChunk, NotUsed] =
+  ): AsyncStream[ChatChunk] =
     createModelResponseStreamed(inputs, settings).via(ChatChunks.fromResponseEvents)
 
   /**
@@ -110,7 +109,7 @@ trait OpenAIStreamedServiceExtra
   def createAgentSessionStreamed(
     settings: CreateAgentSessionSettings,
     input: AgentInput
-  ): Source[AgentSessionEvent, NotUsed]
+  ): AsyncStream[AgentSessionEvent]
 
   /**
    * Subscribes to a session's events (`GET /agents/sessions/{id}/events`). The server holds
@@ -121,5 +120,5 @@ trait OpenAIStreamedServiceExtra
    */
   def streamAgentSessionEvents(
     sessionId: String
-  ): Source[AgentSessionEvent, NotUsed]
+  ): AsyncStream[AgentSessionEvent]
 }

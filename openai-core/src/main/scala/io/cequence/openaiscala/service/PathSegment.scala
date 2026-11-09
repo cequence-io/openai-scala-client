@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.service
 
-import akka.NotUsed
-import akka.stream.scaladsl.Source
+import io.cequence.wsclient.stream.AsyncStream
 
 import java.nio.charset.StandardCharsets
 import scala.concurrent.Future
@@ -50,10 +49,10 @@ object PathSegment {
     }
 
   /** [[inFuture]] for a call returning a stream: a refused id fails the stream. */
-  def inSource[T](call: => Source[T, NotUsed]): Source[T, NotUsed] =
+  def inSource[T](call: => AsyncStream[T]): AsyncStream[T] =
     try call
     catch {
-      case NonFatal(e) => Source.failed(e)
+      case NonFatal(e) => AsyncStream.failed(e)
     }
 
   def apply(id: String): String = {

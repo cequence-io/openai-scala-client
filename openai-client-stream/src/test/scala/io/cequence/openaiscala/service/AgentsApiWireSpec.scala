@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.service
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.SortOrder
@@ -10,7 +7,7 @@ import io.cequence.openaiscala.domain.agents.AgentSessionEvent._
 import io.cequence.openaiscala.domain.agents._
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.wsclient.domain.WsRequestContext
-import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
+import io.cequence.openaiscala.testkit.TestEngines
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -30,8 +27,6 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 class AgentsApiWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("agents-api-wire")
-  private implicit val materializer: Materializer = Materializer(system)
 
   private val recordedTurn = {
     val source = scala.io.Source.fromResource("agents/basic.sse")
@@ -69,7 +64,7 @@ class AgentsApiWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll
     """{"id":"turn_1","object":"agent.session.turn","session_id":"sess_1","agent_id":"agent_1","status":"completed","created_at":1,"error":null,"usage":{"input_tokens":10,"output_tokens":5,"total_tokens":15,"input_tokens_details":{},"output_tokens_details":{}}}"""
 
   private val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
-  private val engine = StreamedEngineRegistry.outputStreamed(TransportSettings())
+  private val engine = TestEngines.streaming()
   private lazy val coreUrl = s"http://localhost:${server.getAddress.getPort}/"
   private lazy val service = OpenAIServiceFactory.withStreaming.customEngineInstance(
     engine,
@@ -172,7 +167,6 @@ class AgentsApiWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll
     service.close()
     engine.close()
     server.stop(0)
-    Await.result(system.terminate(), 10.seconds)
     ()
   }
 
@@ -260,9 +254,7 @@ class AgentsApiWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll
 
     "stream an artifact's content" in {
       val bytes = await(
-        service
-          .getAgentSessionArtifactContent("sess_1", "art_1")
-          .flatMap(_.runWith(Sink.fold(akka.util.ByteString.empty)(_ ++ _)))
+        service.getAgentSessionArtifactContent("sess_1", "art_1").flatMap(_.runToBytes())
       )
       bytes.utf8String shouldBe "file-bytes"
     }
@@ -295,7 +287,7 @@ class AgentsApiWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll
             ),
             AgentInput.Text("Say hi in two words.")
           )
-          .runWith(Sink.seq)
+          .runToSeq
       )
       last.body.flatMap(b => (b \ "stream").asOpt[Boolean]) shouldBe Some(true)
       last.betas shouldBe Seq("agents=v1")
@@ -311,7 +303,7 @@ class AgentsApiWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll
         service
           .streamAgentSessionEvents("sess_1")
           .via(AgentSessionEvents.untilSettled())
-          .runWith(Sink.seq)
+          .runToSeq
       )
       (last.method, last.path, last.betas) shouldBe
         ("GET", "/agents/sessions/sess_1/events", Seq("agents=v1"))

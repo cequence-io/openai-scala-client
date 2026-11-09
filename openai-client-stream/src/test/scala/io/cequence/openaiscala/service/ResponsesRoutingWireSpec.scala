@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.service
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
@@ -12,7 +9,7 @@ import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{JsonSchema, ModelId, UserMessage}
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.wsclient.domain.WsRequestContext
-import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
+import io.cequence.openaiscala.testkit.TestEngines
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -33,8 +30,6 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 class ResponsesRoutingWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("responses-routing-wire")
-  private implicit val materializer: Materializer = Materializer(system)
 
   private case class Received(
     path: String,
@@ -44,7 +39,7 @@ class ResponsesRoutingWireSpec extends AnyWordSpec with Matchers with BeforeAndA
   @volatile private var received: Option[Received] = None
 
   private val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
-  private val engine = StreamedEngineRegistry.outputStreamed(TransportSettings())
+  private val engine = TestEngines.streaming()
   private lazy val coreUrl = s"http://localhost:${server.getAddress.getPort}/"
   private val context = WsRequestContext(authHeaders = Seq("Authorization" -> "Bearer k"))
 
@@ -116,7 +111,6 @@ class ResponsesRoutingWireSpec extends AnyWordSpec with Matchers with BeforeAndA
     chatOnlyStreamed.close()
     engine.close()
     server.stop(0)
-    system.terminate()
     ()
   }
 
@@ -169,7 +163,7 @@ class ResponsesRoutingWireSpec extends AnyWordSpec with Matchers with BeforeAndA
       val chunks = await(
         fullStreamed
           .createChatToolCompletionStreamed(messages, Seq(deepwiki), None, gpt54)
-          .runWith(Sink.seq)
+          .runToSeq
       )
 
       received.get.path should endWith("/responses")
@@ -185,7 +179,7 @@ class ResponsesRoutingWireSpec extends AnyWordSpec with Matchers with BeforeAndA
       val chunks = await(
         fullStreamed
           .createChatToolCompletionStreamed(messages, Seq(weather), None, gpt54)
-          .runWith(Sink.seq)
+          .runToSeq
       )
 
       received.get.path should endWith("/chat/completions")
@@ -205,7 +199,7 @@ class ResponsesRoutingWireSpec extends AnyWordSpec with Matchers with BeforeAndA
       val streamed = await(
         chatOnlyStreamed
           .createChatToolCompletionStreamed(messages, Seq(SkillTool("sk_1")), None, gpt54)
-          .runWith(Sink.seq)
+          .runToSeq
           .failed
       )
       streamed shouldBe an[OpenAIScalaClientException]

@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.service
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import io.cequence.wsclient.stream.AsyncStream
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import io.cequence.openaiscala._
 import io.cequence.openaiscala.domain.UserMessage
@@ -13,7 +11,7 @@ import io.cequence.openaiscala.domain.settings.{
 }
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.wsclient.domain.WsRequestContext
-import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
+import io.cequence.openaiscala.testkit.TestEngines
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -33,14 +31,12 @@ import scala.reflect.ClassTag
 class StreamedHttpErrorsWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("streamed-http-errors-wire")
-  private implicit val materializer: Materializer = Materializer(system)
 
   // status, body, content type
   @volatile private var reply: (Int, String, String) = (200, "{}", "application/json")
 
   private val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
-  private val engine = StreamedEngineRegistry.outputStreamed(TransportSettings())
+  private val engine = TestEngines.streaming()
   private lazy val coreUrl = s"http://localhost:${server.getAddress.getPort}/"
   private val context = WsRequestContext(authHeaders = Seq("Authorization" -> "Bearer k"))
 
@@ -72,7 +68,6 @@ class StreamedHttpErrorsWireSpec extends AnyWordSpec with Matchers with BeforeAn
     chatOnlyStreamed.close()
     engine.close()
     server.stop(0)
-    Await.result(system.terminate(), 10.seconds)
     ()
   }
 
@@ -88,10 +83,10 @@ class StreamedHttpErrorsWireSpec extends AnyWordSpec with Matchers with BeforeAn
     status: Int,
     body: String
   )(
-    stream: => Source[_, _]
+    stream: => AsyncStream[_]
   ): E = {
     reply = (status, body, "application/json")
-    intercept[E](Await.result(stream.runWith(Sink.seq), 20.seconds))
+    intercept[E](Await.result(stream.runToSeq, 20.seconds))
   }
 
   // a 200 SSE stream: one chunk, then an in-band error frame
@@ -99,10 +94,10 @@ class StreamedHttpErrorsWireSpec extends AnyWordSpec with Matchers with BeforeAn
     chunk: String,
     errorFrame: String
   )(
-    stream: => Source[_, _]
+    stream: => AsyncStream[_]
   ): E = {
     reply = (200, s"data: $chunk\n\ndata: $errorFrame\n\n", "text/event-stream")
-    intercept[E](Await.result(stream.runWith(Sink.seq), 20.seconds))
+    intercept[E](Await.result(stream.runToSeq, 20.seconds))
   }
 
   private val chatChunk =

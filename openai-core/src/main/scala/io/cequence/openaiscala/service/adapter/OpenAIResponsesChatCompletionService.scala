@@ -1,5 +1,6 @@
 package io.cequence.openaiscala.service.adapter
 
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings._
 import io.cequence.openaiscala.domain.settings.ResponsesChatCompletionSettingsOps._
@@ -51,8 +52,6 @@ import io.cequence.openaiscala.domain.response.{
   ChatCompletionChunkResponse,
   ToolApprovalDecision
 }
-import akka.NotUsed
-import akka.stream.scaladsl.Source
 import io.cequence.wsclient.service.CloseableService
 import io.cequence.wsclient.JsonUtil
 import org.slf4j.LoggerFactory
@@ -82,7 +81,7 @@ private[service] class OpenAIResponsesChatCompletionService(
   override def createChatCompletionStreamed(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
-  ): Source[ChatCompletionChunkResponse, NotUsed] =
+  ): AsyncStream[ChatCompletionChunkResponse] =
     createChatToolCompletionStreamed(messages, Nil, None, settings).via(
       ChatChunks.toOpenAIChunks
     )
@@ -96,28 +95,24 @@ private[service] class OpenAIResponsesChatCompletionService(
     tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
-  ): Source[ChatChunk, NotUsed] =
+  ): AsyncStream[ChatChunk] =
     streamedUnderlying match {
       case Some(streamed) =>
         Try(buildResponsesRequest(messages, tools, responseToolChoice, settings)) match {
-          case Failure(e) => Source.failed(e)
+          case Failure(e) => AsyncStream.failed(e)
           case Success(Right((items, responsesSettings))) =>
             streamResponse(streamed, items, responsesSettings, settings)
           case Success(Left(lookup)) =>
-            // nothing is sent before the stream is materialized
-            Source
-              .lazySource(() =>
-                Source.futureSource(
-                  completeRequest(lookup).map { case (items, responsesSettings) =>
-                    streamResponse(streamed, items, responsesSettings, settings)
-                  }
-                )
-              )
-              .mapMaterializedValue(_ => NotUsed)
+            // nothing is sent before the stream is run - the lookup runs per run
+            AsyncStream.futureStream(
+              completeRequest(lookup).map { case (items, responsesSettings) =>
+                streamResponse(streamed, items, responsesSettings, settings)
+              }
+            )
         }
 
       case None =>
-        Source.failed(
+        AsyncStream.failed(
           new OpenAIScalaClientException(
             "Streamed Responses API calls require a streaming-capable service (e.g. OpenAIServiceFactory.withStreaming())."
           )
@@ -129,7 +124,7 @@ private[service] class OpenAIResponsesChatCompletionService(
     items: Seq[Input],
     responsesSettings: CreateModelResponseSettings,
     settings: CreateChatCompletionSettings
-  ): Source[ChatChunk, NotUsed] = {
+  ): AsyncStream[ChatChunk] = {
     streamed
       .createModelResponseStreamed(
         Inputs.Items(items: _*),

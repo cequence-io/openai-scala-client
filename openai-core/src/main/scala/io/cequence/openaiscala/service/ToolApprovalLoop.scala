@@ -1,14 +1,14 @@
 package io.cequence.openaiscala.service
 
-import akka.NotUsed
-import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.response.{ChatChunk, ToolApprovalDecision, UsageInfo}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps._
+import io.cequence.wsclient.stream.AsyncStream
+import io.cequence.wsclient.stream.AsyncStream.Step
 import org.slf4j.LoggerFactory
 
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
 /**
@@ -32,10 +32,10 @@ import scala.util.Try
  * (`ChatChunk.Retry`) is passed through in the first round but fails the joined stream in a
  * resumed one (a retried resume may re-send answers that were already applied).
  *
- * Each materialization runs its own loop; nothing is sent before it is materialized. `decide`
- * runs on `ec` and may take as long as a human needs (return a Future, do not block); a failed
- * Future, or a decision answering another request, fails the stream - the run stays paused (an
- * Anthropic managed-agent session is kept: resume it or `deleteSession(runId)`).
+ * Each run runs its own loop; nothing is sent before it is run. `decide` runs on `ec` and may
+ * take as long as a human needs (return a Future, do not block); a failed Future, or a
+ * decision answering another request, fails the stream - the run stays paused (an Anthropic
+ * managed-agent session is kept: resume it or `deleteSession(runId)`).
  */
 object ToolApprovalLoop {
 
@@ -60,76 +60,87 @@ object ToolApprovalLoop {
     decide: ChatChunk.ToolApprovalRequest => Future[ToolApprovalDecision],
     maxRounds: Int = DefaultMaxRounds
   )(
-    stream: CreateChatCompletionSettings => Source[ChatChunk, NotUsed]
+    stream: CreateChatCompletionSettings => AsyncStream[ChatChunk]
   )(
     implicit ec: ExecutionContext
-  ): Source[ChatChunk, NotUsed] = {
+  ): AsyncStream[ChatChunk] = {
     require(maxRounds >= 0, s"maxRounds must not be negative, got $maxRounds.")
 
-    // one round, then (after its last chunk, the decisions and only if not cancelled) the next
+    // one round, then (after its last chunk, the decisions and only if not cancelled) the next;
+    // the round's state is per run (`defer`)
     def round(
       number: Int,
       roundSettings: CreateChatCompletionSettings,
       indexBase: Int,
       priorUsage: Option[UsageInfo]
-    ): Source[ChatChunk, NotUsed] = {
-      val state = new RoundState(number, indexBase)
-      val resume = Promise[Option[Resume]]()
+    ): AsyncStream[ChatChunk] =
+      AsyncStream.defer {
+        val state = new RoundState(number, indexBase)
 
-      // `None` marks the end of the round - completing `resume` there (not on termination)
-      // keeps a failed or cancelled round from asking for decisions
-      val chunks = (stream(roundSettings).map(Some(_)) ++ Source.single(None)).mapConcat {
-        case Some(chunk) =>
-          state.add(chunk)
+        // the end hook runs on a NORMAL completion only - a failed or cancelled round never
+        // asks for decisions - and before the completion goes on, so the next round (created
+        // only once this one completed) sees its verdict
+        val chunks = stream(roundSettings).stateful(() => ())(
+          (
+            _,
+            chunk
+          ) => Step((), state.add(chunk)),
+          _ => endOfRound(number, state, priorUsage)
+        )
 
-        case None =>
-          val usage = (priorUsage.toList ++ state.usage).reduceOption(UsageInfo.sum)
-          val runId = state.requests.headOption.fold("")(_.runId)
-
-          if (state.requests.isEmpty) {
-            resume.success(None)
-            state.trailer(usage)
-          } else if (state.clientToolCalls) {
-            logger.warn(
-              s"Run '$runId' paused for approval together with client-side function calls - ending the stream paused (run the calls, then resume with their tool messages and the decisions)."
-            )
-            resume.success(None)
-            state.trailer(usage)
-          } else if (number >= maxRounds) {
-            if (maxRounds > 0)
-              logger.warn(
-                s"Run '$runId' paused for approval again after $maxRounds resumed round(s) - ending the stream paused (resume it yourself, or raise the round limit)."
+        chunks.concat(
+          state.resume match {
+            case Some(Resume(requests, nextIndexBase, usage)) =>
+              AsyncStream.futureStream(
+                decideAll(requests, decide).map(decisions =>
+                  round(
+                    number + 1,
+                    settings.setToolApprovalDecisions(decisions),
+                    nextIndexBase,
+                    usage
+                  )
+                )
               )
-            resume.success(None)
-            state.trailer(usage)
-          } else {
-            logger.info(
-              s"Run '$runId' paused for approval of ${state.requests.size} call(s) - asking for decisions (round ${number + 1}/$maxRounds)."
-            )
-            resume.success(Some(Resume(state.requests, state.nextIndex, usage)))
-            Nil
+
+            case None =>
+              AsyncStream.empty[ChatChunk]
           }
+        )
       }
 
-      val next = resume.future.flatMap {
-        case Some(Resume(requests, nextIndexBase, usage)) =>
-          decideAll(requests, decide).map(decisions =>
-            round(
-              number + 1,
-              settings.setToolApprovalDecisions(decisions),
-              nextIndexBase,
-              usage
-            )
+    // the trailer of a round that ends the joined stream, or Nil (and the resume) for one that
+    // asks for decisions
+    def endOfRound(
+      number: Int,
+      state: RoundState,
+      priorUsage: Option[UsageInfo]
+    ): List[ChatChunk] = {
+      val usage = (priorUsage.toList ++ state.usage).reduceOption(UsageInfo.sum)
+      val runId = state.requests.headOption.fold("")(_.runId)
+
+      if (state.requests.isEmpty)
+        state.trailer(usage)
+      else if (state.clientToolCalls) {
+        logger.warn(
+          s"Run '$runId' paused for approval together with client-side function calls - ending the stream paused (run the calls, then resume with their tool messages and the decisions)."
+        )
+        state.trailer(usage)
+      } else if (number >= maxRounds) {
+        if (maxRounds > 0)
+          logger.warn(
+            s"Run '$runId' paused for approval again after $maxRounds resumed round(s) - ending the stream paused (resume it yourself, or raise the round limit)."
           )
-
-        case None =>
-          Future.successful(Source.empty[ChatChunk])
+        state.trailer(usage)
+      } else {
+        logger.info(
+          s"Run '$runId' paused for approval of ${state.requests.size} call(s) - asking for decisions (round ${number + 1}/$maxRounds)."
+        )
+        state.resume = Some(Resume(state.requests, state.nextIndex, usage))
+        Nil
       }
-
-      chunks.concat(Source.futureSource(next).mapMaterializedValue(_ => NotUsed))
     }
 
-    Source.lazySource(() => round(0, settings, 0, None)).mapMaterializedValue(_ => NotUsed)
+    round(0, settings, 0, None)
   }
 
   // the requests one after another (a human answers one prompt at a time), each decision
@@ -168,11 +179,13 @@ object ToolApprovalLoop {
     usage: Option[UsageInfo]
   )
 
-  // what one round has seen so far (one instance per round and materialization)
+  // what one round has seen so far (one instance per round and run)
   private final class RoundState(
     number: Int,
     indexBase: Int
   ) {
+    // set by the end of a round that asks for decisions (read once it completed)
+    @volatile var resume: Option[Resume] = None
     var requests = Vector.empty[ChatChunk.ToolApprovalRequest]
     var clientToolCalls = false
     var usage: Option[UsageInfo] = None

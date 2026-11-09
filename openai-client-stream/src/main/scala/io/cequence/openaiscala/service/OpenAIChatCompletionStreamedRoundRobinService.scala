@@ -1,10 +1,9 @@
 package io.cequence.openaiscala.service
 
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.domain.ChatCompletionTool
 import io.cequence.openaiscala.domain.response.ChatChunk
 
-import akka.NotUsed
-import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response.ChatCompletionChunkResponse
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
@@ -33,7 +32,7 @@ object OpenAIChatCompletionStreamedRoundRobinService {
     override def createChatCompletionStreamed(
       messages: Seq[BaseMessage],
       settings: CreateChatCompletionSettings
-    ): Source[ChatCompletionChunkResponse, NotUsed] =
+    ): AsyncStream[ChatCompletionChunkResponse] =
       getService.createChatCompletionStreamed(
         messages,
         settings
@@ -44,7 +43,7 @@ object OpenAIChatCompletionStreamedRoundRobinService {
       tools: Seq[ChatCompletionTool],
       responseToolChoice: Option[String],
       settings: CreateChatCompletionSettings
-    ): Source[ChatChunk, NotUsed] =
+    ): AsyncStream[ChatChunk] =
       getService.createChatToolCompletionStreamed(
         messages,
         tools,

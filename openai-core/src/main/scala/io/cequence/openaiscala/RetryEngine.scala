@@ -1,7 +1,6 @@
 package io.cequence.openaiscala
 
-import akka.actor.Scheduler
-import akka.pattern.after
+import io.cequence.wsclient.concurrent.{AsyncScheduler, Futures}
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import io.cequence.openaiscala.service.{AttemptInfo, AttemptKind, FailoverLogLevel}
 import org.slf4j.Logger
@@ -166,7 +165,7 @@ private[openaiscala] object RetryEngine {
     config: Config[R, E, A]
   )(
     implicit ec: ExecutionContext,
-    scheduler: Scheduler
+    scheduler: AsyncScheduler
   ): Future[A] = {
     require(steps.nonEmpty, "At least one step is required.")
 
@@ -345,9 +344,8 @@ private[openaiscala] object RetryEngine {
             s"${messagePart(idx)}Attempt ${attemptNo}.${exceptionMessagePart} Retrying..."
           )
 
-          after(RetryHelpers.delay(transientDone), scheduler)(Future.successful(())).flatMap {
-            _ =>
-              next(AttemptKind.TransientRetry, transientDone + 1, rejectDone, progressNow)
+          Futures.delay(RetryHelpers.delay(transientDone))(scheduler).flatMap { _ =>
+            next(AttemptKind.TransientRetry, transientDone + 1, rejectDone, progressNow)
           }
         } else
           failOver(idx, e, progressNow)
@@ -396,7 +394,7 @@ private[openaiscala] object RetryEngine {
               raw.onComplete(t => race.trySuccess(Right(t)))
 
             case Some(l) =>
-              Try(scheduler.scheduleOnce(l) {
+              Try(scheduler.scheduleOnce(l) { () =>
                 race.trySuccess(Left(l))
                 ()
               }) match {
@@ -408,8 +406,9 @@ private[openaiscala] object RetryEngine {
                   }
 
                 // the call is already running: e.g. a limit beyond the scheduler's maximum
-                // delay (~248 days with Akka's default tick) or a scheduler shut down - the try
-                // runs without a limit rather than its outcome being lost
+                // delay (an actor system's scheduler adapted via ActorSchedulers takes ~248 days
+                // at most with Akka's default tick) or a scheduler shut down - the try runs
+                // without a limit rather than its outcome being lost
                 case Failure(e) =>
                   logLine(
                     s"$label - the time limit of $l could not be scheduled (${e.getMessage}); the try runs without one."

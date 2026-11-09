@@ -1,8 +1,6 @@
 package io.cequence.openaiscala
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.domain.response.ChatChunk._
 import io.cequence.openaiscala.domain.response._
@@ -25,12 +23,12 @@ class MistralChunkedContentSpec
     with ScalaFutures
     with BeforeAndAfterAll {
 
-  private implicit val system: ActorSystem = ActorSystem("mistral-chunked-content")
-  private implicit val materializer: Materializer = Materializer(system)
+  private implicit val ec: scala.concurrent.ExecutionContext =
+    scala.concurrent.ExecutionContext.global
+
   implicit override val patienceConfig: PatienceConfig = PatienceConfig(Span(5, Seconds))
 
   override protected def afterAll(): Unit = {
-    system.terminate()
     ()
   }
 
@@ -102,7 +100,7 @@ class MistralChunkedContentSpec
       }.filterNot(_ == "[DONE]").map(Json.parse(_).as[ChatCompletionChunkResponse]).toList
 
       val out =
-        Source(chunks).via(ChatChunks.fromOpenAIChunks).runWith(Sink.seq).futureValue
+        AsyncStream.fromIterable(chunks).via(ChatChunks.fromOpenAIChunks).runToSeq.futureValue
 
       out.head shouldBe a[Start]
       val thinking = out.collect { case Thinking(text) => text }.mkString
@@ -124,7 +122,7 @@ class MistralChunkedContentSpec
       reference.map(r => (r \ "type").as[String]) shouldBe Seq("reference")
 
       val out =
-        Source(chunks).via(ChatChunks.fromOpenAIChunks).runWith(Sink.seq).futureValue
+        AsyncStream.fromIterable(chunks).via(ChatChunks.fromOpenAIChunks).runToSeq.futureValue
       out.collect { case Text(text) => text }.mkString should include("Nihon Hidankyo")
       out.collect { case Other(kind, _) => kind } shouldBe Seq("content.reference")
       out.collectFirst { case finish: Finish => finish.reason } shouldBe Some(

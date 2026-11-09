@@ -1,7 +1,5 @@
 package io.cequence.openaiscala.service.adapter
 
-import akka.NotUsed
-import akka.stream.scaladsl.Flow
 import io.cequence.openaiscala.domain.response.ChunkMessageSpec
 import io.cequence.openaiscala.domain.{
   AssistantMessage,
@@ -9,6 +7,7 @@ import io.cequence.openaiscala.domain.{
   SystemMessage,
   UserMessage
 }
+import io.cequence.wsclient.stream.AsyncPipe
 import org.slf4j.LoggerFactory
 
 object MessageConversions {
@@ -63,8 +62,8 @@ object MessageConversions {
     }
 
   @deprecated(thinkTagDeprecation, since = "1.3.0")
-  def filterOutToThinkEndFlow: Flow[Seq[ChunkMessageSpec], Seq[ChunkMessageSpec], NotUsed] = {
-    Flow[Seq[ChunkMessageSpec]].statefulMapConcat { () =>
+  def filterOutToThinkEndFlow: AsyncPipe[Seq[ChunkMessageSpec], Seq[ChunkMessageSpec]] = {
+    AsyncPipe.of[Seq[ChunkMessageSpec]].statefulMapConcat { () =>
       var startOutput: Option[Boolean] = None
 
       (messages: Seq[ChunkMessageSpec]) => {

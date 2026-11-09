@@ -1,9 +1,6 @@
 package io.cequence.openaiscala.service
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Framing, Sink, Source}
-import akka.util.ByteString
+import io.cequence.wsclient.stream.{AsyncStream, ByteFraming, Bytes}
 import com.typesafe.config.ConfigFactory
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.wsclient.domain.CequenceWSException
@@ -16,11 +13,10 @@ import scala.concurrent.duration._
 
 class StreamingConstsSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
-  private implicit val system: ActorSystem = ActorSystem("streaming-consts-spec")
-  private implicit val materializer: Materializer = Materializer(system)
+  private implicit val ec: scala.concurrent.ExecutionContext =
+    scala.concurrent.ExecutionContext.global
 
   override protected def afterAll(): Unit = {
-    Await.result(system.terminate(), 10.seconds)
     ()
   }
 
@@ -67,15 +63,15 @@ class StreamingConstsSpec extends AnyWordSpec with Matchers with BeforeAndAfterA
 
     def overflow(limit: Int): Throwable =
       Await.result(
-        Source
-          .single(ByteString("x" * (limit + 10) + "\n"))
-          .via(Framing.delimiter(ByteString("\n"), limit, allowTruncation = true))
-          .runWith(Sink.seq)
+        AsyncStream
+          .single(Bytes.utf8("x" * (limit + 10) + "\n"))
+          .via(ByteFraming.delimiter(Bytes.utf8("\n"), limit, allowTruncation = true))
+          .runToSeq
           .failed,
         10.seconds
       )
 
-    "name the setting for a frame over the cap - Akka's failure as the cause" in {
+    "name the setting for a frame over the cap - ws-client's typed failure as the cause" in {
       val failure = overflow(2048)
       val mapped = StreamingConsts.frameTooLong(failure)
 
@@ -87,8 +83,8 @@ class StreamingConstsSpec extends AnyWordSpec with Matchers with BeforeAndAfterA
       mapped.getCause shouldBe failure
     }
 
-    "read the limit from ws-client's wrapped failure too" in {
-      // ws-client's PlayWSStreamClientEngine turns Akka's failure into this one
+    "read the limit from the message of an untyped framing failure too" in {
+      // the message of an engine that does not throw the typed exception (before ws-client 1.2.0)
       val wrapped = new CequenceWSException(
         "POST chat/completions: Stream framing problem occurred. Read 1048577 bytes which is more than 1048576 without seeing a line terminator."
       )
@@ -113,10 +109,10 @@ class StreamingConstsSpec extends AnyWordSpec with Matchers with BeforeAndAfterA
 
     "fail an event over its cap with the same message" in {
       val failure = Await.result(
-        Source
-          .single(ByteString("data: {\"type\":\"" + ("x" * 3000)))
+        AsyncStream
+          .single(Bytes.utf8("data: {\"type\":\"" + ("x" * 3000)))
           .via(ServerSentEvents.jsonPayloads(maxEventBytes = 2048))
-          .runWith(Sink.seq)
+          .runToSeq
           .failed,
         10.seconds
       )

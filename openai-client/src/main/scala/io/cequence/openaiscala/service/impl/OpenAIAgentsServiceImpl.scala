@@ -1,13 +1,11 @@
 package io.cequence.openaiscala.service.impl
 
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
+import io.cequence.wsclient.stream.{AsyncStream, Bytes}
 import io.cequence.openaiscala.domain.SortOrder
 import io.cequence.openaiscala.domain.agents.JsonFormats._
 import io.cequence.openaiscala.domain.agents._
 import io.cequence.openaiscala.service.{OpenAIAgentsService, PathSegment}
 import io.cequence.wsclient.ResponseImplicits._
-import io.cequence.wsclient.StreamResponseImplicits._
 import play.api.libs.json.{JsObject, Json}
 
 import scala.concurrent.Future
@@ -282,13 +280,14 @@ trait OpenAIAgentsServiceImpl extends OpenAIAgentsService with OpenAIServiceWSBa
   override def getAgentSessionArtifactContent(
     sessionId: String,
     artifactId: String
-  ): Future[Source[ByteString, _]] =
+  ): Future[AsyncStream[Bytes]] =
     PathSegment.inFuture {
-      execGET(
+      execStreamDownloadExisting(
         EndPoint.agent_sessions,
+        "GET",
         Some(s"${PathSegment(sessionId)}/artifacts/${PathSegment(artifactId)}/content"),
         extraHeaders = betaHeaders
-      ).map(_.asSafeSource)
+      )
     }
 
   override def deleteAgentSessionArtifact(

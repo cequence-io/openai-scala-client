@@ -1,11 +1,10 @@
 package io.cequence.openaiscala.service
 
-import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.service.impl.OpenAICoreServiceStreamedExtraImpl
 import io.cequence.wsclient.domain.{SiteBinding, WsRequestContext}
-import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
+import io.cequence.wsclient.service.spi.TransportSettings
 import io.cequence.wsclient.service.ws.Timeouts
-import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtraAkka}
+import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamCore}
 
 import scala.concurrent.ExecutionContext
 
@@ -28,18 +27,10 @@ object OpenAIStreamedServiceFactory
   )(
     implicit ec: ExecutionContext
   ): OpenAIStreamedServiceExtra =
-    engine match {
-      case streamed: WSClientOutputStreamExtraAkka =>
-        new OpenAICoreStreamedServiceExtraEngineImpl(
-          streamed,
-          ProjectWSClientEngine.siteBinding(coreUrl, requestContext, label = Some("openai"))
-        )
-      case _ =>
-        throw new OpenAIScalaClientException(
-          "The streamed service factory requires an engine with Source-typed output streaming " +
-            s"(WSClientOutputStreamExtraAkka) but got ${engine.getClass.getName}."
-        )
-    }
+    new OpenAICoreStreamedServiceExtraEngineImpl(
+      StreamingEngines.require(engine),
+      ProjectWSClientEngine.siteBinding(coreUrl, requestContext, label = Some("openai"))
+    )
 
   /** The engine was created for this service (e.g. by `forBedrock`), so it closes it. */
   override protected def ownedEngineInstance(
@@ -49,31 +40,23 @@ object OpenAIStreamedServiceFactory
   )(
     implicit ec: ExecutionContext
   ): OpenAIStreamedServiceExtra =
-    engine match {
-      case streamed: WSClientOutputStreamExtraAkka =>
-        new OpenAICoreStreamedServiceExtraEngineImpl(
-          streamed,
-          ProjectWSClientEngine.siteBinding(coreUrl, requestContext, label = Some("openai")),
-          owns = true
-        )
-      case _ =>
-        throw new OpenAIScalaClientException(
-          "The streamed service factory requires an engine with Source-typed output streaming " +
-            s"(WSClientOutputStreamExtraAkka) but got ${engine.getClass.getName}."
-        )
-    }
+    new OpenAICoreStreamedServiceExtraEngineImpl(
+      StreamingEngines.require(engine),
+      ProjectWSClientEngine.siteBinding(coreUrl, requestContext, label = Some("openai")),
+      owns = true
+    )
 
   override protected def newPrivateEngine(
     timeouts: Option[Timeouts]
   )(
     implicit ec: ExecutionContext
   ): WSClientEngine =
-    StreamedEngineRegistry.outputStreamed(
+    StreamingEngines.outputStreamed(
       TransportSettings(timeouts = timeouts.getOrElse(Timeouts()))
     )
 
   private final class OpenAICoreStreamedServiceExtraEngineImpl(
-    override protected val engine: WSClientEngine with WSClientOutputStreamExtraAkka,
+    override protected val engine: WSClientEngine with WSClientOutputStreamCore,
     protected val site: SiteBinding,
     owns: Boolean = false
   )(
@@ -92,8 +75,8 @@ object OpenAIStreamedServiceFactory
   ) extends OpenAICoreServiceStreamedExtraImpl {
     // a private classpath-discovered engine with output streaming (SSE) support, owned (and
     // closed) by this service
-    override protected val engine: WSClientEngine with WSClientOutputStreamExtraAkka =
-      StreamedEngineRegistry.outputStreamed(
+    override protected val engine: WSClientEngine with WSClientOutputStreamCore =
+      StreamingEngines.outputStreamed(
         TransportSettings(timeouts = timeouts.getOrElse(Timeouts()))
       )
 

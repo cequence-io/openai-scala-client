@@ -1,9 +1,9 @@
 package io.cequence.openaiscala.service
 
-import akka.NotUsed
-import akka.stream.scaladsl.Flow
 import io.cequence.openaiscala.domain.agents.{AgentSessionEvent, AgentSessionItem}
 import io.cequence.openaiscala.domain.agents.AgentSessionEvent._
+import io.cequence.wsclient.stream.AsyncPipe
+import io.cequence.wsclient.stream.AsyncStream.Step
 
 /**
  * Helpers for Agents API session event streams.
@@ -23,25 +23,26 @@ object AgentSessionEvents {
    */
   def untilSettled(
     stopOnRequiresAction: Boolean = false
-  ): Flow[AgentSessionEvent, AgentSessionEvent, NotUsed] =
-    Flow[AgentSessionEvent].statefulMapConcat { () =>
-      var turnFinished = false
-      var done = false
+  ): AsyncPipe[AgentSessionEvent, AgentSessionEvent] =
+    AsyncPipe.of[AgentSessionEvent].stateful(() => false) {
+      (
+        turnFinished,
+        event
+      ) =>
+        event match {
+          case turn: TurnUpdated if turn.isFinished =>
+            Step(true, event :: Nil)
 
-      (event: AgentSessionEvent) =>
-        if (done) Nil
-        else {
-          event match {
-            case turn: TurnUpdated if turn.isFinished => turnFinished = true
-            case session: SessionUpdated
-                if (session.isIdle && turnFinished) || session.isFailed ||
-                  (session.requiresAction && stopOnRequiresAction) =>
-              done = true
-            case _ =>
-          }
-          List((event, done))
+          case session: SessionUpdated
+              if (session.isIdle && turnFinished) || session.isFailed ||
+                (session.requiresAction && stopOnRequiresAction) =>
+            // the settling event is emitted, then the stream ends
+            Step(turnFinished, event :: Nil, stop = true)
+
+          case _ =>
+            Step(turnFinished, event :: Nil)
         }
-    }.takeWhile({ case (_, done) => !done }, inclusive = true).map(_._1)
+    }
 
   /** The text of the final-answer messages of a sequence of events (done items). */
   def finalAnswer(events: Seq[AgentSessionEvent]): String =

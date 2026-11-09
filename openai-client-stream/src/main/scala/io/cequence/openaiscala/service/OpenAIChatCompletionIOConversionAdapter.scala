@@ -1,9 +1,8 @@
 package io.cequence.openaiscala.service
 
+import io.cequence.wsclient.stream.AsyncPipe
 import io.cequence.openaiscala.domain.response.ChatChunk
-import akka.stream.scaladsl.Flow
 
-import akka.NotUsed
 import io.cequence.openaiscala.domain.response.ChunkMessageSpec
 import io.cequence.openaiscala.domain.{AssistantMessage, BaseMessage}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
@@ -18,7 +17,7 @@ object OpenAIChatCompletionIOConversionAdapter {
   private val chatCompletionAdapters = OpenAIServiceAdapters.forChatCompletionService
 
   protected type Conversion[T] = Option[T => T]
-  protected type FlowConversion[T] = Option[Flow[T, T, NotUsed]]
+  protected type FlowConversion[T] = Option[AsyncPipe[T, T]]
 
   def apply(
     service: OpenAIChatCompletionStreamedService,
@@ -64,8 +63,8 @@ object OpenAIChatCompletionIOConversionAdapter {
       if (outputChunkMessageConversion.isDefined || outputChatChunkConversion.isDefined)
         OpenAIChatCompletionStreamedOutputConversionAdapter(
           streamedServiceAux,
-          outputChunkMessageConversion.getOrElse(Flow[Seq[ChunkMessageSpec]]),
-          outputChatChunkConversion.getOrElse(Flow[ChatChunk])
+          outputChunkMessageConversion.getOrElse(AsyncPipe.identity[Seq[ChunkMessageSpec]]),
+          outputChatChunkConversion.getOrElse(AsyncPipe.identity[ChatChunk])
         )
       else
         streamedServiceAux

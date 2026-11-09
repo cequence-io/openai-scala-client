@@ -1,29 +1,31 @@
 package io.cequence.openaiscala.service
 
-import akka.NotUsed
-import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.wsclient.domain.CequenceWSHttpStatusException
 import io.cequence.wsclient.service.{
   WSClientEngine,
-  WSClientOutputStreamExtraAkka,
-  WSClientWithEngineOutputStreamingBase
+  WSClientOutputStreamCore,
+  WSClientWithEngineAsyncStreamingBase
 }
+import io.cequence.wsclient.stream.AsyncStream
 import play.api.libs.json.{JsNull, JsValue}
 
 import scala.util.Try
 
 /**
- * The base of every streamed service here. Two ways a stream reports an error, both classified
- * through the service's own `handleErrorCodes` - the same exceptions (and `Retryable`
- * verdicts) as its non-streamed calls:
+ * The base of every streamed service here, on any engine with output streaming (the JDK engine
+ * by default; jdk, zio-http, the Play stream engines, pekko-http). Streams are backend-neutral
+ * [[io.cequence.wsclient.stream.AsyncStream]]s: cold (each run is a new request) and native on
+ * the engine's own backend. Two ways a stream reports an error, both classified through the
+ * service's own `handleErrorCodes` - the same exceptions (and `Retryable` verdicts) as its
+ * non-streamed calls:
  *
- *   - a non-2xx answer: ws-client (1.1.1+) fails the stream with a
- *     `CequenceWSHttpStatusException`, which the service-level `execJsonStream` /
- *     `execRawStream(endPoint, ...)` of `WSClientWithEngineOutputStreamingBase` route through
- *     `mapHttpStatusErrors`. Use those, not `engine.execJsonStream(site, ...)`; where an
- *     engine-level call is unavoidable, follow it with `.mapError(mapHttpStatusErrors)`
- *     (`StreamErrorMappingConventionSpec` enforces it)
+ *   - a non-2xx answer: ws-client fails the stream with a `CequenceWSHttpStatusException`,
+ *     which the service-level `execJsonStream` / `execRawStream(endPoint, ...)` of
+ *     `WSClientWithEngineAsyncStreamingBase` route through `mapHttpStatusErrors`. Use those,
+ *     not `engine.execJsonAsyncStream(site, ...)`; where an engine-level call is unavoidable,
+ *     follow it with `.mapError(mapHttpStatusErrors)` (`StreamErrorMappingConventionSpec`
+ *     enforces it)
  *   - an error frame inside a 200 stream (`{"error": {...}}`, e.g. a mid-stream overload):
  *     [[inBandStreamError]], with the status taken from the frame ([[InBandStreamErrors]])
  *
@@ -32,8 +34,8 @@ import scala.util.Try
  * setting ([[StreamingConsts.frameTooLong]]).
  */
 trait ClassifiedStreamingWSClient
-    extends WSClientWithEngineOutputStreamingBase[
-      WSClientEngine with WSClientOutputStreamExtraAkka
+    extends WSClientWithEngineAsyncStreamingBase[
+      WSClientEngine with WSClientOutputStreamCore
     ] {
 
   override def execJsonStream(
@@ -47,7 +49,7 @@ trait ClassifiedStreamingWSClient
     maxFrameLength: Option[Int],
     stripPrefix: Option[String],
     stripSuffix: Option[String]
-  ): Source[JsValue, NotUsed] =
+  ): AsyncStream[JsValue] =
     super
       .execJsonStream(
         endPoint,

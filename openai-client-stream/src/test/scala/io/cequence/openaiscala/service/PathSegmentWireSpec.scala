@@ -1,14 +1,11 @@
 package io.cequence.openaiscala.service
 
-import akka.actor.{ActorSystem, Scheduler}
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.openaiscala.service.adapter.OpenAIServiceAdapters
 import io.cequence.wsclient.domain.WsRequestContext
-import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
+import io.cequence.openaiscala.testkit.TestEngines
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -30,8 +27,6 @@ import scala.util.{Failure, Success, Try}
 class PathSegmentWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("path-segment-wire")
-  private implicit val materializer: Materializer = Materializer(system)
 
   private final case class Recorded(
     method: String,
@@ -42,7 +37,7 @@ class PathSegmentWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterA
   @volatile private var requests: Vector[Recorded] = Vector.empty
 
   private val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
-  private val engine = StreamedEngineRegistry.outputStreamed(TransportSettings())
+  private val engine = TestEngines.streaming()
   private lazy val service = OpenAIServiceFactory.withStreaming.customEngineInstance(
     engine,
     s"http://localhost:${server.getAddress.getPort}/v1/",
@@ -80,7 +75,6 @@ class PathSegmentWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterA
     service.close()
     engine.close()
     server.stop(0)
-    Await.result(system.terminate(), 10.seconds)
     ()
   }
 
@@ -140,7 +134,7 @@ class PathSegmentWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterA
     "be escaped on the streamed session events too" in {
       val before = requests.size
       Await.ready(
-        service.streamAgentSessionEvents("s/../x").runWith(Sink.ignore),
+        service.streamAgentSessionEvents("s/../x").runDrain,
         20.seconds
       )
       requests.size shouldBe before + 1
@@ -163,7 +157,7 @@ class PathSegmentWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterA
     "refuse '..' on the session streams - as a failed stream" in {
       val failure = Try(service.streamAgentSessionEvents("..")) match {
         case Failure(e)   => fail(s"thrown synchronously: $e")
-        case Success(src) => Await.result(src.runWith(Sink.ignore).failed, 20.seconds)
+        case Success(src) => Await.result(src.runDrain.failed, 20.seconds)
       }
       failure shouldBe an[IllegalArgumentException]
     }
@@ -179,7 +173,6 @@ class PathSegmentWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterA
       recovered shouldBe "refused"
 
       implicit val retrySettings: RetrySettings = RetrySettings(maxRetries = 2)
-      implicit val scheduler: Scheduler = system.scheduler
       val withRetry = OpenAIServiceAdapters.forFullService.retry(service)
       refused(withRetry.getAgent("..")) shouldBe an[IllegalArgumentException]
     }

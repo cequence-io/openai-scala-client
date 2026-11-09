@@ -1,20 +1,27 @@
 package io.cequence.openaiscala.service
 
+import io.cequence.wsclient.stream.{AsyncPipe, AsyncStream}
 import io.cequence.openaiscala.domain.ChatCompletionTool
 import io.cequence.openaiscala.domain.response.ChatChunk
 
-import akka.NotUsed
-import akka.stream.FlowShape
-import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Source, Zip}
 import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response.{ChatCompletionChunkResponse, ChunkMessageSpec}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 
+/**
+ * Converts the output of a streamed service: the OpenAI-shaped chunks' deltas through
+ * `messageConversion`, the typed chunks through `chunkConversion`.
+ *
+ * `messageConversion` must be 1:1 - one output per input, in order (each converted delta list
+ * is put back into the chunk it came from); a pipe that emits more fails the stream, one that
+ * drops elements misaligns them. A native pipe (e.g. an Akka `Flow` via `.toAsyncPipe`) runs
+ * natively on its own backend.
+ */
 object OpenAIChatCompletionStreamedOutputConversionAdapter {
   def apply(
     service: OpenAIChatCompletionStreamedServiceExtra,
-    messageConversion: Flow[Seq[ChunkMessageSpec], Seq[ChunkMessageSpec], NotUsed],
-    chunkConversion: Flow[ChatChunk, ChatChunk, NotUsed] = Flow[ChatChunk]
+    messageConversion: AsyncPipe[Seq[ChunkMessageSpec], Seq[ChunkMessageSpec]],
+    chunkConversion: AsyncPipe[ChatChunk, ChatChunk] = AsyncPipe.identity[ChatChunk]
   ): OpenAIChatCompletionStreamedServiceExtra =
     new OpenAIChatCompletionStreamedOutputConversionAdapterImpl(
       service,
@@ -24,8 +31,8 @@ object OpenAIChatCompletionStreamedOutputConversionAdapter {
 
   final private class OpenAIChatCompletionStreamedOutputConversionAdapterImpl(
     underlying: OpenAIChatCompletionStreamedServiceExtra,
-    messageConversion: Flow[Seq[ChunkMessageSpec], Seq[ChunkMessageSpec], NotUsed],
-    chunkConversion: Flow[ChatChunk, ChatChunk, NotUsed]
+    messageConversion: AsyncPipe[Seq[ChunkMessageSpec], Seq[ChunkMessageSpec]],
+    chunkConversion: AsyncPipe[ChatChunk, ChatChunk]
   ) extends OpenAIChatCompletionStreamedServiceExtra {
 
     override def createChatToolCompletionStreamed(
@@ -33,7 +40,7 @@ object OpenAIChatCompletionStreamedOutputConversionAdapter {
       tools: Seq[ChatCompletionTool],
       responseToolChoice: Option[String],
       settings: CreateChatCompletionSettings
-    ): Source[ChatChunk, NotUsed] =
+    ): AsyncStream[ChatChunk] =
       underlying
         .createChatToolCompletionStreamed(messages, tools, responseToolChoice, settings)
         .via(chunkConversion)
@@ -41,7 +48,7 @@ object OpenAIChatCompletionStreamedOutputConversionAdapter {
     override def createChatCompletionStreamed(
       messages: Seq[BaseMessage],
       settings: CreateChatCompletionSettings
-    ): Source[ChatCompletionChunkResponse, NotUsed] =
+    ): AsyncStream[ChatCompletionChunkResponse] =
       underlying
         .createChatCompletionStreamed(
           messages,
@@ -49,30 +56,17 @@ object OpenAIChatCompletionStreamedOutputConversionAdapter {
         )
         .via(conversionStream(messageConversion))
 
+    // each chunk's deltas through the conversion, put back into the chunk they came from
     private def conversionStream(
-      messageProcessingFlow: Flow[Seq[ChunkMessageSpec], Seq[ChunkMessageSpec], NotUsed]
-    ): Flow[ChatCompletionChunkResponse, ChatCompletionChunkResponse, NotUsed] =
-      Flow.fromGraph(GraphDSL.create() { implicit builder =>
-        import GraphDSL.Implicits._
-
-        // Broadcast each ChatCompletionResponse into 2 identical copies
-        val bcast = builder.add(Broadcast[ChatCompletionChunkResponse](2))
-
-        // Zip them back together at the end: left side is the original response,
-        // right side is the updated Seq[ChatChoice].
-        val zip = builder.add(Zip[ChatCompletionChunkResponse, Seq[ChunkMessageSpec]]())
-
-        // Subflow #1: pass the original response (for final zip)
-        bcast.out(0) ~> zip.in0
-
-        // Subflow #2: extract the choices, process them, feed into zip
-        val extractDeltas = Flow[ChatCompletionChunkResponse].map(_.choices.map(_.delta))
-        bcast.out(1) ~> extractDeltas ~> messageProcessingFlow ~> zip.in1
-
-        // Once we zip, we get (originalResponse, updatedChoices)
-        // Turn that into a single ChatCompletionResponse with new choices
-        val mergeBack = Flow[(ChatCompletionChunkResponse, Seq[ChunkMessageSpec])].map {
-          case (response, updatedChoices) =>
+      messageProcessingFlow: AsyncPipe[Seq[ChunkMessageSpec], Seq[ChunkMessageSpec]]
+    ): AsyncPipe[ChatCompletionChunkResponse, ChatCompletionChunkResponse] =
+      AsyncPipe
+        .of[ChatCompletionChunkResponse]
+        .zipVia(_.choices.map(_.delta), messageProcessingFlow) {
+          (
+            response,
+            updatedChoices
+          ) =>
             response.copy(
               choices =
                 response.choices.zip(updatedChoices).map { case (choice, updatedChoice) =>
@@ -80,14 +74,6 @@ object OpenAIChatCompletionStreamedOutputConversionAdapter {
                 }
             )
         }
-
-        // Wire zip's output into mergeBack
-        val mergeBackStage = builder.add(mergeBack)
-        zip.out ~> mergeBackStage
-
-        // The final shape: in => zip.out => merge => out
-        FlowShape(bcast.in, mergeBackStage.out)
-      })
 
     override def close(): Unit =
       underlying.close()

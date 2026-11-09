@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.service
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
@@ -27,7 +24,7 @@ import io.cequence.openaiscala.domain.settings.ResponsesChatCompletionSettingsOp
 import io.cequence.openaiscala.domain.{BaseMessage, JsonSchema, ModelId, UserMessage}
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.wsclient.domain.WsRequestContext
-import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
+import io.cequence.openaiscala.testkit.TestEngines
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -49,8 +46,6 @@ import scala.io.Source
 class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("responses-only-settings-wire")
-  private implicit val materializer: Materializer = Materializer(system)
 
   private def resource(name: String): String = {
     val source = Source.fromResource(s"responses-only/$name")
@@ -90,7 +85,7 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
   private def lastBetaHeaders: Seq[String] = betaHeaders.lastOption.getOrElse(Nil)
 
   private val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
-  private val engine = StreamedEngineRegistry.outputStreamed(TransportSettings())
+  private val engine = TestEngines.streaming()
   private lazy val coreUrl = s"http://localhost:${server.getAddress.getPort}/"
   private val context = WsRequestContext(authHeaders = Seq("Authorization" -> "Bearer k"))
 
@@ -162,7 +157,6 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
     chatOnlyStreamed.close()
     engine.close()
     server.stop(0)
-    Await.result(system.terminate(), 10.seconds)
     ()
   }
 
@@ -202,7 +196,7 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
       (last._2 \ "service_tier").as[String] shouldBe "ultrafast"
 
       val chunks =
-        await(fullStreamed.createChatCompletionStreamed(messages, ultrafast).runWith(Sink.seq))
+        await(fullStreamed.createChatCompletionStreamed(messages, ultrafast).runToSeq)
       last._1 should endWith("/responses")
       (last._2 \ "service_tier").as[String] shouldBe "ultrafast"
       (last._2 \ "stream").as[Boolean] shouldBe true
@@ -221,7 +215,7 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
       (last._2 \ "service_tier").as[String] shouldBe "ultrafast"
 
       await(
-        chatOnlyStreamed.createChatCompletionStreamed(messages, ultrafast).runWith(Sink.seq)
+        chatOnlyStreamed.createChatCompletionStreamed(messages, ultrafast).runToSeq
       )
       last._1 should endWith("/chat/completions")
       (last._2 \ "service_tier").as[String] shouldBe "ultrafast"
@@ -252,7 +246,7 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
       (last._2 \ "reasoning" \ "mode").as[String] shouldBe "pro"
       (last._2 \ "reasoning" \ "summary").as[String] shouldBe "auto"
 
-      await(fullStreamed.createChatCompletionStreamed(messages, pro).runWith(Sink.seq))
+      await(fullStreamed.createChatCompletionStreamed(messages, pro).runToSeq)
       last._1 should endWith("/responses")
       (last._2 \ "reasoning" \ "mode").as[String] shouldBe "pro"
 
@@ -272,12 +266,8 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
       Seq[() => Future[_]](
         () => chatOnly.createChatCompletion(messages, pro),
         () => chatOnly.createChatToolCompletion(messages, Seq(weather), None, pro),
-        () =>
-          chatOnlyStreamed.createChatCompletionStreamed(messages, pro).runWith(Sink.ignore),
-        () =>
-          chatOnlyStreamed
-            .createChatCompletionStreamedTyped(messages, pro)
-            .runWith(Sink.ignore),
+        () => chatOnlyStreamed.createChatCompletionStreamed(messages, pro).runDrain,
+        () => chatOnlyStreamed.createChatCompletionStreamedTyped(messages, pro).runDrain,
         () => full.createChatFunCompletion(messages, Nil, None, pro)
       ).foreach { call =>
         intercept[OpenAIScalaClientException](await(call())).getMessage should
@@ -367,7 +357,7 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
 
       val chunks =
         await(
-          fullStreamed.createChatCompletionStreamed(messages, summarized).runWith(Sink.seq)
+          fullStreamed.createChatCompletionStreamed(messages, summarized).runToSeq
         )
       last._1 should endWith("/responses")
       (last._2 \ "reasoning").as[JsObject] shouldBe Json.obj("summary" -> "auto")
@@ -408,7 +398,7 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
       last._2.keys should not contain ResponsesReasoningSummaryParam
 
       await(
-        chatOnlyStreamed.createChatCompletionStreamed(messages, summarized).runWith(Sink.seq)
+        chatOnlyStreamed.createChatCompletionStreamed(messages, summarized).runToSeq
       )
       last._1 should endWith("/chat/completions")
       last._2.keys should not contain ResponsesReasoningSummaryParam
@@ -435,7 +425,7 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
         await(
           chatOnlyStreamed
             .createChatToolCompletionStreamed(messages, Seq(weather), None, none)
-            .runWith(Sink.ignore)
+            .runDrain
         )
       ).getMessage should include("function tools on the chat completions API")
       requests.size shouldBe before
@@ -484,7 +474,7 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
             Inputs.Text("Fruits and vegetables?"),
             multiAgentSettings
           )
-          .runWith(Sink.seq)
+          .runToSeq
       ).size should be > 10
       lastBetaHeaders shouldBe Seq("responses_multi_agent=v1")
     }
@@ -528,10 +518,7 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
       val before = requests.size
       Seq[() => Future[_]](
         () => chatOnly.createChatCompletion(messages, settings),
-        () =>
-          chatOnlyStreamed
-            .createChatCompletionStreamed(messages, settings)
-            .runWith(Sink.ignore)
+        () => chatOnlyStreamed.createChatCompletionStreamed(messages, settings).runDrain
       ).foreach { call =>
         intercept[OpenAIScalaClientException](await(call())).getMessage should
           include("setResponsesMultiAgent")

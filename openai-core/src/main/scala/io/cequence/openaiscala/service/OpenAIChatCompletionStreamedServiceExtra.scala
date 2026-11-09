@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.service
 
-import akka.NotUsed
-import akka.stream.scaladsl.Source
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.{BaseMessage, ChatCompletionTool}
 import io.cequence.openaiscala.domain.response.{
@@ -39,7 +38,7 @@ trait OpenAIChatCompletionStreamedServiceExtra
   def createChatCompletionStreamed(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
-  ): Source[ChatCompletionChunkResponse, NotUsed]
+  ): AsyncStream[ChatCompletionChunkResponse]
 
   /**
    * Streams a chat completion as provider-neutral typed chunks ([[ChatChunk]]): text, thinking
@@ -66,11 +65,11 @@ trait OpenAIChatCompletionStreamedServiceExtra
     tools: Seq[ChatCompletionTool] = Nil,
     responseToolChoice: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
-  ): Source[ChatChunk, NotUsed] =
+  ): AsyncStream[ChatChunk] =
     if (tools.isEmpty)
       createChatCompletionStreamed(messages, settings).via(ChatChunks.fromOpenAIChunks)
     else
-      Source.failed(
+      AsyncStream.failed(
         new OpenAIScalaClientException(
           "createChatToolCompletionStreamed with tools is not supported by this service."
         )
@@ -120,7 +119,7 @@ trait OpenAIChatCompletionStreamedServiceExtra
     decide: ChatChunk.ToolApprovalRequest => Future[ToolApprovalDecision]
   )(
     implicit ec: ExecutionContext
-  ): Source[ChatChunk, NotUsed] =
+  ): AsyncStream[ChatChunk] =
     ToolApprovalLoop(settings, decide, maxApprovalRounds)(roundSettings =>
       createChatToolCompletionStreamed(messages, tools, responseToolChoice, roundSettings)
     )
@@ -129,6 +128,6 @@ trait OpenAIChatCompletionStreamedServiceExtra
   final def createChatCompletionStreamedTyped(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
-  ): Source[ChatChunk, NotUsed] =
+  ): AsyncStream[ChatChunk] =
     createChatToolCompletionStreamed(messages, Nil, None, settings)
 }

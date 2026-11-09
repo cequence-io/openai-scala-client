@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.service
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import io.cequence.openaiscala.{
   OpenAIScalaClientException,
@@ -40,7 +37,7 @@ import io.cequence.openaiscala.domain.{
 import io.cequence.openaiscala.domain.responsesapi.tools.WebSearchTool
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.wsclient.domain.WsRequestContext
-import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
+import io.cequence.openaiscala.testkit.TestEngines
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -61,8 +58,6 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("agents-chat-adapter-wire")
-  private implicit val materializer: Materializer = Materializer(system)
 
   private def resource(name: String): String = {
     val source = scala.io.Source.fromResource(s"agents/$name")
@@ -104,7 +99,7 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
   private def sse(events: Seq[String]): String = events.mkString("", "\n\n", "\n\n")
 
   private val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
-  private val engine = StreamedEngineRegistry.outputStreamed(TransportSettings())
+  private val engine = TestEngines.streaming()
   private lazy val coreUrl = s"http://localhost:${server.getAddress.getPort}/"
   private lazy val service = OpenAIServiceFactory.withStreaming.customEngineInstance(
     engine,
@@ -177,7 +172,6 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
     service.close()
     engine.close()
     server.stop(0)
-    Await.result(system.terminate(), 10.seconds)
     ()
   }
 
@@ -227,7 +221,7 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
               temperature = Some(0.2)
             )
           )
-          .runWith(Sink.seq)
+          .runToSeq
       )
       val sessionId = sessionIdOf(plainTurn)
       chunks.head shouldBe ChatChunk.Start(sessionId, "gpt-6-luna")
@@ -458,7 +452,7 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
             Seq(UserMessage("Say hi in two words.")),
             CreateChatCompletionSettings("gpt-6-luna")
           )
-          .runWith(Sink.seq)
+          .runToSeq
       )
       chunks.collect { case ChatChunk.Thinking(t) => t } shouldBe Seq("Thinking it over.")
       chunks.collect { case ChatChunk.Text(t) => t }.mkString shouldBe "Hi there!"
@@ -523,7 +517,7 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
             None,
             CreateChatCompletionSettings("gpt-6-luna")
           )
-          .runWith(Sink.seq)
+          .runToSeq
       )
       // the answer (replayed as done events - no deltas), the commentary as thinking, and
       // nothing re-reported
@@ -563,7 +557,7 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
             CreateChatCompletionSettings("gpt-6-luna")
           )
           .take(1)
-          .runWith(Sink.seq)
+          .runToSeq
       ) shouldBe Seq(ChatChunk.Start(sessionIdOf(plainTurn), "gpt-6-luna"))
 
       // the turn is cancelled first (a session mid-turn cannot be deleted), then deleted
@@ -588,7 +582,7 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
             CreateChatCompletionSettings("gpt-6-luna")
           )
           .takeWhile(chunk => !chunk.isInstanceOf[ChatChunk.Finish], inclusive = true)
-          .runWith(Sink.seq)
+          .runToSeq
       ).last shouldBe a[ChatChunk.Finish]
 
       // resumed at once: the paused session, not a new one
@@ -623,7 +617,7 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
             CreateChatCompletionSettings("gpt-6-luna")
           )
           .takeWhile(chunk => !chunk.isInstanceOf[ChatChunk.Finish], inclusive = true)
-          .runWith(Sink.seq)
+          .runToSeq
       ).last shouldBe a[ChatChunk.Finish]
 
       ownAdapter.close()

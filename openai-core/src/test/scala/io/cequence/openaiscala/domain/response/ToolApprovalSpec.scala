@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.domain.response
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Source
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.JsonFormats._
 import io.cequence.openaiscala.domain.response.ChatChunk._
 import io.cequence.openaiscala.domain.responsesapi.{ModelStatus, Response, TextResponseConfig}
@@ -21,11 +19,10 @@ import scala.concurrent.duration._
 /** The provider-neutral pieces of human approval: the chunk, its decisions and resume key. */
 class ToolApprovalSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
-  private implicit val system: ActorSystem = ActorSystem("tool-approval-spec")
-  private implicit val materializer: Materializer = Materializer(system)
+  private implicit val ec: scala.concurrent.ExecutionContext =
+    scala.concurrent.ExecutionContext.global
 
   override protected def afterAll(): Unit = {
-    Await.result(system.terminate(), 10.seconds)
     ()
   }
 
@@ -70,7 +67,7 @@ class ToolApprovalSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll 
 
     "collect the pending requests in both folds, and answer them all" in {
       val folded = chunks.foldLeft(AssembledChatCompletion.empty)(_.add(_))
-      val built = Await.result(Source(chunks.toList).assembled, 5.seconds)
+      val built = Await.result(AsyncStream.fromIterable(chunks.toList).assembled, 5.seconds)
 
       Seq(folded, built).foreach { assembled =>
         assembled.awaitingApproval shouldBe true
@@ -81,12 +78,15 @@ class ToolApprovalSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll 
           Seq((false, Some("no")), (false, Some("no")))
       }
       Await.result(
-        Source(chunks.toList).toolApprovalRequests.runFold(0)(
-          (
-            n,
-            _
-          ) => n + 1
-        ),
+        AsyncStream
+          .fromIterable(chunks.toList)
+          .toolApprovalRequests
+          .runFold(0)(
+            (
+              n,
+              _
+            ) => n + 1
+          ),
         5.seconds
       ) shouldBe 2
     }
@@ -97,7 +97,7 @@ class ToolApprovalSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll 
         .foldLeft(AssembledChatCompletion.empty)(_.add(_))
         .awaitingApproval shouldBe false
       Await
-        .result(Source(restarted.toList).assembled, 5.seconds)
+        .result(AsyncStream.fromIterable(restarted.toList).assembled, 5.seconds)
         .awaitingApproval shouldBe false
     }
   }

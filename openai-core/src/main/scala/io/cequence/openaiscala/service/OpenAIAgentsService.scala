@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.service
 
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
+import io.cequence.wsclient.stream.{AsyncStream, Bytes}
 import io.cequence.openaiscala.domain.SortOrder
 import io.cequence.openaiscala.domain.agents._
 import play.api.libs.json.JsObject
@@ -149,11 +148,14 @@ trait OpenAIAgentsService extends OpenAIServiceConsts {
     artifactId: String
   ): Future[AgentSessionArtifact]
 
-  /** The artifact's content as a byte stream. */
+  /**
+   * The artifact's content as a byte stream: the future completes once the response started,
+   * with a SINGLE-RUN stream of the body (run or cancel it).
+   */
   def getAgentSessionArtifactContent(
     sessionId: String,
     artifactId: String
-  ): Future[Source[ByteString, _]]
+  ): Future[AsyncStream[Bytes]]
 
   def deleteAgentSessionArtifact(
     sessionId: String,

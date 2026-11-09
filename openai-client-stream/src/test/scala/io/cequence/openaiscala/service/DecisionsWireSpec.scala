@@ -7,7 +7,7 @@ import io.cequence.openaiscala.{
 }
 import io.cequence.openaiscala.domain.decisions._
 import io.cequence.wsclient.domain.WsRequestContext
-import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
+import io.cequence.openaiscala.testkit.TestEngines
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -27,7 +27,7 @@ class DecisionsWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll
   @volatile private var received: Option[(String, String)] = None // path, body
 
   private val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
-  private val engine = StreamedEngineRegistry.outputStreamed(TransportSettings())
+  private val engine = TestEngines.streaming()
   private lazy val service = OpenAIServiceFactory.customEngineInstance(
     engine,
     s"http://localhost:${server.getAddress.getPort}/v1/",

@@ -9,19 +9,18 @@ import io.cequence.openaiscala.service.{
 import io.cequence.wsclient.domain.{SiteBinding, WsRequestContext}
 import io.cequence.wsclient.service.WSClientEngine
 import io.cequence.wsclient.service.ws.Timeouts
-import play.api.libs.ws.ahc.cache.CacheableResponse
-import play.shaded.ahc.org.asynchttpclient.uri.Uri
-import play.shaded.ahc.org.asynchttpclient.{
-  DefaultAsyncHttpClientConfig,
-  Response => AHCResponse
-}
-
 import scala.concurrent.ExecutionContext
+
+// a canned HTTP response (not yet wired into the engine - see the TODO below)
+final case class MockedResponse(
+  statusCode: Int,
+  body: String
+)
 
 class TestOpenAIServiceImpl(
   coreUrl: String,
   requestContext: WsRequestContext,
-  mockedResponse: AHCResponse
+  mockedResponse: MockedResponse
 )(
   implicit override val ec: ExecutionContext
 ) extends OpenAIServiceClassImpl(coreUrl, requestContext) {
@@ -50,7 +49,7 @@ class TestOpenAIServiceImpl(
 //  }.recover(recoverErrors(endPointForLogging))
 }
 
-case class TestOpenAIServiceFactory(mockedResponse: AHCResponse)
+case class TestOpenAIServiceFactory(mockedResponse: MockedResponse)
     extends OpenAIServiceFactoryHelper[OpenAIService]
     with OpenAIServiceConsts {
 
@@ -82,9 +81,8 @@ class OpenAIServiceClassImpl(
 )(
   implicit val ec: ExecutionContext
 ) extends OpenAIServiceImpl {
-  // ONE engine (and thus one actor system) shared by ALL mocked services - the
-  // mockedService* helpers are created per test and never closed, so a per-service
-  // discovery engine would leak an actor system per call
+  // ONE engine shared by ALL mocked services - the mockedService* helpers are created per
+  // test and never closed, so a per-service discovery engine would leak one per call
   protected val engine: WSClientEngine = TestFactory.sharedEngine
 
   // shared - never closed by an individual mocked service
@@ -105,29 +103,21 @@ object TestFactory extends OpenAIServiceConsts {
 
   def mockedResponse(
     statusCode: Int,
-    statusText: String,
-    uri: Uri = Uri.create("http://localhost")
-  ): CacheableResponse = {
-
-    CacheableResponse(
-      code = statusCode,
-      urlString = uri.toString,
-      body = statusText,
-      ahcConfig = new DefaultAsyncHttpClientConfig.Builder().build()
-    )
-  }
+    statusText: String
+  ): MockedResponse =
+    MockedResponse(statusCode, statusText)
 
   private val mockedResponse401 =
     mockedResponse(401, "authentication_error: There’s an issue with your API key.")
 
-//  def withResponse(mockedResponse: AHCResponse) =
+//  def withResponse(mockedResponse: MockedResponse) =
 //    new TestOpenAIServiceImpl(
 //      defaultCoreUrl,
 //      WsRequestContext(authHeaders = customInstance),
 //      mockedResponse = mockedResponse
 //    )
 
-  def withResponse(mockedResponse: AHCResponse): OpenAIService =
+  def withResponse(mockedResponse: MockedResponse): OpenAIService =
     TestOpenAIServiceFactory(mockedResponse).customInstance(defaultCoreUrl)
 
   def mockedService401(): OpenAIService = withResponse(mockedResponse401)

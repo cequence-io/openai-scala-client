@@ -1,12 +1,9 @@
 package io.cequence.openaiscala.service
 
-import akka.NotUsed
-import akka.stream.scaladsl.Framing.FramingException
-import akka.stream.scaladsl.{Flow, Framing}
-import akka.util.ByteString
 import com.typesafe.config.Config
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.wsclient.domain.CequenceWSException
+import io.cequence.wsclient.domain.{CequenceWSException, CequenceWSFrameTooLongException}
+import io.cequence.wsclient.stream.{AsyncPipe, ByteFraming, Bytes}
 
 import scala.util.Try
 
@@ -81,9 +78,9 @@ object StreamingConsts extends HasOpenAIConfig {
    * \- a larger one fails the stream naming the setting ([[frameTooLong]]); a last frame
    * without the delimiter is kept.
    */
-  def framing(delimiter: String): Flow[ByteString, ByteString, NotUsed] =
-    Framing
-      .delimiter(ByteString(delimiter), maxFrameLength, allowTruncation = true)
+  def framing(delimiter: String): AsyncPipe[Bytes, Bytes] =
+    ByteFraming
+      .delimiter(Bytes.utf8(delimiter), maxFrameLength, allowTruncation = true)
       .mapError(frameTooLong)
 
   /**
@@ -102,16 +99,17 @@ object StreamingConsts extends HasOpenAIConfig {
     new OpenAIScalaClientException(frameTooLongMessage(limit), e)
   }
 
-  // Akka's framing failure ("Read N bytes which is more than M without seeing a line
-  // terminator"), as is or inside ws-client's "Stream framing problem occurred." exception -
-  // with M, the limit
+  // ws-client's typed framing failure (every engine and ByteFraming since 1.2.0), or - from
+  // an engine of a third party - its message ("Read N bytes which is more than M without
+  // seeing a line terminator"), with M, the limit
   private object FrameOverflow {
     private val Message =
       """Read \d+ bytes which is more than (\d+) without seeing a line terminator""".r.unanchored
 
     def unapply(e: Throwable): Option[Long] = e match {
-      case _: OpenAIScalaClientException => None // already ours
-      case _: FramingException | _: CequenceWSException =>
+      case _: OpenAIScalaClientException      => None // already ours
+      case e: CequenceWSFrameTooLongException => Some(e.maxFrameLength.toLong)
+      case _: CequenceWSException =>
         Option(e.getMessage).collect { case Message(limit) => limit.toLong }
       case _ => None
     }

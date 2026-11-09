@@ -1,6 +1,6 @@
 package io.cequence.openaiscala
 
-import akka.actor.{ActorSystem, Scheduler}
+import io.cequence.wsclient.concurrent.{AsyncCancellable, AsyncScheduler}
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.classic.{Level, Logger => LogbackLogger}
 import ch.qos.logback.core.read.ListAppender
@@ -27,14 +27,11 @@ class RetryEngineSpec
     with RetryHelpers {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private val system: ActorSystem = ActorSystem("retry-engine-spec")
-  private implicit val scheduler: Scheduler = system.scheduler
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(20, Seconds), interval = Span(25, Millis))
 
   override def afterAll(): Unit = {
-    system.terminate()
     ()
   }
 
@@ -208,6 +205,8 @@ class RetryEngineSpec
     script: Script,
     inputs: Seq[String],
     config: RetryEngine.Config[String, Nothing, String]
+  )(
+    implicit scheduler: AsyncScheduler
   ): Future[String] =
     RetryEngine.run[String, String, Nothing, String](
       inputs.map(i => (i, i)),
@@ -392,7 +391,17 @@ class RetryEngineSpec
       val lines = new ConcurrentLinkedQueue[String]()
       val script = new Script(Map("a" -> Seq(ok("fine"))))
 
-      // Akka refuses a delay beyond ~248 days (its default tick) - the call already runs
+      // a scheduler refusing the delay - e.g. an actor system's, which refuses ~248 days and
+      // more (its default tick); the call already runs
+      val refusing: AsyncScheduler = new AsyncScheduler {
+        override def scheduleOnce(delay: FiniteDuration)(task: () => Unit): AsyncCancellable =
+          if (delay > 248.days)
+            throw new IllegalArgumentException(
+              s"Task scheduled with [${delay.toSeconds}] seconds delay, which is too far in future"
+            )
+          else
+            AsyncScheduler.default.scheduleOnce(delay)(task)
+      }
       val cfg = config(new ConcurrentLinkedQueue[Logged]()).copy[String, Nothing, String](
         attemptTimeout = Some(1000.days),
         log = Some { (line: String) =>
@@ -401,7 +410,7 @@ class RetryEngineSpec
         }
       )
 
-      runEngine(script, Seq("a"), cfg).futureValue shouldBe "fine"
+      runEngine(script, Seq("a"), cfg)(refusing).futureValue shouldBe "fine"
       lines.asScala.exists(_.contains("could not be scheduled")) shouldBe true
     }
 
@@ -417,8 +426,26 @@ class RetryEngineSpec
 
   // --- retryOnFailureOrFailover over slf4j -------------------------------------------------
 
+  // slf4j hands out substitute loggers while it initializes - which another suite may be
+  // doing concurrently in the shared test JVM - so wait (briefly) for logback's own logger
+  private def logbackLogger: LogbackLogger = {
+    val deadline = System.nanoTime() + 10.seconds.toNanos
+    var logger = LoggerFactory.getLogger(this.getClass)
+    while (!logger.isInstanceOf[LogbackLogger] && System.nanoTime() < deadline) {
+      Thread.sleep(10)
+      logger = LoggerFactory.getLogger(this.getClass)
+    }
+    logger match {
+      case logback: LogbackLogger =>
+        logback
+
+      case other =>
+        fail(s"Expected a logback logger, got ${other.getClass.getName}")
+    }
+  }
+
   private def withCapturedLogs[T](body: => T): (T, Seq[ILoggingEvent]) = {
-    val logger = LoggerFactory.getLogger(this.getClass).asInstanceOf[LogbackLogger]
+    val logger = logbackLogger
     val appender = new ListAppender[ILoggingEvent]()
     val oldLevel = logger.getLevel
     appender.start()

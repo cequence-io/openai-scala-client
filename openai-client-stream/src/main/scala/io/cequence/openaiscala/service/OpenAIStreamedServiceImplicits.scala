@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.service
 
-import akka.stream.Materializer
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.domain.agents.{
   AgentEnvironment,
   AgentInput,
@@ -23,8 +23,6 @@ import io.cequence.openaiscala.service.adapter.{
 import io.cequence.openaiscala.domain.ChatCompletionTool
 import io.cequence.openaiscala.domain.response.ChatChunk
 
-import akka.NotUsed
-import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response.{
   ChatCompletionChunkResponse,
@@ -45,7 +43,8 @@ import io.cequence.openaiscala.service.adapter.{
 import io.cequence.wsclient.domain.WsRequestContext
 import io.cequence.wsclient.service.adapter.ServiceWrapperTypes.CloseableServiceWrapper
 import io.cequence.wsclient.service.adapter.SimpleServiceWrapper
-import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
+import io.cequence.wsclient.service.spi.TransportSettings
+import io.cequence.wsclient.concurrent.AsyncScheduler
 import io.cequence.wsclient.service.ws.Timeouts
 import io.cequence.wsclient.service.{CloseableService, WSClientEngine}
 
@@ -93,7 +92,7 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
       ): StreamedServiceTypes.OpenAIChatCompletionStreamedService = {
         // ONE private stateless engine serves both the base service and the streamed extra;
         // the merged service owns it (closed via alsoClose)
-        val engine = StreamedEngineRegistry.outputStreamed(
+        val engine = StreamingEngines.outputStreamed(
           TransportSettings(timeouts = timeouts.getOrElse(Timeouts()))
         )
 
@@ -168,7 +167,7 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
     ): StreamedServiceTypes.OpenAICoreStreamedService = {
       // ONE private stateless engine serves both the base service and the streamed extra;
       // the merged service owns it (closed via alsoClose)
-      val engine = StreamedEngineRegistry.outputStreamed(
+      val engine = StreamingEngines.outputStreamed(
         TransportSettings(timeouts = timeouts.getOrElse(Timeouts()))
       )
 
@@ -200,7 +199,7 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
       deleteSessionsAfterUse: Boolean = true
     )(
       implicit ec: ExecutionContext,
-      materializer: Materializer
+      scheduler: AsyncScheduler
     ): OpenAIAgentsChatCompletionService =
       OpenAIAgentsChatCompletionService(
         service,
@@ -231,7 +230,7 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
       settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
     )(
       implicit ec: ExecutionContext
-    ): Source[ChatChunk, NotUsed] =
+    ): AsyncStream[ChatChunk] =
       responsesAsChatCompletion.createChatCompletionStreamedTyped(messages, settings)
 
     def createChatToolCompletionStreamedViaResponses(
@@ -241,7 +240,7 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
       settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
     )(
       implicit ec: ExecutionContext
-    ): Source[ChatChunk, NotUsed] =
+    ): AsyncStream[ChatChunk] =
       responsesAsChatCompletion.createChatToolCompletionStreamed(
         messages,
         tools,
@@ -293,7 +292,7 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
       ): OpenAIStreamedService = {
         // ONE private stateless engine serves both the base service and the streamed extra;
         // the merged service owns it (closed via alsoClose)
-        val engine = StreamedEngineRegistry.outputStreamed(
+        val engine = StreamingEngines.outputStreamed(
           TransportSettings(timeouts = timeouts.getOrElse(Timeouts()))
         )
 
@@ -325,7 +324,7 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
       )(
         implicit ec: ExecutionContext
       ): WSClientEngine =
-        StreamedEngineRegistry.outputStreamed(
+        StreamingEngines.outputStreamed(
           TransportSettings(timeouts = timeouts.getOrElse(Timeouts()))
         )
 
@@ -410,24 +409,24 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
     override def createCompletionStreamed(
       prompt: String,
       settings: CreateCompletionSettings
-    ): Source[TextCompletionResponse, NotUsed] =
+    ): AsyncStream[TextCompletionResponse] =
       streamedServiceExtra.createCompletionStreamed(prompt, settings)
 
     override def createModelResponseStreamed(
       inputs: Inputs,
       settings: CreateModelResponseSettings
-    ): Source[ResponseStreamEvent, NotUsed] =
+    ): AsyncStream[ResponseStreamEvent] =
       streamedServiceExtra.createModelResponseStreamed(inputs, settings)
 
     override def createAgentSessionStreamed(
       settings: CreateAgentSessionSettings,
       input: AgentInput
-    ): Source[AgentSessionEvent, NotUsed] =
+    ): AsyncStream[AgentSessionEvent] =
       streamedServiceExtra.createAgentSessionStreamed(settings, input)
 
     override def streamAgentSessionEvents(
       sessionId: String
-    ): Source[AgentSessionEvent, NotUsed] =
+    ): AsyncStream[AgentSessionEvent] =
       streamedServiceExtra.streamAgentSessionEvents(sessionId)
 
     /**
@@ -450,7 +449,7 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
     override def createChatCompletionStreamed(
       messages: Seq[BaseMessage],
       settings: CreateChatCompletionSettings
-    ): Source[ChatCompletionChunkResponse, NotUsed] =
+    ): AsyncStream[ChatCompletionChunkResponse] =
       responsesBackedTypedToolStream match {
         case Some(responsesBacked)
             if ChatCompletionSettingsConversions.chatRequiresResponsesAPI(settings) &&
@@ -466,7 +465,7 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
       tools: Seq[ChatCompletionTool],
       responseToolChoice: Option[String],
       settings: CreateChatCompletionSettings
-    ): Source[ChatChunk, NotUsed] =
+    ): AsyncStream[ChatChunk] =
       responsesBackedTypedToolStream match {
         case Some(responsesBacked)
             if ChatCompletionSettingsConversions.chatToolsPreferResponsesAPI(
@@ -516,7 +515,7 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
     override def createChatCompletionStreamed(
       messages: Seq[BaseMessage],
       settings: CreateChatCompletionSettings
-    ): Source[ChatCompletionChunkResponse, NotUsed] =
+    ): AsyncStream[ChatCompletionChunkResponse] =
       streamedServiceExtra.createChatCompletionStreamed(messages, settings)
 
     override def createChatToolCompletionStreamed(
@@ -524,7 +523,7 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
       tools: Seq[ChatCompletionTool],
       responseToolChoice: Option[String],
       settings: CreateChatCompletionSettings
-    ): Source[ChatChunk, NotUsed] =
+    ): AsyncStream[ChatChunk] =
       streamedServiceExtra.createChatToolCompletionStreamed(
         messages,
         tools,
