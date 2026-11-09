@@ -4,6 +4,8 @@ import sbt.Keys.test
 val scala212 = "2.12.18"
 val scala213 = "2.13.11"
 val scala3 = "3.2.2"
+// the Scala 3 line of the ZIO module: ws-client-zio's `_3` is built with 3.3 (TASTy 28.3)
+val scala33 = "3.3.8"
 
 ThisBuild / organization := "io.cequence"
 ThisBuild / scalaVersion := scala213
@@ -20,9 +22,22 @@ lazy val commonSettings = Seq(
   crossScalaVersions := List(scala212, scala213, scala3)
 )
 
+// A 3.2-line module (its `_3` artifact compiled with 3.2.2) that also builds with 3.3: an sbt
+// project dependency needs one Scala line on both sides, so the 3.3-line ZIO module depends on
+// a 3.3 build of it. That build is never published (`_3` must come from 3.2.2 only)
+lazy val alsoOnScala33 = {
+  val onScala33 = Def.setting(scalaVersion.value == scala33)
+  Seq(
+    crossScalaVersions := List(scala212, scala213, scala3, scala33),
+    publish / skip := onScala33.value,
+    publishLocal / skip := onScala33.value,
+    publishM2 / skip := onScala33.value
+  )
+}
+
 // unpublished test support shared by every module's tests (stream runners, test engines)
 lazy val testkit = (project in file("openai-testkit")).settings(
-  (commonSettings ++ Seq(
+  (commonSettings ++ alsoOnScala33 ++ Seq(
     name := "openai-scala-testkit",
     publish / skip := true,
     libraryDependencies ++= Seq(
@@ -33,18 +48,68 @@ lazy val testkit = (project in file("openai-testkit")).settings(
 )
 
 lazy val core =
-  (project in file("openai-core")).settings(commonSettings *).dependsOn(testkit % Test)
+  (project in file("openai-core"))
+    .settings((commonSettings ++ alsoOnScala33) *)
+    .dependsOn(testkit % Test)
 
 lazy val client =
   (project in file("openai-client"))
-    .settings(commonSettings *)
+    .settings((commonSettings ++ alsoOnScala33) *)
     .dependsOn(core, testkit % Test)
     .aggregate(core)
 
 lazy val client_stream = (project in file("openai-client-stream"))
-  .settings(commonSettings *)
+  .settings((commonSettings ++ alsoOnScala33) *)
   .dependsOn(client, testkit % Test)
   .aggregate(client)
+
+// ZIO-native views of the services (Task / ZStream), generated from the service traits by
+// project/ZioServiceGenerator.scala
+lazy val zio = (project in file("openai-zio"))
+  .settings(
+    (commonSettings ++ Seq(
+      name := "openai-scala-zio",
+      crossScalaVersions := List(scala212, scala213, scala33),
+      libraryDependencies += "io.cequence" %% "ws-client-zio" % Dependencies.Versions.wsClient,
+      // the native ZIO engine for the round-trip specs (src/test/scala-2): zio-http publishes no
+      // Scala 3 artifacts for ws-client's line
+      libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((2, _)) =>
+          Seq("io.cequence" %% "ws-client-zio-http" % Dependencies.Versions.wsClient % Test)
+        case _ =>
+          Nil
+      }),
+      Compile / sourceGenerators += Def.task {
+        val coreServices =
+          (LocalProject(
+            "core"
+          ) / Compile / scalaSource).value / "io/cequence/openaiscala/service"
+        val traits = Seq(
+          "OpenAIChatCompletionService",
+          "OpenAICompletionService",
+          "OpenAICoreService",
+          "OpenAIResponsesService",
+          "OpenAIAgentsService",
+          "OpenAIDecisionsService",
+          "OpenAIGraderService",
+          "OpenAIChatCompletionBatchService",
+          "OpenAIService",
+          "OpenAIChatCompletionStreamedServiceExtra",
+          "OpenAIStreamedServiceExtra"
+        ).map(name => ZioServiceGenerator.ServiceTrait(coreServices / s"$name.scala", name))
+        val extensions = Seq(
+          ZioServiceGenerator.Extension(
+            coreServices / "OpenAIChatCompletionExtra.scala",
+            "OpenAIChatCompletionExtra",
+            "OpenAIChatCompletionImplicits"
+          )
+        )
+        ZioServiceGenerator
+          .generate(traits ++ extensions, (Compile / sourceManaged).value / "zio")
+      }.taskValue
+    )) *
+  )
+  .dependsOn(client_stream, testkit % Test)
 
 // note that for anthropic_client we provide a streaming extension within the module as well
 lazy val anthropic_client = (project in file("anthropic-client"))

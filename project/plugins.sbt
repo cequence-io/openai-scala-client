@@ -10,3 +10,4 @@ addSbtPlugin("org.scalameta" % "sbt-scalafmt" % "2.5.0")
 // sbt-scoverage is a plugin for SBT that integrates the scoverage code coverage library.
 // See more: https://github.com/scoverage/sbt-scoverage
 addSbtPlugin("org.scoverage" % "sbt-scoverage" % "2.0.8")
+libraryDependencies += "org.scalameta" %% "scalameta" % "4.9.9"
