@@ -382,8 +382,10 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
   // behaviour). Likewise "claude-opus-5" matches "claude-opus-5-5" and "claude-sonnet-5"
   // matches "claude-sonnet-5-5"; Opus 5.5 and Sonnet 5.5 are listed anyway.
   private val outputEffortModels: Set[String] = Set(
+    NonOpenAIModelId.claude_fable_5_2,
     NonOpenAIModelId.claude_fable_5_1,
     NonOpenAIModelId.claude_fable_5,
+    NonOpenAIModelId.claude_mythos_5_2,
     NonOpenAIModelId.claude_mythos_5_1,
     NonOpenAIModelId.claude_mythos_5,
     NonOpenAIModelId.claude_opus_5_5,
@@ -400,8 +402,10 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
   // Models that accept output_config.effort = xhigh - narrower than outputEffortModels:
   // Opus 4.6 / Sonnet 4.6 reject xhigh though they do accept max (live-verified 2026-07-11).
   private val xhighOutputEffortModels: Set[String] = Set(
+    NonOpenAIModelId.claude_fable_5_2,
     NonOpenAIModelId.claude_fable_5_1,
     NonOpenAIModelId.claude_fable_5,
+    NonOpenAIModelId.claude_mythos_5_2,
     NonOpenAIModelId.claude_mythos_5_1,
     NonOpenAIModelId.claude_mythos_5,
     NonOpenAIModelId.claude_opus_5_5,
@@ -417,8 +421,10 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
   // (temperature, top_p, top_k) are fully removed - sending them returns a 400.
   // Adaptive thinking is the only thinking mode.
   private val adaptiveOnlyThinkingModels: Set[String] = Set(
+    NonOpenAIModelId.claude_fable_5_2,
     NonOpenAIModelId.claude_fable_5_1,
     NonOpenAIModelId.claude_fable_5,
+    NonOpenAIModelId.claude_mythos_5_2,
     NonOpenAIModelId.claude_mythos_5_1,
     NonOpenAIModelId.claude_mythos_5,
     NonOpenAIModelId.claude_opus_5_5,
@@ -440,13 +446,17 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
   // "auto" / "none" are accepted; disable_parallel_tool_use still works with "auto".
   // Same `contains` convention as above so Bedrock/Vertex-prefixed ids match too.
   // NOTE: "claude-fable-5" (Fable 5) is deliberately NOT in this set - Fable 5 still supports
-  // forced tool_choice, only its successor Fable 5.1 dropped it. Mythos 5.1 is the same model
-  // as Fable 5.1 (not live-verified here - invite-only), so it is treated identically. Opus
+  // forced tool_choice, only its successors Fable 5.1 and 5.2 dropped it (5.2 live-verified
+  // 2026-11-09 - "claude-fable-5-1" does not match "claude-fable-5-2", so each is listed).
+  // Mythos 5.1 / 5.2 are the same models as Fable 5.1 / 5.2 (not live-verified here -
+  // invite-only), so they are treated identically. Opus
   // 5.5 and Sonnet 5.5 dropped it too (live-verified 2026-09-22 / 2026-09-29 on the Claude API
   // and Bedrock), while Opus 5 and Sonnet 5 still accept it - "claude-opus-5" and
   // "claude-sonnet-5" are NOT listed, they would match their 5.5 successors only.
   private val forcedToolChoiceUnsupportedModels: Set[String] = Set(
+    NonOpenAIModelId.claude_fable_5_2,
     NonOpenAIModelId.claude_fable_5_1,
+    NonOpenAIModelId.claude_mythos_5_2,
     NonOpenAIModelId.claude_mythos_5_1,
     NonOpenAIModelId.claude_opus_5_5,
     NonOpenAIModelId.claude_sonnet_5_5

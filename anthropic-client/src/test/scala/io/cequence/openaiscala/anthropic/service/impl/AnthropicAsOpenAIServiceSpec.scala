@@ -386,6 +386,51 @@ class AnthropicAsOpenAIServiceSpec extends AnyWordSpec with Matchers {
     }
   }
 
+  "Claude Fable 5.2" should {
+
+    "map reasoning_effort=xhigh to adaptive thinking + OutputEffort.xhigh and drop temperature/top_p" in {
+      val out = toAnthropicSettings(
+        CreateChatCompletionSettings(
+          model = NonOpenAIModelId.claude_fable_5_2,
+          reasoning_effort = Some(ReasoningEffort.xhigh),
+          temperature = Some(0.2),
+          top_p = Some(0.9)
+        )
+      )
+
+      out.thinking shouldBe Some(ThinkingSettings.adaptive)
+      out.output_config.flatMap(_.effort) shouldBe Some(OutputEffort.xhigh)
+      out.temperature shouldBe None
+      out.top_p shouldBe None
+    }
+
+    "use the 128k output cap when max_tokens is unset (bare and Bedrock-profiled ids)" in {
+      toAnthropicSettings(
+        CreateChatCompletionSettings(model = NonOpenAIModelId.claude_fable_5_2)
+      ).max_tokens shouldBe 128000
+      toAnthropicSettings(
+        CreateChatCompletionSettings(model =
+          "global." + NonOpenAIModelId.bedrock_claude_fable_5_2
+        )
+      ).max_tokens shouldBe 128000
+    }
+
+    "downgrade a forced tool_choice to auto plus a system instruction - Mythos 5.2 too" in {
+      Seq(
+        NonOpenAIModelId.claude_fable_5_2,
+        "global." + NonOpenAIModelId.bedrock_claude_fable_5_2,
+        NonOpenAIModelId.claude_mythos_5_2
+      ).foreach { model =>
+        val (toolChoice, extraSystemMessages) =
+          toAnthropicToolChoice(model, Some("get_weather"), None)
+
+        toolChoice shouldBe ToolChoice.Auto(None)
+        extraSystemMessages should have size 1
+        extraSystemMessages.head.content should include("get_weather")
+      }
+    }
+  }
+
   "Claude Opus 5" should {
 
     "map reasoning_effort=xhigh to adaptive thinking + OutputEffort.xhigh and drop temperature/top_p" in {
