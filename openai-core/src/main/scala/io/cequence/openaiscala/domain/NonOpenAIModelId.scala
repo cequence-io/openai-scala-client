@@ -4,7 +4,16 @@ package io.cequence.openaiscala.domain
 object NonOpenAIModelId {
 
   // Anthropic
+  // Fable 5.2 (released 2026-11-09, live-verified the same day on the Claude API): Fable 5.1's
+  // API - adaptive thinking only (thinking `enabled` / `disabled` / `between_tools`, sampling
+  // params and assistant prefill are 400s), no forced tool_choice (`any` / `tool` are 400s),
+  // effort low..max, json_schema, 1M context, 128k output; $8 / $40 per MTok (5.1: $10 / $50)
+  val claude_fable_5_2 = "claude-fable-5-2"
   val claude_fable_5_1 = "claude-fable-5-1"
+  // Claude Mythos 5.2: Fable 5.2 with fewer safeguards - only for organizations in Anthropic's
+  // Cyber / Life Sciences verification programs (the id follows the 5.1 pattern; a key outside
+  // the programs gets a 404)
+  val claude_mythos_5_2 = "claude-mythos-5-2"
   // Claude Mythos 5.1 / 5: the same underlying models as Fable 5.1 / 5 with fewer cyber/bio
   // safeguards - invite-only (Project Glasswing) on the Claude API, Bedrock, and Vertex AI.
   // Released 2026-09-01 (5.1) and 2026-06-09 (5); same specs/pricing as the Fable twins.
@@ -115,7 +124,12 @@ object NonOpenAIModelId {
   val claude_instant_1_2 = "claude-instant-1.2"
 
   // Anthropic Bedrock
+  // through an inference profile (`global.`), not on-demand; needs a data retention mode other
+  // than the default on the AWS account (live 2026-11-09)
+  val bedrock_claude_fable_5_2 = "anthropic.claude-fable-5-2"
   val bedrock_claude_fable_5_1 = "anthropic.claude-fable-5-1"
+  // verification programs only
+  val bedrock_claude_mythos_5_2 = "anthropic.claude-mythos-5-2"
   // invite-only; served on the bedrock-mantle `/anthropic/v1/messages` endpoint only
   val bedrock_claude_mythos_5_1 = "anthropic.claude-mythos-5-1"
   val bedrock_claude_mythos_5 = "anthropic.claude-mythos-5"

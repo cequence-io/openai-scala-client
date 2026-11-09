@@ -74,6 +74,12 @@ import scala.util.{Failure, Success, Try}
  * `AWS_BEDROCK_REGION`, else eu-central-1); there the `mcp` group checks only that an MCP
  * server is refused, and the web search section reports whether Bedrock serves the tool.
  *
+ * `model=<id>` runs the same walkthrough against another Claude model (e.g.
+ * `model=claude-fable-5-2`; on Bedrock `global.anthropic.<id>`): the Haiku-only expectations
+ * (`reasoning_effort = none` thinks nothing; a forced tool choice is kept) are then relaxed - on
+ * a model that refuses forced tool choice the adapter downgrades it to `auto` plus an
+ * instruction, and the section still fails unless the model calls the tool.
+ *
  * Every section prints PASS/FAIL and the run continues; the exit code is 1 if any failed.
  * Requires `ANTHROPIC_API_KEY`; the Bedrock sections a Bedrock API key in
  * `AWS_BEARER_TOKEN_BEDROCK` and / or `AWS_BEDROCK_ACCESS_KEY` / `AWS_BEDROCK_SECRET_KEY` /
@@ -241,12 +247,17 @@ object ClaudeHaiku55SmokeTest extends JsonSchemaReflectionHelper {
     val groups = Seq("basics", "json", "tools", "mcp", "reasoning", "other", "bedrock")
     val target =
       args.find(_.startsWith("target=")).map(_.drop("target=".length)).getOrElse("api")
-    val groupArgs = args.filterNot(_.startsWith("target="))
+    val apiModel =
+      args.find(_.startsWith("model=")).map(_.drop("model=".length)).getOrElse(
+        NonOpenAIModelId.claude_haiku_5_5
+      )
+    val isHaiku55 = apiModel == NonOpenAIModelId.claude_haiku_5_5
+    val groupArgs = args.filterNot(a => a.startsWith("target=") || a.startsWith("model="))
     val selected = if (groupArgs.isEmpty) groups.toSet else groupArgs.toSet
 
     val bedrockRegion =
       sys.env.get("AWS_BEDROCK_REGION").filter(_.nonEmpty).getOrElse("eu-central-1")
-    val bedrockModel = "global." + NonOpenAIModelId.bedrock_claude_haiku_5_5
+    val bedrockModel = "global.anthropic." + apiModel
     val onBedrock = target != "api"
 
     // the service and the model every group runs against
@@ -260,7 +271,7 @@ object ClaudeHaiku55SmokeTest extends JsonSchemaReflectionHelper {
           s"target=$other - use api, bedrock or bedrock-sigv4"
         )
     }
-    val model = if (onBedrock) bedrockModel else NonOpenAIModelId.claude_haiku_5_5
+    val model = if (onBedrock) bedrockModel else apiModel
     println(s"target $target, model $model")
     val failures = new AtomicInteger(0)
 
@@ -423,7 +434,10 @@ object ClaudeHaiku55SmokeTest extends JsonSchemaReflectionHelper {
               }
           }
 
-          _ <- section(s"$model: reasoning_effort=none -> thinking disabled") {
+          _ <- section(
+            if (isHaiku55) s"$model: reasoning_effort=none -> thinking disabled"
+            else s"$model: reasoning_effort=none (thinking omitted - adaptive at its default)"
+          ) {
             anthropic
               .createChatCompletion(
                 Seq(UserMessage("Say hi")),
@@ -432,7 +446,7 @@ object ClaudeHaiku55SmokeTest extends JsonSchemaReflectionHelper {
               .map(r => s"content='${r.contentHead}'")
           }
 
-          _ <- section(s"$model: typed stream, reasoning_effort=none + tool (no thinking)") {
+          _ <- section(s"$model: typed stream, reasoning_effort=none + tool") {
             anthropic
               .createChatToolCompletionStreamed(
                 weatherQuestion,
@@ -443,7 +457,8 @@ object ClaudeHaiku55SmokeTest extends JsonSchemaReflectionHelper {
               .assembled
               .map { a =>
                 check(a.toolCalls.nonEmpty, s"no tool call: $a")
-                check(a.thinking.isEmpty, s"thought: ${a.thinking}")
+                // Haiku 5.5 takes thinking `disabled`; an always-thinking model may still think
+                check(!isHaiku55 || a.thinking.isEmpty, s"thought: ${a.thinking}")
                 s"calls=${a.toolCalls.map(_.toolName)} thinking=${a.thinking.length} chars finish=${a.finishReason}"
               }
           }
@@ -471,7 +486,10 @@ object ClaudeHaiku55SmokeTest extends JsonSchemaReflectionHelper {
               .map(functionCalls)
           }
 
-          _ <- section(s"$model: forced tool choice (kept)") {
+          _ <- section(
+            if (isHaiku55) s"$model: forced tool choice (kept)"
+            else s"$model: forced tool choice (downgraded to auto + an instruction - still called)"
+          ) {
             anthropic
               .createChatToolCompletion(
                 weatherQuestion,
