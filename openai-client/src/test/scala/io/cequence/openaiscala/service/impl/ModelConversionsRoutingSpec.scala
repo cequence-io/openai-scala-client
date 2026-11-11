@@ -556,7 +556,9 @@ class ModelConversionsRoutingSpec extends AnyWordSpec with Matchers {
       Seq(
         "muse-wonder-1.0",
         "muse-spark-1.3",
+        "muse-ember-1.0",
         "meta/muse-wonder",
+        "meta/muse-ember",
         "meta/muse-spark-1.1"
       ).foreach { model =>
         effortSent(model, ReasoningEffort.none) shouldBe Some("minimal")
@@ -572,7 +574,9 @@ class ModelConversionsRoutingSpec extends AnyWordSpec with Matchers {
         "muse-spark-1.3",
         "meta/muse-spark-1.3",
         "muse-spark-1.3-contributor",
-        "meta/muse-spark-1.3-contributor"
+        "meta/muse-spark-1.3-contributor",
+        "muse-ember-1.0",
+        "meta/muse-ember"
       ).foreach(model => effortSent(model, ReasoningEffort.max) shouldBe Some("max"))
       Seq("muse-spark-1.2", "muse-spark-1.2-contributor", "meta/muse-spark-1.1").foreach(
         model => effortSent(model, ReasoningEffort.max) shouldBe Some("xhigh")
@@ -582,22 +586,24 @@ class ModelConversionsRoutingSpec extends AnyWordSpec with Matchers {
     }
 
     "drop the parameters Meta's API refuses - stop, logit_bias, logprobs, verbosity" in {
-      val body = maker.body(
-        CreateChatCompletionSettings(
-          "muse-spark-1.3",
-          stop = Seq("\n"),
-          logit_bias = Map("16" -> 5),
-          logprobs = Some(true),
-          top_logprobs = Some(2),
-          verbosity = Some(Verbosity.low),
-          temperature = Some(0.2)
+      Seq("muse-spark-1.3", "muse-ember-1.0").foreach { model =>
+        val body = maker.body(
+          CreateChatCompletionSettings(
+            model,
+            stop = Seq("\n"),
+            logit_bias = Map("16" -> 5),
+            logprobs = Some(true),
+            top_logprobs = Some(2),
+            verbosity = Some(Verbosity.low),
+            temperature = Some(0.2)
+          )
         )
-      )
-      Seq("stop", "logit_bias", "logprobs", "top_logprobs", "verbosity").foreach(key =>
-        body.get(key) shouldBe None
-      )
-      // the sampling parameters it takes stay
-      body.get("temperature").map(_.as[Double]) shouldBe Some(0.2)
+        Seq("stop", "logit_bias", "logprobs", "top_logprobs", "verbosity").foreach(key =>
+          body.get(key) shouldBe None
+        )
+        // the sampling parameters it takes stay
+        body.get("temperature").map(_.as[Double]) shouldBe Some(0.2)
+      }
     }
 
     "leave the open-weight Muse Glimmer alone" in {

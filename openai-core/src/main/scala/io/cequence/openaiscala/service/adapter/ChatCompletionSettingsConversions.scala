@@ -940,7 +940,8 @@ object ChatCompletionSettingsConversions {
   // 1 and `tool_choice` only "auto" (a forced / required choice is a 400) - left to the API
   def isMuseReasoning(model: String): Boolean = {
     val bare = model.stripPrefix("meta/")
-    (bare.startsWith("muse-wonder") || bare.startsWith("muse-spark")) && !isMuseSparkOpen(
+    (bare.startsWith("muse-wonder") || bare.startsWith("muse-spark") ||
+      bare.startsWith("muse-ember")) && !isMuseSparkOpen(
       model
     )
   }
