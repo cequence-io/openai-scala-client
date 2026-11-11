@@ -139,6 +139,11 @@ object DecisionModelId {
   val openrouter_baseten_elephant_1: String = NonOpenAIModelId.openrouter_baseten_elephant_1
   val openrouter_baseten_mammoth_1: String = NonOpenAIModelId.openrouter_baseten_mammoth_1
   val openrouter_drex_max: String = NonOpenAIModelId.openrouter_drex_max
+  val openrouter_baseten_joey_1: String = NonOpenAIModelId.openrouter_baseten_joey_1
+  val openrouter_morph_reflex: String = NonOpenAIModelId.openrouter_morph_reflex
+  val openrouter_drex_max_finance: String = NonOpenAIModelId.openrouter_drex_max_finance
+  val openrouter_parallel_decisions_fast_free: String =
+    NonOpenAIModelId.openrouter_parallel_decisions_fast_free
   val openrouter_solar_decide_flash: String = NonOpenAIModelId.openrouter_solar_decide_flash
   val openrouter_mercury_decide: String = NonOpenAIModelId.openrouter_mercury_decide
   val openrouter_solar_decide: String = NonOpenAIModelId.openrouter_solar_decide

@@ -510,6 +510,12 @@ object NonOpenAIModelId {
   // levels LOW / MEDIUM / HIGH (MINIMAL is a 400), json_schema, function calling, Google Search,
   // code execution and URL context; no penalties and one candidate only, like Gemini 3.x
   val gemini_4_argon = "gemini-4-argon"
+  // Gemini 4 Carbon (2026-11-10): Google's strongest reasoning model, above Argon (software
+  // engineering, multimodal knowledge work, scientific reasoning, cyber defense) - 1M context;
+  // $4 / $20 per 1M tokens after the introductory period (ends 2026-11-30). Live 2026-11-11:
+  // Argon's API - thinking levels LOW / MEDIUM / HIGH (MINIMAL a 400), `thinkingBudget` taken,
+  // json_schema, function calling, Google Search, URL context; penalties and n > 1 are 400s
+  val gemini_4_carbon = "gemini-4-carbon"
 
   val gemini_3_1_pro = "gemini-3.1-pro"
   val gemini_3_1_pro_preview = "gemini-3.1-pro-preview"
@@ -964,6 +970,12 @@ object NonOpenAIModelId {
   // Contributor mode (prompts may train Meta's models). Muse Wonder Full is in Muse Code only.
   // Live-verified 2026-10-13 on the Meta Model API (examples/meta/MuseSmokeTest).
   val muse_wonder_1_0 = "muse-wonder-1.0"
+  // Muse Ember (2026-11-09): the efficient execution model of the family (sub-agent tasks, tool
+  // calls, routing); 1,048,576 context, 524,288 output, Standard mode only (no contributor id).
+  // Live 2026-11-11: the Muse rules - reasoning always on and private, effort minimal..max (max
+  // the default, `none` a 400), stop / logit_bias / logprobs / verbosity 400s, n = 1,
+  // tool_choice "auto" only, strict json_schema enforced
+  val muse_ember_1_0 = "muse-ember-1.0"
   val muse_spark_1_3 = "muse-spark-1.3"
   val muse_spark_1_3_contributor = "muse-spark-1.3-contributor"
   val muse_spark_1_2 = "muse-spark-1.2"
@@ -972,6 +984,7 @@ object NonOpenAIModelId {
   // the same on OpenRouter (`ChatProviderSettings.openRouter`; it gates them behind an 18+ age
   // confirmation in the account's settings - a 403 until then, 2026-10-13)
   val openrouter_muse_wonder = "meta/muse-wonder" // $4 / $20 per 1M tokens
+  val openrouter_muse_ember = "meta/muse-ember"
   val openrouter_muse_spark_1_3 = "meta/muse-spark-1.3"
   val openrouter_muse_spark_1_3_contributor = "meta/muse-spark-1.3-contributor"
   val openrouter_muse_spark_1_2 = "meta/muse-spark-1.2"
@@ -1248,6 +1261,21 @@ object NonOpenAIModelId {
   val openrouter_baseten_elephant_1 = "baseten/elephant-1"
   val openrouter_baseten_mammoth_1 = "baseten/mammoth-1"
   val openrouter_drex_max = "nace-ai/drex-max"
+  // listed 2026-10-29 .. 11-10 (not called - the test account has no OpenRouter credits, except
+  // Parallel's free tier): Baseten's Joey 1 (2B, Qwen3.5-2B base, $0.01 / 1M, 16k context, text
+  // + image), Morph's Reflex (text + image, 64k, $0.042 / 1M, the state prefix-cached across
+  // requests), NACE AI's Drex Max Finance (Drex Max tuned on invoices / receipts / statements,
+  // text + image, 262k, $0.06 / 1M) and Parallel's Decisions Fast (web-grounded: it researches
+  // the live web before answering; text, 32k). Live 2026-11-11 Decisions Fast answered a noul
+  // WITHOUT criteria (0.95, 0.7 s) but refused one with `{yes, no}` criteria ("missing or null
+  // instructions or criteria") and a choice whose criteria are not a record - so questions the
+  // client plans from a schema (which carry criteria) fail there until its format is mapped.
+  // Cloudflare's Clairic (listed 2026-11-03) is an extraction model with typed fields - no System
+  // One endpoint on OpenRouter (404), not listed here.
+  val openrouter_baseten_joey_1 = "baseten/joey-1"
+  val openrouter_morph_reflex = "morph/reflex"
+  val openrouter_drex_max_finance = "nace-ai/drex-max-finance"
+  val openrouter_parallel_decisions_fast_free = "parallel/decisions-fast:free"
 
   // decision models on Vercel AI Gateway - TypeSafe's protocol at `POST
   // https://ai-gateway.vercel.sh/typesafe/v1/systemone` (typesafe-client's
