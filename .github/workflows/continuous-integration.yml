@@ -43,7 +43,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        scala: [ '2.12.18', '2.13.11', '3.2.2']
+        scala: [ '2.12.18', '2.13.18', '3.2.2']
 
     steps:
       - uses: actions/checkout@v4
@@ -83,12 +83,12 @@ jobs:
       matrix:
         distribution: [ 'corretto' ]
         jdk: [ '11' ]
-        scala: [ '2.12.18', '2.13.11', '3.2.2']
+        scala: [ '2.12.18', '2.13.18', '3.2.2']
         experimental: [ false ]
         include:
           - jdk: '17'
             distribution: 'corretto'
-            scala: '2.13.11'
+            scala: '2.13.18'
             experimental: true
 
     steps:

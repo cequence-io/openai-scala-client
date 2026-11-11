@@ -17,7 +17,7 @@ The library is designed to be self-contained with minimal dependencies and uses 
 The project uses SBT with custom command aliases defined in build.sbt:
 
 ### Core Commands
-- **Build & test**: `sbt clean test` or `sbt ++2.13.11 clean test` for a specific Scala version
+- **Build & test**: `sbt clean test` or `sbt ++2.13.18 clean test` for a specific Scala version
 - **Test with coverage**: `sbt testWithCoverage` (alias for `coverage; test; coverageReport`)
 - **Format code**: `sbt formatCode` (runs scalafmt, scalafmtSbt, and Test/scalafmt)
 - **Validate code**: `sbt validateCode` (runs scalafix and scalafmt checks - this is what CI runs)
@@ -26,9 +26,9 @@ The project uses SBT with custom command aliases defined in build.sbt:
 - **Run example**: `sbt "examples/runMain io.cequence.openaiscala.examples.YourExampleClass"`
 
 ### Cross-Build
-The project cross-compiles for Scala 2.12.18, 2.13.11, and 3.2.2:
+The project cross-compiles for Scala 2.12.18, 2.13.18, and 3.2.2:
 - `sbt ++2.12.18 test`
-- `sbt ++2.13.11 test`
+- `sbt ++2.13.18 test`
 - `sbt ++3.2.2 test`
 
 ### Running Examples

@@ -2,7 +2,7 @@ import sbt.Keys.test
 
 // Supported versions
 val scala212 = "2.12.18"
-val scala213 = "2.13.11"
+val scala213 = "2.13.18"
 val scala3 = "3.2.2"
 // the Scala 3 line of the ZIO module: ws-client-zio's `_3` is built with 3.3 (TASTy 28.3)
 val scala33 = "3.3.8"
@@ -274,7 +274,8 @@ inThisBuild(
     scalacOptions += "-Ywarn-unused",
 //    scalaVersion := scala3,
     semanticdbEnabled := true,
-    semanticdbVersion := scalafixSemanticdb.revision,
+    // scalafix 0.11.0 bundles semanticdb 4.7.8, which has no build for Scala 2.13.18
+    semanticdbVersion := "4.13.10",
     scalafixScalaBinaryVersion := CrossVersion.binaryScalaVersion(scalaVersion.value)
   )
 )

@@ -104,11 +104,8 @@ class ZioHttpNativeRoundTripSpec extends AnyWordSpec with Matchers with BeforeAn
       run(bytes.runCollect).toArray.toSeq shouldBe allBytes.toSeq
 
       // a download is preflighted (started up front, so a 404 is None before the stream is
-      // returned) on ws-client's neutral runner, which replaces the engine's native leaf - 1
-      // bridge until ws-client's preflight keeps a native leaf native
-      pendingUntilFixed {
-        bridges.get shouldBe 0
-      }
+      // returned), and the preflight keeps the engine's native leaf
+      bridges.get shouldBe 0
     }
 
     "convert a raw engine byte stream with no bridge" in {
