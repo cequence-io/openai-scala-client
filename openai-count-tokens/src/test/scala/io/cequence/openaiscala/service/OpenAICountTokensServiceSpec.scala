@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.service
 
-import akka.testkit.TestKit
 import io.cequence.openaiscala.domain.{
   AssistantMessage,
   BaseMessage,
@@ -12,23 +11,19 @@ import io.cequence.openaiscala.domain.{
   UserMessage
 }
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
-import akka.actor.ActorSystem
 import com.typesafe.config.{Config, ConfigFactory}
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
-import org.scalatest.BeforeAndAfterAll
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
 
 class OpenAICountTokensServiceSpec
-    extends TestKit(ActorSystem("OpenAICountTokensServiceSpec"))
-    with AnyWordSpecLike
+    extends AnyWordSpecLike
     with Matchers
-    with BeforeAndAfterAll
     with MockitoSugar
     with ScalaFutures {
 

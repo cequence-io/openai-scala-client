@@ -14,6 +14,7 @@ import io.cequence.openaiscala.typesafe.domain._
 import io.cequence.openaiscala.typesafe.domain.settings.CreateChatCompletionSettingsOps
 import io.cequence.openaiscala.typesafe.domain.settings.CreateChatCompletionSettingsOps._
 import io.cequence.openaiscala.typesafe.service._
+import io.cequence.wsclient.concurrent.AsyncScheduler
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json._
@@ -90,8 +91,7 @@ class OpenAITypeSafeChatCompletionServiceSpec extends AnyWordSpec with Matchers 
     "serve the JSON helper's JSON-object fallback for a model it does not list" in {
       import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
 
-      val system = akka.actor.ActorSystem("json-fallback-spec")
-      implicit val scheduler: akka.actor.Scheduler = system.scheduler
+      implicit val scheduler: AsyncScheduler = AsyncScheduler.default
 
       val stub = new Stub(answers)
       val service = TypeSafeServiceFactory.asOpenAI(stub)
@@ -99,14 +99,12 @@ class OpenAITypeSafeChatCompletionServiceSpec extends AnyWordSpec with Matchers 
       // no openai-scala-client.conf on this classpath - no model is listed as json_schema-capable,
       // so the schema rides in the prompt
       val json =
-        try
-          await(
-            service.createChatCompletionWithJSON[JsValue](
-              Seq(UserMessage("I was charged twice!")),
-              jsonSchemaSettings.copy(model = "jev-1.14.0", response_format_type = None)
-            )
+        await(
+          service.createChatCompletionWithJSON[JsValue](
+            Seq(UserMessage("I was charged twice!")),
+            jsonSchemaSettings.copy(model = "jev-1.14.0", response_format_type = None)
           )
-        finally { system.terminate(); () }
+        )
 
       json shouldBe Json.obj("department" -> "billing", "is_urgent" -> true)
       // the schema is read back from the prompt and kept out of the state

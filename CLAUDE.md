@@ -848,6 +848,44 @@ Configuration uses Typesafe Config with defaults in `openai-scala-client.conf`:
 5. **When adding provider support**: Create new client module following anthropic-client pattern
 6. **When adding new models**: Update `ModelId.scala` (or `NonOpenAIModelId.scala`), add to `models-supporting-json-schema` in config if JSON schema is supported, add parameter conversions in `ChatCompletionSettingsConversions` if needed, and add the model prefix handling in `OpenAIChatCompletionServiceImpl`
 
+## Ownership
+
+This codebase is yours: what it's for and how it's built are your call, and you'll keep building on it. You are responsible for it - its correctness, its design, its public API and the state you leave it in.
+
+## Scala Style - Pragmatic Principles
+
+Readable, pragmatic Scala: plain OO (traits, classes, encapsulation) where it models the problem, plain FP (immutable data, pure functions, `Option` / `Either` / `Try`, collection combinators) where it reads well. Every abstraction must pay for itself - no monoid / type-class towers, no tagless-final `F[_]`, no transformer stacks, no symbolic operators. Project rules (the sections above and below) win where they are more specific. Shared with ws-client, whose CLAUDE.md has the same section (2026-11-12).
+
+**Design**
+- Least power: a plain method or function, then a case class, a sealed trait, a class, a trait hierarchy - an implicit or type class last. Generalize only for a second real use.
+- Decompose by the axis of change: a closed set of alternatives is a sealed trait matched exhaustively (no `case _` on our own sealed types); an open set of implementations (providers, adapters, guardrails, decision hosts) is a trait with dynamic dispatch.
+- Small single-concern traits, concrete classes at the leaves, composition and constructor parameters over inheritance and cake wiring; abstract members are `def`s.
+- Immutable data, pure decision logic (parsing, framing, parameter conversions, error classification); I/O, clocks, logging and mutation at the edges. Mutable state is private and its owning thread or lock is stated. While-loops / arrays / `null` only on inherently hot paths (framers, SSE decoding), encapsulated and commented.
+- Data: `final case class` for plain data (new ones; the published domain classes stay as they are); `Option`, never null fields; covariant producer types.
+- Reuse before writing: core helpers first (`RetryEngine`, `FutureHelpers`, `PathSegment`, `ServerSentEvents`, `StreamingConsts`, `ChatChunks`, `QuotedText`, `ResponseHeaders`, ...); logic a second provider module needs moves to core.
+
+**Library API** - everything public is a binary-compatibility obligation after a release
+- Smallest surface: helpers `private` / `private[openaiscala]`; explicit result types on public / protected members and implicits; public parameter names are API.
+- Within a release line never change a published signature in place: add an overload / forwarder, `@deprecated` with the upcoming release as `since`. A break (a new case-class field, a new abstract method, a new factory parameter) makes the next release a minor one and goes into the CHANGELOG's upgrade notes - compare the published jars' public signatures with `javap`.
+- Scaladoc opens with a one-sentence summary; extension points state implementer obligations (thread safety, ownership / `close()`, call-once). Comments say why, not what.
+
+**Errors and concurrency**
+- `Option` for absence, `Either` / a small sealed result for outcomes callers branch on, a failed `Future` (or stream) with an `OpenAIScalaClientException` subclass - or the provider's native hierarchy - for transport / HTTP failures; no sentinels.
+- A `Future`-returning method never throws synchronously (`Future.failed`, or build the request inside the future - `PathSegment.inFuture` / `inSource`). The documented exception: request checks that are `IllegalArgumentException`s by contract (`systemOne`).
+- Catch `NonFatal(e)` or specific types - `case e: Throwable` only to rethrow unchanged. `Option(javaValue)`, never `Some(javaValue)`; no unguarded `.get` / `.head` / `.reduce`.
+- Take an implicit `ExecutionContext` (never `global` in library code); never block in a future or callback (`blocking {}` or a dedicated pool); `Await` only in tests and examples. A `Promise` only to bridge callback APIs and timers. Deadlines with `System.nanoTime`.
+- One synchronization strategy per piece of state; never call foreign code (user callbacks, listeners, guardrails) while holding a lock.
+- Implicits only for ambient context (`ExecutionContext`, `AsyncScheduler`, `RetrySettings`); domain values (settings, providers, engines) stay explicit; implicit conversions / extension classes only in opt-in objects imported by name (`OpenAIStreamedServiceImplicits`, the `...SettingsOps`).
+
+**Code shape**
+- Expressions over statements; a combinator chain of more than about 3 steps gets a named intermediate; `for` for nested flatMaps; a plain `match` / local loop over a clever fold.
+- No `return` inside a lambda or callback; `@tailrec` on intended tail recursion.
+- Shared sources stay Scala-2 syntax Scala 3 accepts (no `given` / `using` / `enum` / `extension`); version-specific code lives in `scala-2` / `scala-3` dirs.
+- Naming: no `get` prefix on our own accessors (service methods keep the OpenAI endpoint names); `()` on side-effecting zero-arg methods; words, not symbols; public names must not clash with Akka / Pekko / ZIO / fs2 names a user imports next to ours.
+- Tests: intercept the most specific exception; synchronize with latches / bounded waits (a sleep only to open a race window); behavior every provider or backend shares is one shared spec.
+
+Distilled (2026-11) from the Scala Style Guide, the Scala 3 Book, "Binary Compatibility for Library Authors", Effective Scala, the Databricks Scala Style Guide, Li Haoyi's "Strategic Scala Style" and Odersky's "Lean Scala".
+
 ## Testing Strategy
 
 - Unit tests use ScalaTest with ScalaMock

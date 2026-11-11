@@ -1,36 +1,32 @@
 package io.cequence.openaiscala.service
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
 import com.google.inject.Module
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.control.NonFatal
 
 trait BaseOpenAIClientApp extends GuiceContainer with App {
 
   // modules
   override protected def modules: Seq[Module] = Seq(
     new ConfigModule(),
-    new AkkaModule(),
+    new ExecutionContextModule(),
     new ServiceModule()
   )
 
-  protected val openAIService = instance[OpenAIService]
+  protected val openAIService: OpenAIService = instance[OpenAIService]
 
   // implicits
-  protected implicit val system: ActorSystem = instance[ActorSystem]
-  protected implicit val materializer: Materializer = instance[Materializer]
-  protected implicit val executionContext: ExecutionContext =
-    materializer.executionContext
+  protected implicit val executionContext: ExecutionContext = instance[ExecutionContext]
 
   implicit protected class FutureOps[T](f: Future[T]) {
     def closeAndExit(): Unit =
-      f.recover { case e: Exception =>
+      f.recover { case NonFatal(e) =>
         e.printStackTrace()
         System.exit(1)
       }.onComplete { _ =>
         openAIService.close()
-        system.terminate()
+        terminate()
         System.exit(0)
       }
   }

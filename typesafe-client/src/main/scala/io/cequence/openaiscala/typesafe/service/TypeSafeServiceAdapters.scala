@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.typesafe.service
 
-import akka.actor.Scheduler
+import io.cequence.wsclient.concurrent.AsyncScheduler
 import io.cequence.openaiscala.RetryHelpers
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import io.cequence.openaiscala.domain.decisions.{
@@ -36,7 +36,7 @@ object TypeSafeServiceAdapters {
   )(
     implicit ec: ExecutionContext,
     retrySettings: RetrySettings,
-    scheduler: Scheduler
+    scheduler: AsyncScheduler
   ): TypeSafeService =
     underlying match {
       case decisions: OpenAIDecisionsService =>
@@ -70,7 +70,7 @@ private class RetryTypeSafeService(
 )(
   implicit ec: ExecutionContext,
   retrySettings: RetrySettings,
-  scheduler: Scheduler
+  scheduler: AsyncScheduler
 ) extends TypeSafeService
     with RetryHelpers {
 

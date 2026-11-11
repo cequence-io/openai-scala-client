@@ -17,6 +17,7 @@ import io.cequence.openaiscala.domain.decisions.{
 import io.cequence.openaiscala.typesafe.JsonFormats._
 import io.cequence.openaiscala.typesafe.domain._
 import io.cequence.wsclient.service.spi.{TransportSettings, WSClientEngineRegistry}
+import io.cequence.wsclient.concurrent.AsyncScheduler
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -694,8 +695,7 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       import scala.concurrent.duration._
       implicit val retrySettings: RetrySettings =
         RetrySettings(maxRetries = 2, delayOffset = 10.millis)
-      implicit val system: akka.actor.ActorSystem = akka.actor.ActorSystem("retry-spec")
-      implicit val scheduler: akka.actor.Scheduler = system.scheduler
+      implicit val scheduler: AsyncScheduler = AsyncScheduler.default
       val retrying = TypeSafeServiceAdapters.retry(service)
 
       try {
@@ -725,7 +725,6 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
         calls shouldBe 1
       } finally {
         onRequest = null
-        await(system.terminate())
       }
     }
   }
@@ -1579,30 +1578,24 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
         import io.cequence.openaiscala.RetryHelpers.RetrySettings
         implicit val retrySettings: RetrySettings =
           RetrySettings(maxRetries = 2, delayOffset = 10.millis)
-        implicit val system: akka.actor.ActorSystem =
-          akka.actor.ActorSystem("image-adapter-spec")
-        implicit val scheduler: akka.actor.Scheduler = system.scheduler
+        implicit val scheduler: AsyncScheduler = AsyncScheduler.default
 
-        try {
-          val retrying = TypeSafeServiceAdapters.retry(service)
-          retrying.readsImages shouldBe true
-          val asOpenAI = TypeSafeServiceFactory.asOpenAI(retrying)
-          val png = pngDataUrl(512, 512)
+        val retrying = TypeSafeServiceAdapters.retry(service)
+        retrying.readsImages shouldBe true
+        val asOpenAI = TypeSafeServiceFactory.asOpenAI(retrying)
+        val png = pngDataUrl(512, 512)
 
-          respond(
-            200,
-            """{"model":"jev-1.13.0","answers":{"red":{"type":"noul","noul":0.98}},"usage":{"input_tokens":1033,"output_tokens":20}}"""
-          )
-          await(imageChat(asOpenAI, png))
-          received.get.headers("typesafe-danger-zone-images") shouldBe "true"
-          val body = Json.parse(received.get.body)
-          val state = (body \ "state").as[Seq[String]]
-          state.head shouldBe "A photo."
-          (body \ "assets" \ state(1) \ "data_base64").as[String] shouldBe
-            png.stripPrefix("data:image/png;base64,")
-        } finally {
-          system.terminate()
-        }
+        respond(
+          200,
+          """{"model":"jev-1.13.0","answers":{"red":{"type":"noul","noul":0.98}},"usage":{"input_tokens":1033,"output_tokens":20}}"""
+        )
+        await(imageChat(asOpenAI, png))
+        received.get.headers("typesafe-danger-zone-images") shouldBe "true"
+        val body = Json.parse(received.get.body)
+        val state = (body \ "state").as[Seq[String]]
+        state.head shouldBe "A photo."
+        (body \ "assets" \ state(1) \ "data_base64").as[String] shouldBe
+          png.stripPrefix("data:image/png;base64,")
       }
 
     "refuse a chat message's image before sending when the service's host reads none" in {
@@ -1842,8 +1835,7 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
         import io.cequence.openaiscala.RetryHelpers.RetrySettings
         implicit val retrySettings: RetrySettings =
           RetrySettings(maxRetries = 2, delayOffset = 10.millis)
-        implicit val system: akka.actor.ActorSystem = akka.actor.ActorSystem("decisions-retry")
-        implicit val scheduler: akka.actor.Scheduler = system.scheduler
+        implicit val scheduler: AsyncScheduler = AsyncScheduler.default
         val retried = TypeSafeServiceFactory.asOpenAIDecisions(
           TypeSafeServiceAdapters.retry(
             TypeSafeServiceFactory.withEngine(
@@ -1880,7 +1872,6 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
         } finally {
           onRequest = null
           retried.close()
-          await(system.terminate())
         }
       }
 

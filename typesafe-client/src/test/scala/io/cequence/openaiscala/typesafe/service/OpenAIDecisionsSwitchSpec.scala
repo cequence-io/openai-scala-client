@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.typesafe.service
 
-import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import io.cequence.openaiscala.service.OpenAIDecisionsService
 import io.cequence.openaiscala.{OpenAIScalaClientException, OpenAIScalaRateLimitException}
@@ -12,6 +11,7 @@ import io.cequence.openaiscala.typesafe.service.impl.{
   OpenAIToSystemOne,
   SystemOneToOpenAI
 }
+import io.cequence.wsclient.concurrent.AsyncScheduler
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.{JsObject, JsString, JsValue, Json}
@@ -262,28 +262,25 @@ class OpenAIDecisionsSwitchSpec extends AnyWordSpec with Matchers {
 
     "keep a factory service's own path through the retry adapter" in {
       implicit val retrySettings: RetrySettings = RetrySettings(maxRetries = 1)
-      val system = ActorSystem("decisions-switch-retry")
-      implicit val scheduler: Scheduler = system.scheduler
+      implicit val scheduler: AsyncScheduler = AsyncScheduler.default
 
-      try {
-        // the retry adapter over a factory service serves the interface itself ...
-        val jev = TypeSafeServiceFactory(apiKey = "k", baseUrl = "http://localhost:1")
-        val retried = TypeSafeServiceAdapters.retry(jev)
-        retried shouldBe an[OpenAIDecisionsService]
-        TypeSafeServiceFactory.asOpenAIDecisions(retried) should be theSameInstanceAs retried
-        jev.close()
+      // the retry adapter over a factory service serves the interface itself ...
+      val jev = TypeSafeServiceFactory(apiKey = "k", baseUrl = "http://localhost:1")
+      val retried = TypeSafeServiceAdapters.retry(jev)
+      retried shouldBe an[OpenAIDecisionsService]
+      TypeSafeServiceFactory.asOpenAIDecisions(retried) should be theSameInstanceAs retried
+      jev.close()
 
-        // ... over any other service it is the translation, with the retries underneath
-        val wrapped = TypeSafeServiceAdapters.retry(new RecordingTypeSafeService(answers))
-        wrapped should not be an[OpenAIDecisionsService]
+      // ... over any other service it is the translation, with the retries underneath
+      val wrapped = TypeSafeServiceAdapters.retry(new RecordingTypeSafeService(answers))
+      wrapped should not be an[OpenAIDecisionsService]
+      TypeSafeServiceFactory
+        .asOpenAIDecisions(wrapped) shouldBe an[OpenAIDecisionsOverTypeSafe]
+      await(
         TypeSafeServiceFactory
-          .asOpenAIDecisions(wrapped) shouldBe an[OpenAIDecisionsOverTypeSafe]
-        await(
-          TypeSafeServiceFactory
-            .asOpenAIDecisions(wrapped)
-            .createDecision(DecisionInput.Text(ticket), questions.take(1))
-        ).answers shouldBe Seq(DecisionAnswer.Predicate(Some("refund"), 0.97))
-      } finally await(system.terminate())
+          .asOpenAIDecisions(wrapped)
+          .createDecision(DecisionInput.Text(ticket), questions.take(1))
+      ).answers shouldBe Seq(DecisionAnswer.Predicate(Some("refund"), 0.97))
     }
   }
 
