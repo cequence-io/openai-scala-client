@@ -114,7 +114,8 @@ object ZioChat extends ZIOAppDefault {
 `layer(() => service)` is a `ZLayer` that builds the service when the layer is acquired, runs the view on the
 application's runtime and closes the service with the layer's scope (the views of services that close - see
 [Closing](#the-service-behind-a-view-asfuture)). It takes a function, not a by-name parameter (ZIO's `provide` macro
-cannot take a by-name call):
+cannot take a by-name call). 🔥 `layerFromZIO(effect)` builds the service with a ZIO effect instead - its environment
+becomes the layer's input, e.g. an engine (see [Native ZIO](#native-zio-the-zio-http-engine)):
 
 ```scala
 import io.cequence.openaiscala.domain.{ModelId, UserMessage}
@@ -411,16 +412,8 @@ object ZioNativeChat extends ZIOAppDefault {
 
   // the OpenAI service on an engine over that client, closed with the layer's scope
   private val openAI: ZLayer[ZioHttpWSClientEngine, Throwable, OpenAIStreamedServiceZIO] =
-    ZLayer.scoped[ZioHttpWSClientEngine](
-      for {
-        engine <- ZIO.service[ZioHttpWSClientEngine]
-        runtime <- ZIO.runtime[Any]
-        service <- ZIO.acquireRelease(
-          ZIO.attempt(
-            OpenAIStreamedServiceZIO(OpenAIServiceFactory.withStreaming.withEngine(engine))(runtime)
-          )
-        )(_.close)
-      } yield service
+    OpenAIStreamedServiceZIO.layerFromZIO(
+      ZIO.serviceWith[ZioHttpWSClientEngine](OpenAIServiceFactory.withStreaming.withEngine(_))
     )
 
   private val program: ZIO[OpenAIStreamedServiceZIO, Throwable, Unit] =

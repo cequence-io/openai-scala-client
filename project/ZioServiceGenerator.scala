@@ -186,6 +186,19 @@ object ZioServiceGenerator {
         )
       )(_.close)
     )
+
+  /**
+   * A layer of the ZIO view of the service the effect `create` builds (on acquisition) - e.g.
+   * on an engine from the environment - closed with the layer's scope.
+   */
+  def layerFromZIO[R](
+    create: _root_.zio.ZIO[R, Throwable, $name]
+  ): _root_.zio.ZLayer[R, Throwable, ${name}ZIO] =
+    _root_.zio.ZLayer.scoped[R](
+      _root_.zio.ZIO.acquireRelease(
+        create.flatMap(service => _root_.zio.ZIO.runtime[Any].map(apply(service)(_)))
+      )(_.close)
+    )
 """
       else
         ""

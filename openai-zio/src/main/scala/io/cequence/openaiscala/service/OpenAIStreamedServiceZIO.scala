@@ -48,4 +48,25 @@ object OpenAIStreamedServiceZIO {
         ZIO.runtime[Any].flatMap(runtime => ZIO.attempt(apply(create())(runtime)))
       )(_.close)
     )
+
+  /**
+   * A layer of the ZIO view of the service the effect `create` builds (on acquisition) - e.g.
+   * on an engine from the environment - closed with the layer's scope:
+   * {{{
+   * OpenAIStreamedServiceZIO.layerFromZIO(
+   *   for {
+   *     engine <- ZIO.service[ZioHttpWSClientEngine]
+   *     executor <- ZIO.executor
+   *   } yield OpenAIServiceFactory.withStreaming.withEngine(engine)(executor.asExecutionContext)
+   * )
+   * }}}
+   */
+  def layerFromZIO[R](
+    create: ZIO[R, Throwable, OpenAIService with OpenAIStreamedServiceExtra]
+  ): ZLayer[R, Throwable, OpenAIStreamedServiceZIO] =
+    ZLayer.scoped[R](
+      ZIO.acquireRelease(
+        create.flatMap(service => ZIO.runtime[Any].map(apply(service)(_)))
+      )(_.close)
+    )
 }

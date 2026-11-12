@@ -26,23 +26,16 @@ object ZioNativeStream extends ZIOAppDefault {
         .dynamicConnectionPool(minimum = 1, maximum = 64, ttl = 60.seconds)
     ) >>> Client.fromConfig
 
-  // the service on the engine, closed with the layer's scope (the engine is the layer's)
+  // the service on the engine, on ZIO's executor, closed with the layer's scope (the engine is
+  // the layer's)
   private val openAI: ZLayer[ZioHttpWSClientEngine, Throwable, OpenAIStreamedServiceZIO] =
-    ZLayer.scoped(
+    OpenAIStreamedServiceZIO.layerFromZIO(
       for {
         engine <- ZIO.service[ZioHttpWSClientEngine]
         executor <- ZIO.executor
-        runtime <- ZIO.runtime[Any]
-        service <- ZIO.acquireRelease(
-          ZIO.attempt(
-            OpenAIStreamedServiceZIO(
-              OpenAIServiceFactory.withStreaming.withEngine(engine)(
-                executor.asExecutionContext
-              )
-            )(runtime)
-          )
-        )(_.close)
-      } yield service
+      } yield OpenAIServiceFactory.withStreaming.withEngine(engine)(
+        executor.asExecutionContext
+      )
     )
 
   override def run: ZIO[Any, Throwable, Unit] =

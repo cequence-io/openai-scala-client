@@ -30,7 +30,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.JsValue
-import zio.{durationInt, Exit, Promise, Runtime, Unsafe, ZIO}
+import zio.{durationInt, Exit, Promise, Runtime, Unsafe, ZIO, ZLayer}
 
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
@@ -152,6 +152,42 @@ class ProviderServicesZIOWireSpec extends AnyWordSpec with Matchers with BeforeA
     Files.deleteIfExists(fakeCli)
   }
 
+  private def stubService(
+    closed: AtomicInteger,
+    model: String
+  ): TypeSafeService =
+    new TypeSafeService {
+      override val defaultModel: String = model
+
+      override def systemOne(
+        state: JsValue,
+        questions: Map[String, Question],
+        model: String
+      ): Future[SystemOneResponse] =
+        Future.failed(new UnsupportedOperationException("a stub"))
+
+      override def systemOne(
+        state: String,
+        questions: Map[String, Question]
+      ): Future[SystemOneResponse] =
+        Future.failed(new UnsupportedOperationException("a stub"))
+
+      override def systemOne(
+        state: String,
+        questions: Map[String, Question],
+        model: String
+      ): Future[SystemOneResponse] =
+        Future.failed(new UnsupportedOperationException("a stub"))
+
+      override def listModels: Future[Seq[ModelMetadata]] =
+        Future.successful(Nil)
+
+      override def close(): Unit = {
+        closed.incrementAndGet()
+        ()
+      }
+    }
+
   private def run[A](effect: ZIO[Any, Throwable, A]): A =
     Unsafe.unsafe(implicit unsafe =>
       Runtime.default.unsafe.run(effect).getOrThrowFiberFailure()
@@ -216,37 +252,7 @@ class ProviderServicesZIOWireSpec extends AnyWordSpec with Matchers with BeforeA
 
     "close the service with its layer's scope" in {
       val closed = new AtomicInteger(0)
-      val stub = new TypeSafeService {
-        override val defaultModel: String = "stub-model"
-
-        override def systemOne(
-          state: JsValue,
-          questions: Map[String, Question],
-          model: String
-        ): Future[SystemOneResponse] =
-          Future.failed(new UnsupportedOperationException("a stub"))
-
-        override def systemOne(
-          state: String,
-          questions: Map[String, Question]
-        ): Future[SystemOneResponse] =
-          Future.failed(new UnsupportedOperationException("a stub"))
-
-        override def systemOne(
-          state: String,
-          questions: Map[String, Question],
-          model: String
-        ): Future[SystemOneResponse] =
-          Future.failed(new UnsupportedOperationException("a stub"))
-
-        override def listModels: Future[Seq[ModelMetadata]] =
-          Future.successful(Nil)
-
-        override def close(): Unit = {
-          closed.incrementAndGet()
-          ()
-        }
-      }
+      val stub = stubService(closed, "stub-model")
 
       val model = run(
         ZIO
@@ -256,6 +262,19 @@ class ProviderServicesZIOWireSpec extends AnyWordSpec with Matchers with BeforeA
 
       model shouldBe "stub-model"
       closed.get shouldBe 1
+
+      // built by an effect from the environment (e.g. a service on an engine of the layer's)
+      val fromEffect = run(
+        ZIO
+          .serviceWith[TypeSafeServiceZIO](_.defaultModel)
+          .provide(
+            ZLayer.succeed("env-model"),
+            TypeSafeServiceZIO.layerFromZIO(ZIO.serviceWith[String](stubService(closed, _)))
+          )
+      )
+
+      fromEffect shouldBe "env-model"
+      closed.get shouldBe 2
     }
   }
 
