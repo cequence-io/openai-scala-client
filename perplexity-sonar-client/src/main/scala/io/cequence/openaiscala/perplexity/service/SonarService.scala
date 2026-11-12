@@ -1,8 +1,7 @@
 package io.cequence.openaiscala.perplexity.service
 
-import akka.NotUsed
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
+import io.cequence.wsclient.stream.{AsyncStream, Bytes}
+
 import io.cequence.openaiscala.perplexity.domain.agent._
 import io.cequence.openaiscala.perplexity.domain.response.{
   SonarChatCompletionChunkResponse,
@@ -60,7 +59,7 @@ trait SonarService extends CloseableService with SonarServiceConsts {
   def createChatCompletionStreamed(
     messages: Seq[Message],
     settings: SonarCreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
-  ): Source[SonarChatCompletionChunkResponse, NotUsed]
+  ): AsyncStream[SonarChatCompletionChunkResponse]
 
   // ---- Agent API ----
 
@@ -92,7 +91,7 @@ trait SonarService extends CloseableService with SonarServiceConsts {
   def createAgentResponseStreamed(
     input: AgentInput,
     settings: CreateAgentResponseSettings = DefaultSettings.CreateAgentResponse
-  ): Source[AgentStreamEvent, NotUsed]
+  ): AsyncStream[AgentStreamEvent]
 
   /**
    * The current snapshot of a response (`GET /v1/agent/{id}`), or `None` if it does not exist,
@@ -114,7 +113,7 @@ trait SonarService extends CloseableService with SonarServiceConsts {
   def resumeAgentResponseStream(
     responseId: String,
     startingAfter: Option[Int] = None
-  ): Source[AgentStreamEvent, NotUsed]
+  ): AsyncStream[AgentStreamEvent]
 
   /**
    * Requests cancellation of a running (background) response. Asynchronous: the answer has
@@ -144,7 +143,7 @@ trait SonarService extends CloseableService with SonarServiceConsts {
   def downloadAgentResponseFile(
     responseId: String,
     fileId: String
-  ): Future[Option[Source[ByteString, _]]]
+  ): Future[Option[AsyncStream[Bytes]]]
 
   /**
    * The models of the Agent API (`provider/model` ids, usable as `model` / `models`).

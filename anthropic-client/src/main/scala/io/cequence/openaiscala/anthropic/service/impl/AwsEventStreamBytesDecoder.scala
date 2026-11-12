@@ -1,13 +1,12 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
-import akka.NotUsed
-import akka.stream.scaladsl.Flow
+import io.cequence.wsclient.stream.AsyncPipe
 
 import java.util.Base64
 import play.api.libs.json.{JsValue, Json}
 
 object AwsEventStreamBytesDecoder {
-  def flow: Flow[JsValue, JsValue, NotUsed] = Flow[JsValue].map { eventJson =>
+  def pipe: AsyncPipe[JsValue, JsValue] = AsyncPipe.of[JsValue].map { eventJson =>
     // eventJson might look like:
     // { ":message-type":"event", ":event-type":"...", "bytes":"base64string" }
 

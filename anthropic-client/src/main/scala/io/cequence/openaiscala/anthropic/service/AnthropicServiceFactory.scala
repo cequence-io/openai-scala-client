@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.anthropic.service
 
-import akka.NotUsed
-import akka.stream.Materializer
-import akka.stream.scaladsl.Source
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.EnvHelper
 import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.response.{
@@ -36,9 +34,9 @@ import io.cequence.wsclient.domain.{
   SiteBinding,
   WsRequestContext
 }
-import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
+import io.cequence.wsclient.service.spi.{WSClientEngineRegistry, TransportSettings}
 import io.cequence.wsclient.service.ws.Timeouts
-import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtraAkka}
+import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamCore}
 
 import java.net.UnknownHostException
 import java.nio.file.Path
@@ -275,8 +273,7 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
     agentTools: Seq[AgentTool] = Seq(AgentTool.Toolset()),
     deleteSessionsAfterUse: Boolean = true
   )(
-    implicit ec: ExecutionContext,
-    materializer: Materializer
+    implicit ec: ExecutionContext
   ): OpenAIChatCompletionStreamedService =
     new OpenAIAnthropicManagedAgentChatCompletionService(
       AnthropicServiceFactory(apiKey, timeouts),
@@ -321,8 +318,7 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
     agentTools: Seq[AgentTool] = Seq(AgentTool.Toolset()),
     deleteSessionsAfterUse: Boolean = true
   )(
-    implicit ec: ExecutionContext,
-    materializer: Materializer
+    implicit ec: ExecutionContext
   ): OpenAIChatCompletionStreamedService =
     new OpenAIAnthropicManagedAgentChatCompletionService(
       forAuthToken(authToken, withOAuthBeta, timeouts),
@@ -360,8 +356,7 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
     agentTools: Seq[AgentTool],
     deleteSessionsAfterUse: Boolean
   )(
-    implicit ec: ExecutionContext,
-    materializer: Materializer
+    implicit ec: ExecutionContext
   ): OpenAIChatCompletionStreamedService =
     new OpenAIAnthropicManagedAgentChatCompletionService(
       service,
@@ -449,7 +444,7 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
 
   /** Bedrock OpenAI adapter backed by a caller-owned shared streaming engine. */
   def bedrockAsOpenAIWithEngine(
-    engine: WSClientEngine with WSClientOutputStreamExtraAkka,
+    engine: WSClientEngine with WSClientOutputStreamCore,
     accessKey: String,
     secretKey: String,
     region: String,
@@ -534,7 +529,7 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
 
   /** Batch-capable Bedrock adapter backed by one caller-owned shared engine. */
   def bedrockAsOpenAIWithBatchSupportAndEngine(
-    engine: WSClientEngine with WSClientOutputStreamExtraAkka,
+    engine: WSClientEngine with WSClientOutputStreamCore,
     s3Bucket: String,
     roleArn: String,
     accessKey: String,
@@ -703,8 +698,8 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
 
   /**
    * Creates the service on a CALLER-SUPPLIED, SITE-STATELESS streaming engine - e.g. one
-   * shared with other providers via `StreamedEngineRegistry.outputStreamed()` - so several
-   * providers can share one connection pool and actor system. The site binding (base URL, auth
+   * shared with other providers via `WSClientEngineRegistry.outputStreamed()` - so several
+   * providers can share one engine and its connection pool. The site binding (base URL, auth
    * headers, error recovery, logging label) is built here from `apiKey` and held by the
    * service, threaded into every engine call. Closing such a service does NOT close the shared
    * engine - close the engine once, when done with all services using it.
@@ -714,7 +709,7 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
    *   variable will be used)
    */
   def withEngine(
-    engine: WSClientEngine with WSClientOutputStreamExtraAkka,
+    engine: WSClientEngine with WSClientOutputStreamCore,
     apiKey: String = getEnvValue(EnvKeys.anthropicAPIKey),
     withPdf: Boolean = false,
     withCache: Boolean = false
@@ -1065,7 +1060,7 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
    * OpenAI-provider mantle models and Claude.
    */
   def forBedrockMantleWithEngine(
-    engine: WSClientEngine with WSClientOutputStreamExtraAkka,
+    engine: WSClientEngine with WSClientOutputStreamCore,
     apiKey: String,
     region: String,
     withPdf: Boolean = false,
@@ -1100,8 +1095,8 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
 
     // classpath-discovered engine with output streaming (SSE) support, owned (and closed) by
     // this service
-    override protected val engine: WSClientEngine with WSClientOutputStreamExtraAkka =
-      StreamedEngineRegistry.outputStreamed(
+    override protected val engine: WSClientEngine with WSClientOutputStreamCore =
+      WSClientEngineRegistry.outputStreamed(
         TransportSettings(timeouts = explTimeouts.getOrElse(Timeouts()))
       )
 
@@ -1115,7 +1110,7 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
   }
 
   private class AnthropicServiceEngineImpl(
-    override protected val engine: WSClientEngine with WSClientOutputStreamExtraAkka,
+    override protected val engine: WSClientEngine with WSClientOutputStreamCore,
     override protected val site: SiteBinding,
     pdfEnabled: Boolean,
     cacheEnabled: Boolean
@@ -1133,15 +1128,15 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
   private class AnthropicBedrockServiceClassImpl(
     override val connectionInfo: BedrockConnectionSettings,
     explTimeouts: Option[Timeouts] = None,
-    externalEngine: Option[WSClientEngine with WSClientOutputStreamExtraAkka] = None
+    externalEngine: Option[WSClientEngine with WSClientOutputStreamCore] = None
   )(
     implicit val ec: ExecutionContext
   ) extends AnthropicBedrockServiceImpl {
 
     // a caller-supplied shared streaming engine, or a privately-owned discovered engine
-    override protected val engine: WSClientEngine with WSClientOutputStreamExtraAkka =
+    override protected val engine: WSClientEngine with WSClientOutputStreamCore =
       externalEngine.getOrElse(
-        StreamedEngineRegistry.outputStreamed(
+        WSClientEngineRegistry.outputStreamed(
           TransportSettings(timeouts = explTimeouts.getOrElse(Timeouts()))
         )
       )
@@ -1169,13 +1164,13 @@ object AnthropicServiceFactory extends AnthropicServiceConsts with EnvHelper {
     override def createMessageStreamed(
       messages: Seq[Message],
       settings: AnthropicCreateMessageSettings
-    ): Source[ContentBlockDelta, NotUsed] =
+    ): AsyncStream[ContentBlockDelta] =
       super.createMessageStreamed(messages, withInferenceProfile(settings))
 
     override def createMessageStreamedEvents(
       messages: Seq[Message],
       settings: AnthropicCreateMessageSettings
-    ): Source[MessageStreamEvent, NotUsed] =
+    ): AsyncStream[MessageStreamEvent] =
       super.createMessageStreamedEvents(messages, withInferenceProfile(settings))
   }
 

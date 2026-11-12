@@ -10,7 +10,7 @@ import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletion
 
 import scala.concurrent.ExecutionContext
 import io.cequence.wsclient.service.ws.Timeouts
-import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtraAkka}
+import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamCore}
 
 /**
  * Factory for creating instances of the [[GeminiService]] and an OpenAI adapter for
@@ -29,18 +29,18 @@ object GeminiServiceFactory extends GeminiServiceConsts with EnvHelper {
 
   /**
    * Creates the service on a CALLER-SUPPLIED, SITE-STATELESS streaming engine - e.g. one
-   * shared with other providers via `StreamedEngineRegistry.outputStreamed()` - so several
-   * providers can share one connection pool and actor system. The site binding (base URL,
-   * `key` auth query param, logging label) is built here from `apiKey` and held by the
-   * service, threaded into every engine call. Closing such a service does NOT close the shared
-   * engine - close the engine once, when done with all services using it.
+   * shared with other providers via `WSClientEngineRegistry.outputStreamed()` - so several
+   * providers can share one engine and its connection pool. The site binding (base URL, `key`
+   * auth query param, logging label) is built here from `apiKey` and held by the service,
+   * threaded into every engine call. Closing such a service does NOT close the shared engine -
+   * close the engine once, when done with all services using it.
    *
    * @param apiKey
    *   still required alongside the engine: the raw file upload/download paths bypass the
    *   engine and authenticate with the key directly - use the same key the site is built with
    */
   def withEngine(
-    engine: WSClientEngine with WSClientOutputStreamExtraAkka,
+    engine: WSClientEngine with WSClientOutputStreamCore,
     apiKey: String = getEnvValue(apiKeyEnv)
   )(
     implicit ec: ExecutionContext

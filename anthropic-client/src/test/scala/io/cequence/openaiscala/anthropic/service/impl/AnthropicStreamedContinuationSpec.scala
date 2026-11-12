@@ -1,9 +1,6 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
-import akka.NotUsed
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{
   McpToolResultBlock,
   McpToolUseBlock,
@@ -40,7 +37,6 @@ import io.cequence.openaiscala.domain.{NonOpenAIModelId, UserMessage}
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{mock, when}
 import org.mockito.invocation.InvocationOnMock
-import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
@@ -55,23 +51,12 @@ import scala.concurrent.{ExecutionContext, Future}
  * scripted underlying service: what reaches the API (settings, the continuation messages) and
  * what one turn looks like on the typed stream when it spans several rounds.
  */
-class AnthropicStreamedContinuationSpec
-    extends AnyWordSpec
-    with Matchers
-    with ScalaFutures
-    with BeforeAndAfterAll {
+class AnthropicStreamedContinuationSpec extends AnyWordSpec with Matchers with ScalaFutures {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("anthropic-streamed-continuation")
-  private implicit val materializer: Materializer = Materializer(system)
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
-
-  override def afterAll(): Unit = {
-    system.terminate()
-    ()
-  }
 
   private val server = MCPServerURLDefinition("deepwiki", "https://mcp.deepwiki.com/mcp")
 
@@ -174,7 +159,7 @@ class AnthropicStreamedContinuationSpec
         val settings = invocation.getArgument[AnthropicCreateMessageSettings](1)
         streamedRequests += ((messages, settings))
         val events = streamed(streamedRequests.size - 1)
-        Source(events.toList): Source[MessageStreamEvent, NotUsed]
+        AsyncStream.fromIterable(events.toList)
     }
 
     when(underlying.createMessage(any(), any())).thenAnswer { (invocation: InvocationOnMock) =>
@@ -193,7 +178,7 @@ class AnthropicStreamedContinuationSpec
   ): Seq[ChatChunk] =
     scripted.adapter
       .createChatToolCompletionStreamed(userTurn, Nil, None, settings)
-      .runWith(Sink.seq)
+      .runToSeq
       .futureValue
 
   "createChatToolCompletionStreamed" should {

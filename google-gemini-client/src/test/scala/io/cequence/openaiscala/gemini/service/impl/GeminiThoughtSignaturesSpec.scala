@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.gemini.service.impl
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{
@@ -25,7 +23,6 @@ import io.cequence.openaiscala.gemini.service.GeminiService
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{mock, when}
 import org.mockito.invocation.InvocationOnMock
-import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
@@ -41,20 +38,11 @@ import scala.concurrent.{ExecutionContext, Future}
  * of the calls it hands out - sync and typed stream - puts them back when the calls return,
  * and sends Google's placeholder for a call it does not know on the models that require one.
  */
-class GeminiThoughtSignaturesSpec
-    extends AnyWordSpec
-    with Matchers
-    with ScalaFutures
-    with BeforeAndAfterAll {
-
-  private implicit val system: ActorSystem = ActorSystem("GeminiThoughtSignaturesSpec")
-  private implicit val materializer: Materializer = Materializer(system)
-  private implicit val ec: ExecutionContext = system.dispatcher
+class GeminiThoughtSignaturesSpec extends AnyWordSpec with Matchers with ScalaFutures {
+  private implicit val ec: ExecutionContext = ExecutionContext.global
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
-
-  override protected def afterAll(): Unit = system.terminate()
 
   private val weather = FunctionTool(
     name = "get_weather",
@@ -108,7 +96,7 @@ class GeminiThoughtSignaturesSpec
     when(underlying.generateContentStreamed(any(), any())).thenAnswer {
       (invocation: InvocationOnMock) =>
         requests.synchronized(requests += invocation.getArgument[Seq[Content]](0))
-        Source.single(first)
+        AsyncStream.single(first)
     }
 
     val adapter = new OpenAIGeminiChatCompletionService(underlying)
@@ -159,7 +147,7 @@ class GeminiThoughtSignaturesSpec
 
       val chunks = recording.adapter
         .createChatToolCompletionStreamed(Seq(ask), Seq(weather), None, settings)
-        .runWith(Sink.seq)
+        .runToSeq
         .futureValue
       val toolCalls = chunks.collect {
         case io.cequence.openaiscala.domain.response.ChatChunk

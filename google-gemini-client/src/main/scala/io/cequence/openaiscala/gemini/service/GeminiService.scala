@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.gemini.service
 
-import akka.NotUsed
-import akka.stream.scaladsl.Source
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.gemini.domain.response.{
   GenerateContentResponse,
   ListCachedContentsResponse,
@@ -61,7 +60,7 @@ trait GeminiService extends CloseableService with GeminiServiceConsts {
   def generateContentStreamed(
     contents: Seq[Content],
     settings: GenerateContentSettings = DefaultSettings.GenerateContent
-  ): Source[GenerateContentResponse, NotUsed]
+  ): AsyncStream[GenerateContentResponse]
 
   /**
    * Lists the Models available through the Gemini API.

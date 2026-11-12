@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.anthropic.service
 
-import akka.NotUsed
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
+import io.cequence.wsclient.stream.{AsyncStream, Bytes}
 import io.cequence.openaiscala.anthropic.domain.{
   FileDeleteResponse,
   FileListResponse,
@@ -86,7 +84,7 @@ trait AnthropicService
   def createMessageStreamed(
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings = DefaultSettings.CreateMessage
-  ): Source[ContentBlockDelta, NotUsed]
+  ): AsyncStream[ContentBlockDelta]
 
   /**
    * Creates a message (streamed version) - full event stream.
@@ -111,7 +109,7 @@ trait AnthropicService
   def createMessageStreamedEvents(
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings = DefaultSettings.CreateMessage
-  ): Source[MessageStreamEvent, NotUsed]
+  ): AsyncStream[MessageStreamEvent]
 
   /**
    * Creates a custom skill.
@@ -348,7 +346,7 @@ trait AnthropicService
    * @see
    *   <a href="https://docs.claude.com/en/api/files-content">Anthropic Files Doc</a>
    */
-  def downloadFile(fileId: String): Future[Option[Source[ByteString, _]]]
+  def downloadFile(fileId: String): Future[Option[AsyncStream[Bytes]]]
 
   /**
    * Deletes a file.

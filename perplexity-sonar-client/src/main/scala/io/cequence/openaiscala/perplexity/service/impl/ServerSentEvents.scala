@@ -1,10 +1,8 @@
 package io.cequence.openaiscala.perplexity.service.impl
 
-import akka.NotUsed
-import akka.stream.scaladsl.Flow
-import akka.util.ByteString
 import io.cequence.openaiscala.perplexity.service.PerplexityScalaClientException
 import io.cequence.openaiscala.service.{ServerSentEvents => CoreServerSentEvents}
+import io.cequence.wsclient.stream.{AsyncPipe, Bytes}
 import play.api.libs.json.JsValue
 
 /**
@@ -15,7 +13,6 @@ private[service] object ServerSentEvents {
 
   def DefaultMaxEventBytes: Int = CoreServerSentEvents.DefaultMaxEventBytes
 
-  def jsonPayloads(maxEventBytes: Int = DefaultMaxEventBytes)
-    : Flow[ByteString, JsValue, NotUsed] =
+  def jsonPayloads(maxEventBytes: Int = DefaultMaxEventBytes): AsyncPipe[Bytes, JsValue] =
     CoreServerSentEvents.jsonPayloads(maxEventBytes, new PerplexityScalaClientException(_))
 }

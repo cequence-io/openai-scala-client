@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.gemini.service.impl
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.domain.response.ChatChunk._
 import io.cequence.openaiscala.gemini.domain.ChatRole.Model
@@ -16,7 +14,6 @@ import io.cequence.openaiscala.gemini.domain.response.{
   Web
 }
 import io.cequence.openaiscala.gemini.domain.{Content, Part}
-import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
@@ -29,23 +26,12 @@ import scala.concurrent.ExecutionContext
  * [[OpenAIGeminiChatCompletionService.toChatChunks]]: streamed Gemini responses -> typed
  * chunks.
  */
-class GeminiStreamedToChatChunksSpec
-    extends AnyWordSpec
-    with Matchers
-    with ScalaFutures
-    with BeforeAndAfterAll {
+class GeminiStreamedToChatChunksSpec extends AnyWordSpec with Matchers with ScalaFutures {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("gemini-streamed-to-chat-chunks")
-  private implicit val materializer: Materializer = Materializer(system)
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
-
-  override def afterAll(): Unit = {
-    system.terminate()
-    ()
-  }
 
   private val usage = UsageMetadata(
     promptTokenCount = 10,
@@ -74,9 +60,10 @@ class GeminiStreamedToChatChunksSpec
     )
 
   private def run(responses: GenerateContentResponse*): Seq[ChatChunk] =
-    Source(responses.toList)
+    AsyncStream
+      .fromIterable(responses.toList)
       .via(OpenAIGeminiChatCompletionService.toChatChunks)
-      .runWith(Sink.seq)
+      .runToSeq
       .futureValue
 
   "toChatChunks" should {
@@ -113,28 +100,30 @@ class GeminiStreamedToChatChunksSpec
     "label an mcpServers call server-side, pair its functionResponse, and keep one Finish" in {
       // what Gemini 2.5 streams for a native MCP call (live-verified 2026-09-16): the call in
       // a chunk carrying its own STOP, the result, then the answer with the real STOP
-      val out = Source(
-        List(
-          response(
-            Seq(Part.FunctionCall(None, "exa_web_search_exa", Map("query" -> "jupiter"))),
-            finishReason = Some(GeminiFinishReason.STOP)
-          ),
-          response(
-            Seq(
-              Part.FunctionResponse(
-                None,
-                "exa_web_search_exa",
-                Map("result" -> "Title: Juice flyby\nURL: https://ex.com/j")
+      val out = AsyncStream
+        .fromIterable(
+          List(
+            response(
+              Seq(Part.FunctionCall(None, "exa_web_search_exa", Map("query" -> "jupiter"))),
+              finishReason = Some(GeminiFinishReason.STOP)
+            ),
+            response(
+              Seq(
+                Part.FunctionResponse(
+                  None,
+                  "exa_web_search_exa",
+                  Map("result" -> "Title: Juice flyby\nURL: https://ex.com/j")
+                )
               )
+            ),
+            response(
+              Seq(Part.Text("Juice flew by.")),
+              finishReason = Some(GeminiFinishReason.STOP)
             )
-          ),
-          response(
-            Seq(Part.Text("Juice flew by.")),
-            finishReason = Some(GeminiFinishReason.STOP)
           )
         )
-      ).via(OpenAIGeminiChatCompletionService.chatChunksFlow(Seq("exa")))
-        .runWith(Sink.seq)
+        .via(OpenAIGeminiChatCompletionService.chatChunksFlow(Seq("exa")))
+        .runToSeq
         .futureValue
 
       val callId = out.collectFirst { case ToolCallStart(0, id, _, _) => id }.get
@@ -167,22 +156,24 @@ class GeminiStreamedToChatChunksSpec
       val callToolResult =
         """{"content":[{"type":"text","text":"line one"},{"type":"text","text":"line two"}],"isError":true}"""
 
-      val out = Source(
-        List(
-          response(Seq(Part.FunctionCall(None, "github_search", Map.empty[String, Any]))),
-          response(
-            Seq(
-              Part.FunctionResponse(
-                None,
-                "github_search",
-                Map("call_tool_result_json" -> callToolResult)
-              )
-            ),
-            finishReason = Some(GeminiFinishReason.STOP)
+      val out = AsyncStream
+        .fromIterable(
+          List(
+            response(Seq(Part.FunctionCall(None, "github_search", Map.empty[String, Any]))),
+            response(
+              Seq(
+                Part.FunctionResponse(
+                  None,
+                  "github_search",
+                  Map("call_tool_result_json" -> callToolResult)
+                )
+              ),
+              finishReason = Some(GeminiFinishReason.STOP)
+            )
           )
         )
-      ).via(OpenAIGeminiChatCompletionService.chatChunksFlow(Seq("github")))
-        .runWith(Sink.seq)
+        .via(OpenAIGeminiChatCompletionService.chatChunksFlow(Seq("github")))
+        .runToSeq
         .futureValue
 
       out.collect { case tr: ToolResult => (tr.toolName, tr.text, tr.isError) } shouldBe Seq(
@@ -194,17 +185,19 @@ class GeminiStreamedToChatChunksSpec
     "report an mcpServers call the stream never answered as an error result, not an empty end" in {
       // the transient Gemini failure (live-observed 2026-09-16): the stream closes right after
       // the functionCall chunk
-      val out = Source(
-        List(
-          response(
-            Seq(
-              Part.FunctionCall(None, "github_search_repositories", Map("query" -> "org:x"))
-            ),
-            finishReason = Some(GeminiFinishReason.STOP)
+      val out = AsyncStream
+        .fromIterable(
+          List(
+            response(
+              Seq(
+                Part.FunctionCall(None, "github_search_repositories", Map("query" -> "org:x"))
+              ),
+              finishReason = Some(GeminiFinishReason.STOP)
+            )
           )
         )
-      ).via(OpenAIGeminiChatCompletionService.chatChunksFlow(Seq("github")))
-        .runWith(Sink.seq)
+        .via(OpenAIGeminiChatCompletionService.chatChunksFlow(Seq("github")))
+        .runToSeq
         .futureValue
 
       val callId = out.collectFirst { case ToolCallStart(0, id, _, _) => id }.get
@@ -244,18 +237,21 @@ class GeminiStreamedToChatChunksSpec
 
     "treat a bare-named call as the MCP server's when it is not a declared client tool" in {
       // live-observed 2026-09-16: Gemini sometimes drops the `<server>_` prefix
-      val out = Source(
-        List(
-          response(
-            Seq(Part.FunctionCall(None, "search_repositories", Map("query" -> "org:x"))),
-            finishReason = Some(GeminiFinishReason.STOP)
+      val out = AsyncStream
+        .fromIterable(
+          List(
+            response(
+              Seq(Part.FunctionCall(None, "search_repositories", Map("query" -> "org:x"))),
+              finishReason = Some(GeminiFinishReason.STOP)
+            )
           )
         )
-      ).via(
-        OpenAIGeminiChatCompletionService.chatChunksFlow(
-          OpenAIGeminiChatCompletionService.McpCallRule(Seq("github"), Set("get_weather"))
+        .via(
+          OpenAIGeminiChatCompletionService.chatChunksFlow(
+            OpenAIGeminiChatCompletionService.McpCallRule(Seq("github"), Set("get_weather"))
+          )
         )
-      ).runWith(Sink.seq)
+        .runToSeq
         .futureValue
 
       out(1) shouldBe a[ToolCallStart]
@@ -267,18 +263,21 @@ class GeminiStreamedToChatChunksSpec
     }
 
     "keep a declared client tool client-side even under the bare-name rule" in {
-      val out = Source(
-        List(
-          response(
-            Seq(Part.FunctionCall(Some("c1"), "get_weather", Map("location" -> "Oslo"))),
-            finishReason = Some(GeminiFinishReason.STOP)
+      val out = AsyncStream
+        .fromIterable(
+          List(
+            response(
+              Seq(Part.FunctionCall(Some("c1"), "get_weather", Map("location" -> "Oslo"))),
+              finishReason = Some(GeminiFinishReason.STOP)
+            )
           )
         )
-      ).via(
-        OpenAIGeminiChatCompletionService.chatChunksFlow(
-          OpenAIGeminiChatCompletionService.McpCallRule(Seq("github"), Set("get_weather"))
+        .via(
+          OpenAIGeminiChatCompletionService.chatChunksFlow(
+            OpenAIGeminiChatCompletionService.McpCallRule(Seq("github"), Set("get_weather"))
+          )
         )
-      ).runWith(Sink.seq)
+        .runToSeq
         .futureValue
 
       out(1) shouldBe ToolCallStart(0, "c1", "get_weather", serverSide = false)
@@ -287,18 +286,21 @@ class GeminiStreamedToChatChunksSpec
     }
 
     "keep a declared client function call client-side next to MCP servers" in {
-      val out = Source(
-        List(
-          response(
-            Seq(Part.FunctionCall(Some("c1"), "get_weather", Map("location" -> "Oslo"))),
-            finishReason = Some(GeminiFinishReason.STOP)
+      val out = AsyncStream
+        .fromIterable(
+          List(
+            response(
+              Seq(Part.FunctionCall(Some("c1"), "get_weather", Map("location" -> "Oslo"))),
+              finishReason = Some(GeminiFinishReason.STOP)
+            )
           )
         )
-      ).via(
-        OpenAIGeminiChatCompletionService.chatChunksFlow(
-          OpenAIGeminiChatCompletionService.McpCallRule(Seq("exa"), Set("get_weather"))
+        .via(
+          OpenAIGeminiChatCompletionService.chatChunksFlow(
+            OpenAIGeminiChatCompletionService.McpCallRule(Seq("exa"), Set("get_weather"))
+          )
         )
-      ).runWith(Sink.seq)
+        .runToSeq
         .futureValue
 
       out(1) shouldBe ToolCallStart(0, "c1", "get_weather", serverSide = false)

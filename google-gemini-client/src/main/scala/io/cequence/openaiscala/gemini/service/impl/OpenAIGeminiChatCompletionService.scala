@@ -1,8 +1,7 @@
 package io.cequence.openaiscala.gemini.service.impl
 
 import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps
-import akka.NotUsed
-import akka.stream.scaladsl.Source
+import io.cequence.wsclient.stream.{AsyncPipe, AsyncStream}
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.BaseMessage.getTextContent
 import io.cequence.openaiscala.domain.response.{
@@ -60,7 +59,6 @@ import io.cequence.openaiscala.gemini.JsonFormats.{
   urlContextMetadataFormat
 }
 import io.cequence.openaiscala.domain.response.ChatChunk
-import akka.stream.scaladsl.Flow
 import play.api.libs.json.{JsNull, JsString}
 import scala.collection.mutable
 import io.cequence.openaiscala.gemini.domain.{
@@ -183,7 +181,7 @@ private[impl] object OpenAIGeminiChatCompletionService {
    * Without MCP server names every `functionCall` is a client-side call; see
    * [[chatChunksFlow]] for the `mcpServers` handling.
    */
-  private[impl] def toChatChunks: Flow[GenerateContentResponse, ChatChunk, NotUsed] =
+  private[impl] def toChatChunks: AsyncPipe[GenerateContentResponse, ChatChunk] =
     chatChunksFlow(McpCallRule.none)
 
   /**
@@ -206,15 +204,16 @@ private[impl] object OpenAIGeminiChatCompletionService {
    */
   private[impl] def chatChunksFlow(
     mcpServerNames: Seq[String]
-  ): Flow[GenerateContentResponse, ChatChunk, NotUsed] =
+  ): AsyncPipe[GenerateContentResponse, ChatChunk] =
     chatChunksFlow(McpCallRule(mcpServerNames, Set.empty))
 
   private[impl] def chatChunksFlow(
     mcp: McpCallRule
-  ): Flow[GenerateContentResponse, ChatChunk, NotUsed] =
-    Flow[GenerateContentResponse]
+  ): AsyncPipe[GenerateContentResponse, ChatChunk] =
+    AsyncPipe
+      .of[GenerateContentResponse]
       .map(Option(_))
-      .concat(Source.single(Option.empty[GenerateContentResponse]))
+      .concat(AsyncStream.single(Option.empty[GenerateContentResponse]))
       .statefulMapConcat { () =>
         var started = false
         var toolCount = 0
@@ -658,8 +657,8 @@ private[service] class OpenAIGeminiChatCompletionService(
 
   // remembers the typed stream's function-call signatures - a call's `ThinkingSignature`
   // follows its `ToolCall`
-  private def rememberingSignatures: Flow[ChatChunk, ChatChunk, NotUsed] =
-    Flow[ChatChunk].statefulMapConcat[ChatChunk] { () =>
+  private def rememberingSignatures: AsyncPipe[ChatChunk, ChatChunk] =
+    AsyncPipe.of[ChatChunk].statefulMapConcat[ChatChunk] { () =>
       val calls = mutable.Map.empty[String, (String, String)]
 
       (chunk: ChatChunk) => {
@@ -728,11 +727,12 @@ private[service] class OpenAIGeminiChatCompletionService(
   override def createChatCompletionStreamed(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
-  ): Source[ChatCompletionChunkResponse, NotUsed] =
+  ): AsyncStream[ChatCompletionChunkResponse] =
     ToolApprovalSettingsOps.refusingDecisionsStream(settings, "The Gemini adapter") {
       val (userMessages, systemMessage) = splitMessage(messages)
 
-      val futureSource = handleCaching(systemMessage, userMessages, settings)
+      // per run: the cache lookup / creation happens when the stream is run, not when it is built
+      def futureStream = handleCaching(systemMessage, userMessages, settings)
         .map(settings =>
           underlying
             .generateContentStreamed(
@@ -744,8 +744,7 @@ private[service] class OpenAIGeminiChatCompletionService(
         )
         .recoverWith(repackAsOpenAIException)
 
-      // keep it like this because of the compatibility with older versions of Akka stream
-      Source.fromFutureSource(futureSource).mapMaterializedValue(_ => NotUsed)
+      AsyncStream.futureStream(futureStream)
     }
 
   // only system message is cached
@@ -1553,11 +1552,11 @@ private[service] class OpenAIGeminiChatCompletionService(
     tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
-  ): Source[ChatChunk, NotUsed] =
+  ): AsyncStream[ChatChunk] =
     ToolApprovalSettingsOps.refusingDecisionsStream(settings, "The Gemini adapter") {
       val (userMessages, systemMessage) = splitMessage(messages)
 
-      val futureSource = handleCaching(systemMessage, userMessages, settings).map {
+      def futureStream = handleCaching(systemMessage, userMessages, settings).map {
         baseSettings =>
           val geminiSettings =
             withThoughts(
@@ -1577,7 +1576,7 @@ private[service] class OpenAIGeminiChatCompletionService(
             .mapError(toOpenAIException)
       }.recoverWith(repackAsOpenAIException)
 
-      Source.fromFutureSource(futureSource).mapMaterializedValue(_ => NotUsed)
+      AsyncStream.futureStream(futureStream)
     }
 
   private def withTools(

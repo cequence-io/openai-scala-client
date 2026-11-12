@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.gemini.service.impl
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.gemini.domain.settings.GenerateContentSettings
 import io.cequence.openaiscala.gemini.domain.{ChatRole, Content, Part}
 import io.cequence.openaiscala.gemini.service.GeminiServiceFactory
@@ -21,14 +19,11 @@ import scala.util.{Failure, Success, Try}
 class GeminiPathSegmentRefusalSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("gemini-path-segment-refusal")
-  private implicit val materializer: Materializer = Materializer(system)
 
   private val service = GeminiServiceFactory(apiKey = "k")
 
   override protected def afterAll(): Unit = {
     service.close()
-    system.terminate()
     ()
   }
 
@@ -38,10 +33,10 @@ class GeminiPathSegmentRefusalSpec extends AnyWordSpec with Matchers with Before
       case Success(future) => Await.result(future.failed, 20.seconds)
     }
 
-  private def refusedStream(call: => Source[_, _]): Throwable =
+  private def refusedStream(call: => AsyncStream[_]): Throwable =
     Try(call) match {
       case Failure(e)      => fail(s"thrown synchronously: $e")
-      case Success(source) => Await.result(source.runWith(Sink.ignore).failed, 20.seconds)
+      case Success(source) => Await.result(source.runDrain.failed, 20.seconds)
     }
 
   "A refused path id" should {

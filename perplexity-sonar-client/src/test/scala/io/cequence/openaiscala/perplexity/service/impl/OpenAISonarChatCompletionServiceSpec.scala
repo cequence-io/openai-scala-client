@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.perplexity.service.impl
 
-import akka.stream.scaladsl.Source
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.domain.response.ChatCompletionChoiceInfo
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{
@@ -86,7 +86,7 @@ class OpenAISonarChatCompletionServiceSpec
     when(underlying.createChatCompletionStreamed(any(), any())).thenAnswer {
       (invocation: InvocationOnMock) =>
         messages = invocation.getArgument[Seq[Message]](0)
-        Source.empty[SonarChatCompletionChunkResponse]
+        AsyncStream.empty[SonarChatCompletionChunkResponse]
     }
 
     val adapter = new OpenAISonarChatCompletionService(underlying)

@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.gemini.service.impl
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import io.cequence.wsclient.stream.AsyncStream
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.UserMessage
@@ -16,7 +14,7 @@ import io.cequence.openaiscala.{
   Retryable
 }
 import io.cequence.wsclient.domain.{SiteBinding, WsRequestContext}
-import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
+import io.cequence.openaiscala.testkit.TestEngines
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -39,8 +37,6 @@ class GeminiStreamedHttpErrorsWireSpec
     with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("gemini-streamed-http-errors")
-  private implicit val materializer: Materializer = Materializer(system)
 
   // status, body, content type
   @volatile private var reply: (Int, String, String) = (200, "{}", "application/json")
@@ -48,7 +44,7 @@ class GeminiStreamedHttpErrorsWireSpec
 
   private val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
   private lazy val baseUrl = s"http://localhost:${server.getAddress.getPort}/v1beta/"
-  private val engine = StreamedEngineRegistry.outputStreamed(TransportSettings())
+  private val engine = TestEngines.streaming()
 
   private lazy val service: GeminiService =
     new GeminiServiceImpl("k", None, Some(engine)) {
@@ -83,7 +79,6 @@ class GeminiStreamedHttpErrorsWireSpec
     adapter.close()
     engine.close()
     server.stop(0)
-    Await.result(system.terminate(), 10.seconds)
     ()
   }
 
@@ -105,17 +100,17 @@ class GeminiStreamedHttpErrorsWireSpec
   private def failure[E <: Throwable: ClassTag](
     status: (Int, String)
   )(
-    stream: => Source[_, _]
+    stream: => AsyncStream[_]
   ): E = {
     reply = (status._1, status._2, "application/json")
-    intercept[E](Await.result(stream.runWith(Sink.seq), 20.seconds))
+    intercept[E](Await.result(stream.runToSeq, 20.seconds))
   }
 
   // a 200 SSE stream (CRLF-framed, as Gemini's): one chunk, then an in-band error frame
   private def inBandFailure[E <: Throwable: ClassTag](
     errorFrame: String
   )(
-    stream: => Source[_, _]
+    stream: => AsyncStream[_]
   ): E = {
     reply = (
       200,
@@ -124,7 +119,7 @@ class GeminiStreamedHttpErrorsWireSpec
         s"\r\n\r\ndata: $errorFrame\r\n\r\n",
       "text/event-stream"
     )
-    intercept[E](Await.result(stream.runWith(Sink.seq), 20.seconds))
+    intercept[E](Await.result(stream.runToSeq, 20.seconds))
   }
 
   "a streamed Gemini generateContent" should {
@@ -165,7 +160,7 @@ class GeminiStreamedHttpErrorsWireSpec
               Seq(Content.textPart("draw a cat", ChatRole.User)),
               GenerateContentSettings("gemini-3-pro-image")
             )
-            .runWith(Sink.seq),
+            .runToSeq,
           30.seconds
         )
         .flatMap(_.candidates.flatMap(_.content.parts))

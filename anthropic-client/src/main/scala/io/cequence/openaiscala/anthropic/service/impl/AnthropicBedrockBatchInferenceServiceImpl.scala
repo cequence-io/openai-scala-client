@@ -12,7 +12,7 @@ import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
 import io.cequence.wsclient.domain.{EnumValue, NamedEnumValue, SiteBinding}
 import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithEngine
 import io.cequence.wsclient.service.spi.{TransportSettings, WSClientEngineRegistry}
-import io.cequence.wsclient.service.ws.{PlayJsonUtil, Timeouts}
+import io.cequence.wsclient.service.ws.Timeouts
 import io.cequence.wsclient.service.WSClientEngine
 import play.api.libs.json.{JsValue, Json}
 
@@ -113,7 +113,7 @@ private[service] class AnthropicBedrockBatchInferenceServiceImpl(
 
     val endpoint = BedrockBatchEndPoint.create
     val extraHeaders =
-      signedHeaders("POST", endpoint.toString, PlayJsonUtil.wsClientStringify(body))
+      signedHeaders("POST", endpoint.toString, engine.renderJsonBody(body))
 
     execPOSTBody(endpoint, body = body, extraHeaders = extraHeaders).map { response =>
       val jobArn = (response.asSafeJson[JsValue] \ "jobArn").as[String]

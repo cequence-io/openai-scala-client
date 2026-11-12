@@ -80,12 +80,10 @@ class PerplexityAgentAsOpenAIApprovalSpec
         .getMessage should include("MCPTool 'ops' requires approval")
 
       // unset = the backend's default (Perplexity runs every call): not refused - the call
-      // goes out (and fails on the unroutable URL)
-      service
-        .createChatToolCompletion(messages, Nil, None, raw(None))
-        .failed
-        .futureValue
-        .getMessage should not include "cannot pause for tool approval"
+      // goes out (and fails on the unroutable URL; a refused connection may carry no message)
+      val unrouted =
+        service.createChatToolCompletion(messages, Nil, None, raw(None)).failed.futureValue
+      unrouted.toString should not include "cannot pause for tool approval"
     }
 
     "refuse approval decisions" in {

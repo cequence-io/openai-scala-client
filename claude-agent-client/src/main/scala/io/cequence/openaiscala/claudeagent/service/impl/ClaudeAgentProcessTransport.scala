@@ -1,11 +1,9 @@
 package io.cequence.openaiscala.claudeagent.service.impl
 
-import akka.NotUsed
-import akka.stream.Materializer
-import akka.stream.scaladsl.{BroadcastHub, Keep, Source, StreamConverters}
 import com.typesafe.scalalogging.Logger
 import io.cequence.openaiscala.claudeagent.domain.{ClaudeAgentProcessExit, ClaudeAgentSettings}
 import io.cequence.openaiscala.service.StreamingConsts
+import io.cequence.wsclient.stream.AsyncStream
 import org.slf4j.LoggerFactory
 import play.api.libs.json.{JsValue, Json}
 
@@ -25,8 +23,7 @@ import scala.util.control.NonFatal
 private[claudeagent] class ClaudeAgentProcessTransport(
   settings: ClaudeAgentSettings
 )(
-  implicit ec: ExecutionContext,
-  materializer: Materializer
+  implicit ec: ExecutionContext
 ) {
 
   private val logger: Logger = Logger(LoggerFactory.getLogger(getClass))
@@ -198,13 +195,16 @@ private[claudeagent] class ClaudeAgentProcessTransport(
       }
     }
 
-  // -- stdout: parsed NDJSON, broadcast so it can be subscribed to more than once without
-  // re-spawning the (already-running, singleton) process. Runs eagerly so the process's
-  // stdout pipe is drained promptly (an undrained OS pipe buffer can block the child).
-  private val rawEventsSource: Source[JsValue, NotUsed] =
-    StreamConverters
+  /**
+   * Parsed NDJSON lines from the CLI's stdout, one [[JsValue]] per line, failing at the end
+   * when the process exited unexpectedly. It reads the pipe of the one process spawned in the
+   * constructor, so it is to be run ONCE - the service does, eagerly, behind its broadcast hub
+   * (an undrained OS pipe buffer can block the child). Malformed / non-JSON lines are logged
+   * and skipped, never fail the stream (mirrors the official SDKs' own leniency here).
+   */
+  val rawEvents: AsyncStream[JsValue] =
+    AsyncStream
       .fromInputStream(() => process.getInputStream)
-      .mapMaterializedValue(_ => NotUsed)
       // a line carries a whole message - a tool result with a large file or an image can take
       // several MB
       .via(StreamingConsts.framing("\n"))
@@ -220,26 +220,15 @@ private[claudeagent] class ClaudeAgentProcessTransport(
       }
       .collect { case Some(jsValue) => jsValue }
       .concat(
-        Source.futureSource(
+        AsyncStream.futureStream(
           completion.map { exit =>
             if (closing.get() || exit.exitCode.contains(0))
-              Source.empty
+              AsyncStream.empty
             else
-              Source.failed(unexpectedExitException(exit))
+              AsyncStream.failed(unexpectedExitException(exit))
           }
         )
       )
-      .toMat(BroadcastHub.sink[JsValue](bufferSize = 256))(Keep.right)
-      .run()
-
-  /**
-   * Parsed NDJSON lines from the CLI's stdout, one [[JsValue]] per line. Backed by a
-   * `BroadcastHub` so it can be materialized more than once without re-spawning the process
-   * (the process itself is a stateful singleton spawned once in the constructor, unlike a
-   * typical cold per-subscription HTTP `Source`). Malformed/non-JSON lines are logged and
-   * skipped, never fail the stream (mirrors the official SDKs' own leniency here).
-   */
-  def rawEvents: Source[JsValue, NotUsed] = rawEventsSource
 
   /**
    * Writes one JSON value as a single NDJSON line (`Json.stringify(json) + "\n"`) to the

@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.vertexai.service.impl
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import io.cequence.wsclient.stream.AsyncStream
 import com.google.api.core.{ApiFuture, ApiFutures}
 import com.google.api.gax.grpc.GrpcStatusCode
 import com.google.api.gax.rpc._
@@ -43,8 +41,6 @@ import scala.reflect.ClassTag
 class VertexAIStreamedErrorsSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("vertexai-streamed-errors")
-  private implicit val materializer: Materializer = Materializer(system)
 
   // what the next streamed call emits: chunks (Right) and a terminal error (Left)
   @volatile private var script: Seq[Either[Throwable, GenerateContentResponse]] = Nil
@@ -116,7 +112,6 @@ class VertexAIStreamedErrorsSpec extends AnyWordSpec with Matchers with BeforeAn
 
   override protected def afterAll(): Unit = {
     service.close()
-    Await.result(system.terminate(), 10.seconds)
     ()
   }
 
@@ -146,12 +141,9 @@ class VertexAIStreamedErrorsSpec extends AnyWordSpec with Matchers with BeforeAn
   private val settings = CreateChatCompletionSettings("gemini-3.5-flash")
 
   // every element until the failure, then the failure
-  private def run[T](stream: Source[T, _]): (Seq[T], Throwable) = {
+  private def run[T](stream: AsyncStream[T]): (Seq[T], Throwable) = {
     val events = Await.result(
-      stream
-        .map(Right(_): Either[Throwable, T])
-        .recover { case e => Left(e) }
-        .runWith(Sink.seq),
+      stream.map(Right(_): Either[Throwable, T]).recover { case e => Left(e) }.runToSeq,
       20.seconds
     )
     val failure =
@@ -159,7 +151,7 @@ class VertexAIStreamedErrorsSpec extends AnyWordSpec with Matchers with BeforeAn
     (events.collect { case Right(t) => t }, failure)
   }
 
-  private def failureOf[E <: Throwable: ClassTag](stream: Source[_, _]): E = {
+  private def failureOf[E <: Throwable: ClassTag](stream: AsyncStream[_]): E = {
     val (_, failure) = run(stream)
     failure shouldBe a[E]
     failure.asInstanceOf[E]

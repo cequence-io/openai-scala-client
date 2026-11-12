@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
-import io.cequence.wsclient.service.ws.PlayJsonUtil
+import io.cequence.wsclient.service.ws.WireFormat
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.{JsValue, Json}
@@ -33,7 +33,7 @@ class BedrockAuthSpec extends AnyWordSpec with Matchers {
             method,
             url,
             headers.toMap,
-            PlayJsonUtil.wsClientStringify(body),
+            WireFormat.jsonBody(body),
             accessKey = connectionInfo.accessKey,
             secretKey = connectionInfo.secretKey,
             region = connectionInfo.region,

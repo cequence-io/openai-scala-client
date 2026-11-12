@@ -1,8 +1,7 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
 import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps
-import akka.NotUsed
-import akka.stream.scaladsl.{Flow, Source}
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{
   McpToolUseBlock,
   ServerToolUseBlock,
@@ -146,7 +145,7 @@ private[service] class OpenAIAnthropicChatCompletionService(
   override def createChatCompletionStreamed(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
-  ): Source[ChatCompletionChunkResponse, NotUsed] =
+  ): AsyncStream[ChatCompletionChunkResponse] =
     ToolApprovalSettingsOps.refusingDecisionsStream(
       settings,
       "The Anthropic Messages API adapter"
@@ -203,7 +202,7 @@ private[service] class OpenAIAnthropicChatCompletionService(
    *
    * A `pause_turn` stop (a server-side tool run that outlived its turn budget) is continued
    * transparently - see [[OpenAIAnthropicChatCompletionService.ContinuationPrompt]] - so the
-   * returned `Source` is ONE turn: a single `Start`, no `Finish` at the round boundaries, one
+   * returned stream is ONE turn: a single `Start`, no `Finish` at the round boundaries, one
    * final `Finish` with the last round's stop reason, and a single `Usage` summing all rounds.
    * Tool ordinals keep counting across rounds. `settings.setAnthropicMaxContinuations` caps
    * the rounds (default 6); at the cap the `pause_turn` is reported as the `Finish`.
@@ -213,7 +212,7 @@ private[service] class OpenAIAnthropicChatCompletionService(
     tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
-  ): Source[ChatChunk, NotUsed] = ToolApprovalSettingsOps.refusingDecisionsStream(
+  ): AsyncStream[ChatChunk] = ToolApprovalSettingsOps.refusingDecisionsStream(
     settings,
     "The Anthropic Messages API adapter"
   ) {
@@ -350,16 +349,16 @@ private[service] class OpenAIAnthropicChatCompletionService(
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings,
     maxContinuations: Int
-  ): Source[ChatChunk, NotUsed] = {
+  ): AsyncStream[ChatChunk] = {
     def round(
       current: Seq[Message],
       continuation: Int,
       toolOrdinal: Int,
       priorUsage: Option[OpenAIUsageInfo]
-    ): Source[ChatChunk, NotUsed] =
+    ): AsyncStream[ChatChunk] =
       underlying
         .createMessageStreamedEvents(current, settings)
-        .via(Flow[MessageStreamEvent].statefulMapConcat { () =>
+        .statefulMapConcat { () =>
           val mapper = new StreamedChunkMapper(toolOrdinal)
 
           (event: MessageStreamEvent) =>
@@ -415,10 +414,10 @@ private[service] class OpenAIAnthropicChatCompletionService(
               case other =>
                 List(Left(mapper(other)))
             }
-        })
+        }
         .flatMapConcat {
           case Left(chunks) =>
-            Source(chunks)
+            AsyncStream.fromIterable(chunks)
           case Right(next) =>
             round(
               continuationMessages(current, next.blocks),

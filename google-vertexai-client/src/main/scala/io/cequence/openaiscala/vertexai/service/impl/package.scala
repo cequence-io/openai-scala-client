@@ -834,7 +834,7 @@ package object impl extends io.cequence.openaiscala.service.HasOpenAIConfig {
    * Maps a Vertex AI failure onto the `OpenAIScalaClientException` hierarchy by its canonical
    * status (see [[VertexAIErrors]]), so callers of this module can pattern-match on the usual
    * exceptions regardless of the transport. Total - safe to use directly with
-   * `Source.mapError`.
+   * `AsyncStream.mapError`.
    */
   def toOpenAIException: PartialFunction[Throwable, Throwable] = { case e =>
     VertexAIErrors.toOpenAIException(e)

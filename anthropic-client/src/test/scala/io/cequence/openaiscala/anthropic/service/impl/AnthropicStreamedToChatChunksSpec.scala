@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.anthropic.domain.ChatRole
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.{
   McpToolResultBlock,
@@ -37,7 +35,6 @@ import io.cequence.openaiscala.anthropic.domain.{
 }
 import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.domain.response.ChatChunk._
-import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
@@ -47,23 +44,12 @@ import play.api.libs.json.Json
 import scala.concurrent.ExecutionContext
 
 /** [[toChatChunks]]: raw Anthropic [[MessageStreamEvent]]s -> typed [[ChatChunk]]s. */
-class AnthropicStreamedToChatChunksSpec
-    extends AnyWordSpec
-    with Matchers
-    with ScalaFutures
-    with BeforeAndAfterAll {
+class AnthropicStreamedToChatChunksSpec extends AnyWordSpec with Matchers with ScalaFutures {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("anthropic-streamed-to-chat-chunks")
-  private implicit val materializer: Materializer = Materializer(system)
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
-
-  override def afterAll(): Unit = {
-    system.terminate()
-    ()
-  }
 
   private def messageStart(inputTokens: Int = 10): MessageStart =
     MessageStart(
@@ -110,7 +96,7 @@ class AnthropicStreamedToChatChunksSpec
   ) = MessageDelta(Some(stop), None, Some(MessageDeltaUsage(outputTokens, None, None, None)))
 
   private def run(events: MessageStreamEvent*): Seq[ChatChunk] =
-    Source(events.toList).via(toChatChunks).runWith(Sink.seq).futureValue
+    AsyncStream.fromIterable(events.toList).via(toChatChunks).runToSeq.futureValue
 
   "toChatChunks" should {
 

@@ -13,7 +13,7 @@ import io.cequence.openaiscala.service.{
 }
 import io.cequence.openaiscala.service.adapter.OpenAIResponsesChatCompletionService
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
-import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtraAkka}
+import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamCore}
 
 import scala.concurrent.ExecutionContext
 
@@ -45,14 +45,14 @@ object SonarServiceFactory extends SonarServiceConsts with EnvHelper {
 
   /**
    * Creates the service on a CALLER-SUPPLIED, SITE-STATELESS streaming engine - e.g. one
-   * shared with other providers via `StreamedEngineRegistry.outputStreamed()` - so several
-   * providers can share one connection pool and actor system. The site binding (base URL,
-   * Bearer auth header, logging label) is built here from `apiKey` and held by the service,
-   * threaded into every engine call. Closing such a service does NOT close the shared engine -
-   * close the engine once, when done with all services using it.
+   * shared with other providers via `WSClientEngineRegistry.outputStreamed()` - so several
+   * providers can share one engine and its connection pool. The site binding (base URL, Bearer
+   * auth header, logging label) is built here from `apiKey` and held by the service, threaded
+   * into every engine call. Closing such a service does NOT close the shared engine - close
+   * the engine once, when done with all services using it.
    */
   def withEngine(
-    engine: WSClientEngine with WSClientOutputStreamExtraAkka,
+    engine: WSClientEngine with WSClientOutputStreamCore,
     apiKey: String = defaultApiKey,
     baseUrl: Option[String] = None
   )(

@@ -1,10 +1,7 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
-import akka.NotUsed
 import io.cequence.openaiscala.service.{PathSegment, StreamingConsts}
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
-import io.cequence.wsclient.service.ws.PlayJsonUtil
+import io.cequence.wsclient.stream.{AsyncStream, Bytes}
 import io.cequence.openaiscala.anthropic.domain.{
   FileDeleteResponse,
   FileListResponse,
@@ -156,7 +153,7 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
   private def streamMessageEvents(
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings
-  ): Source[MessageStreamEvent, NotUsed] = PathSegment.inSource {
+  ): AsyncStream[MessageStreamEvent] = PathSegment.inSource {
     val bedrockSettings = relocateOutputFormatToOutputConfig(settings)
     val coreBodyParams =
       createBodyParamsForMessageCreation(
@@ -174,37 +171,41 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
     val endpoint = invokeWithResponseStreamEndpoint(settings.model)
     val signingEndpoint = invokeWithResponseStreamSigningEndpoint(settings.model)
 
-    val extraHeaders = createSignatureHeaders(
-      "POST",
-      createURL(Some(signingEndpoint)),
-      headers = requestContext.authHeaders,
-      jsBodyObject
-    )
-
     val extraSkillsHeaders = if (settings.container.isDefined) skillHeaders else Nil
 
-    execRawStream(
-      endpoint,
-      "POST",
-      bodyParams = bodyParams,
-      extraHeaders = extraHeaders ++ extraSkillsHeaders
-    ).via(StreamingConsts.framing(":content-type")) // server-tool result blocks can be large
-      .via(AwsEventStreamEventParser.flow) // parse frames into JSON with "bytes"
-      .collect { case Some(x) => x }
-      .via(AwsEventStreamBytesDecoder.flow) // decode the "
-      .map(parseStreamEvent)
+    // signed per run: a SigV4 signature carries its timestamp, so a stream run again later
+    // (a retry) must not reuse the first run's headers
+    AsyncStream.defer {
+      val extraHeaders = createSignatureHeaders(
+        "POST",
+        createURL(Some(signingEndpoint)),
+        headers = requestContext.authHeaders,
+        jsBodyObject
+      )
+
+      execRawStream(
+        endpoint,
+        "POST",
+        bodyParams = bodyParams,
+        extraHeaders = extraHeaders ++ extraSkillsHeaders
+      ).via(StreamingConsts.framing(":content-type")) // server-tool result blocks can be large
+        .via(AwsEventStreamEventParser.pipe) // parse frames into JSON with "bytes"
+        .collect { case Some(x) => x }
+        .via(AwsEventStreamBytesDecoder.pipe) // decode the "bytes" payload
+        .map(parseStreamEvent)
+    }
   }
 
   override def createMessageStreamedEvents(
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings
-  ): Source[MessageStreamEvent, NotUsed] =
+  ): AsyncStream[MessageStreamEvent] =
     streamMessageEvents(messages, settings)
 
   override def createMessageStreamed(
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings
-  ): Source[ContentBlockDelta, NotUsed] =
+  ): AsyncStream[ContentBlockDelta] =
     streamMessageEvents(messages, settings).collect {
       case MessageStreamEvent.ContentBlockDeltaEvent(delta) => delta
     }
@@ -249,7 +250,7 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
           method,
           url,
           headers.toMap,
-          PlayJsonUtil.wsClientStringify(body),
+          engine.renderJsonBody(body),
           accessKey = connectionSettings.accessKey,
           secretKey = connectionSettings.secretKey,
           region = connectionSettings.region,
@@ -342,7 +343,7 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
       new UnsupportedOperationException("Files API is not supported in Anthropic Bedrock")
     )
 
-  override def downloadFile(fileId: String): Future[Option[Source[ByteString, _]]] =
+  override def downloadFile(fileId: String): Future[Option[AsyncStream[Bytes]]] =
     Future.failed(
       new UnsupportedOperationException("Files API is not supported in Anthropic Bedrock")
     )
@@ -376,8 +377,8 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
 
   override def streamMessageBatchResults(
     batchId: String
-  ): Source[MessageBatchIndividualResponse, NotUsed] =
-    Source.failed(
+  ): AsyncStream[MessageBatchIndividualResponse] =
+    AsyncStream.failed(
       new UnsupportedOperationException(
         "Message Batches API is not supported in Anthropic Bedrock"
       )
@@ -549,8 +550,8 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
 
   override def streamSessionEvents(
     sessionId: String
-  ): Source[SessionEventEnvelope, NotUsed] =
-    Source.failed(
+  ): AsyncStream[SessionEventEnvelope] =
+    AsyncStream.failed(
       new UnsupportedOperationException(
         "Managed Agents API is not supported in Anthropic Bedrock"
       )

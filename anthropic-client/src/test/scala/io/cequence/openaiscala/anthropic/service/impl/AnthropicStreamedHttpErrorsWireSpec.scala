@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import io.cequence.wsclient.stream.AsyncStream
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import io.cequence.openaiscala.anthropic.domain.Message.UserMessage
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
@@ -17,8 +15,8 @@ import io.cequence.openaiscala.{
   Retryable
 }
 import io.cequence.wsclient.domain.{SiteBinding, WsRequestContext}
-import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtraAkka}
-import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
+import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamCore}
+import io.cequence.openaiscala.testkit.TestEngines
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -41,8 +39,6 @@ class AnthropicStreamedHttpErrorsWireSpec
     with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("anthropic-streamed-http-errors")
-  private implicit val materializer: Materializer = Materializer(system)
 
   // status, body, content type
   @volatile private var reply: (Int, String, String) = (200, "{}", "application/json")
@@ -52,7 +48,7 @@ class AnthropicStreamedHttpErrorsWireSpec
 
   private val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
   private lazy val coreUrl = s"http://localhost:${server.getAddress.getPort}/"
-  private val bedrockEngine = StreamedEngineRegistry.outputStreamed(TransportSettings())
+  private val bedrockEngine = TestEngines.streaming()
 
   private lazy val service = AnthropicServiceFactory.customInstance(
     coreUrl,
@@ -65,7 +61,7 @@ class AnthropicStreamedHttpErrorsWireSpec
     override implicit val ec: ExecutionContext = ExecutionContext.global
     override val connectionInfo: BedrockConnectionSettings =
       BedrockConnectionSettings("", "", "us-east-1", bearerToken = Some("t"))
-    override protected val engine: WSClientEngine with WSClientOutputStreamExtraAkka =
+    override protected val engine: WSClientEngine with WSClientOutputStreamCore =
       bedrockEngine
     override protected def ownsEngine: Boolean = false
     override protected val site: SiteBinding =
@@ -99,7 +95,6 @@ class AnthropicStreamedHttpErrorsWireSpec
     bedrock.close()
     bedrockEngine.close()
     server.stop(0)
-    Await.result(system.terminate(), 10.seconds)
     ()
   }
 
@@ -119,17 +114,17 @@ class AnthropicStreamedHttpErrorsWireSpec
   private def failure[E <: Throwable: ClassTag](
     status: (Int, String)
   )(
-    stream: => Source[_, _]
+    stream: => AsyncStream[_]
   ): E = {
     reply = (status._1, status._2, "application/json")
-    intercept[E](Await.result(stream.runWith(Sink.seq), 20.seconds))
+    intercept[E](Await.result(stream.runToSeq, 20.seconds))
   }
 
   // a 200 message stream that starts, then reports an error event mid-stream
   private def inBandFailure[E <: Throwable: ClassTag](
     errorFrame: String
   )(
-    stream: => Source[_, _]
+    stream: => AsyncStream[_]
   ): E = {
     reply = (
       200,
@@ -138,7 +133,7 @@ class AnthropicStreamedHttpErrorsWireSpec
         s"\n\nevent: error\ndata: $errorFrame\n\n",
       "text/event-stream"
     )
-    intercept[E](Await.result(stream.runWith(Sink.seq), 20.seconds))
+    intercept[E](Await.result(stream.runToSeq, 20.seconds))
   }
 
   "a streamed Anthropic message" should {
@@ -216,7 +211,7 @@ class AnthropicStreamedHttpErrorsWireSpec
 
       Await
         .result(
-          service.createMessageStreamed(messages, settings).runWith(Sink.seq),
+          service.createMessageStreamed(messages, settings).runToSeq,
           30.seconds
         )
         .map(_.text.length) shouldBe Seq(text.length)

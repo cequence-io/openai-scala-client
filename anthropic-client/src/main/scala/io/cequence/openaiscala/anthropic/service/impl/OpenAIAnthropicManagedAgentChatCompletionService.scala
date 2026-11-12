@@ -1,8 +1,7 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
-import akka.NotUsed
-import akka.stream.scaladsl.{Keep, Sink, Source}
-import akka.stream.{KillSwitches, Materializer}
+import io.cequence.wsclient.stream.AsyncStream
+import io.cequence.wsclient.stream.AsyncStream.Step
 import com.typesafe.scalalogging.Logger
 import io.cequence.openaiscala.{
   OpenAIScalaClientException,
@@ -129,8 +128,7 @@ private[service] class OpenAIAnthropicManagedAgentChatCompletionService(
   agentTools: Seq[AgentTool] = Seq(AgentTool.Toolset()),
   deleteSessionsAfterUse: Boolean = true
 )(
-  implicit executionContext: ExecutionContext,
-  materializer: Materializer
+  implicit executionContext: ExecutionContext
 ) extends OpenAIChatCompletionService
     with OpenAIChatCompletionStreamedServiceExtra {
 
@@ -156,7 +154,7 @@ private[service] class OpenAIAnthropicManagedAgentChatCompletionService(
         for {
           sessionId <- createTurnSession(messages, settings)
           accum <- turnEventSource(sessionId, kickoffEvents)
-            .runWith(Sink.fold(SessionTurnAccum())(accumulate))
+            .runFold(SessionTurnAccum())(accumulate)
             .transformWith(result => cleanupSession(sessionId).transform(_ => result))
         } yield toChatCompletionResponse(sessionId, settings.model, accum)
       ).recoverWith(repackAsOpenAIException)
@@ -165,28 +163,20 @@ private[service] class OpenAIAnthropicManagedAgentChatCompletionService(
   override def createChatCompletionStreamed(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
-  ): Source[ChatCompletionChunkResponse, NotUsed] =
+  ): AsyncStream[ChatCompletionChunkResponse] =
     if (settings.toolApprovalDecisions.nonEmpty)
-      Source.failed(decisionsNeedTypedStream)
-    else {
-      val kickoffEvents = toKickoffEvents(messages)
-
-      val futureSource = createTurnSession(messages, settings).map { sessionId =>
-        turnEventSource(sessionId, kickoffEvents)
-          .mapConcat(toChunks(sessionId, settings.model, _))
-          .watchTermination() {
-            (
-              mat,
-              doneFuture
-            ) =>
-              doneFuture.onComplete(_ => cleanupSession(sessionId))
-              mat
+      AsyncStream.failed(decisionsNeedTypedStream)
+    else
+      // a session per run
+      AsyncStream.futureStream {
+        Future.fromTry(Try(toKickoffEvents(messages))).flatMap { kickoffEvents =>
+          createTurnSession(messages, settings).map { sessionId =>
+            turnEventSource(sessionId, kickoffEvents)
+              .mapConcat(toChunks(sessionId, settings.model, _))
+              .onTerminate(_ => cleanupSession(sessionId))
           }
+        }
       }
-
-      // keep it like this because of the compatibility with older versions of Akka stream
-      Source.fromFutureSource(futureSource).mapMaterializedValue(_ => NotUsed)
-    }
 
   private def decisionsNeedTypedStream =
     new OpenAIScalaClientException(
@@ -206,9 +196,9 @@ private[service] class OpenAIAnthropicManagedAgentChatCompletionService(
     tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
-  ): Source[ChatChunk, NotUsed] =
+  ): AsyncStream[ChatChunk] =
     if (tools.nonEmpty)
-      Source.failed(
+      AsyncStream.failed(
         new OpenAIScalaClientException(
           "Managed-agent tools are configured on the agent (agentTools / a fixed agent), not per call - pass no tools."
         )
@@ -216,8 +206,8 @@ private[service] class OpenAIAnthropicManagedAgentChatCompletionService(
     else {
       val decisions = settings.toolApprovalDecisions
 
-      // (session, events to send, approved/denied calls to report first)
-      val turn: Future[(String, Seq[SessionEvent], Seq[ChatChunk.ToolApprovalRequest])] =
+      // (session, events to send, approved/denied calls to report first) - per run
+      def turn: Future[(String, Seq[SessionEvent], Seq[ChatChunk.ToolApprovalRequest])] =
         if (decisions.nonEmpty)
           Future.fromTry(Try(resumeTurn(decisions)))
         else
@@ -227,7 +217,7 @@ private[service] class OpenAIAnthropicManagedAgentChatCompletionService(
               createTurnSession(messages, settings).map(id => (id, kickoff, Nil))
             )
 
-      val futureSource = turn.map { case (sessionId, events, answered) =>
+      def turnStream = turn.map { case (sessionId, events, answered) =>
         // paused: the turn ended waiting for confirmations (set once they are resolved);
         // pauseUnresolved: it ended waiting, but looking the pending calls up failed (I/O);
         // sent: the outcome of the POST carrying this turn's events (kickoff / confirmations)
@@ -271,7 +261,7 @@ private[service] class OpenAIAnthropicManagedAgentChatCompletionService(
               } else cleanupSession(sessionId)
             }
 
-        // `None` marks the end of the session events: the cleanup runs in the ordered mapAsync
+        // `None` marks the end of the session events: the cleanup runs in the ordered evalMap
         // after every event was mapped (so a pause is known), before the stream completes
         val chunks = (turnEventSource(
           sessionId,
@@ -281,41 +271,33 @@ private[service] class OpenAIAnthropicManagedAgentChatCompletionService(
         ).statefulMapConcat { () =>
           val mapper = new TypedTurnMapper(sessionId, answered)
           mapper.map _
-        }.map(Some(_)) ++ Source.single(None))
-          .mapAsync(1) {
-            case Some(Right(chunk)) => Future.successful(List(chunk))
-            // paused only once the pause can be answered - an unanswerable one (a custom tool)
-            // fails the stream and its session is cleaned up; a failed lookup keeps a resumed
-            // one (it can be retried)
-            case Some(Left(pause)) =>
-              resolvePause(sessionId, pause).transform(
-                chunks => { paused.set(true); chunks },
-                {
-                  case e: UnanswerablePauseException => e
-                  case e =>
-                    pauseUnresolved.set(true)
-                    e
-                }
-              )
-            case None => cleanupOnce().map(_ => Nil)
-          }
-          .mapConcat(identity)
+        }.map(Option(_)) ++ AsyncStream.single(None)).evalMap {
+          case Some(Right(chunk)) => Future.successful(List(chunk))
+          // paused only once the pause can be answered - an unanswerable one (a custom tool)
+          // fails the stream and its session is cleaned up; a failed lookup keeps a resumed
+          // one (it can be retried)
+          case Some(Left(pause)) =>
+            resolvePause(sessionId, pause).transform(
+              chunks => { paused.set(true); chunks },
+              {
+                case e: UnanswerablePauseException => e
+                case e =>
+                  pauseUnresolved.set(true)
+                  e
+              }
+            )
+          case None => cleanupOnce().map(_ => Nil)
+        }.mapConcat(identity)
 
-        (Source.single(ChatChunk.Start(sessionId, settings.model)) ++
-          Source(answeredCalls.toList) ++ chunks).watchTermination() {
-          (
-            mat,
-            done
-          ) =>
-            done.onComplete(_ => cleanupOnce())
-            mat
+        // a failed or cancelled run cleans up too, without holding the signal back
+        (AsyncStream.single[ChatChunk](ChatChunk.Start(sessionId, settings.model)) ++
+          AsyncStream.fromIterable(answeredCalls.toList) ++ chunks).onTerminate { _ =>
+          cleanupOnce()
+          ()
         }
       }
 
-      Source
-        .fromFutureSource(futureSource)
-        .mapMaterializedValue(_ => NotUsed)
-        .mapError(toOpenAIException)
+      AsyncStream.futureStream(turnStream).mapError(toOpenAIException)
     }
 
   // the session a set of decisions resumes, their user.tool_confirmation events and the calls
@@ -364,9 +346,9 @@ private[service] class OpenAIAnthropicManagedAgentChatCompletionService(
   )
 
   /**
-   * Maps the session events of one turn to typed chunks (one instance per materialization).
-   * `answered` are the calls a resume confirmed - reported up front, so their ordinals and
-   * names are known when their results arrive.
+   * Maps the session events of one turn to typed chunks (one instance per run). `answered` are
+   * the calls a resume confirmed - reported up front, so their ordinals and names are known
+   * when their results arrive.
    */
   private class TypedTurnMapper(
     sessionId: String,
@@ -773,43 +755,38 @@ private[service] class OpenAIAnthropicManagedAgentChatCompletionService(
   // ---------------------------------------------------------------------------
 
   /**
-   * Events of one turn: the SSE stream is opened first (so no early events are missed), the
-   * kickoff events are sent once it materializes (`sent` gets the POST's outcome), and the
-   * stream completes at the first terminal event (idle / terminated / error). A kickoff-send
-   * failure aborts the stream; so does an event stream that closes before the turn ended.
+   * Events of one turn: the SSE stream is opened and the kickoff events are sent alongside it
+   * (once per run; `sent` gets the POST's outcome), and the stream completes at the first
+   * terminal event (idle / terminated / error). A kickoff-send failure aborts the stream; so
+   * does an event stream that closes before the turn ended.
    */
   private def turnEventSource(
     sessionId: String,
     kickoffEvents: Seq[SessionEvent],
     confirmed: Set[String] = Set.empty,
     sent: Promise[Unit] = Promise[Unit]()
-  ): Source[SessionEventEnvelope, NotUsed] =
-    (underlying
+  ): AsyncStream[SessionEventEnvelope] =
+    underlying
       .streamSessionEvents(sessionId)
-      .viaMat(KillSwitches.single)(Keep.right)
-      .takeWhile(envelope => !isTerminal(envelope, confirmed), inclusive = true)
-      .mapMaterializedValue { killSwitch =>
-        underlying.sendSessionEvents(sessionId, kickoffEvents).onComplete { result =>
-          sent.tryComplete(result.map(_ => ()))
-          result.failed.foreach(killSwitch.abort)
-        }
-        NotUsed
+      .concurrently { () =>
+        val posted = underlying.sendSessionEvents(sessionId, kickoffEvents)
+        posted.onComplete(result => sent.tryComplete(result.map(_ => ())))
+        posted
       }
-      .map(Some(_)) ++ Source.single(None)).statefulMapConcat { () =>
-      var ended = false
-
-      {
-        case Some(envelope) =>
-          if (isTerminal(envelope, confirmed)) ended = true
-          List(envelope)
-        case None =>
-          if (!ended)
+      .takeWhile(envelope => !isTerminal(envelope, confirmed), inclusive = true)
+      .stateful(() => false)(
+        (
+          ended,
+          envelope
+        ) => Step(ended || isTerminal(envelope, confirmed), List(envelope)),
+        ended =>
+          if (ended)
+            Nil
+          else
             throw new OpenAIScalaServerErrorException(
               s"The event stream of managed-agent session '$sessionId' closed before the turn ended."
             )
-          Nil
-      }
-    }
+      )
 
   private def isTerminal(
     envelope: SessionEventEnvelope,
@@ -1048,8 +1025,7 @@ object OpenAIAnthropicManagedAgentChatCompletionService {
     agentTools: Seq[AgentTool] = Seq(AgentTool.Toolset()),
     deleteSessionsAfterUse: Boolean = true
   )(
-    implicit executionContext: ExecutionContext,
-    materializer: Materializer
+    implicit executionContext: ExecutionContext
   ): OpenAIChatCompletionService with OpenAIChatCompletionStreamedServiceExtra =
     new OpenAIAnthropicManagedAgentChatCompletionService(
       underlying,

@@ -1,13 +1,15 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
-import akka.NotUsed
+import io.cequence.wsclient.stream.{AsyncPipe, Bytes}
 import play.api.libs.json.{JsValue, Json}
-import akka.stream.scaladsl.Flow
-import akka.util.ByteString
 
 object AwsEventStreamEventParser {
-  def flow: Flow[ByteString, Option[JsValue], NotUsed] = Flow[ByteString].map { frame =>
-    val rawString = new String(frame.toArray)
+
+  /** Reads the JSON payload of an AWS event-stream frame; a frame without one gives None. */
+  def pipe: AsyncPipe[Bytes, Option[JsValue]] = AsyncPipe.of[Bytes].map { frame =>
+    // UTF-8 whatever the platform charset: the binary prelude turns into replacement
+    // characters, the JSON payload is read intact
+    val rawString = frame.utf8String
 
     if (rawString.contains("message-type")) {
       val jsonString = rawString.dropWhile(_ != '{').takeWhile(_ != '}') + "}"

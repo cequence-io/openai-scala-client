@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.gemini.service.impl
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{NonOpenAIModelId, UserMessage}
@@ -26,7 +24,6 @@ import io.cequence.openaiscala.gemini.service.GeminiService
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{mock, when}
 import org.mockito.invocation.InvocationOnMock
-import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
@@ -45,17 +42,9 @@ import scala.concurrent.{ExecutionContext, Future}
 class GeminiRefusedSettingsAndUrlContextSpec
     extends AnyWordSpec
     with Matchers
-    with ScalaFutures
-    with BeforeAndAfterAll {
+    with ScalaFutures {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("gemini-refused-settings")
-  private implicit val materializer: Materializer = Materializer(system)
-
-  override protected def afterAll(): Unit = {
-    system.terminate()
-    ()
-  }
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
@@ -94,7 +83,7 @@ class GeminiRefusedSettingsAndUrlContextSpec
     when(underlying.generateContentStreamed(any(), any())).thenAnswer {
       (invocation: InvocationOnMock) =>
         requests.synchronized(requests += invocation.getArgument[GenerateContentSettings](1))
-        Source.single(answer)
+        AsyncStream.single(answer)
     }
 
     val adapter = new OpenAIGeminiChatCompletionService(underlying)
@@ -136,7 +125,7 @@ class GeminiRefusedSettingsAndUrlContextSpec
           None,
           settings(NonOpenAIModelId.gemini_4_argon, Some(3))
         )
-        .runWith(Sink.ignore)
+        .runDrain
         .futureValue
       lastConfig.presencePenalty shouldBe None
       lastConfig.candidateCount shouldBe None
@@ -169,7 +158,7 @@ class GeminiRefusedSettingsAndUrlContextSpec
           None,
           CreateChatCompletionSettings("gemini-3.8-flash").setGeminiTools(Seq(Tool.UrlContext))
         )
-        .runWith(Sink.seq)
+        .runToSeq
         .futureValue
 
       requests.synchronized(requests.last).tools shouldBe Some(Seq(Tool.UrlContext))

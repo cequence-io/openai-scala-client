@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.anthropic.service
 
-import akka.NotUsed
-import akka.stream.scaladsl.Source
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.anthropic.domain.{
   ListMessageBatchesResponse,
   MessageBatch,
@@ -85,7 +84,7 @@ trait AnthropicMessageBatchService {
    */
   def streamMessageBatchResults(
     batchId: String
-  ): Source[MessageBatchIndividualResponse, NotUsed]
+  ): AsyncStream[MessageBatchIndividualResponse]
 
   /**
    * Retrieves all results of an ended Message Batch in one buffered response. For very large

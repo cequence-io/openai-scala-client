@@ -1,12 +1,12 @@
 package io.cequence.openaiscala.perplexity.service.impl
 
+import io.cequence.wsclient.stream.AsyncStream
+
 import io.cequence.openaiscala.domain.agents.{
   AgentInput,
   AgentSessionEvent,
   CreateAgentSessionSettings
 }
-import akka.NotUsed
-import akka.stream.scaladsl.Source
 import io.cequence.openaiscala._
 import io.cequence.openaiscala.domain.{BaseMessage, SortOrder}
 import io.cequence.openaiscala.domain.response.{
@@ -35,8 +35,8 @@ import io.cequence.wsclient.domain.{
   SiteBinding,
   WsRequestContext
 }
-import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
-import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtraAkka}
+import io.cequence.wsclient.service.spi.{WSClientEngineRegistry, TransportSettings}
+import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamCore}
 import play.api.libs.json.{JsObject, Json}
 
 import org.slf4j.LoggerFactory
@@ -57,7 +57,7 @@ import scala.concurrent.{ExecutionContext, Future}
 private[service] class PerplexityResponsesServiceImpl(
   apiKey: String,
   baseUrl: String,
-  externalEngine: Option[WSClientEngine with WSClientOutputStreamExtraAkka] = None
+  externalEngine: Option[WSClientEngine with WSClientOutputStreamCore] = None
 )(
   override implicit val ec: ExecutionContext
 ) extends OpenAIResponsesService
@@ -70,8 +70,8 @@ private[service] class PerplexityResponsesServiceImpl(
   override protected type PEP = EndPoint
   override protected type PT = Param
 
-  override protected val engine: WSClientEngine with WSClientOutputStreamExtraAkka =
-    externalEngine.getOrElse(StreamedEngineRegistry.outputStreamed(TransportSettings()))
+  override protected val engine: WSClientEngine with WSClientOutputStreamCore =
+    externalEngine.getOrElse(WSClientEngineRegistry.outputStreamed(TransportSettings()))
 
   override protected def ownsEngine: Boolean = externalEngine.isEmpty
 
@@ -112,7 +112,7 @@ private[service] class PerplexityResponsesServiceImpl(
   override def createModelResponseStreamed(
     inputs: Inputs,
     settings: CreateModelResponseSettings
-  ): Source[ResponseStreamEvent, NotUsed] =
+  ): AsyncStream[ResponseStreamEvent] =
     execRawStream(
       EndPoint.responses,
       "POST",
@@ -195,25 +195,27 @@ private[service] class PerplexityResponsesServiceImpl(
   override def createCompletionStreamed(
     prompt: String,
     settings: CreateCompletionSettings
-  ): Source[TextCompletionResponse, NotUsed] =
-    Source.failed(unsupported("createCompletionStreamed"))
+  ): AsyncStream[TextCompletionResponse] =
+    AsyncStream.failed(unsupported("createCompletionStreamed"))
 
   override def createChatCompletionStreamed(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
-  ): Source[ChatCompletionChunkResponse, NotUsed] =
-    Source.failed(unsupported("createChatCompletionStreamed on the raw Responses service"))
+  ): AsyncStream[ChatCompletionChunkResponse] =
+    AsyncStream.failed(
+      unsupported("createChatCompletionStreamed on the raw Responses service")
+    )
 
   override def createAgentSessionStreamed(
     settings: CreateAgentSessionSettings,
     input: AgentInput
-  ): Source[AgentSessionEvent, NotUsed] =
-    Source.failed(unsupported("the OpenAI Agents API (createAgentSessionStreamed)"))
+  ): AsyncStream[AgentSessionEvent] =
+    AsyncStream.failed(unsupported("the OpenAI Agents API (createAgentSessionStreamed)"))
 
   override def streamAgentSessionEvents(
     sessionId: String
-  ): Source[AgentSessionEvent, NotUsed] =
-    Source.failed(unsupported("the OpenAI Agents API (streamAgentSessionEvents)"))
+  ): AsyncStream[AgentSessionEvent] =
+    AsyncStream.failed(unsupported("the OpenAI Agents API (streamAgentSessionEvents)"))
 }
 
 private[service] object PerplexityResponsesServiceImpl {

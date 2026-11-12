@@ -114,7 +114,7 @@ object VertexAIServiceFactory extends EnvHelper {
 
   /**
    * [[batchPrediction]] variant on a CALLER-SUPPLIED, SITE-STATELESS engine - e.g. one shared
-   * with other providers/services via a single connection pool and actor system. The site
+   * with other providers/services, one engine and its connection pool for all. The site
    * binding (project/location-shaped base URL, per-request ADC Bearer auth, logging label) is
    * built internally from `projectId`/`location`. Closing the returned service does NOT close
    * the shared engine - close the engine once, when done with all services using it.

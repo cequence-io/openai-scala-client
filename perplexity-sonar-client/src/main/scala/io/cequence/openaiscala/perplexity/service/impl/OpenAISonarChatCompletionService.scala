@@ -1,8 +1,8 @@
 package io.cequence.openaiscala.perplexity.service.impl
 
+import io.cequence.wsclient.stream.AsyncStream
+
 import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps
-import akka.NotUsed
-import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.{
   AssistantMessage,
@@ -72,7 +72,7 @@ private[service] class OpenAISonarChatCompletionService(
   override def createChatCompletionStreamed(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
-  ): Source[ChatCompletionChunkResponse, NotUsed] =
+  ): AsyncStream[ChatCompletionChunkResponse] =
     ToolApprovalSettingsOps.refusingDecisionsStream(settings, "The Perplexity Sonar adapter") {
       val addAHrefToCitations = getAHrefCitationParamValue(settings)
       val includeCitationsInTextResponse =

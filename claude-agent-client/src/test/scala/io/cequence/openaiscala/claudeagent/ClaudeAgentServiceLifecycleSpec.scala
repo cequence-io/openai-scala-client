@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.claudeagent
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.claudeagent.domain.{
   ClaudeAgentEvent,
   ClaudeAgentSettings,
@@ -24,9 +21,7 @@ class ClaudeAgentServiceLifecycleSpec
     with Matchers
     with BeforeAndAfterAll {
 
-  private implicit val system: ActorSystem = ActorSystem("claude-agent-lifecycle-spec")
-  private implicit val materializer: Materializer = Materializer(system)
-  private implicit val ec: ExecutionContext = system.dispatcher
+  private implicit val ec: ExecutionContext = ExecutionContext.global
 
   // generous: CI runs these under coverage instrumentation on a cold JVM
   private val timeout: FiniteDuration = 15.seconds
@@ -38,7 +33,6 @@ class ClaudeAgentServiceLifecycleSpec
 
   override def afterAll(): Unit = {
     Files.deleteIfExists(fakeCli)
-    Await.result(system.terminate(), 5.seconds)
     ()
   }
 
@@ -51,16 +45,16 @@ class ClaudeAgentServiceLifecycleSpec
         val init = Await.result(service.ready, timeout)
         init.model shouldBe "fake-model"
 
-        // `events` is a hot BroadcastHub: a subscriber only sees what is published after it has
-        // registered with the hub. Registration is asynchronous, so wait for the replayed init
-        // (the first element this subscription emits, which cannot arrive before its stages have
-        // started) before sending - otherwise the result can be published before the
-        // registration lands and this subscriber never sees the end of the turn (CI flake).
+        // `events` is hot: a run only sees what is published after it has registered with the
+        // hub. Registration is asynchronous, so wait for the replayed init (the first element
+        // this run emits, which cannot arrive before it has registered) before sending -
+        // otherwise the result can be published before the registration lands and this run
+        // never sees the end of the turn (CI flake).
         val subscribed = Promise[Unit]()
-        val events = service.events
-          .wireTap(_ => subscribed.trySuccess(()))
-          .takeWhile(event => !isTurnEnd(event), inclusive = true)
-          .runWith(Sink.seq)
+        val events = service.events.map { event =>
+          subscribed.trySuccess(())
+          event
+        }.takeWhile(event => !isTurnEnd(event), inclusive = true).runToSeq
 
         Await.result(subscribed.future, timeout)
         Await.result(service.send("hello"), timeout)
@@ -77,11 +71,55 @@ class ClaudeAgentServiceLifecycleSpec
 
       try {
         val streamFailure = intercept[ClaudeAgentProcessException] {
-          Await.result(service.events.runWith(Sink.seq), timeout)
+          Await.result(service.events.runToSeq, timeout)
         }
 
         streamFailure.getMessage should include("code 23")
         Await.result(service.completion, timeout).exitCode shouldBe Some(23)
+      } finally service.close()
+    }
+
+    "replay the init to every run of events, then broadcast the live ones to all of them" in {
+      val service = newService("success")
+
+      try {
+        Await.result(service.ready, timeout)
+
+        def turn() = {
+          val subscribed = Promise[Unit]()
+          val events = service.events.map { event =>
+            subscribed.trySuccess(())
+            event
+          }.takeWhile(event => !isTurnEnd(event), inclusive = true).runToSeq
+
+          (subscribed.future, events)
+        }
+
+        // two runs, both started long after the init went by
+        val (subscribed1, events1) = turn()
+        val (subscribed2, events2) = turn()
+
+        Await.result(subscribed1, timeout)
+        Await.result(subscribed2, timeout)
+        Await.result(service.send("hello"), timeout)
+
+        Seq(events1, events2).foreach { events =>
+          val seen = Await.result(events, timeout)
+
+          seen.head shouldBe a[ClaudeAgentEvent.SystemInit]
+          seen.count(_.isInstanceOf[ClaudeAgentEvent.SystemInit]) shouldBe 1
+          seen.last shouldBe a[ClaudeAgentEvent.ResultSuccess]
+        }
+
+        // a run started after the turn gets the init and the NEXT turn only
+        val (subscribed3, events3) = turn()
+
+        Await.result(subscribed3, timeout)
+        Await.result(service.send("again"), timeout)
+
+        val later = Await.result(events3, timeout)
+        later.head shouldBe a[ClaudeAgentEvent.SystemInit]
+        later.count(isTurnEnd) shouldBe 1
       } finally service.close()
     }
 

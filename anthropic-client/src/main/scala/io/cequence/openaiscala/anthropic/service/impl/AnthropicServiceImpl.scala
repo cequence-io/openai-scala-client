@@ -1,9 +1,7 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
-import akka.NotUsed
 import io.cequence.openaiscala.service.{PathSegment, StreamingConsts}
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
+import io.cequence.wsclient.stream.{AsyncStream, Bytes}
 import io.cequence.openaiscala.anthropic.domain.{
   FileDeleteResponse,
   FileListResponse,
@@ -74,7 +72,6 @@ import io.cequence.openaiscala.anthropic.domain.skills.{
 }
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
-import io.cequence.wsclient.StreamResponseImplicits.StreamSafeOps
 import play.api.libs.json.{
   JsArray,
   JsBoolean,
@@ -115,7 +112,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   private def streamMessageEvents(
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings
-  ): Source[MessageStreamEvent, NotUsed] = {
+  ): AsyncStream[MessageStreamEvent] = {
     execJsonStream(
       EndPoint.messages,
       "POST",
@@ -132,13 +129,13 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   override def createMessageStreamedEvents(
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings
-  ): Source[MessageStreamEvent, NotUsed] =
+  ): AsyncStream[MessageStreamEvent] =
     streamMessageEvents(messages, settings)
 
   override def createMessageStreamed(
     messages: Seq[Message],
     settings: AnthropicCreateMessageSettings
-  ): Source[ContentBlockDelta, NotUsed] =
+  ): AsyncStream[ContentBlockDelta] =
     streamMessageEvents(messages, settings).collect {
       case MessageStreamEvent.ContentBlockDeltaEvent(delta) => delta
     }
@@ -196,7 +193,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
   override def streamMessageBatchResults(
     batchId: String
-  ): Source[MessageBatchIndividualResponse, NotUsed] =
+  ): AsyncStream[MessageBatchIndividualResponse] =
     PathSegment.inSource {
       execRawStream(
         EndPoint.messageBatches,
@@ -424,14 +421,12 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
   override def downloadFile(
     fileId: String
-  ): Future[Option[Source[ByteString, _]]] = PathSegment.inFuture {
-    execGETRich(
+  ): Future[Option[AsyncStream[Bytes]]] = PathSegment.inFuture {
+    execGETStream(
       EndPoint.files,
       Some(s"${PathSegment(fileId)}/content"),
       extraHeaders = fileBetaHeaders
-    ).map { response =>
-      handleNotFoundAndError(response).map(_.asSafeSource)
-    }
+    )
   }
 
   override def deleteFile(
@@ -920,7 +915,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
 
   override def streamSessionEvents(
     sessionId: String
-  ): Source[SessionEventEnvelope, NotUsed] =
+  ): AsyncStream[SessionEventEnvelope] =
     PathSegment.inSource {
       // Raw SSE parsing instead of execJsonStream: the managed-agents stream sends frames
       // without a `data:` line - an initial ": connected." comment and periodic heartbeats -

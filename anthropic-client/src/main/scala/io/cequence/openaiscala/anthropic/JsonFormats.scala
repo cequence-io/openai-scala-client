@@ -416,7 +416,7 @@ trait JsonFormats {
   }
 
   private implicit val toolResultContentFormat: OFormat[MCPToolResultItem] = {
-    implicit val config: JsonConfiguration = JsonConfiguration(SnakeCase)
+    JsonConfiguration(SnakeCase)
     formatWithType(Json.using[Json.WithDefaultValues].format[MCPToolResultItem])
   }
 

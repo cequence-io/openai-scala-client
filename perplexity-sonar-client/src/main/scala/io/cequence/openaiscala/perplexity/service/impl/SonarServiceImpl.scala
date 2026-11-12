@@ -1,8 +1,7 @@
 package io.cequence.openaiscala.perplexity.service.impl
 
-import akka.NotUsed
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
+import io.cequence.wsclient.stream.{AsyncStream, Bytes}
+
 import io.cequence.openaiscala.ResponseHeaders
 import io.cequence.openaiscala.perplexity.AgentJsonFormats
 import io.cequence.openaiscala.perplexity.AgentJsonFormats._
@@ -24,7 +23,6 @@ import io.cequence.openaiscala.perplexity.service.{
 import io.cequence.openaiscala.service.{ClassifiedStreamingWSClient, PathSegment}
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
-import io.cequence.wsclient.StreamResponseImplicits.StreamSafeOps
 import io.cequence.wsclient.domain.{
   CequenceWSTimeoutException,
   CequenceWSUnknownHostException,
@@ -33,8 +31,8 @@ import io.cequence.wsclient.domain.{
   SiteBinding,
   WsRequestContext
 }
-import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtraAkka}
-import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
+import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamCore}
+import io.cequence.wsclient.service.spi.{WSClientEngineRegistry, TransportSettings}
 import play.api.libs.json._
 
 import java.net.UnknownHostException
@@ -43,7 +41,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 private[service] class SonarServiceImpl(
   apiKey: String,
-  externalEngine: Option[WSClientEngine with WSClientOutputStreamExtraAkka] = None,
+  externalEngine: Option[WSClientEngine with WSClientOutputStreamCore] = None,
   baseUrl: Option[String] = None
 )(
   override implicit val ec: ExecutionContext
@@ -55,9 +53,9 @@ private[service] class SonarServiceImpl(
 
   // a caller-supplied, site-stateless engine (e.g. one shared with other providers), or a
   // privately-owned classpath-discovered engine with output streaming (SSE) support
-  override protected val engine: WSClientEngine with WSClientOutputStreamExtraAkka =
+  override protected val engine: WSClientEngine with WSClientOutputStreamCore =
     externalEngine.getOrElse(
-      StreamedEngineRegistry.outputStreamed(TransportSettings())
+      WSClientEngineRegistry.outputStreamed(TransportSettings())
     )
 
   // the engine is only closed by this service when it was privately created here - a
@@ -93,7 +91,7 @@ private[service] class SonarServiceImpl(
   override def createChatCompletionStreamed(
     messages: Seq[Message],
     settings: SonarCreateChatCompletionSettings
-  ): Source[SonarChatCompletionChunkResponse, NotUsed] = {
+  ): AsyncStream[SonarChatCompletionChunkResponse] = {
     execJsonStream(
       EndPoint.chatCompletion,
       "POST",
@@ -126,7 +124,7 @@ private[service] class SonarServiceImpl(
   override def createAgentResponseStreamed(
     input: AgentInput,
     settings: CreateAgentResponseSettings
-  ): Source[AgentStreamEvent, NotUsed] =
+  ): AsyncStream[AgentStreamEvent] =
     agentEvents(
       execRawStream(
         EndPoint.agent,
@@ -147,7 +145,7 @@ private[service] class SonarServiceImpl(
   override def resumeAgentResponseStream(
     responseId: String,
     startingAfter: Option[Int]
-  ): Source[AgentStreamEvent, NotUsed] =
+  ): AsyncStream[AgentStreamEvent] =
     PathSegment.inSource {
       agentEvents(
         execRawStream(
@@ -184,13 +182,13 @@ private[service] class SonarServiceImpl(
   override def downloadAgentResponseFile(
     responseId: String,
     fileId: String
-  ): Future[Option[Source[ByteString, _]]] =
+  ): Future[Option[AsyncStream[Bytes]]] =
     PathSegment.inFuture {
-      execGETRich(
+      execGETStream(
         EndPoint.agent,
         endPointParam =
           Some(s"${PathSegment(responseId)}/files/${PathSegment(fileId)}/content")
-      ).map(responseOrNone(_).map(_.asSafeSource)).recoverWith(transportErrors)
+      ).recoverWith(transportErrors)
     }
 
   override def listAgentModels: Future[Seq[AgentModel]] =
@@ -219,7 +217,10 @@ private[service] class SonarServiceImpl(
     )
 
   private def responseOrNone(rich: RichResponse): Option[Response] =
-    if (rich.status.code == 404) None else Some(responseOrError(rich))
+    if (rich.status.code == 404)
+      None
+    else
+      Some(responseOrError(rich))
 
   private def transportErrors[T]: PartialFunction[Throwable, Future[T]] = {
     case e @ (_: CequenceWSTimeoutException | _: TimeoutException) =>
@@ -240,8 +241,7 @@ private[service] class SonarServiceImpl(
   // SSE bytes -> typed events; an `{"error": ...}` payload - the error body answering the
   // request (its `code` is the HTTP status, which itself does not reach a raw stream) - fails
   // the stream with the classified exception
-  private def agentEvents(bytes: Source[ByteString, NotUsed])
-    : Source[AgentStreamEvent, NotUsed] =
+  private def agentEvents(bytes: AsyncStream[Bytes]): AsyncStream[AgentStreamEvent] =
     bytes.via(ServerSentEvents.jsonPayloads()).map { json =>
       if ((json \ "type").isEmpty && (json \ "error").isDefined)
         throw HandlePerplexityErrorCodes

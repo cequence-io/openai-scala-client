@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.claudeagent.service.impl
 
-import akka.NotUsed
-import akka.stream.Materializer
-import akka.stream.scaladsl.{BroadcastHub, Keep, Sink, Source}
 import io.cequence.openaiscala.claudeagent.JsonFormats
 import io.cequence.openaiscala.claudeagent.domain.{
   ClaudeAgentEvent,
@@ -11,6 +8,8 @@ import io.cequence.openaiscala.claudeagent.domain.{
   PermissionDecision
 }
 import io.cequence.openaiscala.claudeagent.service.ClaudeAgentService
+import io.cequence.wsclient.concurrent.Futures
+import io.cequence.wsclient.stream.{AsyncBroadcastHub, AsyncStream}
 import play.api.libs.json.{JsObject, JsValue, Json}
 
 import java.util.UUID
@@ -23,16 +22,15 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 /**
  * Default [[ClaudeAgentService]] implementation, wrapping a [[ClaudeAgentProcessTransport]].
  *
- * Subscribes to `transport.rawEvents` exactly once (in the constructor) and re-broadcasts the
- * parsed [[ClaudeAgentEvent]]s via its own `BroadcastHub` - this way side effects of
- * processing a raw line (completing a pending control-request promise, updating `sessionId`)
- * happen exactly once no matter how many times callers materialize `events`.
+ * Runs `transport.rawEvents` exactly once (in the constructor) and broadcasts the parsed
+ * [[ClaudeAgentEvent]]s through a hub - this way side effects of processing a raw line
+ * (completing a pending control-request promise, updating `sessionId`) happen exactly once no
+ * matter how many times callers run `events`.
  */
 private[claudeagent] class ClaudeAgentServiceImpl(
   transport: ClaudeAgentProcessTransport
 )(
-  implicit ec: ExecutionContext,
-  materializer: Materializer
+  implicit ec: ExecutionContext
 ) extends ClaudeAgentService {
 
   private val controlResponseTimeout = 1.minutes
@@ -45,30 +43,27 @@ private[claudeagent] class ClaudeAgentServiceImpl(
   private val readyPromise = Promise[ClaudeAgentEvent.SystemInit]()
 
   private val readyFuture: Future[ClaudeAgentEvent.SystemInit] =
-    Future.firstCompletedOf(
-      Seq(
-        readyPromise.future,
-        akka.pattern.after(readyTimeout, materializer.system.scheduler) {
-          Future.failed(
-            new ClaudeAgentProcessException(
-              s"Claude process did not emit system/init within $readyTimeout"
-            )
-          )
-        }
+    Futures.timeout(
+      readyPromise.future,
+      readyTimeout,
+      new ClaudeAgentProcessException(
+        s"Claude process did not emit system/init within $readyTimeout"
       )
     )
 
-  private val eventsSource: Source[ClaudeAgentEvent, NotUsed] =
-    transport.rawEvents.collect { case obj: JsObject => obj }
-      .mapConcat(handleRawEvent)
-      .toMat(BroadcastHub.sink[ClaudeAgentEvent](bufferSize = 256))(Keep.right)
-      .run()
+  // The live events without the init message, which every run of `events` gets replayed from
+  // `ready`. The hub drains: the process's stdout is read and the lifecycle side effects stay
+  // active even before (or without) a caller's own subscriber.
+  private val liveEvents: AsyncBroadcastHub[ClaudeAgentEvent] =
+    AsyncBroadcastHub(
+      transport.rawEvents.collect { case obj: JsObject => obj }
+        .mapConcat(handleRawEvent)
+        .filter(event => !event.isInstanceOf[ClaudeAgentEvent.SystemInit]),
+      bufferSize = 256,
+      drain = true
+    )
 
-  // Keep the process stream draining and lifecycle side effects active even before a caller
-  // attaches its own event subscriber. Public subscribers receive `ready` as a replayed init.
-  private val eventDrain = eventsSource.runWith(Sink.ignore)
-
-  eventDrain.failed.foreach(readyPromise.tryFailure)
+  liveEvents.completion.failed.foreach(readyPromise.tryFailure)
   transport.completion.foreach { exit =>
     readyPromise.tryFailure(
       new ClaudeAgentProcessException(
@@ -81,38 +76,10 @@ private[claudeagent] class ClaudeAgentServiceImpl(
 
   override def ready: Future[ClaudeAgentEvent.SystemInit] = readyFuture
 
-  override def events: Source[ClaudeAgentEvent, NotUsed] =
-    // `eventsSource` is a hot BroadcastHub. Merge it with the replayed init rather than
-    // concatenating after `ready`: concat would not subscribe to the hub until init completed
-    // and could lose events emitted in that interval. The stateful stage preserves the public
-    // ordering contract by buffering any live event that arrives before the replayed init.
-    Source
-      .future(ready)
-      .map[Either[ClaudeAgentEvent.SystemInit, ClaudeAgentEvent]](Left(_))
-      .merge(
-        eventsSource.collect {
-          case event if !event.isInstanceOf[ClaudeAgentEvent.SystemInit] => Right(event)
-        }
-      )
-      .statefulMapConcat { () =>
-        var initEmitted = false
-        var bufferedEvents = Vector.empty[ClaudeAgentEvent]
-
-        {
-          case Left(init) =>
-            initEmitted = true
-            val events = init +: bufferedEvents
-            bufferedEvents = Vector.empty
-            events.toList
-
-          case Right(event) if initEmitted =>
-            event :: Nil
-
-          case Right(event) =>
-            bufferedEvents :+= event
-            Nil
-        }
-      }
+  // A run registers with the hub when it starts, so the live events arriving while it waits
+  // for the replayed init are buffered for it, not lost.
+  override def events: AsyncStream[ClaudeAgentEvent] =
+    liveEvents.source(prefix = AsyncStream.future(ready))
 
   override def sessionId: Option[String] = currentSessionId.get()
 
@@ -257,22 +224,19 @@ private[claudeagent] class ClaudeAgentServiceImpl(
     if (!registered)
       Future.failed(new ClaudeAgentProcessException("Claude agent session is closed"))
     else {
-      val timeoutFuture = akka.pattern.after(
-        controlResponseTimeout,
-        materializer.system.scheduler
-      ) {
-        Future.failed[JsValue](
+      transport.writeLine(wireJson).failed.foreach(promise.tryFailure)
+
+      Futures
+        .timeout(
+          promise.future,
+          controlResponseTimeout,
           new TimeoutException(
             s"No control_response for request $requestId within $controlResponseTimeout"
           )
         )
-      }
-
-      transport.writeLine(wireJson).failed.foreach(promise.tryFailure)
-
-      Future.firstCompletedOf(List(promise.future, timeoutFuture)).andThen { case _ =>
-        pendingControlRequests.remove(requestId)
-      }
+        .andThen { case _ =>
+          pendingControlRequests.remove(requestId)
+        }
     }
   }
 

@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.vertexai.service.impl
 
 import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps
-import akka.NotUsed
-import akka.stream.scaladsl.{Source, StreamConverters}
 import com.google.cloud.vertexai.VertexAI
 import com.google.cloud.vertexai.api.{GenerateContentResponse, GenerationConfig}
 import com.google.cloud.vertexai.generativeai.GenerativeModel
@@ -33,6 +31,7 @@ import io.cequence.openaiscala.vertexai.domain.{
   JobState
 }
 import io.cequence.openaiscala.vertexai.service.VertexAIBatchSupport
+import io.cequence.wsclient.stream.AsyncStream
 import org.slf4j.LoggerFactory
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
@@ -65,11 +64,13 @@ import io.cequence.openaiscala.vertexai.domain.settings.{
 }
 import CreateChatCompletionSettingsOps._
 
-import java.util.concurrent.CompletableFuture
+import com.google.api.core.{ApiFuture, ApiFutureCallback, ApiFutures}
+
+import java.util.concurrent.Executor
+import java.util.concurrent.atomic.AtomicReference
 import scala.collection.convert.ImplicitConversions.`list asScalaBuffer`
 import scala.collection.convert.ImplicitConversions.`seq AsJavaList`
-import scala.compat.java8.FutureConverters._
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 
 private[service] class OpenAIVertexAIChatCompletionService(
   underlying: VertexAI,
@@ -111,8 +112,7 @@ private[service] class OpenAIVertexAIChatCompletionService(
           producedReasoning.contains
         )
       )
-      val scalaFuture: Future[GenerateContentResponse] =
-        toScala(CompletableFuture.supplyAsync(() => javaFuture.get))
+      val scalaFuture: Future[GenerateContentResponse] = toScalaFuture(javaFuture)
 
       scalaFuture.map { response =>
         val openAIResponse = toOpenAI(response, settings.model)
@@ -142,8 +142,7 @@ private[service] class OpenAIVertexAIChatCompletionService(
           producedReasoning.contains
         )
       )
-      val scalaFuture: Future[GenerateContentResponse] =
-        toScala(CompletableFuture.supplyAsync(() => javaFuture.get))
+      val scalaFuture: Future[GenerateContentResponse] = toScalaFuture(javaFuture)
 
       scalaFuture.map { response =>
         toOpenAIToolResponse(response, settings.model)
@@ -223,7 +222,7 @@ private[service] class OpenAIVertexAIChatCompletionService(
     tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
-  ): Source[ChatChunk, NotUsed] =
+  ): AsyncStream[ChatChunk] =
     ToolApprovalSettingsOps.refusingDecisionsStream(settings, "The Vertex AI adapter") {
       val model = createModel(
         messages,
@@ -349,7 +348,7 @@ private[service] class OpenAIVertexAIChatCompletionService(
   override def createChatCompletionStreamed(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
-  ): Source[ChatCompletionChunkResponse, NotUsed] =
+  ): AsyncStream[ChatCompletionChunkResponse] =
     ToolApprovalSettingsOps.refusingDecisionsStream(settings, "The Vertex AI adapter") {
       val model = createModel(messages, settings)
 
@@ -376,23 +375,59 @@ private[service] class OpenAIVertexAIChatCompletionService(
       }.mapError(toOpenAIException)
     }
 
-  // the Vertex SDK opens the gRPC stream (and fetches credentials) inside generateContentStream,
-  // so it is deferred to materialization instead of running on the caller's thread
+  // the Vertex SDK opens the gRPC stream (and fetches credentials) inside generateContentStream
+  // and reads it by blocking, so each run opens its own stream on the blocking pool and closes
+  // it when the run ends, fails or is cancelled
+  // the SDK's future completes on a gRPC thread; nothing waits for it on a pool thread
+  private def toScalaFuture[T](apiFuture: ApiFuture[T]): Future[T] = {
+    val promise = Promise[T]()
+    val sameThread: Executor = (task: Runnable) => task.run()
+
+    ApiFutures.addCallback(
+      apiFuture,
+      new ApiFutureCallback[T] {
+        override def onSuccess(result: T): Unit = {
+          promise.trySuccess(result)
+          ()
+        }
+
+        override def onFailure(error: Throwable): Unit = {
+          promise.tryFailure(error)
+          ()
+        }
+      },
+      sameThread
+    )
+    promise.future
+  }
+
   private def lazyContentStream(
     model: GenerativeModel,
     messages: Seq[BaseMessage]
-  ): Source[GenerateContentResponse, NotUsed] = {
+  ): AsyncStream[GenerateContentResponse] = {
     val contents = toNonSystemVertexAI(
       messages.filter(message =>
         message.role != ChatRole.System && message.role != ChatRole.Developer
       )
     )
 
-    Source
-      .lazySource(() =>
-        StreamConverters.fromJavaStream(() => model.generateContentStream(contents).stream())
+    AsyncStream.defer {
+      // set by `open`, read by `close` - both run for this one run only
+      val opened = new AtomicReference[java.util.stream.Stream[GenerateContentResponse]]()
+
+      AsyncStream.fromBlockingIterator[GenerateContentResponse](
+        open = () => {
+          val responses = model.generateContentStream(contents).stream()
+          opened.set(responses)
+          val javaIterator = responses.iterator()
+          new Iterator[GenerateContentResponse] {
+            override def hasNext: Boolean = javaIterator.hasNext
+            override def next(): GenerateContentResponse = javaIterator.next()
+          }
+        },
+        close = () => Option(opened.get()).foreach(_.close())
       )
-      .mapMaterializedValue(_ => NotUsed)
+    }
   }
 
   private def createModel(

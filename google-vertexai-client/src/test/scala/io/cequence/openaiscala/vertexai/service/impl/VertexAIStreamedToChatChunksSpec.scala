@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.vertexai.service.impl
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import io.cequence.wsclient.stream.AsyncStream
 import com.google.cloud.vertexai.api.{
   Candidate,
   CodeExecutionResult => VertexCodeExecutionResult,
@@ -18,7 +16,6 @@ import com.google.protobuf.{ByteString, Struct}
 import com.google.protobuf.util.JsonFormat
 import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.domain.response.ChatChunk._
-import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
@@ -28,22 +25,13 @@ import play.api.libs.json.Json
 import java.util.Base64
 
 /** [[VertexAIChatChunks.toChatChunks]]: streamed protobuf responses -> typed chunks. */
-class VertexAIStreamedToChatChunksSpec
-    extends AnyWordSpec
-    with Matchers
-    with ScalaFutures
-    with BeforeAndAfterAll {
+class VertexAIStreamedToChatChunksSpec extends AnyWordSpec with Matchers with ScalaFutures {
 
-  private implicit val system: ActorSystem = ActorSystem("vertexai-streamed-to-chat-chunks")
-  private implicit val materializer: Materializer = Materializer(system)
+  private implicit val ec: scala.concurrent.ExecutionContext =
+    scala.concurrent.ExecutionContext.global
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
-
-  override def afterAll(): Unit = {
-    system.terminate()
-    ()
-  }
 
   private def response(
     parts: Seq[Part],
@@ -72,9 +60,10 @@ class VertexAIStreamedToChatChunksSpec
   }
 
   private def run(responses: GenerateContentResponse*): Seq[ChatChunk] =
-    Source(responses.toList)
+    AsyncStream
+      .fromIterable(responses.toList)
       .via(VertexAIChatChunks.toChatChunks("gemini-test"))
-      .runWith(Sink.seq)
+      .runToSeq
       .futureValue
 
   "VertexAIChatChunks.toChatChunks" should {

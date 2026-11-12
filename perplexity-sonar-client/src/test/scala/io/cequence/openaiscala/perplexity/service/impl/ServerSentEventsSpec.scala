@@ -1,16 +1,13 @@
 package io.cequence.openaiscala.perplexity.service.impl
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
-import akka.util.ByteString
 import io.cequence.openaiscala.perplexity.service.PerplexityScalaClientException
-import org.scalatest.BeforeAndAfterAll
+import io.cequence.wsclient.stream.{AsyncStream, Bytes}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.{JsValue, Json}
 
 import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
 /**
@@ -18,22 +15,17 @@ import scala.concurrent.duration._
  * pins): the Sonar API's CRLF framing decodes, and a malformed stream fails with the module's
  * own exception.
  */
-class ServerSentEventsSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
-
-  private implicit val system: ActorSystem = ActorSystem("sse-spec")
-  private implicit val materializer: Materializer = Materializer(system)
-
-  override protected def afterAll(): Unit =
-    Await.result(system.terminate(), 10.seconds)
+class ServerSentEventsSpec extends AnyWordSpec with Matchers {
 
   private def parse(
     chunks: Seq[String],
     maxEventBytes: Int = ServerSentEvents.DefaultMaxEventBytes
   ): Seq[JsValue] =
     Await.result(
-      Source(chunks.map(ByteString(_)).toList)
+      AsyncStream
+        .fromIterable(chunks.map(Bytes.utf8).toList)
         .via(ServerSentEvents.jsonPayloads(maxEventBytes))
-        .runWith(Sink.seq),
+        .runToSeq,
       10.seconds
     )
 

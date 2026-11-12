@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.claudeagent.service
 
-import akka.stream.Materializer
 import io.cequence.openaiscala.claudeagent.domain.ClaudeAgentSettings
 import io.cequence.openaiscala.claudeagent.service.impl.{
   ClaudeAgentProcessTransport,
@@ -19,8 +18,7 @@ object ClaudeAgentServiceFactory {
   def startSession(
     settings: ClaudeAgentSettings = ClaudeAgentSettings()
   )(
-    implicit ec: ExecutionContext,
-    materializer: Materializer
+    implicit ec: ExecutionContext
   ): ClaudeAgentService =
     new ClaudeAgentServiceImpl(new ClaudeAgentProcessTransport(settings))
 }

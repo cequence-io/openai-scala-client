@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
@@ -47,8 +44,6 @@ class ManagedAgentToolApprovalWireSpec
     with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("managed-agent-tool-approval")
-  private implicit val materializer: Materializer = Materializer(system)
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(5, Seconds), interval = Span(20, Millis))
@@ -176,7 +171,6 @@ class ManagedAgentToolApprovalWireSpec
   override protected def afterAll(): Unit = {
     service.close()
     server.stop(0)
-    Await.result(system.terminate(), 10.seconds)
     ()
   }
 
@@ -270,7 +264,7 @@ class ManagedAgentToolApprovalWireSpec
 
   private def paused(): (Seq[ChatChunk], ChatChunk.ToolApprovalRequest) = {
     val chunks =
-      await(service.createChatCompletionStreamedTyped(messages, settings).runWith(Sink.seq))
+      await(service.createChatCompletionStreamedTyped(messages, settings).runToSeq)
     val request = chunks.collectFirst { case r: ChatChunk.ToolApprovalRequest => r }.get
     (chunks, request)
   }
@@ -311,7 +305,7 @@ class ManagedAgentToolApprovalWireSpec
             Nil,
             settings.setToolApprovalDecisions(Seq(request.approve))
           )
-          .runWith(Sink.seq)
+          .runToSeq
       )
 
       sessionsCreated shouldBe 1 // no new session
@@ -352,7 +346,7 @@ class ManagedAgentToolApprovalWireSpec
             Nil,
             settings.setToolApprovalDecisions(Seq(request.deny("not allowed")))
           )
-          .runWith(Sink.seq)
+          .runToSeq
       )
 
       posted.head shouldBe Seq(
@@ -377,7 +371,7 @@ class ManagedAgentToolApprovalWireSpec
               asked.add(request)
               Future.successful(request.deny("not allowed"))
           }
-          .runWith(Sink.seq)
+          .runToSeq
       )
 
       asked.size shouldBe 1
@@ -519,7 +513,7 @@ class ManagedAgentToolApprovalWireSpec
 
       intercept[OpenAIScalaClientException](
         await(
-          service.createChatCompletionStreamedTyped(messages, settings).runWith(Sink.ignore)
+          service.createChatCompletionStreamedTyped(messages, settings).runDrain
         )
       ).getMessage should include("agent.custom_tool_use")
       // an unanswerable pause is not kept - the session is cleaned up (after the failure)
@@ -598,7 +592,7 @@ class ManagedAgentToolApprovalWireSpec
       // sevt_B is looked up in the history - which fails
       failHistory = true
       intercept[Exception](
-        await(service.createChatCompletionStreamedTyped(Nil, decisions).runWith(Sink.ignore))
+        await(service.createChatCompletionStreamedTyped(Nil, decisions).runDrain)
       )
       Thread.sleep(200)
       deleted shouldBe Nil
@@ -631,7 +625,7 @@ class ManagedAgentToolApprovalWireSpec
               Nil,
               settings.setToolApprovalDecisions(Seq(request.approve))
             )
-            .runWith(Sink.ignore)
+            .runDrain
         )
       )
       Thread.sleep(200)
@@ -681,7 +675,7 @@ class ManagedAgentToolApprovalWireSpec
         )
       intercept[io.cequence.openaiscala.OpenAIScalaEngineOverloadedException](
         await(
-          service.createChatCompletionStreamedTyped(messages, settings).runWith(Sink.ignore)
+          service.createChatCompletionStreamedTyped(messages, settings).runDrain
         )
       )
       // a failed stream deletes its session after the failure is delivered - let it land
@@ -715,7 +709,7 @@ class ManagedAgentToolApprovalWireSpec
         )
       intercept[io.cequence.openaiscala.OpenAIScalaEngineOverloadedException](
         await(
-          service.createChatCompletionStreamedTyped(messages, settings).runWith(Sink.ignore)
+          service.createChatCompletionStreamedTyped(messages, settings).runDrain
         )
       )
       eventually(deleted shouldBe Seq(sessionId))
@@ -727,7 +721,7 @@ class ManagedAgentToolApprovalWireSpec
         await(service.createChatCompletion(messages, settings))
       ).getMessage should include("Gave up")
       intercept[io.cequence.openaiscala.OpenAIScalaRateLimitException](
-        await(service.createChatCompletionStreamed(messages, settings).runWith(Sink.ignore))
+        await(service.createChatCompletionStreamed(messages, settings).runDrain)
       )
       eventually(deleted shouldBe Seq(sessionId, sessionId))
     }
@@ -748,7 +742,7 @@ class ManagedAgentToolApprovalWireSpec
               Nil,
               settings.setToolApprovalDecisions(Seq(request.approve))
             )
-            .runWith(Sink.ignore)
+            .runDrain
         )
       ).getMessage should include("closed before the turn ended")
       // the confirmation was applied - retrying it cannot work, so the session is not kept
@@ -773,7 +767,7 @@ class ManagedAgentToolApprovalWireSpec
               Nil,
               settings.setToolApprovalDecisions(Seq(openAIRequest.approve))
             )
-            .runWith(Sink.ignore)
+            .runDrain
         )
       ).getMessage should include("not a managed-agent tool confirmation request")
 
@@ -785,7 +779,7 @@ class ManagedAgentToolApprovalWireSpec
               Nil,
               settings.setToolApprovalDecisions(Seq(request.approve, otherSession.approve))
             )
-            .runWith(Sink.ignore)
+            .runDrain
         )
       ).getMessage should include("one paused session")
 

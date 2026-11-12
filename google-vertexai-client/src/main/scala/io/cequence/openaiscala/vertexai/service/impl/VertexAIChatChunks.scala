@@ -1,10 +1,9 @@
 package io.cequence.openaiscala.vertexai.service.impl
 
-import akka.NotUsed
-import akka.stream.scaladsl.Flow
 import com.google.cloud.vertexai.api.{Candidate, GenerateContentResponse}
 import com.google.protobuf.util.JsonFormat
 import io.cequence.openaiscala.domain.response.ChatChunk
+import io.cequence.wsclient.stream.AsyncPipe
 import play.api.libs.json.Json
 
 import java.util.Base64
@@ -25,8 +24,8 @@ private[impl] object VertexAIChatChunks {
   private def protoJson(message: com.google.protobuf.MessageOrBuilder) =
     Json.parse(JsonFormat.printer().omittingInsignificantWhitespace().print(message))
 
-  def toChatChunks(model: String): Flow[GenerateContentResponse, ChatChunk, NotUsed] =
-    Flow[GenerateContentResponse].statefulMapConcat { () =>
+  def toChatChunks(model: String): AsyncPipe[GenerateContentResponse, ChatChunk] =
+    AsyncPipe.of[GenerateContentResponse].statefulMapConcat { () =>
       var started = false
       var toolCount = 0
       var sawFunctionCall = false
@@ -135,9 +134,8 @@ private[impl] object VertexAIChatChunks {
                 )
                 out += ChatChunk.WebSearchResult(
                   "",
-                  webChunks.map(w =>
-                    ChatChunk.WebSearchResultItem(Some(w.getTitle), w.getUri)
-                  ),
+                  webChunks
+                    .map(w => ChatChunk.WebSearchResultItem(Some(w.getTitle), w.getUri)),
                   raw
                 )
                 webChunks.foreach { w =>

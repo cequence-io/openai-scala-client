@@ -90,8 +90,7 @@ import io.cequence.openaiscala.domain.{
   UserSeqMessage => OpenAIUserSeqMessage
 }
 import io.cequence.openaiscala.service.HasOpenAIConfig
-import akka.NotUsed
-import akka.stream.scaladsl.Flow
+import io.cequence.wsclient.stream.AsyncPipe
 import org.slf4j.LoggerFactory
 import play.api.libs.json.{JsObject, Json}
 
@@ -839,8 +838,8 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
    * calls (`tool_use` block starts + `input_json_delta`s), and emits a final chunk with
    * `finish_reason`/`usage` on `message_delta`.
    */
-  def toOpenAIChunks: Flow[MessageStreamEvent, ChatCompletionChunkResponse, NotUsed] =
-    Flow[MessageStreamEvent].statefulMapConcat { () =>
+  def toOpenAIChunks: AsyncPipe[MessageStreamEvent, ChatCompletionChunkResponse] =
+    AsyncPipe.of[MessageStreamEvent].statefulMapConcat { () =>
       var id: String = ""
       var model: String = ""
       var startUsage: Option[UsageInfo] = None
@@ -1145,8 +1144,8 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
    * assembled call at `content_block_stop`), server-side tool results, citations, the stop
    * reason and merged usage. Unmodeled events / blocks pass through as [[ChatChunk.Other]].
    */
-  def toChatChunks: Flow[MessageStreamEvent, ChatChunk, NotUsed] =
-    Flow[MessageStreamEvent].statefulMapConcat { () =>
+  def toChatChunks: AsyncPipe[MessageStreamEvent, ChatChunk] =
+    AsyncPipe.of[MessageStreamEvent].statefulMapConcat { () =>
       val mapper = new StreamedChunkMapper()
       (event: MessageStreamEvent) => mapper(event)
     }
@@ -1515,7 +1514,7 @@ package object impl extends AnthropicServiceConsts with HasOpenAIConfig {
   /**
    * Pure mapping of an Anthropic exception to its OpenAI-adapter equivalent. Any throwable not
    * recognized as an Anthropic-specific type is passed through unchanged (identity fallback),
-   * so this is total - safe to use directly with `Source.mapError`.
+   * so this is total - safe to use directly with `AsyncStream.mapError`.
    */
   def toOpenAIException: PartialFunction[Throwable, Throwable] = {
     case e: AnthropicScalaTokenCountExceededException =>

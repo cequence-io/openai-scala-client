@@ -1,7 +1,6 @@
 package io.cequence.openaiscala.anthropic.service
 
-import akka.NotUsed
-import akka.stream.scaladsl.Source
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.anthropic.domain.managedagents.{
   PagedResponse,
   Session,
@@ -135,7 +134,7 @@ trait AnthropicSessionService {
    *   <a href="https://platform.claude.com/docs/en/api/beta/sessions/events">Anthropic Session
    *   Events API</a>
    */
-  def streamSessionEvents(sessionId: String): Source[SessionEventEnvelope, NotUsed]
+  def streamSessionEvents(sessionId: String): AsyncStream[SessionEventEnvelope]
 
   // -- Resources --
 

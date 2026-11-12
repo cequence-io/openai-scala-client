@@ -18,7 +18,7 @@ package object impl {
   /**
    * Pure mapping of a Gemini exception to its OpenAI-adapter equivalent (the Gemini one as the
    * cause). Any other throwable passes through unchanged, so this is total - safe to use
-   * directly with `Source.mapError`.
+   * directly with `AsyncStream.mapError`.
    */
   def toOpenAIException: PartialFunction[Throwable, Throwable] = {
     case e: GeminiScalaTokenCountExceededException =>

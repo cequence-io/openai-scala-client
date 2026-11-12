@@ -1,13 +1,12 @@
 package io.cequence.openaiscala.gemini.service.impl
 
-import akka.actor.ActorSystem
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{ChatCompletionBatchRequest, SystemMessage, UserMessage}
 import io.cequence.openaiscala.gemini.domain.settings.CreateChatCompletionSettingsOps._
 import io.cequence.openaiscala.gemini.service._
 import io.cequence.wsclient.domain.{SiteBinding, WsRequestContext}
-import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
+import io.cequence.openaiscala.testkit.TestEngines
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -28,14 +27,13 @@ import scala.concurrent.{Await, ExecutionContext}
 class GeminiBatchSystemCacheSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("gemini-batch-system-cache")
 
   // (path, request body)
   @volatile private var calls = Vector.empty[(String, JsValue)]
 
   private val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
   private lazy val baseUrl = s"http://localhost:${server.getAddress.getPort}/v1beta/"
-  private val engine = StreamedEngineRegistry.outputStreamed(TransportSettings())
+  private val engine = TestEngines.streaming()
 
   private lazy val service: GeminiService =
     new GeminiServiceImpl("k", None, Some(engine)) {
@@ -80,7 +78,6 @@ class GeminiBatchSystemCacheSpec extends AnyWordSpec with Matchers with BeforeAn
     adapter.close()
     engine.close()
     server.stop(0)
-    Await.result(system.terminate(), 10.seconds)
     ()
   }
 

@@ -1,8 +1,7 @@
 package io.cequence.openaiscala.gemini.service.impl
 
-import akka.NotUsed
 import io.cequence.openaiscala.service.{ClassifiedStreamingWSClient, PathSegment}
-import akka.stream.scaladsl.Source
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.gemini.JsonFormats._
 import io.cequence.openaiscala.gemini.domain.response.{
@@ -26,8 +25,8 @@ import io.cequence.openaiscala.gemini.service.{GeminiService, HandleGeminiErrorC
 import io.cequence.wsclient.JsonUtil.JsonOps
 import io.cequence.wsclient.ResponseImplicits.JsonSafeOps
 import io.cequence.wsclient.domain.{SiteBinding, WsRequestContext}
-import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
-import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtraAkka}
+import io.cequence.wsclient.service.spi.{TransportSettings, WSClientEngineRegistry}
+import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamCore}
 import play.api.libs.json._
 
 import java.io.File
@@ -51,7 +50,7 @@ import io.cequence.wsclient.service.ws.Timeouts
 private[service] class GeminiServiceImpl(
   apiKey: String,
   timeouts: Option[Timeouts] = None,
-  externalEngine: Option[WSClientEngine with WSClientOutputStreamExtraAkka] = None
+  externalEngine: Option[WSClientEngine with WSClientOutputStreamCore] = None
 )(
   override implicit val ec: ExecutionContext
 ) extends GeminiService
@@ -65,9 +64,9 @@ private[service] class GeminiServiceImpl(
   // privately-owned classpath-discovered engine with output streaming (SSE) support; note that
   // the raw upload/download paths below use the apiKey directly (via GeminiRawHttp), engine or
   // not
-  override protected val engine: WSClientEngine with WSClientOutputStreamExtraAkka =
+  override protected val engine: WSClientEngine with WSClientOutputStreamCore =
     externalEngine.getOrElse(
-      StreamedEngineRegistry.outputStreamed(
+      WSClientEngineRegistry.outputStreamed(
         TransportSettings(timeouts = timeouts.getOrElse(Timeouts()))
       )
     )
@@ -99,7 +98,7 @@ private[service] class GeminiServiceImpl(
   override def generateContentStreamed(
     contents: Seq[Content],
     settings: GenerateContentSettings
-  ): Source[GenerateContentResponse, NotUsed] = PathSegment.inSource {
+  ): AsyncStream[GenerateContentResponse] = PathSegment.inSource {
     execJsonStream(
       EndPoint.streamGenerateContent(settings.model),
       "POST",

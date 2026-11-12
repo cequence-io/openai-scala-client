@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.gemini.service.impl
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, ReasoningEffort}
 import io.cequence.openaiscala.domain.{
@@ -32,7 +30,6 @@ import io.cequence.openaiscala.gemini.service.GeminiService
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{mock, when}
 import org.mockito.invocation.InvocationOnMock
-import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
@@ -47,20 +44,9 @@ import scala.concurrent.{ExecutionContext, Future}
  * to the service that returned them; any other `ReasoningMessage` (e.g. after a router failed
  * over from a GPT-6 model) is left out, the history sent exactly as the one without it.
  */
-class GeminiReasoningMessageSpec
-    extends AnyWordSpec
-    with Matchers
-    with ScalaFutures
-    with BeforeAndAfterAll {
+class GeminiReasoningMessageSpec extends AnyWordSpec with Matchers with ScalaFutures {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("gemini-reasoning-message")
-  private implicit val materializer: Materializer = Materializer(system)
-
-  override protected def afterAll(): Unit = {
-    system.terminate()
-    ()
-  }
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
@@ -117,7 +103,7 @@ class GeminiReasoningMessageSpec
             invocation.getArgument[GenerateContentSettings](1)
           ))
         }
-        Source.single(answer)
+        AsyncStream.single(answer)
     }
 
     val adapter = new OpenAIGeminiChatCompletionService(underlying)
@@ -305,7 +291,7 @@ class GeminiReasoningMessageSpec
       def stream(settings: CreateChatCompletionSettings) =
         recording.adapter
           .createChatToolCompletionStreamed(question, Nil, None, settings)
-          .runWith(Sink.ignore)
+          .runDrain
           .futureValue
 
       // the default: summaries within the config an effort derives, none without one

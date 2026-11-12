@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.anthropic.service.impl
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.OpenAIScalaRateLimitException
 import io.cequence.openaiscala.anthropic.domain.ChatRole
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock.ToolUseBlock
@@ -22,7 +20,6 @@ import io.cequence.openaiscala.anthropic.domain.response.{
 }
 import io.cequence.openaiscala.anthropic.service.AnthropicScalaRateLimitException
 import io.cequence.openaiscala.domain.ChatRole.Assistant
-import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
@@ -36,23 +33,12 @@ import scala.concurrent.ExecutionContext
  * [[MessageStreamEvent]] stream to OpenAI-shaped chat-completion-chunk responses, and for
  * [[toOpenAIException]] error repackaging on the streamed adapter path.
  */
-class AnthropicStreamedToOpenAISpec
-    extends AnyWordSpec
-    with Matchers
-    with ScalaFutures
-    with BeforeAndAfterAll {
+class AnthropicStreamedToOpenAISpec extends AnyWordSpec with Matchers with ScalaFutures {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val system: ActorSystem = ActorSystem("anthropic-streamed-to-openai-spec")
-  private implicit val materializer: Materializer = Materializer(system)
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
-
-  override def afterAll(): Unit = {
-    system.terminate()
-    ()
-  }
 
   private def messageStart(
     id: String = "msg_1",
@@ -109,7 +95,8 @@ class AnthropicStreamedToOpenAISpec
         MessageDelta(Some("end_turn"), None, Some(MessageDeltaUsage(output_tokens = 5)))
       )
 
-      val chunks = Source(events.toList).via(toOpenAIChunks).runWith(Sink.seq).futureValue
+      val chunks =
+        AsyncStream.fromIterable(events.toList).via(toOpenAIChunks).runToSeq.futureValue
 
       chunks.foreach { c =>
         c.id shouldBe "msg_1"
@@ -141,7 +128,8 @@ class AnthropicStreamedToOpenAISpec
         MessageDelta(Some("end_turn"), None, None)
       )
 
-      val chunks = Source(events.toList).via(toOpenAIChunks).runWith(Sink.seq).futureValue
+      val chunks =
+        AsyncStream.fromIterable(events.toList).via(toOpenAIChunks).runToSeq.futureValue
 
       // thinking deltas must not surface as content chunks (the only non-empty content is
       // the text delta - the message-start chunk carries content = Some(""))
@@ -173,7 +161,8 @@ class AnthropicStreamedToOpenAISpec
         MessageDelta(Some("tool_use"), None, Some(MessageDeltaUsage(output_tokens = 3)))
       )
 
-      val chunks = Source(events.toList).via(toOpenAIChunks).runWith(Sink.seq).futureValue
+      val chunks =
+        AsyncStream.fromIterable(events.toList).via(toOpenAIChunks).runToSeq.futureValue
 
       val toolCallFragments =
         chunks.flatMap(_.choices.flatMap(_.delta.tool_calls.getOrElse(Nil)))
@@ -211,7 +200,8 @@ class AnthropicStreamedToOpenAISpec
         MessageStop
       )
 
-      val chunks = Source(events.toList).via(toOpenAIChunks).runWith(Sink.seq).futureValue
+      val chunks =
+        AsyncStream.fromIterable(events.toList).via(toOpenAIChunks).runToSeq.futureValue
 
       chunks shouldBe empty
     }
@@ -222,7 +212,8 @@ class AnthropicStreamedToOpenAISpec
         MessageDelta(Some("max_tokens"), None, None)
       )
 
-      val chunks = Source(events.toList).via(toOpenAIChunks).runWith(Sink.seq).futureValue
+      val chunks =
+        AsyncStream.fromIterable(events.toList).via(toOpenAIChunks).runToSeq.futureValue
 
       val last = chunks.last
       last.choices.head.finish_reason shouldBe Some("max_tokens")
@@ -243,11 +234,11 @@ class AnthropicStreamedToOpenAISpec
       toOpenAIException(original) should be theSameInstanceAs original
     }
 
-    "fail a mapError'd Source with the repackaged exception" in {
-      val failed = Source
+    "fail a mapError'd stream with the repackaged exception" in {
+      val failed = AsyncStream
         .failed[Int](new AnthropicScalaRateLimitException("rate limited"))
         .mapError(toOpenAIException)
-        .runWith(Sink.ignore)
+        .runDrain
 
       whenReady(failed.failed) { e =>
         e shouldBe a[OpenAIScalaRateLimitException]

@@ -1,7 +1,5 @@
 package io.cequence.openaiscala.claudeagent.service
 
-import akka.NotUsed
-import akka.stream.scaladsl.Source
 import io.cequence.openaiscala.claudeagent.domain.{
   ClaudeAgentEvent,
   ClaudeAgentProcessExit,
@@ -9,6 +7,7 @@ import io.cequence.openaiscala.claudeagent.domain.{
   PermissionDecision
 }
 import io.cequence.wsclient.service.CloseableService
+import io.cequence.wsclient.stream.AsyncStream
 import play.api.libs.json.{JsObject, JsValue, Json}
 
 import scala.concurrent.Future
@@ -16,9 +15,9 @@ import scala.concurrent.Future
 /**
  * A live, bidirectional session with a `claude` CLI subprocess. One instance = one running
  * process = one conversation. Unlike this library's HTTP-based streaming services, `events` is
- * NOT a cold, per-subscription `Source` - the process is spawned once, eagerly, when the
- * session is created (see `ClaudeAgentServiceFactory.startSession`); `events` can still be
- * materialized more than once (it's `BroadcastHub`-backed) without re-spawning.
+ * NOT a cold stream that starts its work per run - the process is spawned once, eagerly, when
+ * the session is created (see `ClaudeAgentServiceFactory.startSession`); `events` can still be
+ * run more than once (it is backed by a broadcast hub), each run joining the live session.
  */
 trait ClaudeAgentService extends CloseableService {
 
@@ -33,10 +32,12 @@ trait ClaudeAgentService extends CloseableService {
 
   /**
    * The full event stream: system/assistant/user/result/stream_event messages plus
-   * tool-permission requests from the CLI. It is hot after the initial `system`/`init` replay,
-   * so materialize it before sending a turn whose events you need to observe.
+   * tool-permission requests from the CLI. Every run starts with the `system`/`init` message
+   * (replayed) and continues with the live events from the moment the run started - it is hot,
+   * so run it before sending a turn whose events you need to observe. The slowest running
+   * consumer paces the others; with none, events are read and dropped.
    */
-  def events: Source[ClaudeAgentEvent, NotUsed]
+  def events: AsyncStream[ClaudeAgentEvent]
 
   /** Sends a plain user-turn text message. */
   def send(text: String): Future[Unit]
