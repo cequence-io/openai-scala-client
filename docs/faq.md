@@ -64,6 +64,14 @@ openai-scala-client {
    [Streaming](streaming.md#consuming-a-stream-akka-pekko-fs2-zio).
 
 
-6. _It all looks cool. I want to chat with you about your research and development?_
+6. 🔥 _Many calls started at once on a fresh service fail with "HTTP connect timed out". Why?_
+
+   On the default `jdk` engine, `java.net.http` opens a connection per concurrent call until its first connection to
+   the host is up; where new TLS connections are slow, the later calls of the burst pass the connect timeout (5 s by
+   default). Send one call first - afterwards the calls share one HTTP/2 connection - or raise `connectTimeout` (see
+   [The `jdk` engine](http-engine.md#the-jdk-engine)).
+
+
+7. _It all looks cool. I want to chat with you about your research and development?_
 
    Just shoot us an email at [openai-scala-client@cequence.io](mailto:openai-scala-client@cequence.io?subject=Research%20andDevelopment).

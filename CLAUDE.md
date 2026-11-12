@@ -29,11 +29,13 @@ The project uses SBT with custom command aliases defined in build.sbt:
 
 ### Cross-Build
 The project cross-compiles for Scala 2.12.18, 2.13.18, and 3.2.2:
-- `sbt ++2.12.18 test`
+- `sbt ++2.12.18 test` (on the `2.0` branch: `sbt ++2.12.18 "project ci_scala212" test`, see below)
 - `sbt ++2.13.18 test`
-- `sbt ++3.2.2 test`
+- `sbt ++3.2.2 test` (on the `2.0` branch: `sbt ++3.2.2 "project ci_scala3" test`)
 
-On the `2.0` branch the ZIO module (`zio`, `openai-scala-zio`) builds 2.12.18 / 2.13.18 / 3.3.8 instead - ws-client-zio's Scala 3 artifact is built with 3.3, so on Scala 3 the module needs 3.3+ (`sbt ++3.3.8 zio/test`). The 3.2-line modules it depends on also build with 3.3.8 for it (`alsoOnScala33` in build.sbt); those 3.3 builds are never published - their `_3` artifacts come from 3.2.2 only. CI's matrix is 2.12.18 / 2.13.18 / 3.2.2.
+On the `2.0` branch the ZIO module (`zio`, `openai-scala-zio`) builds 2.12.18 / 2.13.18 / 3.3.8 instead - ws-client-zio's Scala 3 artifact is built with 3.3, so on Scala 3 the module needs 3.3+ (`sbt ++3.3.8 zio/test`). The 3.2-line modules it depends on also build with 3.3.8 for it (`alsoOnScala33` in build.sbt); those 3.3 builds are never published - their `_3` artifacts come from 3.2.2 only.
+
+On the `2.0` branch several projects build for fewer Scala versions (the ZIO module and the fs2 / ZIO interop examples 2.12 / 2.13, the Pekko ones 2.13 only, the engine matrix per its engines), and a root `++<v> test` leaves them on 2.13 next to dependencies switched to `<v>` - an update conflict (`_3` and `_2.13` suffixes). So cross-version runs go through the per-line aggregates (build.sbt, `ci_*`, as CI does): `sbt ++2.12.18 "project ci_scala212" test`, `++2.13.18 "project ci_scala213"`, `++3.2.2 "project ci_scala3"`, `++3.3.8 "project ci_scala33"` (the ZIO module), and the engine matrix `ci_matrix212` / `ci_matrix213` / `ci_matrix3` (CI's job "Engine Matrix"). A root `sbt test` on the default 2.13.18 still runs everything.
 
 ### Running Examples
 The `Example` trait uses `System.exit()` which sbt's TrapExit mechanism intercepts, causing output to be swallowed. For reliable output when running examples from sbt, either:
@@ -619,8 +621,10 @@ Streaming is provided as an extension via the `openai-client-stream` module:
     added. The session applies the confirmations of ONE POST one at a time and idles in between (`requires_action`
     listing the still-queued ids - live 2026-09-29, the queued one IS applied without another POST): such an interim
     idle (all ids confirmed by this resume) is passed through as `Other("session.status_idle")`, not a pause, and a
-    real pause never re-asks a confirmed id. Known gap (TODO): the confirmation POST is not gated on the SSE
-    subscription being live.
+    real pause never re-asks a confirmed id. The kickoff / confirmation POST waits for the SSE subscription
+    (`subscribeSessionEvents` - a preflight completing on the server's `: connected.` frame, native on Akka / Pekko /
+    ZIO engines): the session delivers only to a live subscription, and on 2.0's cold streams a POST sent alongside
+    the GET raced it (lost the turn's events on the Play WS engine - found by `matrix_akka`, 2026-11-12).
   - Everything else refuses rather than silently misbehaving: adapters / entry points that cannot resume refuse a call
     carrying decisions (`ToolApprovalSettingsOps.refusingDecisions`: Anthropic Messages / Bedrock, Gemini, Vertex AI,
     Sonar, TypeSafe, the OpenAI chat-only services, `createChatFunCompletion`, `createChatWebSearchCompletion`,
@@ -934,14 +938,26 @@ Distilled (2026-11) from the Scala Style Guide, the Scala 3 Book, "Binary Compat
   client(-stream), zio and the provider modules; it registers no engine): `TestEngines.streaming()` / `plain()` resolve
   an engine like the library does (`-Dws-client.engine=<id>` picks one, else the highest priority on the test
   classpath - jdk by default, zio-http in the zio module's Scala 2 tests, which have it as a test dependency);
-  `StreamSpecSupport` (`runStream` / `runStreamFailure` / `runStreamTake` /
+  `StreamSpecSupport` (`runStream` / `runStreamFailure` / `runStreamTake` / `runStreamDrain` /
   `runStreamCounted` - the last also counts the `Flow.Publisher` bridges the run built, via ws-client's
   `StreamDiagnostics.counted`) runs a stream through the `StreamRunner` chosen with `-Dopenai.test.consumer`
-  (`neutral`, the default; another runner registers a `StreamRunner.Provider` via `ServiceLoader` - none in this repo
-  yet). Wire specs take their engine from `TestEngines` (1.x: `StreamedEngineRegistry`; a few call
-  `WSClientEngineRegistry` directly, resolved the same way; a spec pinning one backend names it, e.g. zio-http) and run streams with `AsyncStream`'s own `runToSeq` / `runDrain` / `runHead` or
-  `StreamSpecSupport` (1.x: `runWith(Sink.seq)` / `Sink.ignore`); no spec builds an ActorSystem or uses Akka's
-  TestKit.
+  (`neutral`, the default; the matrix projects register `akka` / `pekko` / `zio` / `fs2` runners via `ServiceLoader`);
+  with `-Dopenai.test.expectedBridges=<n>` every such run also asserts its bridge count. Wire specs take their engine
+  from `TestEngines` (a spec pinning one backend names it, e.g. zio-http) and run EVERY stream through
+  `StreamSpecSupport` (since 2026-11-12: ~200 sites in 46 specs - a direct `.runToSeq` would always run neutral and
+  escape the matrix); no spec builds an ActorSystem or uses Akka's TestKit.
+- **Engine x consumer matrix** (WP13, unpublished projects under `openai-matrix/`, `test->test` on core,
+  client-stream and the provider modules, so they RUN ALL THEIR SPECS in a forked JVM): `matrix_akka`
+  (play-akka-stream engine, Akka consumer, 0 bridges asserted on every run; 2.12 / 2.13 / 3.2.2), `matrix_pekko`
+  (play-pekko-stream, Pekko, 0; 2.13), `matrix_zio` (zio-http, ZIO, 0; also openai-zio's specs; 2.12 / 2.13),
+  `matrix_fs2` (jdk, fs2, no expectation - one bridge per HTTP response; 2.12 / 2.13), `matrix_nostream` (sttp +
+  play-akka: the capability error, sync calls, buffered binary-safe downloads). Each has its own bridge-count spec
+  (`BridgeCounts*Spec`: the engine's own stream 0, jdk into a native consumer 1 per response, the Claude agent's hub
+  1). A spec whose stream legitimately bridges overrides `expectedBridges` with a comment (only the Claude agent's
+  hot hub); a matrix failure is a library or engine finding, never a reason to weaken a spec. First run
+  (2026-11-12) found: the managed-agent adapter's POST racing its SSE subscription (Play WS engine), the Claude agent's
+  readiness race, and two zio-http engine defects (repeated request headers collapsed to the last one - Anthropic's
+  betas -, path sub-delimiters re-encoded) reported to ws-client.
 - Convention specs (openai-core tests) scan the main sources: `NoBackendImportsConventionSpec` - no Akka, Pekko, fs2,
   ZIO or Play WS import (nor `PlayJsonUtil`) in openai-core, -client and -client-stream (its `portedModules`);
   `StreamErrorMappingConventionSpec` - every engine-level stream call is followed by `.mapError(mapHttpStatusErrors)`
@@ -969,8 +985,7 @@ val service = OpenAIServiceFactory(apiKey = "sk-...")
 
 Since the ws-client 1.0 engine-discovery migration (`io.cequence:ws-client-*`, a real Maven
 Central release since 2026-07 - no longer a SNAPSHOT; 1.1.5 on master, 1.2.0 on the `2.0`
-branch - release-prepared, the build names `1.2.0-SNAPSHOT` until it is on Maven Central - see
-`project/Dependencies.scala`), EACH service created via the plain factories owns a
+branch - on Maven Central since 2026-11-12 - see `project/Dependencies.scala`), EACH service created via the plain factories owns a
 private engine, discovered on the classpath (`WSClientEngineRegistry`; `.outputStreamed(...)` for
 streamed services). On the `2.0` branch that is the JDK engine unless another one is on the
 classpath: no actor system, a `java.net.http` client on the global `ExecutionContext`. A

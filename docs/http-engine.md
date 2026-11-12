@@ -305,8 +305,17 @@ anything needs a `readTimeout` longer than that pause.
   HTTP/1.1. If a server or a proxy in between misbehaves on HTTP/2, set `Some(HttpVersion.Http11)`.
 - **Timeouts:** see the table above. `requestTimeout` defaults to 2 minutes and `connectTimeout` to 5 seconds;
   `pooledConnectionIdleTimeout` is ignored.
+- **A burst of calls on a fresh engine.** Until its first connection to a host is up, `java.net.http` opens a
+  connection per concurrent call - it learns that the host speaks HTTP/2 only from that connection. Where new TLS
+  connections are slow, the later calls of a burst run past `connectTimeout` and fail with a timeout (measured
+  2026-11-12 from one network: 50 concurrent first calls to OpenAI, Anthropic, Gemini or Mistral, 20-25 of them
+  failed at 5 s; curl needed the same 12 s for 50 fresh TLS connections there). Once a connection is up, calls share
+  it: the same 50 calls after one warm-up call went over one HTTP/2 connection in about 0.5 s. So send one call
+  before fanning out, or raise `connectTimeout`. (The Play engines speak HTTP/1.1 and open a connection per concurrent
+  call regardless.)
 - **Multipart bodies are built in memory.** This covers file uploads, audio transcriptions and image edits: the whole
-  file and form are in memory before they are sent. The Play engines stream these bodies instead.
+  file and form are in memory before they are sent - a 100 MiB upload peaked at ~350-490 MiB of heap (measured
+  2026-11-12). The Play engines stream these bodies instead.
 - **Restricted headers:** `java.net.http` sets `Host`, `Connection`, `Content-Length`, `Expect` and `Upgrade` itself.
   If a request context or a call sets one of them, the header is dropped, with one warning per header name (unless the
   JVM allows it through `jdk.httpclient.allowRestrictedHeaders`).

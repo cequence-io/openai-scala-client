@@ -46,7 +46,11 @@ when not given explicitly:
 🔥 The adapter takes only the implicit execution context (no `Materializer` since 2.0.0), and its streams are cold: a
 streamed call that starts a turn creates the turn's session when the stream is run - each run a new session and a new,
 billed turn - so a stream that is never run creates nothing. The native `streamSessionEvents` is an `AsyncStream` as
-well (see [Streaming](streaming.md#asyncstream)).
+well (see [Streaming](streaming.md#asyncstream)): cold, it connects only when it runs, and a session delivers only the
+events that happen while a subscription is live. To send events without missing what they cause, use
+`subscribeSessionEvents(sessionId)` 🔥: its `Future` completes once the server confirmed the subscription, with the
+events from then on as a single-run stream - send the kickoff or the tool confirmations then, and run the stream. The
+adapter does exactly that.
 
 See the [managedagents examples](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/anthropic/managedagents)
 for end-to-end flows over every resource type.

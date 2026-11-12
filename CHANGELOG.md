@@ -51,6 +51,8 @@ code for Futures-only, Akka, Pekko, fs2 and ZIO users and for implementers of th
 - `ClassifiedStreamingWSClient`, the base of the streamed services, extends ws-client's
   `WSClientWithEngineAsyncStreamingBase` (was `WSClientWithEngineOutputStreamingBase`): its `execJsonStream` /
   `execRawStream` return `AsyncStream`s.
+- `AnthropicSessionService` (so `AnthropicService`) has a new method, `subscribeSessionEvents(sessionId):
+  Future[AsyncStream[SessionEventEnvelope]]` - an implementation of the trait adds it (see "Fixed").
 - Akka, Play WS and ws-client's Akka modules are no longer on the classpath. Code that used them through this library -
   Akka itself, `StreamedEngineRegistry`, `PollingHelper`, `PlayJsonUtil`, `asSafeSource` - adds them itself or moves to the
   neutral ones: `WSClientEngineRegistry.outputStreamed`, `PollingHelperCore`, `engine.renderJsonBody`.
@@ -193,6 +195,14 @@ Also on the 1.x line (merged from it since 1.7.0):
   default is not UTF-8 (before JDK 18 on Windows, for instance) non-ASCII text came out garbled.
 - The Anthropic Managed Agents adapter created a turn's session when the streaming method was called, so a stream that
   was never run left a session behind; the session is created when the stream runs.
+- The Anthropic Managed Agents adapter sends a turn's kickoff or tool confirmations once its event stream is subscribed
+  (the new `AnthropicSessionService.subscribeSessionEvents`): a session delivers only to a live subscription, and with
+  cold streams the POST sent alongside the subscription could arrive first - the turn's events were lost and the stream
+  failed ("closed before the turn ended"). Seen on the Play WS (Akka) engine.
+- Claude agent client: when the CLI exited right after writing its `system`/`init` message, `ready` could fail with
+  "Claude process exited before system/init" (the process's exit raced the reading of its output); readiness is now
+  decided once the output was read to its end, and the session's own failure (its exit code and stderr) reaches
+  `events`.
 - Vertex AI's sync calls waited for the SDK's future with a blocking `get`, holding a thread of the JVM's common pool per
   call in flight; they complete from the SDK's callback now.
 
