@@ -15,6 +15,18 @@ ThisBuild / scalaVersion := scala213
 ThisBuild / version := "2.0.0-SNAPSHOT"
 ThisBuild / isSnapshot := true
 
+// Scala 3's library pinned to scalaVersion, as sbt did before 1.10: since then a dependency's
+// newer one joins the classpath (sbt's Scala override names only the Scala 2 artifacts), and a
+// test dependency built with Scala 3.3 (scalamock 6) put scala3-library 3.3 next to 3.2.2 on the
+// 3.2.2 line - its compiler cannot read 3.3 TASTy
+lazy val pinnedScalaLibrary =
+  dependencyOverrides ++= {
+    if (scalaBinaryVersion.value == "3")
+      Seq("org.scala-lang" % "scala3-library_3" % scalaVersion.value)
+    else
+      Nil
+  }
+
 lazy val commonSettings = Seq(
   libraryDependencies += "org.scalactic" %% "scalactic" % "3.2.16",
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.16" % Test,
@@ -23,6 +35,20 @@ lazy val commonSettings = Seq(
   libraryDependencies += "ch.qos.logback" % "logback-classic" % Dependencies.Versions.logback % Test,
   scalacOptions += "-feature",
   crossScalaVersions := List(scala212, scala213, scala3),
+  pinnedScalaLibrary,
+  // coverage instrumentation slows hot loops several times over: no time bounds asserted then
+  Test / testOptions ++= {
+    if (coverageEnabled.value)
+      Seq(
+        Tests.Argument(
+          TestFrameworks.ScalaTest,
+          "-l",
+          "io.cequence.openaiscala.testkit.TimingSensitive"
+        )
+      )
+    else
+      Nil
+  },
   // the unpublished testkit (every module's test dependency) stays out of the published POMs
   pomPostProcess := { (node: XmlNode) =>
     val dropTestkit = new RewriteRule {
@@ -363,6 +389,7 @@ def matrixSettings(
 ): Seq[Setting[_]] =
   Seq(
     scalacOptions += "-feature",
+    pinnedScalaLibrary,
     publish / skip := true,
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.16" % Test,
     Test / fork := true,

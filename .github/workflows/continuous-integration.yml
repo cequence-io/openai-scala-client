@@ -24,12 +24,8 @@ jobs:
           java-version: '11'
           cache: 'sbt'
 
-      - name: Set up Scala and sbt
-        uses: olafurpg/setup-scala@v14
-        with:
-          java-version: '11'
-          #          scala-version: '2.13.10'
-          sbt-version: '1.8.2'
+      - name: Set up sbt
+        uses: sbt/setup-sbt@v1
 
       - name: Validate Code
         run: sbt validateCode
@@ -44,15 +40,21 @@ jobs:
       fail-fast: true
       matrix:
         # each Scala line runs its own aggregate (build.sbt, ci_*): the root mixes lines
+        # coverage where the scoverage runtime is published for the line (not 3.2.2: its Scala 3
+        # runtime is built with 3.3, which 3.2.2 cannot read)
         include:
           - scala: '2.12.18'
             line: 'ci_scala212'
+            task: 'testWithCoverage'
           - scala: '2.13.18'
             line: 'ci_scala213'
+            task: 'testWithCoverage'
           - scala: '3.2.2'
             line: 'ci_scala3'
+            task: 'test'
           - scala: '3.3.8'
             line: 'ci_scala33'
+            task: 'testWithCoverage'
 
     steps:
       - uses: actions/checkout@v4
@@ -64,15 +66,11 @@ jobs:
           java-version: '11'
           cache: 'sbt'
 
-      - name: Set up Scala and sbt
-        uses: olafurpg/setup-scala@v14
-        with:
-          java-version: '11'
-          #          scala-version: '2.13.10'
-          sbt-version: '1.8.2'
+      - name: Set up sbt
+        uses: sbt/setup-sbt@v1
 
       - name: Build & Test
-        run: sbt ++${{ matrix.scala }} "project ${{ matrix.line }}" clean testWithCoverage
+        run: sbt ++${{ matrix.scala }} "project ${{ matrix.line }}" clean ${{ matrix.task }}
 
       - name: Upload coverage report (all)
         uses: actions/upload-artifact@v4
@@ -108,11 +106,8 @@ jobs:
           java-version: '11'
           cache: 'sbt'
 
-      - name: Set up Scala and sbt
-        uses: olafurpg/setup-scala@v14
-        with:
-          java-version: '11'
-          sbt-version: '1.8.2'
+      - name: Set up sbt
+        uses: sbt/setup-sbt@v1
 
       - name: Engine x consumer matrix
         run: sbt ++${{ matrix.scala }} "project ${{ matrix.line }}" test
@@ -133,11 +128,8 @@ jobs:
           java-version: '11'
           cache: 'sbt'
 
-      - name: Set up Scala and sbt
-        uses: olafurpg/setup-scala@v14
-        with:
-          java-version: '11'
-          sbt-version: '1.8.2'
+      - name: Set up sbt
+        uses: sbt/setup-sbt@v1
 
       # the Scala 3 artifacts published to a private Ivy home, consumed from Scala 3.2.2 (Akka)
       # and 3.3 (Pekko, fs2, ZIO): the migration snippets with -Werror, a stream per consumer
@@ -173,21 +165,17 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup JDK
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: ${{ matrix.distribution }}
           java-version: ${{ matrix.jdk }}
           cache: 'sbt'
 
-      - name: Set up Scala and sbt
-        uses: olafurpg/setup-scala@v14
-        with:
-          java-version: ${{ matrix.jdk }}
-          #          scala-version: '2.13.10'
-          sbt-version: '1.8.2'
+      - name: Set up sbt
+        uses: sbt/setup-sbt@v1
 
       - name: Perform Build / Test
         run: sbt ++${{ matrix.scala }} "project ${{ matrix.line }}" clean compile test

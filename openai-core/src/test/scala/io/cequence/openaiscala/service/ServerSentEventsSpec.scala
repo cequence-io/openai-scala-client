@@ -2,7 +2,7 @@ package io.cequence.openaiscala.service
 
 import io.cequence.wsclient.stream.{AsyncStream, Bytes}
 import io.cequence.openaiscala.OpenAIScalaClientException
-import io.cequence.openaiscala.testkit.StreamSpecSupport
+import io.cequence.openaiscala.testkit.{StreamSpecSupport, TimingSensitive}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -149,7 +149,7 @@ class ServerSentEventsSpec
       }
     }
 
-    "decode a multi-megabyte event delivered in small chunks in linear time" in {
+    "decode a multi-megabyte event delivered in small chunks in linear time" taggedAs TimingSensitive in {
       // a 2 MiB event in 8 KiB chunks: a search of the whole buffer per chunk took minutes
       // here (1 MiB: 21 s); the carried-window search takes well under a second
       val text = "A" * (2 * 1024 * 1024)
@@ -165,7 +165,7 @@ class ServerSentEventsSpec
       seconds should be < 20.0
     }
 
-    "decode a 16 MiB event in 1460-byte chunks (TCP-sized) in linear time" in {
+    "decode a 16 MiB event in 1460-byte chunks (TCP-sized) in linear time" taggedAs TimingSensitive in {
       // a tail search on a rope of the chunks was quadratic here (64 MiB: 11 s, against 0.9 s
       // with the carried window - measured 2026-10-09); the per-run buffer is linear too
       val parts = Seq.fill(16 * 1024)("\"" + ("x" * 1018) + "\"")
@@ -181,7 +181,7 @@ class ServerSentEventsSpec
       seconds should be < 10.0
     }
 
-    "decode one huge chunk of blank lines in linear time" in {
+    "decode one huge chunk of blank lines in linear time" taggedAs TimingSensitive in {
       // 256 KiB of '\n' in ONE chunk = 131,072 boundaries: the decoder used to copy and rescan
       // the rest of the chunk once per boundary (quadratic)
       val chunk = Bytes(Array.fill[Byte](256 * 1024)('\n'.toByte))
@@ -194,7 +194,7 @@ class ServerSentEventsSpec
       seconds should be < 2.0
     }
 
-    "decode one chunk of thousands of small events, in order, in linear time" in {
+    "decode one chunk of thousands of small events, in order, in linear time" taggedAs TimingSensitive in {
       val count = 4096
       val chunk = Bytes.utf8((0 until count).map(i => s"""data: {"i":$i}\n\n""").mkString)
 
@@ -206,7 +206,7 @@ class ServerSentEventsSpec
       seconds should be < 2.0
     }
 
-    "decode one chunk of comment-only events in linear time" in {
+    "decode one chunk of comment-only events in linear time" taggedAs TimingSensitive in {
       // 64 KiB of ':\n\n' (21,845 events, none carrying data) in a single chunk
       val chunk = Bytes.utf8(":\n\n" * (64 * 1024 / 3))
 
