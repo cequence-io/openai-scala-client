@@ -22,11 +22,18 @@ trait Anthropic
 
   protected val logger: Logger = Logger(LoggerFactory.getLogger(this.getClass))
 
-  protected val skillHeaders: Seq[(String, String)] = Seq(
-    ("anthropic-beta", "skills-2025-10-02")
-//    ("anthropic-beta", "code-execution-2025-08-25"),
-//    ("anthropic-beta", "files-api-2025-04-14")
-  )
+  // A call's betas as ONE comma-joined `anthropic-beta` header, like the official SDKs: an HTTP
+  // stack may keep only one value of a repeated header (ws-client 1.2.0's zio-http engine keeps
+  // the last).
+  protected def betaHeaders(betas: Seq[String]): Seq[(String, String)] =
+    if (betas.isEmpty)
+      Nil
+    else
+      Seq(("anthropic-beta", betas.distinct.mkString(",")))
+
+  protected val skillBetas: Seq[String] = Seq("skills-2025-10-02")
+
+  protected val skillHeaders: Seq[(String, String)] = betaHeaders(skillBetas)
 
   // Managed Agents control-plane endpoints (agents, environments, sessions, deployments,
   // vaults, memory stores) require this beta header. These endpoints reject ANY other
@@ -41,7 +48,7 @@ trait Anthropic
 
   // Beta features for message creation. Sent per-call (not as always-on auth headers) so the
   // managed-agents endpoints, which reject these values, are unaffected.
-  protected def messageBetaHeaders: Seq[(String, String)] = {
+  protected def messageBetas: Seq[String] = {
     val base = Seq(
       "structured-outputs-2025-11-13",
       "output-128k-2025-02-19",
@@ -56,8 +63,10 @@ trait Anthropic
     )
     val pdf = if (withPdf) Seq("pdfs-2024-09-25") else Nil
     val cache = if (withCache) Seq("prompt-caching-2024-07-31") else Nil
-    (base ++ pdf ++ cache).map(("anthropic-beta", _))
+    base ++ pdf ++ cache
   }
+
+  protected def messageBetaHeaders: Seq[(String, String)] = betaHeaders(messageBetas)
 
   // Files API beta header, sent on file operations.
   protected val fileBetaHeaders: Seq[(String, String)] = Seq(

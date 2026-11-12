@@ -280,8 +280,31 @@ class AnthropicStreamedHttpErrorsWireSpec
       )
 
       lastBetas should not contain "context-1m-2025-08-07"
+      lastBetas should contain("structured-outputs-2025-11-13")
+    }
+
+    "send an OAuth token's beta next to a call's own betas" in {
+      // the OAuth beta rides in the auth headers, a call's betas in its own header - the engine
+      // sends two `anthropic-beta` header lines
+      val oauth = AnthropicServiceFactory.customInstance(
+        coreUrl,
+        WsRequestContext(
+          authHeaders =
+            AnthropicServiceFactory.buildAuthTokenHeaders("t", withOAuthBeta = true)
+        )
+      )
+      try
+        failure[AnthropicScalaRateLimitException](rateLimited)(
+          oauth.createMessageStreamed(
+            Seq(UserMessage("hi")),
+            AnthropicCreateMessageSettings("claude-haiku-4-5", max_tokens = 10)
+          )
+        )
+      finally oauth.close()
+
+      lastBetas should contain("structured-outputs-2025-11-13")
       knownEngineDefect("zio-http", "keeps only the last value of a repeated request header") {
-        lastBetas should contain("structured-outputs-2025-11-13")
+        lastBetas should contain("oauth-2025-04-20")
       }
     }
   }

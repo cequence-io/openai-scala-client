@@ -103,7 +103,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       bodyParams = bodyParams,
       // message-feature betas + skill headers if a container (with skills) is passed
       extraHeaders =
-        messageBetaHeaders ++ (if (settings.container.isDefined) skillHeaders else Nil)
+        betaHeaders(messageBetas ++ (if (settings.container.isDefined) skillBetas else Nil))
     ).map(
       _.asSafeJson[CreateMessageResponse]
     )
@@ -122,7 +122,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       // `web_search_tool_result` (21 KB live on 2026-09-10) or a fetched document can be
       // large, hence the shared StreamingConsts.maxFrameLength (ws-client's default is 20 KB)
       extraHeaders =
-        messageBetaHeaders ++ (if (settings.container.isDefined) skillHeaders else Nil)
+        betaHeaders(messageBetas ++ (if (settings.container.isDefined) skillBetas else Nil))
     ).map(parseStreamEvent)
   }
 
