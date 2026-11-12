@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.examples.togetherai
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.RetryHelpers
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
@@ -107,10 +104,7 @@ object MuseGlimmer30BSmokeTest extends RetryHelpers {
     s"${e.getClass.getSimpleName}: ${Option(e.getMessage).getOrElse("(no message)").take(400)}"
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val materializer: Materializer = Materializer(system)
-    implicit val scheduler: akka.actor.Scheduler = system.scheduler
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val together = ChatCompletionProvider.togetherAI
     val model = NonOpenAIModelId.meta_models_muse_glimmer_30b
@@ -154,7 +148,7 @@ object MuseGlimmer30BSmokeTest extends RetryHelpers {
             Seq(UserMessage("Count from 1 to 5, comma separated.")),
             settings
           )
-          .runWith(Sink.seq)
+          .runToSeq
           .map { chunks =>
             val text = chunks.flatMap(_.choices.headOption.flatMap(_.delta.content)).mkString
             if (text.isEmpty) throw new IllegalStateException("no streamed text")
@@ -287,7 +281,6 @@ object MuseGlimmer30BSmokeTest extends RetryHelpers {
     println(if (failures.get == 0) "ALL PASSED" else s"${failures.get} FAILED")
 
     together.close()
-    Await.result(system.terminate(), 30.seconds)
     System.exit(if (failures.get == 0) 0 else 1)
   }
 }

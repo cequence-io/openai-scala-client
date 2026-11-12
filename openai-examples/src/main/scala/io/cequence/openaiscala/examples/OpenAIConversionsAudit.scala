@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.examples
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import io.cequence.openaiscala.FutureHelpers
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings._
@@ -140,9 +138,7 @@ object OpenAIConversionsAudit {
   }
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val materializer: Materializer = Materializer(system)
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val out = new PrintWriter(args.head)
     val models = args.tail.toSeq
@@ -175,8 +171,8 @@ object OpenAIConversionsAudit {
       cases(model).filter(c => onlyCases.forall(_.contains(c._1))).map(model -> _)
     )
 
-    val all = Source(allCases.toList)
-      .mapAsyncUnordered(parallelism) { case (model, (name, messages, settings, withTools)) =>
+    val all = FutureHelpers.parallelize(allCases.toList, Some(parallelism)) {
+      case (model, (name, messages, settings, withTools)) =>
         val sent =
           if (withTools) bodyMaker.body(messages, bodyMaker.toolSettings(settings))
           else bodyMaker.body(messages, settings)
@@ -191,13 +187,11 @@ object OpenAIConversionsAudit {
           if (done.incrementAndGet() % 50 == 0) println(s"${done.get} cases done")
           Success(())
         }
-      }
-      .runWith(Sink.ignore)
+    }
 
     Try(Await.result(all, 60.minutes))
     out.close()
     service.close()
-    Await.result(system.terminate(), 30.seconds)
     System.exit(0)
   }
 }

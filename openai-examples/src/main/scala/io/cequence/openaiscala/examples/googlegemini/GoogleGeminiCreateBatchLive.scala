@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.examples.googlegemini
 
-import akka.pattern.after
+import io.cequence.wsclient.concurrent.Futures
 import io.cequence.openaiscala.domain.NonOpenAIModelId
 import io.cequence.openaiscala.gemini.domain.settings.GenerateContentSettings
 import io.cequence.openaiscala.gemini.domain.{
@@ -73,7 +73,7 @@ object GoogleGeminiCreateBatchLive extends ExampleBase[GeminiService] {
         Future.successful(batch)
       else {
         println(s"polling: state=${batch.state}...")
-        after(15.seconds, scheduler)(pollUntilTerminated(name))
+        Futures.after(15.seconds)(pollUntilTerminated(name))
       }
     }
 }

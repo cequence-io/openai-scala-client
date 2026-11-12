@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.anthropic.domain.managedagents.{
   AgentTool,
   AgentToolConfig,
@@ -40,9 +37,7 @@ import scala.io.StdIn
 object CreateChatToolCompletionStreamedWithApprovalCallback {
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val materializer: Materializer = Materializer(system)
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val ask = args.contains("ask")
     val deny = args.contains("deny")
@@ -81,11 +76,14 @@ object CreateChatToolCompletionStreamedWithApprovalCallback {
         .createChatToolCompletionStreamedWithApprovals(messages, tools, settings = settings)(
           decide(label)
         )
-        .alsoTo(Sink.foreach[ChatChunk] {
-          case ChatChunk.Text(text)                               => print(text)
-          case _: ChatChunk.Thinking | _: ChatChunk.ToolCallDelta => ()
-          case chunk => println(s"[$label] ${ChatChunkPrinter.describe(chunk)}")
-        })
+        .map { chunk =>
+          chunk match {
+            case ChatChunk.Text(text)                               => print(text)
+            case _: ChatChunk.Thinking | _: ChatChunk.ToolCallDelta => ()
+            case other => println(s"[$label] ${ChatChunkPrinter.describe(other)}")
+          }
+          chunk
+        }
         .assembled
         .map { assembled =>
           println(
@@ -148,7 +146,6 @@ object CreateChatToolCompletionStreamedWithApprovalCallback {
 
     try Await.result(openAI.flatMap(_ => anthropic), 10.minutes)
     finally {
-      Await.result(system.terminate(), 30.seconds)
       ()
     }
   }

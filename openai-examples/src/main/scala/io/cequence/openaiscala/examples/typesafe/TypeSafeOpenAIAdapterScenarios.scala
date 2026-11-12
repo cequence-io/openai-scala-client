@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.typesafe
 
-import akka.actor.ActorSystem
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
@@ -119,10 +118,7 @@ object TypeSafeOpenAIAdapterScenarios {
     Json.format[TriageWithConfidence]
 
   def main(args: Array[String]): Unit = {
-    // the actor system only serves the JSON helper's retry scheduler
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val scheduler: akka.actor.Scheduler = system.scheduler
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
     val service = TypeSafeServiceFactory.asOpenAI()
 
     def scenario(
@@ -397,7 +393,6 @@ object TypeSafeOpenAIAdapterScenarios {
     try Await.result(all, 5.minutes)
     finally {
       service.close()
-      Await.result(system.terminate(), 10.seconds)
     }
 
   }

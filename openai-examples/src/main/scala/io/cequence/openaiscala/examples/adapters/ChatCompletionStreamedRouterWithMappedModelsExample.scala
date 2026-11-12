@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.adapters
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.examples.ExampleBase
@@ -85,12 +84,10 @@ object ChatCompletionStreamedRouterWithMappedModelsExample
         messages = messages,
         settings = CreateChatCompletionSettings(model)
       )
-      .runWith(
-        Sink.foreach { completion =>
-          val content = completion.choices.headOption.flatMap(_.delta.content)
-          print(content.getOrElse(""))
-        }
-      )
+      .runForeach { completion =>
+        val content = completion.choices.headOption.flatMap(_.delta.content)
+        print(content.getOrElse(""))
+      }
       .map(_ => println("\n--------"))
   }
 }

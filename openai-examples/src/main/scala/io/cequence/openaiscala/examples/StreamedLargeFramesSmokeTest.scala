@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain.{ModelId, NonOpenAIModelId}
 import io.cequence.openaiscala.domain.responsesapi.ResponseStreamEvent._
 import io.cequence.openaiscala.domain.responsesapi.tools.Tool
@@ -46,8 +43,6 @@ object StreamedLargeFramesSmokeTest {
 
   def main(args: Array[String]): Unit = {
     implicit val ec: ExecutionContext = ExecutionContext.global
-    implicit val system: ActorSystem = ActorSystem("streamed-large-frames")
-    implicit val materializer: Materializer = Materializer(system)
 
     val openAI = OpenAIServiceFactory.withStreaming()
     val gemini = GeminiServiceFactory()
@@ -84,7 +79,7 @@ object StreamedLargeFramesSmokeTest {
               )
             )
           )
-          .runWith(Sink.seq),
+          .runToSeq,
         5.minutes
       )
 
@@ -117,7 +112,7 @@ object StreamedLargeFramesSmokeTest {
               )
             )
           )
-          .runWith(Sink.seq),
+          .runToSeq,
         5.minutes
       )
 
@@ -136,7 +131,6 @@ object StreamedLargeFramesSmokeTest {
     } finally {
       openAI.close()
       gemini.close()
-      system.terminate()
     }
 
     println(if (failures.isEmpty) "ALL PASSED" else s"FAILED: ${failures.mkString("; ")}")

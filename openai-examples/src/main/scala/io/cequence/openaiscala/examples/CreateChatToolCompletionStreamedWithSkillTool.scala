@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.examples
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain.ChatCompletionTool.SkillTool
-import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{ModelId, UserMessage}
 import io.cequence.openaiscala.service.OpenAIServiceFactory
@@ -37,5 +35,5 @@ object CreateChatToolCompletionStreamedWithSkillTool
         tools = Seq(SkillTool(skillId, version = Some("latest"))),
         settings = CreateChatCompletionSettings(model = ModelId.gpt_6_astra)
       )
-      .runWith(Sink.foreach[ChatChunk](chunk => println(ChatChunkPrinter.describe(chunk))))
+      .runForeach(chunk => println(ChatChunkPrinter.describe(chunk)))
 }

@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.examples.typesafe
 
-import akka.actor.{ActorSystem, Scheduler}
+import io.cequence.wsclient.concurrent.Futures
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import io.cequence.openaiscala.domain.guardrails.{GuardrailCheck, ModelGuardrailSettings}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
@@ -43,8 +43,8 @@ import scala.util.{Failure, Success, Try}
  * requests per minute - the calls are paced 13 s apart there, `pace=<ms>` to change it) or
  * ScaleDown's own API (`target=scaledown`, `SCALEDOWN_API_KEY`, `classify-1`; its listing
  * answers any key, and without credits every other call is a 402 - the body passed its
- * validation, which comes first; its host takes TLS 1.3 only, which the Play WS engine offers
- * since ws-client 1.1.2).
+ * validation, which comes first; its host takes TLS 1.3 only, which the default `jdk` engine
+ * offers, and the Play WS engines since ws-client 1.1.2).
  *
  * The listing, a review (noul, choice and score), an object state with instructions (sent as
  * its pretty-printed text), a noul whose criteria decide the answer (appended to its
@@ -144,9 +144,7 @@ object ScaleDownSmokeTest {
 
   def main(args: Array[String]): Unit = {
     System.setProperty("java.awt.headless", "true")
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val ec: ExecutionContext = system.dispatcher
-    implicit val scheduler: Scheduler = system.scheduler
+    implicit val ec: ExecutionContext = ExecutionContext.global
     implicit val retrySettings: RetrySettings =
       RetrySettings(maxRetries = 2, delayOffset = 2.seconds)
 
@@ -175,7 +173,7 @@ object ScaleDownSmokeTest {
 
     def paced[T](f: => Future[T]): Future[T] =
       if (pace.length == 0) f
-      else akka.pattern.after(pace, scheduler)(Future.unit).flatMap(_ => f)
+      else Futures.after(pace)(Future.unit).flatMap(_ => f)
 
     def section(
       name: String
@@ -427,7 +425,6 @@ object ScaleDownSmokeTest {
     Try(Await.result(run, 15.minutes))
     service.close()
     println(if (failures.get == 0) "ALL PASSED" else s"${failures.get} FAILED")
-    Await.result(system.terminate(), 30.seconds)
     System.exit(if (failures.get == 0) 0 else 1)
   }
 }

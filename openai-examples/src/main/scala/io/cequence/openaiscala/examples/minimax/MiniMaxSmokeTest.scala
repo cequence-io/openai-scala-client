@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.examples.minimax
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.response.{ChatChunk, ChatCompletionResponse}
@@ -82,10 +79,7 @@ object MiniMaxSmokeTest {
   )
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val materializer: Materializer = Materializer(system)
-    implicit val scheduler: akka.actor.Scheduler = system.scheduler
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     def arg(name: String) = args.find(_.startsWith(name + "=")).map(_.drop(name.length + 1))
 
@@ -280,28 +274,26 @@ object MiniMaxSmokeTest {
         }
 
         _ <- section(s"$model: typed stream - thinking, then the text") {
-          service.createChatCompletionStreamedTyped(puzzle, settings).runWith(Sink.seq).map {
-            chunks =>
-              val text = chunks.collect { case ChatChunk.Text(t) => t }.mkString
-              val thinking = chunks.collect { case ChatChunk.Thinking(t) => t }.mkString
-              val usage = chunks.collect { case ChatChunk.Usage(u) => u }.lastOption
-              check(text.contains("10:46"), s"text='$text'")
-              check(!text.contains("<think>"), "<think> tags in the text")
-              check(thinking.nonEmpty, "no thinking")
-              s"text='${text.trim}', thinking ${thinking.length} chars, ${chunks.size} chunks, " +
-                s"usage ${usage.map(u => (u.prompt_tokens, u.completion_tokens))}"
+          service.createChatCompletionStreamedTyped(puzzle, settings).runToSeq.map { chunks =>
+            val text = chunks.collect { case ChatChunk.Text(t) => t }.mkString
+            val thinking = chunks.collect { case ChatChunk.Thinking(t) => t }.mkString
+            val usage = chunks.collect { case ChatChunk.Usage(u) => u }.lastOption
+            check(text.contains("10:46"), s"text='$text'")
+            check(!text.contains("<think>"), "<think> tags in the text")
+            check(thinking.nonEmpty, "no thinking")
+            s"text='${text.trim}', thinking ${thinking.length} chars, ${chunks.size} chunks, " +
+              s"usage ${usage.map(u => (u.prompt_tokens, u.completion_tokens))}"
           }
         }
 
         _ <- section(s"$model: OpenAI-shaped stream") {
-          service.createChatCompletionStreamed(puzzle, settings).runWith(Sink.seq).map {
-            chunks =>
-              val deltas = chunks.flatMap(_.choices.headOption.map(_.delta))
-              val text = deltas.flatMap(_.content).mkString
-              val thinking = deltas.flatMap(_.reasoningText).mkString
-              check(text.contains("10:46"), s"text='$text'")
-              check(!text.contains("<think>"), "<think> tags in the text")
-              s"text='${text.trim}', reasoning deltas ${thinking.length} chars"
+          service.createChatCompletionStreamed(puzzle, settings).runToSeq.map { chunks =>
+            val deltas = chunks.flatMap(_.choices.headOption.map(_.delta))
+            val text = deltas.flatMap(_.content).mkString
+            val thinking = deltas.flatMap(_.reasoningText).mkString
+            check(text.contains("10:46"), s"text='$text'")
+            check(!text.contains("<think>"), "<think> tags in the text")
+            s"text='${text.trim}', reasoning deltas ${thinking.length} chars"
           }
         }
       } yield ()
@@ -321,7 +313,6 @@ object MiniMaxSmokeTest {
       else
         s"${failures.get} FAILED"
     )
-    Await.result(system.terminate(), 30.seconds)
     System.exit(
       if (failures.get == 0)
         0

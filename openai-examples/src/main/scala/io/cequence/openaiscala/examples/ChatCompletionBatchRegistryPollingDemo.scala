@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.examples
 
-import akka.actor.{ActorSystem, Scheduler}
+import io.cequence.wsclient.concurrent.Futures
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{
@@ -58,8 +58,6 @@ object ChatCompletionBatchRegistryPollingDemo {
 
   def main(args: Array[String]): Unit = {
     implicit val ec: ExecutionContext = ExecutionContext.global
-    implicit val system: ActorSystem = ActorSystem("batch-registry-demo")
-    implicit val scheduler: Scheduler = system.scheduler
 
     val flow = for {
       registryRow <- submit()
@@ -69,7 +67,6 @@ object ChatCompletionBatchRegistryPollingDemo {
 
     try Await.result(flow, 30.minutes)
     finally {
-      system.terminate()
       ()
     }
   }
@@ -110,8 +107,7 @@ object ChatCompletionBatchRegistryPollingDemo {
     model: String,
     batchId: String
   )(
-    implicit ec: ExecutionContext,
-    scheduler: Scheduler
+    implicit ec: ExecutionContext
   ): Future[Unit] = {
     val router = buildRouter()
 
@@ -125,7 +121,7 @@ object ChatCompletionBatchRegistryPollingDemo {
             router.close()
           }
         else
-          akka.pattern.after(10.seconds, scheduler)(loop())
+          Futures.after(10.seconds)(loop())
       }
 
     loop()

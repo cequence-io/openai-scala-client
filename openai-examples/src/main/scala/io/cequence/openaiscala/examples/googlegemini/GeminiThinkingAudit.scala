@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.examples.googlegemini
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.{Sink, Source}
+import io.cequence.openaiscala.FutureHelpers
 import io.cequence.openaiscala.domain.UserMessage
 import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, ReasoningEffort}
 import io.cequence.openaiscala.gemini.service.GeminiServiceFactory
@@ -32,9 +30,7 @@ object GeminiThinkingAudit {
   )
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val materializer: Materializer = Materializer(system)
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val service = GeminiServiceFactory.asOpenAI()
 
@@ -45,28 +41,25 @@ object GeminiThinkingAudit {
       effort <- efforts
     } yield (model, effort)
 
-    val all = Source(pairs)
-      .mapAsync(parallelism) { case (model, effort) =>
-        service
-          .createChatCompletion(
-            Seq(UserMessage("Say hi.")),
-            CreateChatCompletionSettings(
-              model,
-              max_tokens = Some(4000),
-              reasoning_effort = Some(effort)
-            )
+    val all = FutureHelpers.parallelize(pairs, Some(parallelism)) { case (model, effort) =>
+      service
+        .createChatCompletion(
+          Seq(UserMessage("Say hi.")),
+          CreateChatCompletionSettings(
+            model,
+            max_tokens = Some(4000),
+            reasoning_effort = Some(effort)
           )
-          .transform { result =>
-            val status = result.fold(e => s"FAIL ${e.getMessage.take(140)}", _ => "OK")
-            println(f"$model%-34s ${effort.toString}%-8s $status")
-            Success(())
-          }
-      }
-      .runWith(Sink.ignore)
+        )
+        .transform { result =>
+          val status = result.fold(e => s"FAIL ${e.getMessage.take(140)}", _ => "OK")
+          println(f"$model%-34s ${effort.toString}%-8s $status")
+          Success(())
+        }
+    }
 
     Try(Await.result(all, 30.minutes))
     service.close()
-    Await.result(system.terminate(), 30.seconds)
     System.exit(0)
   }
 }

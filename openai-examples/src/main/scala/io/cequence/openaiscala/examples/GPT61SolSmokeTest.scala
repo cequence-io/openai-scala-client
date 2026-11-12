@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.response.ChatToolCompletionResponse
@@ -108,10 +105,7 @@ object GPT61SolSmokeTest {
     s"${e.getClass.getSimpleName}: ${Option(e.getMessage).getOrElse("(no message)").take(400)}"
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val materializer: Materializer = Materializer(system)
-    implicit val scheduler: akka.actor.Scheduler = system.scheduler
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val openAI = OpenAIServiceFactory.withStreaming()
     val model = ModelId.gpt_6_1_sol
@@ -311,7 +305,7 @@ object GPT61SolSmokeTest {
             Seq(UserMessage("Say hi")),
             CreateChatCompletionSettings(model).withServiceTier(ServiceTier.fast)
           )
-          .runWith(Sink.seq)
+          .runToSeq
           .map { chunks =>
             val text = chunks.flatMap(_.choices.headOption.flatMap(_.delta.content)).mkString
             if (text.isEmpty) throw new IllegalStateException("no streamed text")
@@ -329,7 +323,7 @@ object GPT61SolSmokeTest {
           sync <- openAI.createChatCompletion(Seq(UserMessage("Say hi")), ultrafast)
           streamed <- openAI
             .createChatCompletionStreamed(Seq(UserMessage("Count from 1 to 5.")), ultrafast)
-            .runWith(Sink.seq)
+            .runToSeq
         } yield {
           val text = streamed.flatMap(_.choices.headOption.flatMap(_.delta.content)).mkString
           if (text.isEmpty) throw new IllegalStateException("no streamed text")
@@ -380,7 +374,6 @@ object GPT61SolSmokeTest {
     println(if (failures.get == 0) "ALL PASSED" else s"${failures.get} FAILED")
 
     openAI.close()
-    Await.result(system.terminate(), 30.seconds)
     System.exit(if (failures.get == 0) 0 else 1)
   }
 }

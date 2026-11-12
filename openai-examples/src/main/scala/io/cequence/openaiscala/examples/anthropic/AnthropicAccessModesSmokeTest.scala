@@ -1,7 +1,5 @@
 package io.cequence.openaiscala.examples.anthropic
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain._
@@ -86,10 +84,7 @@ object AnthropicAccessModesSmokeTest {
   )
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val materializer: Materializer = Materializer(system)
-    implicit val scheduler: akka.actor.Scheduler = system.scheduler
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val region = env("AWS_BEDROCK_REGION").getOrElse("eu-central-1")
     val bedrockModel = "global." + NonOpenAIModelId.bedrock_claude_haiku_5_5
@@ -258,7 +253,6 @@ object AnthropicAccessModesSmokeTest {
     }
     println(if (failures.get == 0) "ALL PASSED" else s"${failures.get} FAILED")
 
-    Await.result(system.terminate(), 30.seconds)
     System.exit(if (failures.get == 0) 0 else 1)
   }
 }

@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.examples.guardrails
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.OpenAIScalaGuardrailException
 import io.cequence.openaiscala.domain.guardrails._
 import io.cequence.openaiscala.domain.response.ChatChunk
@@ -203,8 +200,6 @@ object GuardrailsSmokeTest {
       }
 
       // 3. streams
-      implicit val actorSystem: ActorSystem = ActorSystem("guardrails-smoke-test")
-      implicit val materializer: Materializer = Materializer(actorSystem)
 
       val streaming = OpenAIServiceFactory.withStreaming()
 
@@ -242,7 +237,7 @@ object GuardrailsSmokeTest {
           guardedStreams
             .createChatCompletionStreamedTyped(messages, settings)
             .map(chunk => (chunk, (System.nanoTime() - start) / 1000000))
-            .runWith(Sink.seq),
+            .runToSeq,
           2.minutes
         )
         val firstText =
@@ -298,7 +293,7 @@ object GuardrailsSmokeTest {
             settings
           )
           .map(chunk => (chunk, (System.nanoTime() - osStart) / 1000000))
-          .runWith(Sink.seq),
+          .runToSeq,
         2.minutes
       )
       val osFirst = osChunks.collectFirst {
@@ -313,7 +308,6 @@ object GuardrailsSmokeTest {
       if (osFinish != "stop") failures :+= "stream / OpenAI-shaped"
 
       streaming.close()
-      Await.result(actorSystem.terminate(), 30.seconds)
     } catch {
       case NonFatal(e) =>
         failures :+= s"error: $e"

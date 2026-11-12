@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import akka.actor.ActorSystem
 import io.cequence.openaiscala.domain.responsesapi.{
   CreateModelResponseSettings,
   Inputs,
@@ -98,8 +97,8 @@ object BedrockVsOpenAIGpt55Benchmark {
   )
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val ec: scala.concurrent.ExecutionContext = system.dispatcher
+    implicit val ec: scala.concurrent.ExecutionContext =
+      scala.concurrent.ExecutionContext.global
 
     val bedrock = OpenAIServiceFactory.forBedrock(isOpenAIModel = true)
     val openai = OpenAIServiceFactory()
@@ -138,7 +137,6 @@ object BedrockVsOpenAIGpt55Benchmark {
     } finally {
       bedrock.close()
       openai.close()
-      Await.result(system.terminate(), 10.seconds)
     }
   }
 

@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.{
   OpenAIScalaChainStoppedException,
   OpenAIScalaModelSkippedException
@@ -54,9 +53,7 @@ object FailoverPolicySmokeTest {
   )
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val scheduler: Scheduler = system.scheduler
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val service = OpenAIChatCompletionServiceFactory(
       ProviderSettings("https://api.openai.com/v1/", "OPENAI_SCALA_CLIENT_API_KEY")
@@ -274,7 +271,6 @@ object FailoverPolicySmokeTest {
       else
         s"${failures.get} FAILED"
     )
-    Await.result(system.terminate(), 30.seconds)
     System.exit(
       if (failures.get == 0)
         0

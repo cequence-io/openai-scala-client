@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import akka.actor.ActorSystem
 import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, ReasoningEffort}
 import io.cequence.openaiscala.domain.{
   BaseMessage,
@@ -37,8 +36,8 @@ object BedrockMantleVLMContentSmokeTest {
   )
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val ec: scala.concurrent.ExecutionContext = system.dispatcher
+    implicit val ec: scala.concurrent.ExecutionContext =
+      scala.concurrent.ExecutionContext.global
 
     val service = OpenAIServiceFactory.forBedrock(isOpenAIModel = true)
     val chatService = OpenAIResponsesChatCompletionService(service)
@@ -91,7 +90,6 @@ object BedrockMantleVLMContentSmokeTest {
       println("OK: PDF document content reached gpt-5.5 and was read.")
     } finally {
       chatService.close()
-      Await.result(system.terminate(), 10.seconds)
     }
   }
 }

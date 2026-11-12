@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.examples
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain.ChatCompletionTool.MCPServerTool
-import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{ModelId, NonOpenAIModelId, SystemMessage, UserMessage}
 import io.cequence.openaiscala.gemini.service.GeminiServiceFactory
@@ -65,7 +63,7 @@ object CreateChatToolCompletionStreamedWithMCPServerTool
         tools = Seq(deepwiki),
         settings = CreateChatCompletionSettings(model = model, max_tokens = Some(2000))
       )
-      .runWith(Sink.foreach[ChatChunk](chunk => println(ChatChunkPrinter.describe(chunk))))
+      .runForeach(chunk => println(ChatChunkPrinter.describe(chunk)))
       .map(_ => ())
   }
 

@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.JsonFormats.jsonSchemaFormat
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.domain.settings.{
@@ -163,9 +162,7 @@ object DerivedSchemaSmokeTest {
   }
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val scheduler: Scheduler = system.scheduler
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     def has(env: String) = sys.env.get(env).exists(_.nonEmpty)
     val only = args.find(_.startsWith("only=")).map(_.stripPrefix("only=").split(",").toSet)
@@ -370,7 +367,6 @@ object DerivedSchemaSmokeTest {
     val lines = Try(Await.result(all, 15.minutes)).getOrElse(Nil)
     val failed = lines.count(!_._2)
     println(s"${lines.size - failed} of ${lines.size} passed")
-    Await.result(system.terminate(), 30.seconds)
     System.exit(
       if (failed == 0 && lines.nonEmpty)
         0

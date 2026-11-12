@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.deepseek
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase}
@@ -32,9 +31,7 @@ object DeepseekCreateChatCompletionStreamed
           max_tokens = Some(512)
         )
       )
-      .runWith(
-        Sink.foreach { completion =>
-          print(completion.contentHead.getOrElse(""))
-        }
-      )
+      .runForeach { completion =>
+        print(completion.contentHead.getOrElse(""))
+      }
 }

@@ -1,7 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import akka.actor.ActorSystem
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{
@@ -30,11 +28,12 @@ import scala.util.{Failure, Success, Try}
 
 /**
  * Live connectivity sweep over the provider hosts the library calls through its HTTP engine
- * (ws-client's Play WS engine) - meant for engine upgrades: ws-client 1.1.2 changed the TLS
- * protocols the engine offers (TLS 1.3 + 1.2, the JDK's defaults, instead of AHC's TLS 1.2 /
- * 1.1 / 1). For every target whose environment variables are set: the model listing (where the
- * host has one), one short chat completion and one streamed completion, each through the
- * library's own factory for that host, on a private engine.
+ * (the default `jdk` engine, or the one `-Dws-client.engine` names) - meant for engine
+ * upgrades (e.g. ws-client 1.1.2 changed the TLS protocols the Play WS engines offer: TLS 1.3
+ * + 1.2, the JDK's defaults, instead of AHC's TLS 1.2 / 1.1 / 1). For every target whose
+ * environment variables are set: the model listing (where the host has one), one short chat
+ * completion and one streamed completion, each through the library's own factory for that
+ * host, on a private engine.
  *
  * A failure is reported with its kind: `TLS/CONNECT` (no HTTP exchange at all - a handshake,
  * certificate or connection failure) or `HTTP` (the host answered, e.g. a 402 for an account
@@ -244,8 +243,7 @@ object ProviderConnectivitySmokeTest {
     }
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     def arg(name: String) = args.find(_.startsWith(name + "=")).map(_.drop(name.length + 1))
 
@@ -327,7 +325,7 @@ object ProviderConnectivitySmokeTest {
               s"'${text.replaceAll("\\s+", " ").take(40)}' (${response.usage.map(_.total_tokens).getOrElse("-")} tokens)"
             }
             step(target.name, "stream")(
-              probe.service.createChatCompletionStreamed(messages, settings).runWith(Sink.seq)
+              probe.service.createChatCompletionStreamed(messages, settings).runToSeq
             ) { chunks =>
               val text = chunks.flatMap(_.choices.flatMap(_.delta.content)).mkString
               s"${chunks.size} chunks, '${text.replaceAll("\\s+", " ").take(40)}'"
@@ -341,7 +339,6 @@ object ProviderConnectivitySmokeTest {
       s"Summary: ${selected.size} targets, ${failures.get} failed steps, " +
         s"${connectivityFailures.get} of them TLS/connection failures"
     )
-    Await.result(system.terminate(), 30.seconds)
     System.exit(if (connectivityFailures.get > 0) 1 else 0)
   }
 }

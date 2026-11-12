@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.anthropic
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.Message.{SystemMessage, UserMessage}
 import io.cequence.openaiscala.anthropic.domain.settings.{
@@ -35,9 +34,7 @@ object AnthropicCreateMessageStreamedWithThinking extends ExampleBase[AnthropicS
           thinking = Some(ThinkingSettings.adaptiveSummarized)
         )
       )
-      .runWith(
-        Sink.foreach { response =>
-          print(response.text)
-        }
-      )
+      .runForeach { response =>
+        print(response.text)
+      }
 }

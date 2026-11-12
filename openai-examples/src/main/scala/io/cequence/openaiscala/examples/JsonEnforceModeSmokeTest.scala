@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
@@ -67,9 +66,7 @@ object JsonEnforceModeSmokeTest {
   private val expected = City("Europe", coastal = false)
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val scheduler: Scheduler = system.scheduler
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     def has(env: String) = sys.env.get(env).exists(_.nonEmpty)
 
@@ -179,7 +176,6 @@ object JsonEnforceModeSmokeTest {
     lines.foreach(l => println(l._1))
     val failed = lines.count(!_._2)
     println(s"${lines.size - failed} of ${lines.size} passed")
-    Await.result(system.terminate(), 30.seconds)
     System.exit(if (failed == 0 && lines.nonEmpty) 0 else 1)
   }
 }

@@ -1,7 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain._
@@ -113,10 +111,7 @@ object GPT6SolLunaOpus55SmokeTest {
     s"${e.getClass.getSimpleName}: ${Option(e.getMessage).getOrElse("(no message)").take(400)}"
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val materializer: Materializer = Materializer(system)
-    implicit val scheduler: akka.actor.Scheduler = system.scheduler
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val openAI = OpenAIServiceFactory.withStreaming()
     val openAIViaResponses = OpenAIResponsesChatCompletionService(openAI)
@@ -462,7 +457,6 @@ object GPT6SolLunaOpus55SmokeTest {
 
     openAI.close()
     anthropic.close()
-    Await.result(system.terminate(), 30.seconds)
     System.exit(if (failures.get == 0) 0 else 1)
   }
 }

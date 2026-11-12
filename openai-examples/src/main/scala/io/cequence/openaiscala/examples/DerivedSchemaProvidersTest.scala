@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain.settings.{
@@ -230,9 +229,7 @@ object DerivedSchemaProvidersTest {
       "FAIL"
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val scheduler: Scheduler = system.scheduler
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     def has(env: String) = sys.env.get(env).exists(_.nonEmpty)
     def arg(name: String) =
@@ -246,7 +243,6 @@ object DerivedSchemaProvidersTest {
       println(
         Json.prettyPrint(Json.toJson(JsonSchemaReflectionHelper.jsonSchemaFor[Triage]()))
       )
-      Await.result(system.terminate(), 30.seconds)
       System.exit(0)
     }
 
@@ -612,7 +608,6 @@ object DerivedSchemaProvidersTest {
     val lines = Try(Await.result(all, 40.minutes)).getOrElse(Nil)
     val failures = lines.count(!_._2)
     println(s"${lines.size - failures} of ${lines.size} passed")
-    Await.result(system.terminate(), 30.seconds)
     System.exit(
       if (failures == 0 && lines.nonEmpty)
         0

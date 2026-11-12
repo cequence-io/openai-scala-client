@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.examples.googlegemini
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
@@ -36,9 +33,7 @@ import scala.util.{Failure, Success, Try}
 object GeminiUrlContextSmokeTest {
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val materializer: Materializer = Materializer(system)
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val models = args
       .find(_.startsWith("models="))
@@ -167,7 +162,7 @@ object GeminiUrlContextSmokeTest {
             None,
             CreateChatCompletionSettings(model).setGeminiTools(Seq(Tool.UrlContext))
           )
-          .runWith(Sink.seq)
+          .runToSeq
           .map { chunks =>
             val metadata = chunks.collect { case ChatChunk.Other("urlContextMetadata", raw) =>
               raw
@@ -199,7 +194,6 @@ object GeminiUrlContextSmokeTest {
       else
         s"${failures.get} FAILED"
     )
-    Await.result(system.terminate(), 30.seconds)
     System.exit(
       if (failures.get == 0)
         0

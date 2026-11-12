@@ -1,9 +1,7 @@
 package io.cequence.openaiscala.examples.anthropic
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.anthropic.domain.tools.Tool
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
-import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettingsOps._
 import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, ReasoningEffort}
 import io.cequence.openaiscala.domain.{
@@ -60,5 +58,5 @@ object AnthropicCreateChatToolCompletionStreamedWithOpenAIAdapter
           reasoning_effort = Some(ReasoningEffort.medium)
         ).setAnthropicTools(Seq(Tool.webSearch()))
       )
-      .runWith(Sink.foreach[ChatChunk](chunk => println(ChatChunkPrinter.describe(chunk))))
+      .runForeach(chunk => println(ChatChunkPrinter.describe(chunk)))
 }

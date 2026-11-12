@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.examples.sonar
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
+import io.cequence.wsclient.concurrent.Futures
 import io.cequence.openaiscala.domain.JsonSchema
 import io.cequence.openaiscala.domain.settings.JsonSchemaDef
 import io.cequence.openaiscala.perplexity.domain.agent._
@@ -38,9 +36,7 @@ object PerplexityAgentApiSmokeTest {
   )
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val materializer: Materializer = Materializer(system)
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val service = SonarServiceFactory()
     val failures = new AtomicInteger(0)
@@ -55,7 +51,7 @@ object PerplexityAgentApiSmokeTest {
       f.recoverWith {
         case PerplexityRetryable(e) if attempt < 6 =>
           println(s"  (retry $attempt after: ${e.getMessage.take(80)})")
-          akka.pattern.after((10 * attempt).seconds, system.scheduler)(
+          Futures.after((10 * attempt).seconds)(
             retrying(attempt + 1)(f)
           )
       }
@@ -150,7 +146,7 @@ object PerplexityAgentApiSmokeTest {
       _ <- section("createAgentResponseStreamed") {
         service
           .createAgentResponseStreamed(AgentInput("Capital of Denmark? One sentence."), fast)
-          .runWith(Sink.seq)
+          .runToSeq
           .map { events =>
             val text = events.collect { case d: AgentStreamEvent.OutputTextDelta =>
               d.delta
@@ -250,7 +246,6 @@ object PerplexityAgentApiSmokeTest {
     println(if (failures.get == 0) "ALL PASSED" else s"${failures.get} FAILED")
 
     service.close()
-    Await.result(system.terminate(), 30.seconds)
     System.exit(if (failures.get == 0) 0 else 1)
   }
 }

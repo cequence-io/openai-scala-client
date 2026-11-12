@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{
   ChatCompletionBatchRequest,
@@ -56,8 +55,6 @@ object ChatCompletionBatchEmulationRouterDemo {
 
   def main(args: Array[String]): Unit = {
     implicit val ec: ExecutionContext = ExecutionContext.global
-    implicit val system: ActorSystem = ActorSystem("batch-emulation-router-demo")
-    implicit val scheduler: Scheduler = system.scheduler
 
     val router = buildRouter()
 
@@ -88,7 +85,6 @@ object ChatCompletionBatchEmulationRouterDemo {
     try Await.result(flow, 5.minutes)
     finally {
       router.close()
-      system.terminate()
       ()
     }
   }

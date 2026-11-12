@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.service.OpenAIServiceFactory
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIStreamedService
@@ -23,13 +22,9 @@ object CreateCompletionStreamed extends ExampleBase[OpenAIStreamedService] {
     """.stripMargin
 
   override protected def run: Future[_] =
-    service
-      .createCompletionStreamed(text)
-      .runWith(
-        Sink.foreach { response =>
-          val content = response.choices.headOption.map(_.text).getOrElse("")
-          Thread.sleep(100) // to spot how the individual words are being added
-          print(content)
-        }
-      )
+    service.createCompletionStreamed(text).runForeach { response =>
+      val content = response.choices.headOption.map(_.text).getOrElse("")
+      Thread.sleep(100) // to spot how the individual words are being added
+      print(content)
+    }
 }

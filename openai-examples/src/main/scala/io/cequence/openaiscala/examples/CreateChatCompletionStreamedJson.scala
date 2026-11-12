@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
@@ -36,9 +35,7 @@ object CreateChatCompletionStreamedJson
           jsonSchema = Some(capitalsSchemaDef1)
         )
       )
-      .runWith(
-        Sink.foreach { completion =>
-          print(completion.contentHead.getOrElse(""))
-        }
-      )
+      .runForeach { completion =>
+        print(completion.contentHead.getOrElse(""))
+      }
 }

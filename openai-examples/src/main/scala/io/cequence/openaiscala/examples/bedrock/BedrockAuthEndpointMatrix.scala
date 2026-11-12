@@ -10,7 +10,7 @@ import io.cequence.openaiscala.service.{
   OpenAIService,
   OpenAIServiceFactory
 }
-import io.cequence.wsclient.service.spi.StreamedEngineRegistry
+import io.cequence.wsclient.service.spi.WSClientEngineRegistry
 
 import scala.concurrent.Future
 
@@ -29,7 +29,7 @@ object BedrockAuthEndpointMatrix extends ExampleBase[OpenAIService] {
 
   private val region = sys.env.getOrElse("AWS_BEDROCK_REGION", "us-east-1")
 
-  private val engine = StreamedEngineRegistry.outputStreamed()
+  private val engine = WSClientEngineRegistry.outputStreamed()
 
   // the service the base trait closes; the matrix below builds its own per combination
   override val service: OpenAIService =

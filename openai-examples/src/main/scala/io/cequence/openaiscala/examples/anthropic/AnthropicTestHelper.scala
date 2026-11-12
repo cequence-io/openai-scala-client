@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.anthropic
 
-import akka.actor.Scheduler
 import io.cequence.openaiscala.OpenAIScalaClientTimeoutException
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
@@ -16,16 +15,14 @@ object AnthropicTestHelper {
   val WorkingModel: String = NonOpenAIModelId.claude_haiku_4_5
 
   def timoutingService(
-    implicit ec: ExecutionContext,
-    system: akka.actor.ActorSystem
+    implicit ec: ExecutionContext
   ): OpenAIChatCompletionService = {
 
     // adapters to use (round-robin, retry, etc.)
     val adapters = OpenAIServiceAdapters.forChatCompletionService
 
-    // implicit retry settings and scheduler
+    // implicit retry settings
     implicit val retrySettings: RetrySettings = RetrySettings(maxRetries = 2)
-    implicit val scheduler: Scheduler = system.scheduler
 
     // regular OpenAI service
     val regularService = AnthropicServiceFactory.asOpenAI()

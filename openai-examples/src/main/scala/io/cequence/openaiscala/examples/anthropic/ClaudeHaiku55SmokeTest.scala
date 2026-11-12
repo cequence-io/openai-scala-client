@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.examples.anthropic
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.anthropic.domain.tools.{MCPServerURLDefinition, Tool}
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
@@ -76,8 +73,8 @@ import scala.util.{Failure, Success, Try}
  *
  * `model=<id>` runs the same walkthrough against another Claude model (e.g.
  * `model=claude-fable-5-2`; on Bedrock `global.anthropic.<id>`): the Haiku-only expectations
- * (`reasoning_effort = none` thinks nothing; a forced tool choice is kept) are then relaxed - on
- * a model that refuses forced tool choice the adapter downgrades it to `auto` plus an
+ * (`reasoning_effort = none` thinks nothing; a forced tool choice is kept) are then relaxed -
+ * on a model that refuses forced tool choice the adapter downgrades it to `auto` plus an
  * instruction, and the section still fails unless the model calls the tool.
  *
  * Every section prints PASS/FAIL and the run continues; the exit code is 1 if any failed.
@@ -239,18 +236,18 @@ object ClaudeHaiku55SmokeTest extends JsonSchemaReflectionHelper {
     if (!condition) throw new IllegalStateException(what)
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val materializer: Materializer = Materializer(system)
-    implicit val scheduler: akka.actor.Scheduler = system.scheduler
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val groups = Seq("basics", "json", "tools", "mcp", "reasoning", "other", "bedrock")
     val target =
       args.find(_.startsWith("target=")).map(_.drop("target=".length)).getOrElse("api")
     val apiModel =
-      args.find(_.startsWith("model=")).map(_.drop("model=".length)).getOrElse(
-        NonOpenAIModelId.claude_haiku_5_5
-      )
+      args
+        .find(_.startsWith("model="))
+        .map(_.drop("model=".length))
+        .getOrElse(
+          NonOpenAIModelId.claude_haiku_5_5
+        )
     val isHaiku55 = apiModel == NonOpenAIModelId.claude_haiku_5_5
     val groupArgs = args.filterNot(a => a.startsWith("target=") || a.startsWith("model="))
     val selected = if (groupArgs.isEmpty) groups.toSet else groupArgs.toSet
@@ -488,7 +485,8 @@ object ClaudeHaiku55SmokeTest extends JsonSchemaReflectionHelper {
 
           _ <- section(
             if (isHaiku55) s"$model: forced tool choice (kept)"
-            else s"$model: forced tool choice (downgraded to auto + an instruction - still called)"
+            else
+              s"$model: forced tool choice (downgraded to auto + an instruction - still called)"
           ) {
             anthropic
               .createChatToolCompletion(
@@ -583,7 +581,7 @@ object ClaudeHaiku55SmokeTest extends JsonSchemaReflectionHelper {
                   jsonSchema = Some(capitalSchema)
                 )
               )
-              .runWith(Sink.seq)
+              .runToSeq
               .map { chunks =>
                 val (text, _, finish) = streamedText(chunks)
                 val capital = Json.parse(text).as[Capital]
@@ -881,7 +879,7 @@ object ClaudeHaiku55SmokeTest extends JsonSchemaReflectionHelper {
                 Seq(UserMessage(batAndBall)),
                 settings(maxTokens = 8000, effort = Some(ReasoningEffort.high))
               )
-              .runWith(Sink.seq)
+              .runToSeq
               .map { chunks =>
                 val (text, reasoning, finish) = streamedText(chunks)
                 check(reasoning.nonEmpty, "no reasoning_content streamed")
@@ -900,7 +898,7 @@ object ClaudeHaiku55SmokeTest extends JsonSchemaReflectionHelper {
                 Seq(UserMessage("Name three primary colours, comma-separated.")),
                 settings(maxTokens = 1000, effort = Some(ReasoningEffort.none))
               )
-              .runWith(Sink.seq)
+              .runToSeq
               .map { chunks =>
                 val (text, _, finish) = streamedText(chunks)
                 check(text.toLowerCase.contains("red"), s"text '$text'")
@@ -1147,7 +1145,6 @@ object ClaudeHaiku55SmokeTest extends JsonSchemaReflectionHelper {
     println(if (failures.get == 0) "ALL PASSED" else s"${failures.get} FAILED")
 
     anthropic.close()
-    Await.result(system.terminate(), 30.seconds)
     System.exit(if (failures.get == 0) 0 else 1)
   }
 }

@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain.{JsonSchema, ModelId, SystemMessage, UserMessage}
 import io.cequence.openaiscala.domain.response.ChatChunk
@@ -50,7 +49,10 @@ object CreateChatToolCompletionStreamed extends ExampleBase[OpenAIStreamedServic
           reasoning_effort = Some(ReasoningEffort.none)
         )
       )
-      .alsoTo(Sink.foreach[ChatChunk](chunk => println(ChatChunkPrinter.describe(chunk))))
+      .map { chunk =>
+        println(ChatChunkPrinter.describe(chunk))
+        chunk
+      }
       .assembled
       .map { assembled =>
         println()

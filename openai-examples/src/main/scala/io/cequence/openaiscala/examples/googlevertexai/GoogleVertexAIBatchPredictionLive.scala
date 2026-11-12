@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.examples.googlevertexai
 
-import akka.pattern.after
+import io.cequence.wsclient.concurrent.Futures
 import io.cequence.openaiscala.domain.NonOpenAIModelId
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.vertexai.domain.{
@@ -70,7 +70,7 @@ object GoogleVertexAIBatchPredictionLive extends ExampleBase[VertexAIBatchPredic
         Future.successful(job)
       else {
         println(s"polling: state=${job.state}...")
-        after(30.seconds, scheduler)(pollUntilTerminated(jobId))
+        Futures.after(30.seconds)(pollUntilTerminated(jobId))
       }
     }
 }

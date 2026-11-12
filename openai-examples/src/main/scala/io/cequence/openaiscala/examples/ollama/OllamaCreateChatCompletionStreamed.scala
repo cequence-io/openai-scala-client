@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.ollama
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.examples.ExampleBase
@@ -37,10 +36,8 @@ object OllamaCreateChatCompletionStreamed
           presence_penalty = Some(0)
         )
       )
-      .runWith(
-        Sink.foreach { completion =>
-          val content = completion.choices.headOption.flatMap(_.delta.content)
-          print(content.getOrElse(""))
-        }
-      )
+      .runForeach { completion =>
+        val content = completion.choices.headOption.flatMap(_.delta.content)
+        print(content.getOrElse(""))
+      }
 }

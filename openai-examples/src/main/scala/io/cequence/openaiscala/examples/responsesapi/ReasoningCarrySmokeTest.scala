@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.examples.responsesapi
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain._
@@ -67,8 +64,6 @@ object ReasoningCarrySmokeTest {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
   // only the typed stream of the merged streamed service needs one
-  private implicit val system: ActorSystem = ActorSystem("reasoning-carry-smoke-test")
-  private implicit val materializer: Materializer = Materializer(system)
 
   private val weather = FunctionTool(
     name = "get_weather",
@@ -219,7 +214,7 @@ object ReasoningCarrySmokeTest {
         await(
           service
             .createChatToolCompletionStreamed(messages, Seq(weather), None, settings)
-            .runWith(Sink.seq)
+            .runToSeq
         ).collect { case ChatChunk.Usage(usage) => usage.prompt_tokens }.lastOption
           .getOrElse(0)
 
@@ -516,7 +511,6 @@ object ReasoningCarrySmokeTest {
       else
         s"$failures FAILED"
     println(s"\n$summary")
-    system.terminate()
     System.exit(
       if (passed)
         0

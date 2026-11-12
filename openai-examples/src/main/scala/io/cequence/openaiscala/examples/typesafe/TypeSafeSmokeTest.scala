@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.typesafe
 
-import akka.actor.ActorSystem
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
@@ -51,10 +50,7 @@ object TypeSafeSmokeTest {
   private val hugeState = JsString((ticket + " ") * 1500)
 
   def main(args: Array[String]): Unit = {
-    // the actor system only serves the retry adapter's scheduler
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val scheduler: akka.actor.Scheduler = system.scheduler
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val service = TypeSafeServiceFactory()
 
@@ -518,7 +514,6 @@ object TypeSafeSmokeTest {
     try Await.result(all, 5.minutes)
     finally {
       service.close()
-      Await.result(system.terminate(), 10.seconds)
     }
 
     println(if (failures == 0) "ALL PASSED" else s"$failures FAILED")

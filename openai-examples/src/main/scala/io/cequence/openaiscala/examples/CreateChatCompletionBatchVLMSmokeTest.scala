@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{
@@ -50,9 +49,7 @@ object CreateChatCompletionBatchVLMSmokeTest {
   private val bluePngBase64 =
     "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAe0lEQVR4nO3PUQkAIBTAwJfEJPZPYRhD+HEIgwW4zdrn64YLGtCCBrSgAS1oQAsa0IIGtKABLWhACxrQgga0oAEtaEALGtCCBrSgAS1oQAsa0IIGtKABLWhACxrQgga0oAEtaEALGtCCBrSgAS1oQAsa0IIGtKABLXjsArR1YR6a53LGAAAAAElFTkSuQmCC"
 
-  private implicit val actorSystem: ActorSystem = ActorSystem("vlm-batch-smoke")
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val scheduler: Scheduler = actorSystem.scheduler
 
   private val expectedByCustomId = Map(
     "vlm-red-square" -> "red",
@@ -152,7 +149,6 @@ object CreateChatCompletionBatchVLMSmokeTest {
       else s"\n$failures FAILURE(S)"
     )
 
-    actorSystem.terminate()
     ()
   }
 }

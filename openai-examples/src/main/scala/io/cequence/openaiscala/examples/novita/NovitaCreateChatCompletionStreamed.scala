@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.novita
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.examples.ExampleBase
@@ -37,9 +36,7 @@ object NovitaCreateChatCompletionStreamed
           max_tokens = Some(512)
         )
       )
-      .runWith(
-        Sink.foreach { chunk =>
-          print(chunk.contentHead.getOrElse(""))
-        }
-      )
+      .runForeach { chunk =>
+        print(chunk.contentHead.getOrElse(""))
+      }
 }

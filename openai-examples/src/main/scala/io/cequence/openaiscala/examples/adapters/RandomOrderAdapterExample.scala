@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.adapters
 
-import akka.stream.scaladsl.{Sink, Source}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{ModelId, SystemMessage, UserMessage}
 import io.cequence.openaiscala.examples.ExampleBase
@@ -29,7 +28,6 @@ object RandomOrderAdapterExample extends ExampleBase[OpenAIService] {
   override val service: OpenAIService = adapters.randomOrder(openAIService1, openAIService2)
 
   private val repetitions = 10
-  private val parallelism = 1
   private val modelId = ModelId.gpt_4o
 
   private val messages = Seq(
@@ -37,17 +35,14 @@ object RandomOrderAdapterExample extends ExampleBase[OpenAIService] {
     UserMessage("What is the weather like in Norway?")
   )
 
-  override protected def run: Future[_] = {
-    // source of 10 repetitions
-    val repetitionSource = Source.fromIterator(() => (1 to repetitions).iterator)
-
-    for {
-      // run them - we run  the first and second service in random order
-      _ <- repetitionSource
-        .mapAsync(parallelism)(_ => runChatCompletionAux)
-        .runWith(Sink.ignore)
-    } yield ()
-  }
+  // 10 repetitions, one after the other - each goes to the first or the second service at random
+  override protected def run: Future[_] =
+    (1 to repetitions).foldLeft(Future.successful(())) {
+      (
+        done,
+        _
+      ) => done.flatMap(_ => runChatCompletionAux)
+    }
 
   private def runChatCompletionAux =
     service

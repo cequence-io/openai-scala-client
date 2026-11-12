@@ -1,7 +1,7 @@
 package io.cequence.openaiscala.examples.typesafe
 
-import akka.actor.Scheduler
 import io.cequence.openaiscala.typesafe.domain.{NoulQuestion, Question}
+import io.cequence.wsclient.concurrent.Futures
 import io.cequence.openaiscala.typesafe.service.TypeSafeService
 
 import scala.concurrent.duration._
@@ -39,12 +39,11 @@ object DecisionModelBenchmark {
     questions: Map[String, Question],
     runs: Int
   )(
-    implicit ec: ExecutionContext,
-    scheduler: Scheduler
+    implicit ec: ExecutionContext
   ): Future[(Seq[Long], Int)] =
     (0 to runs).foldLeft(Future.successful((Seq.empty[Long], 0))) { case (acc, call) =>
       acc.flatMap { case (times, failures) =>
-        akka.pattern.after(250.millis, scheduler)(Future.successful(())).flatMap { _ =>
+        Futures.delay(250.millis).flatMap { _ =>
           val start = System.nanoTime()
           service
             .systemOne(state, questions)
@@ -76,8 +75,7 @@ object DecisionModelBenchmark {
     questions: Map[String, Question],
     runs: Int = 8
   )(
-    implicit ec: ExecutionContext,
-    scheduler: Scheduler
+    implicit ec: ExecutionContext
   ): Future[Unit] = {
     println(s"[latency] median per call (min - max), $runs timed calls each")
     println(

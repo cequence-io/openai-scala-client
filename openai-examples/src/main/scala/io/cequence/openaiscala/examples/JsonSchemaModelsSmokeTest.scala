@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
   CreateChatCompletionSettings,
@@ -36,9 +35,7 @@ object JsonSchemaModelsSmokeTest {
   )
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val scheduler: Scheduler = system.scheduler
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     def has(env: String) = sys.env.get(env).exists(_.nonEmpty)
 
@@ -101,7 +98,6 @@ object JsonSchemaModelsSmokeTest {
     })
 
     Try(Await.result(results, 5.minutes)).foreach(_.foreach(println))
-    Await.result(system.terminate(), 30.seconds)
     System.exit(0)
   }
 }

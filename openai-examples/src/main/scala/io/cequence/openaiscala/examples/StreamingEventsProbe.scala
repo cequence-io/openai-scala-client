@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.anthropic.domain.Content.ContentBlock
 import io.cequence.openaiscala.anthropic.domain.Message.{
   SystemMessage => AntSystem,
@@ -97,9 +94,7 @@ import scala.util.control.NonFatal
  */
 object StreamingEventsProbe {
 
-  private implicit val system: ActorSystem = ActorSystem("streaming-events-probe")
-  private implicit val materializer: Materializer = Materializer(system)
-  private implicit val ec: ExecutionContext = system.dispatcher
+  private implicit val ec: ExecutionContext = ExecutionContext.global
 
   private val weatherQuestion =
     "What is the weather in Oslo right now? You must call the get_weather tool to find out."
@@ -145,7 +140,7 @@ object StreamingEventsProbe {
               tools = Seq(weatherTool)
             )
           )
-          .runWith(Sink.foreach(printAnthropicEvent))
+          .runForeach(printAnthropicEvent)
       }
 
       section("Anthropic native events - web_search server tool (claude-sonnet-5)") {
@@ -162,7 +157,7 @@ object StreamingEventsProbe {
               tools = Seq(Tool.webSearch())
             )
           )
-          .runWith(Sink.foreach(printAnthropicEvent))
+          .runForeach(printAnthropicEvent)
       }
 
       val anthropicAsOpenAI = AnthropicServiceFactory.asOpenAI()
@@ -179,7 +174,7 @@ object StreamingEventsProbe {
               reasoning_effort = Some(ReasoningEffort.low)
             )
           )
-          .runWith(Sink.foreach(printOpenAIChunk))
+          .runForeach(printOpenAIChunk)
       }
       anthropicAsOpenAI.close()
       anthropic.close()
@@ -218,7 +213,7 @@ object StreamingEventsProbe {
               generationConfig = Some(thinking)
             )
           )
-          .runWith(Sink.foreach(printGeminiResponse))
+          .runForeach(printGeminiResponse)
       }
 
       section("Gemini native parts - code execution tool (gemini-3.8-flash)") {
@@ -236,7 +231,7 @@ object StreamingEventsProbe {
               generationConfig = Some(thinking)
             )
           )
-          .runWith(Sink.foreach(printGeminiResponse))
+          .runForeach(printGeminiResponse)
       }
 
       val geminiAsOpenAI = GeminiServiceFactory.asOpenAI()
@@ -253,7 +248,7 @@ object StreamingEventsProbe {
               reasoning_effort = Some(ReasoningEffort.low)
             )
           )
-          .runWith(Sink.foreach(printOpenAIChunk))
+          .runForeach(printOpenAIChunk)
       }
       geminiAsOpenAI.close()
       gemini.close()
@@ -290,7 +285,7 @@ object StreamingEventsProbe {
               )
             )
           )
-          .runWith(Sink.foreach(printOpenAIChunk))
+          .runForeach(printOpenAIChunk)
       }
       openAI.close()
     } else println("[openai] skipped - OPENAI_SCALA_CLIENT_API_KEY not set")
@@ -330,7 +325,7 @@ object StreamingEventsProbe {
               reasoning_effort = Some(ReasoningEffort.medium)
             ).setAnthropicTools(Seq(Tool.webSearch()))
           )
-          .runWith(Sink.foreach(chunk => println(ChatChunkPrinter.describe(chunk))))
+          .runForeach(chunk => println(ChatChunkPrinter.describe(chunk)))
       }
       anthropic.close()
     }
@@ -348,7 +343,7 @@ object StreamingEventsProbe {
               reasoning_effort = Some(ReasoningEffort.low)
             )
           )
-          .runWith(Sink.foreach(chunk => println(ChatChunkPrinter.describe(chunk))))
+          .runForeach(chunk => println(ChatChunkPrinter.describe(chunk)))
       }
       section("TYPED Gemini - code execution server tool (gemini-3.8-flash)") {
         gemini
@@ -365,7 +360,7 @@ object StreamingEventsProbe {
               reasoning_effort = Some(ReasoningEffort.low)
             ).setGeminiTools(Seq(GeminiTool.CodeExecution))
           )
-          .runWith(Sink.foreach(chunk => println(ChatChunkPrinter.describe(chunk))))
+          .runForeach(chunk => println(ChatChunkPrinter.describe(chunk)))
       }
       gemini.close()
     }
@@ -383,7 +378,7 @@ object StreamingEventsProbe {
               reasoning_effort = Some(ReasoningEffort.none)
             )
           )
-          .runWith(Sink.foreach(chunk => println(ChatChunkPrinter.describe(chunk))))
+          .runForeach(chunk => println(ChatChunkPrinter.describe(chunk)))
       }
       section(
         "TYPED Responses API - reasoning summary + web_search + code_interpreter + get_weather (gpt-5.4)"
@@ -414,7 +409,7 @@ object StreamingEventsProbe {
               )
             )
           )
-          .runWith(Sink.foreach(chunk => println(ChatChunkPrinter.describe(chunk))))
+          .runForeach(chunk => println(ChatChunkPrinter.describe(chunk)))
       }
       section(
         "TYPED chat-shaped Responses API - messages + CreateChatCompletionSettings, reasoning + web_search + get_weather (gpt-5.4)"
@@ -434,7 +429,7 @@ object StreamingEventsProbe {
               reasoning_effort = Some(ReasoningEffort.low)
             ).setResponsesTools(Seq(WebSearchTool()))
           )
-          .runWith(Sink.foreach(chunk => println(ChatChunkPrinter.describe(chunk))))
+          .runForeach(chunk => println(ChatChunkPrinter.describe(chunk)))
       }
       section("TYPED GPT-6 Astra - get_weather tool routed through the Responses API") {
         openAI
@@ -447,7 +442,7 @@ object StreamingEventsProbe {
               reasoning_effort = Some(ReasoningEffort.low)
             )
           )
-          .runWith(Sink.foreach(chunk => println(ChatChunkPrinter.describe(chunk))))
+          .runForeach(chunk => println(ChatChunkPrinter.describe(chunk)))
       }
       if (hasKey("DEEPSEEK_API_KEY"))
         section(
@@ -463,7 +458,7 @@ object StreamingEventsProbe {
                 extra_params = Map("thinking" -> Map("type" -> "enabled"))
               )
             )
-            .runWith(Sink.foreach(chunk => println(ChatChunkPrinter.describe(chunk))))
+            .runForeach(chunk => println(ChatChunkPrinter.describe(chunk)))
             .andThen { case _ => deepseek.close() }
         }
       openAI.close()
@@ -525,7 +520,7 @@ object StreamingEventsProbe {
                 extra_params = extraParams
               )
             )
-            .runWith(Sink.foreach(chunk => println(ChatChunkPrinter.describe(chunk))))
+            .runForeach(chunk => println(ChatChunkPrinter.describe(chunk)))
         }
         section(s"TYPED $name - reasoning only, no tools ($model)") {
           service
@@ -537,13 +532,12 @@ object StreamingEventsProbe {
                 extra_params = extraParams
               )
             )
-            .runWith(Sink.foreach(chunk => println(ChatChunkPrinter.describe(chunk))))
+            .runForeach(chunk => println(ChatChunkPrinter.describe(chunk)))
         }
         service.close()
       }
     }
 
-    Await.ready(system.terminate(), 30.seconds)
     ()
   }
 

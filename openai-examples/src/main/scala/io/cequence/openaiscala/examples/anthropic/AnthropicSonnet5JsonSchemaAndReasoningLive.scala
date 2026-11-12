@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.anthropic
 
-import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.anthropic.service.impl.toAnthropicSettings
 import io.cequence.openaiscala.domain.settings.{
@@ -44,8 +43,6 @@ import scala.concurrent.{Await, ExecutionContext}
  */
 object AnthropicSonnet5JsonSchemaAndReasoningLive {
 
-  implicit val system: ActorSystem = ActorSystem()
-  implicit val scheduler: Scheduler = system.scheduler
   implicit val ec: ExecutionContext = ExecutionContext.Implicits.global
 
   private val vanillaModel = NonOpenAIModelId.claude_sonnet_5
@@ -172,7 +169,6 @@ object AnthropicSonnet5JsonSchemaAndReasoningLive {
     } finally {
       vanilla.close()
       bedrock.close()
-      system.terminate()
     }
   }
 }

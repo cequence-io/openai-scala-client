@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.typesafe
 
-import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.domain.decisions.{
   CreateDecisionSettings,
   DecisionAnswer,
@@ -129,9 +128,7 @@ object JevDangerZoneSmokeTest {
 
   def main(args: Array[String]): Unit = {
     System.setProperty("java.awt.headless", "true")
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val ec: ExecutionContext = system.dispatcher
-    implicit val scheduler: Scheduler = system.scheduler
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val jev = TypeSafeServiceFactory(DecisionProviderSettings.typeSafe)
     val longContext = TypeSafeServiceFactory(DecisionProviderSettings.typeSafeLongContext)
@@ -534,7 +531,6 @@ object JevDangerZoneSmokeTest {
     openAIDecisions.close()
     openAILongContext.close()
     println(if (failures.get == 0) "ALL PASSED" else s"${failures.get} FAILED")
-    Await.result(system.terminate(), 30.seconds)
     System.exit(if (failures.get == 0) 0 else 1)
   }
 }

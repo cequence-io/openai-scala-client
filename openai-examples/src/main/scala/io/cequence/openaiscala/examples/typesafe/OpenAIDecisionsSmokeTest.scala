@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.typesafe
 
-import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.domain.decisions._
 import io.cequence.openaiscala.domain.guardrails.{GuardrailCheck, ModelGuardrailSettings}
 import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, JsonSchemaDef}
@@ -60,8 +59,6 @@ object OpenAIDecisionsSmokeTest {
 
   def main(args: Array[String]): Unit = {
     implicit val ec: ExecutionContext = ExecutionContext.global
-    val system = ActorSystem("openai-decisions-smoke-test")
-    implicit val scheduler: Scheduler = system.scheduler
 
     val openAI = OpenAIServiceFactory()
     val luna = TypeSafeServiceFactory(DecisionProviderSettings.openAI)
@@ -209,7 +206,6 @@ object OpenAIDecisionsSmokeTest {
       openAI.close()
       luna.close()
       lunaAsChat.close()
-      system.terminate()
     }
 
     println(if (failures.isEmpty) "ALL PASSED" else s"FAILED: ${failures.mkString("; ")}")

@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.adapters
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
@@ -8,19 +7,19 @@ import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.openaiscala.service._
 import io.cequence.wsclient.domain.WsRequestContext
-import io.cequence.wsclient.service.spi.StreamedEngineRegistry
-import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamExtraAkka}
+import io.cequence.wsclient.service.spi.WSClientEngineRegistry
+import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamCore}
 
 import scala.concurrent.Future
 
 /**
  * Routes streamed chat completions across seven providers backed by ONE stateless engine: a
- * single connection pool and actor system serve all seven services below, each service just
- * holding its own site binding (base URL + auth headers) and threading it into every call on
- * the shared engine. Closing a routed service does NOT close the shared engine - it is closed
- * exactly once, at the end. (A previous version of this example created an independent engine
- * \- pool + actor system - per provider and facet, ~8 in total, which its own comment called
- * "a bit wasteful".)
+ * single connection pool serves all seven services below, each service just holding its own
+ * site binding (base URL + auth headers) and threading it into every call on the shared
+ * engine. Closing a routed service does NOT close the shared engine - it is closed exactly
+ * once, at the end. (A previous version of this example created an independent engine \- its
+ * own pool - per provider and facet, ~8 in total, which its own comment called "a bit
+ * wasteful".)
  *
  * Requirements:
  *   - Include `openai-scala-client-stream` as a dependency.
@@ -36,9 +35,9 @@ import scala.concurrent.Future
 object ChatCompletionStreamedRouterExample
     extends ExampleBase[OpenAIChatCompletionStreamedServiceExtra] {
 
-  // ONE stateless engine (connection pool + actor system) shared by every provider below
-  private val engine: WSClientEngine with WSClientOutputStreamExtraAkka =
-    StreamedEngineRegistry.outputStreamed()
+  // ONE stateless engine (one connection pool) shared by every provider below
+  private val engine: WSClientEngine with WSClientOutputStreamCore =
+    WSClientEngineRegistry.outputStreamed()
 
   private def bearerAuth(token: String): WsRequestContext =
     WsRequestContext(authHeaders = Seq(("Authorization", s"Bearer $token")))
@@ -150,12 +149,10 @@ object ChatCompletionStreamedRouterExample
         messages = messages,
         settings = CreateChatCompletionSettings(model)
       )
-      .runWith(
-        Sink.foreach { completion =>
-          val content = completion.choices.headOption.flatMap(_.delta.content)
-          print(content.getOrElse(""))
-        }
-      )
+      .runForeach { completion =>
+        val content = completion.choices.headOption.flatMap(_.delta.content)
+        print(content.getOrElse(""))
+      }
       .map(_ => println("\n--------"))
   }
 }

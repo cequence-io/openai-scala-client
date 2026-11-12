@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.anthropic
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.Message.{SystemMessage, UserMessage}
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
@@ -31,9 +30,7 @@ object AnthropicCreateMessageStreamed extends ExampleBase[AnthropicService] {
           max_tokens = 4096
         )
       )
-      .runWith(
-        Sink.foreach { response =>
-          print(response.text)
-        }
-      )
+      .runForeach { response =>
+        print(response.text)
+      }
 }

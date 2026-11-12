@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.fireworksai
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase}
@@ -49,27 +48,25 @@ object FireworksAICreateChatCompletionStreamedWithDeepseek
           presence_penalty = Some(0)
         )
       )
-      .runWith(
-        Sink.foreach { completion =>
-          val delta = completion.choices.headOption.map(_.delta)
+      .runForeach { completion =>
+        val delta = completion.choices.headOption.map(_.delta)
 
-          delta.flatMap(_.reasoningText).filter(_.nonEmpty).foreach { reasoning =>
-            if (!inReasoning) {
-              print("--- reasoning ---\n")
-              inReasoning = true
-            }
-            print(reasoning)
+        delta.flatMap(_.reasoningText).filter(_.nonEmpty).foreach { reasoning =>
+          if (!inReasoning) {
+            print("--- reasoning ---\n")
+            inReasoning = true
           }
-
-          delta.flatMap(_.content).filter(_.nonEmpty).foreach { content =>
-            if (!startedAnswer) {
-              print(s"${if (inReasoning) "\n\n" else ""}--- answer ---\n")
-              startedAnswer = true
-            }
-            print(content)
-          }
+          print(reasoning)
         }
-      )
+
+        delta.flatMap(_.content).filter(_.nonEmpty).foreach { content =>
+          if (!startedAnswer) {
+            print(s"${if (inReasoning) "\n\n" else ""}--- answer ---\n")
+            startedAnswer = true
+          }
+          print(content)
+        }
+      }
       .map(_ => println())
   }
 }

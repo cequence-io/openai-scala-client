@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.examples.meta
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.response.ChatChunk
@@ -78,10 +75,7 @@ object MuseSmokeTest {
   )
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val materializer: Materializer = Materializer(system)
-    implicit val scheduler: akka.actor.Scheduler = system.scheduler
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     def arg(name: String) = args.find(_.startsWith(name + "=")).map(_.drop(name.length + 1))
 
@@ -250,17 +244,15 @@ object MuseSmokeTest {
         }
 
         _ <- section(s"$model: typed stream") {
-          service
-            .createChatCompletionStreamedTyped(arithmetic, settings)
-            .runWith(Sink.seq)
-            .map { chunks =>
+          service.createChatCompletionStreamedTyped(arithmetic, settings).runToSeq.map {
+            chunks =>
               val text = chunks.collect { case ChatChunk.Text(t) => t }.mkString
               val thinking = chunks.collect { case ChatChunk.Thinking(t) => t }.mkString
               check(text.contains("391"), s"text='$text'")
               // the open weights return their reasoning - the Meta Model API keeps it private
               check(!isSparkOpen || thinking.nonEmpty, "no thinking")
               s"text='${text.trim}', thinking ${thinking.length} chars, ${chunks.size} chunks"
-            }
+          }
         }
       } yield ()
     }
@@ -274,7 +266,6 @@ object MuseSmokeTest {
     Try(Await.result(run, 15.minutes))
     service.close()
     println(if (failures.get == 0) "ALL PASSED" else s"${failures.get} FAILED")
-    Await.result(system.terminate(), 30.seconds)
     System.exit(if (failures.get == 0) 0 else 1)
   }
 }

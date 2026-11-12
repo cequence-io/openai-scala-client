@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.sonar
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.examples.ExampleBase
@@ -38,9 +37,7 @@ object SonarCreateChatCompletionStreamedWithOpenAIAdapter
           )
         )
       )
-      .runWith(
-        Sink.foreach { completion =>
-          print(completion.contentHead.getOrElse(""))
-        }
-      )
+      .runForeach { completion =>
+        print(completion.contentHead.getOrElse(""))
+      }
 }

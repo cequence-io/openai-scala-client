@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.examples.agents
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
@@ -79,10 +76,7 @@ object OpenAIAgentsApiSmokeTest {
     events.collect { case OutputTextDelta(_, _, _, _, _, _, delta) => delta }.mkString
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val materializer: Materializer = Materializer(system)
-    implicit val ec: ExecutionContext = system.dispatcher
-    implicit val scheduler: akka.actor.Scheduler = system.scheduler
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val service = OpenAIServiceFactory.withStreaming()
     val failures = new AtomicInteger(0)
@@ -131,7 +125,7 @@ object OpenAIAgentsApiSmokeTest {
       _ <- section("createAgentSessionStreamed - one turn, the stream ends at idle") {
         service
           .createAgentSessionStreamed(inline, AgentInput.Text("Say hi in two words."))
-          .runWith(Sink.seq)
+          .runToSeq
           .flatMap { events =>
             val sessionId = sessionIdOf(events)
             val types = events.map(_.eventType).distinct
@@ -158,7 +152,7 @@ object OpenAIAgentsApiSmokeTest {
             settings,
             AgentInput.Text("What's the weather in Paris right now?")
           )
-          .mapAsync(1) {
+          .evalMap {
             case event: SessionUpdated if event.requiresAction =>
               sessionId = event.session.id
               val results = event.session.pendingFunctionCalls.map(call =>
@@ -170,7 +164,7 @@ object OpenAIAgentsApiSmokeTest {
             case event =>
               Future.successful(event)
           }
-          .runWith(Sink.seq)
+          .runToSeq
           .flatMap { events =>
             val id = sessionIdOf(events)
             val calls = events.collect {
@@ -196,12 +190,12 @@ object OpenAIAgentsApiSmokeTest {
               inline,
               AgentInput.Text("Remember the number 7. Say ok.")
             )
-            .runWith(Sink.seq)
+            .runToSeq
           sessionId = sessionIdOf(first)
           subscription = service
             .streamAgentSessionEvents(sessionId)
             .via(AgentSessionEvents.untilSettled())
-            .runWith(Sink.seq)
+            .runToSeq
           _ = Thread.sleep(2000) // let the subscription connect
           _ <- service.sendAgentSessionEvents(
             sessionId,
@@ -242,7 +236,7 @@ object OpenAIAgentsApiSmokeTest {
               CreateAgentSessionSettings(agentId = Some(agent.id)),
               AgentInput.Text("Say hi.")
             )
-            .runWith(Sink.seq)
+            .runToSeq
           _ <- cleanup(sessionIdOf(events))
           deleted <- service.deleteAgent(agent.id)
         } yield s"agent=${fetched.id} model=${fetched.model} instructions='${updated.instructions
@@ -267,7 +261,7 @@ object OpenAIAgentsApiSmokeTest {
                 "vegetables (one short line each). Then reply with one combined line."
             )
           )
-          .runWith(Sink.seq)
+          .runToSeq
           .flatMap { events =>
             val sessionId = sessionIdOf(events)
             val delegation = events.collect {
@@ -295,7 +289,7 @@ object OpenAIAgentsApiSmokeTest {
                 "Run the shell command `echo hello-agents && uname -s` and report its output."
               )
             )
-            .runWith(Sink.seq)
+            .runToSeq
             .flatMap { events =>
               val sessionId = sessionIdOf(events)
               val commands = events.collect {
@@ -433,7 +427,6 @@ object OpenAIAgentsApiSmokeTest {
     println(if (failures.get == 0) "ALL PASSED" else s"${failures.get} FAILED")
 
     service.close()
-    Await.result(system.terminate(), 30.seconds)
     System.exit(if (failures.get == 0) 0 else 1)
   }
 }

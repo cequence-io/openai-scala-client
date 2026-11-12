@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.examples.anthropic
 
-import akka.pattern.after
+import io.cequence.wsclient.concurrent.Futures
 import io.cequence.openaiscala.anthropic.domain.Message.UserMessage
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.domain.{
@@ -77,7 +77,7 @@ object AnthropicCreateMessageBatchLive extends ExampleBase[AnthropicService] {
         Future.successful(batch)
       else {
         println(s"polling: status=${batch.processingStatus}...")
-        after(10.seconds, scheduler)(pollUntilEnded(batchId))
+        Futures.after(10.seconds)(pollUntilEnded(batchId))
       }
     }
 }

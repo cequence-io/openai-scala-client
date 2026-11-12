@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.examples.mistral
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.response.ChatChunk
@@ -86,9 +83,7 @@ object MistralCitationsSmokeTest {
   )
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val materializer: Materializer = Materializer(system)
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val mistral =
       OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.mistral)
@@ -141,7 +136,7 @@ object MistralCitationsSmokeTest {
             def attempt(n: Int): Future[String] =
               mistral
                 .createChatToolCompletionStreamed(messages, Seq(tool), None, settings(model))
-                .runWith(Sink.seq)
+                .runToSeq
                 .flatMap { chunks =>
                   val text = chunks.collect { case ChatChunk.Text(t) => t }.mkString
                   val references = chunks.collect {
@@ -169,7 +164,6 @@ object MistralCitationsSmokeTest {
     println(if (failures.get == 0) "ALL PASSED" else s"${failures.get} FAILED")
 
     mistral.close()
-    Await.result(system.terminate(), 30.seconds)
     System.exit(if (failures.get == 0) 0 else 1)
   }
 }

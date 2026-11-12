@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.examples.mistral
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.response.ChatChunk
@@ -86,10 +83,7 @@ object MistralLarge4SmokeTest {
   }
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val materializer: Materializer = Materializer(system)
-    implicit val scheduler: akka.actor.Scheduler = system.scheduler
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val mistral =
       OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.mistral)
@@ -131,7 +125,7 @@ object MistralLarge4SmokeTest {
       _ <- section(s"$model: reasoning_effort=max -> high")(answer(Some(ReasoningEffort.max)))
 
       _ <- section(s"$model: typed stream (Thinking + Text)") {
-        mistral.createChatCompletionStreamedTyped(arithmetic, settings).runWith(Sink.seq).map {
+        mistral.createChatCompletionStreamedTyped(arithmetic, settings).runToSeq.map {
           chunks =>
             val thinking = chunks.collect { case ChatChunk.Thinking(t) => t }.mkString
             val text = chunks.collect { case ChatChunk.Text(t) => t }.mkString
@@ -142,11 +136,10 @@ object MistralLarge4SmokeTest {
       }
 
       _ <- section(s"$model: OpenAI-shaped stream") {
-        mistral.createChatCompletionStreamed(arithmetic, settings).runWith(Sink.seq).map {
-          chunks =>
-            val text = chunks.flatMap(_.choices.headOption.flatMap(_.delta.content)).mkString
-            if (!text.contains("391")) sys.error(s"text='$text'")
-            s"${chunks.size} chunks, text='$text'"
+        mistral.createChatCompletionStreamed(arithmetic, settings).runToSeq.map { chunks =>
+          val text = chunks.flatMap(_.choices.headOption.flatMap(_.delta.content)).mkString
+          if (!text.contains("391")) sys.error(s"text='$text'")
+          s"${chunks.size} chunks, text='$text'"
         }
       }
 
@@ -206,7 +199,6 @@ object MistralLarge4SmokeTest {
     println(if (failures.get == 0) "ALL PASSED" else s"${failures.get} FAILED")
 
     mistral.close()
-    Await.result(system.terminate(), 30.seconds)
     System.exit(if (failures.get == 0) 0 else 1)
   }
 }

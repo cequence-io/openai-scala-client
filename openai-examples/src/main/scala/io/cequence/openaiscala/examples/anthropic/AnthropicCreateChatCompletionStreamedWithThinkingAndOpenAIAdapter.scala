@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.anthropic
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{NonOpenAIModelId, SystemMessage, UserMessage}
 import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase}
@@ -30,8 +29,6 @@ object AnthropicCreateChatCompletionStreamedWithThinkingAndOpenAIAdapter
           max_tokens = Some(10000)
         ).setAnthropicThinkingBudgetTokens(2000)
       )
-      .runWith(
-        Sink.foreach(response => print(response.contentHead.getOrElse("")))
-      )
+      .runForeach(response => print(response.contentHead.getOrElse("")))
   }
 }

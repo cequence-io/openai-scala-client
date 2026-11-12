@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettingsOps._
@@ -78,8 +77,6 @@ object ChatCompletionBatchCachingExperiment {
 
   def main(args: Array[String]): Unit = {
     implicit val ec: ExecutionContext = ExecutionContext.global
-    implicit val system: ActorSystem = ActorSystem("caching-experiment")
-    implicit val scheduler: Scheduler = system.scheduler
 
     val provider = args.headOption.getOrElse("openai")
 
@@ -131,7 +128,6 @@ object ChatCompletionBatchCachingExperiment {
     try Await.result(flow, 60.minutes)
     finally {
       service.close()
-      system.terminate()
       ()
     }
   }

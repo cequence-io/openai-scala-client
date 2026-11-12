@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.typesafe
 
-import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
   CreateChatCompletionSettings,
@@ -113,10 +112,7 @@ object MicrosoftDecision1SmokeTest {
   )
 
   def main(args: Array[String]): Unit = {
-    // the JSON helper retries on a scheduler
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val ec: ExecutionContext = system.dispatcher
-    implicit val scheduler: Scheduler = system.scheduler
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val deployment =
       sys.env.getOrElse("FOUNDRY_MODEL", DecisionProviderSettings.FoundryDefaultDeployment)
@@ -252,7 +248,6 @@ object MicrosoftDecision1SmokeTest {
     println(if (failures.get == 0) "ALL PASSED" else s"${failures.get} FAILED")
 
     service.close()
-    Await.result(system.terminate(), 30.seconds)
     System.exit(if (failures.get == 0) 0 else 1)
   }
 }

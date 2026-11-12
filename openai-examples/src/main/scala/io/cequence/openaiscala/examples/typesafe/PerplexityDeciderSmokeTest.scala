@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.typesafe
 
-import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, JsonSchemaDef}
 import io.cequence.openaiscala.domain.{
@@ -194,9 +193,7 @@ object PerplexityDeciderSmokeTest {
   }
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val ec: ExecutionContext = system.dispatcher
-    implicit val scheduler: Scheduler = system.scheduler
+    implicit val ec: ExecutionContext = ExecutionContext.global
     implicit val retrySettings: RetrySettings =
       RetrySettings(maxRetries = 3, delayOffset = 5.seconds)
 
@@ -298,7 +295,6 @@ object PerplexityDeciderSmokeTest {
 
     pplxAsOpenAI.close()
     others.foreach(_._2.close())
-    Await.result(system.terminate(), 30.seconds)
     println(if (passed) "ALL PASSED" else "FAILED")
     System.exit(if (passed) 0 else 1)
   }

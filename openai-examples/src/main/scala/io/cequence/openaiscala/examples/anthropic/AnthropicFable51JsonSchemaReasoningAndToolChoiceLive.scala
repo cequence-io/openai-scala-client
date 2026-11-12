@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.anthropic
 
-import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.anthropic.service.impl.{
   toAnthropicSettings,
@@ -41,8 +40,6 @@ import scala.concurrent.{Await, ExecutionContext}
  */
 object AnthropicFable51JsonSchemaReasoningAndToolChoiceLive {
 
-  implicit val system: ActorSystem = ActorSystem()
-  implicit val scheduler: Scheduler = system.scheduler
   implicit val ec: ExecutionContext = ExecutionContext.Implicits.global
 
   private val model = NonOpenAIModelId.claude_fable_5_1
@@ -190,7 +187,6 @@ object AnthropicFable51JsonSchemaReasoningAndToolChoiceLive {
       println("\nAll Fable 5.1 smoke tests passed.")
     } finally {
       service.close()
-      system.terminate()
     }
   }
 }

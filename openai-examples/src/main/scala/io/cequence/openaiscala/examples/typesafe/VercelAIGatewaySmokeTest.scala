@@ -1,8 +1,8 @@
 package io.cequence.openaiscala.examples.typesafe
 
-import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, JsonSchemaDef}
 import io.cequence.openaiscala.domain.{JsonSchema, UserMessage}
+import io.cequence.wsclient.concurrent.Futures
 import io.cequence.openaiscala.service.OpenAIChatCompletionExtra._
 import io.cequence.openaiscala.typesafe.domain._
 import io.cequence.openaiscala.typesafe.service.{
@@ -126,9 +126,7 @@ object VercelAIGatewaySmokeTest {
   }
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val ec: ExecutionContext = system.dispatcher
-    implicit val scheduler: Scheduler = system.scheduler
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val pace = args.find(_.startsWith("pace=")).map(_.drop(5).toLong).getOrElse(13000L).millis
     val service = TypeSafeServiceFactory(DecisionProviderSettings.vercel)
@@ -137,7 +135,7 @@ object VercelAIGatewaySmokeTest {
 
     // the free tier allows 5 requests per minute, so every call waits its turn
     def paced[T](f: => Future[T]): Future[T] =
-      akka.pattern.after(pace, scheduler)(Future.successful(())).flatMap(_ => f)
+      Futures.after(pace)(Future.successful(())).flatMap(_ => f)
 
     def section(
       name: String
@@ -264,7 +262,6 @@ object VercelAIGatewaySmokeTest {
 
     asOpenAI.close()
     service.close()
-    Await.result(system.terminate(), 30.seconds)
     System.exit(if (failures.get == 0) 0 else 1)
   }
 }

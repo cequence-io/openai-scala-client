@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.typesafe
 
-import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, JsonSchemaDef}
 import io.cequence.openaiscala.domain.{
   JsonSchema,
@@ -170,9 +169,7 @@ object OpenRouterDecisionsSmokeTest {
         s" | ${response.model} | ${response.usage}"
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val ec: ExecutionContext = system.dispatcher
-    implicit val scheduler: Scheduler = system.scheduler
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val engine = WSClientEngineRegistry(TransportSettings())
     val openRouter =
@@ -288,7 +285,6 @@ object OpenRouterDecisionsSmokeTest {
     asOpenAI.close()
     openRouter.close()
     engine.close()
-    Await.result(system.terminate(), 30.seconds)
     println(if (passed) "ALL PASSED" else "FAILED")
     System.exit(if (passed) 0 else 1)
   }

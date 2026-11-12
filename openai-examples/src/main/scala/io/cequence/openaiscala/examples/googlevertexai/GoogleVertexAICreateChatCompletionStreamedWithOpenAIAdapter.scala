@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.googlevertexai
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{NonOpenAIModelId, SystemMessage, UserMessage}
 import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase}
@@ -31,9 +30,7 @@ object GoogleVertexAICreateChatCompletionStreamedWithOpenAIAdapter
           temperature = Some(0)
         )
       )
-      .runWith(
-        Sink.foreach { response =>
-          print(response.contentHead.getOrElse(""))
-        }
-      )
+      .runForeach { response =>
+        print(response.contentHead.getOrElse(""))
+      }
 }

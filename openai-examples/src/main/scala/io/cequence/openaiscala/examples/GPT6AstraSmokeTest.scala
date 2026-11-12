@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.response.ChatToolCompletionResponse
@@ -88,10 +85,7 @@ object GPT6AstraSmokeTest {
     }
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val materializer: Materializer = Materializer(system)
-    implicit val scheduler: akka.actor.Scheduler = system.scheduler
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val skipBatch = args.contains("--skip-batch")
 
@@ -233,7 +227,7 @@ object GPT6AstraSmokeTest {
               reasoning_effort = Some(ReasoningEffort.low)
             )
           )
-          .runWith(Sink.seq)
+          .runToSeq
           .map { chunks =>
             val text = chunks.flatMap(_.contentHead).mkString
             val finish = chunks.flatMap(_.choices.flatMap(_.finish_reason)).lastOption
@@ -360,7 +354,6 @@ object GPT6AstraSmokeTest {
     try Await.result(all, 20.minutes)
     finally {
       service.close()
-      Await.result(system.terminate(), 10.seconds)
     }
 
     println(if (failures == 0) "ALL PASSED" else s"$failures FAILED")

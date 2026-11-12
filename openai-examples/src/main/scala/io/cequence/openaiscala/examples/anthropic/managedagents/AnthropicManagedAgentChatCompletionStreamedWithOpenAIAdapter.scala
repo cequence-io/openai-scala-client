@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.anthropic.managedagents
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{NonOpenAIModelId, SystemMessage, UserMessage}
@@ -33,12 +32,10 @@ object AnthropicManagedAgentChatCompletionStreamedWithOpenAIAdapter
         messages = messages,
         settings = CreateChatCompletionSettings(NonOpenAIModelId.claude_sonnet_4_6)
       )
-      .runWith(
-        Sink.foreach { chunk =>
-          chunk.choices.headOption.foreach { choice =>
-            choice.delta.content.foreach(print)
-            choice.finish_reason.foreach(reason => println(s"\n[finish reason: $reason]"))
-          }
+      .runForeach { chunk =>
+        chunk.choices.headOption.foreach { choice =>
+          choice.delta.content.foreach(print)
+          choice.finish_reason.foreach(reason => println(s"\n[finish reason: $reason]"))
         }
-      )
+      }
 }

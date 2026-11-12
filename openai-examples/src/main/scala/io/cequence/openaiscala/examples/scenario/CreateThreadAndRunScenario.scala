@@ -4,12 +4,12 @@ import io.cequence.openaiscala.domain.AssistantTool.FileSearchTool
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.FileUploadPurpose
 import io.cequence.openaiscala.examples.Example
-import io.cequence.wsclient.service.PollingHelper
+import io.cequence.wsclient.service.PollingHelperCore
 
 import java.io.File
 import scala.concurrent.Future
 
-object CreateThreadAndRunScenario extends Example with PollingHelper {
+object CreateThreadAndRunScenario extends Example with PollingHelperCore {
 
   private def scheduleFile(): File = {
     val resource = getClass.getResource("/CRA.txt")

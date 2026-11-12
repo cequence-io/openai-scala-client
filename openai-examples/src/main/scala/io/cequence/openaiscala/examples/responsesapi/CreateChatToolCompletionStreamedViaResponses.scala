@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.examples.responsesapi
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
-import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.domain.responsesapi.tools.{
   CodeInterpreterContainer,
   CodeInterpreterTool,
@@ -69,5 +67,5 @@ object CreateChatToolCompletionStreamedViaResponses
           )
         )
       )
-      .runWith(Sink.foreach[ChatChunk](chunk => println(ChatChunkPrinter.describe(chunk))))
+      .runForeach(chunk => println(ChatChunkPrinter.describe(chunk)))
 }

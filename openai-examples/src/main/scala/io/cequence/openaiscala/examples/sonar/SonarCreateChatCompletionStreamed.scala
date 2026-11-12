@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.sonar
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain.NonOpenAIModelId
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.perplexity.domain.Message.{SystemMessage, UserMessage}
@@ -33,14 +32,12 @@ object SonarCreateChatCompletionStreamed extends ExampleBase[SonarService] {
           max_tokens = Some(512)
         )
       )
-      .runWith(
-        Sink.foreach { completion =>
-          val content = completion.choices.headOption.flatMap(_.delta.content)
-          print(content.getOrElse(""))
+      .runForeach { completion =>
+        val content = completion.choices.headOption.flatMap(_.delta.content)
+        print(content.getOrElse(""))
 
-          if (completion.choices.headOption.exists(_.finish_reason.isDefined)) {
-            println("\n\nCitations:\n" + completion.citations.mkString("\n"))
-          }
+        if (completion.choices.headOption.exists(_.finish_reason.isDefined)) {
+          println("\n\nCitations:\n" + completion.citations.mkString("\n"))
         }
-      )
+      }
 }

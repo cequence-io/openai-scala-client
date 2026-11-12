@@ -1,7 +1,5 @@
 package io.cequence.openaiscala.examples.googlegemini
 
-import akka.stream.scaladsl.Sink
-import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{NonOpenAIModelId, UserMessage}
 import io.cequence.openaiscala.examples.{ChatChunkPrinter, ExampleBase}
@@ -75,5 +73,5 @@ object GoogleGeminiCreateChatToolCompletionStreamedWithMcpServers
           max_tokens = Some(2000)
         ).setGeminiTools(Seq(mcpServers))
       )
-      .runWith(Sink.foreach[ChatChunk](chunk => println(ChatChunkPrinter.describe(chunk))))
+      .runForeach(chunk => println(ChatChunkPrinter.describe(chunk)))
 }

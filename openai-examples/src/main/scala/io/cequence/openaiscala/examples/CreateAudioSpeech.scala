@@ -1,7 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import akka.stream.scaladsl.FileIO
-
 import java.nio.file.Paths
 import scala.concurrent.Future
 
@@ -13,8 +11,6 @@ object CreateAudioSpeech extends Example {
         "Today is a wonderful day to build something people love!"
       )
 
-      result <- source.runWith(FileIO.toPath(Paths.get("speech-test.mp3")))
-    } yield {
-      println(result.status)
-    }
+      bytesWritten <- StreamToFile(source, Paths.get("speech-test.mp3"))
+    } yield println(s"$bytesWritten bytes written")
 }

@@ -1,7 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
 import io.cequence.openaiscala.anthropic.domain.managedagents.{
   AgentTool,
   AgentToolConfig,
@@ -39,9 +37,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 object CreateChatToolCompletionStreamedWithApproval {
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val materializer: Materializer = Materializer(system)
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val deny = args.contains("deny")
     def has(env: String) = sys.env.get(env).exists(_.nonEmpty)
@@ -151,7 +147,6 @@ object CreateChatToolCompletionStreamedWithApproval {
 
     try Await.result(openAI.flatMap(_ => anthropic), 5.minutes)
     finally {
-      Await.result(system.terminate(), 30.seconds)
       ()
     }
   }

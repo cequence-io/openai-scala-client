@@ -15,7 +15,7 @@ object RetryAdapterExample extends ExampleBase[OpenAIService] {
   // adapters to use (round-robin, retry, etc.)
   private val adapters = OpenAIServiceAdapters.forFullService
 
-  // implicit retry settings and scheduler
+  // implicit retry settings
   private implicit val retrySettings: RetrySettings = RetrySettings(maxRetries = 4)
 
   // regular OpenAI service

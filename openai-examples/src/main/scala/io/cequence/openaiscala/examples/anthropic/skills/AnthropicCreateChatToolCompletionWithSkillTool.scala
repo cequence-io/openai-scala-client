@@ -1,9 +1,7 @@
 package io.cequence.openaiscala.examples.anthropic.skills
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.domain.ChatCompletionTool.{SkillSource, SkillTool}
-import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{NonOpenAIModelId, UserMessage}
 import io.cequence.openaiscala.examples.{ChatChunkPrinter, ExampleBase}
@@ -45,5 +43,5 @@ object AnthropicCreateChatToolCompletionWithSkillTool
           max_tokens = Some(8000)
         )
       )
-      .runWith(Sink.foreach[ChatChunk](chunk => println(ChatChunkPrinter.describe(chunk))))
+      .runForeach(chunk => println(ChatChunkPrinter.describe(chunk)))
 }

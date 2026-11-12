@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.service.OpenAIServiceFactory
@@ -25,9 +24,7 @@ object CreateChatCompletionStreamed extends ExampleBase[OpenAIStreamedService] {
         messages = messages,
         settings = CreateChatCompletionSettings(ModelId.gpt_4o_mini)
       )
-      .runWith(
-        Sink.foreach { completion =>
-          print(completion.contentHead.getOrElse(""))
-        }
-      )
+      .runForeach { completion =>
+        print(completion.contentHead.getOrElse(""))
+      }
 }

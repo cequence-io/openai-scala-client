@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.googlegemini
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain.NonOpenAIModelId
 import io.cequence.openaiscala.examples.ExampleBase
 import io.cequence.openaiscala.gemini.domain.ChatRole.User
@@ -40,9 +39,7 @@ object GoogleGeminiGenerateContentStreamed extends ExampleBase[GeminiService] {
           )
         )
       )
-      .runWith(
-        Sink.foreach { response =>
-          print(response.contentHeadText)
-        }
-      )
+      .runForeach { response =>
+        print(response.contentHeadText)
+      }
 }

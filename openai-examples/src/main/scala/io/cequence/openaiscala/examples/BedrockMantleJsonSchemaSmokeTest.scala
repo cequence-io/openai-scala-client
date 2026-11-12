@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples
 
-import akka.actor.ActorSystem
 import io.cequence.openaiscala.domain.settings.{
   ChatCompletionResponseFormatType,
   CreateChatCompletionSettings,
@@ -46,9 +45,8 @@ object BedrockMantleJsonSchemaSmokeTest {
   )
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val ec: scala.concurrent.ExecutionContext = system.dispatcher
-    implicit val scheduler: akka.actor.Scheduler = system.scheduler
+    implicit val ec: scala.concurrent.ExecutionContext =
+      scala.concurrent.ExecutionContext.global
 
     // ---- 1. network-free config-routing check ----
     println("=== config routing (models-supporting-json-schema) ===")
@@ -124,7 +122,6 @@ object BedrockMantleJsonSchemaSmokeTest {
       println("OK: helper -> Responses adapter native json_schema path works.")
     } finally {
       chatService.close()
-      Await.result(system.terminate(), 10.seconds)
     }
   }
 }

@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.typesafe
 
-import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, JsonSchemaDef}
 import io.cequence.openaiscala.domain.{
   ImageURLContent,
@@ -57,8 +56,6 @@ object LiquidD1ImagesSmokeTest {
 
   def main(args: Array[String]): Unit = {
     implicit val ec: ExecutionContext = ExecutionContext.global
-    val system = ActorSystem("liquid-d1-images-smoke-test")
-    implicit val scheduler: Scheduler = system.scheduler
 
     val model =
       args
@@ -151,7 +148,6 @@ object LiquidD1ImagesSmokeTest {
     } finally {
       d1.close()
       d1AsOpenAI.close()
-      system.terminate()
     }
 
     println(if (failures.isEmpty) "ALL PASSED" else s"FAILED: ${failures.mkString("; ")}")

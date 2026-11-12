@@ -3,11 +3,11 @@ package io.cequence.openaiscala.examples
 import io.cequence.openaiscala.domain.AssistantTool.CodeInterpreterTool
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateRunSettings
-import io.cequence.wsclient.service.PollingHelper
+import io.cequence.wsclient.service.PollingHelperCore
 
 import scala.concurrent.Future
 
-object CreateRunWithCodeInterpretation extends Example with PollingHelper {
+object CreateRunWithCodeInterpretation extends Example with PollingHelperCore {
 
   private val data = """Number of Items,Max Number of Tokens,Execution Time per Item (secs)
                        |500,512,0.1308133502

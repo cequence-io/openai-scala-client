@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.examples.anthropic
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.anthropic.domain.tools.MCPServerURLDefinition
-import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettingsOps._
 import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, ReasoningEffort}
 import io.cequence.openaiscala.domain.{NonOpenAIModelId, SystemMessage, UserMessage}
@@ -16,7 +14,7 @@ import scala.concurrent.Future
  * `setAnthropicMcpServers`, Claude calls its tools itself, and every call / result arrives as
  * a server-side `ToolCallStart` / `ToolCall` / `ToolResult` in the same stream as the text.
  * When a tool run outlives the turn budget (`pause_turn`) the adapter resumes the turn on the
- * same `Source` - you only ever see one `Finish` (cap it with `setAnthropicMaxContinuations`).
+ * same stream - you only ever see one `Finish` (cap it with `setAnthropicMaxContinuations`).
  *
  * Uses DeepWiki's public streamable-HTTP MCP server (no key needed). Requires
  * `openai-scala-anthropic-client` as a dependency and `ANTHROPIC_API_KEY`.
@@ -48,5 +46,5 @@ object AnthropicCreateChatToolCompletionStreamedWithMCPServers
           reasoning_effort = Some(ReasoningEffort.low)
         ).setAnthropicMcpServers(Seq(deepwiki)).setAnthropicMaxContinuations(4)
       )
-      .runWith(Sink.foreach[ChatChunk](chunk => println(ChatChunkPrinter.describe(chunk))))
+      .runForeach(chunk => println(ChatChunkPrinter.describe(chunk)))
 }

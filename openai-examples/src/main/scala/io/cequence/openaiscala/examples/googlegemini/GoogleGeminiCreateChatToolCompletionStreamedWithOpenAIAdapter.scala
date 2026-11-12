@@ -1,8 +1,6 @@
 package io.cequence.openaiscala.examples.googlegemini
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
-import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, ReasoningEffort}
 import io.cequence.openaiscala.domain.{
   JsonSchema,
@@ -54,7 +52,7 @@ object GoogleGeminiCreateChatToolCompletionStreamedWithOpenAIAdapter
             reasoning_effort = Some(ReasoningEffort.low)
           )
         )
-        .runWith(Sink.foreach[ChatChunk](chunk => println(ChatChunkPrinter.describe(chunk))))
+        .runForeach(chunk => println(ChatChunkPrinter.describe(chunk)))
 
       _ = println("\n--- server-side code execution ---")
 
@@ -70,6 +68,6 @@ object GoogleGeminiCreateChatToolCompletionStreamedWithOpenAIAdapter
             reasoning_effort = Some(ReasoningEffort.low)
           ).setGeminiTools(Seq(Tool.CodeExecution))
         )
-        .runWith(Sink.foreach[ChatChunk](chunk => println(ChatChunkPrinter.describe(chunk))))
+        .runForeach(chunk => println(ChatChunkPrinter.describe(chunk)))
     } yield ()
 }

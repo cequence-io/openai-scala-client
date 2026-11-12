@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.typesafe
 
-import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{
   ImageURLContent,
@@ -125,10 +124,7 @@ object SubQSnapSmokeTest {
   }
 
   def main(args: Array[String]): Unit = {
-    // the JSON helper retries on a scheduler
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val ec: ExecutionContext = system.dispatcher
-    implicit val scheduler: Scheduler = system.scheduler
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val service = TypeSafeServiceFactory(DecisionProviderSettings.subq)
     val asOpenAI = TypeSafeServiceFactory.asOpenAI(DecisionProviderSettings.subq)
@@ -286,7 +282,6 @@ object SubQSnapSmokeTest {
     service.close()
     asOpenAI.close()
     println(if (failures.get == 0) "ALL PASSED" else s"${failures.get} FAILED")
-    Await.result(system.terminate(), 30.seconds)
     System.exit(if (failures.get == 0) 0 else 1)
   }
 }

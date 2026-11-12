@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.examples.sonar
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain.response.ChatChunk._
@@ -48,10 +45,7 @@ object PerplexityAgentAsOpenAISmokeTest {
   private implicit val capitalFormat: Format[Capital] = Json.format[Capital]
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val materializer: Materializer = Materializer(system)
-    implicit val scheduler: akka.actor.Scheduler = system.scheduler
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val chat = SonarServiceFactory.agentAsOpenAI()
     // the shared retry adapter works on the repacked OpenAIScala* exceptions (429 -> retry)
@@ -189,7 +183,7 @@ object PerplexityAgentAsOpenAISmokeTest {
             Seq(UserMessage("Capital of Denmark? One sentence.")),
             settings
           )
-          .runWith(Sink.seq)
+          .runToSeq
           .map { chunks =>
             val text = chunks.flatMap(_.choices.flatMap(_.delta.content)).mkString
             check(text.contains("Copenhagen"), s"unexpected '$text'")
@@ -233,7 +227,6 @@ object PerplexityAgentAsOpenAISmokeTest {
     println(if (failures.get == 0) "ALL PASSED" else s"${failures.get} FAILED")
 
     retrying.close()
-    Await.result(system.terminate(), 30.seconds)
     System.exit(if (failures.get == 0) 0 else 1)
   }
 }

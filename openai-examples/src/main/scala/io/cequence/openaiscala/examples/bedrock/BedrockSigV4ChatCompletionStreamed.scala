@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.bedrock
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.aws.AwsCredentialsProvider
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{ModelId, UserMessage}
@@ -13,9 +12,8 @@ import scala.concurrent.Future
 
 /**
  * Streamed Bedrock call authenticated with AWS SigV4. Streaming goes through a different
- * engine method than the sync path, and the signature is computed eagerly because the
- * underlying engine issues the HTTP request when the method is called, not when the `Source`
- * is materialized.
+ * engine method than the sync path; the request is signed when the stream runs - once per run,
+ * so a re-run is signed afresh.
  *
  * Requires `AWS_BEDROCK_ACCESS_KEY`, `AWS_BEDROCK_SECRET_KEY`, `AWS_BEDROCK_REGION`.
  */
@@ -41,8 +39,8 @@ object BedrockSigV4ChatCompletionStreamed extends ExampleBase[OpenAIStreamedServ
           ModelId.bedrock_openai_gpt_5_6_luna
         )
       )
-      .runWith(Sink.foreach { chunk =>
+      .runForeach { chunk =>
         chunk.choices.headOption.flatMap(_.delta.content).foreach(print)
-      })
+      }
       .map(_ => println("\n[streamed ok]"))
 }

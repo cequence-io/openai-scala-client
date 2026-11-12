@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.fireworksai
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.examples.{ChatCompletionProvider, ExampleBase}
@@ -35,9 +34,7 @@ object FireworksAICreateChatCompletionStreamed
           presence_penalty = Some(0)
         )
       )
-      .runWith(
-        Sink.foreach { completion =>
-          print(completion.contentHead.getOrElse(""))
-        }
-      )
+      .runForeach { completion =>
+        print(completion.contentHead.getOrElse(""))
+      }
 }

@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.typesafe
 
-import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.OpenAIScalaClientException
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.decisions.{
@@ -111,9 +110,7 @@ object NimbleSmokeTest {
   }
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val ec: ExecutionContext = system.dispatcher
-    implicit val scheduler: Scheduler = system.scheduler
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val model = args
       .find(_.startsWith("model="))
@@ -295,7 +292,6 @@ object NimbleSmokeTest {
       else
         s"${failures.get} FAILED"
     )
-    Await.result(system.terminate(), 30.seconds)
     System.exit(
       if (failures.get == 0)
         0

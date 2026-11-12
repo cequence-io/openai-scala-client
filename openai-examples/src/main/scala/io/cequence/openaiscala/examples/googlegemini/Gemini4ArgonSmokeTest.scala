@@ -1,8 +1,5 @@
 package io.cequence.openaiscala.examples.googlegemini
 
-import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.response.{AssembledChatCompletion, ChatChunk}
@@ -68,10 +65,7 @@ object Gemini4ArgonSmokeTest {
 
   def main(args: Array[String]): Unit = {
     System.setProperty("java.awt.headless", "true")
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val materializer: Materializer = Materializer(system)
-    implicit val scheduler: akka.actor.Scheduler = system.scheduler
-    implicit val ec: ExecutionContext = system.dispatcher
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     val model = args
       .find(_.startsWith("model="))
@@ -201,7 +195,7 @@ object Gemini4ArgonSmokeTest {
             ),
             settings.copy(reasoning_effort = Some(ReasoningEffort.high))
           )
-          .runWith(Sink.seq)
+          .runToSeq
           .map { chunks =>
             val text = chunks.collect { case ChatChunk.Text(t) => t }.mkString
             val thinking = chunks.collect { case ChatChunk.Thinking(t) => t }.mkString
@@ -241,7 +235,7 @@ object Gemini4ArgonSmokeTest {
     ): Future[(Seq[ChatChunk], AssembledChatCompletion)] =
       service
         .createChatToolCompletionStreamed(messages, tools, toolChoice, settings)
-        .runWith(Sink.seq)
+        .runToSeq
         .map { chunks =>
           seenChunks.synchronized(seenChunks ++= chunks.map {
             case ChatChunk.Other(kind, _) => s"Other($kind)"
@@ -366,12 +360,11 @@ object Gemini4ArgonSmokeTest {
       }
 
       _ <- section(s"$model: OpenAI-shaped stream - createChatCompletionStreamed") {
-        service.createChatCompletionStreamed(arithmetic, settings).runWith(Sink.seq).map {
-          chunks =>
-            val text = chunks.flatMap(_.choices.flatMap(_.delta.content)).mkString
-            val finish = chunks.flatMap(_.choices.flatMap(_.finish_reason)).lastOption
-            check(text.contains("391"), s"text='$text'")
-            s"text='${text.trim}', ${chunks.size} chunks, finish ${finish.getOrElse("-")}"
+        service.createChatCompletionStreamed(arithmetic, settings).runToSeq.map { chunks =>
+          val text = chunks.flatMap(_.choices.flatMap(_.delta.content)).mkString
+          val finish = chunks.flatMap(_.choices.flatMap(_.finish_reason)).lastOption
+          check(text.contains("391"), s"text='$text'")
+          s"text='${text.trim}', ${chunks.size} chunks, finish ${finish.getOrElse("-")}"
         }
       }
     } yield ()
@@ -388,7 +381,6 @@ object Gemini4ArgonSmokeTest {
     Try(Await.result(run, 15.minutes))
     service.close()
     println(if (failures.get == 0) "ALL PASSED" else s"${failures.get} FAILED")
-    Await.result(system.terminate(), 30.seconds)
     System.exit(if (failures.get == 0) 0 else 1)
   }
 }

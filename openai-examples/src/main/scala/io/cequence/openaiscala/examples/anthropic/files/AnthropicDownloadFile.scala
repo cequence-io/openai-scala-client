@@ -1,8 +1,7 @@
 package io.cequence.openaiscala.examples.anthropic.files
 
-import akka.stream.scaladsl.FileIO
 import io.cequence.openaiscala.anthropic.service.{AnthropicService, AnthropicServiceFactory}
-import io.cequence.openaiscala.examples.ExampleBase
+import io.cequence.openaiscala.examples.{ExampleBase, StreamToFile}
 
 import java.nio.file.Paths
 import scala.concurrent.Future
@@ -44,20 +43,17 @@ object AnthropicDownloadFile extends ExampleBase[AnthropicService] {
           println()
 
           // Stream the file contents to disk
-          source
-            .runWith(FileIO.toPath(outputPath))
-            .map { ioResult =>
-              println("Download complete!")
-              println(s"  Bytes written: ${ioResult.count}")
-              println(s"  Saved to: $outputPath")
-              println()
-              println("=" * 60)
-              println("Note: Large files are streamed efficiently")
-              println("=" * 60)
-            }
-            .recover { case ex =>
-              println(s"Error downloading file: ${ex.getMessage}")
-            }
+          StreamToFile(source, outputPath).map { bytesWritten =>
+            println("Download complete!")
+            println(s"  Bytes written: $bytesWritten")
+            println(s"  Saved to: $outputPath")
+            println()
+            println("=" * 60)
+            println("Note: Large files are streamed efficiently")
+            println("=" * 60)
+          }.recover { case ex =>
+            println(s"Error downloading file: ${ex.getMessage}")
+          }
 
         case (None, _) =>
           println(s"File not found: $fileId")

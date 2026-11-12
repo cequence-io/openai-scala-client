@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.googlegemini
 
-import akka.stream.scaladsl.Sink
 import io.cequence.openaiscala.domain._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.examples.ExampleBase
@@ -34,9 +33,7 @@ object GoogleGeminiCreateChatCompletionStreamedWithOpenAIAdapter
           max_tokens = Some(1000)
         )
       )
-      .runWith(
-        Sink.foreach { completion =>
-          print(completion.contentHead.getOrElse(""))
-        }
-      )
+      .runForeach { completion =>
+        print(completion.contentHead.getOrElse(""))
+      }
 }

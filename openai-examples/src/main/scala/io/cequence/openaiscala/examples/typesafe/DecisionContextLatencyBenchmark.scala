@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.examples.typesafe
 
-import akka.actor.{ActorSystem, Scheduler}
+import io.cequence.wsclient.concurrent.Futures
 import io.cequence.openaiscala.domain.decisions.CreateDecisionSettings
 import io.cequence.openaiscala.typesafe.domain._
 import io.cequence.openaiscala.typesafe.service.{
@@ -73,9 +73,7 @@ object DecisionContextLatencyBenchmark {
   }
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val ec: ExecutionContext = system.dispatcher
-    implicit val scheduler: Scheduler = system.scheduler
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     def arg(name: String): Option[String] =
       args.find(_.startsWith(name + "=")).map(_.drop(name.length + 1))
@@ -188,7 +186,7 @@ object DecisionContextLatencyBenchmark {
       sizeK: Int,
       pace: Long
     ): Future[Either[String, (Long, Option[Int], Option[Double])]] =
-      akka.pattern.after(pace.millis, scheduler)(Future.unit).flatMap { _ =>
+      Futures.after(pace.millis)(Future.unit).flatMap { _ =>
         val state = stateOf(sizeK)
         val start = System.nanoTime()
         service
@@ -372,7 +370,6 @@ object DecisionContextLatencyBenchmark {
 
     out.foreach(_.close())
     engine.close()
-    Await.result(system.terminate(), 30.seconds)
     System.exit(0)
   }
 }

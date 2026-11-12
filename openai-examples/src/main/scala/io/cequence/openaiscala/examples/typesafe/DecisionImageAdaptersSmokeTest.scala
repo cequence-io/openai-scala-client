@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.typesafe
 
-import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.domain.decisions.{
   CreateDecisionSettings,
   DecisionAnswer,
@@ -247,9 +246,7 @@ object DecisionImageAdaptersSmokeTest {
   }
 
   def main(args: Array[String]): Unit = {
-    implicit val system: ActorSystem = ActorSystem()
-    implicit val ec: ExecutionContext = system.dispatcher
-    implicit val scheduler: Scheduler = system.scheduler
+    implicit val ec: ExecutionContext = ExecutionContext.global
 
     def arg(name: String): Option[String] =
       args.find(_.startsWith(name + "=")).map(_.drop(name.length + 1))
@@ -388,7 +385,6 @@ object DecisionImageAdaptersSmokeTest {
 
     println(s"Summary: ${selected.size} targets, $unmet with an expectation not met")
     engine.close()
-    Await.result(system.terminate(), 30.seconds)
     System.exit(if (unmet > 0) 1 else 0)
   }
 }

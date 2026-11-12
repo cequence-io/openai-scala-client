@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.examples.anthropic
 
-import akka.actor.{ActorSystem, Scheduler}
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{
@@ -46,9 +45,7 @@ object AnthropicBedrockCreateChatCompletionBatchVLMSmokeTest {
   private val bluePngBase64 =
     "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAe0lEQVR4nO3PUQkAIBTAwJfEJPZPYRhD+HEIgwW4zdrn64YLGtCCBrSgAS1oQAsa0IIGtKABLWhACxrQgga0oAEtaEALGtCCBrSgAS1oQAsa0IIGtKABLWhACxrQgga0oAEtaEALGtCCBrSgAS1oQAsa0IIGtKABLXjsArR1YR6a53LGAAAAAElFTkSuQmCC"
 
-  private implicit val actorSystem: ActorSystem = ActorSystem("bedrock-vlm-batch-smoke")
   private implicit val ec: ExecutionContext = ExecutionContext.global
-  private implicit val scheduler: Scheduler = actorSystem.scheduler
 
   // EU cross-region inference profile prefix - matches the region the S3 bucket/IAM role are
   // scoped to
@@ -151,7 +148,6 @@ object AnthropicBedrockCreateChatCompletionBatchVLMSmokeTest {
       )
     } finally {
       service.close()
-      actorSystem.terminate()
       ()
     }
   }
