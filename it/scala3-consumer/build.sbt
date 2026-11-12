@@ -5,7 +5,14 @@
 // a private Ivy home first (never ~/.ivy2/local).
 
 val openaiVersion = sys.props.getOrElse("openai.version", "2.0.0-SNAPSHOT")
-val wsClient = "1.2.0"
+// the library's own ws-client version (one version for every ws-client artifact on a classpath)
+val wsClient = {
+  val dependencies = IO.read(file("../../project/Dependencies.scala"))
+  "val wsClient = \"([^\"]+)\"".r
+    .findFirstMatchIn(dependencies)
+    .map(_.group(1))
+    .getOrElse(sys.error("No wsClient version in ../../project/Dependencies.scala"))
+}
 
 def consumer(scala: String, deps: ModuleID*) = Seq(
   scalaVersion := scala,
