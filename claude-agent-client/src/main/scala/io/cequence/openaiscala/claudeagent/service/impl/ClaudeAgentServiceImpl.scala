@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.util.{Failure, Success}
 
 /**
  * Default [[ClaudeAgentService]] implementation, wrapping a [[ClaudeAgentProcessTransport]].
@@ -63,13 +64,21 @@ private[claudeagent] class ClaudeAgentServiceImpl(
       drain = true
     )
 
-  liveEvents.completion.failed.foreach(readyPromise.tryFailure)
-  transport.completion.foreach { exit =>
-    readyPromise.tryFailure(
-      new ClaudeAgentProcessException(
-        s"Claude process exited before system/init (code ${exit.exitCode.getOrElse("unknown")})"
-      )
-    )
+  // Not ready is decided once stdout was read to its end (the hub's upstream waits for the
+  // process too): an init the process wrote just before exiting is still seen - deciding on
+  // the process's exit alone raced the hub reading that line.
+  liveEvents.completion.onComplete {
+    case Failure(e) =>
+      readyPromise.tryFailure(e)
+
+    case Success(_) =>
+      transport.completion.foreach { exit =>
+        readyPromise.tryFailure(
+          new ClaudeAgentProcessException(
+            s"Claude process exited before system/init (code ${exit.exitCode.getOrElse("unknown")})"
+          )
+        )
+      }
   }
 
   override def completion: Future[ClaudeAgentProcessExit] = transport.completion

@@ -557,6 +557,10 @@ private[service] trait AnthropicBedrockServiceImpl extends Anthropic with Bedroc
       )
     )
 
+  override def subscribeSessionEvents(
+    sessionId: String
+  ): Future[AsyncStream[SessionEventEnvelope]] = managedAgentsUnsupported
+
   override def addSessionResource(
     sessionId: String,
     resource: SessionResource

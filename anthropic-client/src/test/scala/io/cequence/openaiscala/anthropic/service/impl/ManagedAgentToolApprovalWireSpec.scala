@@ -10,12 +10,14 @@ import io.cequence.openaiscala.domain.{
   ReasoningMessage,
   UserMessage
 }
-import io.cequence.openaiscala.domain.response.ChatChunk
+import io.cequence.openaiscala.domain.response.{AssembledChatCompletion, ChatChunk}
 import io.cequence.openaiscala.domain.response.ChatChunk.FinishReason
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps._
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIChatCompletionStreamedService
+import io.cequence.openaiscala.testkit.StreamSpecSupport
 import io.cequence.wsclient.domain.WsRequestContext
+import io.cequence.wsclient.stream.AsyncStream
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.Eventually
 import org.scalatest.matchers.should.Matchers
@@ -41,7 +43,8 @@ class ManagedAgentToolApprovalWireSpec
     extends AnyWordSpec
     with Matchers
     with Eventually
-    with BeforeAndAfterAll {
+    with BeforeAndAfterAll
+    with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
@@ -114,10 +117,11 @@ class ManagedAgentToolApprovalWireSpec
               exchange.getResponseHeaders.add("Content-Type", "text/event-stream")
               exchange.sendResponseHeaders(200, 0)
               val out = exchange.getResponseBody
-              out.write(": connected.\n\n".getBytes(StandardCharsets.UTF_8))
-              out.flush()
+              // subscribed first, then announced - as the live API's ": connected." comment
               val queue = new LinkedBlockingQueue[Seq[JsObject]]()
               subscribers.add(queue)
+              out.write(": connected.\n\n".getBytes(StandardCharsets.UTF_8))
+              out.flush()
               try
                 Option(queue.poll(10, TimeUnit.SECONDS)).getOrElse(Nil).foreach { event =>
                   out.write(
@@ -175,6 +179,17 @@ class ManagedAgentToolApprovalWireSpec
   }
 
   private def await[T](f: Future[T]): T = Await.result(f, 20.seconds)
+
+  private def collect(stream: AsyncStream[ChatChunk]): Seq[ChatChunk] =
+    runStream(stream, 20.seconds)
+
+  private def drain[A](stream: AsyncStream[A]): Unit =
+    runStreamDrain(stream, 20.seconds)
+
+  // as `assembled` (a one-element stream, its head - a NoSuchElementException if empty), run
+  // through the selected consumer
+  private def assemble(stream: AsyncStream[ChatChunk]): AssembledChatCompletion =
+    runStreamTake(stream.via(ChatChunk.assembleSink), 1, 20.seconds).head
 
   private def reset(): Unit = {
     posted = Nil
@@ -264,7 +279,7 @@ class ManagedAgentToolApprovalWireSpec
 
   private def paused(): (Seq[ChatChunk], ChatChunk.ToolApprovalRequest) = {
     val chunks =
-      await(service.createChatCompletionStreamedTyped(messages, settings).runToSeq)
+      collect(service.createChatCompletionStreamedTyped(messages, settings))
     val request = chunks.collectFirst { case r: ChatChunk.ToolApprovalRequest => r }.get
     (chunks, request)
   }
@@ -299,13 +314,11 @@ class ManagedAgentToolApprovalWireSpec
       val (_, request) = paused()
       posted = Nil
 
-      val chunks = await(
-        service
-          .createChatCompletionStreamedTyped(
-            Nil,
-            settings.setToolApprovalDecisions(Seq(request.approve))
-          )
-          .runToSeq
+      val chunks = collect(
+        service.createChatCompletionStreamedTyped(
+          Nil,
+          settings.setToolApprovalDecisions(Seq(request.approve))
+        )
       )
 
       sessionsCreated shouldBe 1 // no new session
@@ -340,13 +353,11 @@ class ManagedAgentToolApprovalWireSpec
       val (_, request) = paused()
       posted = Nil
 
-      val chunks = await(
-        service
-          .createChatCompletionStreamedTyped(
-            Nil,
-            settings.setToolApprovalDecisions(Seq(request.deny("not allowed")))
-          )
-          .runToSeq
+      val chunks = collect(
+        service.createChatCompletionStreamedTyped(
+          Nil,
+          settings.setToolApprovalDecisions(Seq(request.deny("not allowed")))
+        )
       )
 
       posted.head shouldBe Seq(
@@ -364,14 +375,12 @@ class ManagedAgentToolApprovalWireSpec
       reset(); script = pauseThenFinish
       val asked = new CopyOnWriteArrayList[ChatChunk.ToolApprovalRequest]()
 
-      val chunks = await(
-        service
-          .createChatToolCompletionStreamedWithApprovals(messages, settings = settings) {
-            request =>
-              asked.add(request)
-              Future.successful(request.deny("not allowed"))
-          }
-          .runToSeq
+      val chunks = collect(
+        service.createChatToolCompletionStreamedWithApprovals(messages, settings = settings) {
+          request =>
+            asked.add(request)
+            Future.successful(request.deny("not allowed"))
+        }
       )
 
       asked.size shouldBe 1
@@ -427,14 +436,12 @@ class ManagedAgentToolApprovalWireSpec
         }
 
       val asked = new CopyOnWriteArrayList[ChatChunk.ToolApprovalRequest]()
-      val assembled = await(
-        service
-          .createChatToolCompletionStreamedWithApprovals(messages, settings = settings) {
-            request =>
-              asked.add(request)
-              Future.successful(request.approve)
-          }
-          .assembled
+      val assembled = assemble(
+        service.createChatToolCompletionStreamedWithApprovals(messages, settings = settings) {
+          request =>
+            asked.add(request)
+            Future.successful(request.approve)
+        }
       )
 
       // each call asked about once, both confirmations in one POST
@@ -462,7 +469,7 @@ class ManagedAgentToolApprovalWireSpec
         )
 
       val assembled =
-        await(service.createChatCompletionStreamedTyped(messages, settings).assembled)
+        assemble(service.createChatCompletionStreamedTyped(messages, settings))
 
       assembled.toolCalls.map(c => (c.callId, c.toolName)) shouldBe Seq(("sevt_ok", "bash"))
       assembled.toolResults.map(_.text) shouldBe Seq(Some("a.txt"))
@@ -480,7 +487,7 @@ class ManagedAgentToolApprovalWireSpec
       // the texts of the user.message a conversation is sent as
       def kickoffTexts(conversation: Seq[BaseMessage]): Seq[String] = {
         posted = Nil
-        await(service.createChatCompletionStreamedTyped(conversation, settings).assembled)
+        assemble(service.createChatCompletionStreamedTyped(conversation, settings))
         val blocks = (posted.head.head \ "content").as[Seq[JsObject]]
         blocks.map(block => (block \ "text").as[String])
       }
@@ -499,7 +506,7 @@ class ManagedAgentToolApprovalWireSpec
       script = _ => Seq(idleRequiresAction("sevt_old"))
 
       val assembled =
-        await(service.createChatCompletionStreamedTyped(messages, settings).assembled)
+        assemble(service.createChatCompletionStreamedTyped(messages, settings))
 
       assembled.toolApprovalRequests.map(r => (r.requestId, r.arguments)) shouldBe
         Seq(("sevt_old", """{"command":"rm -rf /tmp/x"}"""))
@@ -512,8 +519,8 @@ class ManagedAgentToolApprovalWireSpec
       script = _ => Seq(idleRequiresAction("sevt_custom"))
 
       intercept[OpenAIScalaClientException](
-        await(
-          service.createChatCompletionStreamedTyped(messages, settings).runDrain
+        drain(
+          service.createChatCompletionStreamedTyped(messages, settings)
         )
       ).getMessage should include("agent.custom_tool_use")
       // an unanswerable pause is not kept - the session is cleaned up (after the failure)
@@ -538,30 +545,26 @@ class ManagedAgentToolApprovalWireSpec
         }
 
       val paused =
-        await(service.createChatCompletionStreamedTyped(messages, settings).assembled)
+        assemble(service.createChatCompletionStreamedTyped(messages, settings))
       paused.toolApprovalRequests.map(_.requestId) shouldBe Seq("sevt_A", "sevt_B")
 
       val first = paused.toolApprovalRequests.head
-      val partial = await(
-        service
-          .createChatCompletionStreamedTyped(
-            Nil,
-            settings.setToolApprovalDecisions(Seq(first.approve))
-          )
-          .assembled
+      val partial = assemble(
+        service.createChatCompletionStreamedTyped(
+          Nil,
+          settings.setToolApprovalDecisions(Seq(first.approve))
+        )
       )
       // sevt_B was not seen in this stream - it is looked up in the session history
       partial.toolApprovalRequests.map(_.requestId) shouldBe Seq("sevt_B")
       partial.finishReason shouldBe Some(FinishReason.approval_required)
       deleted shouldBe Nil
 
-      val done = await(
-        service
-          .createChatCompletionStreamedTyped(
-            Nil,
-            settings.setToolApprovalDecisions(partial.approveAll)
-          )
-          .assembled
+      val done = assemble(
+        service.createChatCompletionStreamedTyped(
+          Nil,
+          settings.setToolApprovalDecisions(partial.approveAll)
+        )
       )
       done.finishReason shouldBe Some(FinishReason.stop)
       done.toolResults.map(_.callId) shouldBe Seq("sevt_B")
@@ -585,30 +588,28 @@ class ManagedAgentToolApprovalWireSpec
         }
 
       val first =
-        await(service.createChatCompletionStreamedTyped(messages, settings).assembled)
+        assemble(service.createChatCompletionStreamedTyped(messages, settings))
       val decisions =
         settings.setToolApprovalDecisions(Seq(first.toolApprovalRequests.head.approve))
 
       // sevt_B is looked up in the history - which fails
       failHistory = true
       intercept[Exception](
-        await(service.createChatCompletionStreamedTyped(Nil, decisions).runDrain)
+        drain(service.createChatCompletionStreamedTyped(Nil, decisions))
       )
       Thread.sleep(200)
       deleted shouldBe Nil
 
       failHistory = false
-      val paused = await(service.createChatCompletionStreamedTyped(Nil, decisions).assembled)
+      val paused = assemble(service.createChatCompletionStreamedTyped(Nil, decisions))
       paused.toolApprovalRequests.map(_.requestId) shouldBe Seq("sevt_B")
       deleted shouldBe Nil
 
-      await(
-        service
-          .createChatCompletionStreamedTyped(
-            Nil,
-            settings.setToolApprovalDecisions(paused.approveAll)
-          )
-          .assembled
+      assemble(
+        service.createChatCompletionStreamedTyped(
+          Nil,
+          settings.setToolApprovalDecisions(paused.approveAll)
+        )
       ).finishReason shouldBe Some(FinishReason.stop)
       deleted shouldBe Seq(sessionId)
     }
@@ -619,26 +620,22 @@ class ManagedAgentToolApprovalWireSpec
       failConfirmations = true
 
       intercept[Exception](
-        await(
-          service
-            .createChatCompletionStreamedTyped(
-              Nil,
-              settings.setToolApprovalDecisions(Seq(request.approve))
-            )
-            .runDrain
+        drain(
+          service.createChatCompletionStreamedTyped(
+            Nil,
+            settings.setToolApprovalDecisions(Seq(request.approve))
+          )
         )
       )
       Thread.sleep(200)
       deleted shouldBe Nil // the decisions can be retried
 
       failConfirmations = false
-      await(
-        service
-          .createChatCompletionStreamedTyped(
-            Nil,
-            settings.setToolApprovalDecisions(Seq(request.approve))
-          )
-          .assembled
+      assemble(
+        service.createChatCompletionStreamedTyped(
+          Nil,
+          settings.setToolApprovalDecisions(Seq(request.approve))
+        )
       ).finishReason shouldBe Some(FinishReason.stop)
       deleted shouldBe Seq(sessionId)
     }
@@ -657,7 +654,7 @@ class ManagedAgentToolApprovalWireSpec
       script = _ => Seq(retrying, agentMessage("recovered"), idleEndTurn)
 
       val recovered =
-        await(service.createChatCompletionStreamedTyped(messages, settings).assembled)
+        assemble(service.createChatCompletionStreamedTyped(messages, settings))
       recovered.text shouldBe "recovered"
       recovered.other.map(_.kind) should contain("session.error")
       recovered.finishReason shouldBe Some(FinishReason.stop)
@@ -674,8 +671,8 @@ class ManagedAgentToolApprovalWireSpec
           )
         )
       intercept[io.cequence.openaiscala.OpenAIScalaEngineOverloadedException](
-        await(
-          service.createChatCompletionStreamedTyped(messages, settings).runDrain
+        drain(
+          service.createChatCompletionStreamedTyped(messages, settings)
         )
       )
       // a failed stream deletes its session after the failure is delivered - let it land
@@ -708,8 +705,8 @@ class ManagedAgentToolApprovalWireSpec
           idleExhausted
         )
       intercept[io.cequence.openaiscala.OpenAIScalaEngineOverloadedException](
-        await(
-          service.createChatCompletionStreamedTyped(messages, settings).runDrain
+        drain(
+          service.createChatCompletionStreamedTyped(messages, settings)
         )
       )
       eventually(deleted shouldBe Seq(sessionId))
@@ -721,7 +718,7 @@ class ManagedAgentToolApprovalWireSpec
         await(service.createChatCompletion(messages, settings))
       ).getMessage should include("Gave up")
       intercept[io.cequence.openaiscala.OpenAIScalaRateLimitException](
-        await(service.createChatCompletionStreamed(messages, settings).runDrain)
+        drain(service.createChatCompletionStreamed(messages, settings))
       )
       eventually(deleted shouldBe Seq(sessionId, sessionId))
     }
@@ -736,13 +733,11 @@ class ManagedAgentToolApprovalWireSpec
         else pauseThenFinish(events)
 
       intercept[io.cequence.openaiscala.OpenAIScalaServerErrorException](
-        await(
-          service
-            .createChatCompletionStreamedTyped(
-              Nil,
-              settings.setToolApprovalDecisions(Seq(request.approve))
-            )
-            .runDrain
+        drain(
+          service.createChatCompletionStreamedTyped(
+            Nil,
+            settings.setToolApprovalDecisions(Seq(request.approve))
+          )
         )
       ).getMessage should include("closed before the turn ended")
       // the confirmation was applied - retrying it cannot work, so the session is not kept
@@ -761,25 +756,21 @@ class ManagedAgentToolApprovalWireSpec
 
       val openAIRequest = request.copy(raw = Json.obj("type" -> "mcp_approval_request"))
       intercept[OpenAIScalaClientException](
-        await(
-          service
-            .createChatCompletionStreamedTyped(
-              Nil,
-              settings.setToolApprovalDecisions(Seq(openAIRequest.approve))
-            )
-            .runDrain
+        drain(
+          service.createChatCompletionStreamedTyped(
+            Nil,
+            settings.setToolApprovalDecisions(Seq(openAIRequest.approve))
+          )
         )
       ).getMessage should include("not a managed-agent tool confirmation request")
 
       val otherSession = request.copy(requestId = "sevt_2", runId = "sesn_other")
       intercept[OpenAIScalaClientException](
-        await(
-          service
-            .createChatCompletionStreamedTyped(
-              Nil,
-              settings.setToolApprovalDecisions(Seq(request.approve, otherSession.approve))
-            )
-            .runDrain
+        drain(
+          service.createChatCompletionStreamedTyped(
+            Nil,
+            settings.setToolApprovalDecisions(Seq(request.approve, otherSession.approve))
+          )
         )
       ).getMessage should include("one paused session")
 

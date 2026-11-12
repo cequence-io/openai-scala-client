@@ -755,10 +755,13 @@ private[service] class OpenAIAnthropicManagedAgentChatCompletionService(
   // ---------------------------------------------------------------------------
 
   /**
-   * Events of one turn: the SSE stream is opened and the kickoff events are sent alongside it
-   * (once per run; `sent` gets the POST's outcome), and the stream completes at the first
-   * terminal event (idle / terminated / error). A kickoff-send failure aborts the stream; so
-   * does an event stream that closes before the turn ended.
+   * Events of one turn: the SSE stream is subscribed, then the kickoff events are sent
+   * alongside it (once per run; `sent` gets the POST's outcome - a failure when the run ended
+   * before the subscription, which sent nothing), and the stream completes at the first
+   * terminal event (idle / terminated / error). The session delivers only to a live
+   * subscription, so the POST waits for it - a POST racing the subscription lost the events it
+   * caused. A kickoff-send failure aborts the stream; so does an event stream that closes
+   * before the turn ended.
    */
   private def turnEventSource(
     sessionId: String,
@@ -766,14 +769,33 @@ private[service] class OpenAIAnthropicManagedAgentChatCompletionService(
     confirmed: Set[String] = Set.empty,
     sent: Promise[Unit] = Promise[Unit]()
   ): AsyncStream[SessionEventEnvelope] =
-    underlying
-      .streamSessionEvents(sessionId)
-      .concurrently { () =>
-        val posted = underlying.sendSessionEvents(sessionId, kickoffEvents)
-        posted.onComplete(result => sent.tryComplete(result.map(_ => ())))
-        posted
-      }
-      .takeWhile(envelope => !isTerminal(envelope, confirmed), inclusive = true)
+    AsyncStream.defer {
+      // the POST, or - when the run ends first - the report that nothing was sent: exactly one
+      val claimed = new AtomicBoolean(false)
+
+      AsyncStream
+        .futureStream(
+          underlying
+            .subscribeSessionEvents(sessionId)
+            .map(_.concurrently { () =>
+              if (claimed.compareAndSet(false, true)) {
+                val posted = underlying.sendSessionEvents(sessionId, kickoffEvents)
+                posted.onComplete(result => sent.tryComplete(result.map(_ => ())))
+                posted
+              } else
+                Future.successful(())
+            })
+        )
+        .onTerminate { _ =>
+          if (claimed.compareAndSet(false, true))
+            sent.tryFailure(
+              new OpenAIScalaClientException(
+                s"The events of managed-agent session '$sessionId' were not sent: the run ended before its event stream was subscribed."
+              )
+            )
+          ()
+        }
+    }.takeWhile(envelope => !isTerminal(envelope, confirmed), inclusive = true)
       .stateful(() => false)(
         (
           ended,

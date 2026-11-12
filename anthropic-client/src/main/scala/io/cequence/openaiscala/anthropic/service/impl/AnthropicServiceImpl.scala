@@ -916,31 +916,42 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   override def streamSessionEvents(
     sessionId: String
   ): AsyncStream[SessionEventEnvelope] =
-    PathSegment.inSource {
-      // Raw SSE parsing instead of execJsonStream: the managed-agents stream sends frames
-      // without a `data:` line - an initial ": connected." comment and periodic heartbeats -
-      // which the generic JSON stream would reject as malformed JSON.
-      execRawStream(
-        EndPoint.sessions,
-        "GET",
-        endPointParam = Some(s"${PathSegment(sessionId)}/events/stream"),
-        extraHeaders = managedAgentsHeaders
-      ).via(
-        StreamingConsts.framing("\n\n")
-      ) // an agent.message event can carry a long response
-        .mapConcat { frameBytes =>
-          // An SSE frame consists of `event:`/`id:` lines, comment lines (starting with ':'),
-          // and one or more `data:` lines (joined with a newline per the SSE spec).
-          val dataLines = frameBytes.utf8String.split("\n").toList.collect {
-            case line if line.startsWith("data:") => line.drop("data:".length).trim
-          }
+    PathSegment.inSource(sessionEventEnvelopes(sessionEventFrames(sessionId)))
 
-          if (dataLines.isEmpty) Nil
-          else List(Json.parse(dataLines.mkString("\n")))
-        }
-        .map(_.asOpt[SessionEventEnvelope])
-        .collect { case Some(e) => e }
-    }
+  // preflighted at the frame level: the first frame is the server's ": connected." comment
+  override def subscribeSessionEvents(
+    sessionId: String
+  ): Future[AsyncStream[SessionEventEnvelope]] =
+    PathSegment.inFuture(
+      sessionEventFrames(sessionId).preflight.map(sessionEventEnvelopes)
+    )
+
+  // Raw SSE parsing instead of execJsonStream: the managed-agents stream sends frames without a
+  // `data:` line - an initial ": connected." comment and periodic heartbeats - which the generic
+  // JSON stream would reject as malformed JSON.
+  private def sessionEventFrames(sessionId: String): AsyncStream[Bytes] =
+    execRawStream(
+      EndPoint.sessions,
+      "GET",
+      endPointParam = Some(s"${PathSegment(sessionId)}/events/stream"),
+      extraHeaders = managedAgentsHeaders
+    ).via(StreamingConsts.framing("\n\n")) // an agent.message event can carry a long response
+
+  private def sessionEventEnvelopes(
+    frames: AsyncStream[Bytes]
+  ): AsyncStream[SessionEventEnvelope] =
+    frames.mapConcat { frameBytes =>
+      // An SSE frame consists of `event:`/`id:` lines, comment lines (starting with ':'), and
+      // one or more `data:` lines (joined with a newline per the SSE spec).
+      val dataLines = frameBytes.utf8String.split("\n").toList.collect {
+        case line if line.startsWith("data:") => line.drop("data:".length).trim
+      }
+
+      if (dataLines.isEmpty)
+        Nil
+      else
+        List(Json.parse(dataLines.mkString("\n")))
+    }.map(_.asOpt[SessionEventEnvelope]).collect { case Some(e) => e }
 
   // -- Resources --
 

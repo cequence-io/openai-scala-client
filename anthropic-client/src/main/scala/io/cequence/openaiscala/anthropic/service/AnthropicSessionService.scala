@@ -127,14 +127,25 @@ trait AnthropicSessionService {
   ): Future[PagedResponse[SessionEventEnvelope]]
 
   /**
-   * Streams a session's events via SSE (`GET /v1/sessions/{id}/events/stream`). Open the
-   * stream before sending the kickoff event so no early events are missed.
+   * Streams a session's events via SSE (`GET /v1/sessions/{id}/events/stream`). The stream is
+   * cold: it connects when it runs, and the session delivers only the events that happen while
+   * a subscription is live - to send events (a kickoff, tool confirmations) without missing
+   * what they cause, use [[subscribeSessionEvents]].
    *
    * @see
    *   <a href="https://platform.claude.com/docs/en/api/beta/sessions/events">Anthropic Session
    *   Events API</a>
    */
   def streamSessionEvents(sessionId: String): AsyncStream[SessionEventEnvelope]
+
+  /**
+   * [[streamSessionEvents]], subscribed: the future completes once the server confirmed the
+   * subscription (its first frame), with the session's events from then on as a SINGLE-RUN
+   * stream - send the events that start or resume a turn after it completed, then run the
+   * stream (an unrun one holds its connection until the server or an idle timeout closes it).
+   * On an Akka, Pekko or ZIO engine the stream stays the engine's own.
+   */
+  def subscribeSessionEvents(sessionId: String): Future[AsyncStream[SessionEventEnvelope]]
 
   // -- Resources --
 

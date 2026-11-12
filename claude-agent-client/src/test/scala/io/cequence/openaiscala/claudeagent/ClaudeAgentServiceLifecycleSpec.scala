@@ -7,21 +7,37 @@ import io.cequence.openaiscala.claudeagent.domain.{
 }
 import io.cequence.openaiscala.claudeagent.service.ClaudeAgentServiceFactory
 import io.cequence.openaiscala.claudeagent.service.impl.ClaudeAgentProcessException
+import io.cequence.openaiscala.testkit.{StreamRunner, StreamSpecSupport}
+import io.cequence.wsclient.stream.{AsyncStream, StreamDiagnostics}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
+import scala.collection.immutable
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
-import scala.concurrent.{Await, ExecutionContext, Promise}
+import scala.concurrent.{Await, ExecutionContext, Future, Promise}
+import scala.util.Failure
 
 class ClaudeAgentServiceLifecycleSpec
     extends AnyWordSpec
     with Matchers
-    with BeforeAndAfterAll {
+    with BeforeAndAfterAll
+    with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
+
+  // `events` is HOT: one AsyncBroadcastHub per service, run by the neutral interpreter, so a
+  // native consumer crosses exactly one bridge at the hub per run (the neutral consumer none) -
+  // inherent to a hot stream, not a missing native path
+  override protected def expectedBridges: Option[Long] =
+    super.expectedBridges.map { bridges =>
+      if (streamRunner.name == StreamRunner.Neutral.name)
+        bridges
+      else
+        bridges + 1
+    }
 
   // generous: CI runs these under coverage instrumentation on a cold JVM
   private val timeout: FiniteDuration = 15.seconds
@@ -51,10 +67,12 @@ class ClaudeAgentServiceLifecycleSpec
         // otherwise the result can be published before the registration lands and this run
         // never sees the end of the turn (CI flake).
         val subscribed = Promise[Unit]()
-        val events = service.events.map { event =>
-          subscribed.trySuccess(())
-          event
-        }.takeWhile(event => !isTurnEnd(event), inclusive = true).runToSeq
+        val events = startRun(
+          service.events.map { event =>
+            subscribed.trySuccess(())
+            event
+          }.takeWhile(event => !isTurnEnd(event), inclusive = true)
+        )
 
         Await.result(subscribed.future, timeout)
         Await.result(service.send("hello"), timeout)
@@ -71,10 +89,13 @@ class ClaudeAgentServiceLifecycleSpec
 
       try {
         val streamFailure = intercept[ClaudeAgentProcessException] {
-          Await.result(service.events.runToSeq, timeout)
+          runStream(service.events, timeout)
         }
 
-        streamFailure.getMessage should include("code 23")
+        // the process's own failure (its stderr tail), not a readiness failure: the init it
+        // wrote before exiting is read, so the session was ready
+        streamFailure.getMessage should include("code 23: fake CLI crashed")
+        Await.result(service.ready, timeout).model shouldBe "fake-model"
         Await.result(service.completion, timeout).exitCode shouldBe Some(23)
       } finally service.close()
     }
@@ -87,10 +108,12 @@ class ClaudeAgentServiceLifecycleSpec
 
         def turn() = {
           val subscribed = Promise[Unit]()
-          val events = service.events.map { event =>
-            subscribed.trySuccess(())
-            event
-          }.takeWhile(event => !isTurnEnd(event), inclusive = true).runToSeq
+          val events = startRun(
+            service.events.map { event =>
+              subscribed.trySuccess(())
+              event
+            }.takeWhile(event => !isTurnEnd(event), inclusive = true)
+          )
 
           (subscribed.future, events)
         }
@@ -191,6 +214,28 @@ class ClaudeAgentServiceLifecycleSpec
       }
       an[IllegalArgumentException] shouldBe thrownBy {
         ClaudeAgentSettings(settingSources = Some(Seq("user", "policy")))
+      }
+    }
+  }
+
+  // Starts a run through the selected consumer without waiting for it - the turn is sent once
+  // the run has registered with the hub, so `runStream` (which blocks) cannot run it. Like
+  // `runStream`, the run's bridges are checked against `expectedBridges` once it ended.
+  private def startRun[A](stream: AsyncStream[A]): Future[immutable.Seq[A]] = {
+    val (run, bridges) = StreamDiagnostics.counted(streamRunner.runToSeq(stream))
+
+    run.transform { outcome =>
+      expectedBridges match {
+        case Some(expected) if bridges.get != expected =>
+          Failure(
+            new AssertionError(
+              s"Expected $expected bridge(s) on ${streamRunner.name}, the run built ${bridges.get}" +
+                outcome.failed.map(e => s" (the run failed: $e)").getOrElse("")
+            )
+          )
+
+        case _ =>
+          outcome
       }
     }
   }
