@@ -6,13 +6,13 @@ import io.cequence.openaiscala.domain.response.{ChatChunk, ChatCompletionChunkRe
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{BaseMessage, ChatCompletionTool, UserMessage}
 import io.cequence.openaiscala.service.adapter.MappedModel
+import io.cequence.openaiscala.testkit.StreamSpecSupport
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.DurationInt
 
 /**
  * The streamed wrappers must delegate `createChatToolCompletionStreamed` to the wrapped
@@ -22,13 +22,10 @@ import scala.concurrent.ExecutionContext
 class StreamedWrappersDelegationSpec
     extends AnyWordSpec
     with Matchers
-    with ScalaFutures
-    with BeforeAndAfterAll {
+    with BeforeAndAfterAll
+    with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-
-  implicit override val patienceConfig: PatienceConfig =
-    PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
 
   override def afterAll(): Unit = {
     ()
@@ -63,7 +60,7 @@ class StreamedWrappersDelegationSpec
   private val messages = Seq(UserMessage("hi"))
 
   private def collect(source: AsyncStream[ChatChunk]): Seq[ChatChunk] =
-    source.runToSeq.futureValue
+    runStream(source, 10.seconds)
 
   "the streamed router" should {
     "dispatch by model and apply the mapped model name" in {

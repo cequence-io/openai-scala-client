@@ -4,6 +4,7 @@ import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.anthropic.domain.Message
 import io.cequence.openaiscala.anthropic.domain.settings.AnthropicCreateMessageSettings
 import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
+import io.cequence.openaiscala.testkit.StreamSpecSupport
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -20,7 +21,8 @@ import scala.util.{Failure, Success, Try}
 class AnthropicPathSegmentRefusalSpec
     extends AnyWordSpec
     with Matchers
-    with BeforeAndAfterAll {
+    with BeforeAndAfterAll
+    with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
@@ -43,7 +45,7 @@ class AnthropicPathSegmentRefusalSpec
   private def refusedStream(call: => AsyncStream[_]): Throwable =
     Try(call) match {
       case Failure(e)      => fail(s"thrown synchronously: $e")
-      case Success(source) => Await.result(source.runDrain.failed, 20.seconds)
+      case Success(source) => runStreamFailure(source, 20.seconds)
     }
 
   "A refused path id" should {

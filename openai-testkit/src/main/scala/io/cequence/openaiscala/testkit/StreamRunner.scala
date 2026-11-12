@@ -31,11 +31,24 @@ trait StreamRunner {
     implicit ec: ExecutionContext
   ): Future[immutable.Seq[A]] =
     runToSeq(stream.take(n.toLong))
+
+  /** Runs the stream to its end, keeping no element (for streams too large to collect). */
+  def runDrain[A](
+    stream: AsyncStream[A]
+  )(
+    implicit ec: ExecutionContext
+  ): Future[Unit]
 }
 
 object StreamRunner {
 
   val ConsumerProperty = "openai.test.consumer"
+
+  /** The bridges every counted spec run must build (`-Dopenai.test.expectedBridges=<n>`). */
+  val ExpectedBridgesProperty = "openai.test.expectedBridges"
+
+  lazy val expectedBridges: Option[Long] =
+    sys.props.get(ExpectedBridgesProperty).map(_.trim).filter(_.nonEmpty).map(_.toLong)
 
   /** The neutral interpreter of ws-client-core. */
   object Neutral extends StreamRunner {
@@ -47,6 +60,13 @@ object StreamRunner {
       implicit ec: ExecutionContext
     ): Future[immutable.Seq[A]] =
       stream.runToSeq
+
+    override def runDrain[A](
+      stream: AsyncStream[A]
+    )(
+      implicit ec: ExecutionContext
+    ): Future[Unit] =
+      stream.runDrain
   }
 
   /** Runners other than the neutral one register through `ServiceLoader`. */

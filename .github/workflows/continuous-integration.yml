@@ -43,7 +43,16 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        scala: [ '2.12.18', '2.13.18', '3.2.2']
+        # each Scala line runs its own aggregate (build.sbt, ci_*): the root mixes lines
+        include:
+          - scala: '2.12.18'
+            line: 'ci_scala212'
+          - scala: '2.13.18'
+            line: 'ci_scala213'
+          - scala: '3.2.2'
+            line: 'ci_scala3'
+          - scala: '3.3.8'
+            line: 'ci_scala33'
 
     steps:
       - uses: actions/checkout@v4
@@ -63,13 +72,50 @@ jobs:
           sbt-version: '1.8.2'
 
       - name: Build & Test
-        run: sbt ++${{ matrix.scala }} clean testWithCoverage
+        run: sbt ++${{ matrix.scala }} "project ${{ matrix.line }}" clean testWithCoverage
 
       - name: Upload coverage report (all)
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report-${{ matrix.scala }}
           path: ${{github.workspace}}/target/scala-${{ matrix.scala }}/coverage-report
+
+  engine-matrix:
+    name: Engine Matrix
+    needs: [ validate ]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # every stream module's specs on each engine x consumer (openai-matrix/*, build.sbt)
+        include:
+          - scala: '2.12.18'
+            line: 'ci_matrix212'
+          - scala: '2.13.18'
+            line: 'ci_matrix213'
+          - scala: '3.2.2'
+            line: 'ci_matrix3'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'corretto'
+          java-version: '11'
+          cache: 'sbt'
+
+      - name: Set up Scala and sbt
+        uses: olafurpg/setup-scala@v14
+        with:
+          java-version: '11'
+          sbt-version: '1.8.2'
+
+      - name: Engine x consumer matrix
+        run: sbt ++${{ matrix.scala }} "project ${{ matrix.line }}" test
 
   optional-build:
     name: Build (Optional)
@@ -86,9 +132,16 @@ jobs:
         scala: [ '2.12.18', '2.13.18', '3.2.2']
         experimental: [ false ]
         include:
+          - scala: '2.12.18'
+            line: 'ci_scala212'
+          - scala: '2.13.18'
+            line: 'ci_scala213'
+          - scala: '3.2.2'
+            line: 'ci_scala3'
           - jdk: '17'
             distribution: 'corretto'
             scala: '2.13.18'
+            line: 'ci_scala213'
             experimental: true
 
     steps:
@@ -110,7 +163,7 @@ jobs:
           sbt-version: '1.8.2'
 
       - name: Perform Build / Test
-        run: sbt ++${{ matrix.scala }} clean compile test
+        run: sbt ++${{ matrix.scala }} "project ${{ matrix.line }}" clean compile test
 
   #  coverage:
   #    name: Coverage Report

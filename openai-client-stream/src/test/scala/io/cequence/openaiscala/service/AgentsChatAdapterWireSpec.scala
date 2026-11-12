@@ -37,7 +37,7 @@ import io.cequence.openaiscala.domain.{
 import io.cequence.openaiscala.domain.responsesapi.tools.WebSearchTool
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.wsclient.domain.WsRequestContext
-import io.cequence.openaiscala.testkit.TestEngines
+import io.cequence.openaiscala.testkit.{StreamSpecSupport, TestEngines}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -55,7 +55,11 @@ import scala.concurrent.{Await, ExecutionContext, Future}
  * call carrying the tool result (subscribe, post, the replayed items skipped), the session
  * lifecycle when a stream stops early, the request it builds, and the refusals.
  */
-class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
+class AgentsChatAdapterWireSpec
+    extends AnyWordSpec
+    with Matchers
+    with BeforeAndAfterAll
+    with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
@@ -211,17 +215,16 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
   "a plain turn" should {
 
     "run one session, answer with the final answer, and delete the session" in {
-      val chunks = await(
-        adapter
-          .createChatCompletionStreamedTyped(
-            Seq(SystemMessage("Be brief."), UserMessage("Say hi in two words.")),
-            CreateChatCompletionSettings(
-              "gpt-6-luna",
-              reasoning_effort = Some(ReasoningEffort.low),
-              temperature = Some(0.2)
-            )
+      val chunks = runStream(
+        adapter.createChatCompletionStreamedTyped(
+          Seq(SystemMessage("Be brief."), UserMessage("Say hi in two words.")),
+          CreateChatCompletionSettings(
+            "gpt-6-luna",
+            reasoning_effort = Some(ReasoningEffort.low),
+            temperature = Some(0.2)
           )
-          .runToSeq
+        ),
+        20.seconds
       )
       val sessionId = sessionIdOf(plainTurn)
       chunks.head shouldBe ChatChunk.Start(sessionId, "gpt-6-luna")
@@ -446,13 +449,12 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
       nextSessionStream = Some(sse(events.take(2) ++ Seq(summaryDone) ++ events.drop(2)))
 
       val before = requests.size
-      val chunks = await(
-        adapter
-          .createChatCompletionStreamedTyped(
-            Seq(UserMessage("Say hi in two words.")),
-            CreateChatCompletionSettings("gpt-6-luna")
-          )
-          .runToSeq
+      val chunks = runStream(
+        adapter.createChatCompletionStreamedTyped(
+          Seq(UserMessage("Say hi in two words.")),
+          CreateChatCompletionSettings("gpt-6-luna")
+        ),
+        20.seconds
       )
       chunks.collect { case ChatChunk.Thinking(t) => t } shouldBe Seq("Thinking it over.")
       chunks.collect { case ChatChunk.Text(t) => t }.mkString shouldBe "Hi there!"
@@ -506,18 +508,17 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
       // the paused session is kept
       sessionRequests(toolSessionId, before) shouldBe empty
 
-      val resumed = await(
-        adapter
-          .createChatToolCompletionStreamed(
-            weatherQuestion ++ Seq(
-              AssistantToolMessage(tool_calls = paused.choices.head.message.tool_calls),
-              ToolMessage(Some("Sunny, 22 C"), callId, "get_weather")
-            ),
-            Seq(weather),
-            None,
-            CreateChatCompletionSettings("gpt-6-luna")
-          )
-          .runToSeq
+      val resumed = runStream(
+        adapter.createChatToolCompletionStreamed(
+          weatherQuestion ++ Seq(
+            AssistantToolMessage(tool_calls = paused.choices.head.message.tool_calls),
+            ToolMessage(Some("Sunny, 22 C"), callId, "get_weather")
+          ),
+          Seq(weather),
+          None,
+          CreateChatCompletionSettings("gpt-6-luna")
+        ),
+        20.seconds
       )
       // the answer (replayed as done events - no deltas), the commentary as thinking, and
       // nothing re-reported
@@ -550,14 +551,13 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
 
     "cancel, then delete the session of a turn the consumer abandoned" in {
       val before = requests.size
-      await(
-        adapter
-          .createChatCompletionStreamedTyped(
-            Seq(UserMessage("Say hi in two words.")),
-            CreateChatCompletionSettings("gpt-6-luna")
-          )
-          .take(1)
-          .runToSeq
+      runStreamTake(
+        adapter.createChatCompletionStreamedTyped(
+          Seq(UserMessage("Say hi in two words.")),
+          CreateChatCompletionSettings("gpt-6-luna")
+        ),
+        1,
+        20.seconds
       ) shouldBe Seq(ChatChunk.Start(sessionIdOf(plainTurn), "gpt-6-luna"))
 
       // the turn is cancelled first (a session mid-turn cannot be deleted), then deleted
@@ -573,7 +573,7 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
     "register a pause before its Finish goes out - a resume right after one finds it" in {
       val before = requests.size
       val (callId, _) = pendingCall
-      await(
+      runStream(
         adapter
           .createChatToolCompletionStreamed(
             weatherQuestion,
@@ -581,8 +581,8 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
             None,
             CreateChatCompletionSettings("gpt-6-luna")
           )
-          .takeWhile(chunk => !chunk.isInstanceOf[ChatChunk.Finish], inclusive = true)
-          .runToSeq
+          .takeWhile(chunk => !chunk.isInstanceOf[ChatChunk.Finish], inclusive = true),
+        20.seconds
       ).last shouldBe a[ChatChunk.Finish]
 
       // resumed at once: the paused session, not a new one
@@ -610,14 +610,14 @@ class AgentsChatAdapterWireSpec extends AnyWordSpec with Matchers with BeforeAnd
       )
       val ownAdapter = ownService.agentsAsChatCompletion()
       val before = requests.size
-      await(
+      runStream(
         ownAdapter
           .createChatCompletionStreamedTyped(
             Seq(UserMessage("Say hi in two words.")),
             CreateChatCompletionSettings("gpt-6-luna")
           )
-          .takeWhile(chunk => !chunk.isInstanceOf[ChatChunk.Finish], inclusive = true)
-          .runToSeq
+          .takeWhile(chunk => !chunk.isInstanceOf[ChatChunk.Finish], inclusive = true),
+        20.seconds
       ).last shouldBe a[ChatChunk.Finish]
 
       ownAdapter.close()

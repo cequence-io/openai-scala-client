@@ -14,7 +14,7 @@ import io.cequence.openaiscala.{
   Retryable
 }
 import io.cequence.wsclient.domain.{SiteBinding, WsRequestContext}
-import io.cequence.openaiscala.testkit.TestEngines
+import io.cequence.openaiscala.testkit.{StreamSpecSupport, TestEngines}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -22,7 +22,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.ExecutionContext
 import scala.reflect.ClassTag
 
 /**
@@ -34,7 +34,8 @@ import scala.reflect.ClassTag
 class GeminiStreamedHttpErrorsWireSpec
     extends AnyWordSpec
     with Matchers
-    with BeforeAndAfterAll {
+    with BeforeAndAfterAll
+    with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
@@ -103,7 +104,7 @@ class GeminiStreamedHttpErrorsWireSpec
     stream: => AsyncStream[_]
   ): E = {
     reply = (status._1, status._2, "application/json")
-    intercept[E](Await.result(stream.runToSeq, 20.seconds))
+    intercept[E](runStream(stream, 20.seconds))
   }
 
   // a 200 SSE stream (CRLF-framed, as Gemini's): one chunk, then an in-band error frame
@@ -119,7 +120,7 @@ class GeminiStreamedHttpErrorsWireSpec
         s"\r\n\r\ndata: $errorFrame\r\n\r\n",
       "text/event-stream"
     )
-    intercept[E](Await.result(stream.runToSeq, 20.seconds))
+    intercept[E](runStream(stream, 20.seconds))
   }
 
   "a streamed Gemini generateContent" should {
@@ -153,18 +154,15 @@ class GeminiStreamedHttpErrorsWireSpec
         "text/event-stream"
       )
 
-      Await
-        .result(
-          service
-            .generateContentStreamed(
-              Seq(Content.textPart("draw a cat", ChatRole.User)),
-              GenerateContentSettings("gemini-3-pro-image")
-            )
-            .runToSeq,
-          30.seconds
-        )
-        .flatMap(_.candidates.flatMap(_.content.parts))
-        .collect { case Part.InlineData(_, data) => data.length } shouldBe Seq(image.length)
+      runStream(
+        service.generateContentStreamed(
+          Seq(Content.textPart("draw a cat", ChatRole.User)),
+          GenerateContentSettings("gemini-3-pro-image")
+        ),
+        30.seconds
+      ).flatMap(_.candidates.flatMap(_.content.parts)).collect {
+        case Part.InlineData(_, data) => data.length
+      } shouldBe Seq(image.length)
     }
   }
 

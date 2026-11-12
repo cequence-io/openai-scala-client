@@ -20,25 +20,23 @@ import io.cequence.openaiscala.anthropic.domain.response.{
 }
 import io.cequence.openaiscala.anthropic.service.AnthropicScalaRateLimitException
 import io.cequence.openaiscala.domain.ChatRole.Assistant
-import org.scalatest.concurrent.ScalaFutures
+import io.cequence.openaiscala.domain.response.ChatCompletionChunkResponse
+import io.cequence.openaiscala.testkit.StreamSpecSupport
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.Json
 
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.DurationInt
 
 /**
  * Coverage for (A2): the [[toOpenAIChunks]] flow mapping a raw Anthropic
  * [[MessageStreamEvent]] stream to OpenAI-shaped chat-completion-chunk responses, and for
  * [[toOpenAIException]] error repackaging on the streamed adapter path.
  */
-class AnthropicStreamedToOpenAISpec extends AnyWordSpec with Matchers with ScalaFutures {
+class AnthropicStreamedToOpenAISpec extends AnyWordSpec with Matchers with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-
-  implicit override val patienceConfig: PatienceConfig =
-    PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
 
   private def messageStart(
     id: String = "msg_1",
@@ -85,6 +83,9 @@ class AnthropicStreamedToOpenAISpec extends AnyWordSpec with Matchers with Scala
       ContentBlockDelta("content_block_delta", index, DeltaInputJson(partial))
     )
 
+  private def openAIChunks(events: Seq[MessageStreamEvent]): Seq[ChatCompletionChunkResponse] =
+    runStream(AsyncStream.fromIterable(events.toList).via(toOpenAIChunks), 10.seconds)
+
   "toOpenAIChunks" should {
 
     "map a text-only conversation to chunks carrying id/model/index 0, and a final finish_reason+usage chunk" in {
@@ -95,8 +96,7 @@ class AnthropicStreamedToOpenAISpec extends AnyWordSpec with Matchers with Scala
         MessageDelta(Some("end_turn"), None, Some(MessageDeltaUsage(output_tokens = 5)))
       )
 
-      val chunks =
-        AsyncStream.fromIterable(events.toList).via(toOpenAIChunks).runToSeq.futureValue
+      val chunks = openAIChunks(events)
 
       chunks.foreach { c =>
         c.id shouldBe "msg_1"
@@ -128,8 +128,7 @@ class AnthropicStreamedToOpenAISpec extends AnyWordSpec with Matchers with Scala
         MessageDelta(Some("end_turn"), None, None)
       )
 
-      val chunks =
-        AsyncStream.fromIterable(events.toList).via(toOpenAIChunks).runToSeq.futureValue
+      val chunks = openAIChunks(events)
 
       // thinking deltas must not surface as content chunks (the only non-empty content is
       // the text delta - the message-start chunk carries content = Some(""))
@@ -161,8 +160,7 @@ class AnthropicStreamedToOpenAISpec extends AnyWordSpec with Matchers with Scala
         MessageDelta(Some("tool_use"), None, Some(MessageDeltaUsage(output_tokens = 3)))
       )
 
-      val chunks =
-        AsyncStream.fromIterable(events.toList).via(toOpenAIChunks).runToSeq.futureValue
+      val chunks = openAIChunks(events)
 
       val toolCallFragments =
         chunks.flatMap(_.choices.flatMap(_.delta.tool_calls.getOrElse(Nil)))
@@ -200,8 +198,7 @@ class AnthropicStreamedToOpenAISpec extends AnyWordSpec with Matchers with Scala
         MessageStop
       )
 
-      val chunks =
-        AsyncStream.fromIterable(events.toList).via(toOpenAIChunks).runToSeq.futureValue
+      val chunks = openAIChunks(events)
 
       chunks shouldBe empty
     }
@@ -212,8 +209,7 @@ class AnthropicStreamedToOpenAISpec extends AnyWordSpec with Matchers with Scala
         MessageDelta(Some("max_tokens"), None, None)
       )
 
-      val chunks =
-        AsyncStream.fromIterable(events.toList).via(toOpenAIChunks).runToSeq.futureValue
+      val chunks = openAIChunks(events)
 
       val last = chunks.last
       last.choices.head.finish_reason shouldBe Some("max_tokens")
@@ -238,11 +234,8 @@ class AnthropicStreamedToOpenAISpec extends AnyWordSpec with Matchers with Scala
       val failed = AsyncStream
         .failed[Int](new AnthropicScalaRateLimitException("rate limited"))
         .mapError(toOpenAIException)
-        .runDrain
 
-      whenReady(failed.failed) { e =>
-        e shouldBe a[OpenAIScalaRateLimitException]
-      }
+      intercept[OpenAIScalaRateLimitException](runStreamDrain(failed, 10.seconds))
     }
   }
 }

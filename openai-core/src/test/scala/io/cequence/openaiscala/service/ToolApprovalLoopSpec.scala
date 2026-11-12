@@ -11,8 +11,9 @@ import io.cequence.openaiscala.domain.response.{
 }
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps._
+import io.cequence.openaiscala.testkit.StreamSpecSupport
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
@@ -20,7 +21,7 @@ import play.api.libs.json.Json
 
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{blocking, ExecutionContext, Future, Promise}
 
 /**
  * [[ToolApprovalLoop]] (behind `createChatToolCompletionStreamedWithApprovals`) over a fake
@@ -30,6 +31,8 @@ class ToolApprovalLoopSpec
     extends AnyWordSpec
     with Matchers
     with ScalaFutures
+    with Eventually
+    with StreamSpecSupport
     with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
@@ -133,7 +136,7 @@ class ToolApprovalLoopSpec
     ToolApprovalLoop(callSettings, decider.decide, maxRounds)(fake.stream)
 
   private def run(source: AsyncStream[ChatChunk]): Seq[ChatChunk] =
-    source.runToSeq.futureValue
+    runStream(source)
 
   private def assemble(chunks: Seq[ChatChunk]): AssembledChatCompletion =
     chunks.foldLeft(AssembledChatCompletion.empty)(_ add _)
@@ -219,7 +222,10 @@ class ToolApprovalLoopSpec
       )
       val decider = new Decider()
 
-      val result = joined(gated, decider).runToSeq
+      // run on another thread: the test looks at the decider while the run is open - from
+      // the moment round 0 was requested, so the window never passes before the run started
+      val result = Future(blocking(run(joined(gated, decider))))
+      eventually(gated.sent should have size 1)
       Thread.sleep(200)
       decider.asked shouldBe empty // everything streamed, but the round is still open
       gate.success(())
@@ -231,11 +237,11 @@ class ToolApprovalLoopSpec
         None -> (AsyncStream.fromIterable(round0) ++ AsyncStream.failed[ChatChunk](boom))
       )
       val failDecider = new Decider()
-      joined(failing, failDecider).runDrain.failed.futureValue shouldBe boom
+      runStreamFailure(joined(failing, failDecider)) shouldBe boom
 
       val cancelDecider = new Decider()
       val cancelled = threeRounds
-      run(joined(cancelled, cancelDecider).take(2)) shouldBe
+      runStreamTake(joined(cancelled, cancelDecider), 2) shouldBe
         Seq(Start("run1", "m"), Thinking("plan"))
       Thread.sleep(200)
       failDecider.asked shouldBe empty
@@ -303,7 +309,7 @@ class ToolApprovalLoopSpec
       val boom = new RuntimeException("no human around")
 
       def failure(answer: ToolApprovalRequest => Future[ToolApprovalDecision]): Throwable =
-        joined(threeRounds, new Decider(answer)).runDrain.failed.futureValue
+        runStreamFailure(joined(threeRounds, new Decider(answer)))
 
       failure(_ => Future.failed(boom)) shouldBe boom
       failure(_ => throw boom) shouldBe boom
@@ -335,10 +341,7 @@ class ToolApprovalLoopSpec
         None -> round0,
         Some("run1") -> List(Text("par"), Retry(2), Text("done"), stopped)
       )
-      joined(
-        retriedResume,
-        new Decider()
-      ).runDrain.failed.futureValue.getMessage should include(
+      runStreamFailure(joined(retriedResume, new Decider())).getMessage should include(
         "resumed tool-approval round was restarted"
       )
     }

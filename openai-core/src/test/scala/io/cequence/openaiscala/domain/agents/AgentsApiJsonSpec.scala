@@ -6,10 +6,9 @@ import io.cequence.openaiscala.domain.agents.JsonFormats._
 import io.cequence.openaiscala.domain.responsesapi.MultiAgentConfig
 import io.cequence.openaiscala.domain.settings.{ReasoningEffort, ServiceTier}
 import io.cequence.openaiscala.service.AgentSessionEvents
+import io.cequence.openaiscala.testkit.StreamSpecSupport
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.{JsObject, Json}
 
@@ -24,13 +23,10 @@ import scala.concurrent.ExecutionContext
 class AgentsApiJsonSpec
     extends AnyWordSpec
     with Matchers
-    with ScalaFutures
+    with StreamSpecSupport
     with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-
-  implicit override val patienceConfig: PatienceConfig =
-    PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
 
   override def afterAll(): Unit = {
     ()
@@ -142,11 +138,11 @@ class AgentsApiJsonSpec
       val followUp = events("sub-1.sse")
       // a subscription could deliver the idle of the previous turn first
       val previousIdle = events("basic.sse").last
-      val out = AsyncStream
-        .fromIterable((previousIdle +: (followUp :+ events("basic.sse").head)).toList)
-        .via(AgentSessionEvents.untilSettled())
-        .runToSeq
-        .futureValue
+      val out = runStream(
+        AsyncStream
+          .fromIterable((previousIdle +: (followUp :+ events("basic.sse").head)).toList)
+          .via(AgentSessionEvents.untilSettled())
+      )
 
       out.head shouldBe previousIdle
       out.last.eventType shouldBe SessionIdle
@@ -156,11 +152,11 @@ class AgentsApiJsonSpec
 
     "optionally end at requires_action" in {
       val paused = events("tool-1.sse")
-      AsyncStream
-        .fromIterable((paused :+ paused.head).toList)
-        .via(AgentSessionEvents.untilSettled(stopOnRequiresAction = true))
-        .runToSeq
-        .futureValue shouldBe paused
+      runStream(
+        AsyncStream
+          .fromIterable((paused :+ paused.head).toList)
+          .via(AgentSessionEvents.untilSettled(stopOnRequiresAction = true))
+      ) shouldBe paused
     }
   }
 

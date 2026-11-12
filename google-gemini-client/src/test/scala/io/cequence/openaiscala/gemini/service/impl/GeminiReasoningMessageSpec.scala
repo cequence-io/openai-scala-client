@@ -27,6 +27,7 @@ import io.cequence.openaiscala.gemini.domain.settings.CreateChatCompletionSettin
 import io.cequence.openaiscala.gemini.domain.settings.{GenerateContentSettings, ThinkingConfig}
 import io.cequence.openaiscala.gemini.domain.{Content, Part, ThinkingLevel}
 import io.cequence.openaiscala.gemini.service.GeminiService
+import io.cequence.openaiscala.testkit.StreamSpecSupport
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{mock, when}
 import org.mockito.invocation.InvocationOnMock
@@ -36,6 +37,7 @@ import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 
 import scala.collection.mutable
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -44,12 +46,18 @@ import scala.concurrent.{ExecutionContext, Future}
  * to the service that returned them; any other `ReasoningMessage` (e.g. after a router failed
  * over from a GPT-6 model) is left out, the history sent exactly as the one without it.
  */
-class GeminiReasoningMessageSpec extends AnyWordSpec with Matchers with ScalaFutures {
+class GeminiReasoningMessageSpec
+    extends AnyWordSpec
+    with Matchers
+    with ScalaFutures
+    with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
+
+  override protected def streamTimeout: FiniteDuration = 10.seconds
 
   private val reasoning =
     ReasoningMessage(
@@ -288,11 +296,10 @@ class GeminiReasoningMessageSpec extends AnyWordSpec with Matchers with ScalaFut
       val flash = CreateChatCompletionSettings(NonOpenAIModelId.gemini_3_8_flash)
       val question = Seq(UserMessage("Why is the sky blue?"))
 
-      def stream(settings: CreateChatCompletionSettings) =
-        recording.adapter
-          .createChatToolCompletionStreamed(question, Nil, None, settings)
-          .runDrain
-          .futureValue
+      def stream(settings: CreateChatCompletionSettings): Unit =
+        runStreamDrain(
+          recording.adapter.createChatToolCompletionStreamed(question, Nil, None, settings)
+        )
 
       // the default: summaries within the config an effort derives, none without one
       stream(flash.copy(reasoning_effort = Some(ReasoningEffort.low)))

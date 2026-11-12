@@ -1,6 +1,5 @@
 package io.cequence.openaiscala.service
 
-import io.cequence.wsclient.stream.AsyncStream
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import io.cequence.openaiscala.domain.UserMessage
 import io.cequence.openaiscala.domain.response.ChatChunk
@@ -8,15 +7,14 @@ import io.cequence.openaiscala.domain.response.ChatChunk.FinishReason
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.wsclient.domain.WsRequestContext
-import io.cequence.openaiscala.testkit.TestEngines
+import io.cequence.openaiscala.testkit.{StreamSpecSupport, TestEngines}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
-import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.ExecutionContext
 
 /**
  * Comment frames in a chat-completion stream, against a local server. While a slow model
@@ -26,7 +24,11 @@ import scala.concurrent.{Await, ExecutionContext}
  * five keep-alives, a reasoning chunk, three more, the answer; the provider's encrypted
  * reasoning replaced).
  */
-class StreamedKeepAliveWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
+class StreamedKeepAliveWireSpec
+    extends AnyWordSpec
+    with Matchers
+    with BeforeAndAfterAll
+    with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
@@ -65,9 +67,6 @@ class StreamedKeepAliveWireSpec extends AnyWordSpec with Matchers with BeforeAnd
     ()
   }
 
-  private def run[T](stream: AsyncStream[T]): Seq[T] =
-    Await.result(stream.runToSeq, 30.seconds)
-
   private def recorded: String = {
     val source =
       scala.io.Source
@@ -89,7 +88,7 @@ class StreamedKeepAliveWireSpec extends AnyWordSpec with Matchers with BeforeAnd
     "skip them in the OpenAI-shaped stream" in {
       sse = recorded
 
-      run(service.createChatCompletionStreamed(messages, settings))
+      runStream(service.createChatCompletionStreamed(messages, settings))
         .flatMap(_.choices.flatMap(_.delta.content))
         .mkString shouldBe "62"
     }
@@ -97,7 +96,7 @@ class StreamedKeepAliveWireSpec extends AnyWordSpec with Matchers with BeforeAnd
     "skip them in the typed stream - the reasoning, the answer and the finish come through" in {
       sse = recorded
 
-      val chunks = run(service.createChatCompletionStreamedTyped(messages, settings))
+      val chunks = runStream(service.createChatCompletionStreamedTyped(messages, settings))
 
       chunks.collect { case ChatChunk.Text(text) => text }.mkString shouldBe "62"
       chunks.collect { case ChatChunk.Thinking(text) => text }.mkString should startWith(
@@ -114,7 +113,7 @@ class StreamedKeepAliveWireSpec extends AnyWordSpec with Matchers with BeforeAnd
         s"data: ${chatChunk("2")}\n\n" +
         "data: [DONE]\n\n"
 
-      run(service.createChatCompletionStreamed(messages, settings))
+      runStream(service.createChatCompletionStreamed(messages, settings))
         .flatMap(_.choices.flatMap(_.delta.content))
         .mkString shouldBe "62"
     }

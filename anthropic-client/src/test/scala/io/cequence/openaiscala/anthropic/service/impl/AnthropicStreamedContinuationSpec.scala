@@ -34,6 +34,7 @@ import io.cequence.openaiscala.domain.response.ChatChunk._
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettingsOps._
 import io.cequence.openaiscala.domain.{NonOpenAIModelId, UserMessage}
+import io.cequence.openaiscala.testkit.StreamSpecSupport
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{mock, when}
 import org.mockito.invocation.InvocationOnMock
@@ -44,6 +45,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.Json
 
 import scala.collection.mutable.ListBuffer
+import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -51,7 +53,11 @@ import scala.concurrent.{ExecutionContext, Future}
  * scripted underlying service: what reaches the API (settings, the continuation messages) and
  * what one turn looks like on the typed stream when it spans several rounds.
  */
-class AnthropicStreamedContinuationSpec extends AnyWordSpec with Matchers with ScalaFutures {
+class AnthropicStreamedContinuationSpec
+    extends AnyWordSpec
+    with Matchers
+    with ScalaFutures
+    with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
@@ -176,10 +182,10 @@ class AnthropicStreamedContinuationSpec extends AnyWordSpec with Matchers with S
     scripted: Scripted,
     settings: CreateChatCompletionSettings = settings
   ): Seq[ChatChunk] =
-    scripted.adapter
-      .createChatToolCompletionStreamed(userTurn, Nil, None, settings)
-      .runToSeq
-      .futureValue
+    runStream(
+      scripted.adapter.createChatToolCompletionStreamed(userTurn, Nil, None, settings),
+      10.seconds
+    )
 
   "createChatToolCompletionStreamed" should {
 

@@ -21,10 +21,12 @@ import io.cequence.openaiscala.domain.settings.{
   ServiceTier
 }
 import io.cequence.openaiscala.domain.settings.ResponsesChatCompletionSettingsOps._
+import io.cequence.openaiscala.domain.response.{AssembledChatCompletion, ChatChunk}
 import io.cequence.openaiscala.domain.{BaseMessage, JsonSchema, ModelId, UserMessage}
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.wsclient.domain.WsRequestContext
-import io.cequence.openaiscala.testkit.TestEngines
+import io.cequence.openaiscala.testkit.{StreamSpecSupport, TestEngines}
+import io.cequence.wsclient.stream.AsyncStream
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -43,7 +45,11 @@ import scala.io.Source
  * replaying Responses API answers recorded live (2026-09-29, `gpt-6-astra` on the Ultrafast
  * tier, `gpt-6.1-sol` in pro mode; 2026-10-26, `gpt-6-luna` with a reasoning summary).
  */
-class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
+class ResponsesOnlySettingsWireSpec
+    extends AnyWordSpec
+    with Matchers
+    with BeforeAndAfterAll
+    with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
@@ -162,6 +168,11 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
 
   private def await[T](f: Future[T]): T = Await.result(f, 20.seconds)
 
+  // the typed stream folded into one completion, run by the consumer under test
+  private def assembled(stream: AsyncStream[ChatChunk]): AssembledChatCompletion =
+    runStream(stream.via(ChatChunk.assembleSink), 20.seconds).headOption
+      .getOrElse(fail("the stream assembled nothing"))
+
   private val messages: Seq[BaseMessage] = Seq(UserMessage("Say hi in two words."))
 
   private val weather = FunctionTool(
@@ -196,7 +207,7 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
       (last._2 \ "service_tier").as[String] shouldBe "ultrafast"
 
       val chunks =
-        await(fullStreamed.createChatCompletionStreamed(messages, ultrafast).runToSeq)
+        runStream(fullStreamed.createChatCompletionStreamed(messages, ultrafast), 20.seconds)
       last._1 should endWith("/responses")
       (last._2 \ "service_tier").as[String] shouldBe "ultrafast"
       (last._2 \ "stream").as[Boolean] shouldBe true
@@ -204,7 +215,7 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
         "Hi there!"
 
       val typed =
-        await(fullStreamed.createChatCompletionStreamedTyped(messages, ultrafast).assembled)
+        assembled(fullStreamed.createChatCompletionStreamedTyped(messages, ultrafast))
       last._1 should endWith("/responses")
       typed.text shouldBe "Hi there!"
     }
@@ -214,8 +225,9 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
       last._1 should endWith("/chat/completions")
       (last._2 \ "service_tier").as[String] shouldBe "ultrafast"
 
-      await(
-        chatOnlyStreamed.createChatCompletionStreamed(messages, ultrafast).runToSeq
+      runStream(
+        chatOnlyStreamed.createChatCompletionStreamed(messages, ultrafast),
+        20.seconds
       )
       last._1 should endWith("/chat/completions")
       (last._2 \ "service_tier").as[String] shouldBe "ultrafast"
@@ -241,12 +253,12 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
       (last._2 \ "reasoning")
         .as[JsObject] shouldBe Json.obj("effort" -> "low", "mode" -> "pro")
 
-      await(fullStreamed.createChatCompletionStreamedTyped(messages, pro).assembled)
+      assembled(fullStreamed.createChatCompletionStreamedTyped(messages, pro))
       last._1 should endWith("/responses")
       (last._2 \ "reasoning" \ "mode").as[String] shouldBe "pro"
       (last._2 \ "reasoning" \ "summary").as[String] shouldBe "auto"
 
-      await(fullStreamed.createChatCompletionStreamed(messages, pro).runToSeq)
+      runStream(fullStreamed.createChatCompletionStreamed(messages, pro), 20.seconds)
       last._1 should endWith("/responses")
       (last._2 \ "reasoning" \ "mode").as[String] shouldBe "pro"
 
@@ -263,14 +275,22 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
 
     "be refused - never dropped - where the chat completions API would serve the call" in {
       val before = requests.size
-      Seq[() => Future[_]](
-        () => chatOnly.createChatCompletion(messages, pro),
-        () => chatOnly.createChatToolCompletion(messages, Seq(weather), None, pro),
-        () => chatOnlyStreamed.createChatCompletionStreamed(messages, pro).runDrain,
-        () => chatOnlyStreamed.createChatCompletionStreamedTyped(messages, pro).runDrain,
-        () => full.createChatFunCompletion(messages, Nil, None, pro)
+      Seq[() => Any](
+        () => await(chatOnly.createChatCompletion(messages, pro)),
+        () => await(chatOnly.createChatToolCompletion(messages, Seq(weather), None, pro)),
+        () =>
+          runStreamDrain(
+            chatOnlyStreamed.createChatCompletionStreamed(messages, pro),
+            20.seconds
+          ),
+        () =>
+          runStreamDrain(
+            chatOnlyStreamed.createChatCompletionStreamedTyped(messages, pro),
+            20.seconds
+          ),
+        () => await(full.createChatFunCompletion(messages, Nil, None, pro))
       ).foreach { call =>
-        intercept[OpenAIScalaClientException](await(call())).getMessage should
+        intercept[OpenAIScalaClientException](call()).getMessage should
           include("setResponsesReasoningMode")
       }
       requests.size shouldBe before
@@ -325,23 +345,19 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
       last._1 should endWith("/chat/completions")
 
       // the typed stream asks whenever reasoning is configured - unless told not to
-      await(
-        fullStreamed
-          .createChatToolCompletionStreamed(messages, Seq(weather), None, high)
-          .assembled
+      assembled(
+        fullStreamed.createChatToolCompletionStreamed(messages, Seq(weather), None, high)
       )
       (last._2 \ "reasoning").as[JsObject] shouldBe
         Json.obj("effort" -> "high", "summary" -> "auto")
 
-      await(
-        fullStreamed
-          .createChatToolCompletionStreamed(
-            messages,
-            Seq(weather),
-            None,
-            high.setResponsesReasoningSummary(false)
-          )
-          .assembled
+      assembled(
+        fullStreamed.createChatToolCompletionStreamed(
+          messages,
+          Seq(weather),
+          None,
+          high.setResponsesReasoningSummary(false)
+        )
       )
       last._1 should endWith("/responses")
       (last._2 \ "reasoning").as[JsObject] shouldBe Json.obj("effort" -> "high")
@@ -349,15 +365,16 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
 
     "stream the summary as thinking - typed and OpenAI-shaped - via the Responses API" in {
       val typed =
-        await(fullStreamed.createChatCompletionStreamedTyped(messages, summarized).assembled)
+        assembled(fullStreamed.createChatCompletionStreamedTyped(messages, summarized))
       last._1 should endWith("/responses")
       (last._2 \ "reasoning").as[JsObject] shouldBe Json.obj("summary" -> "auto")
       typed.thinking shouldBe recordedStreamSummary
       typed.text shouldBe "693"
 
       val chunks =
-        await(
-          fullStreamed.createChatCompletionStreamed(messages, summarized).runToSeq
+        runStream(
+          fullStreamed.createChatCompletionStreamed(messages, summarized),
+          20.seconds
         )
       last._1 should endWith("/responses")
       (last._2 \ "reasoning").as[JsObject] shouldBe Json.obj("summary" -> "auto")
@@ -397,8 +414,9 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
       last._1 should endWith("/chat/completions")
       last._2.keys should not contain ResponsesReasoningSummaryParam
 
-      await(
-        chatOnlyStreamed.createChatCompletionStreamed(messages, summarized).runToSeq
+      runStream(
+        chatOnlyStreamed.createChatCompletionStreamed(messages, summarized),
+        20.seconds
       )
       last._1 should endWith("/chat/completions")
       last._2.keys should not contain ResponsesReasoningSummaryParam
@@ -422,10 +440,10 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
         await(chatOnly.createChatToolCompletion(messages, Seq(weather), None, none))
       ).getMessage should include("function tools on the chat completions API")
       intercept[OpenAIScalaClientException](
-        await(
+        runStreamDrain(
           chatOnlyStreamed
-            .createChatToolCompletionStreamed(messages, Seq(weather), None, none)
-            .runDrain
+            .createChatToolCompletionStreamed(messages, Seq(weather), None, none),
+          20.seconds
         )
       ).getMessage should include("function tools on the chat completions API")
       requests.size shouldBe before
@@ -468,13 +486,12 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
         Json.obj("enabled" -> true, "max_concurrent_subagents" -> 2)
       response.outputText shouldBe Some(rootAnswer)
 
-      await(
-        fullStreamed
-          .createModelResponseStreamed(
-            Inputs.Text("Fruits and vegetables?"),
-            multiAgentSettings
-          )
-          .runToSeq
+      runStream(
+        fullStreamed.createModelResponseStreamed(
+          Inputs.Text("Fruits and vegetables?"),
+          multiAgentSettings
+        ),
+        20.seconds
       ).size should be > 10
       lastBetaHeaders shouldBe Seq("responses_multi_agent=v1")
     }
@@ -504,7 +521,7 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
 
       // the typed stream asks for no reasoning summary (the API rejects it with multi-agent)
       val typed =
-        await(fullStreamed.createChatCompletionStreamedTyped(messages, settings).assembled)
+        assembled(fullStreamed.createChatCompletionStreamedTyped(messages, settings))
       last._1 should endWith("/responses")
       (last._2 \ "reasoning").as[JsObject] shouldBe Json.obj("effort" -> "low")
       typed.text shouldBe "Fruits: apple, banana, orange; vegetables: carrot, broccoli, spinach."
@@ -516,11 +533,15 @@ class ResponsesOnlySettingsWireSpec extends AnyWordSpec with Matchers with Befor
     "be refused where the chat completions API would serve the call" in {
       val settings = CreateChatCompletionSettings(ModelId.gpt_6_1_sol).setResponsesMultiAgent()
       val before = requests.size
-      Seq[() => Future[_]](
-        () => chatOnly.createChatCompletion(messages, settings),
-        () => chatOnlyStreamed.createChatCompletionStreamed(messages, settings).runDrain
+      Seq[() => Any](
+        () => await(chatOnly.createChatCompletion(messages, settings)),
+        () =>
+          runStreamDrain(
+            chatOnlyStreamed.createChatCompletionStreamed(messages, settings),
+            20.seconds
+          )
       ).foreach { call =>
-        intercept[OpenAIScalaClientException](await(call())).getMessage should
+        intercept[OpenAIScalaClientException](call()).getMessage should
           include("setResponsesMultiAgent")
       }
       requests.size shouldBe before

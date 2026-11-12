@@ -1,12 +1,12 @@
 package io.cequence.openaiscala.perplexity.service.impl
 
 import io.cequence.openaiscala.perplexity.service.PerplexityScalaClientException
+import io.cequence.openaiscala.testkit.StreamSpecSupport
 import io.cequence.wsclient.stream.{AsyncStream, Bytes}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.{JsValue, Json}
 
-import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 
@@ -15,17 +15,16 @@ import scala.concurrent.duration._
  * pins): the Sonar API's CRLF framing decodes, and a malformed stream fails with the module's
  * own exception.
  */
-class ServerSentEventsSpec extends AnyWordSpec with Matchers {
+class ServerSentEventsSpec extends AnyWordSpec with Matchers with StreamSpecSupport {
 
   private def parse(
     chunks: Seq[String],
     maxEventBytes: Int = ServerSentEvents.DefaultMaxEventBytes
   ): Seq[JsValue] =
-    Await.result(
+    runStream(
       AsyncStream
         .fromIterable(chunks.map(Bytes.utf8).toList)
-        .via(ServerSentEvents.jsonPayloads(maxEventBytes))
-        .runToSeq,
+        .via(ServerSentEvents.jsonPayloads(maxEventBytes)),
       10.seconds
     )
 

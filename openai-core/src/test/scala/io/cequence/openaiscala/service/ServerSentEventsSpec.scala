@@ -2,12 +2,12 @@ package io.cequence.openaiscala.service
 
 import io.cequence.wsclient.stream.{AsyncStream, Bytes}
 import io.cequence.openaiscala.OpenAIScalaClientException
+import io.cequence.openaiscala.testkit.StreamSpecSupport
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.{JsValue, Json}
 
-import scala.concurrent.Await
 import scala.concurrent.duration._
 
 /**
@@ -17,7 +17,11 @@ import scala.concurrent.duration._
  * pending event is searched, so it must still see a boundary that a chunk completes, whatever
  * the chunking, and a large event must decode in time linear in its size.
  */
-class ServerSentEventsSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
+class ServerSentEventsSpec
+    extends AnyWordSpec
+    with Matchers
+    with StreamSpecSupport
+    with BeforeAndAfterAll {
 
   private implicit val ec: scala.concurrent.ExecutionContext =
     scala.concurrent.ExecutionContext.global
@@ -34,11 +38,10 @@ class ServerSentEventsSpec extends AnyWordSpec with Matchers with BeforeAndAfter
     maxEventBytes: Int = ServerSentEvents.DefaultMaxEventBytes,
     error: String => Throwable = new OpenAIScalaClientException(_)
   ): Seq[JsValue] =
-    Await.result(
+    runStream(
       AsyncStream
         .fromIterable(chunks.toList)
-        .via(ServerSentEvents.jsonPayloads(maxEventBytes, error))
-        .runToSeq,
+        .via(ServerSentEvents.jsonPayloads(maxEventBytes, error)),
       60.seconds
     )
 

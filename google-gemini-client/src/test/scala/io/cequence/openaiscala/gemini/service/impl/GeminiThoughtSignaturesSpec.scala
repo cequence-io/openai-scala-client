@@ -20,6 +20,7 @@ import io.cequence.openaiscala.gemini.domain.response.{
 }
 import io.cequence.openaiscala.gemini.domain.{Content, Part}
 import io.cequence.openaiscala.gemini.service.GeminiService
+import io.cequence.openaiscala.testkit.StreamSpecSupport
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{mock, when}
 import org.mockito.invocation.InvocationOnMock
@@ -29,6 +30,7 @@ import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 
 import scala.collection.mutable
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -38,11 +40,17 @@ import scala.concurrent.{ExecutionContext, Future}
  * of the calls it hands out - sync and typed stream - puts them back when the calls return,
  * and sends Google's placeholder for a call it does not know on the models that require one.
  */
-class GeminiThoughtSignaturesSpec extends AnyWordSpec with Matchers with ScalaFutures {
+class GeminiThoughtSignaturesSpec
+    extends AnyWordSpec
+    with Matchers
+    with ScalaFutures
+    with StreamSpecSupport {
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
+
+  override protected def streamTimeout: FiniteDuration = 10.seconds
 
   private val weather = FunctionTool(
     name = "get_weather",
@@ -145,10 +153,10 @@ class GeminiThoughtSignaturesSpec extends AnyWordSpec with Matchers with ScalaFu
       val recording = new Recording(response(calls))
       val settings = CreateChatCompletionSettings(NonOpenAIModelId.gemini_3_8_flash)
 
-      val chunks = recording.adapter
-        .createChatToolCompletionStreamed(Seq(ask), Seq(weather), None, settings)
-        .runToSeq
-        .futureValue
+      val chunks = runStream(
+        recording.adapter
+          .createChatToolCompletionStreamed(Seq(ask), Seq(weather), None, settings)
+      )
       val toolCalls = chunks.collect {
         case io.cequence.openaiscala.domain.response.ChatChunk
               .ToolCall(_, id, name, args, _) =>

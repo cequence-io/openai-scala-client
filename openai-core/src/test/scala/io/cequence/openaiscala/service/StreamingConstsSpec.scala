@@ -3,15 +3,19 @@ package io.cequence.openaiscala.service
 import io.cequence.wsclient.stream.{AsyncStream, ByteFraming, Bytes}
 import com.typesafe.config.ConfigFactory
 import io.cequence.openaiscala.OpenAIScalaClientException
+import io.cequence.openaiscala.testkit.StreamSpecSupport
 import io.cequence.wsclient.domain.CequenceWSException
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-import scala.concurrent.Await
 import scala.concurrent.duration._
 
-class StreamingConstsSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
+class StreamingConstsSpec
+    extends AnyWordSpec
+    with Matchers
+    with StreamSpecSupport
+    with BeforeAndAfterAll {
 
   private implicit val ec: scala.concurrent.ExecutionContext =
     scala.concurrent.ExecutionContext.global
@@ -62,12 +66,10 @@ class StreamingConstsSpec extends AnyWordSpec with Matchers with BeforeAndAfterA
   "frameTooLong" should {
 
     def overflow(limit: Int): Throwable =
-      Await.result(
+      runStreamFailure(
         AsyncStream
           .single(Bytes.utf8("x" * (limit + 10) + "\n"))
-          .via(ByteFraming.delimiter(Bytes.utf8("\n"), limit, allowTruncation = true))
-          .runToSeq
-          .failed,
+          .via(ByteFraming.delimiter(Bytes.utf8("\n"), limit, allowTruncation = true)),
         10.seconds
       )
 
@@ -108,12 +110,10 @@ class StreamingConstsSpec extends AnyWordSpec with Matchers with BeforeAndAfterA
   "The server-sent-events decoder" should {
 
     "fail an event over its cap with the same message" in {
-      val failure = Await.result(
+      val failure = runStreamFailure(
         AsyncStream
           .single(Bytes.utf8("data: {\"type\":\"" + ("x" * 3000)))
-          .via(ServerSentEvents.jsonPayloads(maxEventBytes = 2048))
-          .runToSeq
-          .failed,
+          .via(ServerSentEvents.jsonPayloads(maxEventBytes = 2048)),
         10.seconds
       )
 

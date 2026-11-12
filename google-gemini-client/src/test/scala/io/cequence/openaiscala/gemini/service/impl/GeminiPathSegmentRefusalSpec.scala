@@ -4,6 +4,7 @@ import io.cequence.wsclient.stream.AsyncStream
 import io.cequence.openaiscala.gemini.domain.settings.GenerateContentSettings
 import io.cequence.openaiscala.gemini.domain.{ChatRole, Content, Part}
 import io.cequence.openaiscala.gemini.service.GeminiServiceFactory
+import io.cequence.openaiscala.testkit.StreamSpecSupport
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -16,7 +17,11 @@ import scala.util.{Failure, Success, Try}
  * A path id or model name the client refuses ("", "." or "..") fails the Gemini calls as a
  * failed Future or stream, never a synchronous throw - nothing is sent (a dummy key).
  */
-class GeminiPathSegmentRefusalSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
+class GeminiPathSegmentRefusalSpec
+    extends AnyWordSpec
+    with Matchers
+    with BeforeAndAfterAll
+    with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
@@ -36,7 +41,7 @@ class GeminiPathSegmentRefusalSpec extends AnyWordSpec with Matchers with Before
   private def refusedStream(call: => AsyncStream[_]): Throwable =
     Try(call) match {
       case Failure(e)      => fail(s"thrown synchronously: $e")
-      case Success(source) => Await.result(source.runDrain.failed, 20.seconds)
+      case Success(source) => runStreamFailure(source, 20.seconds)
     }
 
   "A refused path id" should {

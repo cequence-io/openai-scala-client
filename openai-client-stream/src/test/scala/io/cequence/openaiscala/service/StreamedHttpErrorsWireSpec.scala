@@ -11,7 +11,7 @@ import io.cequence.openaiscala.domain.settings.{
 }
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.wsclient.domain.WsRequestContext
-import io.cequence.openaiscala.testkit.TestEngines
+import io.cequence.openaiscala.testkit.{StreamSpecSupport, TestEngines}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -19,7 +19,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
 import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.ExecutionContext
 import scala.reflect.ClassTag
 
 /**
@@ -28,7 +28,11 @@ import scala.reflect.ClassTag
  * through `HandleOpenAIErrorCodes` - the same exceptions (and `Retryable` verdicts) as the
  * non-streamed calls.
  */
-class StreamedHttpErrorsWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
+class StreamedHttpErrorsWireSpec
+    extends AnyWordSpec
+    with Matchers
+    with BeforeAndAfterAll
+    with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
@@ -86,7 +90,7 @@ class StreamedHttpErrorsWireSpec extends AnyWordSpec with Matchers with BeforeAn
     stream: => AsyncStream[_]
   ): E = {
     reply = (status, body, "application/json")
-    intercept[E](Await.result(stream.runToSeq, 20.seconds))
+    intercept[E](runStream(stream, 20.seconds))
   }
 
   // a 200 SSE stream: one chunk, then an in-band error frame
@@ -97,7 +101,7 @@ class StreamedHttpErrorsWireSpec extends AnyWordSpec with Matchers with BeforeAn
     stream: => AsyncStream[_]
   ): E = {
     reply = (200, s"data: $chunk\n\ndata: $errorFrame\n\n", "text/event-stream")
-    intercept[E](Await.result(stream.runToSeq, 20.seconds))
+    intercept[E](runStream(stream, 20.seconds))
   }
 
   private val chatChunk =

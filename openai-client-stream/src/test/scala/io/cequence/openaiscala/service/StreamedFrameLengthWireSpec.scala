@@ -9,7 +9,7 @@ import io.cequence.openaiscala.domain.responsesapi.{Inputs, ResponseStreamEvent}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.wsclient.domain.{CequenceWSException, SiteBinding, WsRequestContext}
-import io.cequence.openaiscala.testkit.TestEngines
+import io.cequence.openaiscala.testkit.{StreamSpecSupport, TestEngines}
 import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamCore}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
@@ -18,8 +18,7 @@ import play.api.libs.json.JsValue
 
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
-import scala.concurrent.duration._
-import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.ExecutionContext
 
 /**
  * Large streamed frames against a local server: every stream is framed with the shared cap
@@ -27,7 +26,11 @@ import scala.concurrent.{Await, ExecutionContext}
  * MiB, e.g. an image in base64 - and a frame over the cap fails the stream with an exception
  * naming the setting.
  */
-class StreamedFrameLengthWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
+class StreamedFrameLengthWireSpec
+    extends AnyWordSpec
+    with Matchers
+    with BeforeAndAfterAll
+    with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
@@ -88,9 +91,6 @@ class StreamedFrameLengthWireSpec extends AnyWordSpec with Matchers with BeforeA
     ()
   }
 
-  private def run[T](stream: AsyncStream[T]): Seq[T] =
-    Await.result(stream.runToSeq, 30.seconds)
-
   private val MiB = 1024 * 1024
 
   private def chatChunk(content: String) =
@@ -105,11 +105,11 @@ class StreamedFrameLengthWireSpec extends AnyWordSpec with Matchers with BeforeA
       val messages = Seq(UserMessage("hi"))
       val settings = CreateChatCompletionSettings("gpt-5.4")
 
-      run(fullStreamed.createChatCompletionStreamed(messages, settings))
+      runStream(fullStreamed.createChatCompletionStreamed(messages, settings))
         .flatMap(_.choices.flatMap(_.delta.content))
         .map(_.length) shouldBe Seq(content.length)
 
-      run(fullStreamed.createChatCompletionStreamedTyped(messages, settings)).collect {
+      runStream(fullStreamed.createChatCompletionStreamedTyped(messages, settings)).collect {
         case ChatChunk.Text(text) => text.length
       }.sum shouldBe content.length
     }
@@ -122,7 +122,7 @@ class StreamedFrameLengthWireSpec extends AnyWordSpec with Matchers with BeforeA
       sse =
         s"""data: {"type":"response.image_generation_call.partial_image","item_id":"ig_1","output_index":0,"partial_image_index":0,"partial_image_b64":"$image","sequence_number":1}\n\n"""
 
-      run(fullStreamed.createModelResponseStreamed(Inputs.Text("draw a cat"))).collect {
+      runStream(fullStreamed.createModelResponseStreamed(Inputs.Text("draw a cat"))).collect {
         case e: ResponseStreamEvent.ImageGenerationPartialImage => e.partialImageB64.length
       } shouldBe Seq(image.length)
     }
@@ -134,7 +134,7 @@ class StreamedFrameLengthWireSpec extends AnyWordSpec with Matchers with BeforeA
       sse = s"data: ${chatChunk("a" * (100 * 1024))}\n\n"
 
       val failure = intercept[OpenAIScalaClientException](
-        run(framed.stream(maxFrameLength = Some(64 * 1024)))
+        runStream(framed.stream(maxFrameLength = Some(64 * 1024)))
       )
 
       failure.getMessage should include("exceeds the limit of 64 KiB")
@@ -147,7 +147,7 @@ class StreamedFrameLengthWireSpec extends AnyWordSpec with Matchers with BeforeA
     "be the shared one when a call passes none" in {
       sse = s"data: ${chatChunk("a" * (2 * MiB))}\n\n"
 
-      run(framed.stream(maxFrameLength = None)) should have size 1
+      runStream(framed.stream(maxFrameLength = None)) should have size 1
     }
   }
 }

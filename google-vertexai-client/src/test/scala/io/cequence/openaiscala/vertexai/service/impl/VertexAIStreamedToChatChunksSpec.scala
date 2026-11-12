@@ -16,22 +16,24 @@ import com.google.protobuf.{ByteString, Struct}
 import com.google.protobuf.util.JsonFormat
 import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.domain.response.ChatChunk._
-import org.scalatest.concurrent.ScalaFutures
+import io.cequence.openaiscala.testkit.StreamSpecSupport
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.Json
 
 import java.util.Base64
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 /** [[VertexAIChatChunks.toChatChunks]]: streamed protobuf responses -> typed chunks. */
-class VertexAIStreamedToChatChunksSpec extends AnyWordSpec with Matchers with ScalaFutures {
+class VertexAIStreamedToChatChunksSpec
+    extends AnyWordSpec
+    with Matchers
+    with StreamSpecSupport {
 
   private implicit val ec: scala.concurrent.ExecutionContext =
     scala.concurrent.ExecutionContext.global
 
-  implicit override val patienceConfig: PatienceConfig =
-    PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
+  override protected def streamTimeout: FiniteDuration = 10.seconds
 
   private def response(
     parts: Seq[Part],
@@ -60,11 +62,11 @@ class VertexAIStreamedToChatChunksSpec extends AnyWordSpec with Matchers with Sc
   }
 
   private def run(responses: GenerateContentResponse*): Seq[ChatChunk] =
-    AsyncStream
-      .fromIterable(responses.toList)
-      .via(VertexAIChatChunks.toChatChunks("gemini-test"))
-      .runToSeq
-      .futureValue
+    runStream(
+      AsyncStream
+        .fromIterable(responses.toList)
+        .via(VertexAIChatChunks.toChatChunks("gemini-test"))
+    )
 
   "VertexAIChatChunks.toChatChunks" should {
 

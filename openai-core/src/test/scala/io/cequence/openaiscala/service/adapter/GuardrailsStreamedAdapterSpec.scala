@@ -13,6 +13,7 @@ import io.cequence.openaiscala.service.{
   OpenAIChatCompletionService,
   OpenAIChatCompletionStreamedServiceExtra
 }
+import io.cequence.openaiscala.testkit.StreamSpecSupport
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
@@ -27,6 +28,7 @@ class GuardrailsStreamedAdapterSpec
     extends AnyWordSpec
     with Matchers
     with ScalaFutures
+    with StreamSpecSupport
     with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
@@ -151,15 +153,13 @@ class GuardrailsStreamedAdapterSpec
   }
 
   private def run[T](source: AsyncStream[T]): Seq[T] =
-    source.runToSeq.futureValue
+    runStream(source)
 
   // the elements before a failure, then the failure
   private def runToFailure[T](source: AsyncStream[T]): (Seq[T], Throwable) = {
-    val all = source
-      .map(Right(_): Either[Throwable, T])
-      .recover { case e => Left(e) }
-      .runToSeq
-      .futureValue
+    val all = runStream(
+      source.map(Right(_): Either[Throwable, T]).recover { case e => Left(e) }
+    )
     (all.collect { case Right(chunk) => chunk }, all.collectFirst { case Left(e) => e }.orNull)
   }
 

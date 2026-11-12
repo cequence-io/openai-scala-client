@@ -30,7 +30,7 @@ import io.cequence.openaiscala.domain.{
 }
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.wsclient.domain.WsRequestContext
-import io.cequence.openaiscala.testkit.TestEngines
+import io.cequence.openaiscala.testkit.{StreamSpecSupport, TestEngines}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -50,7 +50,11 @@ import scala.io.Source
  * ask_wiki_question), resumed statefully (stored, continued by `previous_response_id` with
  * only the answers), plus the stateless replay used with an explicit `store = false`.
  */
-class ToolApprovalWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
+class ToolApprovalWireSpec
+    extends AnyWordSpec
+    with Matchers
+    with BeforeAndAfterAll
+    with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
@@ -209,8 +213,8 @@ class ToolApprovalWireSpec extends AnyWordSpec with Matchers with BeforeAndAfter
     decisions: Seq[ToolApprovalDecision] = Nil,
     callSettings: CreateChatCompletionSettings = settings,
     callMessages: Seq[BaseMessage] = messages
-  ) =
-    await(
+  ): AssembledChatCompletion =
+    runStream(
       fullStreamed
         .createChatToolCompletionStreamed(
           callMessages,
@@ -218,16 +222,16 @@ class ToolApprovalWireSpec extends AnyWordSpec with Matchers with BeforeAndAfter
           None,
           callSettings.setToolApprovalDecisions(decisions)
         )
-        .assembled
-    )
+        .via(ChatChunk.assembleSink),
+      20.seconds
+    ).headOption.getOrElse(fail("the stream assembled nothing"))
 
   "a typed tool stream on OpenAI" should {
 
     "surface a paused run as a ToolApprovalRequest, then Finish(approval_required)" in {
-      val chunks = await(
-        fullStreamed
-          .createChatToolCompletionStreamed(messages, Seq(deepwiki), None, settings)
-          .runToSeq
+      val chunks = runStream(
+        fullStreamed.createChatToolCompletionStreamed(messages, Seq(deepwiki), None, settings),
+        20.seconds
       )
 
       val pending = chunks.collect { case r: ChatChunk.ToolApprovalRequest => r }
@@ -286,17 +290,16 @@ class ToolApprovalWireSpec extends AnyWordSpec with Matchers with BeforeAndAfter
       val asked = new CopyOnWriteArrayList[ChatChunk.ToolApprovalRequest]()
       val before = requests.size
 
-      val chunks = await(
-        fullStreamed
-          .createChatToolCompletionStreamedWithApprovals(
-            messages,
-            Seq(deepwiki),
-            settings = settings
-          ) { request =>
-            asked.add(request)
-            Future.successful(request.approve)
-          }
-          .runToSeq
+      val chunks = runStream(
+        fullStreamed.createChatToolCompletionStreamedWithApprovals(
+          messages,
+          Seq(deepwiki),
+          settings = settings
+        ) { request =>
+          asked.add(request)
+          Future.successful(request.approve)
+        },
+        20.seconds
       )
 
       asked.size shouldBe 2
@@ -424,8 +427,9 @@ class ToolApprovalWireSpec extends AnyWordSpec with Matchers with BeforeAndAfter
       val decisions = settings.setToolApprovalDecisions(paused.approveAll)
 
       intercept[OpenAIScalaClientException](
-        await(
-          fullStreamed.createChatCompletionStreamedTyped(messages, decisions).runDrain
+        runStreamDrain(
+          fullStreamed.createChatCompletionStreamedTyped(messages, decisions),
+          20.seconds
         )
       ).getMessage should include("same tools")
 
@@ -485,8 +489,9 @@ class ToolApprovalWireSpec extends AnyWordSpec with Matchers with BeforeAndAfter
         await(chatOnly.createChatToolCompletion(messages, Nil, None, rawMcp))
       ).getMessage should include("setResponsesTools")
       intercept[OpenAIScalaClientException](
-        await(
-          chatOnlyStreamed.createChatCompletionStreamedTyped(messages, rawMcp).runDrain
+        runStreamDrain(
+          chatOnlyStreamed.createChatCompletionStreamedTyped(messages, rawMcp),
+          20.seconds
         )
       ).getMessage should include("setResponsesTools")
 
@@ -497,13 +502,21 @@ class ToolApprovalWireSpec extends AnyWordSpec with Matchers with BeforeAndAfter
 
       // the entry points that cannot carry them refuse instead of dropping them
       val before = requests.size
-      Seq[() => Future[_]](
-        () => chatOnly.createChatCompletion(messages, rawMcp),
-        () => fullStreamed.createChatCompletionStreamed(messages, rawMcp).runDrain,
-        () => full.createChatFunCompletion(messages, Nil, None, rawMcp),
-        () => chatOnlyStreamed.createChatCompletionStreamed(messages, rawMcp).runDrain
+      Seq[() => Any](
+        () => await(chatOnly.createChatCompletion(messages, rawMcp)),
+        () =>
+          runStreamDrain(
+            fullStreamed.createChatCompletionStreamed(messages, rawMcp),
+            20.seconds
+          ),
+        () => await(full.createChatFunCompletion(messages, Nil, None, rawMcp)),
+        () =>
+          runStreamDrain(
+            chatOnlyStreamed.createChatCompletionStreamed(messages, rawMcp),
+            20.seconds
+          )
       ).foreach { call =>
-        intercept[OpenAIScalaClientException](await(call())).getMessage should
+        intercept[OpenAIScalaClientException](call()).getMessage should
           include("setResponsesTools")
       }
       requests.size shouldBe before
@@ -549,13 +562,21 @@ class ToolApprovalWireSpec extends AnyWordSpec with Matchers with BeforeAndAfter
           .setToolApprovalDecisions(paused.approveAll)
       val before = requests.size
 
-      Seq[() => Future[_]](
-        () => chatOnlyStreamed.createChatCompletionStreamedTyped(messages, decisions).runDrain,
-        () => chatOnlyStreamed.createChatCompletionStreamed(messages, decisions).runDrain,
-        () => chatOnly.createChatToolCompletion(messages, Nil, None, decisions),
-        () => chatOnly.createChatCompletion(messages, decisions)
+      Seq[() => Any](
+        () =>
+          runStreamDrain(
+            chatOnlyStreamed.createChatCompletionStreamedTyped(messages, decisions),
+            20.seconds
+          ),
+        () =>
+          runStreamDrain(
+            chatOnlyStreamed.createChatCompletionStreamed(messages, decisions),
+            20.seconds
+          ),
+        () => await(chatOnly.createChatToolCompletion(messages, Nil, None, decisions)),
+        () => await(chatOnly.createChatCompletion(messages, decisions))
       ).foreach { call =>
-        intercept[OpenAIScalaClientException](await(call())).getMessage should
+        intercept[OpenAIScalaClientException](call()).getMessage should
           include("cannot resume a run paused for tool approval")
       }
       requests.size shouldBe before

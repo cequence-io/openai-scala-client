@@ -8,6 +8,7 @@ import io.cequence.openaiscala.domain.settings.{
   ServiceTier
 }
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
+import io.cequence.openaiscala.testkit.StreamSpecSupport
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -26,7 +27,11 @@ import scala.concurrent.{Await, ExecutionContext, Future}
  * in `ModelConversionsRoutingSpec`). The Messages API side is `MiniMaxMessagesWireSpec`
  * (anthropic-client).
  */
-class MiniMaxWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
+class MiniMaxWireSpec
+    extends AnyWordSpec
+    with Matchers
+    with BeforeAndAfterAll
+    with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
@@ -179,7 +184,7 @@ class MiniMaxWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
             Seq(TextContent("Describe"), ImageURLContent("https://example.com/image.png"))
           )
         )
-        await(service.createChatCompletionStreamed(media, flash).runToSeq)
+        runStream(service.createChatCompletionStreamed(media, flash), 20.seconds)
 
         (lastBody \ "stream").as[Boolean] shouldBe true
         (lastBody \ "model").as[String] shouldBe "MiniMax-M3.1-Flash"

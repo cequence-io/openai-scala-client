@@ -35,21 +35,21 @@ import io.cequence.openaiscala.anthropic.domain.{
 }
 import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.domain.response.ChatChunk._
-import org.scalatest.concurrent.ScalaFutures
+import io.cequence.openaiscala.testkit.StreamSpecSupport
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.Json
 
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.DurationInt
 
 /** [[toChatChunks]]: raw Anthropic [[MessageStreamEvent]]s -> typed [[ChatChunk]]s. */
-class AnthropicStreamedToChatChunksSpec extends AnyWordSpec with Matchers with ScalaFutures {
+class AnthropicStreamedToChatChunksSpec
+    extends AnyWordSpec
+    with Matchers
+    with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-
-  implicit override val patienceConfig: PatienceConfig =
-    PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
 
   private def messageStart(inputTokens: Int = 10): MessageStart =
     MessageStart(
@@ -96,7 +96,7 @@ class AnthropicStreamedToChatChunksSpec extends AnyWordSpec with Matchers with S
   ) = MessageDelta(Some(stop), None, Some(MessageDeltaUsage(outputTokens, None, None, None)))
 
   private def run(events: MessageStreamEvent*): Seq[ChatChunk] =
-    AsyncStream.fromIterable(events.toList).via(toChatChunks).runToSeq.futureValue
+    runStream(AsyncStream.fromIterable(events.toList).via(toChatChunks), 10.seconds)
 
   "toChatChunks" should {
 

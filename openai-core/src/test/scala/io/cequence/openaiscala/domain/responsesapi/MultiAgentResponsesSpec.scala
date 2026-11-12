@@ -5,10 +5,9 @@ import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.domain.response.ChatChunk._
 import io.cequence.openaiscala.domain.responsesapi.JsonFormats._
 import io.cequence.openaiscala.service.ChatChunks
+import io.cequence.openaiscala.testkit.StreamSpecSupport
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.{JsObject, Json}
 
@@ -23,13 +22,10 @@ import scala.concurrent.ExecutionContext
 class MultiAgentResponsesSpec
     extends AnyWordSpec
     with Matchers
-    with ScalaFutures
+    with StreamSpecSupport
     with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-
-  implicit override val patienceConfig: PatienceConfig =
-    PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
 
   override def afterAll(): Unit = {
     ()
@@ -117,11 +113,9 @@ class MultiAgentResponsesSpec
 
     "stream the root agent's answer and the delegation as server-side tool calls" in {
       val chunks: Seq[ChatChunk] =
-        AsyncStream
-          .fromIterable(events.toList)
-          .via(ChatChunks.fromResponseEvents)
-          .runToSeq
-          .futureValue
+        runStream(
+          AsyncStream.fromIterable(events.toList).via(ChatChunks.fromResponseEvents)
+        )
 
       // only the root agent's text, never the subagents' (their deltas interleave with it)
       chunks.collect { case Text(text) => text }.mkString shouldBe

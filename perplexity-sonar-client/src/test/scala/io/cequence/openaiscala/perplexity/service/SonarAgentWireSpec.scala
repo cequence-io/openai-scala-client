@@ -3,7 +3,7 @@ package io.cequence.openaiscala.perplexity.service
 import com.sun.net.httpserver.{HttpExchange, HttpHandler, HttpServer}
 import io.cequence.openaiscala.perplexity.AgentJsonFormats
 import io.cequence.openaiscala.perplexity.domain.agent._
-import io.cequence.openaiscala.testkit.TestEngines
+import io.cequence.openaiscala.testkit.{StreamSpecSupport, TestEngines}
 import io.cequence.wsclient.stream.Bytes
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
@@ -22,7 +22,11 @@ import scala.util.Try
  * against a local HTTP server: paths, methods, query, the bearer header, request bodies,
  * response parsing, SSE decoding, 404 -> None, error surfacing, binary download.
  */
-class SonarAgentWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
+class SonarAgentWireSpec
+    extends AnyWordSpec
+    with Matchers
+    with BeforeAndAfterAll
+    with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
@@ -91,7 +95,9 @@ class SonarAgentWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAl
     server.stop(0)
   }
 
-  private def await[T](f: Future[T]): T = Await.result(f, 20.seconds)
+  override protected def streamTimeout: FiniteDuration = 20.seconds
+
+  private def await[T](f: Future[T]): T = Await.result(f, streamTimeout)
 
   private def lastRequest: Received = received.getOrElse(fail("no request received"))
 
@@ -262,7 +268,7 @@ class SonarAgentWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAl
         """{"error":{"message":"Rate limit exceeded","type":"request_rate_limit_exceeded","code":429}}"""
       )
       intercept[PerplexityScalaRateLimitException](
-        await(service.createAgentResponseStreamed(AgentInput("x"), settings).runToSeq)
+        runStream(service.createAgentResponseStreamed(AgentInput("x"), settings))
       ).errorType shouldBe Some("request_rate_limit_exceeded")
 
       replyJson(
@@ -270,7 +276,7 @@ class SonarAgentWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAl
         """{"error":{"message":"Invalid API key provided.","type":"invalid_api_key","code":"401"}}"""
       )
       intercept[PerplexityScalaUnauthorizedException](
-        await(service.resumeAgentResponseStream("resp_1").runToSeq)
+        runStream(service.resumeAgentResponseStream("resp_1"))
       )
     }
 
@@ -299,12 +305,10 @@ class SonarAgentWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAl
         "text/event-stream"
       )
       intercept[PerplexityScalaRateLimitException](
-        await(
-          service
-            .createChatCompletionStreamed(
-              Seq(io.cequence.openaiscala.perplexity.domain.Message.UserMessage("hi"))
-            )
-            .runToSeq
+        runStream(
+          service.createChatCompletionStreamed(
+            Seq(io.cequence.openaiscala.perplexity.domain.Message.UserMessage("hi"))
+          )
         )
       ).errorType shouldBe Some("request_rate_limit_exceeded")
     }
@@ -315,10 +319,8 @@ class SonarAgentWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAl
     "POST with stream=true and decode the typed events" in {
       reply = (200, sse.getBytes(StandardCharsets.UTF_8), "text/event-stream")
 
-      val events = await(
-        service
-          .createAgentResponseStreamed(AgentInput("Capital of Norway?"), settings)
-          .runToSeq
+      val events = runStream(
+        service.createAgentResponseStreamed(AgentInput("Capital of Norway?"), settings)
       )
       val request = lastRequest
 
@@ -347,7 +349,7 @@ class SonarAgentWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAl
         (200, sse.replace("\n", "\r\n").getBytes(StandardCharsets.UTF_8), "text/event-stream")
 
       val events =
-        await(service.createAgentResponseStreamed(AgentInput("x"), settings).runToSeq)
+        runStream(service.createAgentResponseStreamed(AgentInput("x"), settings))
       events.map(_.sequenceNumber) shouldBe (0 to 8)
     }
 
@@ -359,7 +361,7 @@ class SonarAgentWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAl
 
       // a body without `code` still fails the stream, as the base exception
       val error = intercept[PerplexityScalaClientException](
-        await(service.createAgentResponseStreamed(AgentInput("x"), settings).runToSeq)
+        runStream(service.createAgentResponseStreamed(AgentInput("x"), settings))
       )
       error.getMessage should include("Invalid API key")
     }
@@ -370,9 +372,8 @@ class SonarAgentWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAl
     "GET v1/agent/{id} with stream=true and starting_after" in {
       reply = (200, sse.getBytes(StandardCharsets.UTF_8), "text/event-stream")
 
-      val events = await(
-        service.resumeAgentResponseStream("resp_1", startingAfter = Some(5)).runToSeq
-      )
+      val events =
+        runStream(service.resumeAgentResponseStream("resp_1", startingAfter = Some(5)))
       val request = lastRequest
 
       request.method shouldBe "GET"
@@ -385,7 +386,7 @@ class SonarAgentWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAl
 
     "leave starting_after out when not given" in {
       reply = (200, sse.getBytes(StandardCharsets.UTF_8), "text/event-stream")
-      await(service.resumeAgentResponseStream("resp_1").runToSeq)
+      runStream(service.resumeAgentResponseStream("resp_1"))
 
       lastRequest.query shouldBe Some("stream=true")
     }
@@ -453,7 +454,7 @@ class SonarAgentWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAl
 
       val source =
         await(service.downloadAgentResponseFile("resp_1", "file_1")).getOrElse(fail("no file"))
-      val downloaded = Bytes.concat(await(source.runToSeq))
+      val downloaded = Bytes.concat(runStream(source))
 
       downloaded.toArray shouldBe bytes
       lastRequest.path shouldBe "/v1/agent/resp_1/files/file_1/content"

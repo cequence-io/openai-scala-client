@@ -7,7 +7,8 @@ import io.cequence.openaiscala.domain.agents.AgentSessionEvent._
 import io.cequence.openaiscala.domain.agents._
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.wsclient.domain.WsRequestContext
-import io.cequence.openaiscala.testkit.TestEngines
+import io.cequence.openaiscala.testkit.{StreamSpecSupport, TestEngines}
+import io.cequence.wsclient.stream.Bytes
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -24,7 +25,11 @@ import scala.concurrent.{Await, ExecutionContext, Future}
  * comment-only heartbeat frames and CRLF framing the real engine must get through - and the
  * error classification. The streamed turn replays a session recorded live on 2026-09-30.
  */
-class AgentsApiWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
+class AgentsApiWireSpec
+    extends AnyWordSpec
+    with Matchers
+    with BeforeAndAfterAll
+    with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
@@ -253,9 +258,8 @@ class AgentsApiWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll
     }
 
     "stream an artifact's content" in {
-      val bytes = await(
-        service.getAgentSessionArtifactContent("sess_1", "art_1").flatMap(_.runToBytes())
-      )
+      val content = await(service.getAgentSessionArtifactContent("sess_1", "art_1"))
+      val bytes = runStream(content, 20.seconds).foldLeft(Bytes.empty)(_ ++ _)
       bytes.utf8String shouldBe "file-bytes"
     }
 
@@ -279,15 +283,14 @@ class AgentsApiWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll
   "the session event streams" should {
 
     "decode a created session's stream through heartbeat frames and CRLF framing" in {
-      val events = await(
-        service
-          .createAgentSessionStreamed(
-            CreateAgentSessionSettings(
-              agent = Some(AgentConfig(model = Some("gpt-6-luna")))
-            ),
-            AgentInput.Text("Say hi in two words.")
-          )
-          .runToSeq
+      val events = runStream(
+        service.createAgentSessionStreamed(
+          CreateAgentSessionSettings(
+            agent = Some(AgentConfig(model = Some("gpt-6-luna")))
+          ),
+          AgentInput.Text("Say hi in two words.")
+        ),
+        20.seconds
       )
       last.body.flatMap(b => (b \ "stream").asOpt[Boolean]) shouldBe Some(true)
       last.betas shouldBe Seq("agents=v1")
@@ -299,11 +302,9 @@ class AgentsApiWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll
     }
 
     "subscribe to a session's events and end the subscription when the turn settles" in {
-      val events = await(
-        service
-          .streamAgentSessionEvents("sess_1")
-          .via(AgentSessionEvents.untilSettled())
-          .runToSeq
+      val events = runStream(
+        service.streamAgentSessionEvents("sess_1").via(AgentSessionEvents.untilSettled()),
+        20.seconds
       )
       (last.method, last.path, last.betas) shouldBe
         ("GET", "/agents/sessions/sess_1/events", Seq("agents=v1"))

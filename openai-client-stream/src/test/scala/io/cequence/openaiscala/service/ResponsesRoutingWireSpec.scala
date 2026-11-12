@@ -9,7 +9,7 @@ import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{JsonSchema, ModelId, UserMessage}
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.wsclient.domain.WsRequestContext
-import io.cequence.openaiscala.testkit.TestEngines
+import io.cequence.openaiscala.testkit.{StreamSpecSupport, TestEngines}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -27,7 +27,11 @@ import scala.concurrent.{Await, ExecutionContext, Future}
  * ordinary function tools still go to `/chat/completions`, and a chat-only service fails fast
  * without touching the network.
  */
-class ResponsesRoutingWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
+class ResponsesRoutingWireSpec
+    extends AnyWordSpec
+    with Matchers
+    with BeforeAndAfterAll
+    with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
@@ -160,10 +164,9 @@ class ResponsesRoutingWireSpec extends AnyWordSpec with Matchers with BeforeAndA
 
     "stream an MCPServerTool request from /responses" in {
       received = None
-      val chunks = await(
-        fullStreamed
-          .createChatToolCompletionStreamed(messages, Seq(deepwiki), None, gpt54)
-          .runToSeq
+      val chunks = runStream(
+        fullStreamed.createChatToolCompletionStreamed(messages, Seq(deepwiki), None, gpt54),
+        20.seconds
       )
 
       received.get.path should endWith("/responses")
@@ -176,10 +179,9 @@ class ResponsesRoutingWireSpec extends AnyWordSpec with Matchers with BeforeAndA
 
     "keep plain function tools on the /chat/completions stream" in {
       received = None
-      val chunks = await(
-        fullStreamed
-          .createChatToolCompletionStreamed(messages, Seq(weather), None, gpt54)
-          .runToSeq
+      val chunks = runStream(
+        fullStreamed.createChatToolCompletionStreamed(messages, Seq(weather), None, gpt54),
+        20.seconds
       )
 
       received.get.path should endWith("/chat/completions")
@@ -196,11 +198,10 @@ class ResponsesRoutingWireSpec extends AnyWordSpec with Matchers with BeforeAndA
       plain shouldBe an[OpenAIScalaClientException]
       plain.getMessage should include("MCPServerTool(deepwiki)")
 
-      val streamed = await(
+      val streamed = runStreamFailure(
         chatOnlyStreamed
-          .createChatToolCompletionStreamed(messages, Seq(SkillTool("sk_1")), None, gpt54)
-          .runToSeq
-          .failed
+          .createChatToolCompletionStreamed(messages, Seq(SkillTool("sk_1")), None, gpt54),
+        20.seconds
       )
       streamed shouldBe an[OpenAIScalaClientException]
       streamed.getMessage should include("SkillTool(sk_1)")

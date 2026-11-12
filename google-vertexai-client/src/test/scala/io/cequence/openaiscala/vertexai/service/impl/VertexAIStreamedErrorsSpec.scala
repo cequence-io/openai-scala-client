@@ -19,6 +19,7 @@ import io.cequence.openaiscala._
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{JsonSchema, UserMessage}
+import io.cequence.openaiscala.testkit.StreamSpecSupport
 import io.grpc.Status
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
@@ -38,7 +39,11 @@ import scala.reflect.ClassTag
  * unary calls - each must surface as the right, `Retryable`-classified `OpenAIScala*`
  * exception.
  */
-class VertexAIStreamedErrorsSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
+class VertexAIStreamedErrorsSpec
+    extends AnyWordSpec
+    with Matchers
+    with BeforeAndAfterAll
+    with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
@@ -142,8 +147,8 @@ class VertexAIStreamedErrorsSpec extends AnyWordSpec with Matchers with BeforeAn
 
   // every element until the failure, then the failure
   private def run[T](stream: AsyncStream[T]): (Seq[T], Throwable) = {
-    val events = Await.result(
-      stream.map(Right(_): Either[Throwable, T]).recover { case e => Left(e) }.runToSeq,
+    val events = runStream(
+      stream.map(Right(_): Either[Throwable, T]).recover { case e => Left(e) },
       20.seconds
     )
     val failure =

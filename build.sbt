@@ -349,6 +349,188 @@ lazy val examples_zio = (project in file("openai-examples-zio"))
   )
   .dependsOn(zio)
 
+// The engine x consumer matrix (unpublished, tests only): each project runs the specs of the
+// stream modules (`test->test`) in a forked JVM on one engine (`-Dws-client.engine`) and one
+// consumer (`-Dopenai.test.consumer`, a testkit StreamRunner registered by the project). Where
+// engine and consumer are the same library, every run through the testkit must build no bridge
+// (`-Dopenai.test.expectedBridges=0`): the wire specs double as native round-trip checks.
+def matrixSettings(
+  engine: String,
+  consumer: String,
+  expectedBridges: Option[Int]
+): Seq[Setting[_]] =
+  Seq(
+    scalacOptions += "-feature",
+    publish / skip := true,
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.16" % Test,
+    Test / fork := true,
+    Test / javaOptions ++= Seq(
+      s"-Dws-client.engine=$engine",
+      s"-Dopenai.test.consumer=$consumer"
+    ) ++ expectedBridges.map(n => s"-Dopenai.test.expectedBridges=$n")
+  )
+
+// the specs of the stream modules, run by every matrix project but the no-stream one
+lazy val matrixSpecs = Test / definedTests ++= Seq(
+  (core / Test / definedTests).value,
+  (client_stream / Test / definedTests).value,
+  (anthropic_client / Test / definedTests).value,
+  (google_gemini_client / Test / definedTests).value,
+  (google_vertexai_client / Test / definedTests).value,
+  (perplexity_sonar_client / Test / definedTests).value,
+  (claude_agent_client / Test / definedTests).value
+).flatten
+
+lazy val matrixModules: Seq[ClasspathDep[ProjectReference]] = Seq(
+  core % "test->test",
+  client_stream % "test->test",
+  anthropic_client % "test->test",
+  google_gemini_client % "test->test",
+  google_vertexai_client % "test->test",
+  perplexity_sonar_client % "test->test",
+  claude_agent_client % "test->test"
+)
+
+lazy val matrix_akka = (project in file("openai-matrix/akka"))
+  .settings(
+    (matrixSettings("play-akka-stream", "akka", Some(0)) ++ Seq(
+      name := "openai-matrix-akka",
+      crossScalaVersions := List(scala212, scala213, scala3),
+      libraryDependencies +=
+        "io.cequence" %% "ws-client-play-akka-stream" % Dependencies.Versions.wsClient % Test,
+      matrixSpecs
+    )) *
+  )
+  .dependsOn(matrixModules *)
+
+// Pekko's engines are built for Scala 2.13 and 3.3 only; no Akka flavour on this classpath
+lazy val matrix_pekko = (project in file("openai-matrix/pekko"))
+  .settings(
+    (matrixSettings("play-pekko-stream", "pekko", Some(0)) ++ Seq(
+      name := "openai-matrix-pekko",
+      crossScalaVersions := List(scala213),
+      libraryDependencies ++= Seq(
+        "io.cequence" %% "ws-client-play-pekko-stream" % Dependencies.Versions.wsClient % Test,
+        "io.cequence" %% "ws-client-pekko-http" % Dependencies.Versions.wsClient % Test
+      ),
+      matrixSpecs
+    )) *
+  )
+  .dependsOn(matrixModules *)
+
+// zio-http publishes no Scala 3 artifacts for ws-client's line
+lazy val matrix_zio = (project in file("openai-matrix/zio"))
+  .settings(
+    (matrixSettings("zio-http", "zio", Some(0)) ++ Seq(
+      name := "openai-matrix-zio",
+      crossScalaVersions := List(scala212, scala213),
+      libraryDependencies +=
+        "io.cequence" %% "ws-client-zio-http" % Dependencies.Versions.wsClient % Test,
+      matrixSpecs,
+      Test / definedTests ++= (zio / Test / definedTests).value
+    )) *
+  )
+  // the zio module's specs need its `provided` provider modules (typesafe-client is no stream
+  // module, so not in matrixModules)
+  .dependsOn((matrixModules ++ Seq(zio % "test->test", typesafe_client % Test)) *)
+
+// fs2 / cats-effect publish Scala 3 artifacts for 3.3+ only; on the jdk engine a run crosses one
+// bridge per HTTP response, so no expectation is set here
+lazy val matrix_fs2 = (project in file("openai-matrix/fs2"))
+  .settings(
+    (matrixSettings("jdk", "fs2", None) ++ Seq(
+      name := "openai-matrix-fs2",
+      crossScalaVersions := List(scala212, scala213),
+      libraryDependencies +=
+        "io.cequence" %% "ws-client-fs2" % Dependencies.Versions.wsClient % Test,
+      matrixSpecs
+    )) *
+  )
+  .dependsOn(matrixModules *)
+
+// engines without output streaming (sttp, play-akka): its own spec only - the clear capability
+// error, sync calls, binary-safe buffered downloads
+lazy val matrix_nostream = (project in file("openai-matrix/nostream"))
+  .settings(
+    (matrixSettings("sttp", "neutral", None) ++ Seq(
+      name := "openai-matrix-nostream",
+      crossScalaVersions := List(scala212, scala213),
+      libraryDependencies ++= Seq(
+        "io.cequence" %% "ws-client-sttp" % Dependencies.Versions.wsClient % Test,
+        "io.cequence" %% "ws-client-play-akka" % Dependencies.Versions.wsClient % Test
+      )
+    )) *
+  )
+  .dependsOn(client_stream % "test->test", testkit % Test)
+
+// CI's Scala lines (aggregates only - no sources, never published). The root aggregates every
+// project, but `++<v>` leaves a project built for fewer Scala versions on 2.13 next to
+// dependencies switched to <v> - an update conflict (`_3` and `_2.13` suffixes). So CI runs
+// `++<v> "project <line>" ...` on the projects that build for <v>: the modules, examples and
+// interop examples (ci_scala*) and, in a job of its own, the engine matrix (ci_matrix*).
+def ciLine(
+  id: String,
+  versions: List[String],
+  projects: Seq[ProjectReference]
+): Project =
+  Project(id, file(s"ci/$id"))
+    .settings(
+      crossScalaVersions := versions,
+      publish / skip := true,
+      publishLocal / skip := true,
+      publishM2 / skip := true
+    )
+    .aggregate(projects *)
+
+lazy val scala3LineProjects: Seq[ProjectReference] = Seq(
+  testkit,
+  core,
+  client,
+  client_stream,
+  anthropic_client,
+  google_vertexai_client,
+  google_gemini_client,
+  perplexity_sonar_client,
+  typesafe_client,
+  claude_agent_client,
+  count_tokens,
+  all,
+  guice,
+  examples,
+  examples_akka
+)
+
+lazy val scala212LineProjects: Seq[ProjectReference] =
+  scala3LineProjects ++ Seq[ProjectReference](zio, examples_fs2, examples_zio)
+
+lazy val ci_scala212 = ciLine("ci_scala212", List(scala212), scala212LineProjects)
+
+lazy val ci_scala213 =
+  ciLine(
+    "ci_scala213",
+    List(scala213),
+    scala212LineProjects :+ (examples_pekko: ProjectReference)
+  )
+
+lazy val ci_scala3 = ciLine("ci_scala3", List(scala3), scala3LineProjects)
+
+// the ZIO module's Scala 3 line (its dependencies build on 3.3.8 unpublished, see alsoOnScala33)
+lazy val ci_scala33 = ciLine("ci_scala33", List(scala33), Seq(zio))
+
+lazy val ci_matrix212 = ciLine(
+  "ci_matrix212",
+  List(scala212),
+  Seq(matrix_akka, matrix_zio, matrix_fs2, matrix_nostream)
+)
+
+lazy val ci_matrix213 = ciLine(
+  "ci_matrix213",
+  List(scala213),
+  Seq(matrix_akka, matrix_pekko, matrix_zio, matrix_fs2, matrix_nostream)
+)
+
+lazy val ci_matrix3 = ciLine("ci_matrix3", List(scala3), Seq(matrix_akka))
+
 // POM settings for Sonatype
 ThisBuild / homepage := Some(
   url("https://github.com/cequence-io/openai-scala-client")

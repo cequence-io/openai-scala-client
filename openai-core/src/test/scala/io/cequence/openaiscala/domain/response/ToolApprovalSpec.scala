@@ -8,16 +8,20 @@ import io.cequence.openaiscala.domain.responsesapi.tools.mcp.MCPApprovalRequest
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps
 import io.cequence.openaiscala.domain.settings.ToolApprovalSettingsOps._
+import io.cequence.openaiscala.testkit.StreamSpecSupport
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.Json
 
-import scala.concurrent.Await
 import scala.concurrent.duration._
 
 /** The provider-neutral pieces of human approval: the chunk, its decisions and resume key. */
-class ToolApprovalSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
+class ToolApprovalSpec
+    extends AnyWordSpec
+    with Matchers
+    with StreamSpecSupport
+    with BeforeAndAfterAll {
 
   private implicit val ec: scala.concurrent.ExecutionContext =
     scala.concurrent.ExecutionContext.global
@@ -25,6 +29,14 @@ class ToolApprovalSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll 
   override protected def afterAll(): Unit = {
     ()
   }
+
+  // `stream.assembled` (`via(assembleSink).runHead`) run through the selected consumer
+  private def assembled(chunks: Seq[ChatChunk]): AssembledChatCompletion =
+    runStreamTake(
+      AsyncStream.fromIterable(chunks.toList).via(ChatChunk.assembleSink),
+      n = 1,
+      timeout = 5.seconds
+    ).headOption.getOrElse(throw new NoSuchElementException("runHead of an empty stream"))
 
   private val request = ToolApprovalRequest(
     requestId = "mcpr_1",
@@ -67,7 +79,7 @@ class ToolApprovalSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll 
 
     "collect the pending requests in both folds, and answer them all" in {
       val folded = chunks.foldLeft(AssembledChatCompletion.empty)(_.add(_))
-      val built = Await.result(AsyncStream.fromIterable(chunks.toList).assembled, 5.seconds)
+      val built = assembled(chunks)
 
       Seq(folded, built).foreach { assembled =>
         assembled.awaitingApproval shouldBe true
@@ -77,18 +89,13 @@ class ToolApprovalSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll 
         assembled.denyAll(Some("no")).map(d => (d.approve, d.reason)) shouldBe
           Seq((false, Some("no")), (false, Some("no")))
       }
-      Await.result(
-        AsyncStream
-          .fromIterable(chunks.toList)
-          .toolApprovalRequests
-          .runFold(0)(
-            (
-              n,
-              _
-            ) => n + 1
-          ),
-        5.seconds
-      ) shouldBe 2
+      runStream(AsyncStream.fromIterable(chunks.toList).toolApprovalRequests, 5.seconds)
+        .foldLeft(0)(
+          (
+            n,
+            _
+          ) => n + 1
+        ) shouldBe 2
     }
 
     "forget the requests of a restarted stream" in {
@@ -96,9 +103,7 @@ class ToolApprovalSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll 
       restarted
         .foldLeft(AssembledChatCompletion.empty)(_.add(_))
         .awaitingApproval shouldBe false
-      Await
-        .result(AsyncStream.fromIterable(restarted.toList).assembled, 5.seconds)
-        .awaitingApproval shouldBe false
+      assembled(restarted).awaitingApproval shouldBe false
     }
   }
 

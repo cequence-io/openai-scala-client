@@ -7,10 +7,9 @@ import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.domain.responsesapi.JsonFormats.responseStreamEventReads
 import io.cequence.openaiscala.domain.responsesapi.ResponseStreamEvent
 import io.cequence.openaiscala.domain.responsesapi.ResponseStreamEvent._
+import io.cequence.openaiscala.testkit.StreamSpecSupport
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.{JsValue, Json}
 
@@ -23,13 +22,10 @@ import scala.concurrent.ExecutionContext
 class ResponseStreamChunksSpec
     extends AnyWordSpec
     with Matchers
-    with ScalaFutures
+    with StreamSpecSupport
     with BeforeAndAfterAll {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
-
-  implicit override val patienceConfig: PatienceConfig =
-    PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
 
   override def afterAll(): Unit = {
     ()
@@ -146,11 +142,9 @@ class ResponseStreamChunksSpec
   }
 
   private def run(events: ResponseStreamEvent*): Seq[ChatChunk] =
-    AsyncStream
-      .fromIterable(events.toList)
-      .via(ChatChunks.fromResponseEvents)
-      .runToSeq
-      .futureValue
+    runStream(
+      AsyncStream.fromIterable(events.toList).via(ChatChunks.fromResponseEvents)
+    )
 
   "ChatChunks.fromResponseEvents" should {
 
@@ -246,25 +240,18 @@ class ResponseStreamChunksSpec
       val failed = event(
         """{"type":"response.failed","sequence_number":5,"response":{"id":"resp_1","status":"failed","error":{"code":"server_error","message":"boom"},"output":[]}}"""
       )
-      val ex = AsyncStream
-        .fromIterable(List(created, failed))
-        .via(ChatChunks.fromResponseEvents)
-        .runToSeq
-        .failed
-        .futureValue
+      val ex = runStreamFailure(
+        AsyncStream.fromIterable(List(created, failed)).via(ChatChunks.fromResponseEvents)
+      )
       ex shouldBe an[OpenAIScalaClientException]
       ex.getMessage should include("boom")
 
       val err = event(
         """{"type":"error","code":"rate_limit","message":"slow down","sequence_number":3}"""
       )
-      AsyncStream
-        .fromIterable(List(created, err))
-        .via(ChatChunks.fromResponseEvents)
-        .runToSeq
-        .failed
-        .futureValue
-        .getMessage should include("slow down")
+      runStreamFailure(
+        AsyncStream.fromIterable(List(created, err)).via(ChatChunks.fromResponseEvents)
+      ).getMessage should include("slow down")
     }
 
     "pass refusals, partial images and unknown items through as typed chunks or Other" in {

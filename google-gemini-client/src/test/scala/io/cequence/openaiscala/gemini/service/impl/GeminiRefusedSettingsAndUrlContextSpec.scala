@@ -21,6 +21,7 @@ import io.cequence.openaiscala.gemini.domain.settings.{
 }
 import io.cequence.openaiscala.gemini.domain.{Content, Part, Tool}
 import io.cequence.openaiscala.gemini.service.GeminiService
+import io.cequence.openaiscala.testkit.StreamSpecSupport
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{mock, when}
 import org.mockito.invocation.InvocationOnMock
@@ -31,6 +32,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.Json
 
 import scala.collection.mutable
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -42,12 +44,15 @@ import scala.concurrent.{ExecutionContext, Future}
 class GeminiRefusedSettingsAndUrlContextSpec
     extends AnyWordSpec
     with Matchers
-    with ScalaFutures {
+    with ScalaFutures
+    with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
   implicit override val patienceConfig: PatienceConfig =
     PatienceConfig(timeout = Span(10, Seconds), interval = Span(50, Millis))
+
+  override protected def streamTimeout: FiniteDuration = 10.seconds
 
   private val urlMetadata = UrlContextMetadata(
     Seq(
@@ -118,15 +123,14 @@ class GeminiRefusedSettingsAndUrlContextSpec
       lastConfig.candidateCount shouldBe None
       lastConfig.temperature shouldBe Some(0.3)
 
-      adapter
-        .createChatToolCompletionStreamed(
+      runStreamDrain(
+        adapter.createChatToolCompletionStreamed(
           messages,
           Nil,
           None,
           settings(NonOpenAIModelId.gemini_4_argon, Some(3))
         )
-        .runDrain
-        .futureValue
+      )
       lastConfig.presencePenalty shouldBe None
       lastConfig.candidateCount shouldBe None
     }
@@ -151,15 +155,14 @@ class GeminiRefusedSettingsAndUrlContextSpec
       val recording = new Recording
       import recording._
 
-      val chunks = adapter
-        .createChatToolCompletionStreamed(
+      val chunks = runStream(
+        adapter.createChatToolCompletionStreamed(
           messages,
           Nil,
           None,
           CreateChatCompletionSettings("gemini-3.8-flash").setGeminiTools(Seq(Tool.UrlContext))
         )
-        .runToSeq
-        .futureValue
+      )
 
       requests.synchronized(requests.last).tools shouldBe Some(Seq(Tool.UrlContext))
       chunks.collect {

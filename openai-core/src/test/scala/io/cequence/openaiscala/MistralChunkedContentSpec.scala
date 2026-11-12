@@ -6,10 +6,9 @@ import io.cequence.openaiscala.domain.response.ChatChunk._
 import io.cequence.openaiscala.domain.response._
 import io.cequence.openaiscala.domain.{AssistantMessage, FunctionCallSpec}
 import io.cequence.openaiscala.service.ChatChunks
+import io.cequence.openaiscala.testkit.StreamSpecSupport
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
-import org.scalatest.time.{Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.Json
 
@@ -20,13 +19,11 @@ import play.api.libs.json.Json
 class MistralChunkedContentSpec
     extends AnyWordSpec
     with Matchers
-    with ScalaFutures
+    with StreamSpecSupport
     with BeforeAndAfterAll {
 
   private implicit val ec: scala.concurrent.ExecutionContext =
     scala.concurrent.ExecutionContext.global
-
-  implicit override val patienceConfig: PatienceConfig = PatienceConfig(Span(5, Seconds))
 
   override protected def afterAll(): Unit = {
     ()
@@ -100,7 +97,7 @@ class MistralChunkedContentSpec
       }.filterNot(_ == "[DONE]").map(Json.parse(_).as[ChatCompletionChunkResponse]).toList
 
       val out =
-        AsyncStream.fromIterable(chunks).via(ChatChunks.fromOpenAIChunks).runToSeq.futureValue
+        runStream(AsyncStream.fromIterable(chunks).via(ChatChunks.fromOpenAIChunks))
 
       out.head shouldBe a[Start]
       val thinking = out.collect { case Thinking(text) => text }.mkString
@@ -122,7 +119,7 @@ class MistralChunkedContentSpec
       reference.map(r => (r \ "type").as[String]) shouldBe Seq("reference")
 
       val out =
-        AsyncStream.fromIterable(chunks).via(ChatChunks.fromOpenAIChunks).runToSeq.futureValue
+        runStream(AsyncStream.fromIterable(chunks).via(ChatChunks.fromOpenAIChunks))
       out.collect { case Text(text) => text }.mkString should include("Nihon Hidankyo")
       out.collect { case Other(kind, _) => kind } shouldBe Seq("content.reference")
       out.collectFirst { case finish: Finish => finish.reason } shouldBe Some(

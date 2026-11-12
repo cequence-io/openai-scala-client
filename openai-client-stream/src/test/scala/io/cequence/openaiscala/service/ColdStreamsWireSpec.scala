@@ -157,7 +157,8 @@ class ColdStreamsWireSpec
           service.createAudioSpeech("hi", CreateSpeechSettings("tts-1", VoiceType.alloy)),
           20.seconds
         )
-      Await.result(speech.runToBytes(), 20.seconds).toArray.toSeq shouldBe allBytes.toSeq
+      runStream(speech, 20.seconds).foldLeft(Bytes.empty)(_ ++ _).toArray.toSeq shouldBe
+        allBytes.toSeq
     }
 
     "be None for a missing file and a classified failure for any other status" in {

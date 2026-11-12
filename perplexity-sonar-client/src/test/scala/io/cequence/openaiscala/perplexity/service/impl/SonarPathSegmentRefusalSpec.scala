@@ -1,6 +1,7 @@
 package io.cequence.openaiscala.perplexity.service.impl
 
 import io.cequence.openaiscala.perplexity.service.SonarServiceFactory
+import io.cequence.openaiscala.testkit.StreamSpecSupport
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -13,7 +14,11 @@ import scala.util.{Failure, Success, Try}
  * A response id the client refuses ("", "." or "..") fails the Perplexity Agent API calls as a
  * failed Future or stream, never a synchronous throw - nothing is sent (a dummy key).
  */
-class SonarPathSegmentRefusalSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
+class SonarPathSegmentRefusalSpec
+    extends AnyWordSpec
+    with Matchers
+    with BeforeAndAfterAll
+    with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
@@ -37,7 +42,7 @@ class SonarPathSegmentRefusalSpec extends AnyWordSpec with Matchers with BeforeA
     "fail the resumed stream, never throw" in {
       val failure = Try(service.resumeAgentResponseStream(".")) match {
         case Failure(e)      => fail(s"thrown synchronously: $e")
-        case Success(source) => Await.result(source.runDrain.failed, 20.seconds)
+        case Success(source) => runStreamFailure(source, 20.seconds)
       }
       failure shouldBe an[IllegalArgumentException]
     }

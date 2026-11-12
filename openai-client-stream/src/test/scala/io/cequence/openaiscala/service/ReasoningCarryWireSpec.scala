@@ -18,7 +18,7 @@ import io.cequence.openaiscala.domain.{
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.openaiscala.service.adapter.OpenAIResponsesChatCompletionService
 import io.cequence.wsclient.domain.WsRequestContext
-import io.cequence.openaiscala.testkit.TestEngines
+import io.cequence.openaiscala.testkit.{StreamSpecSupport, TestEngines}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -39,7 +39,11 @@ import scala.io.Source
  * the service that returned it only - also when the next round is a typed stream of the merged
  * streamed service. The chat completions API never sees it.
  */
-class ReasoningCarryWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAll {
+class ReasoningCarryWireSpec
+    extends AnyWordSpec
+    with Matchers
+    with BeforeAndAfterAll
+    with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
@@ -314,15 +318,14 @@ class ReasoningCarryWireSpec extends AnyWordSpec with Matchers with BeforeAndAft
 
         // the wrapped service answered the sync round; the stream runs through the
         // Responses adapter over the wrapper - which must know the reasoning all the same
-        val chunks = await(
-          merged
-            .createChatToolCompletionStreamed(
-              Seq(question) ++ first.historyMessages :+ toolResult,
-              Seq(weather),
-              None,
-              luna
-            )
-            .runToSeq
+        val chunks = runStream(
+          merged.createChatToolCompletionStreamed(
+            Seq(question) ++ first.historyMessages :+ toolResult,
+            Seq(weather),
+            None,
+            luna
+          ),
+          20.seconds
         )
         chunks should not be empty
 
