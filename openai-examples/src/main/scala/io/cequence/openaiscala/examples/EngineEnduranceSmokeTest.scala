@@ -5,8 +5,12 @@ import io.cequence.openaiscala.domain.settings.{
   CreateChatCompletionSettings,
   FileUploadPurpose
 }
-import io.cequence.openaiscala.domain.{ModelId, UserMessage}
-import io.cequence.openaiscala.service.OpenAIServiceFactory
+import io.cequence.openaiscala.anthropic.service.AnthropicServiceFactory
+import io.cequence.openaiscala.domain.{ModelId, NonOpenAIModelId, UserMessage}
+import io.cequence.openaiscala.service.{
+  OpenAIChatCompletionStreamedServiceExtra,
+  OpenAIServiceFactory
+}
 import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIStreamedService
 import io.cequence.wsclient.domain.WsRequestContext
@@ -30,9 +34,10 @@ import scala.util.{Failure, Success, Try}
  * `local` runs them against a local server (free, deterministic - the long stream sends an
  * event every 20 s for 5.5 min, past the default two-minute request timeout); `live` runs the
  * parallel streams and the upload against OpenAI (`OPENAI_SCALA_CLIENT_API_KEY`; a cent - the
- * streams follow one warm-up call, the uploaded file is deleted again). There is no live long
- * stream: a model decides when it stops, and gpt-5.4-mini ended "count to 30,000" and "write
- * 40,000 words" within seconds (2026-11-12). Both by default; `only=` picks checks
+ * streams follow one warm-up call, the uploaded file is deleted again) and the long stream
+ * against Claude Haiku 5.5 writing a long manual (`ANTHROPIC_API_KEY`; up to 120k output
+ * tokens, ~$0.06 - it fails if the model ends before five minutes; on 2026-11-12 it streamed
+ * 16,353 chunks over 346 s on the default timeouts). Both by default; `only=` picks checks
  * (`long,parallel,upload`). Exits 0 when every check passed.
  */
 object EngineEnduranceSmokeTest {
@@ -84,23 +89,31 @@ object EngineEnduranceSmokeTest {
 
   // --------------------------------------------------------------------------------- checks
 
-  // the local server's "slow" stream: an event every 20 s for 5.5 min
-  private def longStream(service: OpenAIStreamedService): Outcome = {
+  // a stream that must outlive five minutes: the local server's "slow" one (an event every 20 s
+  // for 5.5 min), or Claude Haiku 5.5 writing a long text (~200 tokens/s)
+  private def longStream(
+    label: String,
+    service: OpenAIChatCompletionStreamedServiceExtra,
+    model: String,
+    prompt: String,
+    maxTokens: Option[Int]
+  ): Outcome = {
     val start = System.nanoTime()
     val chunks = new AtomicLong(0)
     val run = service
       .createChatCompletionStreamed(
-        Seq(UserMessage("slow")),
-        CreateChatCompletionSettings("local-model")
+        Seq(UserMessage(prompt)),
+        CreateChatCompletionSettings(model, max_tokens = maxTokens)
       )
       .runForeach(_ => chunks.incrementAndGet(): Unit)
 
-    outcome("local long stream", Try(Await.result(run, LongStreamDuration + 5.minutes))) { _ =>
-      val took = (System.nanoTime() - start).nanos
-      (
-        took > 5.minutes,
-        s"${chunks.get} chunks over ${took.toSeconds} s"
-      )
+    outcome(s"$label long stream", Try(Await.result(run, LongStreamDuration + 10.minutes))) {
+      _ =>
+        val took = (System.nanoTime() - start).nanos
+        (
+          took > 5.minutes,
+          s"${chunks.get} chunks over ${took.toSeconds} s"
+        )
     }
   }
 
@@ -216,7 +229,7 @@ object EngineEnduranceSmokeTest {
     try
       Seq(
         when(only("long"))(
-          longStream(service)
+          longStream("local", service, "local-model", "slow", None)
         ),
         when(only("parallel"))(parallelStreams("local", service, "local-model")),
         when(only("upload"))(
@@ -237,9 +250,28 @@ object EngineEnduranceSmokeTest {
     try
       Seq(
         when(only("parallel"))(parallelStreams("live", service, model)),
+        when(only("long"))(liveLongStream()),
         when(only("upload"))(upload("live", service, id => service.deleteFile(id)))
       ).flatten
     finally service.close()
+  }
+
+  // Claude follows a length instruction; GPT-5.4-mini ended "count to 30,000" and "write 40,000
+  // words" within seconds (2026-11-12)
+  private def liveLongStream(): Outcome = {
+    val claude = AnthropicServiceFactory.asOpenAI()
+    try
+      longStream(
+        "live (Claude Haiku 5.5)",
+        claude,
+        NonOpenAIModelId.claude_haiku_5_5,
+        "Write a complete, very detailed technical manual for a fictional airport baggage-" +
+          "handling system - at least 40,000 words: every subsystem, every failure mode, every " +
+          "maintenance procedure, in numbered sections. Write the whole manual now, without " +
+          "asking questions and without stopping early.",
+        Some(120000)
+      )
+    finally claude.close()
   }
 
   // ---------------------------------------------------------------------------------- helpers

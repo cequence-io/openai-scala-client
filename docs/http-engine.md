@@ -304,7 +304,9 @@ anything needs a `readTimeout` longer than that pause.
 - **HTTP version:** when `httpVersion` is unset, `java.net.http` decides: HTTP/2 where the server offers it, else
   HTTP/1.1. If a server or a proxy in between misbehaves on HTTP/2, set `Some(HttpVersion.Http11)`.
 - **Timeouts:** see the table above. `requestTimeout` defaults to 2 minutes and `connectTimeout` to 5 seconds;
-  `pooledConnectionIdleTimeout` is ignored.
+  `pooledConnectionIdleTimeout` is ignored. A stream is cut only after a silent gap of `readTimeout`, never for its
+  length: on the defaults a 5.5-minute local stream and a 5.8-minute live one (Claude Haiku 5.5) ran whole (measured
+  2026-11-12, `examples/EngineEnduranceSmokeTest`).
 - **A burst of calls on a fresh engine.** Until its first connection to a host is up, `java.net.http` opens a
   connection per concurrent call - it learns that the host speaks HTTP/2 only from that connection. Where new TLS
   connections are slow, the later calls of a burst run past `connectTimeout` and fail with a timeout (measured
@@ -466,11 +468,9 @@ val engine: ZLayer[Client, Nothing, ZioHttpWSClientEngine] = ZioHttpWSClientEngi
 
 // the service on the engine, closed with the layer's scope - the engine and the client stay
 val openAI: ZLayer[ZioHttpWSClientEngine, Throwable, OpenAIStreamedServiceZIO] =
-  ZLayer.service[ZioHttpWSClientEngine].flatMap { env =>
-    OpenAIStreamedServiceZIO.layer(() =>
-      OpenAIServiceFactory.withStreaming.withEngine(env.get[ZioHttpWSClientEngine])
-    )
-  }
+  OpenAIStreamedServiceZIO.layerFromZIO(
+    ZIO.serviceWith[ZioHttpWSClientEngine](OpenAIServiceFactory.withStreaming.withEngine(_))
+  )
 
 val app: ZLayer[Any, Throwable, OpenAIStreamedServiceZIO] = client >>> engine >>> openAI
 ```

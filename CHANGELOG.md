@@ -106,6 +106,9 @@ code for Futures-only, Akka, Pekko, fs2 and ZIO users and for implementers of th
 - `ClaudeAgentServiceFactory.startSession(settings)` takes only an implicit `ExecutionContext`. `events` stays hot: every
   run joins the live session with the `system`/`init` message replayed first, the slowest running consumer paces the
   others, and with none the events are read and dropped. An Akka consumer crosses one bridge, at the session's hub.
+- Anthropic: a message call's betas go out as ONE comma-joined `anthropic-beta` header (was one header per beta), as
+  the official SDKs send them - an HTTP stack may keep only one value of a repeated header (ws-client 1.2.0's zio-http
+  engine keeps the last).
 - Perplexity's `downloadAgentResponseFile`: an error status fails without the request id (`x-request-id`) the other
   calls' exceptions carry.
 - `OpenAIChatCompletionStreamedOutputConversionAdapter`: the message conversion must be 1:1 - a pipe that emits more than
@@ -149,7 +152,8 @@ code for Futures-only, Akka, Pekko, fs2 and ZIO users and for implementers of th
   sync + streamed service), the OpenAI service parts (chat completion, Responses, Agents, Decisions, graders, batches,
   the JSON / failover helpers), `AnthropicServiceZIO` and the other Anthropic services, `GeminiServiceZIO`,
   `VertexAIBatchPredictionServiceZIO`, `SonarServiceZIO`, `TypeSafeServiceZIO`, `ClaudeAgentServiceZIO`; each with
-  `apply(service)` and a `layer(() => service)` that closes the service with its scope. The provider modules are
+  `apply(service)`, a `layer(() => service)` that closes the service with its scope, and `layerFromZIO(effect)` building it
+  with a ZIO effect (e.g. on an engine from the environment) - the last two only on the views of services that close. The provider modules are
   `provided` - add the ones you use. On the `zio-http` engine a service stream is the engine's own `ZStream`. See
   [ZIO services](docs/zio.md).
 - Downloads are binary-safe on every engine (1.x needed a Play engine): an engine without output streaming serves the

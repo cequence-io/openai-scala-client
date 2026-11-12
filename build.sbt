@@ -268,6 +268,8 @@ lazy val guice = (project in file("openai-guice"))
 lazy val examples = (project in file("openai-examples"))
   .settings(
     (commonSettings ++ Seq(
+      // never on Maven Central (the CI line aggregates, which the release publishes, include it)
+      publish / skip := true,
       run / fork := true,
       run / connectInput := true,
       run / outputStrategy := Some(StdoutOutput)
@@ -581,6 +583,26 @@ addCommandAlias(
     "scalafmt",
     "scalafmtSbt",
     "Test/scalafmt"
+  ).mkString(";")
+)
+
+// Release: each Scala line publishes its own projects into the one Sonatype bundle (a root
+// `+publishSigned` would mix lines - see ciLine), then `sonatypeBundleRelease` uploads it
+addCommandAlias(
+  "publishSignedAllLines",
+  List(
+    "++2.12.18",
+    "project ci_scala212",
+    "publishSigned",
+    "++2.13.18",
+    "project ci_scala213",
+    "publishSigned",
+    "++3.2.2",
+    "project ci_scala3",
+    "publishSigned",
+    "++3.3.8",
+    "project ci_scala33",
+    "publishSigned"
   ).mkString(";")
 )
 
