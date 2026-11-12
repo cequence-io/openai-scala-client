@@ -14,7 +14,7 @@ directly to Anthropic's Managed Agents REST API instead of spawning a local proc
 Add the dependency:
 
 ```
-"io.cequence" %% "openai-scala-claude-agent-client" % "1.4.0"
+"io.cequence" %% "openai-scala-claude-agent-client" % "2.0.0"
 ```
 
 ```scala
@@ -33,9 +33,16 @@ Add the dependency:
 
 `ready` completes after the CLI's `system/init` handshake; `send` and control requests wait for
 it automatically. `completion` exposes the eventual process exit code and a bounded stderr tail.
-The event stream is hot after its initial init replay, so subscribe before sending a turn whose
-events must be observed. To approve a tool call unchanged, reply with
-`PermissionDecision.Allow(request.input)`; the CLI requires an explicit `updated_input` object.
+To approve a tool call unchanged, reply with `PermissionDecision.Allow(request.input)`; the CLI
+requires an explicit `updated_input` object.
+
+**`events` is hot** - an exception to this library's cold streams. `startSession` spawns the process right away (🔥 it
+takes only the implicit execution context, no `Materializer`), and the process's output is read whether or not anyone
+consumes it: one broadcast hub per service fans it out. Each run of `events` begins with the replayed `system/init`
+event, then gets the live events from the moment the run starts (or from the oldest event still buffered for a slower
+run) - earlier ones are not replayed - so start it before sending a turn whose events you need. Any number of runs
+may be active at once; the slowest one paces the others (the hub buffers up to 256 events), and events nobody consumes
+are dropped. Consumed as an Akka, Pekko, fs2 or ZIO stream, it is bridged once, at the hub.
 
 **Working-directory configuration is not loaded.** The CLI is started with `--setting-sources user`
 (`ClaudeAgentSettings.settingSources`, default `Some(Seq("user"))`): the integrator's own

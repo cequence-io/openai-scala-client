@@ -19,7 +19,7 @@ OpenAI's Agents API: durable cloud agents, sessions and their event streams, and
       ),
       AgentInput.Text("Run `uname -s` and report the output.")
     )
-    .runWith(Sink.seq) // the stream ends once the session idles
+    .runToSeq // the session is created now - each run creates one; the stream ends once it idles
     .map(events => println(AgentSessionEvents.finalAnswer(events)))
 ```
 
@@ -27,8 +27,9 @@ OpenAI's Agents API: durable cloud agents, sessions and their event streams, and
   `session.pendingFunctionCalls` with `sendAgentSessionEvents(sessionId, Seq(AgentSessionInput.toolResult(call, output)))`
   and keep consuming the same stream. Follow-up turns: subscribe with `streamAgentSessionEvents(sessionId).via(AgentSessionEvents.untilSettled())`,
   then `sendAgentSessionEvents(sessionId, Seq(AgentSessionInput.text("...")))`. As a chat-completion service:
-  `service.agentsAsChatCompletion(environment = AgentEnvironment.OpenAIHosted())` - each call runs one session turn (the
-  final answer as the text, the agent's commentary as thinking, commands / MCP / web search / subagents as server-side
-  tool calls), and client function tools work as the usual chat tool loop (the session pauses and the call carrying the
-  tool results resumes it). See
+  `service.agentsAsChatCompletion(environment = AgentEnvironment.OpenAIHosted())` (🔥 no `Materializer` since 2.0.0 -
+  the implicit execution context is all it needs; its timer is the default `AsyncScheduler`) - each call runs one
+  session turn (the final answer as the text, the agent's commentary as thinking, commands / MCP / web search /
+  subagents as server-side tool calls), and client function tools work as the usual chat tool loop (the session pauses
+  and the call carrying the tool results resumes it). See
   [OpenAIAgentsApiSmokeTest](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/agents/OpenAIAgentsApiSmokeTest.scala).

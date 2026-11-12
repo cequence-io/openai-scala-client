@@ -6,11 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is **OpenAI Scala Client** - an async Scala client for OpenAI API and multiple LLM providers. It's a multi-module Scala project that supports Scala 2.12, 2.13, and 3, providing comprehensive coverage of OpenAI endpoints plus adapters for Anthropic, Google (Gemini/Vertex AI), Perplexity, and other LLM providers.
 
-The library is designed to be self-contained with minimal dependencies and uses a Play WS backend for HTTP calls. It's published as `io.cequence:openai-scala-client` on Maven Central.
+The library is designed to be self-contained with minimal dependencies and makes its HTTP calls through a pluggable [ws-client](https://github.com/cequence-io/ws-client) engine: on the `2.0` branch any ws-client engine works, the JDK `java.net.http` engine (`ws-client-jdk`, a dependency of openai-core) is the default - no Akka, no actor system - and every stream is ws-client's backend-neutral `AsyncStream` (see Streaming Support and Creating a Service); the 1.x line (master) uses the Play WS engine on Akka. It's published as `io.cequence:openai-scala-client` on Maven Central.
 
-**Documentation layout** (since 2026-10-09): `README.md` is an overview and index - the provider tables, installation, config, a quick start and the page list; everything else lives in `docs/`, one page per topic (`providers.md`, `chat-completions.md`, `responses-api.md`, `agents-api.md`, `streaming.md`, `decision-models.md`, `adapters.md`, `http-engine.md`, `graders-api.md`, `anthropic-managed-agents.md`, `claude-agent-client.md`, `faq.md`), split verbatim from the former 2,450-line README. A feature's documentation goes on its page; the README gets at most a table row or an index line. Links from `docs/` to sources are `../openai-...`; the decision-model anchors (`decision-models.md#typesafe-ai-jev-` etc.) are GitHub slugs of the page's `##` headings. Markers (README and docs): 🔥 = new, i.e. new in the release being published - the user's rule ("new is a fire", 2026-10-16, preparing 1.6.0): when a release is prepared, its new features carry the fire, the older fires are dropped, and the README legends say "🔥 New in X". A `##` heading's emoji is part of its anchor slug (`openai-decisions-api-gpt-6-luna-`), so a heading's 🔥 is swapped for an icon, not deleted.
+**Documentation layout** (since 2026-10-09): `README.md` is an overview and index - the provider tables, installation, config, a quick start and the page list; everything else lives in `docs/`, one page per topic (`providers.md`, `chat-completions.md`, `responses-api.md`, `agents-api.md`, `streaming.md`, `decision-models.md`, `adapters.md`, `http-engine.md`, `graders-api.md`, `anthropic-managed-agents.md`, `claude-agent-client.md`, `faq.md`; the `2.0` branch adds `zio.md` and `migration-2.0.md`), split verbatim from the former 2,450-line README. A feature's documentation goes on its page; the README gets at most a table row or an index line. Links from `docs/` to sources are `../openai-...`; the decision-model anchors (`decision-models.md#typesafe-ai-jev-` etc.) are GitHub slugs of the page's `##` headings. Markers (README and docs): 🔥 = new, i.e. new in the release being published - the user's rule ("new is a fire", 2026-10-16, preparing 1.6.0): when a release is prepared, its new features carry the fire, the older fires are dropped, and the README legends say "🔥 New in X". A `##` heading's emoji is part of its anchor slug (`openai-decisions-api-gpt-6-luna-`), so a heading's 🔥 is swapped for an icon, not deleted.
 
 **Versioning**: the latest release is **1.7.0** (Maven Central 2026-11-06, tag `v1.7.0` on the commit that dated its CHANGELOG and set the build to `1.7.0`; a minor release - the Vertex AI factories' `location: Option[String]`, `JsonSchema.Typed` / `AnyOf`, new case-class fields and factory / helper parameters break binary compatibility with 1.6.0; the published jars hold the code of 10057b29); the build is `1.7.1-SNAPSHOT` (`isSnapshot := true`; the next CHANGELOG section is written when that release is prepared - a binary break makes it 1.8.0). Before it: 1.6.0 (Maven Central 2026-10-18, tag `v1.6.0`, code of 7e9d33cf). The release-prep commits set the build to the release's version - `1.7.0` with `isSnapshot := false` (the user's call, 2026-11-06); for 1.5.0 / 1.6.0 it was `X.Y.0-SNAPSHOT`, and the `v1.5.0` / `v1.6.0` tags are on such commits. The user publishes from a local version setting; afterwards the CHANGELOG gets its date, the tag `vX.Y.Z` + GitHub release go on that commit and the build moves to the next `-SNAPSHOT`. If the changes since the last release are not binary compatible with it (new case-class fields, new abstract methods on the service traits, new factory parameters - compare the published jars' public signatures with `javap`), the next release is a minor one: 1.3.1-SNAPSHOT shipped as 1.4.0. New `@deprecated` annotations use the upcoming release as their `since` value. `CHANGELOG.md` has one section per release, newest on top, written when the release is prepared; it opens with the upgrade notes (API breaks and behavior changes against the previous release). The GitHub release (tag `vX.Y.Z` on the published commit) carries a shorter form of the same notes.
+
+**The `2.0` branch** builds `2.0.0-SNAPSHOT` (`isSnapshot := true`): the Akka-free 2.0.0 line on ws-client 1.2.0 - any engine, `AsyncStream` streams, no Materializer / ActorSystem parameters - a binary and source break throughout (its CHANGELOG section is `## 2.0.0 (unreleased)`, the upgrade guide `docs/migration-2.0.md`). master stays the 1.x line (1.7.x, Akka) and is merged into `2.0` regularly, so a 1.x change reaches 2.0 through the merge.
 
 ## Build & Test Commands
 
@@ -31,6 +33,8 @@ The project cross-compiles for Scala 2.12.18, 2.13.18, and 3.2.2:
 - `sbt ++2.13.18 test`
 - `sbt ++3.2.2 test`
 
+On the `2.0` branch the ZIO module (`zio`, `openai-scala-zio`) builds 2.12.18 / 2.13.18 / 3.3.8 instead - ws-client-zio's Scala 3 artifact is built with 3.3, so on Scala 3 the module needs 3.3+ (`sbt ++3.3.8 zio/test`). The 3.2-line modules it depends on also build with 3.3.8 for it (`alsoOnScala33` in build.sbt); those 3.3 builds are never published - their `_3` artifacts come from 3.2.2 only. CI's matrix is 2.12.18 / 2.13.18 / 3.2.2.
+
 ### Running Examples
 The `Example` trait uses `System.exit()` which sbt's TrapExit mechanism intercepts, causing output to be swallowed. For reliable output when running examples from sbt, either:
 - Run from IntelliJ directly (recommended)
@@ -44,7 +48,7 @@ The router examples (`CreateChatCompletionWithRouter`, `adapters/ChatCompletion*
 The codebase is organized into multiple SBT subprojects with clear dependency relationships:
 
 ### Core Modules
-- **openai-core** (`core`): Core domain models, JSON formats, service interfaces (OpenAIService, OpenAICoreService, OpenAIChatCompletionService), adapters, retry helpers, and base exception types. This is the foundation that other modules depend on.
+- **openai-core** (`core`): Core domain models, JSON formats, service interfaces (OpenAIService, OpenAICoreService, OpenAIChatCompletionService), adapters, retry helpers, and base exception types. This is the foundation that other modules depend on. On the `2.0` branch it depends on ws-client-core, ws-client-jdk (the default engine, so every module has one), json-repair and scala-logging - no Akka anywhere; logback is a test dependency only (an application brings its own SLF4J binding), and all ws-client artifacts on a classpath must share one version.
 - **openai-client** (`client`): Main client implementation with factories (OpenAIServiceFactory, OpenAIChatCompletionServiceFactory) and concrete service implementations. Depends on and aggregates openai-core.
 - **openai-client-stream** (`client_stream`): Streaming extensions providing OpenAIStreamedServiceExtra and streaming factories for SSE-based completions. Depends on openai-client.
 
@@ -356,21 +360,24 @@ The codebase is organized into multiple SBT subprojects with clear dependency re
   - Answer helpers: `ChoiceAnswer.probabilityOf` (unknown option -> IllegalArgumentException) / `margin`, and
     `ScoreAnswer.probabilityAtLeast(level)`.
   - Pinned by `TypeSafeRerankSpec`.
-- **claude-agent-client** (`claude_agent_client`): Subprocess transport wrapping the `claude` CLI (Claude Agent SDK-compatible NDJSON protocol over stdin/stdout) - full bidirectional sessions with tool-permission callbacks and interrupt support, distinct from the HTTP-based `anthropic-client`. Requires the `claude` CLI installed and authenticated separately (API key or Claude subscription). The CLI runs with `--setting-sources user` by default (`ClaudeAgentSettings.settingSources`, security fix 2026-10-23: a working directory's hooks ran host commands outside the permission callback), which also keeps out the project's CLAUDE.md / CLAUDE.local.md / rules, skills, slash commands and subagents - live 2026-10-26 with CLI 2.1.310 and file tools disallowed: none of them in the agent's context with `user` alone, all of them with `user,project,local` (with tools allowed the agent simply reads CLAUDE.md as a file).
+- **claude-agent-client** (`claude_agent_client`): Subprocess transport wrapping the `claude` CLI (Claude Agent SDK-compatible NDJSON protocol over stdin/stdout) - full bidirectional sessions with tool-permission callbacks and interrupt support, distinct from the HTTP-based `anthropic-client`. Requires the `claude` CLI installed and authenticated separately (API key or Claude subscription). The CLI runs with `--setting-sources user` by default (`ClaudeAgentSettings.settingSources`, security fix 2026-10-23: a working directory's hooks ran host commands outside the permission callback), which also keeps out the project's CLAUDE.md / CLAUDE.local.md / rules, skills, slash commands and subagents - live 2026-10-26 with CLI 2.1.310 and file tools disallowed: none of them in the agent's context with `user` alone, all of them with `user,project,local` (with tools allowed the agent simply reads CLAUDE.md as a file). On the `2.0` branch `events: AsyncStream[ClaudeAgentEvent]` is HOT - the documented exception to cold streams: the service reads the CLI's stdout through ONE service-level `AsyncBroadcastHub` (`drain = true`: read, and its lifecycle side effects applied, even with no subscriber), every run of `events` joins it with the `system`/`init` message replayed first, and the slowest running consumer paces the others - run it before sending a turn whose events you need; `ClaudeAgentServiceFactory.startSession(settings)` takes only an implicit `ExecutionContext`.
 
 All provider clients depend on openai-core and provide `asOpenAI()` adapters to work with the standard OpenAI interfaces, with two exceptions: `claude-agent-client` is a fundamentally different subprocess/NDJSON transport (not an `OpenAIChatCompletionService`), and `typesafe-client` wraps the decision APIs (TypeSafe's Jev, Liquid's d1, Perplexity's decider) whose `asOpenAI()` serves `json_schema` structured output only (no text generation, no streaming).
 
 ### Utility Modules
-- **openai-all** (`all`): Envelope module aggregating all clients (except guice) into a single dependency: `openai-scala-all`.
+- **openai-all** (`all`): Envelope module aggregating all clients (except guice and, on the `2.0` branch, zio) into a single dependency: `openai-scala-all`.
 - **openai-count-tokens** (`count_tokens`): Token counting utilities (OpenAICountTokensHelper) using jtokkit for estimating API costs before making calls.
-- **openai-guice** (`guice`): Dependency injection support using scala-guice.
-- **openai-examples** (`examples`): Comprehensive examples demonstrating all features.
+- **openai-guice** (`guice`): Dependency injection support using scala-guice. On the `2.0` branch `ExecutionContextModule` (a fixed pool of daemon threads, `openai-scala-client.guice.threads`, default 40; `GuiceContainer.terminate()` shuts it down) replaces 1.x's `AkkaModule`.
+- **openai-examples** (`examples`): Comprehensive examples demonstrating all features. On the `2.0` branch they run on the default jdk engine and consume streams as `AsyncStream`s (no Akka).
+- **openai-zio** (`zio`, artifact `openai-scala-zio`; `2.0` branch): ZIO-native views of the services, GENERATED at build time by `project/ZioServiceGenerator.scala` (scalameta) from the service traits, so they never drift - for a trait `T` a `TZIO` (+ a delegating `TZIODelegate`) with `Future[A]` -> `Task[A]` (`ZIO.fromFuture`), `AsyncStream[A]` -> `ZStream[Any, Throwable, A]`, `AsyncStream[Bytes]` -> `ZStream[Any, Throwable, Byte]`, a callback `A => Future[B]` -> `A => Task[B]` (run on the view's `Runtime`); `TZIO(service)(implicit runtime)` wraps a service, `TZIO.layer(() => service)` builds one in a `ZLayer` that closes it with its scope, `.asFuture` is the wrapped service. Generated: `OpenAIServiceZIO` and its parts (chat completion, completions, core, Responses, Agents, Decisions, graders, chat completion batches), `OpenAIChatCompletionStreamedServiceExtraZIO` / `OpenAIStreamedServiceExtraZIO`, `AnthropicServiceZIO` and the other Anthropic services (message batches, managed agents, environments, sessions, deployments, vaults, memory stores, Bedrock batch inference), `GeminiServiceZIO`, `VertexAIBatchPredictionServiceZIO`, `SonarServiceZIO`, `TypeSafeServiceZIO`, `ClaudeAgentServiceZIO`, plus `OpenAIChatCompletionExtra`'s JSON / failover helpers; hand-written: `ServiceZIO`, `OpenAIStreamedServiceZIO` (the merged sync + streamed view), `ZIOConversions`. The generated sources appear under `openai-zio/target/scala-<version>/src_managed` after a compile. The provider modules are `Provided` dependencies (a provider's view needs its module, which its user adds). Streams go through ws-client-zio's `toZStream` / `toZByteStream`, so on the zio-http engine a service stream comes back as the engine's own `ZStream` (no bridge); sync calls are `ZIO.fromFuture` over the engine's `Future` (interrupting one does not abort its request). Scala 2.12 / 2.13 / 3.3. User docs: `docs/zio.md`.
+- **openai-testkit** (`testkit`, unpublished; `2.0` branch): test support (stream runners, test engines) that core, client(-stream), zio and the provider modules depend on `% Test` - see Testing Strategy.
 
 ### Module Dependency Graph
 ```
-openai-core
+openai-core (2.0: ws-client-core + ws-client-jdk, the default engine)
     ├── openai-client (aggregates core)
     │   ├── openai-client-stream (aggregates client)
+    │   │   └── openai-zio (2.0; ws-client-zio; the provider modules `provided`)
     │   └── openai-count-tokens
     ├── anthropic-client (aggregates core + client + client-stream)
     │   └── claude-agent-client (subprocess transport; depends on core + anthropic-client)
@@ -382,6 +389,7 @@ openai-core
 openai-all depends on all streaming + provider clients + count-tokens
 openai-guice depends on openai-client, aggregates count-tokens + all
 openai-examples depends on all streaming + provider clients
+openai-testkit (2.0, unpublished) is a Test dependency of core, client(-stream), zio and the provider modules
 ```
 
 ## Key Architecture Patterns
@@ -452,7 +460,8 @@ Available adapters:
     `GuardrailRunner`, whose `checkOutput` returns an `OutputDecision` (`Pass` / `AskAgain` / `Block`); the sync
     adapter writes a block through the `GuardedReplies` type class (chat and tool responses), the streamed one
     through `StreamChunks`.
-    - Order: the input checks run before the provider stream is even created (`Source.futureSource`).
+    - Order: the input checks run before the provider stream is even created, once per run of the stream
+      (`AsyncStream.futureStream`; 1.x: `Source.futureSource`, at call time).
     - The output guard is called ONCE, when the stream finishes (the user's call, 2026-10-03 - a segmented mode
       that checked the text so far per piece was built and removed): the reply is folded, checked, then
       released. Checked is everything released (security fix 2026-10-23 - it used to be the answer text only, so
@@ -487,7 +496,7 @@ Available adapters:
 Adapters are composable and can be stacked arbitrarily.
 
 ### Failover helpers
-ONE retry engine, core `RetryEngine` (private, generic over input / raw result / accepted result), runs every retry ladder: `RetryHelpers.retry` (so `retryOnFailure` and the retry adapters - one step, no limits, no failover lines, `neverRetry` off, its retry line byte for byte as before; `RetryHelpersSpec` pins it), `retryOnFailureOrFailover` (steps = its inputs, failover lines to the trait's slf4j logger) and `OpenAIChatCompletionExtra`'s `createChatCompletionWithFailover(Settings)` / `createChatCompletionWithJSON(FullResponse)` via `service/FailoverChain` (an adapter mapping `FailoverPolicy` to the engine's `Config` and its outcomes to the public `AttemptOutcome`) - do not add a second loop anywhere. `FailoverPolicy` (2026-11-02): per model a try loop - before EVERY try the deadline, then `shouldStop` (-> `OpenAIScalaChainStoppedException`, not retryable); the raw call goes through `wrapAttempt` and races `min(attemptTimeout, deadline.timeLeft)` via a Promise + `scheduler.scheduleOnce` (a timed-out try -> `OpenAIScalaAttemptTimeoutException` (NOT Retryable, NOT a timeout subtype - like `OpenAIScalaBatchTimeoutException`: a retry around a chain that ended with it would re-run the chain while the abandoned calls still run), NEVER retried on the same model even with `retryOnAnyError`; the try's limit is decided before its call starts (`RetryEngine.tryLimit`, the deadline's time left rounded UP to the millisecond - rounded down, a try could start just before the deadline); a limit the scheduler refuses (beyond ~248 days, a scheduler shut down) leaves the try without one rather than losing its running call; the raw future later reports `LateAnswer` / `LateFailure`); a synchronous throw is not retried (parity with `retry`); retryable errors keep the `maxRetries` ladder with `RetryHelpers.delay(k)`; `accept` parses (JSON helpers) - `parseRetries` re-asks, `failoverOnParseError` moves on, else the parse error fails the call; out of models -> `finalError(errors)`. The failover line (`<model> - <failureMessage> after retries! Initiating failover to <next>.`) and the final `No more failover inputs to try!` line go out at `failoverLogLevel(error)` (`FailoverLogLevel` Error / Warn / Info / Debug; only Error attaches the stack trace, the others append `Reason: <message>`); `FailoverLogLevel.default` = Warn for `OpenAIScalaModelSkippedException` (what a guard throws to rule a model out - never retried on the same model, like a timeout: the engine's `neverRetry`), Error otherwise. The JSON helpers pick the JSON mode per model (`handleOutputJsonSchema` per step), each model's request prepared only when the chain reaches it (`FailoverChain.LazyStep`, built in the engine's `wrap` hook before the policy's `wrapAttempt` - a build failure is a synchronous throw: reported `Failed`, not retried, failed over); the `enforceMode` check and the `models-supporting-json-schema` read happen once per call on the caller's thread, before `filterModels`. The engine's `Config[R, E, A]` types the rejection (`E`, the JSON helpers' `OpenAIScalaJsonParseException`) and takes the retry count from `retrySettings.maxRetries` alone (`retry` passes `maxAttempts - 1` in a copy). Listener calls are guarded (a throw is logged), and may come concurrently. Pinned by `FailoverPolicySpec` (core, scripted service), `RetryEngineSpec` (core; the retry line texts, failover order / levels, a logback `ListAppender` on the slf4j path) and `RetryHelpersSpec`; live `examples/FailoverPolicySmokeTest` (OpenAI, ~10 s plus a wait for the late answer). Not covered: streams and `createChatCompletionBatchWithJSON` (its failover is batch-level).
+ONE retry engine, core `RetryEngine` (private, generic over input / raw result / accepted result), runs every retry ladder: `RetryHelpers.retry` (so `retryOnFailure` and the retry adapters - one step, no limits, no failover lines, `neverRetry` off, its retry line byte for byte as before; `RetryHelpersSpec` pins it), `retryOnFailureOrFailover` (steps = its inputs, failover lines to the trait's slf4j logger) and `OpenAIChatCompletionExtra`'s `createChatCompletionWithFailover(Settings)` / `createChatCompletionWithJSON(FullResponse)` via `service/FailoverChain` (an adapter mapping `FailoverPolicy` to the engine's `Config` and its outcomes to the public `AttemptOutcome`) - do not add a second loop anywhere. `FailoverPolicy` (2026-11-02): per model a try loop - before EVERY try the deadline, then `shouldStop` (-> `OpenAIScalaChainStoppedException`, not retryable); the raw call goes through `wrapAttempt` and races `min(attemptTimeout, deadline.timeLeft)` via a Promise + `scheduler.scheduleOnce` (2.0: the implicit `io.cequence.wsclient.concurrent.AsyncScheduler`, where 1.x took Akka's `Scheduler` - `AsyncScheduler.default`, one daemon thread, is found in its companion, so callers pass nothing; `AsyncScheduler.fromExecutor` wraps a `ScheduledExecutorService`, `ActorSchedulers._` from ws-client-core-akka / -pekko adapts an actor system's; ws-client's `Futures.after` / `Futures.delay` replaced `akka.pattern.after`) (a timed-out try -> `OpenAIScalaAttemptTimeoutException` (NOT Retryable, NOT a timeout subtype - like `OpenAIScalaBatchTimeoutException`: a retry around a chain that ended with it would re-run the chain while the abandoned calls still run), NEVER retried on the same model even with `retryOnAnyError`; the try's limit is decided before its call starts (`RetryEngine.tryLimit`, the deadline's time left rounded UP to the millisecond - rounded down, a try could start just before the deadline); a limit the scheduler refuses (beyond ~248 days on an actor system's scheduler, a scheduler shut down - `RetryEngineSpec` uses a stub scheduler that throws) leaves the try without one rather than losing its running call; the raw future later reports `LateAnswer` / `LateFailure`); a synchronous throw is not retried (parity with `retry`); retryable errors keep the `maxRetries` ladder with `RetryHelpers.delay(k)`; `accept` parses (JSON helpers) - `parseRetries` re-asks, `failoverOnParseError` moves on, else the parse error fails the call; out of models -> `finalError(errors)`. The failover line (`<model> - <failureMessage> after retries! Initiating failover to <next>.`) and the final `No more failover inputs to try!` line go out at `failoverLogLevel(error)` (`FailoverLogLevel` Error / Warn / Info / Debug; only Error attaches the stack trace, the others append `Reason: <message>`); `FailoverLogLevel.default` = Warn for `OpenAIScalaModelSkippedException` (what a guard throws to rule a model out - never retried on the same model, like a timeout: the engine's `neverRetry`), Error otherwise. The JSON helpers pick the JSON mode per model (`handleOutputJsonSchema` per step), each model's request prepared only when the chain reaches it (`FailoverChain.LazyStep`, built in the engine's `wrap` hook before the policy's `wrapAttempt` - a build failure is a synchronous throw: reported `Failed`, not retried, failed over); the `enforceMode` check and the `models-supporting-json-schema` read happen once per call on the caller's thread, before `filterModels`. The engine's `Config[R, E, A]` types the rejection (`E`, the JSON helpers' `OpenAIScalaJsonParseException`) and takes the retry count from `retrySettings.maxRetries` alone (`retry` passes `maxAttempts - 1` in a copy). Listener calls are guarded (a throw is logged), and may come concurrently. Pinned by `FailoverPolicySpec` (core, scripted service), `RetryEngineSpec` (core; the retry line texts, failover order / levels, a logback `ListAppender` on the slf4j path) and `RetryHelpersSpec`; live `examples/FailoverPolicySmokeTest` (OpenAI, ~10 s plus a wait for the late answer). Not covered: streams and `createChatCompletionBatchWithJSON` (its failover is batch-level).
 
 ### Factory Pattern
 Service creation is centralized through factories:
@@ -501,14 +510,38 @@ Factories support multiple initialization modes: default config, custom config, 
 ### Streaming Support
 Streaming is provided as an extension via the `openai-client-stream` module:
 - Import `OpenAIStreamedServiceImplicits._` to add `.withStreaming()` to factories
-- `createChatCompletionStreamed` returns `Source[ChatCompletionChunkResponse, NotUsed]` (OpenAI-shaped chunks)
+- **`AsyncStream`** (`2.0` branch; ws-client 1.2.0, package `io.cequence.wsclient.stream`): every stream is a
+  backend-neutral `AsyncStream[A]` and every stream transformation an `AsyncPipe[A, B]`, where 1.x used Akka's
+  `Source[A, NotUsed]` / `Flow` (implementers of the service traits change their signatures). An `AsyncStream` is
+  COLD: an immutable plan - nothing is sent until it is run, each run is a new (possibly billed) request, one
+  consumer per run (fan-out via the hot `AsyncBroadcastHub`), back-pressured; cancelling a run aborts its HTTP
+  request; a non-2xx status fails it with the service's classified exception; SSE comments and blank frames are
+  skipped. Two documented exceptions: downloads (`createAudioSpeech`, `retrieveFileContentAsSource`, the Agents
+  artifacts, Anthropic `downloadFile`, Sonar's agent files - an eager `Future` whose body stream runs once) and the
+  Claude agent's `events` (hot). 1.x was eager in places (a service stream's request sent when the method was called,
+  the guardrails' input checks, Gemini's `handleCaching`, Anthropic's continuation round 0, a managed agent's turn
+  session, SigV4 signing) - all per run now. Run one with `runForeach` / `runFold` / `runToSeq` / `runHead` /
+  `runLast` / `runDrain` (an implicit `ExecutionContext`, nothing else), or natively through ws-client's interop
+  modules (`SourceInterop._` from ws-client-core-akka / -pekko -> `.toSource`, `ZioInterop._` from ws-client-zio ->
+  `.toZStream`, `Fs2Interop._` from ws-client-fs2 -> `.toFs2[F]`, any Reactive Streams consumer via `.toPublisher`;
+  `SourceConversions._` lets 1.x `Source` code compile). Native round trip: a stream of an Akka / Pekko / zio-http
+  engine consumed as that library's own type IS the engine's stream with our operators as native stages (0 bridges);
+  otherwise one `Flow.Publisher` bridge per HTTP leaf (e.g. a jdk-engine stream consumed by Akka). Library code uses
+  only `AsyncStream` / `AsyncPipe` operators, so it runs natively on every backend: `AsyncStream.defer` /
+  `futureStream` where 1.x used `Source.lazySource` / `Source.futureSource`, mutable state only inside `defer` or a
+  `stateful` init (per run), `stateful` end hooks, `takeWhile(p, inclusive = true)`, `evalMap` (one future at a time),
+  `concurrently`, `onTerminate` / `guaranteeCase`; there is no `merge`, `wireTap`, `alsoTo`, `mapAsync(n > 1)` or
+  `watchTermination`. New public stream APIs return `AsyncStream` / take `AsyncPipe`, never a backend's type. User
+  docs: `docs/streaming.md`.
+- `createChatCompletionStreamed` returns `AsyncStream[ChatCompletionChunkResponse]` (OpenAI-shaped chunks)
 - **Typed streaming** (1.3.0): `createChatToolCompletionStreamed(messages, tools, responseToolChoice, settings)` /
-  `createChatCompletionStreamedTyped` return `Source[ChatChunk, NotUsed]` - a provider-neutral sealed ADT
+  `createChatCompletionStreamedTyped` return `AsyncStream[ChatChunk]` - a provider-neutral sealed ADT
   (`domain/response/ChatChunk.scala`: `Start`, `Text`, `Thinking`, `ThinkingSignature`, `RedactedThinking`,
   `ToolCallStart`/`ToolCallDelta`/`ToolCall`, `ToolResult`, `Citation`, `Finish`, `Usage`, `Other`, plus two
   control events no provider mapper emits - `Retry(attempt, model)` inserted by whoever restarts a stream, which resets
   the assembler, and `Done`, an explicit terminator for transports that cannot signal completion). The trait
-  default derives it from the OpenAI chunks via `service/ChatChunks.fromOpenAIChunks` (handles `delta.reasoning_content`
+  default derives it from the OpenAI chunks via `service/ChatChunks.fromOpenAIChunks` (an `AsyncPipe`, like every chunk
+  mapper on the `2.0` branch; handles `delta.reasoning_content`
   / `delta.reasoning`; a turn that streamed tool calls finishes as `tool_calls` even when the provider says `stop`, as
   OpenAI does for a forced `tool_choice` - the raw value stays in `providerReason`); Anthropic (`impl/package.scala#toChatChunks`, requests `display = summarized` thinking; since 2026-10-11 the OpenAI-shaped `createChatCompletionStreamed` requests it too and streams thinking as `delta.reasoning_content` - `toOpenAIChunks` used to drop every thinking delta) and
   Gemini (`OpenAIGeminiChatCompletionService.toChatChunks`, turns `includeThoughts` on) and Vertex AI
@@ -527,8 +560,10 @@ Streaming is provided as an extension via the `openai-client-stream` module:
   Live-verified 2026-09-16: Authorization-bearer transport headers and multi-server requests work; failures are transient
   Gemini-side (500/503/dangling call), Gemini 3 echoes no call/result parts, Gemini 2.5 does. Grok, Groq, Cerebras, Fireworks and
   DeepSeek use the generic mapping (live-verified 2026-09-10; repeated per-chunk `usage` is deduplicated). Every streamed wrapper in `openai-client-stream` must
-  delegate the 4-arg method explicitly (see `StreamedWrappersDelegationSpec`). `source.texts` is the legacy string view,
-  `source.assembled` folds into `AssembledChatCompletion`. Two layers: the tool layer (`ToolCall*`/`ToolResult`, client and
+  delegate the 4-arg method explicitly (see `StreamedWrappersDelegationSpec`). `stream.texts` is the legacy string view,
+  `stream.assembled` folds into `AssembledChatCompletion` (a `Future`; `ChatChunk.ChatChunkStreamOps`, found by implicit
+  scope - on `2.0` it takes an implicit `ExecutionContext` where 1.x's `ChatChunkSourceOps` took a Materializer; the same fold as a pipe is
+  `ChatChunk.assembleSink: AsyncPipe[ChatChunk, AssembledChatCompletion]`, one element at completion). Two layers: the tool layer (`ToolCall*`/`ToolResult`, client and
   server tools alike) plus a semantic layer emitted in addition (`CodeExecution`/`CodeExecutionResult`, `WebSearch`/
   `WebSearchResult`, `Image`, `Refusal`, `Citation`); anything unmapped is `Other(kind, raw)`, never dropped.
 - **Human approval mid-stream** (typed stream; live-verified 2026-09-29): a run paused until a tool call is
@@ -606,9 +641,10 @@ Streaming is provided as an extension via the `openai-client-stream` module:
     round's `Finish` / `Usage` / `Done` held back (the stream ends with the last `Finish`, the usage summed via
     `UsageInfo.sum`, `Done`), tool-call ordinals shifted to continue. Ends PAUSED (requests + `Finish(approval_required)` passed through, like the plain
     stream) after `maxApprovalRounds` resumes or when a paused round also has client function calls (no local tool
-    execution). Per-round state is per materialization (`Source.lazySource`); the next round starts only after an
-    end-of-round marker is processed (a failed / cancelled round never asks), via `Source.futureSource` (eager concat is
-    harmless). A `Retry` passes in round 0 (resets the round) but fails a resumed round. Tests: `ToolApprovalLoopSpec`
+    execution). Per-round state is per run (`AsyncStream.defer`; 1.x: per materialization, `Source.lazySource`); the
+    next round starts only after the round's `stateful` end hook has run (on a normal completion only - a failed /
+    cancelled round never asks), via `concat` (by-name: the next round is built only then) + `AsyncStream.futureStream`
+    (1.x: `Source.futureSource`). A `Retry` passes in round 0 (resets the round) but fails a resumed round. Tests: `ToolApprovalLoopSpec`
     (core, fake provider), plus helper cases in both wire specs; live demo
     `examples/CreateChatToolCompletionStreamedWithApprovalCallback` (`ask` = console prompt, `deny`).
 - **Provider-neutral tools** (1.3.0): `ChatCompletionTool.MCPServerTool` / `ChatCompletionTool.SkillTool` (openai-core
@@ -620,7 +656,7 @@ Streaming is provided as an extension via the `openai-client-stream` module:
   headers now also sent on streams). Gemini (`toGeminiMcpServersTool`): one `mcpServers` tool, bearer -> Authorization header,
   allowedTools warned; SkillTool refused. Vertex AI: both refused (`rejectUnsupportedTools`).
 - **Responses API streaming** (1.3.0): `OpenAIStreamedServiceExtra.createModelResponseStreamed(inputs, settings)` returns
-  `Source[ResponseStreamEvent, NotUsed]` (`domain/responsesapi/ResponseStreamEvent.scala`, parsed on the JSON `type`;
+  `AsyncStream[ResponseStreamEvent]` (`domain/responsesapi/ResponseStreamEvent.scala`, parsed on the JSON `type`;
   unknown events -> `UnknownEvent`) and `createModelResponseStreamedTyped` maps it via `ChatChunks.fromResponseEvents`.
   `OpenAIResponsesChatCompletionService` (the Responses-backed chat adapter) implements the streamed trait on top of it,
   and the merged `withStreaming` full service routes GPT-6 typed tool streams through it (`chatToolsRequireResponsesAPI`
@@ -632,13 +668,16 @@ Streaming is provided as an extension via the `openai-client-stream` module:
   ws-client's own default is 20 KB. `ClassifiedStreamingWSClient.execJsonStream` applies it to every JSON stream (OpenAI
   chat / completions / Responses, Gemini, Anthropic messages, Sonar) when a call passes no `maxFrameLength`; the raw
   framings (Anthropic batch results / session events, Bedrock, the Claude CLI's stdout) go through
-  `StreamingConsts.framing(delimiter)`, the core SSE decoder takes it as its default. A frame over the cap fails the stream with an `OpenAIScalaClientException` naming the key and the env
-  variable (`StreamingConsts.frameTooLong`, which reads the limit from Akka's / ws-client's framing failure). Pinned by
+  `StreamingConsts.framing(delimiter)` (on `2.0` an `AsyncPipe[Bytes, Bytes]` over ws-client's `ByteFraming.delimiter`), the core SSE decoder takes it as its default. A frame over the cap fails the stream with an `OpenAIScalaClientException` naming the key and the env
+  variable (`StreamingConsts.frameTooLong`, which reads the limit from ws-client's typed `CequenceWSFrameTooLongException` - every engine and `ByteFraming` since 1.2.0 - or a third-party engine's framing message; 1.x read Akka's). Pinned by
   `StreamingConstsSpec` (core) and `StreamedFrameLengthWireSpec` plus the Gemini / Anthropic streamed wire specs (frames
   of 3-5 MiB). Live 2026-10-06 (`examples/StreamedLargeFramesSmokeTest`, ~$0.10): OpenAI's Responses image generation
   (gpt-5.4-mini, a 1024x1024 medium PNG) streamed a 2.24 MiB partial image and 2.66 MiB `output_item.done` /
   `response.completed` events, Gemini 2.5 Flash Image a 2.78 MiB image event - each over 1.4.0's cap, all read whole
-- Requires Akka Streams materializer in implicit scope only when consuming the `Source`
+- On the `2.0` branch no factory, helper or adapter takes a Materializer or ActorSystem, and consuming a stream needs
+  none: a stream runs on an implicit `ExecutionContext`, or on the consumer's own library via the interop modules above (whose
+  conversions take that library's Materializer / `Runtime` / `Fs2Runner` where they need one); 1.x needed an Akka
+  materializer in implicit scope to consume a `Source`
 
 ### Model Parameter Conversions
 `ChatCompletionSettingsConversions` (in openai-core) automatically adjusts unsupported parameters per model. Every OpenAI rule below was MEASURED on 2026-09-26 against the live chat completions API (41 models x 23 parameter cases, raw and through the client) - re-run `examples/OpenAIConversionsAudit <out.jsonl> <models...>` (and `examples/googlegemini/GeminiThinkingAudit`) when models change; `ModelConversionsRoutingSpec` / `GeminiThinkingSpec` pin the results. "Without reasoning" = no `reasoning_effort` or `none`.
@@ -891,6 +930,28 @@ Distilled (2026-11) from the Scala Style Guide, the Scala 3 Book, "Binary Compat
 - Unit tests use ScalaTest with ScalaMock
 - The suite needs no API key (since 2026-10-11): openai-client's TEST copy of `openai-scala-client.conf` reads it as optional (`${?OPENAI_SCALA_CLIENT_API_KEY}`, like the main copy). It used to require it, and a core test running on a pool thread created by another module's tests loads that copy through the thread's context classloader (`HasOpenAIConfig`) - with the variable unset, as in CI, 17 `ModelGuardrailSpec` and 3 `GuardrailOnDecisionModelSpec` cases failed with `UnresolvedSubstitution`, or passed, depending on thread scheduling (one CI run passed, the next failed). A missing key still fails clearly where a service is built (`OpenAIServiceFactoryHelper`)
 - Every module with tests has `src/test/resources/logback-test.xml` at WARN (added 2026-10-11). Without it logback logs at DEBUG and ws-client's engine logs each stream frame WHOLE ("Unmarshalling JSON: data: ..."): the large-frame wire specs (3-5 MiB frames, added 2026-10-06) produced a 5.2 MB log line that GitHub's runner took ~4.5 h to process, so every CI Build & Test job from 2026-10-06 to 2026-10-11 ran into the 6-hour limit and was cancelled (Validate Code passed) - never reproducible locally. Keep test logging at WARN; a test that needs a logger's output attaches its own appender.
+- Test support on the `2.0` branch is the unpublished `openai-testkit` (`testkit`; a `Test` dependency of core,
+  client(-stream), zio and the provider modules; it registers no engine): `TestEngines.streaming()` / `plain()` resolve
+  an engine like the library does (`-Dws-client.engine=<id>` picks one, else the highest priority on the test
+  classpath - jdk by default, zio-http in the zio module's Scala 2 tests, which have it as a test dependency);
+  `StreamSpecSupport` (`runStream` / `runStreamFailure` / `runStreamTake` /
+  `runStreamCounted` - the last also counts the `Flow.Publisher` bridges the run built, via ws-client's
+  `StreamDiagnostics.counted`) runs a stream through the `StreamRunner` chosen with `-Dopenai.test.consumer`
+  (`neutral`, the default; another runner registers a `StreamRunner.Provider` via `ServiceLoader` - none in this repo
+  yet). Wire specs take their engine from `TestEngines` (1.x: `StreamedEngineRegistry`; a few call
+  `WSClientEngineRegistry` directly, resolved the same way; a spec pinning one backend names it, e.g. zio-http) and run streams with `AsyncStream`'s own `runToSeq` / `runDrain` / `runHead` or
+  `StreamSpecSupport` (1.x: `runWith(Sink.seq)` / `Sink.ignore`); no spec builds an ActorSystem or uses Akka's
+  TestKit.
+- Convention specs (openai-core tests) scan the main sources: `NoBackendImportsConventionSpec` - no Akka, Pekko, fs2,
+  ZIO or Play WS import (nor `PlayJsonUtil`) in openai-core, -client and -client-stream (its `portedModules`);
+  `StreamErrorMappingConventionSpec` - every engine-level stream call is followed by `.mapError(mapHttpStatusErrors)`
+  (see Creating a Service).
+- 2.0 stream semantics: `ColdStreamsWireSpec` (client-stream) pins against a local server that building a stream
+  sends nothing, every run is a new request and a never-run stream sends nothing, that the neutral consumer runs a
+  jdk-engine stream without a bridge, and that downloads are binary-safe (every byte value; a missing file `None`).
+  The ZIO module: `OpenAIServiceZIOWireSpec`, `ProviderServicesZIOWireSpec`, `ToolApprovalZIOSpec`, and
+  `ZioHttpNativeRoundTripSpec` (`src/test/scala-2` - the zio-http engine is Scala 2 only): the ZIO view on
+  the zio-http engine streams typed chunks and download bytes with no bridge.
 - Integration tests require API keys set as environment variables
 - Use `testOnly` for focused test runs during development
 - CI runs full test suite across all Scala versions with coverage reporting
@@ -907,10 +968,15 @@ val service = OpenAIServiceFactory(apiKey = "sk-...")
 ```
 
 Since the ws-client 1.0 engine-discovery migration (`io.cequence:ws-client-*`, a real Maven
-Central release since 2026-07 - no longer a SNAPSHOT; currently 1.1.5, see
-`project/Dependencies.scala`), EACH service created via the plain factories owns a dedicated ActorSystem (created
-eagerly, ~10 threads; its threads are daemon so a leaked service cannot block JVM exit).
-`service.close()` terminates both the HTTP client and that system. Build services ONCE and
+Central release since 2026-07 - no longer a SNAPSHOT; 1.1.5 on master, 1.2.0 on the `2.0`
+branch - release-prepared, the build names `1.2.0-SNAPSHOT` until it is on Maven Central - see
+`project/Dependencies.scala`), EACH service created via the plain factories owns a
+private engine, discovered on the classpath (`WSClientEngineRegistry`; `.outputStreamed(...)` for
+streamed services). On the `2.0` branch that is the JDK engine unless another one is on the
+classpath: no actor system, a `java.net.http` client on the global `ExecutionContext`. A
+discovery-created Akka / Pekko engine owns a daemon-threaded ActorSystem (in 1.x every plain
+service had one, created eagerly, ~10 threads; daemon so a leaked service cannot block JVM exit).
+`service.close()` closes the HTTP client and that system. Build services ONCE and
 share the service instance - do NOT construct services per request. A caller-supplied
 Materializer is no longer accepted (or needed) by the factories. Timeouts are client-level:
 they ride in `TransportSettings` (factories take `timeouts: Option[Timeouts]`), NOT in
@@ -924,11 +990,13 @@ along the cause chain (a wrapped timeout -> `CequenceWSTimeoutException`, an unk
 `CequenceWSUnknownHostException`; ws-client's `StreamFailures`). Since 1.1.3 comment-only and blank SSE frames
 (OpenRouter's `: OPENROUTER PROCESSING` keep-alives) are skipped instead of failing the stream (`StreamedKeepAliveWireSpec`). Since 1.1.4 (2026-10-25) the Play engines keep no cookie jar (one store per engine leaked a provider's `Set-Cookie` to every service on a shared engine), never follow redirects, cap decompressed responses at 256 MiB, and stream incrementally on Scala 3. Since 1.1.5 (2026-11-05) the Play engines percent-encode query parameter keys and values (they went out verbatim - a `#` cut the query off, `&` / `=` split a value, `+` read as a space; a query written into the endpoint string is still sent byte for byte, which Bedrock batch's SigV4-signed list query relies on), fail a proxy's non-200 reply to CONNECT, `asSafe` errors carry a bounded excerpt of the mismatching JSON (the whole value pretty-printed twice could exhaust the heap); its json-repair change (a valid JSON value decoded with `Json.parse`) does not touch the JSON helpers, which call `Json.parse` first and repair only what it refuses. Live 2026-11-06 on 1.1.5: `ProviderConnectivitySmokeTest` 22 targets without a TLS / connection failure (only account errors: Novita balance, SambaNova key, an OpenRouter free model's upstream 429), Bedrock batch listing paged with a `nextToken` holding `+` / `/` / `=` and `nameContains = a+b` (signature accepted), Gemini's model list paged by one (tokens ending in `=`), five decision hosts answered. Every streamed service extends `ClassifiedStreamingWSClient` (openai-core) and
 streams through its SERVICE-level `execJsonStream` / `execRawStream(endPoint, ...)` (ws-client's
-`WSClientWithEngineOutputStreamingBase`), which route that failure through the service's
+`WSClientWithEngineAsyncStreamingBase` on the `2.0` branch, returning `AsyncStream`s;
+`WSClientWithEngineOutputStreamingBase` in 1.x), which route that failure through the service's
 `handleErrorCodes` (`mapHttpStatusErrors`); free-form JSON bodies go in as `Param.Raw(name)`.
-Do NOT call `engine.execJsonStream(site, ...)` directly - it fails with the UNCLASSIFIED
+Do NOT call `engine.execJsonAsyncStream(site, ...)` (1.x: `engine.execJsonStream(site, ...)`) directly - it fails with the UNCLASSIFIED
 exception that `Retryable` ignores; `StreamErrorMappingConventionSpec` (openai-core tests) scans
-every module's main sources and fails on an engine-level stream call not followed by
+every module's main sources and fails on an engine-level stream call (the `AsyncStream` and
+`Flow.Publisher` variants and the pre-2.0 names) not followed by
 `.mapError(mapHttpStatusErrors)`. An `{"error": ...}` frame inside a 200 stream (e.g. a
 mid-stream `overloaded_error` / `server_error` / Gemini `UNAVAILABLE`) goes through
 `inBandStreamError`, which reads the status from the frame's numeric `code`, Google `status` or
@@ -944,32 +1012,39 @@ touches ws-client (Google SDK, gRPC): its failures are classified by canonical s
 to end by `VertexAIStreamedErrorsSpec`, which drives the real SDK over a scripted
 `PredictionServiceStub` (`VertexAI.Builder.setPredictionClientSupplier`).
 
-**Akka backend, for now.** This project currently hard-wires its streaming API surface to Akka
-Streams - `createChatCompletionStreamed` etc. return `Source[T, akka.NotUsed]`, and every
-provider module depends on the Akka-flavored ws-client artifacts (`ws-client-core-akka`,
-`ws-client-play-akka`, `ws-client-play-akka-stream`). ws-client itself is no longer
-Akka-only: it also ships Pekko engines (`ws-client-core-pekko`, `ws-client-play-pekko`,
-`ws-client-play-pekko-stream`), backend-only engines with no actor system at all
-(`ws-client-jdk`, `ws-client-sttp`), and a family-neutral streaming core
-(`WSClientOutputStreamCore`, `java.util.concurrent.Flow.Publisher`-typed) that every engine
-implements natively. A live experiment (2026-07-14) swapped `ws-client-play-akka` →
-`ws-client-play-pekko` for **sync** calls with zero source changes (same FQCNs, engine loaded
-from the Pekko jar, ran on `pekko.actor.default-dispatcher` threads). **Streaming is
-currently family-locked**: this repo's streamed traits pin `Source[_, akka.NotUsed]` and ~15
-`akka.*` imports in `openai-core`/`openai-client-stream`, so a full Pekko (or backend-agnostic)
-swap needs a mechanical rename, not just a dependency bump. Expect this to be abstracted away
-in a future release - don't assume `Source`/`akka.NotUsed` in new public APIs if avoidable, and
-prefer routing new streaming code through the same choke points (`WSClientOutputStreamExtraAkka`)
-so the eventual swap stays mechanical.
+**Engines (2.0 branch).** The library references no stream or HTTP backend - no Akka, Pekko,
+fs2, ZIO or Play WS import in a library module's main source, openai-zio aside (`NoBackendImportsConventionSpec`
+pins it for core / client / client-stream) - so any ws-client engine works. ws-client picks it: an explicit engine id
+(`WSClientEngineRegistry(TransportSettings(), Some("play-pekko"))`), else the config key / system
+property `ws-client.engine`, else the highest priority on the classpath (a tie is an error) -
+`play-pekko-stream` 21, `play-pekko` 20, `pekko-http` 15, `play-akka-stream` 11, `play-akka` 10,
+`zio-http` 7, `sttp` 5, `jdk` 0 (always present, via openai-core). Streamed services need an engine
+with output streaming (`WSClientOutputStreamCore`: jdk, zio-http, play-akka-stream,
+play-pekko-stream, pekko-http): `WSClientEngineRegistry.outputStreamed(settings, engineId)` picks the
+highest-priority one that streams (with play-akka and jdk on one classpath, streams run on jdk),
+the streamed factories' `withEngine` / `customEngineInstance` (also under `.withStreaming`) fail fast on an engine without it
+(`StreamingEngines.require`, naming the streaming and non-streaming engines), and the streaming
+provider factories' `withEngine` (Anthropic, Gemini, Sonar) take `WSClientEngine with
+WSClientOutputStreamCore` (TypeSafe's, no streams, any `WSClientEngine`). Consumers run the
+`AsyncStream`s as they like (see Streaming Support); with the engine of their library
+(play-akka-stream for Akka, play-pekko-stream / pekko-http for Pekko, zio-http for ZIO) a stream
+converted to that library's type is the engine's own stream - no bridge. Akka and Pekko ws-client
+artifacts must not share a classpath (ws-client warns, or fails with
+`ws-client.strict-classpath = true`). `StreamedEngineRegistry` (ws-client-core-akka / -pekko,
+typed Akka / Pekko engines) is no longer needed here. User docs: `docs/http-engine.md`.
+History: 1.x hard-wired Akka Streams - `Source[T, akka.NotUsed]` streams and the Akka-flavoured
+ws-client artifacts (`ws-client-core-akka`, `ws-client-play-akka`, `ws-client-play-akka-stream`);
+a live experiment (2026-07-14) swapped `ws-client-play-akka` → `ws-client-play-pekko` for **sync**
+calls with zero source changes, while streaming stayed family-locked until 2.0.
 
-Engines are SITE-STATELESS since ws-client 1.0: an engine is just the HTTP client + pool +
-actor system; each SERVICE holds a `SiteBinding` (base URL, auth, error recovery, label) and
+Engines are SITE-STATELESS since ws-client 1.0: an engine is just the HTTP client + pool (+ the
+actor system / runtime of an engine that has one); each SERVICE holds a `SiteBinding` (base URL, auth, error recovery, label) and
 feeds it into every call. To share ONE engine across MANY services - including across
 DIFFERENT providers:
 ```scala
-import io.cequence.wsclient.service.spi.StreamedEngineRegistry
+import io.cequence.wsclient.service.spi.WSClientEngineRegistry
 
-val engine = StreamedEngineRegistry.outputStreamed() // one pool + one (daemon) actor system
+val engine = WSClientEngineRegistry.outputStreamed() // one pool; jdk unless a higher-priority streaming engine is on the classpath
 
 val openAI = OpenAIServiceFactory.withEngine(engine)            // api key from config/env
 val anthropic = AnthropicServiceFactory.withEngine(engine)      // api key from env
@@ -985,21 +1060,25 @@ The plain factories (`OpenAIServiceFactory()`, `AnthropicServiceFactory()` etc.)
 PRIVATE engine per service and close it with the service - semantics unchanged.
 
 **Timeouts override on a shared engine.** Timeouts/proxy are baked into the engine's HTTP
-client at construction (`TransportSettings(timeouts: Timeouts, proxyURL: Option[String])`,
+client at construction (`TransportSettings(timeouts: Timeouts, proxyURL: Option[String])`, plus
+`httpVersion: Option[HttpVersion]` since ws-client 1.2.0 - honoured by jdk only; unset =
+`java.net.http`'s own choice, HTTP/2 where the server offers it -,
 deliberately NOT overridable per-site/per-call - see `TransportSettings`'s scaladoc). All four
 `Timeouts` fields (`requestTimeout`/`readTimeout`/`connectTimeout`/`pooledConnectionIdleTimeout`)
 are **milliseconds** (`Option[Int]`) - only the `*Sec`-suffixed config-file keys
 (`requestTimeoutSec` etc., see `openai-scala-client.conf`) are in seconds; the config loader
-multiplies by 1000 before building `Timeouts`. A service that needs different client-level
+multiplies by 1000 before building `Timeouts`. On jdk `requestTimeout` bounds a whole
+non-streamed exchange (for a stream only the wait for the response headers), a stream fails after
+`readTimeout` without data (default: the request timeout), and `pooledConnectionIdleTimeout` is ignored. A service that needs different client-level
 settings than the rest of a shared setup uses an engine COPY via
 `WSClientEngine#copy(transportSettings, reuseExecContext = true)`:
 ```scala
-import io.cequence.wsclient.service.spi.{StreamedEngineRegistry, TransportSettings}
+import io.cequence.wsclient.service.spi.{TransportSettings, WSClientEngineRegistry}
 import io.cequence.wsclient.service.ws.Timeouts
 
-val engine = StreamedEngineRegistry.outputStreamed() // default timeouts, one actor system
+val engine = WSClientEngineRegistry.outputStreamed() // default timeouts
 
-// same actor system, own HTTP client with longer timeouts - e.g. for a slow batch/VLM provider
+// own HTTP client with longer timeouts (the same actor system, if the engine has one) - e.g. for a slow batch/VLM provider
 val slowEngine = engine.copy(
   TransportSettings(timeouts = Timeouts(
     requestTimeout = Some(300000),   // 300s
@@ -1012,17 +1091,22 @@ val slowEngine = engine.copy(
 val fastService = OpenAIServiceFactory.withEngine(engine)
 val slowService = AnthropicServiceFactory.withEngine(slowEngine)
 
-slowService.close() // closes only slowEngine's own HTTP client, not the shared actor system
+slowService.close() // closes only slowEngine's own HTTP client
 fastService.close()
-engine.close()       // teardown the shared actor system last
+engine.close()       // the original last (it owns the actor system, on an engine that has one)
 ```
 `reuseExecContext = false` instead gives the copy its OWN actor system too (fully independent;
-only supported for discovery-created engines, throws for a caller-supplied one) - rarely
-needed, since the whole point of copying is usually to avoid paying for a second actor system.
+only supported for discovery-created engines, throws for a caller-supplied one; no difference on
+jdk, which has none) - rarely needed, since the whole point of copying is usually to avoid paying
+for a second actor system.
 `withStreaming` factory composition builds ONE engine per provider (it used to build two). To
-embed in an existing akka app, build the engine with a ws-client direct constructor on YOUR
-materializer (e.g. `PlayWSStreamClientEngine()`) and pass it to `withEngine` - closing that
-service never touches your ActorSystem.
+embed in an existing Akka / Pekko / ZIO application, build the engine with a ws-client direct
+constructor on YOUR environment (`PlayWSStreamClientEngine(settings)` on your Materializer,
+`PekkoHttpWSClientEngine(...)`, `ZioHttpWSClientEngine(client)` / `ZioHttpWSClientEngine.layer()`)
+and pass it to `withEngine` - closing that service never touches your ActorSystem / runtime, and
+its streams are native to your library. Logging is the application's choice on the `2.0` branch:
+logback is no longer a transitive dependency, so an application adds its own SLF4J binding
+(e.g. logback-classic).
 
 ### Using Adapters
 ```scala
@@ -1038,8 +1122,8 @@ val withRetry = adapters.retry(loadBalanced, Some(println))
 The Responses API provides a unified interface with tool support (file search, web search, functions, MCP, computer use, code interpreter, image generation, local shell). Key types are in `domain/responsesapi/` package.
 
 ### Agents API (beta)
-`OpenAIAgentsService` (core `service/`, part of the full `OpenAIService`; impl `openai-client/.../impl/OpenAIAgentsServiceImpl`, delegated by `OpenAIServiceWrapper`; domain + JSON in `domain/agents/`): agents, sessions, input events, items / turns / subagents, artifacts, environment templates / files (templates and files as JSON). Every call sends `OpenAI-Beta: agents=v1` (`OpenAIAgentsServiceImpl.betaHeaders`) - OpenAI reads only the FIRST `OpenAI-Beta` header, so nothing may send a global one. Streaming (`OpenAIStreamedServiceExtra`, impl `OpenAICoreServiceStreamedExtraImpl`): `createAgentSessionStreamed` (POST `stream: true`; the server closes it after `agent.session.idle`) and `streamAgentSessionEvents` (GET `/events`, held open with `:` heartbeats every 15 s - ws-client's JSON framing cannot take comment-only frames, so both go through `execRawStream` + core `service/ServerSentEvents` (moved from the Perplexity module, which forwards to it with its own exception; it searches only `carry ++ chunk` - the pending event's last 3 bytes plus the new chunk - for the next blank line and never walks the event's ByteString rope per chunk: a whole-buffer `indexOfSlice` was cubic in the chunks (1 MiB in 8 KiB chunks: 21 s, 2026-10-08), a tail search that `drop`ped into the rope still quadratic (64 MiB in 1460-byte chunks: 11 s vs 0.9 s with the carry, 2026-10-09); an event is then read on its bytes - one compaction, the `data:` lines sliced, `Json.parse(bytes)` - instead of ~9 String copies (~10x the event's size in garbage); its behaviour suite is core `ServerSentEventsSpec` (incl. a 2 MiB event in 8 KiB chunks), the Perplexity spec pins only its exception type)); `AgentSessionEvents.untilSettled` ends a subscription at the idle / failed after a finished turn (optionally at `requires_action`), `finalAnswer` collects the `final_answer` messages. Reads are lenient: unknown tools / items / events / required actions -> `Raw` / `Other`. Live facts (2026-09-30, recorded in `openai-core/src/test/resources/agents/`): assistant messages carry `phase` `commentary` / `final_answer`; a client function call -> `requires_action` with `required_actions[].arguments` a JSON OBJECT; the POST stream stays open during `requires_action` (post the `tool_result` and keep consuming; items of the same output may still follow the event); a subscription opened on an idle session gets only the next turn (subscribe, then send), opened mid-turn it replays the turn's items WITHOUT deltas (`output_text.done` only); DELETE of a session paused mid-turn -> 409 (cancel first); `turn.completed` usage is null; `GET /agents` is eventually consistent (a new agent is missing at 2 s, listed by 10 s); multi-agent sessions add `create_subagent_call` / `wait_for_subagents_call` / `close_subagent_call` / `agent_message` items and `agent.session.subagent.*` events. Tests: `AgentsApiJsonSpec` (core, recorded payloads + request bodies), `AgentsApiWireSpec` (client-stream, local server, heartbeat + CRLF framing); live `examples/agents/OpenAIAgentsApiSmokeTest` (`hosted` arg runs a sandbox).
-Chat adapter: `service.agentsAsChatCompletion(agentId, environment, agentTools, multiAgent, deleteSessionsAfterUse)` (client-stream implicits) = core `service/adapter/OpenAIAgentsChatCompletionService` (needs an implicit Materializer): one session per call (inline agent from the settings - system messages -> instructions, `responsesReasoningEffort`-converted effort, verbosity + json_schema -> `text` (`JsonSchema.setAdditionalPropertiesToFalse`: the API validates schemas strictly - live 400 "additionalProperties must be false for a strict schema"), service tier, function / MCP tools + `agentTools`; or `agentId`, then per-call tools refused), history folded into ONE labeled user message; `TurnState` maps events: `final_answer` -> Text, `commentary` / reasoning summaries -> Thinking, commands (+ `CodeExecution*`), MCP calls, web searches, subagent calls -> server-side ToolCall / ToolResult, environment / subagent events -> Other; ends at idle-after-turn (Finish stop) or at a NEW `requires_action` (client calls -> Finish tool_calls, session KEPT in the adapter's `pausedSessions`); a call ending with ToolMessages for a paused session resumes it: GET `/events` FIRST, post the `tool_result`s on the first replayed event (or after 3 s - a turn that finished before the subscription connected is never delivered), skip the replayed items already reported, done-only text (no deltas) emitted whole; the replayed pause itself (all calls answered) is not a new pause. End-of-stream detection uses a sentinel element (NOT `concat(Source.lazySource(...))` - Akka's `concat` demands its second source eagerly). A turn is settled at its end marker, synchronously in the stream's `mapConcat`, BEFORE its final chunks go out (`finishTurn`): a pause is registered at once; a finished session's DELETE (cancel + DELETE when the turn ended cancelled) is started - after a resume's POST outcome is known - and tracked in `cleanupsInFlight`; the stream completes only after the settlement, and `close()` waits (30 s cap) for every tracked cleanup. So neither a resume nor `close()` issued by a caller who has seen the `Finish` - even one that stopped reading there - can overtake it (registering from `watchTermination` raced an immediate resume, which then started a new session; the wire spec reproduced it with a 700 ms-delayed callback, and `close()` right after an early-stopped stream lost the DELETE). A turn that did not reach its end (failed, or the consumer cancelled) is cancelled, then deleted from the termination callback (DELETE mid-turn is a 409). A paused session stays registered until the resume's results are POSTED (a retry right after a failed resume resumes the same session), and the results are never posted once the resume stream is gone (the 3 s grace timer checks). `close()` cancels + deletes paused sessions. With `agentId`, `Start` reports the agent's own model (from the session), the call's effort / verbosity / tier / json_schema are ignored with a warning, and `agentTools` / `multiAgent` are refused at construction. `error` session events are classified by their code like failed turns (`classifiedError`: overloaded / rate limit / server error retryable). The json_schema is always closed, whatever `strict` says (typed via `setAdditionalPropertiesToFalse(overrideExisting = true)`, the map form via `OpenAIChatCompletionExtra.toStrictSchema`). A deprecated `MessageSpec` is folded by role (developer ones are instructions). Refused: approval decisions, `setResponsesTools`, SkillTool, MCPServerTool(requireApproval), file content parts (the API takes text and images only). Wire: `AgentsChatAdapterWireSpec` (recorded pause + replay). Live: a tool loop (pause + resume) takes ~12 s (runs of ~75 s seen once - platform variance).
+`OpenAIAgentsService` (core `service/`, part of the full `OpenAIService`; impl `openai-client/.../impl/OpenAIAgentsServiceImpl`, delegated by `OpenAIServiceWrapper`; domain + JSON in `domain/agents/`): agents, sessions, input events, items / turns / subagents, artifacts, environment templates / files (templates and files as JSON). Every call sends `OpenAI-Beta: agents=v1` (`OpenAIAgentsServiceImpl.betaHeaders`) - OpenAI reads only the FIRST `OpenAI-Beta` header, so nothing may send a global one. Streaming (`OpenAIStreamedServiceExtra`, impl `OpenAICoreServiceStreamedExtraImpl`): `createAgentSessionStreamed` (POST `stream: true`; the server closes it after `agent.session.idle`) and `streamAgentSessionEvents` (GET `/events`, held open with `:` heartbeats every 15 s - ws-client's JSON framing could not take comment-only frames up to 1.1.2, nor CRLF and LF framing in one stream, so both go through `execRawStream` + core `service/ServerSentEvents` (moved from the Perplexity module, which forwards to it with its own exception; on `2.0` it is an `AsyncPipe[Bytes, JsValue]` (`jsonPayloads`) keeping ONE growable buffer per run, whose search for the next blank line resumes where the last one stopped minus the 3 bytes a boundary may straddle - 1.x searched only `carry ++ chunk` and never walked the event's ByteString rope per chunk: a whole-buffer `indexOfSlice` was cubic in the chunks (1 MiB in 8 KiB chunks: 21 s, 2026-10-08), a tail search that `drop`ped into the rope still quadratic (64 MiB in 1460-byte chunks: 11 s vs 0.9 s with the carry, 2026-10-09); an event is then read on its bytes in the buffer - its `data:` lines located there, the payload copied once and parsed from its bytes (1.x: one compaction, the `data:` lines sliced, `Json.parse(bytes)`) - instead of ~9 String copies (~10x the event's size in garbage); its behaviour suite is core `ServerSentEventsSpec` (incl. a 2 MiB event in 8 KiB chunks), the Perplexity spec pins only its exception type)); `AgentSessionEvents.untilSettled` ends a subscription at the idle / failed after a finished turn (optionally at `requires_action`), `finalAnswer` collects the `final_answer` messages. Reads are lenient: unknown tools / items / events / required actions -> `Raw` / `Other`. Live facts (2026-09-30, recorded in `openai-core/src/test/resources/agents/`): assistant messages carry `phase` `commentary` / `final_answer`; a client function call -> `requires_action` with `required_actions[].arguments` a JSON OBJECT; the POST stream stays open during `requires_action` (post the `tool_result` and keep consuming; items of the same output may still follow the event); a subscription opened on an idle session gets only the next turn (subscribe, then send), opened mid-turn it replays the turn's items WITHOUT deltas (`output_text.done` only); DELETE of a session paused mid-turn -> 409 (cancel first); `turn.completed` usage is null; `GET /agents` is eventually consistent (a new agent is missing at 2 s, listed by 10 s); multi-agent sessions add `create_subagent_call` / `wait_for_subagents_call` / `close_subagent_call` / `agent_message` items and `agent.session.subagent.*` events. Tests: `AgentsApiJsonSpec` (core, recorded payloads + request bodies), `AgentsApiWireSpec` (client-stream, local server, heartbeat + CRLF framing); live `examples/agents/OpenAIAgentsApiSmokeTest` (`hosted` arg runs a sandbox).
+Chat adapter: `service.agentsAsChatCompletion(agentId, environment, agentTools, multiAgent, deleteSessionsAfterUse)` (client-stream implicits) = core `service/adapter/OpenAIAgentsChatCompletionService` (on `2.0` an implicit `ExecutionContext` + `AsyncScheduler` - the default from its companion - where 1.x needed a Materializer; each run of a returned stream is a new turn, nothing sent before it runs): one session per call (inline agent from the settings - system messages -> instructions, `responsesReasoningEffort`-converted effort, verbosity + json_schema -> `text` (`JsonSchema.setAdditionalPropertiesToFalse`: the API validates schemas strictly - live 400 "additionalProperties must be false for a strict schema"), service tier, function / MCP tools + `agentTools`; or `agentId`, then per-call tools refused), history folded into ONE labeled user message; `TurnState` maps events: `final_answer` -> Text, `commentary` / reasoning summaries -> Thinking, commands (+ `CodeExecution*`), MCP calls, web searches, subagent calls -> server-side ToolCall / ToolResult, environment / subagent events -> Other; ends at idle-after-turn (Finish stop) or at a NEW `requires_action` (client calls -> Finish tool_calls, session KEPT in the adapter's `pausedSessions`); a call ending with ToolMessages for a paused session resumes it: GET `/events` FIRST, post the `tool_result`s on the first replayed event (or after 3 s - a turn that finished before the subscription connected is never delivered), skip the replayed items already reported, done-only text (no deltas) emitted whole; the replayed pause itself (all calls answered) is not a new pause. End-of-turn detection (`turnPipe`, 2.0): a `stateful` stage maps the events (its end hook fails an event stream that closed before the turn ended), the turn's end marker is a sentinel, `takeWhile(_.isLeft, inclusive = true)` ends the stream at it and `evalMap` holds the completion until the settlement is done (1.x used a sentinel element in a `mapConcat` - NOT `concat(Source.lazySource(...))`, Akka's `concat` demanded its second source eagerly). A turn is settled at its end marker, synchronously in that `stateful` stage, BEFORE its final chunks go out (`finishTurn`): a pause is registered at once; a finished session's DELETE (cancel + DELETE when the turn ended cancelled) is started - after a resume's POST outcome is known - and tracked in `cleanupsInFlight`; the stream completes only after the settlement, and `close()` waits (30 s cap) for every tracked cleanup. So neither a resume nor `close()` issued by a caller who has seen the `Finish` - even one that stopped reading there - can overtake it (an earlier 1.x version, registering from `watchTermination`, raced an immediate resume, which then started a new session; the wire spec reproduced it with a 700 ms-delayed callback, and `close()` right after an early-stopped stream lost the DELETE). A turn that did not reach its end (failed, or the consumer cancelled) is cancelled, then deleted from the termination callback (`onTerminate`; DELETE mid-turn is a 409). A paused session stays registered until the resume's results are POSTED (a retry right after a failed resume resumes the same session; the POST runs `concurrently(..., awaitCompletion = true)` with the event stream, which completes only once the POST is done and fails if the POST fails), and the results are never posted once the resume stream is gone (the 3 s grace timer - `Futures.after` on the `AsyncScheduler` - checks). `close()` cancels + deletes paused sessions. With `agentId`, `Start` reports the agent's own model (from the session), the call's effort / verbosity / tier / json_schema are ignored with a warning, and `agentTools` / `multiAgent` are refused at construction. `error` session events are classified by their code like failed turns (`classifiedError`: overloaded / rate limit / server error retryable). The json_schema is always closed, whatever `strict` says (typed via `setAdditionalPropertiesToFalse(overrideExisting = true)`, the map form via `OpenAIChatCompletionExtra.toStrictSchema`). A deprecated `MessageSpec` is folded by role (developer ones are instructions). Refused: approval decisions, `setResponsesTools`, SkillTool, MCPServerTool(requireApproval), file content parts (the API takes text and images only). Wire: `AgentsChatAdapterWireSpec` (recorded pause + replay). Live: a tool loop (pause + resume) takes ~12 s (runs of ~75 s seen once - platform variance).
 
 ### Decisions API (public beta)
 `OpenAIDecisionsService.createDecision(input, questions, settings)` (core `service/`, part of the full `OpenAIService`;
@@ -1092,11 +1176,14 @@ own (`extends CloseableService`, like `OpenAIChatCompletionService`) that `OpenA
 - Always close services with `service.close()` to release resources
 - Every caller-supplied id or model name that goes into a REST path goes through core `service/PathSegment` (percent-encodes `/`, `?`, `#`, `%` etc., keeps `:` / `@`, refuses "", "." and ".." before I/O - security fix 2026-10-24; the refusal is the call's failed Future / stream, never a synchronous throw: every service method that encodes an id runs inside `PathSegment.inFuture` / `inSource` - 166 of them, 2026-10-26, after a review found the throw escaping `.recover`, `Future.traverse` and the retry adapter; raw, `../../x` reached another resource with the integrator's key). New endpoints must do the same; pinned by `PathSegmentSpec` (core) and `PathSegmentWireSpec` (client-stream). Bedrock invoke signs the segment encoded once more (`rfc3986Encode(PathSegment(model))`), like the batch-job paths
 - The OpenAI-shaped stream view (`ChatChunks.toOpenAIChunks`) drops provider-executed tool calls (`serverSide = true`) and their deltas - every `tool_calls` entry there is a call the client must run; the typed stream carries them
-- Use an implicit `ExecutionContext` for async operations. `Materializer` is NOT needed to
-  construct or call a service (discovery-created engines own their execution environment) -
-  only bring one in if YOU are consuming a returned `Source` (e.g. `.runWith(Sink.foreach(...))`
-  on a streamed chat completion)
-- The library uses Play WS backend but is designed to be swappable
+- Use an implicit `ExecutionContext` for async operations. On the `2.0` branch no `Materializer`
+  or ActorSystem is needed anywhere - to construct or call a service, nor to consume a returned
+  `AsyncStream` (`stream.runForeach(...)` runs on the `ExecutionContext`); a caller consuming it
+  as an Akka `Source` / Pekko `Source` / fs2 `Stream` / `ZStream` uses ws-client's interop module
+  for that library. Retry / failover / timer helpers take an implicit `AsyncScheduler` whose
+  default needs no import. (1.x: a Materializer was needed only to consume a returned `Source`.)
+- HTTP goes through a pluggable ws-client engine - jdk by default on the `2.0` branch, any other
+  engine when its module is on the classpath (see Creating a Service); 1.x uses the Play WS engine
 - Function names match OpenAI API endpoint names in camelCase for consistency
 - Provider adapters may have limited feature support - check provider compatibility table in README
 - When working with structured/JSON output, use `JsonSchema` and `JsonSchemaDef` for type-safe schemas. `JsonSchema.Integer` / `Number` carry optional `minimum` / `maximum` / `enum` (added 2026-09-17, for the TypeSafe adapter's score levels). Provider support is uneven (live-verified 2026-09-17): OpenAI honours min/max and enum in STRICT mode only (accepted but ignored when `strict = false`); Anthropic 400s on min/max ("For 'integer' type, properties maximum, minimum are not supported"), so `toAnthropicSettings` strips them from the structured-output schema with a warning (`dropNumericBounds`; TOOL input schemas accept them and are left alone) and honours enum; Gemini / Vertex AI read only the description and drop all three. `enum` is the portable one

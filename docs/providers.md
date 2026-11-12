@@ -12,17 +12,27 @@ First you need to provide an implicit execution context, e.g., as
   implicit val ec = ExecutionContext.global
 ```
 
-A `Materializer`/`ActorSystem` is **not** required to build or call a service - each service
-created via a plain factory (e.g. `OpenAIServiceFactory()`) owns and manages its own execution
-environment internally, and `service.close()` tears it down together with the HTTP client. You
-only need an implicit `Materializer` yourself if you're *consuming* a streamed result (a
-`Source[..., akka.NotUsed]` returned by e.g. `createChatCompletionStreamed`), e.g.:
+No `Materializer` or `ActorSystem` is needed to build or call a service, or to consume its streams. Each
+service created via a plain factory (e.g. `OpenAIServiceFactory()`) owns its HTTP engine - 🔥 by default the JDK's
+`java.net.http` client, with no actor system (see [HTTP engines](http-engine.md#choosing-an-engine)) - and
+`service.close()` releases it. A streamed result (e.g. of `createChatCompletionStreamed`) is an `AsyncStream`: a cold
+plan, sent only when it is run (each run is a new request), and run with the implicit execution context alone, e.g.:
 
 ```scala
-  implicit val materializer = Materializer(ActorSystem())
+  import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 
-  service.createChatCompletionStreamed(...).runWith(Sink.foreach(println))
+  val service = OpenAIServiceFactory.withStreaming()
+
+  service
+    .createChatCompletionStreamed(
+      Seq(UserMessage("Name three Norwegian fjords.")),
+      CreateChatCompletionSettings(ModelId.gpt_5_4_mini)
+    )
+    .runForeach(println)
 ```
+
+To consume it as an Akka or Pekko `Source`, an fs2 `Stream` or a ZIO `ZStream` instead, see
+[Streaming](streaming.md#consuming-a-stream-akka-pekko-fs2-zio).
 
 Then you can obtain a service in one of the following ways.
 
@@ -504,7 +514,7 @@ or with streaming
    `vercel`. The gateway's decision models go through `DecisionProviderSettings.vercel` (see
    [Decision models](decision-models.md)).
 
-- Note that services with additional streaming support - `createCompletionStreamed` and `createChatCompletionStreamed` provided by [OpenAIStreamedServiceExtra](../openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIStreamedServiceExtra.scala) (requires `openai-scala-client-stream` lib)
+- Note that services with additional streaming support - `createCompletionStreamed` and `createChatCompletionStreamed` provided by [OpenAIStreamedServiceExtra](../openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIStreamedServiceExtra.scala) (requires `openai-scala-client-stream` lib). They need an engine that streams; the default `jdk` engine does - see [HTTP engines](http-engine.md#choosing-an-engine) for the others.
 
 ```scala
   import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIStreamedService

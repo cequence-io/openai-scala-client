@@ -450,11 +450,11 @@ object DecisionProviderSettings {
    * took 15-30 s at random, and more than ~175 questions timed out (150 answered in 15 s, 175
    * in 7 s; 129 in 2-3 s).
    *
-   * Its host takes TLS 1.3 only, which the Play WS engine offers since ws-client 1.1.2 (the
-   * JDK's default client protocols). A JVM that pins the protocols - with
-   * `play.shaded.ahc.org.asynchttpclient.enabledProtocols` or `jdk.tls.client.protocols` -
-   * must keep `TLSv1.3` in the list, else the handshake fails ("Received close_notify during
-   * handshake").
+   * Its host takes TLS 1.3 only, which the default `jdk` engine offers, and the Play WS
+   * engines since ws-client 1.1.2 (the JDK's default client protocols). A JVM that pins the
+   * protocols - with `play.shaded.ahc.org.asynchttpclient.enabledProtocols` or
+   * `jdk.tls.client.protocols` - must keep `TLSv1.3` in the list, else the handshake fails
+   * ("Received close_notify during handshake").
    */
   val scaleDown: DecisionProvider = DecisionProvider(
     "https://api.scaledown.xyz/",

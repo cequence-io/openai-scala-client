@@ -1,5 +1,201 @@
 # Changelog
 
+## 2.0.0 (unreleased)
+
+The 1.x API without Akka. Calls go through any ws-client 1.2.0 engine - the JDK's `java.net.http` (`jdk`) by default,
+with no actor system - and every stream is ws-client's backend-neutral `AsyncStream`: cold (nothing is sent until it
+runs, every run is a new request), back-pressured, run on plain `Future`s or handed to Akka, Pekko, fs2 or ZIO with one
+import, and native on an engine of that library (an Akka engine's stream comes back as its own `Source`, with no bridge).
+No factory or helper takes a `Materializer`, an `ActorSystem` or an Akka `Scheduler`; retries, failover and polling wait
+on ws-client's `AsyncScheduler`. The new `openai-scala-zio` module gives every service as ZIO `Task`s, `ZStream`s and
+`ZLayer`s. logback is no longer a dependency. Also in it: the 1.x work since 1.7.0 - Claude Fable 5.2 and Mythos 5.2,
+Gemini 4 Carbon, Muse Ember 1.0 and four OpenRouter decision models. The 1.x line (1.7.x) stays on Akka.
+
+### ⚠️ Upgrading from 1.7.0
+
+Not binary compatible with 1.7.0 - recompile against 2.0.0. [Migrating to 2.0](docs/migration-2.0.md) has before / after
+code for Futures-only, Akka, Pekko, fs2 and ZIO users and for implementers of the service traits.
+
+**Source breaks**:
+- Streams are ws-client's `AsyncStream[A]` (`io.cequence.wsclient.stream`) instead of Akka's `Source[A, NotUsed]`, on every
+  streaming method: `OpenAIChatCompletionStreamedServiceExtra` (`createChatCompletionStreamed`,
+  `createChatToolCompletionStreamed`, `createChatToolCompletionStreamedWithApprovals`, `createChatCompletionStreamedTyped`),
+  `OpenAIStreamedServiceExtra` (`createCompletionStreamed`, `createModelResponseStreamed(Typed)`,
+  `createAgentSessionStreamed`, `streamAgentSessionEvents`), the client-stream implicits (`...ViaResponses`),
+  `AnthropicService` (`createMessageStreamed`, `createMessageStreamedEvents`),
+  `AnthropicMessageBatchService.streamMessageBatchResults`, `AnthropicSessionService.streamSessionEvents`,
+  `GeminiService.generateContentStreamed`, `SonarService` (`createChatCompletionStreamed` - still deprecated -,
+  `createAgentResponseStreamed`, `resumeAgentResponseStream`) and `ClaudeAgentService.events`, and so on every adapter
+  built on them. Run a stream on `Future`s (`runForeach`, `runFold`, `runToSeq`, `runHead`, `runLast`, `runDrain` - with
+  an implicit `ExecutionContext`) or convert it (see "New features"). `import io.cequence.wsclient.stream.SourceConversions._`
+  (ws-client-core-akka) lets 1.x code - `.runWith(sink)`, `.via(flow)`, a `Source`-typed value - compile unchanged.
+- Downloads: `createAudioSpeech` and `getAgentSessionArtifactContent` return `Future[AsyncStream[Bytes]]`;
+  `retrieveFileContentAsSource` (name kept), Anthropic's `downloadFile` and Perplexity's `downloadAgentResponseFile`
+  return `Future[Option[AsyncStream[Bytes]]]` - all were `Source[ByteString, _]`. `Bytes` is ws-client's immutable byte
+  chunk (`toArray`, `utf8String`); `.toByteStringSource` gives Akka's `Source[ByteString, NotUsed]`.
+- Stream transformations are `AsyncPipe[A, B]` instead of `Flow[A, B, NotUsed]`: `ChatChunks.fromOpenAIChunks` /
+  `fromResponseEvents` / `toOpenAIChunks`, Anthropic's `impl.toOpenAIChunks` / `toChatChunks`,
+  `VertexAIChatChunks.toChatChunks`, `AgentSessionEvents.untilSettled`, `MessageConversions.filterOutToThinkEndFlow`
+  (still deprecated), `StreamingConsts.framing`, `ServerSentEvents.jsonPayloads`, and the conversions taken by
+  `OpenAIChatCompletionIOConversionAdapter` (`Option[AsyncPipe]`) and `OpenAIChatCompletionStreamedOutputConversionAdapter`.
+  An Akka `Flow` converts with `.toAsyncPipe` (or implicitly with `SourceConversions._`) and runs natively on Akka.
+  `AwsEventStreamBytesDecoder.flow` / `AwsEventStreamEventParser.flow` are now `.pipe`.
+- `ChatChunk.assembleSink` is an `AsyncPipe[ChatChunk, AssembledChatCompletion]` - a one-element stream,
+  `stream.via(assembleSink).runHead` - instead of a `Sink`; `ChatChunkSourceOps` (`texts`, `toolCalls`, ...,
+  `assembled`) is `ChatChunkStreamOps`, on `AsyncStream[ChatChunk]`.
+- `PathSegment.inSource`, `ToolApprovalSettingsOps.refusingDecisionsStream` and `ToolApprovalLoop.apply` take and return
+  `AsyncStream`s.
+- Bedrock signing: `SigningWSClientEngine(...)` has no `renderJson` parameter - it signs the body its underlying engine
+  sends (`engine.renderJsonBody`, ws-client 1.2.0), on every engine - and `SigningStreamedWSClientEngine` streams through
+  `execJsonAsyncStream` / `execRawAsyncStream` (no Akka `Source` methods).
+- `ClassifiedStreamingWSClient`, the base of the streamed services, extends ws-client's
+  `WSClientWithEngineAsyncStreamingBase` (was `WSClientWithEngineOutputStreamingBase`): its `execJsonStream` /
+  `execRawStream` return `AsyncStream`s.
+- Akka, Play WS and ws-client's Akka modules are no longer on the classpath. Code that used them through this library -
+  Akka itself, `StreamedEngineRegistry`, `PollingHelper`, `PlayJsonUtil`, `asSafeSource` - adds them itself or moves to the
+  neutral ones: `WSClientEngineRegistry.outputStreamed`, `PollingHelperCore`, `engine.renderJsonBody`.
+- openai-scala-guice: `ExecutionContextModule` replaces `AkkaModule`, `BaseOpenAIClientApp` has no `system` /
+  `materializer`, and `application.conf`'s `blocking-dispatcher` is gone - `openai-scala-client.guice.threads` (default
+  40) sizes the new pool, which `GuiceContainer.terminate()` shuts down.
+- Scala 2.13: the artifacts are built with 2.13.18 (was 2.13.11); sbt 1.10+ then asks for a `scalaVersion` of at least
+  2.13.18.
+
+**Binary breaks** (source compatible unless the argument was passed explicitly):
+- No `Materializer`: `agentsAsChatCompletion`, `OpenAIAgentsChatCompletionService` (constructor and `apply`),
+  `AnthropicServiceFactory.managedAgentAsOpenAI` (both) and `managedAgentAsOpenAIWithAuthToken`,
+  `OpenAIAnthropicManagedAgentChatCompletionService.apply`, `ClaudeAgentServiceFactory.startSession`, `parallelTakeFirst`,
+  and `assembled` (an implicit `ExecutionContext` now).
+- `akka.actor.Scheduler` is `io.cequence.wsclient.concurrent.AsyncScheduler` in every retry, failover, JSON-helper,
+  batch-polling and TypeSafe-retry signature - `RetryHelpers` (`retryOnFailure`, `retryOnFailureOrFailover`), the `retry`
+  adapters, `createChatCompletionWithFailover(Settings)`, `createChatCompletionWithJSON(FullResponse)`,
+  `createChatCompletionBatchAndWaitForResults`, `createChatCompletionBatchWithJSON`, `TypeSafeServiceAdapters.retry` - and
+  in `agentsAsChatCompletion` / `OpenAIAgentsChatCompletionService`. Its default (one daemon thread) is in implicit scope,
+  so no caller needs one; an implicit Akka `Scheduler` left in scope is not used - `ActorSchedulers._`
+  (ws-client-core-akka / -pekko) adapts it.
+- The engine parameters of `AnthropicServiceFactory.withEngine` / `forBedrockMantleWithEngine` /
+  `bedrockAsOpenAIWithEngine` / `bedrockAsOpenAIWithBatchSupportAndEngine`, `GeminiServiceFactory.withEngine` and
+  `SonarServiceFactory.withEngine` are `WSClientEngine with WSClientOutputStreamCore` (were
+  `... with WSClientOutputStreamExtraAkka`, a subtype - a 1.x engine still fits).
+
+**Behavior changes**:
+- Streams are cold. A 1.x stream from the Play engine sent its request when the method was called; an `AsyncStream`
+  sends nothing until it runs and a new request on every run - so running the same stream value twice asks (and bills)
+  twice, `assembled` after printing a stream asks again, and a stream that is never run sends nothing. The same holds for
+  the work a stream starts: Bedrock signs per run, the streamed guardrails' input check, Gemini's system-message cache
+  and the first request of Anthropic's `pause_turn` continuation run per run, and the Anthropic Managed Agents adapter
+  creates its session per run (see "Fixed"). Cancelling a run aborts its request. The two exceptions: a download is a
+  `Future` whose request is sent at the call - its body stream runs once - and the Claude agent client's `events` stays
+  hot. The full table is in [Migrating to 2.0](docs/migration-2.0.md#streams-are-cold).
+- The default HTTP engine is `jdk` (`java.net.http`, `ws-client-jdk`, a dependency of openai-core) instead of Play WS on
+  Akka. It speaks HTTP/2 where the server offers it (`TransportSettings.httpVersion` pins a version), bounds a
+  non-streamed call by `requestTimeout` including its body, fails a stream after `readTimeout` without data and ignores
+  `pooledConnectionIdleTimeout`, builds multipart bodies in memory, ignores Play's `play.shaded.ahc.*` system properties,
+  and drops the headers `java.net.http` sets itself (`Host`, `Connection`, `Content-Length`, `Expect`, `Upgrade`) from
+  extra headers with a one-time warning. Any engine added to the classpath wins (the highest priority);
+  `-Dws-client.engine=<id>` names one, and applies to the streamed services too - a non-streaming engine named there
+  fails them.
+- The streamed services run on the highest-priority engine that streams: next to `play-akka`, `play-pekko` or `sttp`,
+  which serve non-streamed calls only, streams run on `jdk`. The OpenAI streamed factories' `withEngine` fail on a
+  non-streaming engine with an `OpenAIScalaClientException` naming the engines that stream.
+- logback-classic is no longer a dependency (it came with openai-core). The library logs through SLF4J only: add the
+  binding of your choice - without one, nothing is logged.
+- Retries, failover, batch polling and the Agents adapter's grace timer wait on `AsyncScheduler.default` (one daemon
+  thread) unless another implicit `AsyncScheduler` is in scope (e.g. an actor system's, via `ActorSchedulers._`).
+- `ClaudeAgentServiceFactory.startSession(settings)` takes only an implicit `ExecutionContext`. `events` stays hot: every
+  run joins the live session with the `system`/`init` message replayed first, the slowest running consumer paces the
+  others, and with none the events are read and dropped. An Akka consumer crosses one bridge, at the session's hub.
+- Perplexity's `downloadAgentResponseFile`: an error status fails without the request id (`x-request-id`) the other
+  calls' exceptions carry.
+- `OpenAIChatCompletionStreamedOutputConversionAdapter`: the message conversion must be 1:1 - a pipe that emits more than
+  one element per input fails the stream (1.x zipped the elements out of step).
+- Vertex AI streams read the SDK's blocking iterator on ws-client's blocking pool, one gRPC stream per run, closed when
+  the run ends, fails or is cancelled.
+- openai-scala-guice: the services' `ExecutionContext` is a fixed pool of 40 daemon threads (was the actor system's
+  `blocking-dispatcher`, also 40 threads).
+
+### New features
+
+- 🔥 **Backend-neutral streams** (`AsyncStream`, ws-client 1.2.0): one stream type for every service and engine - cold
+  and re-runnable, back-pressured, one consumer per run (`AsyncBroadcastHub` fans out); a non-2xx status fails it with
+  the provider's classified exception, SSE comments and blank frames are skipped, a frame over the cap fails it. Operators
+  (`map`, `mapConcat`, `filter`, `collect`, `evalMap`, `stateful` / `statefulMapConcat`, `scan`, `fold`, `zipWithIndex`,
+  `take`, `takeWhile`, `drop`, `concat` / `++`, `flatMapConcat`, `via`, `mapError`, `recover`, `recoverWith`,
+  `onTerminate`, `guaranteeCase`, `concurrently`, `preflight`) and runs (`runForeach`, `runFold`, `runToSeq`, `runHead`,
+  `runLast`, `runDrain`, `toPublisher`) need nothing but an `ExecutionContext`. See
+  [AsyncStream](docs/streaming.md#asyncstream).
+- 🔥 **Interop with one import** (each a ws-client 1.2.0 module): Akka (`ws-client-core-akka`,
+  `import io.cequence.wsclient.stream.SourceInterop._` - `.toSource`, `.toByteStringSource`, `.toFlow`, back with
+  `.toAsyncStream` / `.toAsyncPipe`), Pekko (`ws-client-core-pekko`, the same names), fs2 (`ws-client-fs2`,
+  `Fs2Interop._` - `.toFs2[F]`), ZIO (`ws-client-zio`, `ZioInterop._` - `.toZStream`, `.toZByteStream`), any Reactive
+  Streams consumer (`.toPublisher`, a `java.util.concurrent.Flow.Publisher`). A stream round-trips as itself: consumed in its engine's own library it is that
+  engine's stream with the library's operators as native stages - `play-akka-stream` an Akka `Source`,
+  `play-pekko-stream` / `pekko-http` a Pekko `Source`, `zio-http` a `ZStream` - with no bridge; a `jdk` stream crosses one
+  bridge per HTTP response into Akka, Pekko, fs2 or ZIO, none on plain `Future`s. `SourceConversions._` /
+  `Fs2Conversions._` / `ZioConversions._` add opt-in implicit conversions. See
+  [Consuming a stream](docs/streaming.md#consuming-a-stream-akka-pekko-fs2-zio).
+- 🔥 **Any ws-client engine**: `jdk` (the default, included - no actor system), `play-akka-stream` / `play-akka` (Akka),
+  `play-pekko-stream` / `play-pekko` / `pekko-http` (Pekko; Scala 2.13 and 3.3+), `zio-http` (Scala 2.12 / 2.13) and
+  `sttp` - the highest priority on the classpath is used, `ws-client.engine` names one, `withEngine` shares one across
+  services and providers. `StreamingEngines` (openai-core) resolves a streaming engine (`outputStreamed(settings)`) or
+  checks one (`require(engine)`). See [HTTP engines](docs/http-engine.md#choosing-an-engine).
+- 🔥 **No actor system for timers**: retries, failover, batch polling and `parallelTakeFirst` need no `ActorSystem` or
+  `Materializer`; `AsyncScheduler.fromExecutor(executor)` or `ActorSchedulers._` put a timer of your own in place of the
+  default.
+- 🔥 **`openai-scala-zio`** (Scala 2.12, 2.13 and 3.3+): ZIO views of every service, generated from the service traits -
+  `Future[A]` as `Task[A]`, `AsyncStream[A]` as `ZStream[Any, Throwable, A]`, a download's body as
+  `ZStream[Any, Throwable, Byte]`, callbacks as `A => Task[B]`. `OpenAIServiceZIO`, `OpenAIStreamedServiceZIO` (the merged
+  sync + streamed service), the OpenAI service parts (chat completion, Responses, Agents, Decisions, graders, batches,
+  the JSON / failover helpers), `AnthropicServiceZIO` and the other Anthropic services, `GeminiServiceZIO`,
+  `VertexAIBatchPredictionServiceZIO`, `SonarServiceZIO`, `TypeSafeServiceZIO`, `ClaudeAgentServiceZIO`; each with
+  `apply(service)` and a `layer(() => service)` that closes the service with its scope. The provider modules are
+  `provided` - add the ones you use. On the `zio-http` engine a service stream is the engine's own `ZStream`. See
+  [ZIO services](docs/zio.md).
+- Downloads are binary-safe on every engine (1.x needed a Play engine): an engine without output streaming serves the
+  body as one chunk; a missing file is still `None`.
+
+### Dependencies
+
+- ws-client 1.2.0 (from 1.1.5): `AsyncStream`, `AsyncScheduler`, binary-safe downloads, `TransportSettings.httpVersion`
+  and the fs2 / ZIO interop modules. Every ws-client artifact on a classpath must have the same version. A stream's
+  non-2xx failure is logged at DEBUG instead of ERROR (it still reaches the caller). On Scala 2.13 its Akka engines
+  (`play-akka`, `play-akka-stream`) run Play WS 2.2.18 and need Java 11+.
+- No Akka: openai-core depends on ws-client-core, ws-client-jdk, json-repair and scala-logging; no module depends on
+  Akka, Play WS or ws-client's Akka modules any more. logback-classic is a test dependency only.
+- `openai-scala-zio` depends on ws-client-zio (ZIO 2.1) and openai-scala-client-stream.
+
+### New models
+
+Also on the 1.x line (merged from it since 1.7.0):
+
+- **Claude Fable 5.2** (`NonOpenAIModelId.claude_fable_5_2`, released 2026-11-09; Bedrock
+  `bedrock_claude_fable_5_2` through the `global.` profile, on an AWS account whose data retention mode is not the
+  default) and **Claude Mythos 5.2** (`claude_mythos_5_2` / `bedrock_claude_mythos_5_2`, for Anthropic's verification
+  programs only - a 404 for other keys; not live-verified): Fable 5.1's API - adaptive thinking only, effort low..max, no
+  sampling parameters, no forced `tool_choice` (sent as `auto` plus an instruction), 128k output. Fable 5.2 costs $8 /
+  $40 per 1M tokens. In `models-supporting-json-schema` (the Bedrock ids not). Live 2026-11-09 on the Claude API:
+  `ClaudeHaiku55SmokeTest model=claude-fable-5-2` passed 35 of 36 sections (the one failure: adaptive thinking skipped
+  the first round of a tool loop).
+- **Gemini 4 Carbon** (`NonOpenAIModelId.gemini_4_carbon`, 2026-11-10; 1M context): Argon's API - thinking levels LOW /
+  MEDIUM / HIGH, penalties and `n` > 1 dropped. In `models-supporting-json-schema`. Live 2026-11-11:
+  `Gemini4ArgonSmokeTest model=gemini-4-carbon` 19 of 19.
+- **Muse Ember 1.0** (`NonOpenAIModelId.muse_ember_1_0`, OpenRouter `openrouter_muse_ember`; 2026-11-09, Meta's
+  efficient execution model, 1M context): the Muse rules (`none` sent as `minimal`; `stop`, `logit_bias`, `logprobs` and
+  `verbosity` dropped). In `models-supporting-json-schema`. Live 2026-11-11: `MuseSmokeTest target=meta
+  models=muse-ember-1.0` 9 of 9.
+- **Decision models on OpenRouter** (listed 2026-10-29 .. 11-10, in `models-supporting-json-schema`; not called - the
+  test account has no credits, except Parallel's free tier): Baseten's `baseten/joey-1`, Morph's `morph/reflex`, NACE
+  AI's `nace-ai/drex-max-finance` and Parallel's `parallel/decisions-fast:free` (`openrouter_*` constants). Parallel's
+  answered a noul without criteria live but refuses the criteria form the client sends, so planned questions fail there.
+
+### Fixed
+
+- Bedrock streams decode each event-stream frame as UTF-8. They used the JVM's default charset, so on a JVM whose
+  default is not UTF-8 (before JDK 18 on Windows, for instance) non-ASCII text came out garbled.
+- The Anthropic Managed Agents adapter created a turn's session when the streaming method was called, so a stream that
+  was never run left a session behind; the session is created when the stream runs.
+- Vertex AI's sync calls waited for the SDK's future with a blocking `get`, holding a thread of the JVM's common pool per
+  call in flight; they complete from the SDK's callback now.
+
 ## 1.7.0 (2026-11-06)
 
 The 2026-10-19 - 2026-11-06 work since v1.6.0: tool loops keep the model's reasoning between rounds on every backend

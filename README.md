@@ -1,5 +1,5 @@
 # OpenAI Scala Client 🤖
-[![version](https://img.shields.io/badge/version-1.6.0-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT) ![GitHub Stars](https://img.shields.io/github/stars/cequence-io/openai-scala-client?style=social) [![Follow on X](https://img.shields.io/badge/X-%400xbnd-black?logo=x)](https://x.com/0xbnd) ![GitHub CI](https://github.com/cequence-io/openai-scala-client/actions/workflows/continuous-integration.yml/badge.svg)
+[![version](https://img.shields.io/badge/version-2.0.0-green.svg)](https://cequence.io) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](https://opensource.org/licenses/MIT) ![GitHub Stars](https://img.shields.io/github/stars/cequence-io/openai-scala-client?style=social) [![Follow on X](https://img.shields.io/badge/X-%400xbnd-black?logo=x)](https://x.com/0xbnd) ![GitHub CI](https://github.com/cequence-io/openai-scala-client/actions/workflows/continuous-integration.yml/badge.svg)
 
 This is a no-nonsense async Scala client for OpenAI API and multiple LLM providers supporting all the available endpoints and params **including streaming** (with a provider-neutral typed stream of text / thinking / tool-call / tool-result chunks), **chat completion**, **responses API**, **agents API**, **tools** (including MCP), **graders**, **vision** (with provider-uniform file/image attachments), **batch processing**, and **voice routines** (as defined [here](https://platform.openai.com/docs/api-reference)), provided in a single, convenient service called [OpenAIService](./openai-core/src/main/scala/io/cequence/openaiscala/service/OpenAIService.scala) with adapters for Anthropic (incl. Bedrock and Managed Agents), Google Gemini/Vertex AI, Groq, Perplexity (incl. its decision model), TypeSafe AI (Jev), Liquid AI (d1), Microsoft Foundry (Microsoft-Decision-1), SubQ (SubQ Snap), ScaleDown (Classify), the decision models on OpenRouter and Vercel AI Gateway, and others. The supported calls are:
 
@@ -28,7 +28,7 @@ This is a no-nonsense async Scala client for OpenAI API and multiple LLM provide
 The Anthropic client additionally covers the native **Messages** (incl. typed stream events), **Message Batches**, **Files**, **Skills**, and the whole **Managed Agents** API surface (agents, environments and their work queue, sessions, deployments, vaults and credentials, memory stores) - see the [Anthropic Managed Agents](docs/anthropic-managed-agents.md) page.
 
 Note that in order to be consistent with the OpenAI API naming, the service function names match exactly the API endpoint titles/descriptions in camelCase.
-Also, we aimed for the library to be self-contained with the fewest dependencies possible. Therefore, we implemented our own generic WS client (currently with Play WS backend, which can be swapped for other engines in the future). Additionally, if dependency injection is required, we use the `scala-guice` library.
+Also, we aimed for the library to be self-contained with the fewest dependencies possible. Therefore, we implemented our own generic WS client, [ws-client](https://github.com/cequence-io/ws-client), with pluggable HTTP engines, JDK by default 🔥: out of the box the library runs on `java.net.http` - no Akka, no actor system - and an Akka, Pekko, ZIO or sttp engine is one dependency away (see [HTTP engines](docs/http-engine.md)). Every stream is a backend-neutral `AsyncStream` 🔥, run on plain `Future`s or handed to Akka, Pekko, fs2 or ZIO. Additionally, if dependency injection is required, we use the `scala-guice` library.
 
 ---
 
@@ -108,12 +108,16 @@ decisions, re-ranking, the `json_schema`-only chat adapter) on OpenAI's. No tool
 
 ## Installation 🚀
 
-The currently supported Scala versions are **2.12, 2.13**, and **3**.  
+The currently supported Scala versions are **2.12, 2.13**, and **3** (built with 2.12.18, 2.13.18 and 3.2.2 - on 2.13,
+sbt 1.10+ asks for a `scalaVersion` of at least 2.13.18), on Java 11+.
+
+👉 **Coming from 1.x?** The 1.x line - currently 1.7.x - runs on Akka (Play WS, Akka `Source` streams); 2.0.0 needs
+neither. See [Migrating to 2.0](docs/migration-2.0.md) 🔥.
 
 To install the library, add the following dependency to your *build.sbt*
 
 ```
-"io.cequence" %% "openai-scala-client" % "1.6.0"
+"io.cequence" %% "openai-scala-client" % "2.0.0"
 ```
 
 or to *pom.xml* (if you use maven)
@@ -122,17 +126,44 @@ or to *pom.xml* (if you use maven)
 <dependency>
     <groupId>io.cequence</groupId>
     <artifactId>openai-scala-client_2.12</artifactId>
-    <version>1.6.0</version>
+    <version>2.0.0</version>
 </dependency>
 ```
 
-If you want streaming support, use `"io.cequence" %% "openai-scala-client-stream" % "1.6.0"` instead.
+If you want streaming support, use `"io.cequence" %% "openai-scala-client-stream" % "2.0.0"` instead.
 
 For a single dependency that includes all provider clients (Anthropic, Gemini, Vertex AI, Perplexity, TypeSafe AI, token counting):
 
 ```
-"io.cequence" %% "openai-scala-all" % "1.6.0"
+"io.cequence" %% "openai-scala-all" % "2.0.0"
 ```
+
+For ZIO 🔥, `"io.cequence" %% "openai-scala-zio" % "2.0.0"` (Scala 2.12, 2.13 and 3.3+) gives every service as ZIO
+`Task`s and `ZStream`s, with `ZLayer`s. It brings the OpenAI client and its streaming module; add the provider modules
+you use (Anthropic, Gemini, ...) yourself. See [ZIO services](docs/zio.md).
+
+**Logging:** the library logs through SLF4J and, since 2.0.0, brings no logging backend (1.x brought logback-classic) -
+add the binding of your choice, e.g. logback-classic; without one, nothing is logged.
+
+**HTTP engines** 🔥: calls go through an engine of [ws-client](https://github.com/cequence-io/ws-client) 1.2.0. The
+default, `jdk` (`java.net.http`), comes with the library: no Akka, no actor system, streaming included. For another
+engine add its artifact - `"io.cequence" %% "<artifact>" % "1.2.0"`, one version for every ws-client artifact - and
+the engine with the highest priority on the classpath is used; `-Dws-client.engine=<id>` names one instead. See
+[Choosing an engine](docs/http-engine.md#choosing-an-engine).
+
+| Engine id | Artifact | Priority | Streams | Scala |
+|-----------|----------|----------|---------|-------|
+| `play-pekko-stream` | `ws-client-play-pekko-stream` | 21 | Yes | 2.13, 3.3+ |
+| `play-pekko` | `ws-client-play-pekko` | 20 | – | 2.13, 3.3+ |
+| `pekko-http` | `ws-client-pekko-http` | 15 | Yes | 2.13, 3.3+ |
+| `play-akka-stream` | `ws-client-play-akka-stream` | 11 | Yes | 2.12, 2.13, 3 |
+| `play-akka` | `ws-client-play-akka` | 10 | – | 2.12, 2.13, 3 |
+| `zio-http` | `ws-client-zio-http` | 7 | Yes | 2.12, 2.13 |
+| `sttp` | `ws-client-sttp` | 5 | – | 2.12, 2.13 |
+| `jdk` (the default) | `ws-client-jdk` (included) | 0 | Yes | 2.12, 2.13, 3 |
+
+Streamed services pick the highest-priority engine that streams (`jdk` at least). Akka and Pekko artifacts must not
+share a classpath.
 
 ## Config ⚙️
 
@@ -160,12 +191,49 @@ service
     CreateChatCompletionSettings(model = ModelId.gpt_5_4_mini)
   )
   .map(response => println(response.contentHead))
-  .andThen { case _ => service.close() } // close a service when done with it - it owns an HTTP pool and an actor system
+  .andThen { case _ => service.close() } // close a service when done with it - it owns its HTTP client
 ```
 
 Every provider in the tables above is reached the same way - through its factory's `asOpenAI()` (or
 `OpenAIChatCompletionServiceFactory(ChatProviderSettings.<provider>)`), after which the calls, adapters and streams are the
 same. See [Services and providers](docs/providers.md).
+
+Streaming (with `openai-scala-client-stream`):
+
+```scala
+import io.cequence.openaiscala.domain._
+import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
+import io.cequence.openaiscala.service.OpenAIServiceFactory
+import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
+
+import scala.concurrent.ExecutionContext.Implicits.global
+
+val streamedService = OpenAIServiceFactory.withStreaming()
+
+streamedService
+  .createChatCompletionStreamedTyped(
+    Seq(UserMessage("Name three Norwegian fjords.")),
+    CreateChatCompletionSettings(model = ModelId.gpt_5_4_mini)
+  )
+  .texts // the answer's text; the typed chunks also carry thinking, tool calls and usage
+  .runForeach(text => print(text)) // nothing is sent until the stream runs - each run is a new request
+  .andThen { case _ => streamedService.close() }
+```
+
+**Consuming a stream** 🔥: every stream is a back-pressured, cold `AsyncStream` (ws-client) - nothing is sent until it
+runs, and each run is a new request. Run it on plain `Future`s (`runForeach`, `runFold`, `runToSeq`, ...) or hand it to
+your streaming library with one import (each module is ws-client's, version 1.2.0):
+
+- Akka (`ws-client-core-akka`): `import io.cequence.wsclient.stream.SourceInterop._`, then `stream.toSource` - on the
+  `play-akka-stream` engine it compiles to that engine's own `Source`, with no bridge
+- Pekko (`ws-client-core-pekko`): the same import, then `stream.toSource` - native on `play-pekko-stream` and
+  `pekko-http`
+- fs2 (`ws-client-fs2`): `import io.cequence.wsclient.stream.Fs2Interop._`, then `stream.toFs2[IO]`
+- ZIO (`ws-client-zio`): `import io.cequence.wsclient.stream.ZioInterop._`, then `stream.toZStream` - native on
+  `zio-http`; or the [ZIO services](docs/zio.md), which return `ZStream`s
+- Reactive Streams: `stream.toPublisher` (a `java.util.concurrent.Flow.Publisher`)
+
+See [Consuming a stream](docs/streaming.md#consuming-a-stream-akka-pekko-fs2-zio).
 
 ## Documentation 📚
 
@@ -175,16 +243,20 @@ same. See [Services and providers](docs/providers.md).
 | [Chat completions](docs/chat-completions.md) | Calls, JSON / structured output (schemas from case classes), failover, tools, reasoning effort, files and images |
 | [Responses API](docs/responses-api.md) | Inputs and images, file / web search, function calls, MCP, multi-agent execution |
 | [Agents API](docs/agents-api.md) | Durable cloud agents (beta): sessions, events, the chat adapter |
-| [Streaming](docs/streaming.md) | OpenAI-shaped and typed streams (`ChatChunk`), the frame cap, human approval mid-stream |
+| [Streaming](docs/streaming.md) | `AsyncStream` and consuming it from Akka, Pekko, fs2 or ZIO 🔥; OpenAI-shaped and typed streams (`ChatChunk`), the frame cap, human approval mid-stream |
 | [Decision models](docs/decision-models.md) | OpenAI's Decisions API, TypeSafe (Jev), Liquid (d1), Perplexity's decider, Microsoft-Decision-1, SubQ Snap, ScaleDown's Classify, Sarvam Prism, Bespoke's Nimble, OpenRouter, Vercel AI Gateway, llama.cpp; either API on either host, typed decisions, re-ranking, the models' execution time side by side |
 | [Adapters](docs/adapters.md) | Round robin, retry, logging, routing, batch processing, interception, guardrails |
-| [Sharing an HTTP engine](docs/http-engine.md) | One engine for many services and providers; timeouts and proxies |
+| [HTTP engines](docs/http-engine.md) | Choosing an engine - JDK by default; Akka, Pekko, ZIO, sttp 🔥; one engine for many services and providers; timeouts, proxy and HTTP version; embedding in an Akka, Pekko or ZIO application |
+| [ZIO services](docs/zio.md) 🔥 | `openai-scala-zio`: every service with ZIO `Task`s and `ZStream`s, and `ZLayer`s |
 | [Graders API](docs/graders-api.md) | Evaluating model outputs |
 | [Anthropic Managed Agents](docs/anthropic-managed-agents.md) | Server-hosted agents with tool-permission pauses |
 | [Claude Agent Client](docs/claude-agent-client.md) | The `claude` CLI as a subprocess transport |
 | [FAQ](docs/faq.md) | Timeouts, errors, the stream frame cap, ... |
+| [Migrating to 2.0](docs/migration-2.0.md) 🔥 | From 1.x: Futures-only, Akka, Pekko, fs2 and ZIO code; cold streams; logging; Materializer and Scheduler arguments; implementing the service traits; the guice module |
 
-Ready-to-run examples for everything above are in
+🔥 New in 2.0.0.
+
+Ready-to-run examples (on plain `Future`s and `AsyncStream`s) are in
 [openai-examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples); the release notes are in
 [CHANGELOG.md](./CHANGELOG.md).
 

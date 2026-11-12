@@ -61,7 +61,7 @@ object TypeSafeServiceFactory extends EnvHelper {
   import TypeSafeServiceConsts._
 
   /**
-   * A service on its own PRIVATE engine (HTTP client + actor system), closed with the service.
+   * A service on its own PRIVATE engine (its HTTP client), closed with the service.
    *
    * @param timeouts
    *   client-level timeouts (milliseconds); the official SDKs default to 10 s per attempt,
@@ -92,9 +92,9 @@ object TypeSafeServiceFactory extends EnvHelper {
 
   /**
    * A service on a CALLER-SUPPLIED, SITE-STATELESS engine - e.g. one shared with other
-   * providers via `WSClientEngineRegistry()` / `StreamedEngineRegistry.outputStreamed()` - so
-   * several services share one connection pool and actor system. Closing such a service does
-   * NOT close the shared engine; close the engine once, when done with all services using it.
+   * providers via `WSClientEngineRegistry()` / `WSClientEngineRegistry.outputStreamed()` - so
+   * several services share one engine and its connection pool. Closing such a service does NOT
+   * close the shared engine; close the engine once, when done with all services using it.
    * `longContext` as for [[apply(apiKey* apply]] (on by default).
    */
   def withEngine(

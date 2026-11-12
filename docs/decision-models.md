@@ -817,10 +817,11 @@ a rerank, the OpenAI interface with a system message. Latency grows with the que
 between requests (0.44-0.55). Its `GET /v1/models` answers any key and lists compress, extract and summarize too, left
 out by their output modalities; Extract and Summarize are chat-completion models, not integrated here.
 
-> **TLS 1.3 only.** ScaleDown's own host refuses TLS 1.2. The Play WS engine offers TLS 1.3 since ws-client 1.1.2 (the
-> JDK's default client protocols; before, its shaded AsyncHttpClient enabled only TLSv1.2 / 1.1 / 1 and the handshake
-> failed with "Received close_notify during handshake"). A JVM that pins the protocols - with
-> `play.shaded.ahc.org.asynchttpclient.enabledProtocols` or `jdk.tls.client.protocols` - must keep `TLSv1.3` in the list.
+> **TLS 1.3 only.** ScaleDown's own host refuses TLS 1.2. The default `jdk` engine offers TLS 1.3 (the JDK's default
+> client protocols, JDK 11+), and so do the Play engines since ws-client 1.1.2 (before, their shaded AsyncHttpClient
+> enabled only TLSv1.2 / 1.1 / 1 and the handshake failed with "Received close_notify during handshake"). A JVM that
+> pins the protocols - with `jdk.tls.client.protocols`, or `play.shaded.ahc.org.asynchttpclient.enabledProtocols` on a
+> Play engine - must keep `TLSv1.3` in the list.
 
 ## Decision-model providers 🧩
 

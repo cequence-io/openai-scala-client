@@ -579,7 +579,7 @@ Live walkthrough: [FailoverPolicySmokeTest](../openai-examples/src/main/scala/io
   See the `*WithFileContentAndPdf`, `*WithMultipleNamedPdfsAsFileContent`, and `*VLMSmokeTest` [examples](../openai-examples/src/main/scala/io/cequence/openaiscala/examples).
 
 - **Anthropic native streaming events** - besides the text-only `createMessageStreamed`, `AnthropicService.createMessageStreamedEvents`
-  returns a typed `Source[MessageStreamEvent, NotUsed]` with every SSE event (message start/delta/stop, content block
+  returns a typed `AsyncStream[MessageStreamEvent]` with every SSE event (message start/delta/stop, content block
   start/delta/stop incl. tool_use blocks, ping, usage), which the OpenAI adapter also uses to surface streamed tool calls and to build
   the typed `ChatChunk` stream. Note that Claude Opus 5 / Sonnet 5 / Fable 5.x default to `display = omitted` for thinking - set
   `ThinkingSettings.adaptiveSummarized` (or `thinking.withDisplay(ThinkingDisplay.summarized)`) to receive `thinking_delta` events on the

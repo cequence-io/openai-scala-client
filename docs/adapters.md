@@ -31,6 +31,20 @@ Note that the adapters can be arbitrarily combined/stacked.
   val service = adapters.randomOrder(service1, service2)
 ```
 
+- **Parallel** calls - `parallelTakeFirst` sends every call to all the services at once and completes with the first
+  to complete, its response or its failure. The full request reaches every provider, and the losing calls are not
+  cancelled: they complete, and are billed, anyway - only combine providers that may all see the data. 🔥 It needs no
+  `Materializer` since 2.0.0.
+
+```scala
+  val adapters = OpenAIServiceAdapters.forFullService
+
+  val service1 = OpenAIServiceFactory("your-api-key1")
+  val service2 = OpenAIServiceFactory("your-api-key2")
+
+  val service = adapters.parallelTakeFirst(service1, service2)
+```
+
 - **Logging** function calls
 
 ```scala
@@ -57,29 +71,43 @@ Note that the adapters can be arbitrarily combined/stacked.
     Some(println(_)) // simple logging
   )
 ```
-  `RetrySettings(jitterMs = Some(500))` adds random jitter to the back-off, and `includeExceptionMessage = true` on the `RetryHelpers` methods (`retry` / `retryOnFailure`, below) puts the failing exception's message into the retry log line.
+  `RetrySettings(jitterMs = Some(500))` adds random jitter to the back-off, and `includeExceptionMessage = true` on the retry adapter or the `RetryHelpers` methods (`retryOnFailure` / `retryOnFailureOrFailover`, below) puts the failing exception's message into the retry log line.
 - **Retry** on a specific function using [RetryHelpers](../openai-core/src/main/scala/io/cequence/openaiscala/RetryHelpers.scala) directly
  
 ```scala
-class MyCompletionService @Inject() (
-  val actorSystem: ActorSystem,
-  implicit val ec: ExecutionContext,
-  implicit val scheduler: Scheduler
-)(val apiKey: String)
-  extends RetryHelpers {
+import io.cequence.openaiscala.RetryHelpers
+import io.cequence.openaiscala.RetryHelpers.RetrySettings
+
+class MyCompletionService(apiKey: String)(
+  implicit ec: ExecutionContext
+) extends RetryHelpers {
   val service: OpenAIService = OpenAIServiceFactory(apiKey)
   implicit val retrySettings: RetrySettings =
     RetrySettings(interval = 10.seconds)
 
   def ask(prompt: String): Future[String] =
-    for {
-      completion <- service
-        .createChatCompletion(
-          List(UserMessage(prompt))
-        )
-        .retryOnFailure
-    } yield completion.choices.head.message.content
+    service
+      .createChatCompletion(
+        Seq(UserMessage(prompt))
+      )
+      .retryOnFailure()
+      .map(_.contentHead)
 }
+```
+
+  🔥 Retries need no `ActorSystem` since 2.0.0: the retry adapter, `RetryHelpers`, the failover and JSON helpers of
+  [chat completions](chat-completions.md#failover-policy) and the batch helpers (**Batch processing**, below) wait
+  between tries and polls on an implicit `AsyncScheduler` (`io.cequence.wsclient.concurrent`), whose default - one
+  daemon thread - is found without an import. To use a timer of your own, put an implicit `AsyncScheduler` in scope:
+  `AsyncScheduler.fromExecutor(executor)` over a `ScheduledExecutorService`, or, in an Akka or Pekko application, the
+  actor system's scheduler through `ActorSchedulers` (in `ws-client-core-akka` / `ws-client-core-pekko`; for Pekko the
+  implicit is an `org.apache.pekko.actor.Scheduler`):
+
+```scala
+  import io.cequence.wsclient.concurrent.ActorSchedulers._
+
+  // actorSystem: your application's own akka.actor.ActorSystem
+  implicit val actorScheduler: akka.actor.Scheduler = actorSystem.scheduler // retries now wait on it
 ```
 
 - **Route** chat completion calls based on models
@@ -267,6 +295,12 @@ class MyCompletionService @Inject() (
 - **Input/output transformation** - `chatCompletionInput()` and `chatCompletionOutput()` adapters
   for transforming messages/settings on input or assistant messages on output.
   See [examples](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/adapters).
+  For a streamed service, [OpenAIChatCompletionIOConversionAdapter](../openai-client-stream/src/main/scala/io/cequence/openaiscala/service/OpenAIChatCompletionIOConversionAdapter.scala)
+  (`openai-scala-client-stream`) applies the same input conversions and converts the streams' output with 🔥
+  `AsyncPipe`s: `outputChunkMessageConversion` for the OpenAI-shaped chunks' deltas, which must be 1:1 (one output per
+  input, in order - a pipe that emits more fails the stream, one that drops elements misaligns them), and
+  `outputChatChunkConversion` for the typed chunks. An Akka or Pekko `Flow` becomes a pipe with `.toAsyncPipe`
+  (`io.cequence.wsclient.stream.SourceInterop._`, with an implicit `Materializer`) and runs natively on its backend.
 
 - **Guardrails** - `guardrails(input, output, ...)` checks a chat call's messages before it is made and its replies before
   they are returned. A [ModelGuardrail](../openai-core/src/main/scala/io/cequence/openaiscala/service/guardrails/ModelGuardrail.scala)
@@ -318,7 +352,8 @@ class MyCompletionService @Inject() (
   guard.checkInput(Seq(UserMessage(question))).map(verdict => verdict.violation)
 ```
 
-  **Streams** - `guardrailsWithStreaming` starts a stream only once its input passed. With output guardrails, the
+  **Streams** - `guardrailsWithStreaming` starts a stream only once its input passed - checked when the stream is run,
+  on every run. With output guardrails, the
   reply is held back until the stream finishes, checked once, then released - so no unchecked text reaches the
   consumer, and `outputReprompts` works as without streaming. The check covers everything the stream releases: the
   answer, reasoning (Thinking / `reasoning_content`), refusals, server-side tool output, citations and further choices
@@ -351,7 +386,7 @@ class MyCompletionService @Inject() (
 
   streamingService
     .createChatCompletionStreamedTyped(messages, settings)
-    .runWith(Sink.foreach(println))
+    .runForeach(println)
 ```
 
   See [GuardrailsSmokeTest](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/guardrails/GuardrailsSmokeTest.scala)

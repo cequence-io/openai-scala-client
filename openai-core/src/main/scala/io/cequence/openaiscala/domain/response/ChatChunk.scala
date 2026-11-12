@@ -33,7 +33,7 @@ import scala.concurrent.{ExecutionContext, Future}
  *     [[ChatChunk.Refusal]]. Consumers pick the layer they want; [[AssembledChatCompletion]]
  *     keeps them in separate collections, so nothing is double counted.
  *
- * Use [[ChatChunk.ChatChunkSourceOps.assembled]] to fold a stream into an
+ * Use [[ChatChunk.ChatChunkStreamOps.assembled]] to fold a stream into an
  * [[AssembledChatCompletion]].
  *
  * Anything a provider sends that is not modeled here is passed through as [[ChatChunk.Other]]
