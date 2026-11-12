@@ -54,17 +54,29 @@ object ZioServiceGenerator {
   ): Seq[File] = {
     val serviceNames = inputs.collect { case ServiceTrait(_, name) => name }.toSet
 
-    inputs.map { input =>
+    val parsed = inputs.map { input =>
       val text = new String(Files.readAllBytes(input.file.toPath), StandardCharsets.UTF_8)
-      val source = dialects.Scala213(text).parse[Source].get
+      (input, text, dialects.Scala213(text).parse[Source].get)
+    }
+
+    val closeable = closeableServices(parsed.collect {
+      case (ServiceTrait(file, name), _, source) =>
+        name -> serviceTrait(source, name, file).templ.inits.map(_.tpe.syntax)
+    }.toMap)
+
+    parsed.map { case (input, text, source) =>
       val (pkg, imports) = packageAndImports(source)
 
       val generated = input match {
-        case ServiceTrait(_, name) =>
-          val defn = source.collect {
-            case t: Defn.Trait if t.name.value == name => t
-          }.headOption.getOrElse(sys.error(s"trait $name not found in ${input.file}"))
-          serviceTraitFile(pkg, imports, defn, text, serviceNames)
+        case ServiceTrait(file, name) =>
+          serviceTraitFile(
+            pkg,
+            imports,
+            serviceTrait(source, name, file),
+            text,
+            serviceNames,
+            closeable(name)
+          )
 
         case Extension(_, objectName, className) =>
           val obj = source.collect {
@@ -95,12 +107,39 @@ object ZioServiceGenerator {
 
   // ------------------------------------------------------------------------ service traits
 
+  private def serviceTrait(
+    source: Source,
+    name: String,
+    file: File
+  ): Defn.Trait =
+    source.collect {
+      case t: Defn.Trait if t.name.value == name => t
+    }.headOption.getOrElse(sys.error(s"trait $name not found in $file"))
+
+  /**
+   * The services whose view closes something: those extending `CloseableService`, directly or
+   * through a service parent - the chain the generated delegates follow (a view of any other
+   * service has a `close` that does nothing, so it gets no `layer`).
+   */
+  private def closeableServices(parents: Map[String, Seq[String]]): Set[String] = {
+    def closes(
+      name: String,
+      seen: Set[String]
+    ): Boolean =
+      parents.getOrElse(name, Nil).exists { parent =>
+        parent == "CloseableService" || (!seen(parent) && closes(parent, seen + name))
+      }
+
+    parents.keySet.filter(closes(_, Set.empty))
+  }
+
   private def serviceTraitFile(
     pkg: String,
     imports: Seq[String],
     defn: Defn.Trait,
     text: String,
-    serviceNames: Set[String]
+    serviceNames: Set[String],
+    closeable: Boolean
   ): String = {
     val name = defn.name.value
     val parents = defn.templ.inits.map(_.tpe.syntax)
@@ -130,6 +169,26 @@ object ZioServiceGenerator {
     val delegateBody = methods.map { case (m, g) =>
       s"  override def ${g.signature(false)}: ${g.resultType} =\n    ${g.body("asFuture", "zioRuntime")}\n"
     }.mkString("\n")
+
+    val layer =
+      if (closeable)
+        s"""
+  /**
+   * A layer of the ZIO view of the service `create` builds (on acquisition), closed with the
+   * layer's scope - e.g. `layer(() => OpenAIServiceFactory())` (a function, not a by-name
+   * parameter: ZIO's `provide` macro cannot take a by-name call).
+   */
+  def layer(create: () => $name): _root_.zio.ZLayer[Any, Throwable, ${name}ZIO] =
+    _root_.zio.ZLayer.scoped(
+      _root_.zio.ZIO.acquireRelease(
+        _root_.zio.ZIO.runtime[Any].flatMap(runtime =>
+          _root_.zio.ZIO.attempt(apply(create())(runtime))
+        )
+      )(_.close)
+    )
+"""
+      else
+        ""
 
     val extendsClause = " extends " + zioParents.mkString(" with ")
     val delegateExtends = (s"${name}ZIO" +: delegateParents).mkString(" with ")
@@ -168,21 +227,7 @@ object ${name}ZIO {
       override val asFuture: $name = service
       override val zioRuntime: _root_.zio.Runtime[Any] = runtime
     }
-
-  /**
-   * A layer of the ZIO view of the service `create` builds (on acquisition), closed with the
-   * layer's scope - e.g. `layer(() => OpenAIServiceFactory())` (a function, not a by-name
-   * parameter: ZIO's `provide` macro cannot take a by-name call).
-   */
-  def layer(create: () => $name): _root_.zio.ZLayer[Any, Throwable, ${name}ZIO] =
-    _root_.zio.ZLayer.scoped(
-      _root_.zio.ZIO.acquireRelease(
-        _root_.zio.ZIO.runtime[Any].flatMap(runtime =>
-          _root_.zio.ZIO.attempt(apply(create())(runtime))
-        )
-      )(_.close)
-    )
-}
+$layer}
 """
   }
 
