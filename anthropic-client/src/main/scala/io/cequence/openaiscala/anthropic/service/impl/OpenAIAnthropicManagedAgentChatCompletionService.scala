@@ -62,7 +62,7 @@ import io.cequence.openaiscala.service.{
 import org.slf4j.LoggerFactory
 import play.api.libs.json.{JsNull, JsObject, JsValue, Json}
 
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import java.{util => ju}
 import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
@@ -220,10 +220,12 @@ private[service] class OpenAIAnthropicManagedAgentChatCompletionService(
       def turnStream = turn.map { case (sessionId, events, answered) =>
         // paused: the turn ended waiting for confirmations (set once they are resolved);
         // pauseUnresolved: it ended waiting, but looking the pending calls up failed (I/O);
-        // sent: the outcome of the POST carrying this turn's events (kickoff / confirmations)
+        // sent: the outcome of the POST carrying this turn's events (kickoff / confirmations);
+        // claimed: who completes `sent` - the POST, or the report that it was never sent
         val paused = new AtomicBoolean(false)
         val pauseUnresolved = new AtomicBoolean(false)
         val sent = Promise[Unit]()
+        val claimed = new AtomicBoolean(false)
         val resuming = decisions.nonEmpty
 
         val answeredCalls = answered.zipWithIndex.flatMap { case (request, index) =>
@@ -267,7 +269,8 @@ private[service] class OpenAIAnthropicManagedAgentChatCompletionService(
           sessionId,
           events,
           confirmed = answered.map(_.requestId).toSet,
-          sent = sent
+          sent = sent,
+          claimed = claimed
         ).statefulMapConcat { () =>
           val mapper = new TypedTurnMapper(sessionId, answered)
           mapper.map _
@@ -289,9 +292,13 @@ private[service] class OpenAIAnthropicManagedAgentChatCompletionService(
           case None => cleanupOnce().map(_ => Nil)
         }.mapConcat(identity)
 
-        // a failed or cancelled run cleans up too, without holding the signal back
+        // a failed or cancelled run cleans up too, without holding the signal back - also one
+        // that ended before its event stream opened (e.g. a consumer taking only `Start`): the
+        // events were never sent, which the cleanup must know, or it waits for them forever
         (AsyncStream.single[ChatChunk](ChatChunk.Start(sessionId, settings.model)) ++
           AsyncStream.fromIterable(answeredCalls.toList) ++ chunks).onTerminate { _ =>
+          if (claimed.compareAndSet(false, true))
+            sent.tryFailure(notSent(sessionId))
           cleanupOnce()
           ()
         }
@@ -754,45 +761,61 @@ private[service] class OpenAIAnthropicManagedAgentChatCompletionService(
   // Turn execution - session event stream
   // ---------------------------------------------------------------------------
 
+  // the states of a turn's subscription (see turnEventSource)
+  private val SubscriptionWaiting = 0
+  private val SubscriptionOpened = 1
+  private val SubscriptionEnded = 2
+
+  private def notSent(sessionId: String): OpenAIScalaClientException =
+    new OpenAIScalaClientException(
+      s"The events of managed-agent session '$sessionId' were not sent: the run ended before its event stream was subscribed."
+    )
+
   /**
    * Events of one turn: the SSE stream is subscribed, then the kickoff events are sent
    * alongside it (once per run; `sent` gets the POST's outcome - a failure when the run ended
-   * before the subscription, which sent nothing), and the stream completes at the first
-   * terminal event (idle / terminated / error). The session delivers only to a live
-   * subscription, so the POST waits for it - a POST racing the subscription lost the events it
-   * caused. A kickoff-send failure aborts the stream; so does an event stream that closes
-   * before the turn ended.
+   * before the subscription, which sent nothing; `claimed` decides which of the two completes
+   * it), and the stream completes at the first terminal event (idle / terminated / error). The
+   * session delivers only to a live subscription, so the POST waits for it - a POST racing the
+   * subscription lost the events it caused. A kickoff-send failure aborts the stream; so does
+   * an event stream that closes before the turn ended.
    */
   private def turnEventSource(
     sessionId: String,
     kickoffEvents: Seq[SessionEvent],
     confirmed: Set[String] = Set.empty,
-    sent: Promise[Unit] = Promise[Unit]()
+    sent: Promise[Unit] = Promise[Unit](),
+    claimed: AtomicBoolean = new AtomicBoolean(false)
   ): AsyncStream[SessionEventEnvelope] =
     AsyncStream.defer {
-      // the POST, or - when the run ends first - the report that nothing was sent: exactly one
-      val claimed = new AtomicBoolean(false)
+      // the subscription is preflighted - it holds its connection until it is run or
+      // cancelled: one this run never opened (the run ended first) is cancelled on arrival
+      val subscription = new AtomicInteger(SubscriptionWaiting)
+      val subscribed = underlying.subscribeSessionEvents(sessionId)
 
       AsyncStream
         .futureStream(
-          underlying
-            .subscribeSessionEvents(sessionId)
-            .map(_.concurrently { () =>
-              if (claimed.compareAndSet(false, true)) {
-                val posted = underlying.sendSessionEvents(sessionId, kickoffEvents)
-                posted.onComplete(result => sent.tryComplete(result.map(_ => ())))
-                posted
-              } else
-                Future.successful(())
-            })
+          subscribed.map { events =>
+            AsyncStream.defer {
+              if (subscription.compareAndSet(SubscriptionWaiting, SubscriptionOpened))
+                events.concurrently { () =>
+                  if (claimed.compareAndSet(false, true)) {
+                    val posted = underlying.sendSessionEvents(sessionId, kickoffEvents)
+                    posted.onComplete(result => sent.tryComplete(result.map(_ => ())))
+                    posted
+                  } else
+                    Future.successful(())
+                }
+              else
+                AsyncStream.empty
+            }
+          }
         )
         .onTerminate { _ =>
+          if (subscription.getAndSet(SubscriptionEnded) == SubscriptionWaiting)
+            subscribed.foreach(_.run(_ => ()).cancel())
           if (claimed.compareAndSet(false, true))
-            sent.tryFailure(
-              new OpenAIScalaClientException(
-                s"The events of managed-agent session '$sessionId' were not sent: the run ended before its event stream was subscribed."
-              )
-            )
+            sent.tryFailure(notSent(sessionId))
           ()
         }
     }.takeWhile(envelope => !isTerminal(envelope, confirmed), inclusive = true)

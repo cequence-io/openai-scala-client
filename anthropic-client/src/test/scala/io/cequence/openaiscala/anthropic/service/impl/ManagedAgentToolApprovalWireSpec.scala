@@ -25,9 +25,17 @@ import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.wordspec.AnyWordSpec
 import play.api.libs.json.{JsObject, Json}
 
+import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
-import java.util.concurrent.{CopyOnWriteArrayList, Executors, LinkedBlockingQueue, TimeUnit}
+import java.util.concurrent.{
+  CopyOnWriteArrayList,
+  CountDownLatch,
+  Executors,
+  LinkedBlockingQueue,
+  TimeUnit
+}
+import scala.annotation.tailrec
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
@@ -64,6 +72,10 @@ class ManagedAgentToolApprovalWireSpec
   @volatile private var postedWithoutSubscriber = false
   @volatile private var failConfirmations = false
   @volatile private var failHistory = false
+  // the late-subscription case: ": connected." held back, then heartbeats until the client goes
+  @volatile private var connectDelayMs = 0L
+  @volatile private var heartbeats = false
+  @volatile private var clientGone = new CountDownLatch(1)
 
   private val server = HttpServer.create(new InetSocketAddress("localhost", 0), 0)
   private lazy val coreUrl = s"http://localhost:${server.getAddress.getPort}/"
@@ -120,15 +132,20 @@ class ManagedAgentToolApprovalWireSpec
               // subscribed first, then announced - as the live API's ": connected." comment
               val queue = new LinkedBlockingQueue[Seq[JsObject]]()
               subscribers.add(queue)
+              if (connectDelayMs > 0)
+                Thread.sleep(connectDelayMs)
               out.write(": connected.\n\n".getBytes(StandardCharsets.UTF_8))
               out.flush()
               try
-                Option(queue.poll(10, TimeUnit.SECONDS)).getOrElse(Nil).foreach { event =>
-                  out.write(
-                    s"data: ${Json.stringify(event)}\n\n".getBytes(StandardCharsets.UTF_8)
-                  )
-                  out.flush()
-                }
+                if (heartbeats)
+                  heartbeat(out, System.currentTimeMillis() + 10000)
+                else
+                  Option(queue.poll(10, TimeUnit.SECONDS)).getOrElse(Nil).foreach { event =>
+                    out.write(
+                      s"data: ${Json.stringify(event)}\n\n".getBytes(StandardCharsets.UTF_8)
+                    )
+                    out.flush()
+                  }
               finally subscribers.remove(queue)
               exchange.close()
 
@@ -189,7 +206,30 @@ class ManagedAgentToolApprovalWireSpec
   // as `assembled` (a one-element stream, its head - a NoSuchElementException if empty), run
   // through the selected consumer
   private def assemble(stream: AsyncStream[ChatChunk]): AssembledChatCompletion =
-    runStreamTake(stream.via(ChatChunk.assembleSink), 1, 20.seconds).head
+    runStreamHead(stream.via(ChatChunk.assembleSink), 20.seconds)
+
+  // a heartbeat comment every 100 ms until the deadline, or until a write fails - the client
+  // closed its connection
+  @tailrec
+  private def heartbeat(
+    out: java.io.OutputStream,
+    deadline: Long
+  ): Unit =
+    if (System.currentTimeMillis() < deadline) {
+      Thread.sleep(100)
+      val written =
+        try {
+          out.write(": heartbeat\n\n".getBytes(StandardCharsets.UTF_8))
+          out.flush()
+          true
+        } catch {
+          case _: IOException => false
+        }
+      if (written)
+        heartbeat(out, deadline)
+      else
+        clientGone.countDown()
+    }
 
   private def reset(): Unit = {
     posted = Nil
@@ -285,6 +325,33 @@ class ManagedAgentToolApprovalWireSpec
   }
 
   "the managed-agent typed stream" should {
+
+    "delete the session of a turn whose consumer took only its Start" in {
+      reset(); script = _ => Seq(agentMessage("unseen"), idleEndTurn)
+
+      val start =
+        runStreamTake(service.createChatCompletionStreamedTyped(messages, settings), 1)
+
+      start.headOption.map(_.getClass) shouldBe Some(classOf[ChatChunk.Start])
+      eventually(deleted shouldBe Seq(sessionId))
+    }
+
+    // a run handle is needed to cancel mid-subscription, so this one runs the stream directly
+    "release a subscription that arrives after its run was cancelled" in {
+      reset(); script = _ => Nil
+      connectDelayMs = 600; heartbeats = true; clientGone = new CountDownLatch(1)
+      try {
+        val run = service.createChatCompletionStreamedTyped(messages, settings).run(_ => ())
+        Thread.sleep(200) // the subscription waits for ": connected." yet
+        run.cancel()
+
+        // the late subscription is cancelled on arrival: the server's heartbeats stop reaching it
+        clientGone.await(5, TimeUnit.SECONDS) shouldBe true
+      } finally {
+        connectDelayMs = 0
+        heartbeats = false
+      }
+    }
 
     "pause on a call awaiting confirmation and keep the session" in {
       reset(); script = pauseThenFinish
