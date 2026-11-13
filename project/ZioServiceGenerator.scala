@@ -179,24 +179,19 @@ object ZioServiceGenerator {
    * parameter: ZIO's `provide` macro cannot take a by-name call).
    */
   def layer(create: () => $name): _root_.zio.ZLayer[Any, Throwable, ${name}ZIO] =
-    _root_.zio.ZLayer.scoped(
-      _root_.zio.ZIO.acquireRelease(
-        _root_.zio.ZIO.runtime[Any].flatMap(runtime =>
-          _root_.zio.ZIO.attempt(apply(create())(runtime))
-        )
-      )(_.close)
-    )
+    layerFromZIO(_root_.zio.ZIO.attempt(create()))
 
   /**
    * A layer of the ZIO view of the service the effect `create` builds (on acquisition) - e.g.
-   * on an engine from the environment - closed with the layer's scope.
+   * on an engine from the environment - closed with the layer's scope. A factory that throws
+   * inside `create` (even in a pure `map` / `serviceWith`) fails the layer, not a defect.
    */
   def layerFromZIO[R](
     create: _root_.zio.ZIO[R, Throwable, $name]
   ): _root_.zio.ZLayer[R, Throwable, ${name}ZIO] =
     _root_.zio.ZLayer.scoped[R](
       _root_.zio.ZIO.acquireRelease(
-        create.flatMap(service => _root_.zio.ZIO.runtime[Any].map(apply(service)(_)))
+        create.absorb.flatMap(service => _root_.zio.ZIO.runtime[Any].map(apply(service)(_)))
       )(_.close)
     )
 """

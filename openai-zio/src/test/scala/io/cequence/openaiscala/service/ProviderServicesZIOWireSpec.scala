@@ -278,6 +278,27 @@ class ProviderServicesZIOWireSpec extends AnyWordSpec with Matchers with BeforeA
     }
   }
 
+  "a view's layerFromZIO" should {
+
+    "fail the layer, not die, when the service factory throws inside the effect" in {
+      val missingKey = new IllegalStateException("No API key configured")
+      val exit = runExit(
+        ZIO
+          .serviceWith[TypeSafeServiceZIO](_.defaultModel)
+          .provide(
+            TypeSafeServiceZIO.layerFromZIO(ZIO.succeed[TypeSafeService](throw missingKey))
+          )
+      )
+
+      exit match {
+        case Exit.Failure(cause) =>
+          cause.failureOption shouldBe Some(missingKey)
+        case Exit.Success(model) =>
+          fail(s"Expected the layer to fail, got $model")
+      }
+    }
+  }
+
   "the Claude agent view" should {
 
     "report readiness and carry a turn's events on its hot ZStream" in {

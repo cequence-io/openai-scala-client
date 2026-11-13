@@ -43,15 +43,12 @@ object OpenAIStreamedServiceZIO {
   def layer(
     create: () => OpenAIService with OpenAIStreamedServiceExtra
   ): ZLayer[Any, Throwable, OpenAIStreamedServiceZIO] =
-    ZLayer.scoped(
-      ZIO.acquireRelease(
-        ZIO.runtime[Any].flatMap(runtime => ZIO.attempt(apply(create())(runtime)))
-      )(_.close)
-    )
+    layerFromZIO(ZIO.attempt(create()))
 
   /**
    * A layer of the ZIO view of the service the effect `create` builds (on acquisition) - e.g.
-   * on an engine from the environment - closed with the layer's scope:
+   * on an engine from the environment - closed with the layer's scope. A factory that throws
+   * inside `create` (even in a pure `map` / `serviceWith`) fails the layer, not a defect:
    * {{{
    * OpenAIStreamedServiceZIO.layerFromZIO(
    *   for {
@@ -66,7 +63,7 @@ object OpenAIStreamedServiceZIO {
   ): ZLayer[R, Throwable, OpenAIStreamedServiceZIO] =
     ZLayer.scoped[R](
       ZIO.acquireRelease(
-        create.flatMap(service => ZIO.runtime[Any].map(apply(service)(_)))
+        create.absorb.flatMap(service => ZIO.runtime[Any].map(apply(service)(_)))
       )(_.close)
     )
 }
