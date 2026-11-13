@@ -72,11 +72,14 @@ jobs:
       - name: Build & Test
         run: sbt ++${{ matrix.scala }} "project ${{ matrix.line }}" clean ${{ matrix.task }}
 
-      - name: Upload coverage report (all)
+      # scoverage writes a report per module (<module>/target/scala-<binary>/scoverage-report)
+      - name: Upload coverage reports
+        if: matrix.task == 'testWithCoverage'
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report-${{ matrix.scala }}
-          path: ${{github.workspace}}/target/scala-${{ matrix.scala }}/coverage-report
+          path: '**/target/scala-*/scoverage-report/'
+          if-no-files-found: error
 
   engine-matrix:
     name: Engine Matrix
@@ -148,15 +151,14 @@ jobs:
       matrix:
         distribution: [ 'corretto' ]
         jdk: [ '11' ]
-        scala: [ '2.12.18', '2.13.18', '3.2.2']
+        # 3.2.2 is not repeated here: Build & Test runs it uninstrumented, the same build
+        scala: [ '2.12.18', '2.13.18' ]
         experimental: [ false ]
         include:
           - scala: '2.12.18'
             line: 'ci_scala212'
           - scala: '2.13.18'
             line: 'ci_scala213'
-          - scala: '3.2.2'
-            line: 'ci_scala3'
           - jdk: '17'
             distribution: 'corretto'
             scala: '2.13.18'

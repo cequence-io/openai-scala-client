@@ -102,12 +102,18 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       EndPoint.messages,
       bodyParams = bodyParams,
       // message-feature betas + skill headers if a container (with skills) is passed
-      extraHeaders =
-        betaHeaders(messageBetas ++ (if (settings.container.isDefined) skillBetas else Nil))
+      extraHeaders = betaHeaders(messageBetas ++ containerBetas(settings))
     ).map(
       _.asSafeJson[CreateMessageResponse]
     )
   }
+
+  // a container (with skills) needs the skills beta
+  private def containerBetas(settings: AnthropicCreateMessageSettings): Seq[String] =
+    if (settings.container.isDefined)
+      skillBetas
+    else
+      Nil
 
   private def streamMessageEvents(
     messages: Seq[Message],
@@ -121,8 +127,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
       // a frame carries a whole content block start - a server-tool result such as
       // `web_search_tool_result` (21 KB live on 2026-09-10) or a fetched document can be
       // large, hence the shared StreamingConsts.maxFrameLength (ws-client's default is 20 KB)
-      extraHeaders =
-        betaHeaders(messageBetas ++ (if (settings.container.isDefined) skillBetas else Nil))
+      extraHeaders = betaHeaders(messageBetas ++ containerBetas(settings))
     ).map(parseStreamEvent)
   }
 

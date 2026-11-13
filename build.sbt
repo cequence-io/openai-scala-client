@@ -399,26 +399,25 @@ def matrixSettings(
     ) ++ expectedBridges.map(n => s"-Dopenai.test.expectedBridges=$n")
   )
 
-// the specs of the stream modules, run by every matrix project but the no-stream one
-lazy val matrixSpecs = Test / definedTests ++= Seq(
-  (core / Test / definedTests).value,
-  (client_stream / Test / definedTests).value,
-  (anthropic_client / Test / definedTests).value,
-  (google_gemini_client / Test / definedTests).value,
-  (google_vertexai_client / Test / definedTests).value,
-  (perplexity_sonar_client / Test / definedTests).value,
-  (claude_agent_client / Test / definedTests).value
-).flatten
-
-lazy val matrixModules: Seq[ClasspathDep[ProjectReference]] = Seq(
-  core % "test->test",
-  client_stream % "test->test",
-  anthropic_client % "test->test",
-  google_gemini_client % "test->test",
-  google_vertexai_client % "test->test",
-  perplexity_sonar_client % "test->test",
-  claude_agent_client % "test->test"
+// the stream modules every matrix project but the no-stream one runs the specs of - ONE list for
+// both the `test->test` dependencies and the specs (a module in only one would run nothing)
+lazy val matrixStreamModules: Seq[ProjectReference] = Seq(
+  core,
+  client_stream,
+  anthropic_client,
+  google_gemini_client,
+  google_vertexai_client,
+  perplexity_sonar_client,
+  claude_agent_client
 )
+
+def matrixDependencies(modules: Seq[ProjectReference]): Seq[ClasspathDep[ProjectReference]] =
+  modules.map(_ % "test->test")
+
+def matrixSpecs(modules: Seq[ProjectReference]): Setting[_] = {
+  val ofModules = ScopeFilter(inProjects(modules *), inConfigurations(Test))
+  Test / definedTests ++= definedTests.all(ofModules).value.flatten
+}
 
 lazy val matrix_akka = (project in file("openai-matrix/akka"))
   .settings(
@@ -427,10 +426,10 @@ lazy val matrix_akka = (project in file("openai-matrix/akka"))
       crossScalaVersions := List(scala212, scala213, scala3),
       libraryDependencies +=
         "io.cequence" %% "ws-client-play-akka-stream" % Dependencies.Versions.wsClient % Test,
-      matrixSpecs
+      matrixSpecs(matrixStreamModules)
     )) *
   )
-  .dependsOn(matrixModules *)
+  .dependsOn(matrixDependencies(matrixStreamModules) *)
 
 // Pekko's engines are built for Scala 2.13 and 3.3 only; no Akka flavour on this classpath
 lazy val matrix_pekko = (project in file("openai-matrix/pekko"))
@@ -442,10 +441,10 @@ lazy val matrix_pekko = (project in file("openai-matrix/pekko"))
         "io.cequence" %% "ws-client-play-pekko-stream" % Dependencies.Versions.wsClient % Test,
         "io.cequence" %% "ws-client-pekko-http" % Dependencies.Versions.wsClient % Test
       ),
-      matrixSpecs
+      matrixSpecs(matrixStreamModules)
     )) *
   )
-  .dependsOn(matrixModules *)
+  .dependsOn(matrixDependencies(matrixStreamModules) *)
 
 // zio-http publishes no Scala 3 artifacts for ws-client's line
 lazy val matrix_zio = (project in file("openai-matrix/zio"))
@@ -455,13 +454,15 @@ lazy val matrix_zio = (project in file("openai-matrix/zio"))
       crossScalaVersions := List(scala212, scala213),
       libraryDependencies +=
         "io.cequence" %% "ws-client-zio-http" % Dependencies.Versions.wsClient % Test,
-      matrixSpecs,
-      Test / definedTests ++= (zio / Test / definedTests).value
+      matrixSpecs(matrixStreamModules :+ (zio: ProjectReference))
     )) *
   )
   // the zio module's specs need its `provided` provider modules (typesafe-client is no stream
-  // module, so not in matrixModules)
-  .dependsOn((matrixModules ++ Seq(zio % "test->test", typesafe_client % Test)) *)
+  // module, so not in matrixStreamModules)
+  .dependsOn(
+    (matrixDependencies(matrixStreamModules :+ (zio: ProjectReference)) :+
+      (typesafe_client % Test)) *
+  )
 
 // fs2 / cats-effect publish Scala 3 artifacts for 3.3+ only; on the jdk engine a run crosses one
 // bridge per HTTP response, so no expectation is set here
@@ -472,10 +473,10 @@ lazy val matrix_fs2 = (project in file("openai-matrix/fs2"))
       crossScalaVersions := List(scala212, scala213),
       libraryDependencies +=
         "io.cequence" %% "ws-client-fs2" % Dependencies.Versions.wsClient % Test,
-      matrixSpecs
+      matrixSpecs(matrixStreamModules)
     )) *
   )
-  .dependsOn(matrixModules *)
+  .dependsOn(matrixDependencies(matrixStreamModules) *)
 
 // engines without output streaming (sttp, play-akka): its own spec only - the clear capability
 // error, sync calls, binary-safe buffered downloads

@@ -16,11 +16,11 @@ import io.cequence.openaiscala.service.StreamedServiceTypes.OpenAIStreamedServic
 import io.cequence.wsclient.domain.WsRequestContext
 import io.cequence.wsclient.service.spi.{TransportSettings, WSClientEngineRegistry}
 
-import java.io.{BufferedOutputStream, File, FileOutputStream}
+import java.io.{BufferedOutputStream, File, FileOutputStream, OutputStream}
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
-import java.util.concurrent.Executors
-import java.util.concurrent.atomic.{AtomicBoolean, AtomicLong}
+import java.util.concurrent.{Executors, TimeUnit}
+import java.util.concurrent.atomic.AtomicLong
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
@@ -77,7 +77,12 @@ object EngineEnduranceSmokeTest {
            Nil)
 
     outcomes.foreach { o =>
-      println(s"${if (o.passed) "PASS" else "FAIL"}  ${o.check}: ${o.detail}")
+      val verdict =
+        if (o.passed)
+          "PASS"
+        else
+          "FAIL"
+      println(s"$verdict  ${o.check}: ${o.detail}")
     }
     System.exit(
       if (outcomes.nonEmpty && outcomes.forall(_.passed))
@@ -172,35 +177,35 @@ object EngineEnduranceSmokeTest {
     file.deleteOnExit()
     writeText(file, UploadBytes)
 
+    def usedHeap = Runtime.getRuntime.totalMemory() - Runtime.getRuntime.freeMemory()
     val peak = new AtomicLong(0)
-    val sampling = new AtomicBoolean(true)
-    val sampler = new Thread(() =>
-      while (sampling.get) {
-        val runtime = Runtime.getRuntime
+    System.gc()
+    val before = usedHeap
+    // the heap sampled every 20 ms while the upload runs
+    val sampler = Executors.newSingleThreadScheduledExecutor()
+    sampler.scheduleAtFixedRate(
+      () =>
         peak.accumulateAndGet(
-          runtime.totalMemory() - runtime.freeMemory(),
+          usedHeap,
           (
             a: Long,
             b: Long
           ) => math.max(a, b)
-        )
-        Thread.sleep(20)
-      }
+        ): Unit,
+      0,
+      20,
+      TimeUnit.MILLISECONDS
     )
-    sampler.setDaemon(true)
-    System.gc()
-    val before = Runtime.getRuntime.totalMemory() - Runtime.getRuntime.freeMemory()
-    sampler.start()
 
     val start = System.nanoTime()
     val result = Try(
       Await.result(
-        service.uploadFile(file, Some(file.getName), FileUploadPurpose.assistants),
+        service.uploadFile(file, Option(file.getName), FileUploadPurpose.assistants),
         10.minutes
       )
     )
     val took = (System.nanoTime() - start).nanos
-    sampling.set(false)
+    sampler.shutdownNow()
     file.delete()
     result.foreach(info => Try(Await.result(cleanUp(info.id), 1.minute)))
 
@@ -299,12 +304,8 @@ object EngineEnduranceSmokeTest {
       .getBytes(StandardCharsets.UTF_8)
     val out = new BufferedOutputStream(new FileOutputStream(file), 1 << 20)
     try {
-      var written = 0L
-      while (written < bytes) {
-        val n = math.min(line.length.toLong, bytes - written).toInt
-        out.write(line, 0, n)
-        written += n
-      }
+      (0L until bytes / line.length).foreach(_ => out.write(line))
+      out.write(line, 0, (bytes % line.length).toInt)
     } finally out.close()
   }
 
@@ -369,14 +370,7 @@ object EngineEnduranceSmokeTest {
         "/v1/files",
         new HttpHandler {
           override def handle(exchange: HttpExchange): Unit = {
-            val in = exchange.getRequestBody
-            val buffer = new Array[Byte](1 << 16)
-            var total = 0L
-            var read = in.read(buffer)
-            while (read != -1) {
-              total += read
-              read = in.read(buffer)
-            }
+            val total = exchange.getRequestBody.transferTo(OutputStream.nullOutputStream())
             val json =
               s"""{"id":"file-local","object":"file","bytes":$total,"created_at":1700000000,"filename":"upload.txt","purpose":"assistants","status":"processed"}"""
             val bytes = json.getBytes(StandardCharsets.UTF_8)

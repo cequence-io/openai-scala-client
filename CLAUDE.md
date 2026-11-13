@@ -625,6 +625,9 @@ Streaming is provided as an extension via the `openai-client-stream` module:
     (`subscribeSessionEvents` - a preflight completing on the server's `: connected.` frame, native on Akka / Pekko /
     ZIO engines): the session delivers only to a live subscription, and on 2.0's cold streams a POST sent alongside
     the GET raced it (lost the turn's events on the Play WS engine - found by `matrix_akka`, 2026-11-12).
+    A run that ends before its subscription opened (a consumer taking only `Start`, a timeout) cancels the
+    subscription when it arrives and reports the events unsent, so the turn's session is still deleted
+    (review fix 2026-11-13: the session leaked, and a late subscription held its connection open).
   - Everything else refuses rather than silently misbehaving: adapters / entry points that cannot resume refuse a call
     carrying decisions (`ToolApprovalSettingsOps.refusingDecisions`: Anthropic Messages / Bedrock, Gemini, Vertex AI,
     Sonar, TypeSafe, the OpenAI chat-only services, `createChatFunCompletion`, `createChatWebSearchCompletion`,
@@ -944,9 +947,9 @@ Distilled (2026-11) from the Scala Style Guide, the Scala 3 Book, "Binary Compat
   (`neutral`, the default; the matrix projects register `akka` / `pekko` / `zio` / `fs2` runners via `ServiceLoader`);
   with `-Dopenai.test.expectedBridges=<n>` every such run also asserts its bridge count. Wire specs take their engine
   from `TestEngines` (a spec pinning one backend names it, e.g. zio-http) and run EVERY stream through
-  `StreamSpecSupport` (since 2026-11-12: ~200 sites in 46 specs - a direct `.runToSeq` would always run neutral and
+  `StreamSpecSupport` (since 2026-11-12: ~140 call sites in 43 specs, more through local helpers - a direct `.runToSeq` would always run neutral and
   escape the matrix); no spec builds an ActorSystem or uses Akka's TestKit.
-- **Engine x consumer matrix** (WP13, unpublished projects under `openai-matrix/`, `test->test` on core,
+- **Engine x consumer matrix** (unpublished projects under `openai-matrix/`, `test->test` on core,
   client-stream and the provider modules, so they RUN ALL THEIR SPECS in a forked JVM): `matrix_akka`
   (play-akka-stream engine, Akka consumer, 0 bridges asserted on every run; 2.12 / 2.13 / 3.2.2), `matrix_pekko`
   (play-pekko-stream, Pekko, 0; 2.13), `matrix_zio` (zio-http, ZIO, 0; also openai-zio's specs; 2.12 / 2.13),
@@ -956,8 +959,9 @@ Distilled (2026-11) from the Scala Style Guide, the Scala 3 Book, "Binary Compat
   1). A spec whose stream legitimately bridges overrides `expectedBridges` with a comment (only the Claude agent's
   hot hub); a matrix failure is a library or engine finding, never a reason to weaken a spec. First run
   (2026-11-12) found: the managed-agent adapter's POST racing its SSE subscription (Play WS engine), the Claude agent's
-  readiness race, and two zio-http engine defects (repeated request headers collapsed to the last one - Anthropic's
-  betas -, path sub-delimiters re-encoded) reported to ws-client.
+  readiness race, and three zio-http engine defects reported to ws-client - repeated request headers collapsed to the
+  last one (Anthropic's betas; fixed in ws-client 1.2.1), path sub-delimiters re-encoded and an endpoint-string query
+  re-encoded (`%20` as `+`; both a zio-http limitation, pending on zio-http via `EngineDefects`).
 - Convention specs (openai-core tests) scan the main sources: `NoBackendImportsConventionSpec` - no Akka, Pekko, fs2,
   ZIO or Play WS import (nor `PlayJsonUtil`) in openai-core, -client and -client-stream (its `portedModules`);
   `StreamErrorMappingConventionSpec` - every engine-level stream call is followed by `.mapError(mapHttpStatusErrors)`
