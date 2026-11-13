@@ -5,7 +5,7 @@
 What changes for your code when you move from 1.x (1.7.0) to 2.0.0, with before / after code for each kind of user.
 
 2.0.0 removes the hard dependency on Akka. Calls go through any [ws-client](https://github.com/cequence-io/ws-client)
-1.2.0 engine - by default `jdk` (the JDK's `java.net.http`), which needs no actor system - and every stream is ws-client's
+1.2.1 engine - by default `jdk` (the JDK's `java.net.http`), which needs no actor system - and every stream is ws-client's
 backend-neutral `AsyncStream`, which runs on plain `Future`s or converts to Akka, Pekko, fs2 or ZIO with one import. The
 services, their methods, the domain classes, the settings and the factories are the ones of 1.7.0. What changed:
 
@@ -44,8 +44,8 @@ libraryDependencies ++= Seq(
 
 - 1.x brought Akka 2.6, Play WS and logback through its modules; 2.0.0 brings none of them. openai-core depends on
   ws-client-core, ws-client-jdk (the default engine), json-repair and scala-logging.
-- Every ws-client artifact on a classpath must have the same version - 1.2.0 for 2.0.0. A build that declares a ws-client
-  artifact of its own (e.g. `ws-client-play-akka-stream` 1.1.5) moves it to 1.2.0.
+- Every ws-client artifact on a classpath must have the same version - 1.2.1 for 2.0.0. A build that declares a ws-client
+  artifact of its own (e.g. `ws-client-play-akka-stream` 1.1.5) moves it to 1.2.1.
 - Scala 2.12, 2.13 and 3, as before. The 2.13 artifacts are built with Scala 2.13.18 (was 2.13.11), and sbt 1.10+ then
   asks for a `scalaVersion` of at least 2.13.18. On Scala 3 the new `openai-scala-zio` and ws-client's Pekko, fs2 and ZIO
   modules need 3.3+; the other modules serve 3.2 and 3.3+. Java 11+.
@@ -170,7 +170,7 @@ With the Akka engine on the classpath, 2.0.0 runs on Play WS and Akka as 1.x did
 import - except that streams are cold. Add the engine 1.x used:
 
 ```scala
-libraryDependencies += "io.cequence" %% "ws-client-play-akka-stream" % "1.2.0" // Scala 2.12, 2.13 and 3
+libraryDependencies += "io.cequence" %% "ws-client-play-akka-stream" % "1.2.1" // Scala 2.12, 2.13 and 3
 ```
 
 The factories pick it on their own (priority 11; `jdk` has 0). Then `import io.cequence.wsclient.stream.SourceInterop._`
@@ -265,7 +265,7 @@ service
   .flatMap(_.toByteStringSource.runWith(FileIO.toPath(Paths.get("hello.mp3"))))
 ```
 
-- Without the Akka engine - on `jdk` - `.toSource` works the same (it needs `ws-client-core-akka` 1.2.0 on the classpath),
+- Without the Akka engine - on `jdk` - `.toSource` works the same (it needs `ws-client-core-akka` 1.2.1 on the classpath),
   and each HTTP response crosses one bridge (`java.util.concurrent.Flow.Publisher`) into Akka.
 - Embedding the library in an existing `ActorSystem` - an engine on your `Materializer` that closing a service never
   touches - is unchanged: see [Embedding](http-engine.md#embedding-in-an-akka-pekko-or-zio-application).
@@ -281,7 +281,7 @@ More in [Consuming a stream](streaming.md#consuming-a-stream-akka-pekko-fs2-zio)
 ones. 2.0.0 depends on neither flavor, so a Pekko engine is one dependency (Scala 2.13 or 3.3+):
 
 ```scala
-libraryDependencies += "io.cequence" %% "ws-client-play-pekko-stream" % "1.2.0" // or ws-client-pekko-http
+libraryDependencies += "io.cequence" %% "ws-client-play-pekko-stream" % "1.2.1" // or ws-client-pekko-http
 ```
 
 ```scala
@@ -319,7 +319,7 @@ service
 import does it:
 
 ```scala
-libraryDependencies += "io.cequence" %% "ws-client-fs2" % "1.2.0" // Scala 2.12, 2.13 and 3.3+
+libraryDependencies += "io.cequence" %% "ws-client-fs2" % "1.2.1" // Scala 2.12, 2.13 and 3.3+
 ```
 
 ```scala

@@ -23,7 +23,7 @@ trait Anthropic
   protected val logger: Logger = Logger(LoggerFactory.getLogger(this.getClass))
 
   // A call's betas as ONE comma-joined `anthropic-beta` header, like the official SDKs: an HTTP
-  // stack may keep only one value of a repeated header (ws-client 1.2.0's zio-http engine keeps
+  // stack may keep only one value of a repeated header (ws-client 1.2.0's zio-http engine kept
   // the last).
   protected def betaHeaders(betas: Seq[String]): Seq[(String, String)] =
     if (betas.isEmpty)

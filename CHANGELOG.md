@@ -2,7 +2,7 @@
 
 ## 2.0.0 (unreleased)
 
-The 1.x API without Akka. Calls go through any ws-client 1.2.0 engine - the JDK's `java.net.http` (`jdk`) by default,
+The 1.x API without Akka. Calls go through any ws-client 1.2.1 engine - the JDK's `java.net.http` (`jdk`) by default,
 with no actor system - and every stream is ws-client's backend-neutral `AsyncStream`: cold (nothing is sent until it
 runs, every run is a new request), back-pressured, run on plain `Future`s or handed to Akka, Pekko, fs2 or ZIO with one
 import, and native on an engine of that library (an Akka engine's stream comes back as its own `Source`, with no bridge).
@@ -108,7 +108,7 @@ code for Futures-only, Akka, Pekko, fs2 and ZIO users and for implementers of th
   others, and with none the events are read and dropped. An Akka consumer crosses one bridge, at the session's hub.
 - Anthropic: a message call's betas go out as ONE comma-joined `anthropic-beta` header (was one header per beta), as
   the official SDKs send them - an HTTP stack may keep only one value of a repeated header (ws-client 1.2.0's zio-http
-  engine keeps the last).
+  engine kept the last).
 - Perplexity's `downloadAgentResponseFile`: an error status fails without the request id (`x-request-id`) the other
   calls' exceptions carry.
 - `OpenAIChatCompletionStreamedOutputConversionAdapter`: the message conversion must be 1:1 - a pipe that emits more than
@@ -128,7 +128,7 @@ code for Futures-only, Akka, Pekko, fs2 and ZIO users and for implementers of th
   `onTerminate`, `guaranteeCase`, `concurrently`, `preflight`) and runs (`runForeach`, `runFold`, `runToSeq`, `runHead`,
   `runLast`, `runDrain`, `toPublisher`) need nothing but an `ExecutionContext`. See
   [AsyncStream](docs/streaming.md#asyncstream).
-- 🔥 **Interop with one import** (each a ws-client 1.2.0 module): Akka (`ws-client-core-akka`,
+- 🔥 **Interop with one import** (each a ws-client 1.2.1 module): Akka (`ws-client-core-akka`,
   `import io.cequence.wsclient.stream.SourceInterop._` - `.toSource`, `.toByteStringSource`, `.toFlow`, back with
   `.toAsyncStream` / `.toAsyncPipe`), Pekko (`ws-client-core-pekko`, the same names), fs2 (`ws-client-fs2`,
   `Fs2Interop._` - `.toFs2[F]`), ZIO (`ws-client-zio`, `ZioInterop._` - `.toZStream`, `.toZByteStream`), any Reactive
@@ -161,8 +161,12 @@ code for Futures-only, Akka, Pekko, fs2 and ZIO users and for implementers of th
 
 ### Dependencies
 
-- ws-client 1.2.0 (from 1.1.5): `AsyncStream`, `AsyncScheduler`, binary-safe downloads, `TransportSettings.httpVersion`
-  and the fs2 / ZIO interop modules. Every ws-client artifact on a classpath must have the same version. A stream's
+- ws-client 1.2.1 (from 1.1.5): `AsyncStream`, `AsyncScheduler`, binary-safe downloads, `TransportSettings.httpVersion`
+  and the fs2 / ZIO interop modules (1.2.0); 1.2.1 builds every class for Java 11 (1.2.0 shipped one for Java 17, which
+  failed on JDK 11), keeps repeated request headers on zio-http and sttp, keeps one `Content-Type` on every engine (the
+  last value: a call's own overrides the site's - on the Play engines the site's used to win) and gives failures without
+  a message one from their cause chain (a refused jdk connection is still a `ConnectException`, now saying "cannot
+  connect"). Every ws-client artifact on a classpath must have the same version. A stream's
   non-2xx failure is logged at DEBUG instead of ERROR (it still reaches the caller). On Scala 2.13 its Akka engines
   (`play-akka`, `play-akka-stream`) run Play WS 2.2.18 and need Java 11+.
 - No Akka: openai-core depends on ws-client-core, ws-client-jdk, json-repair and scala-logging; no module depends on

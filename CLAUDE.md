@@ -12,7 +12,7 @@ The library is designed to be self-contained with minimal dependencies and makes
 
 **Versioning**: the latest release is **1.7.0** (Maven Central 2026-11-06, tag `v1.7.0` on the commit that dated its CHANGELOG and set the build to `1.7.0`; a minor release - the Vertex AI factories' `location: Option[String]`, `JsonSchema.Typed` / `AnyOf`, new case-class fields and factory / helper parameters break binary compatibility with 1.6.0; the published jars hold the code of 10057b29); the build is `1.7.1-SNAPSHOT` (`isSnapshot := true`; the next CHANGELOG section is written when that release is prepared - a binary break makes it 1.8.0). Before it: 1.6.0 (Maven Central 2026-10-18, tag `v1.6.0`, code of 7e9d33cf). The release-prep commits set the build to the release's version - `1.7.0` with `isSnapshot := false` (the user's call, 2026-11-06); for 1.5.0 / 1.6.0 it was `X.Y.0-SNAPSHOT`, and the `v1.5.0` / `v1.6.0` tags are on such commits. The user publishes from a local version setting; afterwards the CHANGELOG gets its date, the tag `vX.Y.Z` + GitHub release go on that commit and the build moves to the next `-SNAPSHOT`. If the changes since the last release are not binary compatible with it (new case-class fields, new abstract methods on the service traits, new factory parameters - compare the published jars' public signatures with `javap`), the next release is a minor one: 1.3.1-SNAPSHOT shipped as 1.4.0. New `@deprecated` annotations use the upcoming release as their `since` value. `CHANGELOG.md` has one section per release, newest on top, written when the release is prepared; it opens with the upgrade notes (API breaks and behavior changes against the previous release). The GitHub release (tag `vX.Y.Z` on the published commit) carries a shorter form of the same notes.
 
-**The `2.0` branch** builds `2.0.0-SNAPSHOT` (`isSnapshot := true`): the Akka-free 2.0.0 line on ws-client 1.2.0 - any engine, `AsyncStream` streams, no Materializer / ActorSystem parameters - a binary and source break throughout (its CHANGELOG section is `## 2.0.0 (unreleased)`, the upgrade guide `docs/migration-2.0.md`). master stays the 1.x line (1.7.x, Akka) and is merged into `2.0` regularly, so a 1.x change reaches 2.0 through the merge. A 2.0 release publishes per Scala line - `sbt publishSignedAllLines` (build.sbt alias: `publishSigned` on `ci_scala212` / `ci_scala213` / `ci_scala3` / `ci_scala33` into the one bundle), then `sonatypeBundleRelease` - since a root `+publishSigned` mixes lines like a root `++` does (see Cross-Build).
+**The `2.0` branch** builds `2.0.0-SNAPSHOT` (`isSnapshot := true`): the Akka-free 2.0.0 line on ws-client 1.2.1 - any engine, `AsyncStream` streams, no Materializer / ActorSystem parameters - a binary and source break throughout (its CHANGELOG section is `## 2.0.0 (unreleased)`, the upgrade guide `docs/migration-2.0.md`). master stays the 1.x line (1.7.x, Akka) and is merged into `2.0` regularly, so a 1.x change reaches 2.0 through the merge. A 2.0 release publishes per Scala line - `sbt publishSignedAllLines` (build.sbt alias: `publishSigned` on `ci_scala212` / `ci_scala213` / `ci_scala3` / `ci_scala33` into the one bundle), then `sonatypeBundleRelease` - since a root `+publishSigned` mixes lines like a root `++` does (see Cross-Build).
 
 ## Build & Test Commands
 
@@ -512,7 +512,7 @@ Factories support multiple initialization modes: default config, custom config, 
 ### Streaming Support
 Streaming is provided as an extension via the `openai-client-stream` module:
 - Import `OpenAIStreamedServiceImplicits._` to add `.withStreaming()` to factories
-- **`AsyncStream`** (`2.0` branch; ws-client 1.2.0, package `io.cequence.wsclient.stream`): every stream is a
+- **`AsyncStream`** (`2.0` branch; ws-client 1.2.1, package `io.cequence.wsclient.stream`): every stream is a
   backend-neutral `AsyncStream[A]` and every stream transformation an `AsyncPipe[A, B]`, where 1.x used Akka's
   `Source[A, NotUsed]` / `Flow` (implementers of the service traits change their signatures). An `AsyncStream` is
   COLD: an immutable plan - nothing is sent until it is run, each run is a new (possibly billed) request, one
@@ -993,8 +993,9 @@ val service = OpenAIServiceFactory(apiKey = "sk-...")
 ```
 
 Since the ws-client 1.0 engine-discovery migration (`io.cequence:ws-client-*`, a real Maven
-Central release since 2026-07 - no longer a SNAPSHOT; 1.1.5 on master, 1.2.0 on the `2.0`
-branch - on Maven Central since 2026-11-12 - see `project/Dependencies.scala`), EACH service created via the plain factories owns a
+Central release since 2026-07 - no longer a SNAPSHOT; 1.1.5 on master, 1.2.1 on the `2.0`
+branch (Maven Central 2026-11-13) - 1.2.0 (2026-11-12) shipped one class built for Java 17, failing on JDK 11 - see
+`project/Dependencies.scala`), EACH service created via the plain factories owns a
 private engine, discovered on the classpath (`WSClientEngineRegistry`; `.outputStreamed(...)` for
 streamed services). On the `2.0` branch that is the JDK engine unless another one is on the
 classpath: no actor system, a `java.net.http` client on the global `ExecutionContext`. A

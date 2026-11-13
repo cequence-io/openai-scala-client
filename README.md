@@ -145,9 +145,9 @@ you use (Anthropic, Gemini, ...) yourself. See [ZIO services](docs/zio.md).
 **Logging:** the library logs through SLF4J and, since 2.0.0, brings no logging backend (1.x brought logback-classic) -
 add the binding of your choice, e.g. logback-classic; without one, nothing is logged.
 
-**HTTP engines** 🔥: calls go through an engine of [ws-client](https://github.com/cequence-io/ws-client) 1.2.0. The
+**HTTP engines** 🔥: calls go through an engine of [ws-client](https://github.com/cequence-io/ws-client) 1.2.1. The
 default, `jdk` (`java.net.http`), comes with the library: no Akka, no actor system, streaming included. For another
-engine add its artifact - `"io.cequence" %% "<artifact>" % "1.2.0"`, one version for every ws-client artifact - and
+engine add its artifact - `"io.cequence" %% "<artifact>" % "1.2.1"`, one version for every ws-client artifact - and
 the engine with the highest priority on the classpath is used; `-Dws-client.engine=<id>` names one instead. See
 [Choosing an engine](docs/http-engine.md#choosing-an-engine).
 
@@ -222,7 +222,7 @@ streamedService
 
 **Consuming a stream** 🔥: every stream is a back-pressured, cold `AsyncStream` (ws-client) - nothing is sent until it
 runs, and each run is a new request. Run it on plain `Future`s (`runForeach`, `runFold`, `runToSeq`, ...) or hand it to
-your streaming library with one import (each module is ws-client's, version 1.2.0):
+your streaming library with one import (each module is ws-client's, version 1.2.1):
 
 - Akka (`ws-client-core-akka`): `import io.cequence.wsclient.stream.SourceInterop._`, then `stream.toSource` - on the
   `play-akka-stream` engine it compiles to that engine's own `Source`, with no bridge

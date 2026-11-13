@@ -366,7 +366,7 @@ The views work on any engine. Which engine runs them decides whether a stream cr
 To run on `zio-http`, add the engine with the same version as the other ws-client artifacts:
 
 ```
-"io.cequence" %% "ws-client-zio-http" % "1.2.0"
+"io.cequence" %% "ws-client-zio-http" % "1.2.1"
 ```
 
 Every factory then picks it (priority 7, above `jdk`'s 0 - an Akka or Pekko engine on the classpath ranks higher;

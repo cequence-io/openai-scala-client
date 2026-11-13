@@ -16,7 +16,7 @@ import io.cequence.openaiscala.{
 }
 import io.cequence.wsclient.domain.{SiteBinding, WsRequestContext}
 import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamCore}
-import io.cequence.openaiscala.testkit.{EngineDefects, StreamSpecSupport, TestEngines}
+import io.cequence.openaiscala.testkit.{StreamSpecSupport, TestEngines}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -37,8 +37,7 @@ class AnthropicStreamedHttpErrorsWireSpec
     extends AnyWordSpec
     with Matchers
     with BeforeAndAfterAll
-    with StreamSpecSupport
-    with EngineDefects {
+    with StreamSpecSupport {
 
   private implicit val ec: ExecutionContext = ExecutionContext.global
 
@@ -284,8 +283,8 @@ class AnthropicStreamedHttpErrorsWireSpec
     }
 
     "send an OAuth token's beta next to a call's own betas" in {
-      // the OAuth beta rides in the auth headers, a call's betas in its own header - the engine
-      // sends two `anthropic-beta` header lines
+      // the OAuth beta rides in the auth headers, a call's betas in its own header - two
+      // `anthropic-beta` headers, sent as two lines (or, by zio-http, joined into one)
       val oauth = AnthropicServiceFactory.customInstance(
         coreUrl,
         WsRequestContext(
@@ -303,9 +302,7 @@ class AnthropicStreamedHttpErrorsWireSpec
       finally oauth.close()
 
       lastBetas should contain("structured-outputs-2025-11-13")
-      knownEngineDefect("zio-http", "keeps only the last value of a repeated request header") {
-        lastBetas should contain("oauth-2025-04-20")
-      }
+      lastBetas should contain("oauth-2025-04-20")
     }
   }
 }

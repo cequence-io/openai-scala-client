@@ -204,7 +204,7 @@ val shouting = OpenAIChatCompletionIOConversionAdapter(
 ## Consuming a stream: Akka, Pekko, fs2, ZIO
 
 🔥 The run methods need only an `ExecutionContext`. To hand a stream to a streaming library, add that library's ws-client
-interop artifact - `"io.cequence" %% "<artifact>" % "1.2.0"`, the ws-client version this library depends on (every
+interop artifact - `"io.cequence" %% "<artifact>" % "1.2.1"`, the ws-client version this library depends on (every
 ws-client artifact on a classpath must have the same version) - and import one object:
 
 | Library | Artifact | Import | From a stream | Into a stream |

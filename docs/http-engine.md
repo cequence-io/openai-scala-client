@@ -5,7 +5,7 @@
 The HTTP client the library runs on and how to pick another, one engine shared by many services and providers,
 timeouts, proxy and HTTP version, and embedding the library in an Akka, Pekko or ZIO application.
 
-Every HTTP call goes through an **engine** of [ws-client](https://github.com/cequence-io/ws-client) 1.2.0, which is
+Every HTTP call goes through an **engine** of [ws-client](https://github.com/cequence-io/ws-client) 1.2.1, which is
 one HTTP backend behind a common contract. 🔥 Since 2.0.0 the default engine is `jdk`, built on the JDK's own
 `java.net.http` client. It comes with `openai-scala-core`, needs no Akka and no actor system, and supports streaming.
 To use another engine, add its artifact: engines are picked up from the classpath. An engine keeps no state for any one
@@ -31,12 +31,12 @@ The full table, with capabilities and notes per backend, is on ws-client's
 [Engines](https://github.com/cequence-io/ws-client/blob/main/docs/engines.md) page.
 
 To use an engine, add its artifact next to the library. Every ws-client artifact on a classpath must have the same
-version, which is 1.2.0, the version this library is built on:
+version, which is 1.2.1, the version this library is built on:
 
 ```scala
 libraryDependencies ++= Seq(
   "io.cequence" %% "openai-scala-client-stream" % "2.0.0",
-  "io.cequence" %% "ws-client-play-akka-stream" % "1.2.0" // the Akka engine (priority 11) wins over jdk (0)
+  "io.cequence" %% "ws-client-play-akka-stream" % "1.2.1" // the Akka engine (priority 11) wins over jdk (0)
 )
 ```
 
