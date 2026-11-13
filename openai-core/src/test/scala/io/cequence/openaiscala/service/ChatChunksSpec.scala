@@ -31,11 +31,6 @@ class ChatChunksSpec
   }
 
   // `runHead` through the selected consumer: the first element, the run cancelled after it
-  private def runHead[A](stream: AsyncStream[A]): A =
-    runStreamTake(stream, 1).headOption.getOrElse(
-      throw new NoSuchElementException("runHead of an empty stream")
-    )
-
   private val created = new ju.Date(0)
 
   private def chunk(
@@ -333,7 +328,7 @@ class ChatChunksSpec
     }
 
     "fold a typed stream, ignoring argument deltas and excluding server-side calls from the assistant message" in {
-      val assembled = runHead(
+      val assembled = runStreamHead(
         AsyncStream
           .fromIterable(
             List[ChatChunk](
@@ -441,10 +436,14 @@ class ChatChunksSpec
     "fold an empty stream and reuse the pipe across runs" in {
       val sink = ChatChunk.assembleSink
 
-      runHead(AsyncStream.empty[ChatChunk].via(sink)) shouldBe
+      runStreamHead(AsyncStream.empty[ChatChunk].via(sink)) shouldBe
         AssembledChatCompletion.empty
-      runHead(AsyncStream.fromIterable(List[ChatChunk](Text("a"))).via(sink)).text shouldBe "a"
-      runHead(AsyncStream.fromIterable(List[ChatChunk](Text("b"))).via(sink)).text shouldBe "b"
+      runStreamHead(
+        AsyncStream.fromIterable(List[ChatChunk](Text("a"))).via(sink)
+      ).text shouldBe "a"
+      runStreamHead(
+        AsyncStream.fromIterable(List[ChatChunk](Text("b"))).via(sink)
+      ).text shouldBe "b"
     }
   }
 

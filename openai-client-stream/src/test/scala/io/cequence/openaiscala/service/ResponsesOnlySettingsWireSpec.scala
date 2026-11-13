@@ -170,8 +170,7 @@ class ResponsesOnlySettingsWireSpec
 
   // the typed stream folded into one completion, run by the consumer under test
   private def assembled(stream: AsyncStream[ChatChunk]): AssembledChatCompletion =
-    runStream(stream.via(ChatChunk.assembleSink), 20.seconds).headOption
-      .getOrElse(fail("the stream assembled nothing"))
+    runStreamHead(stream.via(ChatChunk.assembleSink), 20.seconds)
 
   private val messages: Seq[BaseMessage] = Seq(UserMessage("Say hi in two words."))
 

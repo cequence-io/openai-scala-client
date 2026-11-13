@@ -96,8 +96,12 @@ class BedrockFactorySpec extends AnyWordSpec with Matchers {
   "BedrockAuth.fromEnv" should {
 
     "fall back to SigV4 when no bearer token is in the environment" in {
-      // the token env vars are not set in the test JVM
-      BedrockAuth.bearerTokenFromEnv() shouldBe None
+      // only where neither token env var is set (as in CI); never compared by value - a failure
+      // message would print the token
+      assume(
+        BedrockAuth.bearerTokenFromEnv().isEmpty,
+        "a Bedrock bearer token is set in this environment"
+      )
       BedrockAuth.fromEnv() shouldBe a[BedrockAuth.SigV4]
     }
   }

@@ -214,7 +214,7 @@ class ToolApprovalWireSpec
     callSettings: CreateChatCompletionSettings = settings,
     callMessages: Seq[BaseMessage] = messages
   ): AssembledChatCompletion =
-    runStream(
+    runStreamHead(
       fullStreamed
         .createChatToolCompletionStreamed(
           callMessages,
@@ -224,7 +224,7 @@ class ToolApprovalWireSpec
         )
         .via(ChatChunk.assembleSink),
       20.seconds
-    ).headOption.getOrElse(fail("the stream assembled nothing"))
+    )
 
   "a typed tool stream on OpenAI" should {
 

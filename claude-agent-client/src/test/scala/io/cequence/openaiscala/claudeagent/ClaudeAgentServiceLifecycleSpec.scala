@@ -8,17 +8,14 @@ import io.cequence.openaiscala.claudeagent.domain.{
 import io.cequence.openaiscala.claudeagent.service.ClaudeAgentServiceFactory
 import io.cequence.openaiscala.claudeagent.service.impl.ClaudeAgentProcessException
 import io.cequence.openaiscala.testkit.{StreamRunner, StreamSpecSupport}
-import io.cequence.wsclient.stream.{AsyncStream, StreamDiagnostics}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
-import scala.collection.immutable
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
-import scala.concurrent.{Await, ExecutionContext, Future, Promise}
-import scala.util.Failure
+import scala.concurrent.{Await, ExecutionContext, Promise}
 
 class ClaudeAgentServiceLifecycleSpec
     extends AnyWordSpec
@@ -67,7 +64,7 @@ class ClaudeAgentServiceLifecycleSpec
         // otherwise the result can be published before the registration lands and this run
         // never sees the end of the turn (CI flake).
         val subscribed = Promise[Unit]()
-        val events = startRun(
+        val events = startStream(
           service.events.map { event =>
             subscribed.trySuccess(())
             event
@@ -108,7 +105,7 @@ class ClaudeAgentServiceLifecycleSpec
 
         def turn() = {
           val subscribed = Promise[Unit]()
-          val events = startRun(
+          val events = startStream(
             service.events.map { event =>
               subscribed.trySuccess(())
               event
@@ -214,28 +211,6 @@ class ClaudeAgentServiceLifecycleSpec
       }
       an[IllegalArgumentException] shouldBe thrownBy {
         ClaudeAgentSettings(settingSources = Some(Seq("user", "policy")))
-      }
-    }
-  }
-
-  // Starts a run through the selected consumer without waiting for it - the turn is sent once
-  // the run has registered with the hub, so `runStream` (which blocks) cannot run it. Like
-  // `runStream`, the run's bridges are checked against `expectedBridges` once it ended.
-  private def startRun[A](stream: AsyncStream[A]): Future[immutable.Seq[A]] = {
-    val (run, bridges) = StreamDiagnostics.counted(streamRunner.runToSeq(stream))
-
-    run.transform { outcome =>
-      expectedBridges match {
-        case Some(expected) if bridges.get != expected =>
-          Failure(
-            new AssertionError(
-              s"Expected $expected bridge(s) on ${streamRunner.name}, the run built ${bridges.get}" +
-                outcome.failed.map(e => s" (the run failed: $e)").getOrElse("")
-            )
-          )
-
-        case _ =>
-          outcome
       }
     }
   }

@@ -32,11 +32,10 @@ class ToolApprovalSpec
 
   // `stream.assembled` (`via(assembleSink).runHead`) run through the selected consumer
   private def assembled(chunks: Seq[ChatChunk]): AssembledChatCompletion =
-    runStreamTake(
+    runStreamHead(
       AsyncStream.fromIterable(chunks.toList).via(ChatChunk.assembleSink),
-      n = 1,
-      timeout = 5.seconds
-    ).headOption.getOrElse(throw new NoSuchElementException("runHead of an empty stream"))
+      5.seconds
+    )
 
   private val request = ToolApprovalRequest(
     requestId = "mcpr_1",
