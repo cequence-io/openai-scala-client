@@ -72,7 +72,7 @@ class ManagedAgentToolApprovalWireSpec
   @volatile private var postedWithoutSubscriber = false
   @volatile private var failConfirmations = false
   @volatile private var failHistory = false
-  // the late-subscription case: ": connected." held back, then heartbeats until the client goes
+  // the late-subscription case: ": connected" held back, then heartbeats until the client goes
   @volatile private var connectDelayMs = 0L
   @volatile private var heartbeats = false
   @volatile private var clientGone = new CountDownLatch(1)
@@ -129,12 +129,12 @@ class ManagedAgentToolApprovalWireSpec
               exchange.getResponseHeaders.add("Content-Type", "text/event-stream")
               exchange.sendResponseHeaders(200, 0)
               val out = exchange.getResponseBody
-              // subscribed first, then announced - as the live API's ": connected." comment
+              // subscribed first, then announced - as the live API's ": connected" comment
               val queue = new LinkedBlockingQueue[Seq[JsObject]]()
               subscribers.add(queue)
               if (connectDelayMs > 0)
                 Thread.sleep(connectDelayMs)
-              out.write(": connected.\n\n".getBytes(StandardCharsets.UTF_8))
+              out.write(": connected\n\n".getBytes(StandardCharsets.UTF_8))
               out.flush()
               try
                 if (heartbeats)
@@ -342,7 +342,7 @@ class ManagedAgentToolApprovalWireSpec
       connectDelayMs = 600; heartbeats = true; clientGone = new CountDownLatch(1)
       try {
         val run = service.createChatCompletionStreamedTyped(messages, settings).run(_ => ())
-        Thread.sleep(200) // the subscription waits for ": connected." yet
+        Thread.sleep(200) // the subscription waits for ": connected" yet
         run.cancel()
 
         // the late subscription is cancelled on arrival: the server's heartbeats stop reaching it

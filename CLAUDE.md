@@ -622,12 +622,20 @@ Streaming is provided as an extension via the `openai-client-stream` module:
     listing the still-queued ids - live 2026-09-29, the queued one IS applied without another POST): such an interim
     idle (all ids confirmed by this resume) is passed through as `Other("session.status_idle")`, not a pause, and a
     real pause never re-asks a confirmed id. The kickoff / confirmation POST waits for the SSE subscription
-    (`subscribeSessionEvents` - a preflight completing on the server's `: connected.` frame, native on Akka / Pekko /
+    (`subscribeSessionEvents` - a preflight completing on the server's `: connected` frame, native on Akka / Pekko /
     ZIO engines): the session delivers only to a live subscription, and on 2.0's cold streams a POST sent alongside
     the GET raced it (lost the turn's events on the Play WS engine - found by `matrix_akka`, 2026-11-12).
     A run that ends before its subscription opened (a consumer taking only `Start`, a timeout) cancels the
     subscription when it arrives and reports the events unsent, so the turn's session is still deleted
     (review fix 2026-11-13: the session leaked, and a late subscription held its connection open).
+    Session event stream, live 2026-11-13 (raw probe, Haiku 5.5): the `: connected` comment comes in the same chunk
+    as the response headers (so waiting for the first frame costs nothing - the SDKs treat the headers as "open"),
+    an idle stream gets a `:keepalive` comment every 30 s, a user message sent ~0.4 s BEFORE the stream opened lost
+    the turn's first four events (no replay, no cursor - Anthropic's reconnect recipe: subscribe, list the history,
+    skip seen ids; in `docs/anthropic-managed-agents.md#session-events`), two concurrent subscriptions each got every
+    event, and a turn now also streams `session.thread_status_running` / `_idle` and `session.usage` (`isTerminal`
+    matches `session.status_idle` exactly). `subscribeSessionEvents` is single-run like the SDKs' `events.stream`
+    and listed with the downloads among the cold-stream exceptions in `docs/streaming.md`.
   - Everything else refuses rather than silently misbehaving: adapters / entry points that cannot resume refuse a call
     carrying decisions (`ToolApprovalSettingsOps.refusingDecisions`: Anthropic Messages / Bedrock, Gemini, Vertex AI,
     Sonar, TypeSafe, the OpenAI chat-only services, `createChatFunCompletion`, `createChatWebSearchCompletion`,

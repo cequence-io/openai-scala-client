@@ -923,7 +923,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
   ): AsyncStream[SessionEventEnvelope] =
     PathSegment.inSource(sessionEventEnvelopes(sessionEventFrames(sessionId)))
 
-  // preflighted at the frame level: the first frame is the server's ": connected." comment
+  // preflighted at the frame level: the first frame is the server's ": connected" comment
   override def subscribeSessionEvents(
     sessionId: String
   ): Future[AsyncStream[SessionEventEnvelope]] =
@@ -932,7 +932,7 @@ private[service] trait AnthropicServiceImpl extends Anthropic {
     )
 
   // Raw SSE parsing instead of execJsonStream: the managed-agents stream sends frames without a
-  // `data:` line - an initial ": connected." comment and periodic heartbeats - which the generic
+  // `data:` line - an initial ": connected" comment and a ":keepalive" one every 30 s - which the generic
   // JSON stream would reject as malformed JSON.
   private def sessionEventFrames(sessionId: String): AsyncStream[Bytes] =
     execRawStream(

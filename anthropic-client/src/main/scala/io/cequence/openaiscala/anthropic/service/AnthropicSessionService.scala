@@ -140,10 +140,14 @@ trait AnthropicSessionService {
 
   /**
    * [[streamSessionEvents]], subscribed: the future completes once the server confirmed the
-   * subscription (its first frame), with the session's events from then on as a SINGLE-RUN
-   * stream - send the events that start or resume a turn after it completed, then run the
-   * stream (an unrun one holds its connection until the server or an idle timeout closes it).
-   * On an Akka, Pekko or ZIO engine the stream stays the engine's own.
+   * subscription (its first frame, which comes with the response), with the session's events
+   * from then on as a SINGLE-RUN stream - the shape of the official SDKs'
+   * `events.stream(...)`. Send the events that start or resume a turn after it completed, then
+   * run the stream; run it once, or cancel it (`run(_ => ()).cancel()`) - an abandoned one
+   * holds its connection (the server keeps it open with a keepalive every 30 s). A second run
+   * fails: it could not be the same subscription. To reconnect without missing events,
+   * subscribe, list the history ([[listSessionEvents]]) and skip the events it had, by id. On
+   * an Akka, Pekko or ZIO engine the stream stays the engine's own.
    */
   def subscribeSessionEvents(sessionId: String): Future[AsyncStream[SessionEventEnvelope]]
 

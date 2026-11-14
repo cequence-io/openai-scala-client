@@ -60,7 +60,7 @@ val assembled: Future[AssembledChatCompletion] =
 
 - A run has one consumer and is back-pressured: elements are pulled, and every buffer is bounded. Fan-out to several
   consumers goes through ws-client's hot `AsyncBroadcastHub`.
-- Two exceptions to cold:
+- Three exceptions to cold:
   - **Downloads** - `createAudioSpeech`, `retrieveFileContentAsSource`, `getAgentSessionArtifactContent`, Anthropic's
     `downloadFile` and Perplexity's `downloadAgentResponseFile` return a `Future` of the body (of an `Option` of it
     where a 404 is `None`). The request goes out when the method is called, the future completes once the body
@@ -80,6 +80,11 @@ val saved: Future[Path] =
     shared by every run. A run starts with the replayed `system/init` message and continues with the events from the
     moment it started - start it before sending a turn whose events you need. The slowest running consumer paces the
     others; with none, the events are read and dropped.
+  - **A managed agent's live events** - Anthropic's `subscribeSessionEvents(sessionId)`
+    ([Anthropic Managed Agents](anthropic-managed-agents.md#session-events)) connects when it is called and completes
+    once the server confirmed the subscription; the events from then on come as a **single-run** stream, like a
+    download's body: run it once, or cancel it - an abandoned one holds its connection. A session delivers only what
+    happens while a subscription is live, so a second run could not be the same subscription.
 
 ### Operators and runs
 
