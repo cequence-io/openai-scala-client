@@ -117,13 +117,20 @@ private[service] object SystemOneToOpenAI {
   def noulInstructions(
     noul: NoulQuestion,
     text: JsValue => String
-  ): String = {
-    val conditions = noul.criteria.toSeq.flatMap { criteria =>
+  ): String =
+    (noul.instructions.map(text).toSeq ++ noulConditions(noul, text)).mkString("\n")
+
+  /**
+   * A noul's yes / no criteria as "Yes when: ..." / "No when: ..." lines, written by `text`.
+   */
+  def noulConditions(
+    noul: NoulQuestion,
+    text: JsValue => String
+  ): Seq[String] =
+    noul.criteria.toSeq.flatMap { criteria =>
       criteria.yes.map(yes => s"Yes when: ${text(yes)}").toSeq ++
         criteria.no.map(no => s"No when: ${text(no)}").toSeq
     }
-    (noul.instructions.map(text).toSeq ++ conditions).mkString("\n")
-  }
 
   /** The answers by the names of the questions asked. */
   def response(
@@ -150,7 +157,7 @@ private[service] object SystemOneToOpenAI {
   }
 
   // a part of a chat message mapped to the state: its text, or an image
-  private def isPart(json: JsValue): Boolean =
+  private[impl] def isPart(json: JsValue): Boolean =
     json.isInstanceOf[JsString] || isImage(json)
 
   // an image part as DecisionImage defines it: `type` image_url AND a string URL
@@ -176,7 +183,8 @@ private[service] object SystemOneToOpenAI {
       case None        => DecisionLevel(text(json))
     }
 
-  private def text(json: JsValue): String =
+  // text as it is, other JSON as its compact text
+  private[impl] def text(json: JsValue): String =
     json match {
       case JsString(text) => text
       case other          => Json.stringify(other)

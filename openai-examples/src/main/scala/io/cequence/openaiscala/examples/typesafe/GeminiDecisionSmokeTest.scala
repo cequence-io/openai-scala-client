@@ -370,7 +370,11 @@ object GeminiDecisionSmokeTest {
       }
     } yield ()
 
-    Try(Await.result(run, 10.minutes))
+    // a run that did not finish (a timeout - the later sections never ran) is a failure too
+    Try(Await.result(run, 10.minutes)).failed.foreach { e =>
+      failures.incrementAndGet()
+      println(s"[FAIL] the run did not finish: ${e.getClass.getSimpleName}: ${e.getMessage}")
+    }
     service.close()
     asOpenAI.close()
     decisions.close()
