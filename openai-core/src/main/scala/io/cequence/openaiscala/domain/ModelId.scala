@@ -588,6 +588,9 @@ object ModelId {
   val gpt_image_2_5_flare_2026_09_08 = "gpt-image-2.5-flare-2026-09-08"
   val gpt_image_2_5_sunburst = "gpt-image-2.5-sunburst"
   val gpt_image_2_5_sunburst_2026_09_08 = "gpt-image-2.5-sunburst-2026-09-08"
+  // GPT Image 2.6 (listed 2026-10-28) - the same two tiers
+  val gpt_image_2_6_flare = "gpt-image-2.6-flare"
+  val gpt_image_2_6_sunburst = "gpt-image-2.6-sunburst"
   @deprecated(
     "Scheduled for shutdown by OpenAI on 2026-12-01 - see https://platform.openai.com/docs/deprecations",
     "1.4.0"

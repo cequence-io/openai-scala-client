@@ -388,9 +388,130 @@ class DecisionCodecSpec extends AnyWordSpec with Matchers {
     }
   }
 
+  "The Gemini codec" should {
+
+    val gemini = GeminiDecisionsCodec("gemini-decision-1")
+
+    def geminiBody(
+      state: JsValue,
+      questions: (String, Question)*
+    ): JsObject =
+      gemini
+        .body(SystemOneRequest(state, "gemini-decision-1", questions.toMap), questions)
+        .as[JsObject]
+
+    "key the questions by their names where the API takes them, else q<n> - never twice" in {
+      GeminiDecisionsCodec.keys(Seq("defect", "a.b", "q1", "c d", "x" * 65, "ok_-9")) shouldBe
+        Seq("defect", "q2", "q1", "q3", "q4", "ok_-9")
+    }
+
+    "send text as it is, other JSON as its compact text, images as blocks after it" in {
+      (geminiBody(
+        JsString("The lamp broke."),
+        "x" -> NoulQuestion("Broken?")
+      ) \ "input").get shouldBe
+        JsString("The lamp broke.")
+
+      (geminiBody(
+        Json.obj("ticket" -> "lamp"),
+        "x" -> NoulQuestion("Broken?")
+      ) \ "input").get shouldBe
+        JsString("""{"ticket":"lamp"}""")
+
+      (geminiBody(
+        Json.obj("ticket" -> "lamp", "photo" -> image),
+        "x" -> NoulQuestion("Broken?")
+      ) \
+        "input").get shouldBe Json.arr(
+        Json.obj("type" -> "text", "text" -> """{"ticket":"lamp","photo":"[image 1]"}"""),
+        Json.obj("type" -> "image", "data" -> "AAAA", "mime_type" -> "image/png")
+      )
+
+      // a chat message's parts: consecutive texts joined, each image a block
+      (geminiBody(Json.arr("Look:", "below", image, "Done."), "x" -> NoulQuestion("Red?")) \
+        "input").get shouldBe Json.arr(
+        Json.obj("type" -> "text", "text" -> "Look:\nbelow"),
+        Json.obj("type" -> "image", "data" -> "AAAA", "mime_type" -> "image/png"),
+        Json.obj("type" -> "text", "text" -> "Done.")
+      )
+    }
+
+    "give every question non-empty instructions and its criteria in Gemini's shape" in {
+      val body = geminiBody(
+        JsString("x"),
+        "defect" -> NoulQuestion("Is it broken?", "a part stopped working", "only opinions"),
+        "criteria_only" -> NoulQuestion(
+          None,
+          Some(NoulCriteria(Some(JsString("a refund")), None))
+        ),
+        "team" -> ChoiceQuestion(
+          ListMap("billing" -> Some(JsString("charges")), "other" -> None)
+        ),
+        "severity" -> ScoreQuestion(
+          Seq(JsString("Low"), Json.obj("label" -> "High", "description" -> "Unusable")),
+          Some(Json.obj("ask" -> "How severe?"))
+        )
+      )
+      (body \ "model").as[String] shouldBe "gemini-decision-1"
+      (body \ "questions").get shouldBe Json.obj(
+        "defect" -> Json.obj(
+          "type" -> "noul",
+          "instructions" -> "Is it broken?",
+          "criteria" -> Json.obj(
+            "true_description" -> "a part stopped working",
+            "false_description" -> "only opinions"
+          )
+        ),
+        "criteria_only" -> Json.obj(
+          "type" -> "noul",
+          "instructions" -> "Yes when: a refund",
+          "criteria" -> Json.obj("true_description" -> "a refund")
+        ),
+        "team" -> Json.obj(
+          "type" -> "choice",
+          "instructions" -> "Which option applies?",
+          "criteria" -> Json.obj("billing" -> "charges", "other" -> "")
+        ),
+        "severity" -> Json.obj(
+          "type" -> "score",
+          "instructions" -> """{"ask":"How severe?"}""",
+          "criteria" -> Json.arr("Low", "High: Unusable")
+        )
+      )
+    }
+
+    "read the answers back by name, a score's legend as asked, the usage and the model asked" in {
+      val levels =
+        Seq(JsString("Low"), Json.obj("label" -> "High", "description" -> "Unusable"))
+      val asked = Seq[(String, Question)](
+        "customer.vip" -> NoulQuestion("VIP?"),
+        "severity" -> ScoreQuestion(levels, Some(JsString("How severe?")))
+      )
+      val response = gemini.response(
+        Json.parse(
+          """{"answers": {
+            |  "q0": {"type": "noul", "noul": 0.98, "confidence": 0.98},
+            |  "severity": {"type": "score", "score": 0.7, "legend": {"0": "Low", "1": "High: Unusable"},
+            |               "probabilities": {"0": 0.3, "1": 0.7}, "confidence": 0.7},
+            |  "unasked": {"type": "noul", "noul": 0.5, "confidence": 0.5}
+            |},
+            |"usage": {"total_tokens": 243, "total_input_tokens": 243,
+            |          "input_tokens_by_modality": [{"modality": "text", "tokens": 243}], "total_output_tokens": 0}}""".stripMargin
+        ),
+        asked
+      )
+      response.model shouldBe "gemini-decision-1"
+      response.answers.keySet shouldBe Set("customer.vip", "severity")
+      response.noul("customer.vip").noul shouldBe 0.98
+      response.score("severity").legend shouldBe Map(0 -> levels.head, 1 -> levels(1))
+      response.score("severity").probabilities shouldBe Map(0 -> 0.3, 1 -> 0.7)
+      response.usage shouldBe Usage(Some(243), Some(0))
+    }
+  }
+
   "A box question" should {
 
-    "be refused where it cannot go - OpenAI's protocol and ScaleDown's" in {
+    "be refused where it cannot go - OpenAI's protocol, ScaleDown's and Gemini's" in {
       val box = Seq[(String, Question)]("mug" -> BoxQuestion("the mug in `photo`"))
       the[IllegalArgumentException]
         .thrownBy(
@@ -401,6 +522,12 @@ class DecisionCodecSpec extends AnyWordSpec with Matchers {
       the[IllegalArgumentException]
         .thrownBy(
           ScaleDownCodec.body(SystemOneRequest(JsString("x"), "classify-1", box.toMap), box)
+        )
+        .getMessage should include("no box question")
+      the[IllegalArgumentException]
+        .thrownBy(
+          GeminiDecisionsCodec("gemini-decision-1")
+            .body(SystemOneRequest(JsString("x"), "gemini-decision-1", box.toMap), box)
         )
         .getMessage should include("no box question")
     }

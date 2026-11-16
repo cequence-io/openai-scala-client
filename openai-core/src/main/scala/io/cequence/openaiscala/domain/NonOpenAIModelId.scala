@@ -516,6 +516,11 @@ object NonOpenAIModelId {
   // Argon's API - thinking levels LOW / MEDIUM / HIGH (MINIMAL a 400), `thinkingBudget` taken,
   // json_schema, function calling, Google Search, URL context; penalties and n > 1 are 400s
   val gemini_4_carbon = "gemini-4-carbon"
+  // Gemini 4 Hydrogen (2026-11-12, the fast model of the Gemini 4 family; also OpenRouter's
+  // `google/gemini-4-hydrogen`) - 1,048,576 input / 65,536 output tokens. Live 2026-11-16:
+  // thinking levels LOW / MEDIUM / HIGH (MINIMAL a 400), Argon's API otherwise - covered by
+  // isGemini4 (Gemini4ArgonSmokeTest model=gemini-4-hydrogen, 19 of 19)
+  val gemini_4_hydrogen = "gemini-4-hydrogen"
 
   val gemini_3_1_pro = "gemini-3.1-pro"
   val gemini_3_1_pro_preview = "gemini-3.1-pro-preview"
@@ -1197,6 +1202,16 @@ object NonOpenAIModelId {
   val pplx_decider_flash_v1_2 = "pplx-decider-flash-v1.2"
   val pplx_decider_latest = "pplx-decider-latest"
   val pplx_decider_flash_latest = "pplx-decider-flash-latest"
+  // v1.3 (2026-11-12): the next 27B / Flash pair, the same API contract; 262,144 tokens of
+  // context, text + images. Live 2026-11-16 both answered (and `pplx-decider-latest`)
+  val pplx_decider_v1_3 = "pplx-decider-v1.3"
+  val pplx_decider_flash_v1_3 = "pplx-decider-flash-v1.3"
+  // Google's decision model (2026-11-11), the one model of the Gemini Decisions API (`POST
+  // https://generativelanguage.googleapis.com/v1beta/decisions` - its own wire format, mapped by
+  // typesafe-client's `DecisionProviderSettings.gemini`): noul / choice / score questions over
+  // text, images, audio, video and PDFs, up to 1,000 questions and 262,144 tokens per request,
+  // $0.10 / 1M input tokens, output free. Live 2026-11-16 (~0.3-0.5 s)
+  val gemini_decision_1 = "gemini-decision-1"
   // Microsoft's decision model on Microsoft Foundry (public preview 2026-10-09; built on Qwen3.5-9B;
   // TypeSafe's protocol at `<your Foundry endpoint>/providers/microsoft/v1/systemone`, $0.042 / 1M
   // input tokens; live-verified 2026-10-09) - `TypeSafeServiceFactory.microsoftFoundry`. The name as
@@ -1276,6 +1291,17 @@ object NonOpenAIModelId {
   val openrouter_morph_reflex = "morph/reflex"
   val openrouter_drex_max_finance = "nace-ai/drex-max-finance"
   val openrouter_parallel_decisions_fast_free = "parallel/decisions-fast:free"
+  // listed 2026-11-06 .. 11-13: Google's Gemini Decision 1 (text, images, audio, video, files;
+  // $0.10 / 1M), HeyGen's Decision 1 (text + image, 131k, $0.14 / 1M) and its Turbo (262k, $0.09 /
+  // 1M), Parallel's paid Decisions Fast (the criteria form refused as by its free tier, above) -
+  // not called (no OpenRouter credits) - and Perplexity's v1.3 deciders, free (live 2026-11-16:
+  // both answered, as `...-v1.3-20261112`)
+  val openrouter_gemini_decision_1 = "google/gemini-decision-1"
+  val openrouter_heygen_decision_1 = "heygen/heygen-decision-1"
+  val openrouter_heygen_decision_1_turbo = "heygen/heygen-decision-1-turbo"
+  val openrouter_parallel_decisions_fast = "parallel/decisions-fast"
+  val openrouter_pplx_decider_v1_3_free = "perplexity/pplx-decider-v1.3:free"
+  val openrouter_pplx_decider_flash_v1_3_free = "perplexity/pplx-decider-flash-v1.3:free"
 
   // decision models on Vercel AI Gateway - TypeSafe's protocol at `POST
   // https://ai-gateway.vercel.sh/typesafe/v1/systemone` (typesafe-client's
@@ -1297,6 +1323,15 @@ object NonOpenAIModelId {
   val vercel_liquid_d1_ultra = "liquid/d1-ultra"
   val vercel_pplx_decider_v1_2 = "perplexity/pplx-decider-v1.2"
   val vercel_pplx_decider_flash_v1_2 = "perplexity/pplx-decider-flash-v1.2"
+  // listed 2026-11-09 .. 11-13; live 2026-11-16 on a free-tier team: Perplexity's v1.3 deciders
+  // and NACE AI's Drex Max v1.1 answered, Gemini Decision 1 needs paid credits (403), Parallel's
+  // Decisions Fast refused the client's criteria form (422 "Request validation error.", as on
+  // OpenRouter)
+  val vercel_pplx_decider_v1_3 = "perplexity/pplx-decider-v1.3"
+  val vercel_pplx_decider_flash_v1_3 = "perplexity/pplx-decider-flash-v1.3"
+  val vercel_gemini_decision_1 = "google/gemini-decision-1"
+  val vercel_drex_max_v1_1 = "nace-ai/drex-max-v1.1"
+  val vercel_parallel_decisions_fast = "parallel/parallel-decisions-fast"
 
   // SubQ Snap (Subquadratic, public preview since 2026-10-12) - a long-context decision model
   // on TypeSafe's protocol at `POST https://api.subq.ai/v1/systemone` (typesafe-client's
@@ -1305,6 +1340,10 @@ object NonOpenAIModelId {
   val subq_snap_preview = "subq-snap-preview"
   // SubQ Snap 1.1 (listed by 2026-10-29, public preview) - SubQ's default decision model
   val subq_snap_1_1 = "subq-snap-1.1"
+  // SubQ Snap 1.2 (listed 2026-11-16) and the rolling `subq-snap-latest` (= 1.2 that day - the
+  // same answers, live)
+  val subq_snap_1_2 = "subq-snap-1.2"
+  val subq_snap_latest = "subq-snap-latest"
 
   // Sarvam Prism (announced 2026-11-03): Sarvam's System-1 decision model on Sarvam 105B,
   // English, 10 Indian languages and Hinglish, TypeSafe's protocol at

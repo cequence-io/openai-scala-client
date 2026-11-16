@@ -88,8 +88,8 @@ object DecisionProviderSettings {
   )
 
   /**
-   * Perplexity's Decisions API (`pplx-decider-v1.2` by default - the 27B of 2026-10-16 -, the
-   * 4B `pplx-decider-flash-v1.2`, and the older `pplx-decider-v1.1-27b` /
+   * Perplexity's Decisions API (`pplx-decider-v1.3` by default - the 27B of 2026-11-12 -, the
+   * 4B `pplx-decider-flash-v1.3`, and the older v1.2 / Flash v1.2, `pplx-decider-v1.1-27b` and
    * `pplx-decider-v1-27b`; `PERPLEXITY_API_KEY`, else `SONAR_API_KEY`): `POST /v1/decisions`,
    * images in the state (at most 8 per question), at most 128 questions, an input under
    * 262,144 tokens, $0.02 (Flash $0.01) per 1M input tokens; its `/v1/models` lists the Agent
@@ -101,10 +101,22 @@ object DecisionProviderSettings {
   val perplexity: DecisionProvider = DecisionProvider(
     "https://api.perplexity.ai/",
     "PERPLEXITY_API_KEY",
-    DecisionModelId.pplx_decider_v1_2,
+    DecisionModelId.pplx_decider_v1_3,
     decisionsPath = "v1/decisions",
     models = DecisionModelListing.Fixed(
       Seq(
+        ModelMetadata(
+          DecisionModelId.pplx_decider_v1_3,
+          "Perplexity's 27B multimodal decision model, v1.3 - all questions in one pass.",
+          "2026-11-12",
+          Some(Seq("text", "image"))
+        ),
+        ModelMetadata(
+          DecisionModelId.pplx_decider_flash_v1_3,
+          "Perplexity's 4B multimodal decision model, Flash v1.3.",
+          "2026-11-12",
+          Some(Seq("text", "image"))
+        ),
         ModelMetadata(
           DecisionModelId.pplx_decider_v1_2,
           "Perplexity's 27B multimodal decision model, v1.2 - all questions in one pass.",
@@ -312,7 +324,8 @@ object DecisionProviderSettings {
   )
 
   /**
-   * SubQ Snap (`subq-snap-preview`, Subquadratic, public preview since 2026-10-12;
+   * SubQ Snap (`subq-snap-1.2` by default since 2026-11-16, `subq-snap-latest`,
+   * `subq-snap-1.1`, `subq-snap-preview`; Subquadratic, public preview since 2026-10-12;
    * `SUBQ_API_KEY`): a long-context decision model on TypeSafe's protocol at `POST
    * https://api.subq.ai/v1/systemone`, $0.05 per 1M input tokens, output free. Live
    * 2026-10-12: the largest input it takes is 295,957 tokens by its own count (`usage`), the
@@ -331,12 +344,24 @@ object DecisionProviderSettings {
   val subq: DecisionProvider = DecisionProvider(
     "https://api.subq.ai/",
     "SUBQ_API_KEY",
-    DecisionModelId.subq_snap_1_1,
+    DecisionModelId.subq_snap_1_2,
     models = DecisionModelListing.Fixed(
       Seq(
         ModelMetadata(
+          DecisionModelId.subq_snap_1_2,
+          "SubQ Snap 1.2 - SubQ's newest decision model (public preview); `subq-snap-latest` follows the newest.",
+          "2026-11-16",
+          Some(Seq("text", "image"))
+        ),
+        ModelMetadata(
+          DecisionModelId.subq_snap_latest,
+          "The rolling alias of SubQ's newest decision model.",
+          "2026-11-16",
+          Some(Seq("text", "image"))
+        ),
+        ModelMetadata(
           DecisionModelId.subq_snap_1_1,
-          "SubQ Snap 1.1 - SubQ's default decision model (public preview), the successor of SubQ Snap Preview.",
+          "SubQ Snap 1.1 - the successor of SubQ Snap Preview.",
           "2026-10-29",
           Some(Seq("text", "image"))
         ),
@@ -467,5 +492,47 @@ object DecisionProviderSettings {
     name = Some("scaledown"),
     protocol = DecisionProtocol.ScaleDown,
     apiKeyHeader = Some("x-api-key")
+  )
+
+  /**
+   * Google's Gemini Decisions API (`gemini-decision-1`, since 2026-11-11; the Gemini API's key
+   * \- `GOOGLE_API_KEY`, else `GEMINI_API_KEY` - in an `x-goog-api-key` header): `POST
+   * https://generativelanguage.googleapis.com/v1beta/decisions`, its own wire format
+   * ([[DecisionProtocol.Gemini]]). $0.10 per 1M input tokens, the shared input billed once per
+   * request, output free; a no-cost tier in Google AI Studio. Live 2026-11-16: ~0.3-0.5 s for
+   * a few questions; at most 1,000 questions (a 400 above) and 262,144 tokens (a 400 "The
+   * input token count exceeds the maximum number of tokens allowed 262144.", a
+   * [[TypeSafeScalaTokenCountExceededException]]); question keys `[A-Za-z0-9_-]`, 1-64
+   * characters (the codec maps other names); a choice of 2-255 options, a score of 2-255
+   * levels (the domain caps them at 10); every question needs non-empty instructions; an
+   * unknown top-level field is a 400; a 64 x 64 PNG read right (blue 0.87, red 0.14 - ~1,100
+   * image tokens); no request id header. Errors are `{"error": {"message", "code"}}` with
+   * string codes (`invalid_request`, `not_found`, and for a blocked input `safety`,
+   * `prohibited_content`, ...), a bad key Google's own 400 with `API_KEY_INVALID` (a
+   * [[TypeSafeScalaUnauthorizedException]]). It also reads audio, video and PDFs - the client
+   * sends text and images.
+   */
+  val gemini: DecisionProvider = DecisionProvider(
+    "https://generativelanguage.googleapis.com/",
+    "GOOGLE_API_KEY",
+    DecisionModelId.gemini_decision_1,
+    decisionsPath = "v1beta/decisions",
+    models = DecisionModelListing.Fixed(
+      Seq(
+        ModelMetadata(
+          DecisionModelId.gemini_decision_1,
+          "Google's decision model, the one model of the Gemini Decisions API ($0.10 / 1M input tokens).",
+          "2026-11-11",
+          Some(Seq("text", "image", "audio", "video", "document"))
+        )
+      )
+    ),
+    maxQuestions = Some(1000),
+    images = DecisionImages.InState,
+    requestIdHeaders = Nil,
+    name = Some("gemini"),
+    apiKeyEnvFallbacks = Seq("GEMINI_API_KEY"),
+    protocol = DecisionProtocol.Gemini,
+    apiKeyHeader = Some("x-goog-api-key")
   )
 }

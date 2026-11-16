@@ -4,7 +4,7 @@
 
 Decision models give typed answers - yes/no probabilities, choices, scores - with calibrated probabilities, in a few
 hundred milliseconds. OpenAI's Decisions API is part of the full `OpenAIService`; TypeSafe AI's Jev, Liquid AI's d1,
-Perplexity's decider, Microsoft-Decision-1, SubQ Snap, ScaleDown's Classify, OpenRouter's catalogue, Vercel AI Gateway and a local llama.cpp are served through the `typesafe-client` module,
+Perplexity's decider, Google's Gemini Decision 1, Microsoft-Decision-1, SubQ Snap, ScaleDown's Classify, OpenRouter's catalogue, Vercel AI Gateway and a local llama.cpp are served through the `typesafe-client` module,
 which also serves either API on either host, typed decisions (`decide[T]`) and re-ranking.
 
 ## OpenAI Decisions API (gpt-6-luna) ⚖️
@@ -68,6 +68,42 @@ which also serves either API on either host, typed decisions (`decide[T]`) and r
   the same `createDecision` call answered alike on OpenAI and Jev - refund 1.0 / 0.99, billing 1.0 / 1.0, urgency
   1.79 / 1.78.
 
+## Gemini Decisions API (gemini-decision-1) ♊
+
+Google's decision model **`gemini-decision-1`** (launched 2026-11-11) answers noul, choice and score questions about text
+and images - up to 1,000 questions and 262,144 tokens per request, $0.10 per million input tokens (the shared input
+billed once per request), output free, with a no-cost tier in Google AI Studio. Its API (`POST
+https://generativelanguage.googleapis.com/v1beta/decisions`, the Gemini API key in `x-goog-api-key`) has a format of
+its own, which `DecisionProviderSettings.gemini` maps both ways - so every routine of the TypeSafe lib runs on it:
+
+```scala
+  val gemini = TypeSafeServiceFactory(DecisionProviderSettings.gemini)   // GOOGLE_API_KEY, else GEMINI_API_KEY
+  gemini.systemOne(order, questions)
+  gemini.decide[Triage](ticket)
+  gemini.systemOne(Json.obj("note" -> "A photo from the breakroom.", "photo" -> DecisionImage(photo)), questions)
+
+  val asOpenAI = TypeSafeServiceFactory.asOpenAI(DecisionProviderSettings.gemini)           // json_schema structured output
+  val decisions = TypeSafeServiceFactory.asOpenAIDecisions(DecisionProviderSettings.gemini) // OpenAI's createDecision
+```
+
+- The state goes as Gemini's `input`: text as it is, a chat message's texts and images as content blocks, other JSON as
+  its compact text with each image replaced by an `[image n]` marker and sent as an `image` block after it.
+- Question keys must be 1-64 characters of `[A-Za-z0-9_-]`: a name that is not (`customer.vip`, as the JSON schema
+  planner names a nested field) goes as `q<n>` and its answer comes back under the name.
+- Every question needs non-empty instructions: a noul with criteria only gets them as its instructions, a choice or a
+  score without any a generic one. A noul's criteria go as `{true_description, false_description}`, a score's levels as
+  text (`{label, description}` as `label: description`); the answer's legend is the levels as asked.
+- Errors: a bad key is Google's own 400 (`API_KEY_INVALID`) - a `TypeSafeScalaUnauthorizedException`; the token limit
+  a 400 "The input token count exceeds the maximum number of tokens allowed 262144." - a
+  `TypeSafeScalaTokenCountExceededException`; an unknown model a 404; a blocked input a 400 with the code `safety` /
+  `prohibited_content` / ...; no request id header.
+- It also reads audio, video and PDFs; the client sends text and images.
+
+Live 2026-11-16 ([GeminiDecisionSmokeTest](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/typesafe/GeminiDecisionSmokeTest.scala),
+15 of 15, ~0.3-0.5 s per call): Google's docs example (damaged 0.98), names the API refuses answered back by name, a
+criteria-only noul, `decide[Triage]`, the JSON helper with the schema inferred, `createDecision` through the OpenAI
+interface, a blue square (blue 0.90 / red 0.11, ~1,100 image tokens) in a JSON state and from a chat message, a
+re-ranking (the relevant passage 0.97, an injection 0.04), 200 questions in 0.7 s, and the three refusals.
 
 ## TypeSafe AI (Jev) 🎯
 
@@ -475,8 +511,13 @@ and [LlamaCppDecisionsSmokeTest](../openai-examples/src/main/scala/io/cequence/o
 
 ## Perplexity Decisions API (pplx-decider) 🧭
 
+**v1.3** (2026-11-12): **`pplx-decider-v1.3`** (27B, the Perplexity preset's default since 1.7.1) and
+**`pplx-decider-flash-v1.3`** (4B), the same API contract; on OpenRouter free as `perplexity/pplx-decider-v1.3:free` /
+`-flash-v1.3:free`, on Vercel AI Gateway as `perplexity/pplx-decider-v1.3` / `-flash-v1.3` (a free-tier team gets
+them). Live 2026-11-16 on all three hosts.
+
 **v1.2** (2026-10-16) comes in two sizes, both open weights: **`pplx-decider-v1.2`** (27B, $0.02 per million input
-tokens - the Perplexity preset's default) and **`pplx-decider-flash-v1.2`** (4B, $0.01), plus the aliases
+tokens - the Perplexity preset's default until 1.7.1) and **`pplx-decider-flash-v1.2`** (4B, $0.01), plus the aliases
 `pplx-decider-latest` / `pplx-decider-flash-latest`. All questions of a request run in one pass (up to 5x faster, per
 Perplexity); at most 8 images per question. Live 2026-10-16 the docs' review came back defect 0.995 / negative 0.60 /
 severity 1.91 in 0.6 s on the 27B and 0.972 / mixed 0.54 / 1.71 in 0.22 s on Flash (160 input tokens for the three
@@ -670,7 +711,8 @@ cases, paced to the free tier.
 ## SubQ Snap 📜
 
 SubQ Snap (`subq-snap-preview`, Subquadratic, public preview since 2026-10-12; **SubQ Snap 1.1** - `subq-snap-1.1`, the
-preset's default since 1.7.0, SubQ's own default decision model, also in public preview - next to it) is a long-context decision model on
+preset's default in 1.7.0 - and **SubQ Snap 1.2** - `subq-snap-1.2`, the default since 1.7.1, with the rolling
+`subq-snap-latest` - next to it) is a long-context decision model on
 TypeSafe's System One protocol: `POST https://api.subq.ai/v1/systemone` with a `Bearer` key in `SUBQ_API_KEY`, $0.05 per
 1M input tokens, output free. `DecisionProviderSettings.subq` reaches it like Jev - every routine runs on it (`decide[T]`,
 re-ranking, the guardrails, the OpenAI interface):
@@ -852,10 +894,11 @@ a protocol of its own; its preset translates the questions and answers, so every
 |---|---|---|---|
 | `typeSafe` | `TYPESAFE_API_KEY` | `jev-latest`, `jev-preview` (Jev 1.14), `jev-1.13.0`, `jev-1.14.0` | images as TypeSafe's assets, box questions on Jev 1.14; the standard limits, 64k tokens per request / 32k per question - `typeSafeLongContext`, the default of `TypeSafeServiceFactory()` since 1.7.0, sends the long-context header for 262k |
 | `liquid` | `LIQUID_API_KEY` | `d1.1` (default), `d1`, `d1-ultra` | at most 128 questions; all read images (sent in a top-level `images` array) |
-| `perplexity` | `PERPLEXITY_API_KEY` (or `SONAR_API_KEY`) | `pplx-decider-v1.2` (default), `pplx-decider-flash-v1.2`, `pplx-decider-v1.1-27b`, `pplx-decider-v1-27b` | `POST /v1/decisions`, images of any size, at most 128 questions |
-| `openRouter` | `OPENROUTER_API_KEY` | Jev, d1, Perplexity's deciders (+ the `~perplexity/pplx-decider-latest` alias), OpenAI's Luna, Microsoft-Decision-1, Cloudflare's Clef (+ Flash, Omni), Solar Decide (+ Flash), Mercury Decide (+ free), Tev1, Kev 4B, NACE's Drex (1.5, 2.0), Span-01 (+ Lite), Span-02, ScaleDown's Classify-1, Jev 1.14, d1-ultra, and since 2026-10-21 / 27 d1.1 (+ the `~liquid/d1-latest` / `~liquid/d1-ultra-latest` aliases), Baseten's Elephant-1 / Mammoth-1 and NACE's Drex Max (listed, not called - no credits), and since 2026-11 Baseten's Joey-1, Morph's Reflex, NACE's Drex Max Finance (listed, not called) and Parallel's Decisions Fast (`parallel/decisions-fast:free`, web-grounded; live 2026-11-11 it answered a noul without criteria but refused questions with criteria - so schema-planned questions fail there) | listed with `output_modalities=decisions`; images as `image_url` parts in the state (read by Clef Omni / Flash, Perplexity's decider, Luna, d1 and Mercury Decide; the others read them as text); Span-01 takes noul questions only (Span-02 all three kinds, and object states); `scaledown/` models get ScaleDown's text-only protocol |
-| `vercel` | `AI_GATEWAY_API_KEY` | `typesafe-ai/jev` (`jev`, `jev-1.13.0`, `jev-1.14.0`), `liquid/d1`, `liquid/d1-ultra`, `microsoft/microsoft-decision-1`, `openai/gpt-6-luna-decisions`, `perplexity/pplx-decider-v1.2` (+ Flash), `baseten/elephant-1`, `baseten/mammoth-1`, `convaiinnovations/laya` (+ free), `scaledown/scaledown-classify-1` | `https://ai-gateway.vercel.sh/typesafe/`, images in the state; a free-tier team gets Laya, ScaleDown, Baseten's two, d1-ultra and Perplexity's v1.2 deciders at 5 requests per minute (live 2026-10-29), the rest needs paid credits |
-| `subq` | `SUBQ_API_KEY` | `subq-snap-1.1` (default), `subq-snap-preview` | `https://api.subq.ai/`, at most 295,957 input tokens, up to 4 images as `{mediaType, base64}` objects in a top-level `images` array |
+| `gemini` | `GOOGLE_API_KEY` (or `GEMINI_API_KEY`) | `gemini-decision-1` | Google's own protocol (mapped), `POST v1beta/decisions`, the key in `x-goog-api-key`; images, at most 1,000 questions and 262,144 tokens |
+| `perplexity` | `PERPLEXITY_API_KEY` (or `SONAR_API_KEY`) | `pplx-decider-v1.3` (default), `pplx-decider-flash-v1.3`, `pplx-decider-v1.2`, `pplx-decider-flash-v1.2`, `pplx-decider-v1.1-27b`, `pplx-decider-v1-27b` | `POST /v1/decisions`, images of any size, at most 128 questions |
+| `openRouter` | `OPENROUTER_API_KEY` | Jev, d1, Perplexity's deciders (+ the `~perplexity/pplx-decider-latest` alias), OpenAI's Luna, Microsoft-Decision-1, Cloudflare's Clef (+ Flash, Omni), Solar Decide (+ Flash), Mercury Decide (+ free), Tev1, Kev 4B, NACE's Drex (1.5, 2.0), Span-01 (+ Lite), Span-02, ScaleDown's Classify-1, Jev 1.14, d1-ultra, and since 2026-10-21 / 27 d1.1 (+ the `~liquid/d1-latest` / `~liquid/d1-ultra-latest` aliases), Baseten's Elephant-1 / Mammoth-1 and NACE's Drex Max (listed, not called - no credits), and since 2026-11 Baseten's Joey-1, Morph's Reflex, NACE's Drex Max Finance (listed, not called) and Parallel's Decisions Fast (`parallel/decisions-fast:free`, web-grounded; live 2026-11-11 it answered a noul without criteria but refused questions with criteria - so schema-planned questions fail there), and since 2026-11-11 Google's Gemini Decision 1, HeyGen's Decision 1 (+ Turbo), Parallel's paid Decisions Fast (listed, not called) and Perplexity's v1.3 deciders (free, answered) | listed with `output_modalities=decisions`; images as `image_url` parts in the state (read by Clef Omni / Flash, Perplexity's decider, Luna, d1 and Mercury Decide; the others read them as text); Span-01 takes noul questions only (Span-02 all three kinds, and object states); `scaledown/` models get ScaleDown's text-only protocol |
+| `vercel` | `AI_GATEWAY_API_KEY` | `typesafe-ai/jev` (`jev`, `jev-1.13.0`, `jev-1.14.0`), `liquid/d1`, `liquid/d1-ultra`, `microsoft/microsoft-decision-1`, `openai/gpt-6-luna-decisions`, `perplexity/pplx-decider-v1.2` (+ Flash), `baseten/elephant-1`, `baseten/mammoth-1`, `convaiinnovations/laya` (+ free), `scaledown/scaledown-classify-1`, and since 2026-11-09 `perplexity/pplx-decider-v1.3` (+ Flash), `google/gemini-decision-1`, `nace-ai/drex-max-v1.1`, `parallel/parallel-decisions-fast` | `https://ai-gateway.vercel.sh/typesafe/`, images in the state; a free-tier team gets Laya, ScaleDown, Baseten's two, d1-ultra, Perplexity's v1.2 and v1.3 deciders and Drex Max v1.1 at 5 requests per minute (live 2026-10-29 / 11-16), the rest needs paid credits (Parallel's refuses the client's criteria form, as on OpenRouter) |
+| `subq` | `SUBQ_API_KEY` | `subq-snap-1.2` (default), `subq-snap-latest`, `subq-snap-1.1`, `subq-snap-preview` | `https://api.subq.ai/`, at most 295,957 input tokens, up to 4 images as `{mediaType, base64}` objects in a top-level `images` array |
 | `sarvam` | `SARVAM_API_KEY` | `sarvam-prism` | `https://api.sarvam.ai/`, `POST /v2/systemone`, the key in `api-subscription-key`; text only, no question cap, 32,768 tokens per question |
 | `bespoke` | `BESPOKE_API_KEY` | `nimble-latest` (default), `nimble-v4-max` | `https://api.bespokelabs.ai/`, `POST /v1/systemone`, Bearer; text only, at most 64 questions, 256k tokens per question; not verified live |
 | `scaleDown` | `SCALEDOWN_API_KEY` | `classify-1`, `classify` | `https://api.scaledown.xyz/`, `POST /v1/scaledown`, the key in `x-api-key`; text only (ScaleDown's protocol) plus one image as the state's document; TLS 1.3 only (see above) |
@@ -863,7 +906,7 @@ a protocol of its own; its preset translates the questions and answers, so every
 | `openAI` | `OPENAI_SCALA_CLIENT_API_KEY` (or `OPENAI_API_KEY`) | `gpt-6-luna` | OpenAI's own protocol (translated), images, at most 200 questions; a refusal arrives as `UnknownAnswer("refusal", ...)` |
 | `llamaCpp` | none (`LLAMA_API_KEY` if the server has one) | whatever `llama-server` loaded | a local server, `http://127.0.0.1:8080/`; a router needs a model id from `listModels` (its decision models only); images in a top-level `images` array, for a model with a projector (else a 501) |
 
-A `DecisionProvider` carries what differs between hosts: the protocol (System One, or OpenAI's), the base URL, key
+A `DecisionProvider` carries what differs between hosts: the protocol (System One, OpenAI's, ScaleDown's text-only one or Gemini's), the base URL, key
 variable and default model, the decisions path (`v1/systemone`, `v1/decisions` on Perplexity and OpenAI), how `listModels` finds the models (TypeSafe's `{"models"}` list, an OpenAI-style
 `{"data"}` list with query parameters, Azure's deployment list on a Foundry resource, or a fixed list - with what each model reads, when the host says), a question cap and
 whether and how the host reads images (in the state, or lifted into a top-level `images` array; both checked before sending,

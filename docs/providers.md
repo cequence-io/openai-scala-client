@@ -196,6 +196,10 @@ Then you can obtain a service in one of the following ways.
    Argon; 1M context; $4 / $20 per 1M tokens after the introductory period ending 2026-11-30) has Argon's API, so the same
    rules apply (live 2026-11-11: `Gemini4ArgonSmokeTest model=gemini-4-carbon`, all 19 sections).
 
+   **Gemini 4 Hydrogen** (`NonOpenAIModelId.gemini_4_hydrogen`, 2026-11-12 - the fast model of the Gemini 4 family;
+   1M input / 64k output tokens) has Argon's API too: thinking levels LOW / MEDIUM / HIGH (MINIMAL a 400), the same
+   rules (live 2026-11-16: `Gemini4ArgonSmokeTest model=gemini-4-hydrogen`, all 19 sections).
+
    **URL context** (`Tool.UrlContext`): Gemini fetches the URLs named in the prompt (up to 20) and answers from them.
 ```scala
   service.createChatCompletion(

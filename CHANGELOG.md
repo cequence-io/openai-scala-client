@@ -8,8 +8,9 @@ runs, every run is a new request), back-pressured, run on plain `Future`s or han
 import, and native on an engine of that library (an Akka engine's stream comes back as its own `Source`, with no bridge).
 No factory or helper takes a `Materializer`, an `ActorSystem` or an Akka `Scheduler`; retries, failover and polling wait
 on ws-client's `AsyncScheduler`. The new `openai-scala-zio` module gives every service as ZIO `Task`s, `ZStream`s and
-`ZLayer`s. logback is no longer a dependency. Also in it: everything in 1.7.1, released with it - Claude Fable 5.2 and
-Mythos 5.2, Gemini 4 Carbon, Muse Ember 1.0 and four OpenRouter decision models. The 1.x line (1.7.x) stays on Akka.
+`ZLayer`s. logback is no longer a dependency. Also in it: everything in 1.7.1, released with it - Google's Gemini
+Decisions API as a decision-model host, Claude Fable 5.2 and Mythos 5.2, Gemini 4 Carbon and Hydrogen, Muse Ember 1.0,
+Perplexity's v1.3 deciders, SubQ Snap 1.2 and more decision models. The 1.x line (1.7.x) stays on Akka.
 
 ### ⚠️ Upgrading from 1.7.x
 
@@ -117,6 +118,8 @@ code for Futures-only, Akka, Pekko, fs2 and ZIO users and for implementers of th
   the run ends, fails or is cancelled.
 - openai-scala-guice: the services' `ExecutionContext` is a fixed pool of 40 daemon threads (was the actor system's
   `blocking-dispatcher`, also 40 threads).
+- As in 1.7.1: the Perplexity decision preset defaults to `pplx-decider-v1.3` (was v1.2), the SubQ preset to
+  `subq-snap-1.2` (was 1.1). A call that names its model is not affected.
 
 ### New features
 
@@ -164,6 +167,12 @@ code for Futures-only, Akka, Pekko, fs2 and ZIO users and for implementers of th
   the migration guide has a [step-by-step](docs/migration-2.0.md#step-by-step) order. Every engine was checked live on
   the published artifacts before the release, on each Scala line it supports and on Java 11 and 17.
 
+- **Google's Gemini Decisions API** (as in 1.7.1; `DecisionProviderSettings.gemini`, `gemini-decision-1`, launched
+  2026-11-11): Google's decision model - noul, choice and score questions over text and images, up to 1,000 questions and
+  262,144 tokens per request, $0.10 per 1M input tokens - on its own protocol (`DecisionProtocol.Gemini`, `POST
+  v1beta/decisions`), mapped both ways, so every typesafe-client routine runs on it. Live 2026-11-16:
+  `GeminiDecisionSmokeTest` 15 of 15.
+
 ### Dependencies
 
 - ws-client 1.2.2 (from 1.1.5): `AsyncStream`, `AsyncScheduler`, binary-safe downloads, `TransportSettings.httpVersion`
@@ -204,6 +213,14 @@ Also in 1.7.1:
   test account has no credits, except Parallel's free tier): Baseten's `baseten/joey-1`, Morph's `morph/reflex`, NACE
   AI's `nace-ai/drex-max-finance` and Parallel's `parallel/decisions-fast:free` (`openrouter_*` constants). Parallel's
   answered a noul without criteria live but refuses the criteria form the client sends, so planned questions fail there.
+- **Gemini 4 Hydrogen** (`NonOpenAIModelId.gemini_4_hydrogen`, 2026-11-12, the fast Gemini 4 model): Argon's API -
+  thinking levels LOW / MEDIUM / HIGH. In `models-supporting-json-schema`. Live 2026-11-16: `Gemini4ArgonSmokeTest
+  model=gemini-4-hydrogen` 19 of 19.
+- **Perplexity Decider v1.3 / Flash v1.3** (2026-11-12, the Perplexity preset's default) and **SubQ Snap 1.2** (+
+  `subq-snap-latest`, the SubQ preset's default). Live 2026-11-16.
+- **More decision models on OpenRouter** (Google's Gemini Decision 1, HeyGen's Decision 1 + Turbo, Parallel's paid
+  Decisions Fast, Perplexity's free v1.3 ids) **and Vercel AI Gateway** (Perplexity's v1.3 deciders, Gemini Decision 1,
+  NACE AI's Drex Max v1.1, Parallel's Decisions Fast); **GPT Image 2.6** (`gpt_image_2_6_flare` / `_sunburst`).
 
 ### Fixed
 
@@ -229,13 +246,33 @@ Also in 1.7.1:
 
 ## 1.7.1 (unreleased)
 
-New models on the 1.x line, released together with 2.0.0: Claude Fable 5.2 and Mythos 5.2, Gemini 4 Carbon, Muse Ember
-1.0 and four OpenRouter decision models.
+New models on the 1.x line, released together with 2.0.0: Claude Fable 5.2 and Mythos 5.2, Gemini 4 Carbon and
+Hydrogen, Muse Ember 1.0, Perplexity's v1.3 deciders, SubQ Snap 1.2 and more decision models - and Google's Gemini
+Decisions API (Gemini Decision 1) as a decision-model host.
 
 ### Upgrading from 1.7.0
 
-Binary compatible with 1.7.0: new model ids, entries in the model rules and the `models-supporting-json-schema` list
-only - no API change.
+Binary compatible with 1.7.0: new model ids, a new decision protocol and provider preset, entries in the model rules and
+the `models-supporting-json-schema` list - nothing removed or changed. Two presets have a new default model:
+
+- `DecisionProviderSettings.perplexity` (`TypeSafeServiceFactory.perplexity*`): `pplx-decider-v1.3` (was v1.2).
+- `DecisionProviderSettings.subq`: `subq-snap-1.2` (was 1.1).
+
+A call that names its model is not affected.
+
+### New features
+
+- **Google's Gemini Decisions API** (`DecisionProviderSettings.gemini`, typesafe-client; `gemini-decision-1`, launched
+  2026-11-11): Google's decision model - noul, choice and score questions over text and images, up to 1,000 questions
+  and 262,144 tokens per request, $0.10 per 1M input tokens, output free. It speaks a protocol of its own
+  (`DecisionProtocol.Gemini`: `POST v1beta/decisions`, the Gemini API key in `x-goog-api-key`), which the client maps
+  both ways, so every routine runs on it - `systemOne`, `decide[T]`, re-ranking, the guardrails, the JSON-schema chat
+  adapter and OpenAI's Decisions interface (`asOpenAIDecisions`). The state goes as Gemini's `input` (text, or content
+  blocks with the images), question names the API refuses as keys (`[A-Za-z0-9_-]`, 1-64 characters - e.g. the JSON
+  schema planner's `customer.vip`) as `q<n>`, the answers back by name; a bad key is a
+  `TypeSafeScalaUnauthorizedException`, the token limit a `TypeSafeScalaTokenCountExceededException`. Live 2026-11-16:
+  `examples/typesafe/GeminiDecisionSmokeTest`, 15 of 15 (~0.3-0.5 s per call; 200 questions in 0.7 s; a blue square
+  0.90 blue / 0.11 red). Through OpenRouter and Vercel AI Gateway it is `google/gemini-decision-1` on System One.
 
 ### New models
 
@@ -268,6 +305,24 @@ only - no API change.
   answers; text, 32k). Only Decisions Fast was called (the test account has no OpenRouter credits): live 2026-11-11 it
   answered a noul without criteria (0.95, 0.7 s) but refused one with `{yes, no}` criteria and a choice whose criteria
   are not a record, so the questions the client plans from a JSON schema (which carry criteria) fail there.
+
+- **Gemini 4 Hydrogen** (`NonOpenAIModelId.gemini_4_hydrogen`, 2026-11-12): the fast model of the Gemini 4 family,
+  1M input / 64k output tokens. Argon's API - thinking levels LOW / MEDIUM / HIGH (MINIMAL a 400) - so the Gemini 4
+  rules cover it; in `models-supporting-json-schema`. Live 2026-11-16: `Gemini4ArgonSmokeTest
+  model=gemini-4-hydrogen`, 19 of 19.
+- **Perplexity Decider v1.3 and Flash v1.3** (`DecisionModelId.pplx_decider_v1_3` / `pplx_decider_flash_v1_3`,
+  2026-11-12; v1.3 is the Perplexity preset's default now - see the upgrade notes); on OpenRouter the free
+  `perplexity/pplx-decider-v1.3:free` / `-flash-v1.3:free`, on Vercel `perplexity/pplx-decider-v1.3` / `-flash-v1.3`.
+  Live 2026-11-16 on all three hosts (`PerplexityDeciderSmokeTest`, all sections). Like v1.2 not in
+  `models-supporting-json-schema` (a decision model takes questions, not a schema; the JSON helper's fallback works).
+- **SubQ Snap 1.2** and the rolling `subq-snap-latest` (the SubQ preset's default is 1.2 now); in
+  `models-supporting-json-schema`. Live 2026-11-16: `SubQSnapSmokeTest`, 11 of 11.
+- **More decision models on OpenRouter** (listed 2026-11-06 .. 11-13, in `models-supporting-json-schema`; not called -
+  the test account has no credits): Google's Gemini Decision 1, HeyGen's Decision 1 and Decision 1 Turbo, and
+  Parallel's paid Decisions Fast (which, like its free tier, refuses the questions with criteria the client sends).
+  **On Vercel AI Gateway**: Gemini Decision 1 (paid credits only), NACE AI's Drex Max v1.1 (answered on a free-tier team)
+  and Parallel's Decisions Fast (the same refusal).
+- **GPT Image 2.6** (`ModelId.gpt_image_2_6_flare` / `gpt_image_2_6_sunburst`).
 
 ### Fixed
 
