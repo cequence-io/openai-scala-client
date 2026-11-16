@@ -9,10 +9,28 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 
 class ExecutionContextModuleSpec extends AnyWordSpec with Matchers {
 
+  // daemon threads that die quietly: the default handler prints a fatal error's stack trace,
+  // which CI's log reader reports as a failure
+  private def quietPool(threads: Int) =
+    new ExecutionContextModule.FixedPool(
+      threads,
+      (runnable: Runnable) => {
+        val thread = new Thread(runnable)
+        thread.setDaemon(true)
+        thread.setUncaughtExceptionHandler(
+          (
+            _,
+            _
+          ) => ()
+        )
+        thread
+      }
+    )
+
   "The module's pool" should {
 
     "keep the first fatal error a callback throws - the future it was for never completes" in {
-      val pool = new ExecutionContextModule.FixedPool(2)
+      val pool = quietPool(2)
       implicit val ec: ExecutionContext = pool
       try {
         val doomed = Future(1).map[Int](_ => throw new LinkageError("a mismatched jar"))

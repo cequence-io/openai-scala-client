@@ -59,8 +59,10 @@ object ExecutionContextModule {
    * completes the future whose callback threw it - the promise rethrows it - so whoever waits
    * for that future (`closeAndExit()`) waits for `fatalError` too.
    */
-  private[service] final class FixedPool(threads: Int)
-      extends AbstractExecutorService
+  private[service] final class FixedPool(
+    threads: Int,
+    threadFactory: ThreadFactory = ExecutionContextModule.threadFactory
+  ) extends AbstractExecutorService
       with ExecutionContextExecutorService {
 
     private val fatal = Promise[Nothing]()
