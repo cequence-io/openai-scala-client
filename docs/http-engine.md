@@ -2,7 +2,8 @@
 
 [← back to the README](../README.md)
 
-The HTTP client the library runs on and how to pick another, one engine shared by many services and providers,
+The HTTP client the library runs on and how to pick another, each engine with a runnable example, one engine shared by
+many services and providers,
 timeouts, proxy and HTTP version, and embedding the library in an Akka, Pekko or ZIO application.
 
 Every HTTP call goes through an **engine** of [ws-client](https://github.com/cequence-io/ws-client) 1.2.1, which is
@@ -112,6 +113,37 @@ service.close() // leaves the engine open
 engine.close()  // closes the engine AND its backend, including one you passed in
 ```
 
+## Engine by engine
+
+What each engine gives you when its artifact is the only one you add, and a runnable example of it. The two middle
+columns are the engines the plain and the streamed factories pick then; "bridges" counts the `Flow.Publisher` hops a
+stream crosses per response when you consume it as the type in the column before it (see
+[Native round trips](streaming.md#native-round-trips-when-a-bridge-happens)).
+
+| Engine | Add | `OpenAIServiceFactory()` runs on | `.withStreaming()` runs on | Consume streams as | Bridges | Example |
+|---|---|---|---|---|---|---|
+| `jdk` | nothing | `jdk` | `jdk` | `AsyncStream` (`runForeach`, `runToSeq`, ...) | 0 | every example in [openai-examples](../openai-examples/src/main/scala/io/cequence/openaiscala/examples) |
+| `jdk` with fs2 | `ws-client-fs2` | `jdk` | `jdk` | fs2 `Stream[F, _]` (`.toFs2[F]`) | 1 | [Fs2Stream](../openai-examples-fs2/src/main/scala/io/cequence/openaiscala/examples/interop/Fs2Stream.scala) |
+| `play-akka` | `ws-client-play-akka` | `play-akka` | `jdk` | Akka `Source` (`.toSource`) | 1 | - |
+| `play-akka-stream` | `ws-client-play-akka-stream` | `play-akka-stream` | `play-akka-stream` | Akka `Source` (`.toSource`) | 0 | [AkkaNativeStream](../openai-examples-akka/src/main/scala/io/cequence/openaiscala/examples/interop/AkkaNativeStream.scala), [AkkaSourceConversions](../openai-examples-akka/src/main/scala/io/cequence/openaiscala/examples/interop/AkkaSourceConversions.scala) |
+| `play-pekko` | `ws-client-play-pekko` | `play-pekko` | `jdk` | Pekko `Source` (`.toSource`) | 1 | - |
+| `play-pekko-stream` | `ws-client-play-pekko-stream` | `play-pekko-stream` | `play-pekko-stream` | Pekko `Source` (`.toSource`) | 0 | [PekkoNativeStream](../openai-examples-pekko/src/main/scala/io/cequence/openaiscala/examples/interop/PekkoNativeStream.scala) |
+| `pekko-http` | `ws-client-pekko-http` | `pekko-http` | `pekko-http` | Pekko `Source` (`.toSource`) | 0 | [PekkoHttpNativeStream](../openai-examples-pekko/src/main/scala/io/cequence/openaiscala/examples/interop/PekkoHttpNativeStream.scala) |
+| `zio-http` | `ws-client-zio-http`, and `openai-scala-zio` for the [ZIO services](zio.md) | `zio-http` | `zio-http` | `ZStream` (`.toZStream`, or the ZIO services) | 0 | [ZioNativeStream](../openai-examples-zio/src/main/scala/io/cequence/openaiscala/examples/interop/ZioNativeStream.scala) |
+| `sttp` | `ws-client-sttp` | `sttp` | `jdk` | `AsyncStream` | 0 | [SttpEngine](../openai-examples-sttp/src/main/scala/io/cequence/openaiscala/examples/interop/SttpEngine.scala) |
+
+- `play-akka` and `play-pekko` do not stream, so streams run on `jdk` and cross one bridge into Akka or Pekko. Add the
+  `-stream` artifact to stream on Play WS too.
+- The examples are projects of this repository's build, one per stream library since the Akka and Pekko artifacts
+  cannot share a classpath: `sbt "examples_akka/runMain io.cequence.openaiscala.examples.interop.AkkaNativeStream"`,
+  and likewise `examples_pekko`, `examples_fs2`, `examples_zio` and `examples_sttp`.
+- Checked live before 2.0.0 (2026-11-16), from separate sbt projects built against the published artifacts: every
+  engine on every Scala line it supports, on Java 11 and 17. The checks were OpenAI sync calls, a multipart upload and
+  the download of the same file, the JSON helper, a 401 and a 1 ms timeout classified, OpenAI chat, typed and Responses
+  streams, a stream run twice (two requests), `take(1)`, and Anthropic and Gemini on the same engine. They also covered
+  the plain factories' private engines and the bridge counts above. Every JVM exited by itself once its services were
+  closed.
+
 ## Sharing one engine
 
 Each plain factory call creates a private engine for its service and closes it when the service is closed.
@@ -121,6 +153,11 @@ Each plain factory call creates a private engine for its service and closes it w
 - With an Akka or Pekko engine on the classpath, each service gets its own daemon-threaded actor system.
 
 Either way, build services once and share them. Do not create a service per request.
+
+Close every service when you are done with it, and every engine you built. On the Play engines (`play-akka`,
+`play-pekko` and their `-stream` variants) this decides whether your program can end: the threads of their HTTP client,
+AsyncHttpClient, are not daemon threads. A service that is never closed keeps the JVM running after `main` returns, as in
+1.x. On `jdk`, `pekko-http`, `zio-http` and `sttp` the JVM exits regardless (checked 2026-11-16).
 
 To share ONE engine (one HTTP client and connection pool) across any number of services, including services of
 different providers, build the engine once and pass it to the factories' `withEngine`:

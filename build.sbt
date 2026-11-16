@@ -83,7 +83,9 @@ lazy val alsoOnScala33 = {
 lazy val testkit = (project in file("openai-testkit")).settings(
   (commonSettings ++ alsoOnScala33 ++ Seq(
     name := "openai-scala-testkit",
+    // publish / skip covers publishSigned too (sbt-pgp reads it); publishLocal has its own key
     publish / skip := true,
+    publishLocal / skip := true,
     libraryDependencies ++= Seq(
       "io.cequence" %% "ws-client-core" % Dependencies.Versions.wsClient,
       "org.scalatest" %% "scalatest" % "3.2.16"
@@ -348,11 +350,13 @@ lazy val examples_pekko = (project in file("openai-examples-pekko"))
     (interopExampleSettings ++ Seq(
       name := "openai-examples-pekko",
       crossScalaVersions := List(scala213),
-      libraryDependencies +=
-        "io.cequence" %% "ws-client-play-pekko-stream" % Dependencies.Versions.wsClient
+      libraryDependencies ++= Seq(
+        "io.cequence" %% "ws-client-play-pekko-stream" % Dependencies.Versions.wsClient,
+        "io.cequence" %% "ws-client-pekko-http" % Dependencies.Versions.wsClient
+      )
     )) *
   )
-  .dependsOn(client_stream)
+  .dependsOn(client_stream, anthropic_client)
 
 // fs2 / cats-effect publish Scala 3 artifacts for 3.3+ only
 lazy val examples_fs2 = (project in file("openai-examples-fs2"))
@@ -361,6 +365,17 @@ lazy val examples_fs2 = (project in file("openai-examples-fs2"))
       name := "openai-examples-fs2",
       crossScalaVersions := List(scala212, scala213),
       libraryDependencies += "io.cequence" %% "ws-client-fs2" % Dependencies.Versions.wsClient
+    )) *
+  )
+  .dependsOn(client_stream)
+
+// sttp serves only non-streamed calls; streams run on jdk. ws-client-sttp is built for 2.12 / 2.13
+lazy val examples_sttp = (project in file("openai-examples-sttp"))
+  .settings(
+    (interopExampleSettings ++ Seq(
+      name := "openai-examples-sttp",
+      crossScalaVersions := List(scala212, scala213),
+      libraryDependencies += "io.cequence" %% "ws-client-sttp" % Dependencies.Versions.wsClient
     )) *
   )
   .dependsOn(client_stream)
@@ -531,7 +546,7 @@ lazy val scala3LineProjects: Seq[ProjectReference] = Seq(
 )
 
 lazy val scala212LineProjects: Seq[ProjectReference] =
-  scala3LineProjects ++ Seq[ProjectReference](zio, examples_fs2, examples_zio)
+  scala3LineProjects ++ Seq[ProjectReference](zio, examples_fs2, examples_sttp, examples_zio)
 
 lazy val ci_scala212 = ciLine("ci_scala212", List(scala212), scala212LineProjects)
 

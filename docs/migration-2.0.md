@@ -33,6 +33,46 @@ The 1.x line (1.7.x) stays on Akka.
 | Shares an engine, or depends on Play WS behavior | [The default HTTP engine](#the-default-http-engine) |
 | Uses the Claude agent client or the guice module | [Claude agent client](#claude-agent-client), [The guice module](#the-guice-module) |
 
+## Step by step
+
+The order that works for an application, whether it makes a few streaming calls or uses the library in hundreds of files:
+
+1. **Dependencies.** Move every `openai-scala-*` artifact to 2.0.0 and add the engine you want to run on. For an Akka
+   application that is `ws-client-play-akka-stream`, the engine 1.x ran on. Pin every ws-client artifact on the
+   classpath to 1.2.1, including the ones other libraries bring ([Dependencies](#dependencies)).
+2. **Logging.** If logback reached you only through 1.x, add an SLF4J binding ([Logging](#logging)).
+3. **`sbt run`.** Fork it ([below](#run-in-a-forked-jvm)).
+4. **Compile.** The compiler lists what is left:
+   - streams: `Source`s become `AsyncStream`s, fixed with `.toSource` or `SourceConversions._` ([Akka](#akka),
+     [Pekko](#pekko), [fs2](#fs2), [ZIO](#zio));
+   - removed arguments: `Materializer`, `ActorSystem` and `Scheduler`
+     ([the parameters that are gone](#materializer-actorsystem-and-scheduler-parameters));
+   - downloads: a `Future` of an `AsyncStream[Bytes]` (`.toByteStringSource` on Akka);
+   - your classes that implement or wrap a service trait
+     ([Implementing the service traits](#implementing-the-service-traits)).
+5. **Cold streams.** Look for stream values that are run more than once, and for streams that are built but never run.
+   Each run is a new request, and an unrun stream sends nothing ([Streams are cold](#streams-are-cold)).
+6. **Run it.** Check which engine was picked: `WSClientEngineRegistry.provider().engineId`, and for streams
+   `WSClientEngineRegistry.provider(None, Set[EngineCapability](EngineCapability.OutputStreaming)).engineId`
+   (`io.cequence.wsclient.service.spi`). Close what you build: on the Play engines a service that is never closed keeps
+   the JVM from exiting, as in 1.x ([Sharing one engine](http-engine.md#sharing-one-engine)).
+
+Every engine with its sbt line, what the factories pick and a runnable example: [Engine by engine](http-engine.md#engine-by-engine).
+
+### Run in a forked JVM
+
+Engines are found through the calling thread's context classloader. sbt's in-process `run` reuses thread pools from one
+run to the next. On the second `run` in the same sbt session, a factory called from a `Future` - on a thread of
+`ExecutionContext.global` - still sees the previous run's classloader and finds no engine. Fork the run, and the tests
+if they build services on pool threads:
+
+```scala
+run / fork := true
+Test / fork := true
+```
+
+Or build the engine once, on the main thread, and pass it to the factories' `withEngine`.
+
 ## Dependencies
 
 ```scala
@@ -45,7 +85,25 @@ libraryDependencies ++= Seq(
 - 1.x brought Akka 2.6, Play WS and logback through its modules; 2.0.0 brings none of them. openai-core depends on
   ws-client-core, ws-client-jdk (the default engine), json-repair and scala-logging.
 - Every ws-client artifact on a classpath must have the same version - 1.2.1 for 2.0.0. A build that declares a ws-client
-  artifact of its own (e.g. `ws-client-play-akka-stream` 1.1.5) moves it to 1.2.1.
+  artifact of its own (e.g. `ws-client-play-akka-stream` 1.1.5) moves it to 1.2.1. When other libraries bring ws-client
+  too, pin it, json-repair included:
+
+```scala
+dependencyOverrides ++= Seq(
+  "ws-client-core",
+  "ws-client-jdk",
+  "ws-client-core-akka",
+  "ws-client-play-akka",
+  "ws-client-play-akka-stream",
+  "json-repair"
+).map("io.cequence" %% _ % "1.2.1") // the artifacts your classpath has
+```
+
+- A library compiled against ws-client 1.1.x keeps working on 1.2.1. The one exception is an explicit call of
+  `TransportSettings.unapply` on Scala 2, which now returns a three-element tuple
+  ([ws-client's changelog](https://github.com/cequence-io/ws-client/blob/main/CHANGELOG.md)). Clients of your own built on
+  ws-client's service bases (`WSClientWithEngine`, `PollingHelper`, the Play engines) need the same pin, and the
+  changelog lists what changed for them.
 - Scala 2.12, 2.13 and 3, as before. The 2.13 artifacts are built with Scala 2.13.18 (was 2.13.11), and sbt 1.10+ then
   asks for a `scalaVersion` of at least 2.13.18. On Scala 3 the new `openai-scala-zio` and ws-client's Pekko, fs2 and ZIO
   modules need 3.3+; the other modules serve 3.2 and 3.3+. Java 11+.

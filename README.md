@@ -163,7 +163,8 @@ the engine with the highest priority on the classpath is used; `-Dws-client.engi
 | `jdk` (the default) | `ws-client-jdk` (included) | 0 | Yes | 2.12, 2.13, 3 |
 
 Streamed services pick the highest-priority engine that streams (`jdk` at least). Akka and Pekko artifacts must not
-share a classpath.
+share a classpath. Each engine with what the factories pick and a runnable example:
+[Engine by engine](docs/http-engine.md#engine-by-engine).
 
 ## Config ⚙️
 
