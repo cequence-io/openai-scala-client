@@ -197,7 +197,7 @@ private[service] class TypeSafeServiceImpl(
           ).recoverWith(transportErrors)
         }
 
-      case DecisionProtocol.SystemOne | DecisionProtocol.ScaleDown =>
+      case DecisionProtocol.SystemOne | DecisionProtocol.ScaleDown | DecisionProtocol.Gemini =>
         val imageRefusal =
           if (provider.readsImages) None
           else Some(s"${provider.label} reads no images - send them to a host that does.")

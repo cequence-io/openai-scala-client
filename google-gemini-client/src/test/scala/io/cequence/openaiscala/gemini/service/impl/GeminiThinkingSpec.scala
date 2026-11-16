@@ -34,7 +34,8 @@ class GeminiThinkingSpec extends AnyWordSpec with Matchers {
     "gemini-pro-latest" -> Set(LOW, MEDIUM, HIGH),
     // measured 2026-10-13, the day it reached the Gemini API
     "gemini-4-argon" -> Set(LOW, MEDIUM, HIGH),
-    "gemini-4-carbon" -> Set(LOW, MEDIUM, HIGH) // live 2026-11-11: MINIMAL a 400
+    "gemini-4-carbon" -> Set(LOW, MEDIUM, HIGH), // live 2026-11-11: MINIMAL a 400
+    "gemini-4-hydrogen" -> Set(LOW, MEDIUM, HIGH) // live 2026-11-16: MINIMAL a 400
   )
 
   "GeminiThinking.mode" should {

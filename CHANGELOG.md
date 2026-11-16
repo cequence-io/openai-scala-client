@@ -1,5 +1,92 @@
 # Changelog
 
+## 1.7.1 (unreleased)
+
+New models on the 1.x line, released together with 2.0.0: Claude Fable 5.2 and Mythos 5.2, Gemini 4 Carbon and
+Hydrogen, Muse Ember 1.0, Perplexity's v1.3 deciders, SubQ Snap 1.2 and more decision models - and Google's Gemini
+Decisions API (Gemini Decision 1) as a decision-model host.
+
+### Upgrading from 1.7.0
+
+Binary compatible with 1.7.0: new model ids, a new decision protocol and provider preset, entries in the model rules and
+the `models-supporting-json-schema` list - nothing removed or changed. The new protocol is a new case of the sealed
+`DecisionProtocol`, `Gemini`: an exhaustive match on `DecisionProtocol` needs a case for it (the compiler warns
+otherwise). Two presets have a new default model:
+
+- `DecisionProviderSettings.perplexity` (`TypeSafeServiceFactory.perplexity*`): `pplx-decider-v1.3` (was v1.2).
+- `DecisionProviderSettings.subq`: `subq-snap-1.2` (was 1.1).
+
+A call that names its model is not affected.
+
+### New features
+
+- **Google's Gemini Decisions API** (`DecisionProviderSettings.gemini`, typesafe-client; `gemini-decision-1`, launched
+  2026-11-11): Google's decision model - noul, choice and score questions over text and images, up to 1,000 questions
+  and 262,144 tokens per request, $0.10 per 1M input tokens, output free. It speaks a protocol of its own
+  (`DecisionProtocol.Gemini`: `POST v1beta/decisions`, the Gemini API key in `x-goog-api-key`), which the client maps
+  both ways, so every routine runs on it - `systemOne`, `decide[T]`, re-ranking, the guardrails, the JSON-schema chat
+  adapter and OpenAI's Decisions interface (`asOpenAIDecisions`). The state goes as Gemini's `input` (text, or content
+  blocks with the images), question names the API refuses as keys (`[A-Za-z0-9_-]`, 1-64 characters - e.g. the JSON
+  schema planner's `customer.vip`) as `q<n>`, the answers back by name; a bad key is a
+  `TypeSafeScalaUnauthorizedException`, the token limit a `TypeSafeScalaTokenCountExceededException`. Live 2026-11-16:
+  `examples/typesafe/GeminiDecisionSmokeTest`, 15 of 15 (~0.3-0.5 s per call; 200 questions in 0.7 s; a blue square
+  0.90 blue / 0.11 red). Through OpenRouter and Vercel AI Gateway it is `google/gemini-decision-1` on System One.
+
+### New models
+
+- **Claude Fable 5.2** (`NonOpenAIModelId.claude_fable_5_2`, Bedrock `bedrock_claude_fable_5_2`; released and
+  live-verified 2026-11-09 on the Claude API; $8 / $40 per MTok, 1M context, 128k output): Fable 5.1's API - adaptive
+  thinking only (`enabled`, `disabled`, `between_tools`, `temperature` and assistant prefill are 400s), effort
+  low..max, `json_schema` (in `models-supporting-json-schema`) and no forced `tool_choice` (`any` / `tool` are 400s,
+  so the adapter sends `auto` with an instruction). Listed in every model rule explicitly - `claude-fable-5-1` is no
+  substring of `claude-fable-5-2`. On Bedrock it runs through the `global.` inference profile (not on-demand) and needs
+  an AWS account whose data retention mode is not the default (a 400 otherwise). **Claude Mythos 5.2**
+  (`claude_mythos_5_2`, `bedrock_claude_mythos_5_2`) is the same model with fewer safeguards, for Anthropic's Cyber /
+  Life Sciences verification programs only (a key outside them gets a 404); treated like Fable 5.2, not verified live.
+- **Gemini 4 Carbon** (`NonOpenAIModelId.gemini_4_carbon`, 2026-11-10): Google's strongest reasoning model, above Argon;
+  1M context; $4 / $20 per 1M tokens after the introductory period (ends 2026-11-30). It has Argon's API - thinking
+  levels LOW / MEDIUM / HIGH (MINIMAL a 400), penalties and `n` > 1 refused (dropped with a warning), `json_schema`,
+  function calling, Google Search, URL context and code execution - so the Gemini 4 rules cover it unchanged; in
+  `models-supporting-json-schema`. Live 2026-11-11: `examples/googlegemini/Gemini4ArgonSmokeTest model=gemini-4-carbon`,
+  19 of 19.
+- **Muse Ember 1.0** (`NonOpenAIModelId.muse_ember_1_0` on the Meta Model API, `openrouter_muse_ember` =
+  `meta/muse-ember`; 2026-11-09): the efficient execution model of the Muse family (sub-agents, tool calls, routing);
+  1,048,576 context, 524,288 output, Standard mode only. The Muse rules now match `muse-ember` too: reasoning always
+  on and private, effort minimal..max (`none` sent as `minimal`), `stop` / `logit_bias` / logprobs / `verbosity`
+  dropped, `tool_choice` `"auto"` only, strict `json_schema` enforced (both ids in `models-supporting-json-schema`).
+  Live 2026-11-11: `examples/meta/MuseSmokeTest target=meta models=muse-ember-1.0`, 9 of 9.
+- **OpenRouter decision models** (`openrouter_baseten_joey_1`, `openrouter_morph_reflex`, `openrouter_drex_max_finance`,
+  `openrouter_parallel_decisions_fast_free` in `NonOpenAIModelId` and `DecisionModelId`; listed 2026-10-29 .. 11-10, in
+  `models-supporting-json-schema`): Baseten's Joey-1 (2B, text + image, 16k context), Morph's Reflex (text + image, 64k,
+  the state prefix-cached across requests), NACE AI's Drex Max Finance (Drex Max tuned on invoices, receipts and
+  statements; text + image, 262k) and Parallel's Decisions Fast (web-grounded: it researches the live web before it
+  answers; text, 32k). Only Decisions Fast was called (the test account has no OpenRouter credits): live 2026-11-11 it
+  answered a noul without criteria (0.95, 0.7 s) but refused one with `{yes, no}` criteria and a choice whose criteria
+  are not a record, so the questions the client plans from a JSON schema (which carry criteria) fail there.
+
+- **Gemini 4 Hydrogen** (`NonOpenAIModelId.gemini_4_hydrogen`, 2026-11-12): the fast model of the Gemini 4 family,
+  1M input / 64k output tokens. Argon's API - thinking levels LOW / MEDIUM / HIGH (MINIMAL a 400) - so the Gemini 4
+  rules cover it; in `models-supporting-json-schema`. Live 2026-11-16: `Gemini4ArgonSmokeTest
+  model=gemini-4-hydrogen`, 19 of 19.
+- **Perplexity Decider v1.3 and Flash v1.3** (`DecisionModelId.pplx_decider_v1_3` / `pplx_decider_flash_v1_3`,
+  2026-11-12; v1.3 is the Perplexity preset's default now - see the upgrade notes); on OpenRouter the free
+  `perplexity/pplx-decider-v1.3:free` / `-flash-v1.3:free`, on Vercel `perplexity/pplx-decider-v1.3` / `-flash-v1.3`.
+  Live 2026-11-16 on all three hosts (`PerplexityDeciderSmokeTest`, all sections). Like v1.2 not in
+  `models-supporting-json-schema` (a decision model takes questions, not a schema; the JSON helper's fallback works).
+- **SubQ Snap 1.2** and the rolling `subq-snap-latest` (the SubQ preset's default is 1.2 now); in
+  `models-supporting-json-schema`. Live 2026-11-16: `SubQSnapSmokeTest`, 11 of 11.
+- **More decision models on OpenRouter** (listed 2026-11-06 .. 11-13, in `models-supporting-json-schema`; not called -
+  the test account has no credits): Google's Gemini Decision 1, HeyGen's Decision 1 and Decision 1 Turbo, and
+  Parallel's paid Decisions Fast (which, like its free tier, refuses the questions with criteria the client sends).
+  **On Vercel AI Gateway**: Gemini Decision 1 (paid credits only), NACE AI's Drex Max v1.1 (answered on a free-tier team)
+  and Parallel's Decisions Fast (the same refusal).
+- **GPT Image 2.6** (`ModelId.gpt_image_2_6_flare` / `gpt_image_2_6_sunburst`).
+
+### Fixed
+
+- The README's installation snippets and version badge, and the Claude agent client's page, named older releases
+  (1.6.0, 1.4.0).
+
 ## 1.7.0 (2026-11-06)
 
 The 2026-10-19 - 2026-11-06 work since v1.6.0: tool loops keep the model's reasoning between rounds on every backend

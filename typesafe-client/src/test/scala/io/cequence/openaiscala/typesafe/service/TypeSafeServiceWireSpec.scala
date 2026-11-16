@@ -20,7 +20,7 @@ import io.cequence.wsclient.service.spi.{TransportSettings, WSClientEngineRegist
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import play.api.libs.json.{JsArray, JsObject, JsString, Json}
+import play.api.libs.json.{JsArray, JsNumber, JsObject, JsString, Json}
 
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
@@ -356,7 +356,7 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       val body = Json.parse(received.get.body).as[JsObject]
       // the Decisions API answers 400 to any other field
       body.keys shouldBe Set("model", "state", "questions")
-      (body \ "model").as[String] shouldBe DecisionModelId.pplx_decider_v1_2
+      (body \ "model").as[String] shouldBe DecisionModelId.pplx_decider_v1_3
       (body \ "state" \ "review").as[String] shouldBe review
 
       response.requestId shouldBe Some("7a1504a6-a884-48e6-af6e-0c3140aeb6db")
@@ -926,8 +926,8 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       received.get.path shouldBe "/v1/systemone"
       received.get.headers("authorization") shouldBe "Bearer subq_k"
       val body = Json.parse(received.get.body)
-      // SubQ Snap 1.1, SubQ's default decision model
-      (body \ "model").as[String] shouldBe DecisionModelId.subq_snap_1_1
+      // SubQ Snap 1.2, the preset's default
+      (body \ "model").as[String] shouldBe DecisionModelId.subq_snap_1_2
       // the image lifted out of the state, as an object with the bare base64
       (body \ "state").get shouldBe Json.arr("A photo.", "[image 1]")
       (body \ "images").get shouldBe Json.arr(
@@ -943,7 +943,12 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
       // a fixed listing, no request
       respond(200, "{}")
       await(subq.listModels).map(_.name) shouldBe
-        Seq(DecisionModelId.subq_snap_1_1, DecisionModelId.subq_snap_preview)
+        Seq(
+          DecisionModelId.subq_snap_1_2,
+          DecisionModelId.subq_snap_latest,
+          DecisionModelId.subq_snap_1_1,
+          DecisionModelId.subq_snap_preview
+        )
       received shouldBe None
 
       // over its context: a 400 with TypeSafe's detail shape
@@ -1300,6 +1305,147 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
         )
       )
       scaleDown.close()
+    }
+
+    "serve Gemini's Decisions API - /v1beta/decisions, x-goog-api-key, its input and keys, answers back by name" in {
+      val gemini = TypeSafeServiceFactory.withEngine(
+        engine,
+        DecisionProviderSettings.gemini.copy(baseUrl = baseUrl),
+        "gm_k"
+      )
+      DecisionProviderSettings.gemini.readsImages shouldBe true
+      val png = pngDataUrl(64, 64)
+
+      // answers every question it was sent, by its key - as the API does (live 2026-11-16)
+      def answering(): (Int, String, Map[String, String]) = {
+        val asked = (Json.parse(received.get.body) \ "questions").as[JsObject]
+        val answers = asked.fields.map { case (key, question) =>
+          key -> ((question \ "type").as[String] match {
+            case "noul" => Json.obj("type" -> "noul", "noul" -> 0.98, "confidence" -> 0.98)
+            case "choice" =>
+              val options = (question \ "criteria").as[JsObject].keys.toSeq
+              Json.obj(
+                "type" -> "choice",
+                "choice" -> options.head,
+                "probabilities" -> JsObject(options.map(_ -> JsNumber(1.0 / options.size))),
+                "confidence" -> 0.5
+              )
+            case _ =>
+              Json.obj(
+                "type" -> "score",
+                "score" -> 1.36,
+                "legend" -> Json
+                  .obj("0" -> "Cosmetic", "1" -> "Inconvenient", "2" -> "Product unusable"),
+                "probabilities" -> Json.obj("0" -> 0.08, "1" -> 0.48, "2" -> 0.44),
+                "confidence" -> 0.48
+              )
+          })
+        }
+        (
+          200,
+          Json.stringify(
+            Json.obj(
+              "answers" -> JsObject(answers),
+              "usage" -> Json.obj(
+                "total_tokens" -> 243,
+                "total_input_tokens" -> 243,
+                "input_tokens_by_modality" -> Json.arr(
+                  Json.obj("modality" -> "text", "tokens" -> 243)
+                ),
+                "total_output_tokens" -> 0
+              )
+            )
+          ),
+          Map.empty
+        )
+      }
+
+      onRequest = () => answering()
+      try {
+        val response = await(
+          gemini.systemOne(
+            JsString(review),
+            reviewQuestions + ("customer.vip" -> NoulQuestion("Is the customer a VIP?"))
+          )
+        )
+        received.get.path shouldBe "/v1beta/decisions"
+        received.get.headers("x-goog-api-key") shouldBe "gm_k"
+        received.get.headers.get("authorization") shouldBe None
+        val body = Json.parse(received.get.body)
+        (body \ "model").as[String] shouldBe DecisionModelId.gemini_decision_1
+        (body \ "input").get shouldBe JsString(review)
+        // the names the API takes as they are, the dotted one keyed q<n>
+        val keys = (body \ "questions").as[JsObject].keys
+        keys should contain allOf ("defect", "sentiment", "severity")
+        val dotted = keys.filterNot(Set("defect", "sentiment", "severity")).toSeq
+        dotted should have size 1
+        dotted.head should fullyMatch regex "q\\d+"
+        (body \ "questions" \ "severity" \ "criteria").get shouldBe
+          Json.arr("Cosmetic", "Inconvenient", "Product unusable")
+
+        response.model shouldBe DecisionModelId.gemini_decision_1
+        response.answers.keySet shouldBe Set("defect", "sentiment", "severity", "customer.vip")
+        response.noul("customer.vip").noul shouldBe 0.98
+        response.choice("sentiment").choice shouldBe "positive"
+        response.score("severity").describe(2) shouldBe Some("Product unusable")
+        response.usage.input_tokens shouldBe Some(243)
+        response.requestId shouldBe None
+
+        // an image in a JSON state: the state's text with a marker, the image a block after it
+        await(
+          gemini.systemOne(
+            Json.obj("review" -> review, "photo" -> DecisionImage.part(png)),
+            Map("blue" -> NoulQuestion("Is the photo blue?"))
+          )
+        )
+        (Json.parse(received.get.body) \ "input").get shouldBe Json.arr(
+          Json.obj(
+            "type" -> "text",
+            "text" -> Json.stringify(Json.obj("review" -> review, "photo" -> "[image 1]"))
+          ),
+          Json.obj(
+            "type" -> "image",
+            "data" -> png.stripPrefix("data:image/png;base64,"),
+            "mime_type" -> "image/png"
+          )
+        )
+
+        // OpenAI's Decisions interface on it - translated to System One, then to Gemini's format
+        val decision = await(
+          TypeSafeServiceFactory
+            .asOpenAIDecisions(gemini)
+            .createDecision(
+              DecisionInput.Text("My invoice is wrong."),
+              Seq(DecisionQuestion.Predicate("Is it about billing?", Some("billing")))
+            )
+        )
+        (Json.parse(received.get.body) \ "questions" \ "billing" \ "type")
+          .as[String] shouldBe "noul"
+        decision.answer("billing") shouldBe Some(
+          DecisionAnswer.Predicate(Some("billing"), 0.98)
+        )
+      } finally onRequest = null
+
+      // more than 1,000 questions refused before sending
+      respond(200, "{}")
+      an[IllegalArgumentException] should be thrownBy gemini.systemOne(
+        JsString("x"),
+        (0 to 1000).map(i => s"q$i" -> (NoulQuestion("?"): Question)).toMap
+      )
+      received shouldBe None
+
+      // the one model, without a request
+      await(gemini.listModels).map(_.name) shouldBe Seq(DecisionModelId.gemini_decision_1)
+      received shouldBe None
+
+      // a bad key: Google's own 400
+      respond(
+        400,
+        """{"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"API_KEY_INVALID"}]}}"""
+      )
+      a[TypeSafeScalaUnauthorizedException] should be thrownBy
+        await(gemini.systemOne(JsString("x"), Map("r" -> NoulQuestion("?"))))
+      gemini.close()
     }
 
     "send OpenRouter's scaledown/ models ScaleDown's text, its other models any JSON" in {
@@ -1962,6 +2108,8 @@ class TypeSafeServiceWireSpec extends AnyWordSpec with Matchers with BeforeAndAf
         TypeSafeServiceFactory.perplexityWithEngine(engine, "pplx_k", baseUrl = baseUrl)
 
       await(perplexity.listModels).map(_.name) shouldBe Seq(
+        DecisionModelId.pplx_decider_v1_3,
+        DecisionModelId.pplx_decider_flash_v1_3,
         DecisionModelId.pplx_decider_v1_2,
         DecisionModelId.pplx_decider_flash_v1_2,
         DecisionModelId.pplx_decider_v1_1_27b,

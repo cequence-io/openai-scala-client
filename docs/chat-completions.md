@@ -105,7 +105,7 @@ There is a new project [openai-scala-client-examples](../openai-examples/src/mai
   }
 ```
 
-- 🔥 **Tool loops that keep the model's reasoning**. Every adapter that gets reasoning from its provider reads it into
+- **Tool loops that keep the model's reasoning**. Every adapter that gets reasoning from its provider reads it into
   the reply as a provider-neutral `ReasoningMessage` (`choice.reasoning`; `response.reasoningMessage` for the first
   choice). Append `response.historyMessages` instead of the bare assistant message: that is the `ReasoningMessage`
   followed by the assistant message. The next round converts it back to the provider's own form and sends it before
@@ -274,9 +274,9 @@ There is a new project [openai-scala-client-examples](../openai-examples/src/mai
   Scala 2, a macro on Scala 3 - the same call and the same schema on both). Fields map to their JSON types (collections =
   arrays, nested case classes = objects, type parameters resolved); `Enumeration`s, Java enums, Scala 3 `enum`s and
   sealed traits of case objects become string enums; `@JsonSchemaDescription` and `@JsonSchemaRange(min, max)` add
-  descriptions and numeric bounds, 🔥 `@JsonSchemaIgnore` leaves a field out (one the model is never asked for - it
+  descriptions and numeric bounds, `@JsonSchemaIgnore` leaves a field out (one the model is never asked for - it
   must be an `Option` or have a default value; a default needs `Json.using[Json.WithDefaultValues].format` to read the
-  answer). 🔥 An `Option` field is REQUIRED and may be null (`JsonSchema.Nullable`, a union of its type and null -
+  answer). An `Option` field is REQUIRED and may be null (`JsonSchema.Nullable`, a union of its type and null -
   JSON Schema's `anyOf`, `JsonSchema.AnyOf` - written as `{"anyOf": [<type>, {"type": "null"}]}`), so a class with
   optional fields takes OpenAI's strict mode, and the model
   answers `null` where it has nothing - `Json.format` reads that as `None` (`jsonSchemaFor(nullableOptions = false)`
@@ -287,7 +287,7 @@ There is a new project [openai-scala-client-examples](../openai-examples/src/mai
   unions as their own `anyOf`; a decision model asks the field as its type (it always answers). Function tools: a
   strict tool goes out required and nullable, its objects closed; a non-strict one as given, except to Cerebras,
   Together and Meta's Model API, which mishandle a nullable union in tool parameters and get the `Option` fields the
-  pre-1.7.0 way (optional, of their type); Gemini gets tool parameters as a JSON Schema. 🔥 A sealed trait's case objects keep their declaration order
+  pre-1.7.0 way (optional, of their type); Gemini gets tool parameters as a JSON Schema. A sealed trait's case objects keep their declaration order
   when each level of the hierarchy is declared in one object (typically the trait's companion); case objects at a
   package's top level are sorted by name on both Scala versions (Scala 2's runtime reflection cannot see their
   order). A described case object or enum case adds a
@@ -445,7 +445,7 @@ There is a new project [openai-scala-client-examples](../openai-examples/src/mai
 
 ### Failover policy
 
-🔥 Every failover call (`createChatCompletionWithFailover`, `createChatCompletionWithFailoverSettings`,
+Every failover call (`createChatCompletionWithFailover`, `createChatCompletionWithFailoverSettings`,
 `createChatCompletionWithJSON`, `createChatCompletionWithJSONFullResponse`) takes a last parameter
 `policy: FailoverPolicy`. The default changes nothing; the fields:
 

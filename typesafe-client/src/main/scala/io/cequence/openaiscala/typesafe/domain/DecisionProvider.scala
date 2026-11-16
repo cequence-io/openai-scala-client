@@ -3,9 +3,10 @@ package io.cequence.openaiscala.typesafe.domain
 import scala.util.Try
 
 /**
- * A host of decision models - TypeSafe's System One protocol, or OpenAI's Decisions API
- * (`protocol`) - the counterpart of the chat providers' `ProviderSettings`. The known hosts
- * are presets in `io.cequence.openaiscala.typesafe.service.DecisionProviderSettings`
+ * A host of decision models - TypeSafe's System One protocol, OpenAI's Decisions API,
+ * ScaleDown's text-only System One or Google's Gemini Decisions API (`protocol`) - the
+ * counterpart of the chat providers' `ProviderSettings`. The known hosts are presets in
+ * `io.cequence.openaiscala.typesafe.service.DecisionProviderSettings`
  * (`TypeSafeServiceFactory(DecisionProviderSettings.openRouter)`); any other compatible host
  * takes one of its own:
  *
@@ -23,7 +24,8 @@ import scala.util.Try
  *   the model of a call that names none
  * @param decisionsPath
  *   the endpoint that answers the questions - `v1/systemone` on TypeSafe and most hosts,
- *   `v1/decisions` on Perplexity
+ *   `v1/decisions` on Perplexity and OpenAI, `v1/scaledown` on ScaleDown, `v1beta/decisions`
+ *   on Gemini
  * @param models
  *   how `listModels` finds the host's models
  * @param maxQuestions
@@ -215,6 +217,28 @@ object DecisionProtocol {
    * The answers come back in System One's format.
    */
   case object ScaleDown extends DecisionProtocol
+
+  /**
+   * Google's Gemini Decisions API (`POST v1beta/decisions`, since 2026-11-11): `{model, input,
+   * questions: {key: question}}` answered with `{answers: {key: answer}, usage}` - System
+   * One's question types and answers, its own input and keys:
+   *   - the state: text as it is; a chat message's parts (texts and image parts) as content
+   *     blocks, consecutive texts joined by a newline (adjacent text blocks run together); any
+   *     other JSON as its compact text, each image part in it replaced by an `[image n]`
+   *     marker and sent as an `image` block after the text (`{"type": "image", "data",
+   *     "mime_type"}`)
+   *   - a question's key: its name when that is 1-64 characters of `[A-Za-z0-9_-]` (the API
+   *     refuses others), else `q<n>`; the answers come back by the names
+   *   - every question needs instructions (an empty one is a 400): a noul without any gets its
+   *     criteria as text ("Yes when: ...", "No when: ..."), a choice or a score a generic one;
+   *     a noul's criteria go as `{true_description, false_description}`, a choice's as a map
+   *     of each option to its description (`""` when none), a score's levels as text (a
+   *     `{label, description}` level as `label: description`)
+   *   - the answers in System One's format, a score's legend the levels as asked; the usage's
+   *     `total_input_tokens` / `total_output_tokens` as input / output tokens; no model in the
+   *     response, so the one asked is reported
+   */
+  case object Gemini extends DecisionProtocol
 }
 
 /** How a [[DecisionProvider]]'s `listModels` finds the host's models. */
