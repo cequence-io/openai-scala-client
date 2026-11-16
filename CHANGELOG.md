@@ -214,6 +214,53 @@ Also on the 1.x line (merged from it since 1.7.0):
 - Vertex AI's sync calls waited for the SDK's future with a blocking `get`, holding a thread of the JVM's common pool per
   call in flight; they complete from the SDK's callback now.
 
+## 1.7.1 (unreleased)
+
+New models on the 1.x line, released together with 2.0.0: Claude Fable 5.2 and Mythos 5.2, Gemini 4 Carbon, Muse Ember
+1.0 and four OpenRouter decision models.
+
+### Upgrading from 1.7.0
+
+Binary compatible with 1.7.0: new model ids, entries in the model rules and the `models-supporting-json-schema` list
+only - no API change.
+
+### New models
+
+- **Claude Fable 5.2** (`NonOpenAIModelId.claude_fable_5_2`, Bedrock `bedrock_claude_fable_5_2`; released and
+  live-verified 2026-11-09 on the Claude API; $8 / $40 per MTok, 1M context, 128k output): Fable 5.1's API - adaptive
+  thinking only (`enabled`, `disabled`, `between_tools`, `temperature` and assistant prefill are 400s), effort
+  low..max, `json_schema` (in `models-supporting-json-schema`) and no forced `tool_choice` (`any` / `tool` are 400s,
+  so the adapter sends `auto` with an instruction). Listed in every model rule explicitly - `claude-fable-5-1` is no
+  substring of `claude-fable-5-2`. On Bedrock it runs through the `global.` inference profile (not on-demand) and needs
+  an AWS account whose data retention mode is not the default (a 400 otherwise). **Claude Mythos 5.2**
+  (`claude_mythos_5_2`, `bedrock_claude_mythos_5_2`) is the same model with fewer safeguards, for Anthropic's Cyber /
+  Life Sciences verification programs only (a key outside them gets a 404); treated like Fable 5.2, not verified live.
+- **Gemini 4 Carbon** (`NonOpenAIModelId.gemini_4_carbon`, 2026-11-10): Google's strongest reasoning model, above Argon;
+  1M context; $4 / $20 per 1M tokens after the introductory period (ends 2026-11-30). It has Argon's API - thinking
+  levels LOW / MEDIUM / HIGH (MINIMAL a 400), penalties and `n` > 1 refused (dropped with a warning), `json_schema`,
+  function calling, Google Search, URL context and code execution - so the Gemini 4 rules cover it unchanged; in
+  `models-supporting-json-schema`. Live 2026-11-11: `examples/googlegemini/Gemini4ArgonSmokeTest model=gemini-4-carbon`,
+  19 of 19.
+- **Muse Ember 1.0** (`NonOpenAIModelId.muse_ember_1_0` on the Meta Model API, `openrouter_muse_ember` =
+  `meta/muse-ember`; 2026-11-09): the efficient execution model of the Muse family (sub-agents, tool calls, routing);
+  1,048,576 context, 524,288 output, Standard mode only. The Muse rules now match `muse-ember` too: reasoning always
+  on and private, effort minimal..max (`none` sent as `minimal`), `stop` / `logit_bias` / logprobs / `verbosity`
+  dropped, `tool_choice` `"auto"` only, strict `json_schema` enforced (both ids in `models-supporting-json-schema`).
+  Live 2026-11-11: `examples/meta/MuseSmokeTest target=meta models=muse-ember-1.0`, 9 of 9.
+- **OpenRouter decision models** (`openrouter_baseten_joey_1`, `openrouter_morph_reflex`, `openrouter_drex_max_finance`,
+  `openrouter_parallel_decisions_fast_free` in `NonOpenAIModelId` and `DecisionModelId`; listed 2026-10-29 .. 11-10, in
+  `models-supporting-json-schema`): Baseten's Joey-1 (2B, text + image, 16k context), Morph's Reflex (text + image, 64k,
+  the state prefix-cached across requests), NACE AI's Drex Max Finance (Drex Max tuned on invoices, receipts and
+  statements; text + image, 262k) and Parallel's Decisions Fast (web-grounded: it researches the live web before it
+  answers; text, 32k). Only Decisions Fast was called (the test account has no OpenRouter credits): live 2026-11-11 it
+  answered a noul without criteria (0.95, 0.7 s) but refused one with `{yes, no}` criteria and a choice whose criteria
+  are not a record, so the questions the client plans from a JSON schema (which carry criteria) fail there.
+
+### Fixed
+
+- The README's installation snippets and version badge, and the Claude agent client's page, named older releases
+  (1.6.0, 1.4.0).
+
 ## 1.7.0 (2026-11-06)
 
 The 2026-10-19 - 2026-11-06 work since v1.6.0: tool loops keep the model's reasoning between rounds on every backend

@@ -97,7 +97,7 @@ Then you can obtain a service in one of the following ways.
 ```
 
   The GPT-6 models on the runtime host take an inference profile id - `us.openai.gpt-6.1-sol`,
-  `global.openai.gpt-6-luna`, `us.openai.gpt-6.1-terra` (🔥 GPT-6.1 Terra, `global.` too; live 2026-10-29): the bare `openai.gpt-6.1-sol` / `openai.gpt-6-sol` / `openai.gpt-6-luna` are a 400
+  `global.openai.gpt-6-luna`, `us.openai.gpt-6.1-terra` (GPT-6.1 Terra, `global.` too; live 2026-10-29): the bare `openai.gpt-6.1-sol` / `openai.gpt-6-sol` / `openai.gpt-6-luna` are a 400
   "on-demand throughput isn't supported" in every region tried (us-east-1, us-east-2, us-west-2, eu-central-1,
   eu-north-1, eu-west-1; live 2026-10-26), and `eu.openai.gpt-6.1-sol` an invalid id in eu-central-1. The mantle
   host serves the bare ids instead, in us-east-1 only of those regions (404 elsewhere).
@@ -123,6 +123,11 @@ Then you can obtain a service in one of the following ways.
 ```scala
   val service = AnthropicServiceFactory.asOpenAI() // or AnthropicServiceFactory.bedrockAsOpenAI
 ```
+   🔥 **Claude Fable 5.2** (`NonOpenAIModelId.claude_fable_5_2`, released and live-verified 2026-11-09; $8 / $40 per MTok,
+   1M context, 128k output) has Fable 5.1's API: adaptive thinking only, effort low..max, `json_schema`, and no forced
+   `tool_choice` (the adapter sends `auto` with an instruction instead). **Claude Mythos 5.2** (`claude_mythos_5_2`) is the
+   same model with fewer safeguards, for Anthropic's verification programs only, and is treated alike. On Bedrock Fable 5.2
+   runs through the `global.` inference profile and needs an AWS account whose data retention mode is not the default.
 
    **OAuth / bearer token auth (Anthropic)** - as an alternative to `ANTHROPIC_API_KEY`:
    ```scala
@@ -160,7 +165,7 @@ Then you can obtain a service in one of the following ways.
   // or with an explicit location
   val euService = VertexAIServiceFactory.asOpenAI(location = Some("eu"))
 ```
-   🔥 The location picks the endpoint (`VertexAILocation`; chat, streams and batch prediction alike):
+   The location picks the endpoint (`VertexAILocation`; chat, streams and batch prediction alike):
 
    | `location` | Endpoint | ML processing |
    |---|---|---|
@@ -187,7 +192,11 @@ Then you can obtain a service in one of the following ways.
    body for a `gemini-*` id, e.g. on Google's OpenAI-compatible endpoint) drops both with a warning; `n` > 1 is kept on
    Gemini 2.x, which answers several candidates.
 
-   🔥 **URL context** (`Tool.UrlContext`): Gemini fetches the URLs named in the prompt (up to 20) and answers from them.
+   🔥 **Gemini 4 Carbon** (`NonOpenAIModelId.gemini_4_carbon`, 2026-11-10 - Google's strongest reasoning model, above
+   Argon; 1M context; $4 / $20 per 1M tokens after the introductory period ending 2026-11-30) has Argon's API, so the same
+   rules apply (live 2026-11-11: `Gemini4ArgonSmokeTest model=gemini-4-carbon`, all 19 sections).
+
+   **URL context** (`Tool.UrlContext`): Gemini fetches the URLs named in the prompt (up to 20) and answers from them.
 ```scala
   service.createChatCompletion(
     Seq(UserMessage("What does https://www.rfc-editor.org/rfc/rfc2606 reserve?")),
@@ -267,7 +276,7 @@ Then you can obtain a service in one of the following ways.
 ```
    System One (`jev`) is a decision model, not a chat model - see [TypeSafe AI (Jev)](decision-models.md#typesafe-ai-jev-) below for the questions / answers API and what the OpenAI adapter does.
 
-   [Liquid AI](https://www.liquid.ai/)'s decision models **d1** (launched 2026-09-30), 🔥 **d1.1** (2026-10-27, the default) and **d1-ultra** (2026-10-15) serve the same System One API, so the same lib reaches them with `LIQUID_API_KEY`:
+   [Liquid AI](https://www.liquid.ai/)'s decision models **d1** (launched 2026-09-30), **d1.1** (2026-10-27, the default) and **d1-ultra** (2026-10-15) serve the same System One API, so the same lib reaches them with `LIQUID_API_KEY`:
 ```scala
   val d1 = TypeSafeServiceFactory.liquid()              // native System One service (d1.1 by default)
   val d1Service = TypeSafeServiceFactory.liquidAsOpenAI() // json_schema structured output
@@ -390,7 +399,7 @@ or with streaming
    The provider settings pick only the endpoint and the key, so pass a MiniMax model explicitly - see the
    [MiniMax example](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/minimax/CreateMiniMaxChatCompletion.scala)
    (Flash by default, a model id as its first argument).
-   🔥 On the [chat API](https://platform.minimax.io/docs/api-reference/text-openai-api) Flash always thinks:
+   On the [chat API](https://platform.minimax.io/docs/api-reference/text-openai-api) Flash always thinks:
    `reasoning_effort` takes `low` .. `max` (`max` when omitted); the client sends `none` (a 400 on Flash) and the
    undocumented `minimal` as `low` and drops `service_tier`, which Flash does not support, and
    `thinking = {"type": "disabled"}` (via `extra_params`) is a 400 on Flash. M3 thinks by default and writes its
@@ -453,7 +462,10 @@ or with streaming
    no reasoning text, only `reasoning_tokens` in the usage): `reasoning_effort` takes `minimal` to `max`, so the client sends
    `none` as `minimal` (Meta answers `none` with a 400) and `max` as `xhigh` on Spark 1.2 and 1.1, which lack it. It also
    drops what Meta refuses - `stop`, `logit_bias`, `verbosity` and logprobs. `tool_choice` takes only `"auto"` (a forced or
-   required choice is Meta's 400) and `n` must be 1. Muse Wonder Full is in Meta's Muse Code only.
+   required choice is Meta's 400) and `n` must be 1. Muse Wonder Full is in Meta's Muse Code only. 🔥 **Muse Ember**
+   (`muse-ember-1.0`, OpenRouter `meta/muse-ember`; 2026-11-09 - the family's efficient execution model for sub-agents,
+   tool calls and routing; 1,048,576 context, 524,288 output, Standard mode only) follows the same rules (live 2026-11-11,
+   `MuseSmokeTest target=meta models=muse-ember-1.0`, all 9 sections).
 ```scala
   val service = OpenAIChatCompletionServiceFactory.withStreaming(ChatProviderSettings.meta)
   service.createChatCompletion(messages, CreateChatCompletionSettings(NonOpenAIModelId.muse_wonder_1_0))
