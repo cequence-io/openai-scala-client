@@ -229,9 +229,9 @@ object DecisionProtocol {
    *     refuses others), else `q<n>`; the answers come back by the names
    *   - every question needs instructions (an empty one is a 400): a noul without any gets its
    *     criteria as text ("Yes when: ...", "No when: ..."), a choice or a score a generic one;
-   *     a noul's criteria go as `{true_description, false_description}`, a choice's as option
-   * -> description (`""` when none), a score's levels as text (a `{label, description}` level
-   * as `label: description`)
+   *     a noul's criteria go as `{true_description, false_description}`, a choice's as a map
+   *     of each option to its description (`""` when none), a score's levels as text (a
+   *     `{label, description}` level as `label: description`)
    *   - the answers in System One's format, a score's legend the levels as asked; the usage's
    *     `total_input_tokens` / `total_output_tokens` as input / output tokens; no model in the
    *     response, so the one asked is reported
