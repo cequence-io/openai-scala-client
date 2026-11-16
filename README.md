@@ -257,7 +257,13 @@ See [Consuming a stream](docs/streaming.md#consuming-a-stream-akka-pekko-fs2-zio
 
 Ready-to-run examples (on plain `Future`s and `AsyncStream`s) are in
 [openai-examples](./openai-examples/src/main/scala/io/cequence/openaiscala/examples); the release notes are in
-[CHANGELOG.md](./CHANGELOG.md).
+[CHANGELOG.md](./CHANGELOG.md). Run one with the provider's key set, in a forked JVM on the default `jdk` engine:
+`sbt "examples/runMain io.cequence.openaiscala.examples.CreateChatCompletion"`; the same on another engine and stream
+library: `examples_akka`, `examples_pekko`, `examples_fs2`, `examples_zio`, `examples_sttp`
+([Engine by engine](docs/http-engine.md#engine-by-engine)). In a program of your own, wait for a call's `Future`
+before `main` returns (`Await.result`, or your effect system's runner): the `jdk` engine's threads are daemons, so a
+`main` that returns first ends the JVM at once - exit code 0, nothing printed. Wait in a plain `def main`: a Scala 3
+`App` body runs in its object's initializer, where blocking hangs as soon as a callback touches the object.
 
 ## License ⚖️
 

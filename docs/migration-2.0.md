@@ -526,7 +526,9 @@ wins - the highest priority on the classpath is used - and `-Dws-client.engine=<
   - Nothing keeps the JVM running while a call is in flight: its threads are daemon threads, like those of the global
     `ExecutionContext` (Play WS's were not). A `main` or `App` body that returns before its futures complete ends the
     program at once, with exit code 0 and nothing printed. Wait for them before returning: `Await.result` in a plain
-    `main`, or your effect system's runner.
+    `def main`, or your effect system's runner. Not in a Scala 3 `App` body: it runs in its object's initializer, so a
+    callback that touches the object (a service it holds, any of its values) waits for the body to finish while the
+    body waits for the callback - the program hangs.
 - Downloads are binary-safe on every engine (1.x needed a Play engine for them); an engine without output streaming
   serves a download's body as one chunk.
 - Sharing one engine across services and providers works as in 1.x - see [Sharing one engine](http-engine.md#sharing-one-engine).
@@ -590,8 +592,10 @@ service.ready.flatMap(_ => service.send("Explain Scala's Option in one sentence.
 `blocking-dispatcher`). `ExecutionContextModule` binds the `ExecutionContext` the services run their callbacks on: a
 fixed pool of daemon threads sized by `openai-scala-client.guice.threads` (default 40). `BaseOpenAIClientApp` keeps
 `executionContext` and drops `system` and `materializer`; `GuiceContainer.terminate()` shuts the pool down. Its
-`closeAndExit()` blocks until the future completes, then closes the service and the pool and exits (1.x returned at once
-and the actor system kept the JVM running; the new pool's daemon threads would not).
+`closeAndExit()` returns at once, as in 1.x, and starts a non-daemon thread that keeps the JVM running until the future
+completes, then closes the service and the pool and exits - 0, or 1 after a failure (in 1.x the actor system kept the
+JVM running; the new pool's daemon threads would not). It never blocks the `App` body, which on Scala 3 runs in its
+object's initializer (see the `jdk` engine's differences above).
 
 Before (1.7.x):
 

@@ -2,9 +2,9 @@ package io.cequence.openaiscala.service
 
 import com.google.inject.Module
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.util.control.NonFatal
+import java.util.concurrent.CountDownLatch
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Failure
 
 trait BaseOpenAIClientApp extends GuiceContainer with App {
 
@@ -23,24 +23,34 @@ trait BaseOpenAIClientApp extends GuiceContainer with App {
   implicit protected class FutureOps[T](f: Future[T]) {
 
     /**
-     * Waits for the future, closes the service and the container's thread pool, then exits the
-     * JVM: 0 on success, 1 (stack trace printed) on a failure. It blocks the calling thread on
-     * purpose: the pool's threads and those of the default HTTP engine are daemons, so an
-     * `App` body that returned before the future finished would end the JVM at once.
+     * Once the future completes, closes the service and the container's thread pool and exits
+     * the JVM: 0 on success, 1 (stack trace printed) on a failure. It returns at once and a
+     * non-daemon thread waits instead: the pool's threads and those of the default HTTP engine
+     * are daemons, so the JVM would end with the `App` body otherwise - and the body must not
+     * block, since on Scala 3 it runs in its object's initializer, which a callback touching
+     * the object would wait for.
      */
     def closeAndExit(): Unit = {
-      val exitCode =
-        try {
-          Await.result(f, Duration.Inf)
-          0
-        } catch {
-          case NonFatal(e) =>
+      val completed = new CountDownLatch(1)
+      f.onComplete(_ => completed.countDown())
+
+      val exitWhenDone: Runnable = () => {
+        completed.await()
+        val exitCode = f.value match {
+          case Some(Failure(e)) =>
             e.printStackTrace()
             1
+          case _ =>
+            0
         }
-      openAIService.close()
-      terminate()
-      System.exit(exitCode)
+        openAIService.close()
+        terminate()
+        System.exit(exitCode)
+      }
+
+      val waiter = new Thread(exitWhenDone, "openai-scala-guice-close-and-exit")
+      waiter.setDaemon(false) // keeps the JVM running until the future completes
+      waiter.start()
     }
   }
 }

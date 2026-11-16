@@ -4,8 +4,9 @@ import io.cequence.openaiscala.domain.response.ChatCompletionResponse
 import io.cequence.openaiscala.service.{OpenAIService, OpenAIServiceFactory}
 import io.cequence.wsclient.service.CloseableService
 
+import java.util.concurrent.ExecutionException
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.util.control.NonFatal
 
 trait Example extends ExampleBase[OpenAIService] {
@@ -14,7 +15,29 @@ trait Example extends ExampleBase[OpenAIService] {
 
 trait ExampleBase[T <: CloseableService] {
 
-  implicit val ec: ExecutionContext = ExecutionContext.Implicits.global
+  // what `main` waits for: `run`'s outcome, or the first fatal error (a LinkageError from a
+  // mismatched jar, an OutOfMemoryError) thrown in a callback - such an error never completes
+  // its future (the promise rethrows it), so waiting for `run` alone would hang
+  private val outcome = Promise[Any]()
+
+  // the global pool, with fatal errors in callbacks reported to `outcome`
+  implicit val ec: ExecutionContext = new ExecutionContext {
+    override def execute(runnable: Runnable): Unit =
+      ExecutionContext.global.execute { () =>
+        try {
+          runnable.run()
+        } catch {
+          case e: Throwable if !NonFatal(e) =>
+            outcome.tryFailure(
+              new ExecutionException("A callback failed with a fatal error", e)
+            )
+            throw e
+        }
+      }
+
+    override def reportFailure(cause: Throwable): Unit =
+      ExecutionContext.global.reportFailure(cause)
+  }
 
   protected val service: T
 
@@ -23,7 +46,7 @@ trait ExampleBase[T <: CloseableService] {
   def main(args: Array[String]): Unit = {
     val exitCode =
       try {
-        Await.result(run, Duration.Inf)
+        Await.result(outcome.completeWith(run).future, Duration.Inf)
         0
       } catch {
         case NonFatal(e) =>

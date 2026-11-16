@@ -162,7 +162,8 @@ AsyncHttpClient, are not daemon threads. A service that is never closed keeps th
 1.x. On `jdk`, `pekko-http`, `zio-http` and `sttp` the JVM exits regardless (checked 2026-11-16). The reverse also
 holds: on those engines nothing keeps the JVM running while a call is in flight, so a `main` that returns before its
 futures complete ends the program, with exit code 0 and nothing printed. Wait for them before returning
-(`Await.result` in a plain `main`, or your effect system's runner).
+(`Await.result` in a plain `def main`, or your effect system's runner) - but not in a Scala 3 `App` body, which runs in
+its object's initializer: a callback that touches the object would wait for the body, and the body for the callback.
 
 To share ONE engine (one HTTP client and connection pool) across any number of services, including services of
 different providers, build the engine once and pass it to the factories' `withEngine`:
