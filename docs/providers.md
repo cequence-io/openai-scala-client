@@ -123,7 +123,7 @@ Then you can obtain a service in one of the following ways.
 ```scala
   val service = AnthropicServiceFactory.asOpenAI() // or AnthropicServiceFactory.bedrockAsOpenAI
 ```
-   🔥 **Claude Fable 5.2** (`NonOpenAIModelId.claude_fable_5_2`, released and live-verified 2026-11-09; $8 / $40 per MTok,
+   **Claude Fable 5.2** (`NonOpenAIModelId.claude_fable_5_2`, released and live-verified 2026-11-09; $8 / $40 per MTok,
    1M context, 128k output) has Fable 5.1's API: adaptive thinking only, effort low..max, `json_schema`, and no forced
    `tool_choice` (the adapter sends `auto` with an instruction instead). **Claude Mythos 5.2** (`claude_mythos_5_2`) is the
    same model with fewer safeguards, for Anthropic's verification programs only, and is treated alike. On Bedrock Fable 5.2
@@ -192,7 +192,7 @@ Then you can obtain a service in one of the following ways.
    body for a `gemini-*` id, e.g. on Google's OpenAI-compatible endpoint) drops both with a warning; `n` > 1 is kept on
    Gemini 2.x, which answers several candidates.
 
-   🔥 **Gemini 4 Carbon** (`NonOpenAIModelId.gemini_4_carbon`, 2026-11-10 - Google's strongest reasoning model, above
+   **Gemini 4 Carbon** (`NonOpenAIModelId.gemini_4_carbon`, 2026-11-10 - Google's strongest reasoning model, above
    Argon; 1M context; $4 / $20 per 1M tokens after the introductory period ending 2026-11-30) has Argon's API, so the same
    rules apply (live 2026-11-11: `Gemini4ArgonSmokeTest model=gemini-4-carbon`, all 19 sections).
 
@@ -462,7 +462,7 @@ or with streaming
    no reasoning text, only `reasoning_tokens` in the usage): `reasoning_effort` takes `minimal` to `max`, so the client sends
    `none` as `minimal` (Meta answers `none` with a 400) and `max` as `xhigh` on Spark 1.2 and 1.1, which lack it. It also
    drops what Meta refuses - `stop`, `logit_bias`, `verbosity` and logprobs. `tool_choice` takes only `"auto"` (a forced or
-   required choice is Meta's 400) and `n` must be 1. Muse Wonder Full is in Meta's Muse Code only. 🔥 **Muse Ember**
+   required choice is Meta's 400) and `n` must be 1. Muse Wonder Full is in Meta's Muse Code only. **Muse Ember**
    (`muse-ember-1.0`, OpenRouter `meta/muse-ember`; 2026-11-09 - the family's efficient execution model for sub-agents,
    tool calls and routing; 1,048,576 context, 524,288 output, Standard mode only) follows the same rules (live 2026-11-11,
    `MuseSmokeTest target=meta models=muse-ember-1.0`, all 9 sections).

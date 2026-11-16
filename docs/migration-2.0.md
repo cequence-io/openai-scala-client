@@ -2,12 +2,12 @@
 
 [← back to the README](../README.md)
 
-What changes for your code when you move from 1.x (1.7.0) to 2.0.0, with before / after code for each kind of user.
+What changes for your code when you move from 1.x (1.7.x) to 2.0.0, with before / after code for each kind of user.
 
 2.0.0 removes the hard dependency on Akka. Calls go through any [ws-client](https://github.com/cequence-io/ws-client)
 1.2.1 engine - by default `jdk` (the JDK's `java.net.http`), which needs no actor system - and every stream is ws-client's
 backend-neutral `AsyncStream`, which runs on plain `Future`s or converts to Akka, Pekko, fs2 or ZIO with one import. The
-services, their methods, the domain classes, the settings and the factories are the ones of 1.7.0. What changed:
+services, their methods, the domain classes, the settings and the factories are the ones of 1.7.1. What changed:
 
 - the stream types (`AsyncStream` / `AsyncPipe` instead of Akka's `Source` / `Flow`), and streams are cold - a request
   per run;
@@ -129,7 +129,7 @@ helpers, the batch helper's polling and the TypeSafe retry adapter took an impli
 without any streaming still needed an `ActorSystem`. They take ws-client's `AsyncScheduler` now, whose default (one daemon
 thread) is found without an import.
 
-Before (1.7.0):
+Before (1.7.x):
 
 ```scala
 import akka.actor.{ActorSystem, Scheduler}
@@ -182,7 +182,7 @@ download's body is an `AsyncStream[Bytes]` instead of a `Source[ByteString, _]` 
 The moment the request is sent changed too. A 1.x stream from the Play engine sent its request when the method was
 called. An `AsyncStream` is a plan: it sends nothing until it runs, and every run sends a new request.
 
-| Where | 1.7.0 | 2.0.0 |
+| Where | 1.7.x | 2.0.0 |
 |---|---|---|
 | The HTTP streams of every service: chat completions (OpenAI-shaped and typed), completions, the Responses API, Agents sessions and events, Anthropic (messages, batch results, session events), Gemini, Perplexity | the request is sent when the method is called | the request is sent when the stream runs - a new request per run |
 | Bedrock streams (SigV4) | signed when the method is called | signed when the stream runs, per run |
@@ -235,7 +235,7 @@ The factories pick it on their own (priority 11; `jdk` has 0). Then `import io.c
 adds `.toSource`, which on this engine returns the engine's own `Source` with the library's operators as Akka stages -
 no bridge.
 
-Before (1.7.0):
+Before (1.7.x):
 
 ```scala
 import akka.actor.ActorSystem
@@ -401,7 +401,7 @@ val texts: fs2.Stream[IO, String] =
 The new `openai-scala-zio` module gives every service as ZIO types - `Task`s for calls, `ZStream[Any, Throwable, A]` for
 streams, `ZLayer`s that close the service with their scope - see [ZIO services](zio.md).
 
-Before (1.7.0):
+Before (1.7.x):
 
 ```scala
 val reply: Task[ChatCompletionResponse] =
@@ -506,7 +506,7 @@ class TimedStreamedService(underlying: OpenAIChatCompletionStreamedServiceExtra)
 No factory or helper takes a `Materializer` or an `ActorSystem`; timers take an `AsyncScheduler`, whose default is found
 without an import. Code that relied on the implicits compiles unchanged; code that passed them explicitly drops them.
 
-| 1.7.0 | 2.0.0 |
+| 1.7.x | 2.0.0 |
 |---|---|
 | `agentsAsChatCompletion(...)(implicit ec, materializer)`, `OpenAIAgentsChatCompletionService(...)` | `(implicit ec, scheduler: AsyncScheduler)` |
 | `AnthropicServiceFactory.managedAgentAsOpenAI` (both), `managedAgentAsOpenAIWithAuthToken`, `OpenAIAnthropicManagedAgentChatCompletionService(...)`: `(implicit ec, materializer)` | `(implicit ec)` |
@@ -546,7 +546,7 @@ wins - the highest priority on the classpath is used - and `-Dws-client.engine=<
 
 ## Renames
 
-| 1.7.0 | 2.0.0 |
+| 1.7.x | 2.0.0 |
 |---|---|
 | `Source[A, NotUsed]`, `Flow[A, B, NotUsed]`, `Source[ByteString, _]` | `AsyncStream[A]`, `AsyncPipe[A, B]`, `AsyncStream[Bytes]` (`io.cequence.wsclient.stream`) |
 | `StreamedEngineRegistry.outputStreamed()` (ws-client-core-akka, an Akka-typed engine) | `WSClientEngineRegistry.outputStreamed()` (`io.cequence.wsclient.service.spi`, any engine that streams) |
@@ -567,7 +567,7 @@ exception to cold streams next to a download's body: every run joins the live se
 replayed first, so run it before you send a turn whose events you need. The slowest running consumer paces the others;
 with none, the events are read and dropped. On Akka, `events.toSource` crosses one bridge, at the session's hub.
 
-Before (1.7.0):
+Before (1.7.x):
 
 ```scala
 implicit val system: ActorSystem = ActorSystem()
@@ -602,7 +602,7 @@ service.ready.flatMap(_ => service.send("Explain Scala's Option in one sentence.
 fixed pool of daemon threads sized by `openai-scala-client.guice.threads` (default 40). `BaseOpenAIClientApp` keeps
 `executionContext` and drops `system` and `materializer`; `GuiceContainer.terminate()` shuts the pool down.
 
-Before (1.7.0):
+Before (1.7.x):
 
 ```scala
 override protected def modules: Seq[Module] = Seq(new ConfigModule(), new AkkaModule(), new ServiceModule())

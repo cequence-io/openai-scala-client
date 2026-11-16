@@ -8,12 +8,12 @@ runs, every run is a new request), back-pressured, run on plain `Future`s or han
 import, and native on an engine of that library (an Akka engine's stream comes back as its own `Source`, with no bridge).
 No factory or helper takes a `Materializer`, an `ActorSystem` or an Akka `Scheduler`; retries, failover and polling wait
 on ws-client's `AsyncScheduler`. The new `openai-scala-zio` module gives every service as ZIO `Task`s, `ZStream`s and
-`ZLayer`s. logback is no longer a dependency. Also in it: the 1.x work since 1.7.0 - Claude Fable 5.2 and Mythos 5.2,
-Gemini 4 Carbon, Muse Ember 1.0 and four OpenRouter decision models. The 1.x line (1.7.x) stays on Akka.
+`ZLayer`s. logback is no longer a dependency. Also in it: everything in 1.7.1, released with it - Claude Fable 5.2 and
+Mythos 5.2, Gemini 4 Carbon, Muse Ember 1.0 and four OpenRouter decision models. The 1.x line (1.7.x) stays on Akka.
 
-### ⚠️ Upgrading from 1.7.0
+### ⚠️ Upgrading from 1.7.x
 
-Not binary compatible with 1.7.0 - recompile against 2.0.0. [Migrating to 2.0](docs/migration-2.0.md) has before / after
+Not binary compatible with 1.7.x - recompile against 2.0.0. [Migrating to 2.0](docs/migration-2.0.md) has before / after
 code for Futures-only, Akka, Pekko, fs2 and ZIO users and for implementers of the service traits.
 
 **Source breaks**:
@@ -158,6 +158,11 @@ code for Futures-only, Akka, Pekko, fs2 and ZIO users and for implementers of th
   [ZIO services](docs/zio.md).
 - Downloads are binary-safe on every engine (1.x needed a Play engine): an engine without output streaming serves the
   body as one chunk; a missing file is still `None`.
+- A runnable setup per engine (unpublished example projects, one per stream library): `openai-examples-akka` (Play WS),
+  `openai-examples-pekko` (Play WS and pekko-http), `openai-examples-fs2`, `openai-examples-zio` and
+  `openai-examples-sttp`. [Engine by engine](docs/http-engine.md#engine-by-engine) lists what each engine gives you, and
+  the migration guide has a [step-by-step](docs/migration-2.0.md#step-by-step) order. Every engine was checked live on
+  the published artifacts before the release, on each Scala line it supports and on Java 11 and 17.
 
 ### Dependencies
 
@@ -175,7 +180,7 @@ code for Futures-only, Akka, Pekko, fs2 and ZIO users and for implementers of th
 
 ### New models
 
-Also on the 1.x line (merged from it since 1.7.0):
+Also in 1.7.1:
 
 - **Claude Fable 5.2** (`NonOpenAIModelId.claude_fable_5_2`, released 2026-11-09; Bedrock
   `bedrock_claude_fable_5_2` through the `global.` profile, on an AWS account whose data retention mode is not the

@@ -44,7 +44,7 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 |----------|-------------------|-------|-------|-------|
 | [OpenAI](https://platform.openai.com) | Full | Yes, Responses API too | Yes | Full API support; GPT-6.1 Terra |
 | [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) | Full | Yes, Responses API too | Yes | OpenAI on Azure |
-| [Anthropic](https://www.anthropic.com/api) | Full | Yes, MCP and Skills too | Yes | Claude models; Fable 5.2 and Mythos 5.2 🔥 |
+| [Anthropic](https://www.anthropic.com/api) | Full | Yes, MCP and Skills too | Yes | Claude models; Fable 5.2 and Mythos 5.2 |
 | [Anthropic Bedrock](https://aws.amazon.com/bedrock/claude/) | Full | Yes, MCP too | Yes ¹ | Claude on AWS |
 | [OpenAI Bedrock](https://docs.aws.amazon.com/bedrock/latest/userguide/bedrock-mantle.html) | Full | Yes, Responses API too | – | GPT-5.x, gpt-oss, Grok and more on AWS ² |
 | [Azure AI](https://azure.microsoft.com/en-us/products/ai-studio) | Varies | – | – | Open-source models |
@@ -52,11 +52,11 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 | [Deepseek](https://deepseek.com/) | JSON object mode only | – | – | Chinese provider; `deepseek-flash` is V4.1 Flash 1017 |
 | [FastChat](https://github.com/lm-sys/FastChat) | Varies | – | – | Local LLMs |
 | [Fireworks AI](https://fireworks.ai/) | Full | – | – | Cloud provider |
-| [Google Gemini](https://ai.google.dev/) | Full | Yes | Yes | Google's models; Gemini 4 Carbon 🔥 |
+| [Google Gemini](https://ai.google.dev/) | Full | Yes | Yes | Google's models; Gemini 4 Carbon |
 | [Google Vertex AI](https://cloud.google.com/vertex-ai) | Full | Yes | Yes | Gemini models; the global, EU and US endpoints |
 | [Grok](https://x.ai/) | Full | Yes | – | x.AI models |
 | [Groq](https://groq.com/) | Full ³ | Yes, MCP and server-side tools too | Yes | Fast inference |
-| [Meta Model API](https://dev.meta.ai/) | Full ⁶ | Yes | – | Muse Wonder, Muse Ember 🔥, Muse Spark (open weights: Muse Spark Open on Together, Fireworks, OpenRouter, Vercel) ⁶ |
+| [Meta Model API](https://dev.meta.ai/) | Full ⁶ | Yes | – | Muse Wonder, Muse Ember, Muse Spark (open weights: Muse Spark Open on Together, Fireworks, OpenRouter, Vercel) ⁶ |
 | [MiniMax](https://www.minimax.io/) | Varies ⁴ | – | – | Chinese provider (global and China); MiniMax-M3.1-Flash |
 | [Mistral](https://mistral.ai/) | Full | – | – | Open-source leader |
 | [Novita](https://novita.ai/) | Model-dependent | – | – | Cloud provider |
@@ -72,8 +72,7 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 ³ Cerebras: `gpt-oss-120b`, `qwen-3.8-27b`; Groq: `openai/gpt-oss-*`, `qwen/qwen3.x-27b`.\
 ⁴ JSON-object mode: M3 / M3.1-Flash accept strict `json_schema` but do not enforce it (live 2026-11-02).\
 ⁵ Perplexity's Sonar chat completions retired on 2026-09-27 (see [Services and providers](docs/providers.md)).\
-⁶ `ChatProviderSettings.meta` (`MODEL_API_KEY`); Muse Wonder (2026-10-12) and Muse Spark live-verified with strict `json_schema`, tools and streams (see [Services and providers](docs/providers.md)).\
-🔥 New in 1.7.1.
+⁶ `ChatProviderSettings.meta` (`MODEL_API_KEY`); Muse Wonder (2026-10-12) and Muse Spark live-verified with strict `json_schema`, tools and streams (see [Services and providers](docs/providers.md)).
 
 **Decision models** give typed answers with calibrated probabilities. Two APIs serve them - TypeSafe AI's System One
 (`TypeSafeService.systemOne`: Jev, Liquid's d1, Perplexity's decider, Microsoft-Decision-1, SubQ Snap, ScaleDown's Classify, Sarvam Prism, Bespoke's Nimble, OpenRouter, Vercel AI Gateway, llama.cpp) and OpenAI's Decisions API
@@ -88,7 +87,7 @@ decisions, re-ranking, the `json_schema`-only chat adapter) on OpenAI's. No tool
 | [Liquid AI](https://www.liquid.ai/) | d1.1 (the default), d1, images too; d1-ultra | `liquidAsOpenAI()` |
 | [llama.cpp](https://github.com/ggml-org/llama.cpp) (local) | Liquid's Open d1 (d1-3B, d1-omni-600M) once llama.cpp loads them; Julia-1, Laya, Lev, Kev, OpenJev, Nimble, Clef | `asOpenAI(DecisionProviderSettings.llamaCpp)` |
 | [Perplexity Decisions](https://docs.perplexity.ai/docs/decisions/quickstart) | pplx-decider-v1.2 and the 4B pplx-decider-flash-v1.2, v1.1-27b / v1-27b; images too | `perplexityAsOpenAI()` |
-| [OpenRouter](https://openrouter.ai/models?output_modalities=decisions) | Jev, d1, Perplexity's deciders, OpenAI's Luna, Microsoft-Decision-1, Cloudflare's Clef (+ Flash, Omni), Solar Decide, Mercury Decide, Tev1, Kev 4B, NACE's Drex, Span-01, ScaleDown's Classify-1, Jev 1.14, d1-ultra, Span-02; d1.1, Baseten's Elephant-1 / Mammoth-1, NACE's Drex Max; Baseten's Joey-1, Morph's Reflex, NACE's Drex Max Finance and Parallel's Decisions Fast 🔥; images too | `asOpenAI(DecisionProviderSettings.openRouter)` |
+| [OpenRouter](https://openrouter.ai/models?output_modalities=decisions) | Jev, d1, Perplexity's deciders, OpenAI's Luna, Microsoft-Decision-1, Cloudflare's Clef (+ Flash, Omni), Solar Decide, Mercury Decide, Tev1, Kev 4B, NACE's Drex, Span-01, ScaleDown's Classify-1, Jev 1.14, d1-ultra, Span-02; d1.1, Baseten's Elephant-1 / Mammoth-1, NACE's Drex Max; Baseten's Joey-1, Morph's Reflex, NACE's Drex Max Finance and Parallel's Decisions Fast; images too | `asOpenAI(DecisionProviderSettings.openRouter)` |
 | [OpenAI Decisions](https://developers.openai.com/api/docs/guides/decisions) | gpt-6-luna, images too | `asOpenAI(DecisionProviderSettings.openAI)` |
 | [Vercel AI Gateway](https://vercel.com/docs/ai-gateway/sdks-and-apis/typesafe) | Jev, d1 (images too), Microsoft-Decision-1, OpenAI's Luna; on the free tier Convai's Laya and ScaleDown's Classify-1, also Baseten's Elephant-1 / Mammoth-1, d1-ultra and Perplexity's v1.2 deciders | `asOpenAI(DecisionProviderSettings.vercel)` |
 | [SubQ](https://docs.subq.ai/) | SubQ Snap 1.1 (the default) and Snap Preview (public preview; long context - 295,957 input tokens, up to 4 images) | `asOpenAI(DecisionProviderSettings.subq)` |
@@ -96,8 +95,6 @@ decisions, re-ranking, the `json_schema`-only chat adapter) on OpenAI's. No tool
 | [Bespoke Labs](https://docs.bespokelabs.ai/) | Nimble (`nimble-latest` = Nimble v4 Max, 27B; text only, at most 64 questions) | `asOpenAI(DecisionProviderSettings.bespoke)` |
 | [ScaleDown](https://docs.scaledown.ai/) | Classify (a constrained decoding model; text plus one document, 1M context) | `asOpenAI(DecisionProviderSettings.scaleDown)` |
 | [Microsoft Foundry](https://ai.azure.com/catalog/models/microsoft-decision-1) | Microsoft-Decision-1 (public preview; your own deployment in a Foundry resource) | `microsoftFoundryAsOpenAI()` |
-
-🔥 New in 1.7.1.
 
 ---
 
