@@ -6,7 +6,7 @@ The HTTP client the library runs on and how to pick another, each engine with a 
 many services and providers,
 timeouts, proxy and HTTP version, and embedding the library in an Akka, Pekko or ZIO application.
 
-Every HTTP call goes through an **engine** of [ws-client](https://github.com/cequence-io/ws-client) 1.2.1, which is
+Every HTTP call goes through an **engine** of [ws-client](https://github.com/cequence-io/ws-client) 1.2.2, which is
 one HTTP backend behind a common contract. 🔥 Since 2.0.0 the default engine is `jdk`, built on the JDK's own
 `java.net.http` client. It comes with `openai-scala-core`, needs no Akka and no actor system, and supports streaming.
 To use another engine, add its artifact: engines are picked up from the classpath. An engine keeps no state for any one
@@ -32,12 +32,12 @@ The full table, with capabilities and notes per backend, is on ws-client's
 [Engines](https://github.com/cequence-io/ws-client/blob/main/docs/engines.md) page.
 
 To use an engine, add its artifact next to the library. Every ws-client artifact on a classpath must have the same
-version, which is 1.2.1, the version this library is built on:
+version, which is 1.2.2, the version this library is built on:
 
 ```scala
 libraryDependencies ++= Seq(
   "io.cequence" %% "openai-scala-client-stream" % "2.0.0",
-  "io.cequence" %% "ws-client-play-akka-stream" % "1.2.1" // the Akka engine (priority 11) wins over jdk (0)
+  "io.cequence" %% "ws-client-play-akka-stream" % "1.2.2" // the Akka engine (priority 11) wins over jdk (0)
 )
 ```
 
@@ -142,7 +142,9 @@ stream crosses per response when you consume it as the type in the column before
   the download of the same file, the JSON helper, a 401 and a 1 ms timeout classified, OpenAI chat, typed and Responses
   streams, a stream run twice (two requests), `take(1)`, and Anthropic and Gemini on the same engine. They also covered
   the plain factories' private engines and the bridge counts above. Every JVM exited by itself once its services were
-  closed.
+  closed. The factories also work on threads whose context class loader cannot see the library - a pool thread of an
+  in-process `sbt run`, a thread without one: ws-client and the library's config loading fall back to their own class
+  loader there (checked in-process for every engine).
 
 ## Sharing one engine
 

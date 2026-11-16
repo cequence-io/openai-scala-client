@@ -2,7 +2,7 @@
 
 ## 2.0.0 (unreleased)
 
-The 1.x API without Akka. Calls go through any ws-client 1.2.1 engine - the JDK's `java.net.http` (`jdk`) by default,
+The 1.x API without Akka. Calls go through any ws-client 1.2.2 engine - the JDK's `java.net.http` (`jdk`) by default,
 with no actor system - and every stream is ws-client's backend-neutral `AsyncStream`: cold (nothing is sent until it
 runs, every run is a new request), back-pressured, run on plain `Future`s or handed to Akka, Pekko, fs2 or ZIO with one
 import, and native on an engine of that library (an Akka engine's stream comes back as its own `Source`, with no bridge).
@@ -128,7 +128,7 @@ code for Futures-only, Akka, Pekko, fs2 and ZIO users and for implementers of th
   `onTerminate`, `guaranteeCase`, `concurrently`, `preflight`) and runs (`runForeach`, `runFold`, `runToSeq`, `runHead`,
   `runLast`, `runDrain`, `toPublisher`) need nothing but an `ExecutionContext`. See
   [AsyncStream](docs/streaming.md#asyncstream).
-- 🔥 **Interop with one import** (each a ws-client 1.2.1 module): Akka (`ws-client-core-akka`,
+- 🔥 **Interop with one import** (each a ws-client 1.2.2 module): Akka (`ws-client-core-akka`,
   `import io.cequence.wsclient.stream.SourceInterop._` - `.toSource`, `.toByteStringSource`, `.toFlow`, back with
   `.toAsyncStream` / `.toAsyncPipe`), Pekko (`ws-client-core-pekko`, the same names), fs2 (`ws-client-fs2`,
   `Fs2Interop._` - `.toFs2[F]`), ZIO (`ws-client-zio`, `ZioInterop._` - `.toZStream`, `.toZByteStream`), any Reactive
@@ -166,8 +166,11 @@ code for Futures-only, Akka, Pekko, fs2 and ZIO users and for implementers of th
 
 ### Dependencies
 
-- ws-client 1.2.1 (from 1.1.5): `AsyncStream`, `AsyncScheduler`, binary-safe downloads, `TransportSettings.httpVersion`
-  and the fs2 / ZIO interop modules (1.2.0); 1.2.1 builds every class for Java 11 (1.2.0 shipped one for Java 17, which
+- ws-client 1.2.2 (from 1.1.5): `AsyncStream`, `AsyncScheduler`, binary-safe downloads, `TransportSettings.httpVersion`
+  and the fs2 / ZIO interop modules (1.2.0); 1.2.2 finds engines, reads its configuration and builds the Akka / Pekko
+  engines' actor systems through its own class loader when the thread's context class loader cannot see it (before, a
+  factory on such a thread found no engine, or threw `ConfigException.BugOrBroken` on a thread without one); 1.2.1
+  builds every class for Java 11 (1.2.0 shipped one for Java 17, which
   failed on JDK 11), keeps repeated request headers on zio-http and sttp, keeps one `Content-Type` on every engine (the
   last value: a call's own overrides the site's - on the Play engines the site's used to win) and gives failures without
   a message one from their cause chain (a refused jdk connection is still a `ConnectException`, now saying "cannot
@@ -218,6 +221,11 @@ Also in 1.7.1:
   `events`.
 - Vertex AI's sync calls waited for the SDK's future with a blocking `get`, holding a thread of the JVM's common pool per
   call in flight; they complete from the SDK's callback now.
+- The client config (`openai-scala-client.conf`, or the application's with `OPENAI_SCALA_CLIENT_USE_APP_CONFIG_FILE`) is
+  read through the thread's context class loader only when that loader sees the library, else through the library's own
+  (also the guice `ConfigModule`). On a pool thread of an in-process `sbt run` a factory failed with "API key is not
+  defined" (that thread's loader cannot see the config file), and on a thread without a context class loader with
+  `ConfigException.BugOrBroken`.
 
 ## 1.7.1 (unreleased)
 

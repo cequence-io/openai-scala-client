@@ -5,7 +5,7 @@
 What changes for your code when you move from 1.x (1.7.x) to 2.0.0, with before / after code for each kind of user.
 
 2.0.0 removes the hard dependency on Akka. Calls go through any [ws-client](https://github.com/cequence-io/ws-client)
-1.2.1 engine - by default `jdk` (the JDK's `java.net.http`), which needs no actor system - and every stream is ws-client's
+1.2.2 engine - by default `jdk` (the JDK's `java.net.http`), which needs no actor system - and every stream is ws-client's
 backend-neutral `AsyncStream`, which runs on plain `Future`s or converts to Akka, Pekko, fs2 or ZIO with one import. The
 services, their methods, the domain classes, the settings and the factories are the ones of 1.7.1. What changed:
 
@@ -39,10 +39,9 @@ The order that works for an application, whether it makes a few streaming calls 
 
 1. **Dependencies.** Move every `openai-scala-*` artifact to 2.0.0 and add the engine you want to run on. For an Akka
    application that is `ws-client-play-akka-stream`, the engine 1.x ran on. Pin every ws-client artifact on the
-   classpath to 1.2.1, including the ones other libraries bring ([Dependencies](#dependencies)).
+   classpath to 1.2.2, including the ones other libraries bring ([Dependencies](#dependencies)).
 2. **Logging.** If logback reached you only through 1.x, add an SLF4J binding ([Logging](#logging)).
-3. **`sbt run`.** Fork it ([below](#run-in-a-forked-jvm)).
-4. **Compile.** The compiler lists what is left:
+3. **Compile.** The compiler lists what is left:
    - streams: `Source`s become `AsyncStream`s, fixed with `.toSource` or `SourceConversions._` ([Akka](#akka),
      [Pekko](#pekko), [fs2](#fs2), [ZIO](#zio));
    - removed arguments: `Materializer`, `ActorSystem` and `Scheduler`
@@ -50,28 +49,14 @@ The order that works for an application, whether it makes a few streaming calls 
    - downloads: a `Future` of an `AsyncStream[Bytes]` (`.toByteStringSource` on Akka);
    - your classes that implement or wrap a service trait
      ([Implementing the service traits](#implementing-the-service-traits)).
-5. **Cold streams.** Look for stream values that are run more than once, and for streams that are built but never run.
+4. **Cold streams.** Look for stream values that are run more than once, and for streams that are built but never run.
    Each run is a new request, and an unrun stream sends nothing ([Streams are cold](#streams-are-cold)).
-6. **Run it.** Check which engine was picked: `WSClientEngineRegistry.provider().engineId`, and for streams
+5. **Run it.** Check which engine was picked: `WSClientEngineRegistry.provider().engineId`, and for streams
    `WSClientEngineRegistry.provider(None, Set[EngineCapability](EngineCapability.OutputStreaming)).engineId`
    (`io.cequence.wsclient.service.spi`). Close what you build: on the Play engines a service that is never closed keeps
    the JVM from exiting, as in 1.x ([Sharing one engine](http-engine.md#sharing-one-engine)).
 
 Every engine with its sbt line, what the factories pick and a runnable example: [Engine by engine](http-engine.md#engine-by-engine).
-
-### Run in a forked JVM
-
-Engines are found through the calling thread's context classloader. sbt's in-process `run` reuses thread pools from one
-run to the next. On the second `run` in the same sbt session, a factory called from a `Future` - on a thread of
-`ExecutionContext.global` - still sees the previous run's classloader and finds no engine. Fork the run, and the tests
-if they build services on pool threads:
-
-```scala
-run / fork := true
-Test / fork := true
-```
-
-Or build the engine once, on the main thread, and pass it to the factories' `withEngine`.
 
 ## Dependencies
 
@@ -84,8 +69,8 @@ libraryDependencies ++= Seq(
 
 - 1.x brought Akka 2.6, Play WS and logback through its modules; 2.0.0 brings none of them. openai-core depends on
   ws-client-core, ws-client-jdk (the default engine), json-repair and scala-logging.
-- Every ws-client artifact on a classpath must have the same version - 1.2.1 for 2.0.0. A build that declares a ws-client
-  artifact of its own (e.g. `ws-client-play-akka-stream` 1.1.5) moves it to 1.2.1. When other libraries bring ws-client
+- Every ws-client artifact on a classpath must have the same version - 1.2.2 for 2.0.0. A build that declares a ws-client
+  artifact of its own (e.g. `ws-client-play-akka-stream` 1.1.5) moves it to 1.2.2. When other libraries bring ws-client
   too, pin it, json-repair included:
 
 ```scala
@@ -96,10 +81,10 @@ dependencyOverrides ++= Seq(
   "ws-client-play-akka",
   "ws-client-play-akka-stream",
   "json-repair"
-).map("io.cequence" %% _ % "1.2.1") // the artifacts your classpath has
+).map("io.cequence" %% _ % "1.2.2") // the artifacts your classpath has
 ```
 
-- A library compiled against ws-client 1.1.x keeps working on 1.2.1. The one exception is an explicit call of
+- A library compiled against ws-client 1.1.x keeps working on 1.2.2. The one exception is an explicit call of
   `TransportSettings.unapply` on Scala 2, which now returns a three-element tuple
   ([ws-client's changelog](https://github.com/cequence-io/ws-client/blob/main/CHANGELOG.md)). Clients of your own built on
   ws-client's service bases (`WSClientWithEngine`, `PollingHelper`, the Play engines) need the same pin, and the
@@ -228,7 +213,7 @@ With the Akka engine on the classpath, 2.0.0 runs on Play WS and Akka as 1.x did
 import - except that streams are cold. Add the engine 1.x used:
 
 ```scala
-libraryDependencies += "io.cequence" %% "ws-client-play-akka-stream" % "1.2.1" // Scala 2.12, 2.13 and 3
+libraryDependencies += "io.cequence" %% "ws-client-play-akka-stream" % "1.2.2" // Scala 2.12, 2.13 and 3
 ```
 
 The factories pick it on their own (priority 11; `jdk` has 0). Then `import io.cequence.wsclient.stream.SourceInterop._`
@@ -323,7 +308,7 @@ service
   .flatMap(_.toByteStringSource.runWith(FileIO.toPath(Paths.get("hello.mp3"))))
 ```
 
-- Without the Akka engine - on `jdk` - `.toSource` works the same (it needs `ws-client-core-akka` 1.2.1 on the classpath),
+- Without the Akka engine - on `jdk` - `.toSource` works the same (it needs `ws-client-core-akka` 1.2.2 on the classpath),
   and each HTTP response crosses one bridge (`java.util.concurrent.Flow.Publisher`) into Akka.
 - Embedding the library in an existing `ActorSystem` - an engine on your `Materializer` that closing a service never
   touches - is unchanged: see [Embedding](http-engine.md#embedding-in-an-akka-pekko-or-zio-application).
@@ -339,7 +324,7 @@ More in [Consuming a stream](streaming.md#consuming-a-stream-akka-pekko-fs2-zio)
 ones. 2.0.0 depends on neither flavor, so a Pekko engine is one dependency (Scala 2.13 or 3.3+):
 
 ```scala
-libraryDependencies += "io.cequence" %% "ws-client-play-pekko-stream" % "1.2.1" // or ws-client-pekko-http
+libraryDependencies += "io.cequence" %% "ws-client-play-pekko-stream" % "1.2.2" // or ws-client-pekko-http
 ```
 
 ```scala
@@ -377,7 +362,7 @@ service
 import does it:
 
 ```scala
-libraryDependencies += "io.cequence" %% "ws-client-fs2" % "1.2.1" // Scala 2.12, 2.13 and 3.3+
+libraryDependencies += "io.cequence" %% "ws-client-fs2" % "1.2.2" // Scala 2.12, 2.13 and 3.3+
 ```
 
 ```scala
