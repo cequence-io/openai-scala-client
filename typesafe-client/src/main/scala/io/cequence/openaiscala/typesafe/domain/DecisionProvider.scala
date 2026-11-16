@@ -3,9 +3,10 @@ package io.cequence.openaiscala.typesafe.domain
 import scala.util.Try
 
 /**
- * A host of decision models - TypeSafe's System One protocol, or OpenAI's Decisions API
- * (`protocol`) - the counterpart of the chat providers' `ProviderSettings`. The known hosts
- * are presets in `io.cequence.openaiscala.typesafe.service.DecisionProviderSettings`
+ * A host of decision models - TypeSafe's System One protocol, OpenAI's Decisions API,
+ * ScaleDown's text-only System One or Google's Gemini Decisions API (`protocol`) - the
+ * counterpart of the chat providers' `ProviderSettings`. The known hosts are presets in
+ * `io.cequence.openaiscala.typesafe.service.DecisionProviderSettings`
  * (`TypeSafeServiceFactory(DecisionProviderSettings.openRouter)`); any other compatible host
  * takes one of its own:
  *
@@ -23,7 +24,8 @@ import scala.util.Try
  *   the model of a call that names none
  * @param decisionsPath
  *   the endpoint that answers the questions - `v1/systemone` on TypeSafe and most hosts,
- *   `v1/decisions` on Perplexity
+ *   `v1/decisions` on Perplexity and OpenAI, `v1/scaledown` on ScaleDown, `v1beta/decisions`
+ *   on Gemini
  * @param models
  *   how `listModels` finds the host's models
  * @param maxQuestions

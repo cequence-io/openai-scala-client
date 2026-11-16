@@ -523,7 +523,8 @@ object DecisionProviderSettings {
           DecisionModelId.gemini_decision_1,
           "Google's decision model, the one model of the Gemini Decisions API ($0.10 / 1M input tokens).",
           "2026-11-11",
-          Some(Seq("text", "image", "audio", "video", "document"))
+          // what the client sends - the API also reads audio, video and PDFs
+          Some(Seq("text", "image"))
         )
       )
     ),

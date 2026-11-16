@@ -9,7 +9,9 @@ Decisions API (Gemini Decision 1) as a decision-model host.
 ### Upgrading from 1.7.0
 
 Binary compatible with 1.7.0: new model ids, a new decision protocol and provider preset, entries in the model rules and
-the `models-supporting-json-schema` list - nothing removed or changed. Two presets have a new default model:
+the `models-supporting-json-schema` list - nothing removed or changed. The new protocol is a new case of the sealed
+`DecisionProtocol`, `Gemini`: an exhaustive match on `DecisionProtocol` needs a case for it (the compiler warns
+otherwise). Two presets have a new default model:
 
 - `DecisionProviderSettings.perplexity` (`TypeSafeServiceFactory.perplexity*`): `pplx-decider-v1.3` (was v1.2).
 - `DecisionProviderSettings.subq`: `subq-snap-1.2` (was 1.1).

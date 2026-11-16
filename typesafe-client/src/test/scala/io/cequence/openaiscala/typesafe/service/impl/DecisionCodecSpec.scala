@@ -444,6 +444,8 @@ class DecisionCodecSpec extends AnyWordSpec with Matchers {
           None,
           Some(NoulCriteria(Some(JsString("a refund")), None))
         ),
+        // blank instructions, no criteria: the API refuses "" - a generic question instead
+        "blank" -> NoulQuestion(""),
         "team" -> ChoiceQuestion(
           ListMap("billing" -> Some(JsString("charges")), "other" -> None)
         ),
@@ -467,6 +469,7 @@ class DecisionCodecSpec extends AnyWordSpec with Matchers {
           "instructions" -> "Yes when: a refund",
           "criteria" -> Json.obj("true_description" -> "a refund")
         ),
+        "blank" -> Json.obj("type" -> "noul", "instructions" -> "Is the input true?"),
         "team" -> Json.obj(
           "type" -> "choice",
           "instructions" -> "Which option applies?",

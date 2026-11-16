@@ -67,6 +67,20 @@ private[impl] object DecisionCodec {
       case (DecisionProtocol.SystemOne, _) => SystemOneCodec
     }
 
+  /**
+   * A score level as text, for a host that takes level texts: `{label, description}` as
+   * `label: description`, a label alone as it is, other JSON written by `text`.
+   */
+  def levelText(
+    json: JsValue,
+    text: JsValue => String
+  ): String =
+    ((json \ "label").asOpt[String], (json \ "description").asOpt[String]) match {
+      case (Some(label), Some(description)) => s"$label: $description"
+      case (Some(label), None)              => label
+      case _                                => text(json)
+    }
+
   /** TypeSafe's own format, which the domain types mirror. */
   object SystemOneCodec extends DecisionCodec {
 
@@ -270,7 +284,7 @@ private[impl] object ScaleDownCodec extends DecisionCodec {
         Json.obj(
           "type" -> "score",
           "instructions" -> instructions.map(text).getOrElse[String](""),
-          "criteria" -> levels.map(level)
+          "criteria" -> levels.map(DecisionCodec.levelText(_, text))
         )
 
       case _: BoxQuestion =>
@@ -278,14 +292,6 @@ private[impl] object ScaleDownCodec extends DecisionCodec {
           "ScaleDown's classify takes no box question - ask TypeSafe's Jev 1.14 " +
             "(DecisionProviderSettings.typeSafe, jev-1.14.0)."
         )
-    }
-
-  // a score level: `{label, description}` as `label: description`, other JSON as its text
-  private def level(json: JsValue): String =
-    ((json \ "label").asOpt[String], (json \ "description").asOpt[String]) match {
-      case (Some(label), Some(description)) => s"$label: $description"
-      case (Some(label), None)              => label
-      case _                                => text(json)
     }
 
   // text as it is, an array of texts (a chat message's parts) one per line, any other JSON
@@ -342,6 +348,8 @@ private[impl] final case class GeminiDecisionsCodec(model: String) extends Decis
 
 private[impl] object GeminiDecisionsCodec {
 
+  import SystemOneToOpenAI.{isPart, noulConditions, text}
+
   // the question keys the API takes
   private val ValidKey = "[A-Za-z0-9_-]{1,64}".r.pattern
 
@@ -351,11 +359,14 @@ private[impl] object GeminiDecisionsCodec {
 
     @tailrec
     def free(n: Int): String =
-      if (used(s"q$n")) free(n + 1)
-      else s"q$n"
+      if (used(s"q$n"))
+        free(n + 1)
+      else
+        s"q$n"
 
     names.zipWithIndex.map { case (name, index) =>
-      if (valid(name)) name
+      if (valid(name))
+        name
       else {
         val key = free(index)
         used += key
@@ -391,14 +402,24 @@ private[impl] object GeminiDecisionsCodec {
           criteria.yes.map(yes => "true_description" -> JsString(text(yes))).toSeq ++
             criteria.no.map(no => "false_description" -> JsString(text(no))).toSeq
         }
-        val conditions = noul.criteria.toSeq.flatMap { criteria =>
-          criteria.yes.map(yes => s"Yes when: ${text(yes)}").toSeq ++
-            criteria.no.map(no => s"No when: ${text(no)}").toSeq
-        }
+        // without instructions: the criteria as text, else a generic question (blank
+        // instructions and no criteria - the domain takes `Some("")`)
+        val conditions = noulConditions(noul, text)
+        val fallback =
+          if (conditions.nonEmpty)
+            conditions.mkString("\n")
+          else
+            "Is the input true?"
+        val withCriteria =
+          if (criteria.isEmpty)
+            Json.obj()
+          else
+            Json.obj("criteria" -> JsObject(criteria))
+
         Json.obj(
           "type" -> "noul",
-          "instructions" -> instructionsOr(noul.instructions, conditions.mkString("\n"))
-        ) ++ (if (criteria.isEmpty) Json.obj() else Json.obj("criteria" -> JsObject(criteria)))
+          "instructions" -> instructionsOr(noul.instructions, fallback)
+        ) ++ withCriteria
 
       case ChoiceQuestion(criteria, instructions) =>
         Json.obj(
@@ -413,7 +434,7 @@ private[impl] object GeminiDecisionsCodec {
         Json.obj(
           "type" -> "score",
           "instructions" -> instructionsOr(instructions, "Which level applies?"),
-          "criteria" -> levels.map(level)
+          "criteria" -> levels.map(DecisionCodec.levelText(_, text))
         )
 
       case _: BoxQuestion =>
@@ -443,8 +464,10 @@ private[impl] object GeminiDecisionsCodec {
       done: Vector[JsObject],
       texts: Vector[String]
     ) =
-      if (texts.isEmpty) done
-      else done :+ textBlock(texts.mkString("\n"))
+      if (texts.isEmpty)
+        done
+      else
+        done :+ textBlock(texts.mkString("\n"))
 
     val (done, texts) = parts.foldLeft((Vector.empty[JsObject], Vector.empty[String])) {
       case ((done, texts), JsString(text)) =>
@@ -456,14 +479,6 @@ private[impl] object GeminiDecisionsCodec {
     }
     flush(done, texts)
   }
-
-  // a part of a chat message: its text, or an image part
-  private def isPart(json: JsValue): Boolean =
-    json match {
-      case _: JsString   => true
-      case obj: JsObject => DecisionImage.url(obj).isDefined
-      case _             => false
-    }
 
   private def textBlock(text: String): JsObject =
     Json.obj("type" -> "text", "text" -> text)
@@ -483,18 +498,4 @@ private[impl] object GeminiDecisionsCodec {
     fallback: String
   ): String =
     instructions.map(text).filter(_.trim.nonEmpty).getOrElse(fallback)
-
-  // a score level: `{label, description}` as `label: description`, other JSON as its text
-  private def level(json: JsValue): String =
-    ((json \ "label").asOpt[String], (json \ "description").asOpt[String]) match {
-      case (Some(label), Some(description)) => s"$label: $description"
-      case (Some(label), None)              => label
-      case _                                => text(json)
-    }
-
-  private def text(json: JsValue): String =
-    json match {
-      case JsString(text) => text
-      case other          => Json.stringify(other)
-    }
 }
