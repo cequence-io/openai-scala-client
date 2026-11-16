@@ -52,7 +52,7 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 | [Deepseek](https://deepseek.com/) | JSON object mode only | – | – | Chinese provider; `deepseek-flash` is V4.1 Flash 1017 |
 | [FastChat](https://github.com/lm-sys/FastChat) | Varies | – | – | Local LLMs |
 | [Fireworks AI](https://fireworks.ai/) | Full | – | – | Cloud provider |
-| [Google Gemini](https://ai.google.dev/) | Full | Yes | Yes | Google's models; Gemini 4 Carbon 🔥 |
+| [Google Gemini](https://ai.google.dev/) | Full | Yes | Yes | Google's models; Gemini 4 Carbon and Hydrogen 🔥 |
 | [Google Vertex AI](https://cloud.google.com/vertex-ai) | Full | Yes | Yes | Gemini models; the global, EU and US endpoints |
 | [Grok](https://x.ai/) | Full | Yes | – | x.AI models |
 | [Groq](https://groq.com/) | Full ³ | Yes, MCP and server-side tools too | Yes | Fast inference |
@@ -76,7 +76,7 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 🔥 New in 1.7.1.
 
 **Decision models** give typed answers with calibrated probabilities. Two APIs serve them - TypeSafe AI's System One
-(`TypeSafeService.systemOne`: Jev, Liquid's d1, Perplexity's decider, Microsoft-Decision-1, SubQ Snap, ScaleDown's Classify, Sarvam Prism, Bespoke's Nimble, OpenRouter, Vercel AI Gateway, llama.cpp) and OpenAI's Decisions API
+(`TypeSafeService.systemOne`: Jev, Liquid's d1, Perplexity's decider, Google's Gemini Decision 1 🔥, Microsoft-Decision-1, SubQ Snap, ScaleDown's Classify, Sarvam Prism, Bespoke's Nimble, OpenRouter, Vercel AI Gateway, llama.cpp) and OpenAI's Decisions API
 (`OpenAIService.createDecision`: `gpt-6-luna`) - and the client speaks either interface to either host: `asOpenAIDecisions`
 puts OpenAI's interface on a System One host, `DecisionProviderSettings.openAI` runs the System One routines (typed
 decisions, re-ranking, the `json_schema`-only chat adapter) on OpenAI's. No tools or batch. See
@@ -87,11 +87,12 @@ decisions, re-ranking, the `json_schema`-only chat adapter) on OpenAI's. No tool
 | [TypeSafe AI](https://typesafe.ai/) | Jev; images, bounding boxes (Jev 1.14) and long context (the factory's default) - experimental | `asOpenAI()` |
 | [Liquid AI](https://www.liquid.ai/) | d1.1 (the default), d1, images too; d1-ultra | `liquidAsOpenAI()` |
 | [llama.cpp](https://github.com/ggml-org/llama.cpp) (local) | Liquid's Open d1 (d1-3B, d1-omni-600M) once llama.cpp loads them; Julia-1, Laya, Lev, Kev, OpenJev, Nimble, Clef | `asOpenAI(DecisionProviderSettings.llamaCpp)` |
-| [Perplexity Decisions](https://docs.perplexity.ai/docs/decisions/quickstart) | pplx-decider-v1.2 and the 4B pplx-decider-flash-v1.2, v1.1-27b / v1-27b; images too | `perplexityAsOpenAI()` |
-| [OpenRouter](https://openrouter.ai/models?output_modalities=decisions) | Jev, d1, Perplexity's deciders, OpenAI's Luna, Microsoft-Decision-1, Cloudflare's Clef (+ Flash, Omni), Solar Decide, Mercury Decide, Tev1, Kev 4B, NACE's Drex, Span-01, ScaleDown's Classify-1, Jev 1.14, d1-ultra, Span-02; d1.1, Baseten's Elephant-1 / Mammoth-1, NACE's Drex Max; Baseten's Joey-1, Morph's Reflex, NACE's Drex Max Finance and Parallel's Decisions Fast 🔥; images too | `asOpenAI(DecisionProviderSettings.openRouter)` |
+| [Perplexity Decisions](https://docs.perplexity.ai/docs/decisions/quickstart) | pplx-decider-v1.3 and the 4B pplx-decider-flash-v1.3 🔥, v1.2 (+ Flash), v1.1-27b / v1-27b; images too | `perplexityAsOpenAI()` |
+| [Gemini Decisions](https://aistudio.google.com/docs/decisions-api) | Gemini Decision 1 🔥 (up to 1,000 questions, 262k tokens); images too | `asOpenAI(DecisionProviderSettings.gemini)` |
+| [OpenRouter](https://openrouter.ai/models?output_modalities=decisions) | Jev, d1, Perplexity's deciders, OpenAI's Luna, Microsoft-Decision-1, Cloudflare's Clef (+ Flash, Omni), Solar Decide, Mercury Decide, Tev1, Kev 4B, NACE's Drex, Span-01, ScaleDown's Classify-1, Jev 1.14, d1-ultra, Span-02; d1.1, Baseten's Elephant-1 / Mammoth-1, NACE's Drex Max; Baseten's Joey-1, Morph's Reflex, NACE's Drex Max Finance and Parallel's Decisions Fast; Google's Gemini Decision 1, HeyGen's Decision 1 (+ Turbo) and Perplexity's v1.3 deciders 🔥; images too | `asOpenAI(DecisionProviderSettings.openRouter)` |
 | [OpenAI Decisions](https://developers.openai.com/api/docs/guides/decisions) | gpt-6-luna, images too | `asOpenAI(DecisionProviderSettings.openAI)` |
-| [Vercel AI Gateway](https://vercel.com/docs/ai-gateway/sdks-and-apis/typesafe) | Jev, d1 (images too), Microsoft-Decision-1, OpenAI's Luna; on the free tier Convai's Laya and ScaleDown's Classify-1, also Baseten's Elephant-1 / Mammoth-1, d1-ultra and Perplexity's v1.2 deciders | `asOpenAI(DecisionProviderSettings.vercel)` |
-| [SubQ](https://docs.subq.ai/) | SubQ Snap 1.1 (the default) and Snap Preview (public preview; long context - 295,957 input tokens, up to 4 images) | `asOpenAI(DecisionProviderSettings.subq)` |
+| [Vercel AI Gateway](https://vercel.com/docs/ai-gateway/sdks-and-apis/typesafe) | Jev, d1 (images too), Microsoft-Decision-1, OpenAI's Luna; on the free tier Convai's Laya and ScaleDown's Classify-1, also Baseten's Elephant-1 / Mammoth-1, d1-ultra, Perplexity's v1.2 and v1.3 deciders 🔥 and NACE's Drex Max v1.1 🔥; Gemini Decision 1 🔥 | `asOpenAI(DecisionProviderSettings.vercel)` |
+| [SubQ](https://docs.subq.ai/) | SubQ Snap 1.2 (the default) 🔥, 1.1 and Snap Preview (public preview; long context - 295,957 input tokens, up to 4 images) | `asOpenAI(DecisionProviderSettings.subq)` |
 | [Sarvam](https://docs.sarvam.ai/) | Sarvam Prism (English, ten Indian languages and Hinglish) | `asOpenAI(DecisionProviderSettings.sarvam)` |
 | [Bespoke Labs](https://docs.bespokelabs.ai/) | Nimble (`nimble-latest` = Nimble v4 Max, 27B; text only, at most 64 questions) | `asOpenAI(DecisionProviderSettings.bespoke)` |
 | [ScaleDown](https://docs.scaledown.ai/) | Classify (a constrained decoding model; text plus one document, 1M context) | `asOpenAI(DecisionProviderSettings.scaleDown)` |
@@ -176,7 +177,7 @@ same. See [Services and providers](docs/providers.md).
 | [Responses API](docs/responses-api.md) | Inputs and images, file / web search, function calls, MCP, multi-agent execution |
 | [Agents API](docs/agents-api.md) | Durable cloud agents (beta): sessions, events, the chat adapter |
 | [Streaming](docs/streaming.md) | OpenAI-shaped and typed streams (`ChatChunk`), the frame cap, human approval mid-stream |
-| [Decision models](docs/decision-models.md) | OpenAI's Decisions API, TypeSafe (Jev), Liquid (d1), Perplexity's decider, Microsoft-Decision-1, SubQ Snap, ScaleDown's Classify, Sarvam Prism, Bespoke's Nimble, OpenRouter, Vercel AI Gateway, llama.cpp; either API on either host, typed decisions, re-ranking, the models' execution time side by side |
+| [Decision models](docs/decision-models.md) | OpenAI's Decisions API, TypeSafe (Jev), Liquid (d1), Perplexity's decider, Google's Gemini Decision 1, Microsoft-Decision-1, SubQ Snap, ScaleDown's Classify, Sarvam Prism, Bespoke's Nimble, OpenRouter, Vercel AI Gateway, llama.cpp; either API on either host, typed decisions, re-ranking, the models' execution time side by side |
 | [Adapters](docs/adapters.md) | Round robin, retry, logging, routing, batch processing, interception, guardrails |
 | [Sharing an HTTP engine](docs/http-engine.md) | One engine for many services and providers; timeouts and proxies |
 | [Graders API](docs/graders-api.md) | Evaluating model outputs |

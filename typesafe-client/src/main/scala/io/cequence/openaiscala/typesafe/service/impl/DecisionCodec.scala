@@ -4,6 +4,7 @@ import io.cequence.openaiscala.domain.decisions.JsonFormats._
 import io.cequence.openaiscala.domain.decisions.{CreateDecisionSettings, Decision}
 import io.cequence.openaiscala.typesafe.JsonFormats._
 import io.cequence.openaiscala.typesafe.domain.{
+  Answer,
   BoxQuestion,
   ChoiceQuestion,
   DecisionImage,
@@ -12,9 +13,11 @@ import io.cequence.openaiscala.typesafe.domain.{
   DecisionProvider,
   NoulQuestion,
   Question,
+  ScoreAnswer,
   ScoreQuestion,
   SystemOneRequest,
-  SystemOneResponse
+  SystemOneResponse,
+  Usage
 }
 import io.cequence.openaiscala.typesafe.service.DecisionProviderSettings
 import io.cequence.wsclient.JsonUtil.JsonOps
@@ -22,6 +25,7 @@ import play.api.libs.json._
 
 import java.nio.charset.StandardCharsets
 import java.util.UUID
+import scala.annotation.tailrec
 import scala.collection.mutable
 
 /** How a request goes out and its answers come back in a host's wire format. */
@@ -53,6 +57,7 @@ private[impl] object DecisionCodec {
     (provider.protocolFor(model), provider.images) match {
       case (DecisionProtocol.OpenAI, _)    => OpenAIDecisionsCodec
       case (DecisionProtocol.ScaleDown, _) => ScaleDownCodec
+      case (DecisionProtocol.Gemini, _)    => GeminiDecisionsCodec(model)
       case (DecisionProtocol.SystemOne, DecisionImages.ImagesField) =>
         SystemOneCodec.withImagesField
       case (DecisionProtocol.SystemOne, DecisionImages.ImageObjects) =>
@@ -291,5 +296,205 @@ private[impl] object ScaleDownCodec extends DecisionCodec {
       case JsArray(values) if values.forall(_.isInstanceOf[JsString]) =>
         values.collect { case JsString(text) => text }.mkString("\n")
       case other => Json.prettyPrint(other)
+    }
+}
+
+/**
+ * System One's questions and answers on Google's Gemini Decisions API
+ * ([[DecisionProtocol.Gemini]], whose scaladoc lists the rules) - one per request, as the
+ * response names no model.
+ */
+private[impl] final case class GeminiDecisionsCodec(model: String) extends DecisionCodec {
+
+  import GeminiDecisionsCodec._
+
+  override def body(
+    request: SystemOneRequest,
+    questions: Seq[(String, Question)]
+  ): JsValue =
+    Json.obj(
+      "model" -> request.model,
+      "input" -> input(request.state),
+      "questions" -> JsObject(keys(questions.map(_._1)).zip(questions).map {
+        case (key, (_, asked)) => key -> question(asked)
+      })
+    )
+
+  override def response(
+    json: JsValue,
+    questions: Seq[(String, Question)]
+  ): SystemOneResponse = {
+    val asked = keys(questions.map(_._1)).zip(questions).toMap
+    val answers = (json \ "answers").getOrElse(JsNull).asSafe[Map[String, Answer]]
+
+    SystemOneResponse(
+      model,
+      answers.toSeq.flatMap { case (key, answer) =>
+        asked.get(key).map { case (name, question) => name -> withLegend(answer, question) }
+      }.toMap,
+      Usage(
+        (json \ "usage" \ "total_input_tokens").asOpt[Int],
+        (json \ "usage" \ "total_output_tokens").asOpt[Int]
+      )
+    )
+  }
+}
+
+private[impl] object GeminiDecisionsCodec {
+
+  // the question keys the API takes
+  private val ValidKey = "[A-Za-z0-9_-]{1,64}".r.pattern
+
+  /** The keys of the named questions, in their order: a valid name as it is, else `q<n>`. */
+  def keys(names: Seq[String]): Seq[String] = {
+    val used = mutable.Set(names.filter(valid): _*)
+
+    @tailrec
+    def free(n: Int): String =
+      if (used(s"q$n")) free(n + 1)
+      else s"q$n"
+
+    names.zipWithIndex.map { case (name, index) =>
+      if (valid(name)) name
+      else {
+        val key = free(index)
+        used += key
+        key
+      }
+    }
+  }
+
+  private def valid(name: String) = ValidKey.matcher(name).matches()
+
+  /** The state as the API's `input` - text, or content blocks for a state with images. */
+  def input(state: JsValue): JsValue =
+    state match {
+      case text: JsString =>
+        text
+
+      case JsArray(parts) if parts.nonEmpty && parts.forall(isPart) =>
+        JsArray(blocks(parts.toSeq))
+
+      case json =>
+        DecisionImage.lift(json) match {
+          case (_, Nil) =>
+            JsString(Json.stringify(json))
+          case (marked, urls) =>
+            JsArray(textBlock(Json.stringify(marked)) +: urls.map(imageBlock))
+        }
+    }
+
+  def question(question: Question): JsObject =
+    question match {
+      case noul: NoulQuestion =>
+        val criteria = noul.criteria.toSeq.flatMap { criteria =>
+          criteria.yes.map(yes => "true_description" -> JsString(text(yes))).toSeq ++
+            criteria.no.map(no => "false_description" -> JsString(text(no))).toSeq
+        }
+        val conditions = noul.criteria.toSeq.flatMap { criteria =>
+          criteria.yes.map(yes => s"Yes when: ${text(yes)}").toSeq ++
+            criteria.no.map(no => s"No when: ${text(no)}").toSeq
+        }
+        Json.obj(
+          "type" -> "noul",
+          "instructions" -> instructionsOr(noul.instructions, conditions.mkString("\n"))
+        ) ++ (if (criteria.isEmpty) Json.obj() else Json.obj("criteria" -> JsObject(criteria)))
+
+      case ChoiceQuestion(criteria, instructions) =>
+        Json.obj(
+          "type" -> "choice",
+          "instructions" -> instructionsOr(instructions, "Which option applies?"),
+          "criteria" -> JsObject(criteria.toSeq.map { case (option, description) =>
+            option -> JsString(description.map(text).getOrElse(""))
+          })
+        )
+
+      case ScoreQuestion(levels, instructions) =>
+        Json.obj(
+          "type" -> "score",
+          "instructions" -> instructionsOr(instructions, "Which level applies?"),
+          "criteria" -> levels.map(level)
+        )
+
+      case _: BoxQuestion =>
+        throw new IllegalArgumentException(
+          "Gemini's Decisions API has no box question - ask TypeSafe's Jev 1.14 " +
+            "(DecisionProviderSettings.typeSafe, jev-1.14.0)."
+        )
+    }
+
+  // a score's legend: the levels as asked (the API echoes the texts it was sent)
+  private def withLegend(
+    answer: Answer,
+    question: Question
+  ): Answer =
+    (answer, question) match {
+      case (score: ScoreAnswer, ScoreQuestion(levels, _)) =>
+        score.copy(legend = levels.zipWithIndex.map { case (level, index) =>
+          index -> level
+        }.toMap)
+      case (other, _) =>
+        other
+    }
+
+  // a chat message's parts: consecutive texts joined by a newline, each image a block
+  private def blocks(parts: Seq[JsValue]): Seq[JsObject] = {
+    def flush(
+      done: Vector[JsObject],
+      texts: Vector[String]
+    ) =
+      if (texts.isEmpty) done
+      else done :+ textBlock(texts.mkString("\n"))
+
+    val (done, texts) = parts.foldLeft((Vector.empty[JsObject], Vector.empty[String])) {
+      case ((done, texts), JsString(text)) =>
+        (done, texts :+ text)
+      case ((done, texts), image: JsObject) =>
+        (flush(done, texts) ++ DecisionImage.url(image).map(imageBlock), Vector.empty)
+      case (sofar, _) =>
+        sofar
+    }
+    flush(done, texts)
+  }
+
+  // a part of a chat message: its text, or an image part
+  private def isPart(json: JsValue): Boolean =
+    json match {
+      case _: JsString   => true
+      case obj: JsObject => DecisionImage.url(obj).isDefined
+      case _             => false
+    }
+
+  private def textBlock(text: String): JsObject =
+    Json.obj("type" -> "text", "text" -> text)
+
+  private def imageBlock(url: String): JsObject = {
+    val image = DecisionImage.mediaObject(url)
+    Json.obj(
+      "type" -> "image",
+      "data" -> image.value("base64"),
+      "mime_type" -> image.value("mediaType")
+    )
+  }
+
+  // the API refuses empty instructions
+  private def instructionsOr(
+    instructions: Option[JsValue],
+    fallback: String
+  ): String =
+    instructions.map(text).filter(_.trim.nonEmpty).getOrElse(fallback)
+
+  // a score level: `{label, description}` as `label: description`, other JSON as its text
+  private def level(json: JsValue): String =
+    ((json \ "label").asOpt[String], (json \ "description").asOpt[String]) match {
+      case (Some(label), Some(description)) => s"$label: $description"
+      case (Some(label), None)              => label
+      case _                                => text(json)
+    }
+
+  private def text(json: JsValue): String =
+    json match {
+      case JsString(text) => text
+      case other          => Json.stringify(other)
     }
 }

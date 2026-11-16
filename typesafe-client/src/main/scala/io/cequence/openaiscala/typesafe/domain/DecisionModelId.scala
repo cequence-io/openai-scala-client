@@ -96,6 +96,18 @@ object DecisionModelId {
   val pplx_decider_latest: String = NonOpenAIModelId.pplx_decider_latest
   val pplx_decider_flash_latest: String = NonOpenAIModelId.pplx_decider_flash_latest
 
+  /** Perplexity's 27B decider v1.3 (2026-11-12) - the preset's default since then. */
+  val pplx_decider_v1_3: String = NonOpenAIModelId.pplx_decider_v1_3
+
+  /** Perplexity's 4B Flash decider v1.3 (2026-11-12). */
+  val pplx_decider_flash_v1_3: String = NonOpenAIModelId.pplx_decider_flash_v1_3
+
+  /**
+   * Google's Gemini Decision 1 (2026-11-11), on the Gemini Decisions API - see
+   * `DecisionProviderSettings.gemini`.
+   */
+  val gemini_decision_1: String = NonOpenAIModelId.gemini_decision_1
+
   /**
    * Microsoft-Decision-1 on Microsoft Foundry (public preview 2026-10-09) - see
    * `TypeSafeServiceFactory.microsoftFoundry`. The model's name (a deployment's `model`); a
@@ -144,6 +156,16 @@ object DecisionModelId {
   val openrouter_drex_max_finance: String = NonOpenAIModelId.openrouter_drex_max_finance
   val openrouter_parallel_decisions_fast_free: String =
     NonOpenAIModelId.openrouter_parallel_decisions_fast_free
+  val openrouter_gemini_decision_1: String = NonOpenAIModelId.openrouter_gemini_decision_1
+  val openrouter_heygen_decision_1: String = NonOpenAIModelId.openrouter_heygen_decision_1
+  val openrouter_heygen_decision_1_turbo: String =
+    NonOpenAIModelId.openrouter_heygen_decision_1_turbo
+  val openrouter_parallel_decisions_fast: String =
+    NonOpenAIModelId.openrouter_parallel_decisions_fast
+  val openrouter_pplx_decider_v1_3_free: String =
+    NonOpenAIModelId.openrouter_pplx_decider_v1_3_free
+  val openrouter_pplx_decider_flash_v1_3_free: String =
+    NonOpenAIModelId.openrouter_pplx_decider_flash_v1_3_free
   val openrouter_solar_decide_flash: String = NonOpenAIModelId.openrouter_solar_decide_flash
   val openrouter_mercury_decide: String = NonOpenAIModelId.openrouter_mercury_decide
   val openrouter_solar_decide: String = NonOpenAIModelId.openrouter_solar_decide
@@ -168,10 +190,17 @@ object DecisionModelId {
   val vercel_liquid_d1_ultra: String = NonOpenAIModelId.vercel_liquid_d1_ultra
   val vercel_pplx_decider_v1_2: String = NonOpenAIModelId.vercel_pplx_decider_v1_2
   val vercel_pplx_decider_flash_v1_2: String = NonOpenAIModelId.vercel_pplx_decider_flash_v1_2
+  val vercel_pplx_decider_v1_3: String = NonOpenAIModelId.vercel_pplx_decider_v1_3
+  val vercel_pplx_decider_flash_v1_3: String = NonOpenAIModelId.vercel_pplx_decider_flash_v1_3
+  val vercel_gemini_decision_1: String = NonOpenAIModelId.vercel_gemini_decision_1
+  val vercel_drex_max_v1_1: String = NonOpenAIModelId.vercel_drex_max_v1_1
+  val vercel_parallel_decisions_fast: String = NonOpenAIModelId.vercel_parallel_decisions_fast
 
   // SubQ Snap (`DecisionProviderSettings.subq`)
   val subq_snap_preview: String = NonOpenAIModelId.subq_snap_preview
   val subq_snap_1_1: String = NonOpenAIModelId.subq_snap_1_1
+  val subq_snap_1_2: String = NonOpenAIModelId.subq_snap_1_2
+  val subq_snap_latest: String = NonOpenAIModelId.subq_snap_latest
 
   // Sarvam Prism (`DecisionProviderSettings.sarvam`, 2026-11-03)
   val sarvam_prism: String = NonOpenAIModelId.sarvam_prism

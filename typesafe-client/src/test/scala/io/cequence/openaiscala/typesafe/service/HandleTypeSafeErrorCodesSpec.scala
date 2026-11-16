@@ -375,6 +375,44 @@ class HandleTypeSafeErrorCodesSpec extends AnyWordSpec with Matchers {
     }
   }
 
+  "Gemini's Decisions API error bodies ({\"error\": {message, code}}; a bad key Google's own)" should {
+    // live 2026-11-16
+
+    "be classified by status and message - a bad key unauthorized, the input limit a token count" in {
+      val badKey = toException(
+        400,
+        """{"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"API_KEY_INVALID","domain":"googleapis.com","metadata":{"service":"generativelanguage.googleapis.com"}}]}}"""
+      )
+      badKey shouldBe a[TypeSafeScalaUnauthorizedException]
+      badKey.getMessage should include("API key not valid")
+
+      val tooLong = toException(
+        400,
+        """{"error":{"message":"The input token count exceeds the maximum number of tokens allowed 262144.","code":"invalid_request"}}"""
+      )
+      tooLong shouldBe a[TypeSafeScalaTokenCountExceededException]
+      tooLong.errorType shouldBe Some("invalid_request")
+
+      val badKeyName = toException(
+        400,
+        """{"error":{"message":"* CreateDecisionRequest.questions[a.b]: question IDs must be 1-64 characters matching [A-Za-z0-9_-]+\n","code":"invalid_request"}}"""
+      )
+      badKeyName shouldBe a[TypeSafeScalaInvalidRequestException]
+      badKeyName.errorType shouldBe Some("invalid_request")
+
+      toException(
+        404,
+        """{"error":{"message":"Requested model not found. See https://ai.google.dev/gemini-api/docs/models for a list of available models.","code":"not_found"}}"""
+      ) shouldBe a[TypeSafeScalaNotFoundException]
+
+      // a blocked input (the documented safety codes)
+      val blocked =
+        toException(400, """{"error":{"message":"The input was blocked.","code":"safety"}}""")
+      blocked shouldBe a[TypeSafeScalaInvalidRequestException]
+      blocked.errorType shouldBe Some("safety")
+    }
+  }
+
   "Bespoke's error bodies ({\"detail\": \"<message>\", \"request_id\"} - a plain-string detail)" should {
     // the 401 is live (2026-11-05, no key); the rest are the documented statuses, not provoked
 

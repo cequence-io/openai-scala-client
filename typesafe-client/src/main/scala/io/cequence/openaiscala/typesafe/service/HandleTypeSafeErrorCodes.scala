@@ -37,6 +37,9 @@ object HandleTypeSafeErrorCodes {
           if kind.contains("max_tokens_exceeded") || exceedsContext(message) =>
         new TypeSafeScalaTokenCountExceededException(_, null, _, _, _)
       case 400 if kind.isDefined => new TypeSafeScalaApiUsageException(_, null, _, _, _)
+      // Google (the Gemini Decisions API): a bad key is a 400 whose details say API_KEY_INVALID
+      case 400 if json.exists(googleKeyInvalid) =>
+        new TypeSafeScalaUnauthorizedException(_, null, _, _, _)
       // SubQ: insufficient credits
       case 402 => new TypeSafeScalaApiUsageException(_, null, _, _, _)
       // 413: Perplexity's body limit (32 MiB); 501: llama.cpp's "not a decision model" / "no
@@ -68,13 +71,23 @@ object HandleTypeSafeErrorCodes {
   // validation message about an output-token limit) stays what its status says
   private val sarvamTokenLimit = """encodes to \d+ tokens, over the \d+-token limit""".r
 
+  // Gemini's Decisions API: "The input token count exceeds the maximum number of tokens allowed
+  // 262144."
   private def exceedsContext(message: String) =
     message.contains("maximum context length") ||
+      message.contains("input token count exceeds the maximum number of tokens") ||
       message.contains("exceeds the token limit") ||
       message.contains("the limit for the state plus all questions") ||
       message.contains("too large for this model") ||
       message.contains("over the model's input limit") ||
       sarvamTokenLimit.findFirstIn(message).isDefined
+
+  private def googleKeyInvalid(json: JsValue): Boolean =
+    (json \ "error" \ "details")
+      .asOpt[Seq[JsValue]]
+      .exists(
+        _.exists(detail => (detail \ "reason").asOpt[String].contains("API_KEY_INVALID"))
+      )
 
   // a body that is not JSON - empty (Perplexity's 404 / 405) or an HTML page (a gateway's 504)
   private def plainBody(body: String) =
