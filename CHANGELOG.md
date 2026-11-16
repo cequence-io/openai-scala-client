@@ -119,7 +119,8 @@ code for Futures-only, Akka, Pekko, fs2 and ZIO users and for implementers of th
 - openai-scala-guice: the services' `ExecutionContext` is a fixed pool of 40 daemon threads (was the actor system's
   `blocking-dispatcher`, also 40 threads). `BaseOpenAIClientApp`'s `closeAndExit()` still returns at once and now
   starts a non-daemon thread that keeps the JVM running until the future completes, then closes the service and the pool
-  and exits - 0, or 1 after a failure (in 1.x the actor system kept the JVM running).
+  and exits - 0, or 1 after a failure or a fatal error on the pool (in 1.x the actor system kept the JVM running, and
+  exited it on a fatal error).
 - On the default `jdk` engine nothing keeps the JVM running while a call is in flight: its threads are daemon threads,
   like those of the global `ExecutionContext` (Play WS's were not). A `main` that returns before its futures complete
   ends the program at once, with exit code 0 - wait for them first, in a plain `def main`: a Scala 3 `App` body runs in

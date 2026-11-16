@@ -594,7 +594,9 @@ fixed pool of daemon threads sized by `openai-scala-client.guice.threads` (defau
 `executionContext` and drops `system` and `materializer`; `GuiceContainer.terminate()` shuts the pool down. Its
 `closeAndExit()` returns at once, as in 1.x, and starts a non-daemon thread that keeps the JVM running until the future
 completes, then closes the service and the pool and exits - 0, or 1 after a failure (in 1.x the actor system kept the
-JVM running; the new pool's daemon threads would not). It never blocks the `App` body, which on Scala 3 runs in its
+JVM running; the new pool's daemon threads would not). A fatal error a callback throws on the pool (a `LinkageError`
+from a mismatched jar, an `OutOfMemoryError`) never completes its future, so it ends the wait too, with 1 - where 1.x's
+actor system exited the JVM by default. It never blocks the `App` body, which on Scala 3 runs in its
 object's initializer (see the `jdk` engine's differences above).
 
 Before (1.7.x):

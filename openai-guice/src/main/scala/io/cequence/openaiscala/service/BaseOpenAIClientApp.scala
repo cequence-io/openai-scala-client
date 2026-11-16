@@ -3,7 +3,7 @@ package io.cequence.openaiscala.service
 import com.google.inject.Module
 
 import java.util.concurrent.CountDownLatch
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.Failure
 
 trait BaseOpenAIClientApp extends GuiceContainer with App {
@@ -24,19 +24,24 @@ trait BaseOpenAIClientApp extends GuiceContainer with App {
 
     /**
      * Once the future completes, closes the service and the container's thread pool and exits
-     * the JVM: 0 on success, 1 (stack trace printed) on a failure. It returns at once and a
-     * non-daemon thread waits instead: the pool's threads and those of the default HTTP engine
-     * are daemons, so the JVM would end with the `App` body otherwise - and the body must not
-     * block, since on Scala 3 it runs in its object's initializer, which a callback touching
-     * the object would wait for.
+     * the JVM: 0 on success, 1 (stack trace printed) on a failure - or on the first fatal
+     * error a task of the pool throws (`ExecutionContextModule`), which would leave the future
+     * uncompleted for ever (1.x's actor system exited the JVM on one). It returns at once and
+     * a non-daemon thread waits instead: the pool's threads and those of the default HTTP
+     * engine are daemons, so the JVM would end with the `App` body otherwise - and the body
+     * must not block, since on Scala 3 it runs in its object's initializer, which a callback
+     * touching the object would wait for.
      */
     def closeAndExit(): Unit = {
+      val outcome = Promise[Any]()
+        .completeWith(f)
+        .completeWith(ExecutionContextModule.fatalError(executionContext))
       val completed = new CountDownLatch(1)
-      f.onComplete(_ => completed.countDown())
+      outcome.future.onComplete(_ => completed.countDown())
 
       val exitWhenDone: Runnable = () => {
         completed.await()
-        val exitCode = f.value match {
+        val exitCode = outcome.future.value match {
           case Some(Failure(e)) =>
             e.printStackTrace()
             1
