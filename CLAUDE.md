@@ -42,6 +42,7 @@ The `Example` trait uses `System.exit()` which sbt's TrapExit mechanism intercep
 - Run from IntelliJ directly (recommended)
 - Write standalone `main` methods using `Await.result` instead of extending `Example`
 - Or run the compiled class on a plain JVM: `sbt "export examples/Runtime/fullClasspath"` prints the classpath (its last line), then `java -cp "<classpath>" io.cequence.openaiscala.examples.CreateChatCompletion` - an `Example` exits 0 on success and 1 on failure, so a script can sweep many. Run them from a scratch directory (some write files, e.g. `CreateAudioSpeech`).
+- On the `2.0` branch a `main` must WAIT for its futures (`ExampleBase.main` and guice's `closeAndExit()` do, with `Await`): the jdk engine's threads and the global pool's are daemons, so a `main` that only registered callbacks ended the JVM at once with exit code 0 and no output - every `Example` did so until 2026-11-16 (found by a dependent app's session; 1.x was kept alive by Play WS's non-daemon AsyncHttpClient threads). A sweep that reports exit 0 without output is this bug, not a pass.
 
 The router examples (`CreateChatCompletionWithRouter`, `adapters/ChatCompletion*Router*`, `ChatCompletionProvider.octoML`) still route to OctoAI (shut down in 2024), a local Ollama and Azure Cohere, so they fail without those; the routers themselves were live-verified on 2026-09-30 across OpenAI, Groq, Anthropic and Gemini (sync, OpenAI-shaped and typed streams).
 

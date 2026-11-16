@@ -159,7 +159,10 @@ Either way, build services once and share them. Do not create a service per requ
 Close every service when you are done with it, and every engine you built. On the Play engines (`play-akka`,
 `play-pekko` and their `-stream` variants) this decides whether your program can end: the threads of their HTTP client,
 AsyncHttpClient, are not daemon threads. A service that is never closed keeps the JVM running after `main` returns, as in
-1.x. On `jdk`, `pekko-http`, `zio-http` and `sttp` the JVM exits regardless (checked 2026-11-16).
+1.x. On `jdk`, `pekko-http`, `zio-http` and `sttp` the JVM exits regardless (checked 2026-11-16). The reverse also
+holds: on those engines nothing keeps the JVM running while a call is in flight, so a `main` that returns before its
+futures complete ends the program, with exit code 0 and nothing printed. Wait for them before returning
+(`Await.result` in a plain `main`, or your effect system's runner).
 
 To share ONE engine (one HTTP client and connection pool) across any number of services, including services of
 different providers, build the engine once and pass it to the factories' `withEngine`:

@@ -117,7 +117,11 @@ code for Futures-only, Akka, Pekko, fs2 and ZIO users and for implementers of th
 - Vertex AI streams read the SDK's blocking iterator on ws-client's blocking pool, one gRPC stream per run, closed when
   the run ends, fails or is cancelled.
 - openai-scala-guice: the services' `ExecutionContext` is a fixed pool of 40 daemon threads (was the actor system's
-  `blocking-dispatcher`, also 40 threads).
+  `blocking-dispatcher`, also 40 threads). `BaseOpenAIClientApp`'s `closeAndExit()` blocks until the future completes,
+  then closes the service and the pool and exits (1.x returned at once; the actor system kept the JVM running).
+- On the default `jdk` engine nothing keeps the JVM running while a call is in flight: its threads are daemon threads,
+  like those of the global `ExecutionContext` (Play WS's were not). A `main` that returns before its futures complete
+  ends the program at once, with exit code 0 - wait for them first.
 - As in 1.7.1: the Perplexity decision preset defaults to `pplx-decider-v1.3` (was v1.2), the SubQ preset to
   `subq-snap-1.2` (was 1.1). A call that names its model is not affected.
 
