@@ -76,8 +76,8 @@ import scala.util.{Failure, Success, Try}
  *
  * `model=<id>` runs the same walkthrough against another Claude model (e.g.
  * `model=claude-fable-5-2`; on Bedrock `global.anthropic.<id>`): the Haiku-only expectations
- * (`reasoning_effort = none` thinks nothing; a forced tool choice is kept) are then relaxed - on
- * a model that refuses forced tool choice the adapter downgrades it to `auto` plus an
+ * (`reasoning_effort = none` thinks nothing; a forced tool choice is kept) are then relaxed -
+ * on a model that refuses forced tool choice the adapter downgrades it to `auto` plus an
  * instruction, and the section still fails unless the model calls the tool.
  *
  * Every section prints PASS/FAIL and the run continues; the exit code is 1 if any failed.
@@ -248,9 +248,12 @@ object ClaudeHaiku55SmokeTest extends JsonSchemaReflectionHelper {
     val target =
       args.find(_.startsWith("target=")).map(_.drop("target=".length)).getOrElse("api")
     val apiModel =
-      args.find(_.startsWith("model=")).map(_.drop("model=".length)).getOrElse(
-        NonOpenAIModelId.claude_haiku_5_5
-      )
+      args
+        .find(_.startsWith("model="))
+        .map(_.drop("model=".length))
+        .getOrElse(
+          NonOpenAIModelId.claude_haiku_5_5
+        )
     val isHaiku55 = apiModel == NonOpenAIModelId.claude_haiku_5_5
     val groupArgs = args.filterNot(a => a.startsWith("target=") || a.startsWith("model="))
     val selected = if (groupArgs.isEmpty) groups.toSet else groupArgs.toSet
@@ -488,7 +491,8 @@ object ClaudeHaiku55SmokeTest extends JsonSchemaReflectionHelper {
 
           _ <- section(
             if (isHaiku55) s"$model: forced tool choice (kept)"
-            else s"$model: forced tool choice (downgraded to auto + an instruction - still called)"
+            else
+              s"$model: forced tool choice (downgraded to auto + an instruction - still called)"
           ) {
             anthropic
               .createChatToolCompletion(
