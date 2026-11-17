@@ -10,12 +10,13 @@ No factory or helper takes a `Materializer`, an `ActorSystem` or an Akka `Schedu
 on ws-client's `AsyncScheduler`. The new `openai-scala-zio` module gives every service as ZIO `Task`s, `ZStream`s and
 `ZLayer`s. logback is no longer a dependency. Also in it: everything in 1.7.1, released with it - Google's Gemini
 Decisions API as a decision-model host, Claude Fable 5.2 and Mythos 5.2, Gemini 4 Carbon and Hydrogen, Muse Ember 1.0,
-Perplexity's v1.3 deciders, SubQ Snap 1.2 and more decision models. The 1.x line (1.7.x, master) stays on Akka;
-2.0.0 is built from the [`2.0` branch](https://github.com/cequence-io/openai-scala-client/tree/2.0).
+Perplexity's v1.3 deciders, SubQ Snap 1.2 and more decision models. The 1.x line (1.7.x, the
+[`1.7.x` branch](https://github.com/cequence-io/openai-scala-client/tree/1.7.x)) stays on Akka; 2.x is developed on
+[master](https://github.com/cequence-io/openai-scala-client/tree/master).
 
 ### ⚠️ Upgrading from 1.7.x
 
-Not binary compatible with 1.7.x - recompile against 2.0.0. [Migrating to 2.0](https://github.com/cequence-io/openai-scala-client/blob/2.0/docs/migration-2.0.md) has before / after
+Not binary compatible with 1.7.x - recompile against 2.0.0. [Migrating to 2.0](https://github.com/cequence-io/openai-scala-client/blob/v2.0.0/docs/migration-2.0.md) has before / after
 code for Futures-only, Akka, Pekko, fs2 and ZIO users and for implementers of the service traits.
 
 **Source breaks**:
@@ -89,7 +90,7 @@ code for Futures-only, Akka, Pekko, fs2 and ZIO users and for implementers of th
   and the first request of Anthropic's `pause_turn` continuation run per run, and the Anthropic Managed Agents adapter
   creates its session per run (see "Fixed"). Cancelling a run aborts its request. The two exceptions: a download is a
   `Future` whose request is sent at the call - its body stream runs once - and the Claude agent client's `events` stays
-  hot. The full table is in [Migrating to 2.0](https://github.com/cequence-io/openai-scala-client/blob/2.0/docs/migration-2.0.md#streams-are-cold).
+  hot. The full table is in [Migrating to 2.0](https://github.com/cequence-io/openai-scala-client/blob/v2.0.0/docs/migration-2.0.md#streams-are-cold).
 - The default HTTP engine is `jdk` (`java.net.http`, `ws-client-jdk`, a dependency of openai-core) instead of Play WS on
   Akka. It speaks HTTP/2 where the server offers it (`TransportSettings.httpVersion` pins a version), bounds a
   non-streamed call by `requestTimeout` including its body, fails a stream after `readTimeout` without data and ignores
@@ -138,7 +139,7 @@ code for Futures-only, Akka, Pekko, fs2 and ZIO users and for implementers of th
   `take`, `takeWhile`, `drop`, `concat` / `++`, `flatMapConcat`, `via`, `mapError`, `recover`, `recoverWith`,
   `onTerminate`, `guaranteeCase`, `concurrently`, `preflight`) and runs (`runForeach`, `runFold`, `runToSeq`, `runHead`,
   `runLast`, `runDrain`, `toPublisher`) need nothing but an `ExecutionContext`. See
-  [AsyncStream](https://github.com/cequence-io/openai-scala-client/blob/2.0/docs/streaming.md#asyncstream).
+  [AsyncStream](https://github.com/cequence-io/openai-scala-client/blob/v2.0.0/docs/streaming.md#asyncstream).
 - 🔥 **Interop with one import** (each a ws-client 1.2.2 module): Akka (`ws-client-core-akka`,
   `import io.cequence.wsclient.stream.SourceInterop._` - `.toSource`, `.toByteStringSource`, `.toFlow`, back with
   `.toAsyncStream` / `.toAsyncPipe`), Pekko (`ws-client-core-pekko`, the same names), fs2 (`ws-client-fs2`,
@@ -148,12 +149,12 @@ code for Futures-only, Akka, Pekko, fs2 and ZIO users and for implementers of th
   `play-pekko-stream` / `pekko-http` a Pekko `Source`, `zio-http` a `ZStream` - with no bridge; a `jdk` stream crosses one
   bridge per HTTP response into Akka, Pekko, fs2 or ZIO, none on plain `Future`s. `SourceConversions._` /
   `Fs2Conversions._` / `ZioConversions._` add opt-in implicit conversions. See
-  [Consuming a stream](https://github.com/cequence-io/openai-scala-client/blob/2.0/docs/streaming.md#consuming-a-stream-akka-pekko-fs2-zio).
+  [Consuming a stream](https://github.com/cequence-io/openai-scala-client/blob/v2.0.0/docs/streaming.md#consuming-a-stream-akka-pekko-fs2-zio).
 - 🔥 **Any ws-client engine**: `jdk` (the default, included - no actor system), `play-akka-stream` / `play-akka` (Akka),
   `play-pekko-stream` / `play-pekko` / `pekko-http` (Pekko; Scala 2.13 and 3.3+), `zio-http` (Scala 2.12 / 2.13) and
   `sttp` - the highest priority on the classpath is used, `ws-client.engine` names one, `withEngine` shares one across
   services and providers. `StreamingEngines` (openai-core) resolves a streaming engine (`outputStreamed(settings)`) or
-  checks one (`require(engine)`). See [HTTP engines](https://github.com/cequence-io/openai-scala-client/blob/2.0/docs/http-engine.md#choosing-an-engine).
+  checks one (`require(engine)`). See [HTTP engines](https://github.com/cequence-io/openai-scala-client/blob/v2.0.0/docs/http-engine.md#choosing-an-engine).
 - 🔥 **No actor system for timers**: retries, failover, batch polling and `parallelTakeFirst` need no `ActorSystem` or
   `Materializer`; `AsyncScheduler.fromExecutor(executor)` or `ActorSchedulers._` put a timer of your own in place of the
   default.
@@ -166,13 +167,13 @@ code for Futures-only, Akka, Pekko, fs2 and ZIO users and for implementers of th
   `apply(service)`, a `layer(() => service)` that closes the service with its scope, and `layerFromZIO(effect)` building it
   with a ZIO effect (e.g. on an engine from the environment) - the last two only on the views of services that close. The provider modules are
   `provided` - add the ones you use. On the `zio-http` engine a service stream is the engine's own `ZStream`. See
-  [ZIO services](https://github.com/cequence-io/openai-scala-client/blob/2.0/docs/zio.md).
+  [ZIO services](https://github.com/cequence-io/openai-scala-client/blob/v2.0.0/docs/zio.md).
 - Downloads are binary-safe on every engine (1.x needed a Play engine): an engine without output streaming serves the
   body as one chunk; a missing file is still `None`.
 - A runnable setup per engine (unpublished example projects, one per stream library): `openai-examples-akka` (Play WS),
   `openai-examples-pekko` (Play WS and pekko-http), `openai-examples-fs2`, `openai-examples-zio` and
-  `openai-examples-sttp`. [Engine by engine](https://github.com/cequence-io/openai-scala-client/blob/2.0/docs/http-engine.md#engine-by-engine) lists what each engine gives you, and
-  the migration guide has a [step-by-step](https://github.com/cequence-io/openai-scala-client/blob/2.0/docs/migration-2.0.md#step-by-step) order. Every engine was checked live on
+  `openai-examples-sttp`. [Engine by engine](https://github.com/cequence-io/openai-scala-client/blob/v2.0.0/docs/http-engine.md#engine-by-engine) lists what each engine gives you, and
+  the migration guide has a [step-by-step](https://github.com/cequence-io/openai-scala-client/blob/v2.0.0/docs/migration-2.0.md#step-by-step) order. Every engine was checked live on
   the published artifacts before the release, on each Scala line it supports and on Java 11 and 17.
 
 - **Google's Gemini Decisions API** (as in 1.7.1; `DecisionProviderSettings.gemini`, `gemini-decision-1`, launched
