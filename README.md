@@ -109,8 +109,8 @@ decisions, re-ranking, the `json_schema`-only chat adapter) on OpenAI's. No tool
 The currently supported Scala versions are **2.12, 2.13**, and **3** (built with 2.12.18, 2.13.18 and 3.2.2 - on 2.13,
 sbt 1.10+ asks for a `scalaVersion` of at least 2.13.18), on Java 11+.
 
-👉 **Coming from 1.x?** The 1.x line - currently 1.7.x - runs on Akka (Play WS, Akka `Source` streams); 2.0.0 needs
-neither. See [Migrating to 2.0](docs/migration-2.0.md) 🔥.
+👉 **Coming from 1.x?** The 1.x line - 1.7.x, on the [`1.7.x` branch](https://github.com/cequence-io/openai-scala-client/tree/1.7.x) - runs
+on Akka (Play WS, Akka `Source` streams); 2.0.0 needs neither. See [Migrating to 2.0](docs/migration-2.0.md) 🔥.
 
 To install the library, add the following dependency to your *build.sbt*
 
