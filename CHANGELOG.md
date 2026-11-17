@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.7.1 (unreleased)
+## 1.7.1 (2026-11-17)
 
 New models on the 1.x line, released together with 2.0.0: Claude Fable 5.2 and Mythos 5.2, Gemini 4 Carbon and
 Hydrogen, Muse Ember 1.0, Perplexity's v1.3 deciders, SubQ Snap 1.2 and more decision models - and Google's Gemini
