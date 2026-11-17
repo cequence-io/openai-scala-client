@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.0 (unreleased)
+## 2.0.0 (2026-11-17)
 
 The 1.x API without Akka. Calls go through any ws-client 1.2.2 engine - the JDK's `java.net.http` (`jdk`) by default,
 with no actor system - and every stream is ws-client's backend-neutral `AsyncStream`: cold (nothing is sent until it
@@ -251,7 +251,7 @@ Also in 1.7.1:
   defined" (that thread's loader cannot see the config file), and on a thread without a context class loader with
   `ConfigException.BugOrBroken`.
 
-## 1.7.1 (unreleased)
+## 1.7.1 (2026-11-17)
 
 New models on the 1.x line, released together with 2.0.0: Claude Fable 5.2 and Mythos 5.2, Gemini 4 Carbon and
 Hydrogen, Muse Ember 1.0, Perplexity's v1.3 deciders, SubQ Snap 1.2 and more decision models - and Google's Gemini
