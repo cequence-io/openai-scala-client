@@ -119,6 +119,9 @@ lazy val guice = (project in file("openai-guice"))
 lazy val examples = (project in file("openai-examples"))
   .settings(
     (commonSettings ++ Seq(
+      // never on Maven Central (sbt's default root aggregates every project, so a root
+      // +publishSigned packaged it - 1.7.1's bundle had it, removed by hand)
+      publish / skip := true,
       run / fork := true,
       run / connectInput := true,
       run / outputStrategy := Some(StdoutOutput)
