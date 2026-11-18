@@ -120,7 +120,7 @@ There is a new project [openai-scala-client-examples](../openai-examples/src/mai
   | Gemini / Vertex AI | thought parts: `text` (+ `signature`) - sync calls only with `setGeminiIncludeThoughts()` / `setVertexAIIncludeThoughts()` (no `reasoning_effort` needed) | thought parts opening the model turn |
   | Chat completions providers (DeepSeek, Fireworks, Mistral, Cerebras, Groq, ...) | `reasoning_content` / `reasoning`, Mistral's thinking chunks: `text` + `field` | the same field, or a thinking chunk |
 
-  The full OpenAI service sends tool calls of OpenAI's reasoning models to the Responses API (GPT-6 Astra / 6.1 Sol
+  The full OpenAI service sends tool calls of OpenAI's reasoning models to the Responses API (GPT-6 / 6.2 Astra, 6.1 / 6.2 Sol
   always; GPT-6 Sol / Luna, 6.1 Terra and GPT-5.6+ unless `reasoning_effort` is `none`; GPT-5.4 / 5.5 with an effort other than
   `none`), and asks for their reasoning encrypted, since the adapter stores nothing (`store = false`).
 

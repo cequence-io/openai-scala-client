@@ -798,6 +798,18 @@ object ModelId {
   // serves it as `openai/gpt-6.1-terra-pro`); the Ultrafast tier is a 400 on both APIs.
   val gpt_6_1_terra = "gpt-6.1-terra"
 
+  // GPT-6.2 Sol and Astra (created 2026-11-02 / 2026-10-31, live-verified 2026-11-18;
+  // OpenRouter lists them since 2026-11-17 - 1,050,000 context, Sol $2 / $10 and Astra $8 /
+  // $40 per 1M tokens): the Astra rules, reasoning always on - reasoning_effort low / medium /
+  // high / xhigh on chat completions plus 'max' on the Responses API, 'none' and 'minimal'
+  // rejected on both; all sampling params, logprobs, stop and logit_bias rejected; function
+  // tools Responses-API-only. New in 6.2: `n` is rejected even at 1 (left out -
+  // gpt6SingleChoice), and service_tier 'flex' is a 400 on both APIs ("Use background=true
+  // with background_options.completion_window instead"). Images in, strict json_schema,
+  // json_object, the priority / fast / ultrafast tiers and `reasoning.mode = pro` work.
+  val gpt_6_2_sol = "gpt-6.2-sol"
+  val gpt_6_2_astra = "gpt-6.2-astra"
+
   val gpt_5_6_sol = "gpt-5.6-sol"
   val gpt_5_6_terra = "gpt-5.6-terra"
   val gpt_5_6_luna = "gpt-5.6-luna"
@@ -827,6 +839,12 @@ object ModelId {
   // The OpenAI rules, plus Bedrock's: chat completions take effort 'max' too (still converted
   // to 'xhigh'), and reject `n` > 1, the priority / flex / fast tiers and `reasoning.mode`.
   val bedrock_openai_gpt_6_1_terra = "openai.gpt-6.1-terra"
+  // GPT-6.2 Sol and Astra (live-verified 2026-11-18 on bedrock-runtime `/openai/v1` through the
+  // client, SigV4): `us.` (us-east-1, us-west-2) and `global.` (also from eu-central-1), no
+  // `eu.`; the bare id is not on-demand (400). Chat, effort 'max' (sent as 'xhigh'), tool calls
+  // (via the Responses API) and native json_schema all answered.
+  val bedrock_openai_gpt_6_2_sol = "openai.gpt-6.2-sol"
+  val bedrock_openai_gpt_6_2_astra = "openai.gpt-6.2-astra"
   val bedrock_openai_gpt_5_6_sol = "openai.gpt-5.6-sol"
   val bedrock_openai_gpt_5_6_terra = "openai.gpt-5.6-terra"
   val bedrock_openai_gpt_5_6_luna = "openai.gpt-5.6-luna"

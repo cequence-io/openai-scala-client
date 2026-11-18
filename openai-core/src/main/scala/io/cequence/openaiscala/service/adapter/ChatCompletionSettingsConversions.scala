@@ -510,6 +510,22 @@ object ChatCompletionSettingsConversions {
     val serviceTierUnsupported: FieldConversionDef =
       unsupported("service_tier", _.service_tier.isDefined, _.copy(service_tier = None))
 
+    // GPT-6.2 (live 2026-11-18, Sol and Astra): "Unsupported parameter: 'n' is not supported
+    // with this model. Omit 'n' from the request." - even n = 1, so the field is left out
+    // whenever it is set; a larger n is dropped with a warning (one choice comes back)
+    val nUnsupported: Seq[FieldConversionDef] = Seq(
+      FieldConversionDef(
+        _.n.exists(_ > 1),
+        _.copy(n = None),
+        Some { settings =>
+          val n = settings.n.getOrElse(1)
+          s"${settings.model} model returns one choice only ('n' is a 400), dropping n = $n."
+        },
+        warning = true
+      ),
+      FieldConversionDef(_.n.isDefined, _.copy(n = None), None)
+    )
+
     // o1 and o3-mini (and their dated snapshots) still accept stop; o3 / o4-mini (and any newer
     // o-model) reject it
     private val oSeriesAcceptingStop = "^o(?:1|3-mini)(?:-\\d{4}-\\d{2}-\\d{2})?$".r
@@ -766,6 +782,17 @@ object ChatCompletionSettingsConversions {
   // completions ('max' is Responses-API-only, 'minimal' is rejected by both APIs). GPT-6.1 Sol
   // does NOT - it gets the Astra rules (gpt6).
   val gpt6SolLuna: SettingsConversion = gpt5_6
+
+  /**
+   * Applied after [[gpt6]] / [[gpt6SolLuna]]: GPT-6.2+ refuses `n` - even 1 - so it is left
+   * out (live 2026-11-18 on 6.2 Sol and Astra; 6.1 and older accept it). Assumed for every
+   * tier of 6.2 and newer minors until one is measured otherwise.
+   */
+  def gpt6SingleChoice(model: String): SettingsConversion =
+    if (gpt6Minor(model).exists(_ >= 2))
+      generic(FieldConversions.nUnsupported)
+    else
+      identity
 
   // Function tools on the CHAT COMPLETIONS API (createChatToolCompletion) - verified live
   // 2026-09-26: GPT-5.3 and older accept tools with any reasoning_effort; GPT-5.4 and 5.5

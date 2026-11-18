@@ -131,11 +131,14 @@ class ModelConversionsRoutingSpec extends AnyWordSpec with Matchers {
       }
     }
 
-    "give GPT-6.1 Sol (also on Bedrock, and newer Sol minors) the Astra rules, not Sol's" in {
+    "give GPT-6.1+ Sol and 6.2 Astra (also on Bedrock) the Astra rules, not Sol's" in {
       Seq(
         ModelId.gpt_6_1_sol,
         "global." + ModelId.bedrock_openai_gpt_6_1_sol,
-        "gpt-6.2-sol"
+        ModelId.gpt_6_2_sol,
+        ModelId.gpt_6_2_astra,
+        "us." + ModelId.bedrock_openai_gpt_6_2_sol,
+        "global." + ModelId.bedrock_openai_gpt_6_2_astra
       ).foreach { model =>
         withClue(model) {
           // measured 2026-09-29: low / medium / high / xhigh only on chat completions
@@ -162,6 +165,36 @@ class ModelConversionsRoutingSpec extends AnyWordSpec with Matchers {
       }
       // GPT-6 Sol itself keeps 'none'
       effortSent(ModelId.gpt_6_sol, ReasoningEffort.none) shouldBe Some("none")
+    }
+
+    "leave n out for GPT-6.2 (even n = 1; also on Bedrock), keep it for 6.1 and older" in {
+      // live 2026-11-18: "Unsupported parameter: 'n' is not supported with this model. Omit 'n'
+      // from the request." on 6.2 Sol and Astra, for n = 1 too; 6.1 Sol / Terra, 6 Astra / Sol /
+      // Luna accept n = 1 and 2
+      Seq(
+        ModelId.gpt_6_2_sol,
+        ModelId.gpt_6_2_astra,
+        "us." + ModelId.bedrock_openai_gpt_6_2_sol,
+        "gpt-6.2-luna"
+      ).foreach { model =>
+        withClue(model) {
+          Seq(1, 3).foreach { n =>
+            maker.body(CreateChatCompletionSettings(model, n = Some(n))).get("n") shouldBe None
+          }
+        }
+      }
+      Seq(
+        ModelId.gpt_6_1_sol,
+        ModelId.gpt_6_1_terra,
+        ModelId.gpt_6_astra,
+        ModelId.gpt_6_luna
+      ).foreach { model =>
+        withClue(model) {
+          maker.body(CreateChatCompletionSettings(model, n = Some(2))).get("n") shouldBe Some(
+            Json.toJson(2)
+          )
+        }
+      }
     }
 
     "give GPT-6.1 Terra (also on Bedrock) the GPT-6 Sol / Luna rules, not 6.1 Sol's" in {

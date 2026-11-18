@@ -239,13 +239,40 @@ class ChatCompletionSettingsConversionsSpec extends AnyWordSpec with Matchers {
       ) shouldBe ReasoningEffort.minimal
     }
 
+    "drop n on GPT-6.2 and newer minors only - even n = 1" in {
+      import ChatCompletionSettingsConversions._
+      Seq(
+        ModelId.gpt_6_2_sol,
+        ModelId.gpt_6_2_astra,
+        "global.openai.gpt-6.2-sol",
+        "gpt-6.3-luna"
+      ).foreach { model =>
+        withClue(model) {
+          Seq(1, 4).foreach { n =>
+            gpt6SingleChoice(model)(
+              CreateChatCompletionSettings(model, n = Some(n))
+            ).n shouldBe None
+          }
+        }
+      }
+      Seq(ModelId.gpt_6_1_sol, ModelId.gpt_6_1_terra, ModelId.gpt_6_astra).foreach { model =>
+        withClue(model) {
+          gpt6SingleChoice(model)(
+            CreateChatCompletionSettings(model, n = Some(2))
+          ).n shouldBe Some(2)
+        }
+      }
+    }
+
     "give Astra and GPT-6.1+ Sol the always-reasoning rules - by tier, not by minor" in {
       import ChatCompletionSettingsConversions._
       Seq(
         ModelId.gpt_6_astra,
         ModelId.gpt_6_1_sol,
         "global." + ModelId.bedrock_openai_gpt_6_1_sol,
-        "gpt-6.2-sol",
+        ModelId.gpt_6_2_sol,
+        ModelId.gpt_6_2_astra,
+        "us." + ModelId.bedrock_openai_gpt_6_2_astra,
         "gpt-6.1-astra",
         "gpt-6-astra-2026-08-27"
       ).foreach { model =>

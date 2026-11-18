@@ -340,9 +340,9 @@ trait ChatCompletionBodyMaker {
       else if (model == ModelId.chat_latest)
         chatLatest(settings)
       else if (isGpt6ReasoningAlwaysOn(model)) // Astra, 6.1+ Sol
-        gpt6(settings)
+        gpt6SingleChoice(model)(gpt6(settings))
       else if (gpt6Minor(model).isDefined) // Sol / Luna, 6.1 Terra
-        gpt6SolLuna(settings)
+        gpt6SingleChoice(model)(gpt6SolLuna(settings))
       else if (isGpt5SearchApi(model))
         gpt5SearchApi(settings)
       else if (isMistralLarge4(model))
