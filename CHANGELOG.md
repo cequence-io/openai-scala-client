@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.1 (unreleased)
+## 2.0.1 (2026-11-18)
 
 OpenAI's GPT-6.2 Sol and Astra (also on Bedrock), two fixes on the Responses API path (multi-agent responses of
 GPT-6.2 failed to parse; `verbosity` was dropped), and smaller javadoc jars.
