@@ -87,7 +87,8 @@ Then you can obtain a service in one of the following ways.
 ```
 
   The GPT-6 models on the runtime host take an inference profile id - `us.openai.gpt-6.1-sol`,
-  `global.openai.gpt-6-luna`, `us.openai.gpt-6.1-terra` (GPT-6.1 Terra, `global.` too; live 2026-10-29): the bare `openai.gpt-6.1-sol` / `openai.gpt-6-sol` / `openai.gpt-6-luna` are a 400
+  `global.openai.gpt-6-luna`, `us.openai.gpt-6.1-terra` (GPT-6.1 Terra, `global.` too; live 2026-10-29), `us.openai.gpt-6.2-sol` /
+  `global.openai.gpt-6.2-astra` (GPT-6.2, both profiles for both; live 2026-11-18): the bare `openai.gpt-6.1-sol` / `openai.gpt-6-sol` / `openai.gpt-6-luna` are a 400
   "on-demand throughput isn't supported" in every region tried (us-east-1, us-east-2, us-west-2, eu-central-1,
   eu-north-1, eu-west-1; live 2026-10-26), and `eu.openai.gpt-6.1-sol` an invalid id in eu-central-1. The mantle
   host serves the bare ids instead, in us-east-1 only of those regions (404 elsewhere).

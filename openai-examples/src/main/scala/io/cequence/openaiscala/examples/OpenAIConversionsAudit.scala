@@ -83,6 +83,9 @@ object OpenAIConversionsAudit {
       ("presence_0.5", user, base.copy(presence_penalty = Some(0.5)), false),
       ("frequency_0.5", user, base.copy(frequency_penalty = Some(0.5)), false),
       ("logprobs", user, base.copy(logprobs = Some(true)), false),
+      // GPT-6.2 refuses n, even 1 (2026-11-18)
+      ("n_1", user, base.copy(n = Some(1)), false),
+      ("n_2", user, base.copy(n = Some(2)), false),
       ("stop", user, base.copy(stop = Seq("zzqq")), false),
       (
         "stop+re_low",

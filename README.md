@@ -44,7 +44,7 @@ In addition to OpenAI, this library supports many other LLM providers. For provi
 
 | Provider | Structured output | Tools | Batch | Notes |
 |----------|-------------------|-------|-------|-------|
-| [OpenAI](https://platform.openai.com) | Full | Yes, Responses API too | Yes | Full API support; GPT-6.1 Terra |
+| [OpenAI](https://platform.openai.com) | Full | Yes, Responses API too | Yes | Full API support; GPT-6.2 Sol / Astra |
 | [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service) | Full | Yes, Responses API too | Yes | OpenAI on Azure |
 | [Anthropic](https://www.anthropic.com/api) | Full | Yes, MCP and Skills too | Yes | Claude models; Fable 5.2 and Mythos 5.2 🔥 |
 | [Anthropic Bedrock](https://aws.amazon.com/bedrock/claude/) | Full | Yes, MCP too | Yes ¹ | Claude on AWS |
