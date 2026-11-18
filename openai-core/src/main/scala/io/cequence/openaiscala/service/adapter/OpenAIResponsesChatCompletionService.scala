@@ -552,8 +552,6 @@ private[service] class OpenAIResponsesChatCompletionService(
       logger.warn("Responses API adapter: 'logprobs' parameter is not supported, ignoring")
     if (settings.seed.isDefined)
       logger.warn("Responses API adapter: 'seed' parameter is not supported, ignoring")
-    if (settings.verbosity.isDefined)
-      logger.warn("Responses API adapter: 'verbosity' parameter is not supported, ignoring")
     if (
       (settings.extra_params.keySet -- ResponsesChatCompletionSettingsOps.knownParams --
         ToolApprovalSettingsOps.knownParams).nonEmpty
@@ -562,7 +560,7 @@ private[service] class OpenAIResponsesChatCompletionService(
         "Responses API adapter: 'extra_params' parameter is not supported, ignoring"
       )
 
-    val text: Option[TextResponseConfig] = settings.response_format_type.flatMap {
+    val format: Option[TextResponseConfig] = settings.response_format_type.flatMap {
       case ChatCompletionResponseFormatType.text => None
 
       case ChatCompletionResponseFormatType.json_object =>
@@ -608,6 +606,15 @@ private[service] class OpenAIResponsesChatCompletionService(
           }
         }
     }
+
+    // the chat completions API's top-level verbosity is the Responses API's text.verbosity
+    val text: Option[TextResponseConfig] =
+      format
+        .map(_.copy(verbosity = settings.verbosity))
+        .orElse(
+          settings.verbosity
+            .map(verbosity => TextResponseConfig(ResponseFormat.Text, Some(verbosity)))
+        )
 
     val reasoning: Option[ReasoningConfig] = {
       val effort = settings.reasoning_effort.map(

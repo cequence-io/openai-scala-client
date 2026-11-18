@@ -145,11 +145,18 @@ private[service] class PerplexityResponsesServiceImpl(
         "Perplexity Responses: dropping text.format = json_object (answered with an empty object)"
       )
 
-    val effective =
-      if (jsonObjectDropped)
-        settings.copy(text = None)
-      else
-        settings
+    // Perplexity's Agent API documents no text.verbosity and no format but json_schema (its
+    // OpenAPI spec, 2026-09-25) - so only a JSON schema is sent, without the verbosity
+    if (settings.text.exists(_.verbosity.isDefined))
+      logger.warn("Perplexity Responses: text.verbosity is not supported, dropping it")
+
+    val text =
+      settings.text.collect {
+        case config @ TextResponseConfig(_: ResponseFormat.JsonSchemaSpec, _) =>
+          config.copy(verbosity = None)
+      }
+
+    val effective = settings.copy(text = text)
 
     Json
       .toJsObject(effective.copy(stream = Some(stream)))(createModelResponseSettingsFormat) ++

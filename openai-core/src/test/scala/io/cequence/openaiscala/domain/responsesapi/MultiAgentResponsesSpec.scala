@@ -20,7 +20,10 @@ import scala.concurrent.ExecutionContext
  * Server-hosted multi-agent execution on the Responses API (beta) against a response and a
  * stream recorded live on 2026-09-30 (`gpt-6.1-sol`, two subagents spawned and waited for):
  * the settings, the new item types and their agent tags, the root agent's answer, and the
- * typed stream.
+ * typed stream. Plus a `gpt-6.2-sol` response and stream recorded 2026-11-18, whose output
+ * also lists each subagent's task as a `user` message of `input_text` content - such an item
+ * failed the whole (sync) response until it was skipped; the stream was not affected (its
+ * `response.completed` event reads only the id and the usage).
  */
 class MultiAgentResponsesSpec
     extends AnyWordSpec
@@ -50,6 +53,16 @@ class MultiAgentResponsesSpec
 
   private lazy val events: Seq[ResponseStreamEvent] =
     resource("responses-multi-agent.sse")
+      .split("\n")
+      .collect { case line if line.startsWith("data: ") => Json.parse(line.drop(6)) }
+      .map(_.as[ResponseStreamEvent])
+      .toSeq
+
+  private lazy val response62 =
+    Json.parse(resource("responses-multi-agent-gpt-6.2.json")).as[Response]
+
+  private lazy val events62: Seq[ResponseStreamEvent] =
+    resource("responses-multi-agent-gpt-6.2.sse")
       .split("\n")
       .collect { case line if line.startsWith("data: ") => Json.parse(line.drop(6)) }
       .map(_.as[ResponseStreamEvent])
@@ -152,6 +165,53 @@ class MultiAgentResponsesSpec
 
       chunks.collect { case f: Finish => f.reason } shouldBe Seq(FinishReason.stop)
       chunks.collect { case u: Usage => u.usage.total_tokens } shouldBe Seq(3790)
+    }
+  }
+
+  "a GPT-6.2 multi-agent response" should {
+
+    "parse, leaving out the subagents' tasks (user messages of input_text)" in {
+      val messages = response62.output.collect { case m: Message.OutputContent => m }
+      // two of the recorded 27 items are `user` messages, one per subagent
+      response62.output.size shouldBe 25
+      messages.map(_.agent.map(_.agentName)).count(_.contains("/root")) shouldBe 1
+
+      response62.output.collect { case c: MultiAgentCall => c.action } shouldBe Seq(
+        "spawn_agent",
+        "spawn_agent",
+        "followup_task",
+        "wait_agent",
+        "followup_task",
+        "send_message"
+      )
+      response62.outputText shouldBe Some(
+        "Fruits: apples, bananas, oranges; vegetables: carrots, broccoli, spinach."
+      )
+      response62.subagentMessages.flatMap(_.agent).map(_.agentName).distinct.sorted shouldBe
+        Seq("/root/fruits", "/root/vegetables")
+    }
+
+    "stream the root answer and the delegation, incl. list_agents, to the end" in {
+      events62.collect { case c: ResponseStreamEvent.ResponseCompleted =>
+        c
+      } should have size 1
+
+      val chunks: Seq[ChatChunk] =
+        Source(events62.toList)
+          .via(ChatChunks.fromResponseEvents)
+          .runWith(Sink.seq)
+          .futureValue
+
+      chunks.collect { case Text(text) => text }.mkString shouldBe
+        "Fruits: apples, bananas, oranges; vegetables: carrots, broccoli, spinach."
+      chunks.collect { case c: ToolCall => c.toolName } shouldBe Seq(
+        "multi_agent.spawn_agent",
+        "multi_agent.spawn_agent",
+        "multi_agent.list_agents",
+        "multi_agent.wait_agent"
+      )
+      chunks.collect { case f: Finish => f.reason } shouldBe Seq(FinishReason.stop)
+      chunks.collect { case u: Usage => u.usage.total_tokens } shouldBe Seq(3914)
     }
   }
 }

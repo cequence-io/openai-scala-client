@@ -1,6 +1,7 @@
 package io.cequence.openaiscala.domain.responsesapi
 
 import io.cequence.openaiscala.domain.JsonSchema
+import io.cequence.openaiscala.domain.settings.Verbosity
 
 /**
  * Represents the format of the response.
@@ -51,6 +52,27 @@ object ResponseFormat {
   }
 }
 
+/**
+ * The `text` object of a Responses API request.
+ *
+ * @param format
+ *   plain text (the default), a JSON schema or a JSON object
+ * @param verbosity
+ *   how many output tokens the model spends on its answer - `low`, `medium` or `high`
+ *   (`text.verbosity`; the chat completions API's top-level `verbosity`)
+ */
 case class TextResponseConfig(
-  format: ResponseFormat
-)
+  format: ResponseFormat,
+  verbosity: Option[Verbosity] = None
+) {
+
+  // binary compatibility with 2.0.0 / 1.7.1 (before `verbosity`)
+  def this(format: ResponseFormat) = this(format, None)
+}
+
+object TextResponseConfig {
+
+  // binary compatibility with 2.0.0 / 1.7.1, whose `TextResponseConfig(format)` calls link to
+  // this one-argument apply (a call without `verbosity` still resolves to it)
+  def apply(format: ResponseFormat): TextResponseConfig = new TextResponseConfig(format, None)
+}

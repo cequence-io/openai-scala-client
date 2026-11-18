@@ -1,0 +1,487 @@
+{
+ "id": "resp_0a59b2606999e4d3016afd6f2db96c87d2b1c983d6ef474809",
+ "object": "response",
+ "created_at": 1794993965,
+ "status": "completed",
+ "access_programs": {
+  "cyber": "standard"
+ },
+ "background": false,
+ "billing": {
+  "payer": "developer"
+ },
+ "completed_at": 1794993987,
+ "error": null,
+ "frequency_penalty": 0.0,
+ "image": {
+  "context_compression": "disabled"
+ },
+ "incomplete_details": null,
+ "input_transformations": [],
+ "instructions": null,
+ "max_output_tokens": null,
+ "max_tool_calls": null,
+ "model": "gpt-6.2-sol",
+ "moderation": null,
+ "output": [
+  {
+   "id": "mac_0a59b2606999e4d3016afd6f2e6c4087d2b9260ccb898bd5ea",
+   "type": "multi_agent_call",
+   "action": "spawn_agent",
+   "agent": {
+    "agent_name": "/root"
+   },
+   "arguments": "{\"task_name\":\"fruits\",\"message\":\"gAAAAABq_W8uIHcab3ck5iyiL2eLVOuZiSXunUJrVJ_ebJ_ov1BRBhflQhypcjBY_eGPP6yKKT38VtfOXKCexu9k5yD0YRgXHoxjzJbvaV5kzz9UHW6gkEC9I1g8-f8-0G1fzQ1Z_ptHJSbVwoaTAbnIFUFACQ0MUQ==\"}",
+   "call_id": "call_fgrT9ZYTjp6ExLxa85wSggm5"
+  },
+  {
+   "id": "msg_0a59b2606999e4d3016afd6f2ecbcc87d2ac5a89ee9171d948",
+   "type": "message",
+   "status": "completed",
+   "agent": {
+    "agent_name": "/root/fruits"
+   },
+   "content": [
+    {
+     "type": "input_text",
+     "text": "Use two subagents in parallel: one lists three fruits, the other three vegetables (one short line each). Then reply with a single combined line."
+    }
+   ],
+   "role": "user"
+  },
+  {
+   "id": "amsg_0a59b2606999e4d3016afd6f2ecc0c87d2af610ece71f2070c",
+   "type": "agent_message",
+   "agent": {
+    "agent_name": "/root/fruits"
+   },
+   "author": "/root",
+   "content": [
+    {
+     "type": "encrypted_content",
+     "encrypted_content": "gAAAAABq_W8uSWlsDuQ8uoekOgsm65mNuT89mWIXIhR6oH8HBoKDDe1n7bvOf--YCEODcW9uMhKyAuKFRJ-jWHvIqjmCnWfQTSdENqsr70NWZYionr01v-TtmlCcFYbzDGe7zNel2U1bGk90fTaH0aj7RxNDILaWkZOP-c4O9NI2n70Jkaof1K2iUVF7gddHztSqNpTcsM7Gmsjgh2UeVbTazI3x4R4l0yvl6QI3-OLBOGYsL4RG4vkczSmC-VKXfUnqyKeVSIrK"
+    }
+   ],
+   "recipient": "/root/fruits"
+  },
+  {
+   "id": "maco_0a59b2606999e4d3016afd6f2ed41887d28e54424eac9c48b4",
+   "type": "multi_agent_call_output",
+   "action": "spawn_agent",
+   "agent": {
+    "agent_name": "/root"
+   },
+   "call_id": "call_fgrT9ZYTjp6ExLxa85wSggm5",
+   "output": [
+    {
+     "type": "output_text",
+     "annotations": [],
+     "logprobs": [],
+     "text": "{\"task_name\": \"/root/fruits\"}"
+    }
+   ]
+  },
+  {
+   "id": "msg_0a59b2606999e4d3016afd6f2f7b4887d2b4c5aed221236df7",
+   "type": "message",
+   "status": "completed",
+   "agent": {
+    "agent_name": "/root/fruits"
+   },
+   "content": [
+    {
+     "type": "output_text",
+     "annotations": [],
+     "logprobs": [],
+     "text": "Apples, bananas, oranges."
+    }
+   ],
+   "phase": "final_answer",
+   "role": "assistant"
+  },
+  {
+   "id": "amsg_0a59b2606999e4d3016afd6f316f8887d2bdf6d7d9bc3740fa",
+   "type": "agent_message",
+   "agent": {
+    "agent_name": "/root"
+   },
+   "author": "/root/fruits",
+   "content": [
+    {
+     "type": "encrypted_content",
+     "encrypted_content": "gAAAAABq_W89mODkVh0-W95aHTn3R3oKAYBzGqvyfzxnCanI8064Q8TkrbOSWIG9_IpSUHxTB12Rpwhfv2iQc6lb7JxDaldjte2PbnDF1Y_1XS5NVoj8D4gbXvFrvfPw25CrCqJgCjcOtZFjCIodXFNcylyDNhy4uJHX_0_CkYU4MaAUSZqGBISh1HszYrGm_HZ7Hj5xY3SEoff3i072JvgI2_cHDnlauxBQoatHSzG5XUUTKbUjqqgg9hSAq7AgulWh8Uh3k0Hl"
+    }
+   ],
+   "recipient": "/root"
+  },
+  {
+   "id": "mac_0a59b2606999e4d3016afd6f32796087d2ac6e624bd6c34dab",
+   "type": "multi_agent_call",
+   "action": "spawn_agent",
+   "agent": {
+    "agent_name": "/root"
+   },
+   "arguments": "{\"task_name\":\"vegetables\",\"message\":\"gAAAAABq_W8y-a6COVJsiPlFVZozJ2RY2tKr_FQ71vMojPO8YSIbUGqRexjwk506Wv5cizXer-OTBAZ1bw8VGu0lWUPmCdpRUqk2k8fRf9-i9rI498XZl2r__MgX-HWy6QhqJhR61Ej_dyixELV3gQS5gTeNFCK7akoprp9-l137T6cpilYS5hY=\"}",
+   "call_id": "call_Oi6ns3mfv6wfak7PBcQWScie"
+  },
+  {
+   "id": "msg_0a59b2606999e4d3016afd6f32b9c087d2a9a7e088b0542b43",
+   "type": "message",
+   "status": "completed",
+   "agent": {
+    "agent_name": "/root/vegetables"
+   },
+   "content": [
+    {
+     "type": "input_text",
+     "text": "Use two subagents in parallel: one lists three fruits, the other three vegetables (one short line each). Then reply with a single combined line."
+    }
+   ],
+   "role": "user"
+  },
+  {
+   "id": "amsg_0a59b2606999e4d3016afd6f32ba0087d28bbbbbdc18766db7",
+   "type": "agent_message",
+   "agent": {
+    "agent_name": "/root/vegetables"
+   },
+   "author": "/root",
+   "content": [
+    {
+     "type": "encrypted_content",
+     "encrypted_content": "gAAAAABq_W8yKWdm5negRXsg0WoN0yvnvcyA_YANtmwm8gGQapd1b1oItoM61FghlDGW8vcag7E5u8CxCJmsyfgGWA0cxsEk6wIoUIdwGC_l0M1s-oiMg4Xntqv9H_wSBwGeJUoygrvcNaGvBKfZm75lPQuKDraJOgj6dlIgQxUI38hF6iKYqIzDrusbPjUtGQFKqWXSYRGOQTquJWZl4D3ZqttXoqXUsTZNLssnU855cj37t4dEHwT-vgAidPWpTK-IzfZ2GTlf0OxeC9fYXh52cDAgXHxJzg=="
+    }
+   ],
+   "recipient": "/root/vegetables"
+  },
+  {
+   "id": "maco_0a59b2606999e4d3016afd6f32c31487d2bacb7a4a17856285",
+   "type": "multi_agent_call_output",
+   "action": "spawn_agent",
+   "agent": {
+    "agent_name": "/root"
+   },
+   "call_id": "call_Oi6ns3mfv6wfak7PBcQWScie",
+   "output": [
+    {
+     "type": "output_text",
+     "annotations": [],
+     "logprobs": [],
+     "text": "{\"task_name\": \"/root/vegetables\"}"
+    }
+   ]
+  },
+  {
+   "id": "msg_0a59b2606999e4d3016afd6f33471487d28716db4645ce4dac",
+   "type": "message",
+   "status": "completed",
+   "agent": {
+    "agent_name": "/root/vegetables"
+   },
+   "content": [
+    {
+     "type": "output_text",
+     "annotations": [],
+     "logprobs": [],
+     "text": "Carrots, broccoli, spinach."
+    }
+   ],
+   "phase": "final_answer",
+   "role": "assistant"
+  },
+  {
+   "id": "rs_0a59b2606999e4d3016afd6f35420087d294c6723ec87b131b",
+   "type": "reasoning",
+   "agent": {
+    "agent_name": "/root"
+   },
+   "content": [],
+   "encrypted_content": "gAAAAABq_W9EVNZWeHu_yKwQVdB5iBVEQKGD_ubUwAHXY5fssMYxw3Xpi4AlaZtSncEt2KsI6k4ne6PW-7eXpTJ4MTxGrBCTn9UnLGhoddatoHmwiPTUBI79gJvXTFUNGp-EJRHE9r7y6Yrinq43AWIHVsVaXzRZlduK97xOxgJrvrbj5_JksVDlQWXHz8dafSaD1viXx5xBQdI19skwzxgFxzMi3cPmlC1rSZddNb0WDooWLQXF5iHm_CwMiEwZ5r02JKYwUF3RA-3TUKd4IOlR_D6kNBy0r9UUza1YvptlVdo09BfNF6VvXlCzVVcpwIZXaCk8VHCjHW2krIB2TbenWAUH_bRFJucJCThyvOmMiS_2XCESDWGc8_ow6H6qRLUe57XNdWqTV4pDZWhOO0u9IY-xZl0FpmED_YFxUTD4SVX_rVeTfmg9A-_2Xx7c_IoGx4INCUXsXoArPcjA4Ndik5QjZ8iXngbyQvjMSlX_7qgVBcTT1ZdGWCMgQ4S1elNLZ4zDbSPNiJiGEmHpqYaeLL9b1V71gaU-YjixvpDz06CkOyPG5jYBzj2R-oFZQMpwxYm-2VBRW7EmMMAvOruJ75dKo0JC9-DqVtrpx3rHhxvl8Rl1EhCFYce17x9CFMfBZ-DaQ0tEJ235pBB0yQzw4ylzBawv7TpEXky9uts22P-OjOZcvilysudlJXhp0RwkeON9zVuFCKOI8asbJ5hEM_-q68xq0E5Gljf-slnwJGmNo4Xg8S2q6x1-3Kom-omy95GZI-cTYjER2wNG_qCsznQptHhI4BBO1ktLMWsJ8yaKd58BW7XEyOXmYCZbKdXo30ADTUFFqobDD3DmW5jOFQ38uodUnaNIpZZGLSLcB5oIQkZmUfovKHM3EIWwWsn5OmPaOTk6BK47eUSK0qRV1nvg4gu-QsaAIJGvT7orQmDJsMbS7irpNFxfVNVh0J6De-jXR4I5rKyR4tAaOcmvjLX38xr5GXe8xw3GauUYIkmT1xKYhLwvw6pSFCCCUeSrbMS0z-VPR_5V41WdJbBfsHiKmFyyNONOQ2hObmfX7Hqdeqr95GjX9KFwN4NHm4E6d20wzRjuucTjr0nASO2M8HsDY7hE8u9hLfXpFnYlzHMX20Jh27HjGqjpmftXJFBN26jqHWOVTj0aKjUsq0r5JGFQDznOR5Qk-Ah688xqQ0vKLJzgkJPrhy3QxlX8qgRb4ik592tBh4W4TJSfquHraVSW3ntlON5uHM03rlO_Le-NaxVK5lRAG2o4jT23-Gbl1WsB2FkLxBmyE6RBJhlJnpcIs4gZAE0QzuRydGQkCweWCPxytnk-vQjVtSa7wZLJQdGQJ2aNzXTVEjC3HP0aRPXGz3A40FH4nP06AN0xdZhVLi9ebVmhpagV-uvH1jHJkRhIutEOLm5SlbZZNeRcK_mb_hgc2w8-krwfhAKUCNDj_Jp5Gj6w-sVxror-6ROowkmM0JjBARy2Bq5B3LvG-Z6zqcYOcEOX57DpIEzHhYFx-lWhuuE-UHLtHlqctS9gtLgEierGeGRtIxQjLL7Lrq3J-iVKT8Du-2LsqBhWrFKtU_Gb0mSNy2bMrZK-m3z93WkKnJLtpUMCWO5MlmcsCgA5-2IVtruM773knARkQguvuLh8LGJ64_tB73ePtwa6d5ViHCNEOpDB9lIpg3A7WafEfVUCc8tan2bsrh8t_eu5jTSmkDW4HsvjMQajbBEfCiLzZrFCP6FKzO9loIIwNtBOVgjU3TB7Fl8w7XsBGaBuMSNr_Se81fggdFcSnnN-vbKySmTsd99B0V4X7tMNVGedjHSt8Pssulylwl0FK-6Hf4OI3ygoYERxVe9-CGooEp71mJRlgtt_5CFKyynkUAkatHm8fCe9qgMz7PflD1j4Y6l4-cQymChyHpot1PYtBceHvaEuq8FmgWrXBZ5ObzN4sdxi3p1xP5GiQX6rxzza4ZDEBVlLsmF1Zc9JxCztfUa2SLvrrKXHrcNVQBxEnkIR8ap1I7eIgdZMqFgWeFJj9Hohw5EjCDFJGNI0BHJ78zOiDXJhK_kgNOIPdAbgR37QICSoRCiM9DPDQ69AnNihJTzSwYkJ2A55Yb5ujCJbhoiRzoY20mZ77mUQKx8JFOVWvlTV3oY3IGKkKcXxhepv8kWvIEI7a7zYd4FRRr4VH4y5TUyxYyrLna_giQHsNvkv1mzNHs8kXCSNMqyKXNk0Wgll-_RsddlZLHgpVtYNZkzQWXp8AqhpxdVCuNvbqARO1DJzdU3ZqN_kKq5AyEO0Da9LELQwY9qDo5mhCByBgWTGdOOX3WzCLHobNV3NQPaXioUEeFFUMtU9kcd-ddA_UQ-F2-VLntQ1fc1j9uj6qQ5yQe-gdKSvjay1fj3NE6XuG1jVM2haTIG_ujC0L--7gxEVXIvHpsbzOg5A0XiRPKPtC-m76YFnhSm6XlbBqwGXXwaGX0GOiS_A9p_PC_VXPF2bEtyWyUoyzQqD4GQYS0X8LNSvIjxljxQeupHTmhRpILzhEPxOD-8N7CClVcbz8_oHaxfIeQ1LrXyoaNXYpej4ALf9T2NVL07hlhOjionqn5R4uca29JRhDHwZmK2geMxh_LCgwSUserMtdZ5fdnPk8_ByjRLnLPMnpjlh7Y0PRsA0fUoS_wXzJzdkX0bBVNLPm_GyfLnDF3o-2xHcKdrB9k_e5LUcFIeYJCZvQa-Vln6KbRiy9V390myThrkbtLZywKIS80UbDEvitJDc4h5iJ_reGGXC0vRZaXFHAMMbqvllHrHAhJBZem40dep3ba4a_RgrP41aaD3CHxvEpDGMfxwkd8WzezSWN8Rm_QmDDmRbDGLSCsnd48IO1IPqsWUoVbQQrpUOdzKyJVe9EYv3Y_Z261bZgrEvfwnc9u_ehm4CnIV9nRCcR3mbbbM-qzbAuZXQWq7Hdxsy-rXfZyuS4aX0NRey5maBpYDPAx3yFsUOrZfciBXL5O82k-Akofu0OCmifHfGv63dKgx4-MdgKjpxPKDQUDITUcPXlGfVK9KV7ShzHMyMRQr78bOP6TAMpQ3eJ-srU0n67gRLZsDRduzZjaIuxJXwNNvm2hqeZyjd9lMjztVy2IovHdTe1lDWyQATTEBOcMiZqzgHntMqFnI2j-NBObEg85rylwZNf4gaCIeTY9rAs3sikjlzuT98-O05tdH_wBxrEhfYyNJUJTadxm5EbJCey0B2wTuVu55LElFCc0Er-KlZKMT3BT-6HrABAUluqwmVQ1dpqVFIXWJYDZump5Gle5Ak8PvF0MT82A46m-ElLxVMJuCAos6bSTYCZ6g432Elw5eXtKa4V1EanwDmaFlfiHuUPrJ6x7-B53tScQXE-Gfzdso-vtEx2qv_zZWqrChR80jn6eHG5ytCsJDh0bOD4V-9Kx4RFiB6OEYj0OJsZ5BxCL4Iu-nSWROwgEkI1pe9jm22YugtNt-T_5ZKpOYO4QN4eKLHdnjeMiIzWIfqF4idgw_okyS6MXRo8VFM8xEsCnsSYXm_di6dINSihydxKEhoc1xr9PHR2fvMrYuvb_AmxwUSe0xo3xRNbCRlqnR8O65LLO--T1lOIxj-EnbUaqAXZ1uDXo7tlZ4ABNnTP2DHyhzgtLel-fYSBJksr-NiooqxX_2sJecVxHN_rAMiePo3pVXu0hozhAH7cDH1E9V1MYhI9VTxDGbcJKrCuthByKRgw8fctA3EQQVQeLHgBTBsizVs-ruVO4R9S_onkcbhSybs9MGrG7UcDoRv7mUZoe0GBLbZ65f9JoJxUxrixLLc7tNuiKkPcXA6DJDiYqKuWrMy6RdusVGzwaT_6qruc7MX2vzcgC5m_uo1lFKdYgF_kIiehtR6LkHVEKhgBdXKhxWNGVcydAAHRS8IYI98tOOzllPrnwSLMXIGq0ZVJOyRcQHObdAJOlGqovCeBU9Kr6Sst3Fzw7eTIW6TxRWRGfUOGMCldYoRss-fGtRwLZckmwJEo9n5L0an5TcDkGXl8mR2XjcfhsHEBe06xtHzvC524X-SDvKoOV5kSeExQr8NrH3yS0n-IsZVhVE-ShFevttoVwqEYTvFZU3rRYRCXEuwYsRRQM2bz1_abjaZK4ZF20lnqmYG-6j8pPk-s6RTxni757NMfg2hH0nGDBfuu3A1M9WJlgN23uBr8T9VB49W4u1_fVXnjS44H-NPnp-DpNWV3qxIN6J80HyVDGy1jG53bR0i0p_AFCLQEWGMA9mVyId96yuCCvCR_vaLjO1IgjteT6T1KsGxex0cty1CG7mlb5emywTxee7eO8SudtuFenU8ZfPK-d45cD-RDXXiBu_olyWd20_Aff3DuhiEKYkVGLQFiA_Or199UxAfa1yWx_AneqvS8MOIzhP7x62Ejo4eHstAe-mjYvAoJdkNBXsBIHf10q-kGZOTzldReAWocQrjDHKXIN7t4Tu9aZpvyDhsnPJXppRF1uOej9rqbOwpumWoFF5HuQbKPM7oc8NvSj82ESD1Qjv5eHHAtsrPBrxB_BjrDsFrupTP37SmgJ8O4yrCFz1Mt8bMkIHLx0gxE2_NgcWLqb1dkf6g4EBYmuMw1Uj6d4TZ3cUFy6SYVszPnZRS4sq16eHCen35U5AjUGRupVoMfx6PS48A7bHYE4Xv-Q_XA7P0t8ZP6iOznCDsWsnmvrG3c4iXS1dM5nFqQWm_hI4ffJlfVwLD57aMhLyeXNBeiJYvhQpSz4B03ZiKYP8BQ1asGeWx8P57-6ZH9m4bM_3tXMDt69TjFzSFYchDbnaHExF_4mEqOjl5Fw-sQ5dGxZEAfqb8FisJ5Ovw0lSwMjCTqu7bV-hsZZ3AaUOiidvvrIVdhOPhPs-IZDrKuMBwgdtONlCvED7YeJIFMdEFOAdseHhe87fTQnlSRX6MKhSJyaPilPPrHEUv-mXXZYWajcsIKgFT50tdUvvhnqOkR3L-etdLs8gzbv82y5G5UbX-MWRKd4DPLSC-8gkRSXctqcNmCGVbLEg1PMhbx-f9w3Cxo96fbPzchHa5_3qOKDOg99Hzip6f1wuQziT417j_KftnXyS-vTRzoa4Y2p4WrmFvTQJR71c4xNp3vuirKAdqK6FFnvZ6SWf8XSa3oH7jP4DgYQ8GxUI2gqgfK_fesyp1uA==",
+   "summary": []
+  },
+  {
+   "id": "amsg_0a59b2606999e4d3016afd6f36e20487d2a8a00b0154858928",
+   "type": "agent_message",
+   "agent": {
+    "agent_name": "/root"
+   },
+   "author": "/root/vegetables",
+   "content": [
+    {
+     "type": "encrypted_content",
+     "encrypted_content": "gAAAAABq_W8_zSH8RoAlS3vkjfMY7RM3zCXbn5sKZnf2_3UqNku_Ij1GgWS8hXNl1ekkN5FFiD1HDPEDeQ1Bln5RRhYnfIONd8QBwOFDKsdePLrErfsk6jGCDp89ltchnXtjuz9cfPB4dw0vMYaxNZogtelivdt_vLllrQmTMi2ZnQ3XagvmW_IEDTfwj-gRckf36hQmYHuU0RhhlaacPvlgqSl2IQsMXKwML39hSz_ma70PA6okSp0zks02Qa4rCCYMh0SZ9V2N"
+    }
+   ],
+   "recipient": "/root"
+  },
+  {
+   "id": "mac_0a59b2606999e4d3016afd6f3c83e087d2a2c65560e6fd03fa",
+   "type": "multi_agent_call",
+   "action": "followup_task",
+   "agent": {
+    "agent_name": "/root"
+   },
+   "arguments": "{\"target\":\"fruits\",\"message\":\"gAAAAABq_W89QYtPKhM55DHbVN9yF3C9ker4vikbP0VpHmPuGBE1pB6vRENF4IrOtBC69hWyLsOOSuzMbWVIazGVTAUl_yeRLUk1gk31whkiHsGAjl9xVcVOzPowUBJzFhBRb0Hyg0NUfmk2-JygWXLDwp6DPvxuLck0CIkvYhksUYpuhaTYIhmWAwdFg-2OAjSFFaXVMNJmB5xPMxqWkbndh1bd5lAQ_Bg6nmeDJGQMAaJigjNX0ahxm0oQmsHzfHd7Uqk38SC1Oyjlo9dysgKlN6g1OD4caw==\"}",
+   "call_id": "call_apGvvJt6vSdCPgKyH0oPbTiz"
+  },
+  {
+   "id": "maco_0a59b2606999e4d3016afd6f3d1f1087d28e0a84c379e37324",
+   "type": "multi_agent_call_output",
+   "action": "followup_task",
+   "agent": {
+    "agent_name": "/root"
+   },
+   "call_id": "call_apGvvJt6vSdCPgKyH0oPbTiz",
+   "output": [
+    {
+     "type": "output_text",
+     "annotations": [],
+     "logprobs": [],
+     "text": ""
+    }
+   ]
+  },
+  {
+   "id": "mac_0a59b2606999e4d3016afd6f3ddad487d2a0708100c0cf9161",
+   "type": "multi_agent_call",
+   "action": "wait_agent",
+   "agent": {
+    "agent_name": "/root/fruits"
+   },
+   "arguments": "{\"timeout_ms\":10000}",
+   "call_id": "call_QaNSDiiBVQ4Q9hrAPXZxyVCj"
+  },
+  {
+   "id": "mac_0a59b2606999e4d3016afd6f3e7a3c87d284bd1025333dabaa",
+   "type": "multi_agent_call",
+   "action": "followup_task",
+   "agent": {
+    "agent_name": "/root"
+   },
+   "arguments": "{\"target\":\"vegetables\",\"message\":\"gAAAAABq_W8-M3slR1vWFvErJrgN1E4k0E_QhjLgipx_KDNGDvl5mc75_Kb6_TF2P-JlAC4QQyjivBklCop8RHOTirCNRqZy9idZi3QPIHeI1vEkWV7ivsuGvRt1dAIriciSVW0YsrvoTr7ZZb9z3MRNuXsoHqSyw1nZXM7uM3foxRMwnQFlhUD8luX4Ryqc5rDRM7TqhPQCwt2K5XJ6fPdZPauAZdItaLc1sbeoey95C1nLKMTfensstrVTb9LvRCG387i-ICGO\"}",
+   "call_id": "call_C3KT5KxiSIjNmJGXQQEVcnoB"
+  },
+  {
+   "id": "maco_0a59b2606999e4d3016afd6f3ef1dc87d2b71cb6828f5c2740",
+   "type": "multi_agent_call_output",
+   "action": "followup_task",
+   "agent": {
+    "agent_name": "/root"
+   },
+   "call_id": "call_C3KT5KxiSIjNmJGXQQEVcnoB",
+   "output": [
+    {
+     "type": "output_text",
+     "annotations": [],
+     "logprobs": [],
+     "text": ""
+    }
+   ]
+  },
+  {
+   "id": "msg_0a59b2606999e4d3016afd6f3f9a1c87d28ce05d97be55f275",
+   "type": "message",
+   "status": "completed",
+   "agent": {
+    "agent_name": "/root/vegetables"
+   },
+   "content": [
+    {
+     "type": "output_text",
+     "annotations": [],
+     "logprobs": [],
+     "text": "Carrots, broccoli, spinach."
+    }
+   ],
+   "phase": "final_answer",
+   "role": "assistant"
+  },
+  {
+   "id": "mac_0a59b2606999e4d3016afd6f3ff89c87d2917e79bd0e75b7cf",
+   "type": "multi_agent_call",
+   "action": "send_message",
+   "agent": {
+    "agent_name": "/root"
+   },
+   "arguments": "{\"target\":\"fruits\",\"message\":\"gAAAAABq_W9AfCVmRyWeKOCLAofA-jMMVd0UMODIxlOCcJvQbO6r1-lIWdEZ56VG6soKq2w5161gPVn8Dg-rRx0uJV-lMY4EH0f4Ujky4sZVBKltT_BeBLY=\"}",
+   "call_id": "call_IU58qDC4EacixEyOyEA31C5s"
+  },
+  {
+   "id": "maco_0a59b2606999e4d3016afd6f402b8887d28054f1eae19f58a8",
+   "type": "multi_agent_call_output",
+   "action": "send_message",
+   "agent": {
+    "agent_name": "/root"
+   },
+   "call_id": "call_IU58qDC4EacixEyOyEA31C5s",
+   "output": [
+    {
+     "type": "output_text",
+     "annotations": [],
+     "logprobs": [],
+     "text": ""
+    }
+   ]
+  },
+  {
+   "id": "maco_0a59b2606999e4d3016afd6f402f5487d2b00ae95e155e130c",
+   "type": "multi_agent_call_output",
+   "action": "wait_agent",
+   "agent": {
+    "agent_name": "/root/fruits"
+   },
+   "call_id": "call_QaNSDiiBVQ4Q9hrAPXZxyVCj",
+   "output": [
+    {
+     "type": "output_text",
+     "annotations": [],
+     "logprobs": [],
+     "text": "{\"message\": \"Wait completed.\", \"timed_out\": false}"
+    }
+   ]
+  },
+  {
+   "id": "amsg_0a59b2606999e4d3016afd6f40a13c87d2a603787ebead03b3",
+   "type": "agent_message",
+   "agent": {
+    "agent_name": "/root/fruits"
+   },
+   "author": "/root",
+   "content": [
+    {
+     "type": "encrypted_content",
+     "encrypted_content": "gAAAAABq_W9DLD4o1gE4jjXm4RFKaSDbujTyjfIKfhPfdXIsx-CQbTC0BATlB1irDxe6DpMuBwbhJkSZUVAKPlg75tkRBzZ82sTljyYye8QnRuhbsxw3NZTJZ73ze5SCCoJa5uVlXbW-Pi71ZNCgl4RuGvp1u2CQDv5IzXkIYolUttHzrNGK615GLAYpNeZCV6G9o9LLP7SkkOBYk61haDFTOnjzKbWlrg=="
+    }
+   ],
+   "recipient": "/root/fruits"
+  },
+  {
+   "id": "msg_0a59b2606999e4d3016afd6f4131fc87d2bfb6facd0c2b6745",
+   "type": "message",
+   "status": "completed",
+   "agent": {
+    "agent_name": "/root/fruits"
+   },
+   "content": [
+    {
+     "type": "output_text",
+     "annotations": [],
+     "logprobs": [],
+     "text": "Apples, bananas, oranges."
+    }
+   ],
+   "phase": "final_answer",
+   "role": "assistant"
+  },
+  {
+   "id": "amsg_0a59b2606999e4d3016afd6f41719087d2a1eacf16624dcf20",
+   "type": "agent_message",
+   "agent": {
+    "agent_name": "/root"
+   },
+   "author": "/root/fruits",
+   "content": [
+    {
+     "type": "encrypted_content",
+     "encrypted_content": "gAAAAABq_W9BUChXo9MbzVka6OsVOUv5GuXbzdLNkEupFfAA1BCzdR3xnoqH1ntb3EujJXNJFYhoakQy0CYRsMf7EyBpHcB6wM1nvkn-nTtH-G0gp3hdO7GR_BBN0Dy8tgIBfzaZukWFKRUNtYGTlrjDpgmcUWEDIA0NEYYXbOfcvMvJudzv6hF_WMgC8cyYxsLNt_EouxEKqv25TIO9N2ks6VTYj8D72aoQUbwOmwRlkKZNWOhoLoERVj3XXEaFVRr3-42-2yZw"
+    }
+   ],
+   "recipient": "/root"
+  },
+  {
+   "id": "amsg_0a59b2606999e4d3016afd6f424ab487d2a2de6f97d93d3902",
+   "type": "agent_message",
+   "agent": {
+    "agent_name": "/root"
+   },
+   "author": "/root/vegetables",
+   "content": [
+    {
+     "type": "encrypted_content",
+     "encrypted_content": "gAAAAABq_W9Cpp4IDkXRoURY49Kyg7h5mSvz6TiesjgJgiLN9jCXj_mVsYK2YZ4lVBNaKLHdaFf3ndI_5TqFwNPyi6WkT_I-QSdED2_6Uw4quIOSBfoTueWdVN47rFeDgb4p0uuKrmXJkfotSegq4UyL0qhjR8FtCaA4DGqM9GnoAZYeIz-vbOaBxnLVn4JMXXDox4zu1VHXb62iIA0HkRywOCMeh0Jwt7VYoy1JV6G4Ka7alGAEgm2gOAVURVFM6xfMLxRLTnFR"
+    }
+   ],
+   "recipient": "/root"
+  },
+  {
+   "id": "msg_0a59b2606999e4d3016afd6f43718087d2b1737edb56199433",
+   "type": "message",
+   "status": "completed",
+   "agent": {
+    "agent_name": "/root"
+   },
+   "content": [
+    {
+     "type": "output_text",
+     "annotations": [],
+     "logprobs": [],
+     "text": "Fruits: apples, bananas, oranges; vegetables: carrots, broccoli, spinach."
+    }
+   ],
+   "phase": "final_answer",
+   "role": "assistant"
+  }
+ ],
+ "parallel_tool_calls": true,
+ "presence_penalty": 0.0,
+ "previous_response_id": null,
+ "prompt_cache_key": null,
+ "prompt_cache_retention": "24h",
+ "reasoning": {
+  "context": "all_turns",
+  "effort": "medium",
+  "mode": "standard",
+  "summary": null
+ },
+ "safety_identifier": null,
+ "service_tier": "default",
+ "store": false,
+ "temperature": 1.0,
+ "text": {
+  "format": {
+   "type": "text"
+  },
+  "verbosity": "medium"
+ },
+ "tool_choice": "auto",
+ "tool_usage": {
+  "image_gen": {
+   "input_tokens": 0,
+   "input_tokens_details": {
+    "image_tokens": 0,
+    "text_tokens": 0
+   },
+   "output_tokens": 0,
+   "output_tokens_details": {
+    "image_tokens": 0,
+    "text_tokens": 0
+   },
+   "total_tokens": 0
+  },
+  "web_search": {
+   "num_requests": 0
+  }
+ },
+ "tools": [],
+ "top_logprobs": 0,
+ "top_p": 1.0,
+ "truncation": "disabled",
+ "usage": {
+  "input_tokens": 4277,
+  "input_tokens_details": {
+   "cache_write_tokens": 0,
+   "cache_write_tokens_details": {
+    "ttl_12h_tokens": 0,
+    "ttl_30m_tokens": 0
+   },
+   "cached_tokens": 1125
+  },
+  "output_tokens": 273,
+  "output_tokens_details": {
+   "reasoning_tokens": 0
+  },
+  "total_tokens": 4550
+ },
+ "user": null,
+ "metadata": {}
+}

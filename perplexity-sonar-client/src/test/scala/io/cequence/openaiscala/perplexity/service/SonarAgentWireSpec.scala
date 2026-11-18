@@ -540,7 +540,7 @@ class SonarAgentWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAl
       } finally chat.close()
     }
 
-    "drop a json_object text format from the request but keep json_schema" in {
+    "drop a json_object text format and text.verbosity from the request but keep json_schema" in {
       import io.cequence.openaiscala.domain.responsesapi.{
         CreateModelResponseSettings,
         Inputs,
@@ -557,13 +557,16 @@ class SonarAgentWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAl
       try {
         replyJson(200, perplexityResponse)
 
-        def send(format: ResponseFormat) = {
+        def send(
+          format: ResponseFormat,
+          verbosity: Option[io.cequence.openaiscala.domain.settings.Verbosity] = None
+        ) = {
           await(
             direct.createModelResponse(
               Inputs.Text("hi"),
               CreateModelResponseSettings(
                 "openai/gpt-5.4-mini",
-                text = Some(TextResponseConfig(format))
+                text = Some(TextResponseConfig(format, verbosity))
               )
             )
           )
@@ -583,6 +586,23 @@ class SonarAgentWireSpec extends AnyWordSpec with Matchers with BeforeAndAfterAl
           )
         )
         (schemaBody \ "text" \ "format" \ "type").as[String] shouldBe "json_schema"
+
+        // Perplexity documents no text.verbosity and no text format but json_schema
+        val low = Some(io.cequence.openaiscala.domain.settings.Verbosity.low)
+        val schemaWithVerbosity = send(
+          ResponseFormat.JsonSchemaSpec(
+            schema = io.cequence.openaiscala.domain.JsonSchema.Object(
+              properties = Seq("a" -> io.cequence.openaiscala.domain.JsonSchema.String()),
+              required = Seq("a")
+            ),
+            name = Some("s"),
+            strict = Some(true)
+          ),
+          low
+        )
+        (schemaWithVerbosity \ "text" \ "format" \ "type").as[String] shouldBe "json_schema"
+        (schemaWithVerbosity \ "text" \ "verbosity").toOption shouldBe None
+        (send(ResponseFormat.Text, low) \ "text").toOption shouldBe None
       } finally direct.close()
     }
 

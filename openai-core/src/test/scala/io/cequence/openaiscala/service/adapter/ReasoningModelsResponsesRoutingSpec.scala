@@ -1,8 +1,18 @@
 package io.cequence.openaiscala.service.adapter
 
 import io.cequence.openaiscala.domain.AssistantTool.FunctionTool
-import io.cequence.openaiscala.domain.responsesapi.ReasoningConfig
-import io.cequence.openaiscala.domain.settings.{CreateChatCompletionSettings, ReasoningEffort}
+import io.cequence.openaiscala.domain.responsesapi.{
+  ReasoningConfig,
+  ResponseFormat,
+  TextResponseConfig
+}
+import io.cequence.openaiscala.domain.settings.{
+  ChatCompletionResponseFormatType,
+  CreateChatCompletionSettings,
+  JsonSchemaDef,
+  ReasoningEffort,
+  Verbosity
+}
 import io.cequence.openaiscala.domain.settings.ResponsesChatCompletionSettingsOps._
 import io.cequence.openaiscala.domain.{JsonSchema, ModelId}
 import io.cequence.openaiscala.service.OpenAIResponsesService
@@ -193,6 +203,48 @@ class ReasoningModelsResponsesRoutingSpec extends AnyWordSpec with Matchers {
           None
         )
         .temperature shouldBe Some(0.2)
+    }
+
+    "send verbosity as text.verbosity, next to a JSON schema or alone" in {
+      val schema = JsonSchemaDef(
+        "answer",
+        strict = true,
+        Left(JsonSchema.Object(Seq("answer" -> JsonSchema.String()), Seq("answer")))
+      )
+      val withSchema = adapter.toResponsesSettings(
+        CreateChatCompletionSettings(
+          ModelId.gpt_6_2_sol,
+          verbosity = Some(Verbosity.low),
+          response_format_type = Some(ChatCompletionResponseFormatType.json_schema),
+          jsonSchema = Some(schema)
+        ),
+        None,
+        Nil,
+        None
+      )
+      withSchema.text.flatMap(_.verbosity) shouldBe Some(Verbosity.low)
+      withSchema.text.map(_.format.`type`) shouldBe Some("json_schema")
+
+      adapter
+        .toResponsesSettings(
+          CreateChatCompletionSettings(
+            ModelId.gpt_6_2_astra,
+            verbosity = Some(Verbosity.high)
+          ),
+          None,
+          Nil,
+          None
+        )
+        .text shouldBe Some(TextResponseConfig(ResponseFormat.Text, Some(Verbosity.high)))
+
+      adapter
+        .toResponsesSettings(
+          CreateChatCompletionSettings(ModelId.gpt_6_2_sol),
+          None,
+          Nil,
+          None
+        )
+        .text shouldBe None
     }
   }
 }
