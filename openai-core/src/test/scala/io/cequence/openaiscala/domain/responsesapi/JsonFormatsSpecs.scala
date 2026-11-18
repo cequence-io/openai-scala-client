@@ -2082,7 +2082,17 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
           |}""".stripMargin,
         Pretty
       )
-      // the one-argument apply and constructor kept for binary compatibility
+      // an unknown verbosity in a response (a newer value, a compatible host's "") reads as absent
+      Json
+        .parse("""{"format": {"type": "text"}, "verbosity": "max"}""")
+        .as[TextResponseConfig] shouldBe TextResponseConfig(ResponseFormat.Text, None)
+      Json
+        .parse("""{"format": {"type": "json_object"}, "verbosity": ""}""")
+        .as[TextResponseConfig] shouldBe TextResponseConfig(ResponseFormat.JsonObject, None)
+
+      // binary compatibility with 2.0.0 / 1.7.1: the one-argument apply, constructor and copy,
+      // the companion as a Function1 and a one-element fromProduct (a Scala 3 Mirror)
+      val low = TextResponseConfig(ResponseFormat.Text, Some(Verbosity.low))
       TextResponseConfig(ResponseFormat.Text) shouldBe TextResponseConfig(
         ResponseFormat.Text,
         None
@@ -2091,6 +2101,17 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
         ResponseFormat.Text,
         None
       )
+      low.copy(format = ResponseFormat.JsonObject) shouldBe
+        TextResponseConfig(ResponseFormat.JsonObject, Some(Verbosity.low))
+      low.copy(verbosity = None) shouldBe TextResponseConfig(ResponseFormat.Text, None)
+      Option(ResponseFormat.JsonObject).map(TextResponseConfig.apply) shouldBe
+        Some(TextResponseConfig(ResponseFormat.JsonObject, None))
+      val asFunction: ResponseFormat => TextResponseConfig = TextResponseConfig
+      asFunction(ResponseFormat.Text) shouldBe TextResponseConfig(ResponseFormat.Text, None)
+      TextResponseConfig.fromProduct(Tuple1(ResponseFormat.Text)) shouldBe
+        TextResponseConfig(ResponseFormat.Text, None)
+      TextResponseConfig.fromProduct((ResponseFormat.Text, Some(Verbosity.high))) shouldBe
+        TextResponseConfig(ResponseFormat.Text, Some(Verbosity.high))
     }
 
     "serialize and deserialize ReasoningEffort values" in {

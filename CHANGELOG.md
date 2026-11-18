@@ -12,8 +12,13 @@ leaves a request's `n` out (the API refuses it, even 1): a larger `n` is dropped
 back.
 
 `TextResponseConfig` (the Responses API's `text` object) has a new field, `verbosity: Option[Verbosity] = None`.
-Source compatible; of its binary interface the one-argument constructor and `apply` are kept, so code compiled against
-2.0.0 that builds one keeps working - only `copy` and pattern matching on a `TextResponseConfig` need a recompile.
+- Code compiled against 2.0.0 keeps working: the one-argument constructor, `apply` and `copy` are kept, the companion
+  is still a `Function1` on Scala 2 (`opt.map(TextResponseConfig)`), a Scala 3 `Mirror` of the one-field class still
+  builds one, and pattern matches run unchanged. Only an explicit `TextResponseConfig.unapply(x)` call on Scala 2 -
+  and so a play-json `Json.format[TextResponseConfig]` of your own compiled against 2.0.0, when it writes - gets the
+  new pair and fails (`ClassCastException`); recompile such code.
+- In source, a one-argument pattern `case TextResponseConfig(format)` needs the second binder:
+  `case TextResponseConfig(format, _)`.
 
 ### New models
 
@@ -21,7 +26,8 @@ Source compatible; of its binary interface the one-argument constructor and `app
   `bedrock_openai_gpt_6_2_astra`; created 2026-11-02 / 2026-10-31, on OpenRouter since 2026-11-17; 1,050,000 context,
   Sol $2 / $10 and Astra $8 / $40 per 1M tokens): both follow the GPT-6 Astra rules - reasoning always on
   (`reasoning_effort` `none` / `minimal` sent as `low`, `max` as `xhigh` on chat completions and kept on the Responses
-  API), sampling params, logprobs, `stop` and `logit_bias` dropped, function tools through the Responses API. New in
+  API); on chat completions `temperature` / `top_p` are sent as 1 and the penalties as 0 (the only values accepted),
+  logprobs, `stop` and `logit_bias` dropped; function tools through the Responses API. New in
   6.2: `n` is refused even at 1, so the client leaves it out (`ChatCompletionSettingsConversions.gpt6SingleChoice`, for
   every GPT-6 minor from 2 on), and `service_tier = flex` is refused on both APIs ("Use background=true with
   background_options.completion_window instead") - left to the API. Strict `json_schema` works (both ids and their
@@ -40,10 +46,12 @@ Source compatible; of its binary interface the one-argument constructor and `app
 - **`verbosity` on the Responses API path** was dropped with a warning ("'verbosity' parameter is not supported") on
   every chat call the full service sends through the Responses API - tool calls of GPT-6 Astra and 6.1+ Sol, reasoning
   summaries, pro mode, multi-agent, the ultrafast tier. It is sent as `text.verbosity` now (new
-  `TextResponseConfig.verbosity`, which `createModelResponse` takes too). Perplexity's `agentAsOpenAI`, whose API has
-  no `text.verbosity` and no text format but `json_schema`, gets a `text` object only for a JSON schema (verbosity
-  dropped with a warning). Live 2026-11-18: GPT-6.2 Sol / Astra answered a tool-call request
-  with `verbosity = low` in 937 / 845 characters, with `high` in 1,083 / 1,114.
+  `TextResponseConfig.verbosity`, which `createModelResponse` takes too; an unknown verbosity echoed in a response
+  reads as absent). The o-series and `gpt-5-search-api` take only `medium` there too, so another value is dropped with
+  a warning, as on chat completions (live: o3 answers `low` / `high` with a 400 on both APIs). Perplexity's
+  `agentAsOpenAI`, whose API has no `text.verbosity` and no text format but `json_schema`, gets a `text` object only
+  for a JSON schema (verbosity dropped with a warning). Live 2026-11-18: GPT-6.2 Sol / Astra answered a tool-call
+  request with `verbosity = low` in 937 / 845 characters, with `high` in 1,083 / 1,114.
 
 ### Build
 

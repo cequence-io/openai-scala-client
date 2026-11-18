@@ -66,13 +66,36 @@ case class TextResponseConfig(
   verbosity: Option[Verbosity] = None
 ) {
 
-  // binary compatibility with 2.0.0 / 1.7.1 (before `verbosity`)
+  // Binary compatibility with 2.0.0 / 1.7.1 (before `verbosity`): their one-argument constructor
+  // and `copy`. A hand-written `copy` suppresses the synthetic one, so both are written out;
+  // `copy(format = f)` resolves to the one-argument copy and keeps the verbosity.
   def this(format: ResponseFormat) = this(format, None)
+
+  def copy(
+    format: ResponseFormat = this.format,
+    verbosity: Option[Verbosity] = this.verbosity
+  ): TextResponseConfig =
+    new TextResponseConfig(format, verbosity)
+
+  def copy(format: ResponseFormat): TextResponseConfig =
+    new TextResponseConfig(format, this.verbosity)
 }
 
-object TextResponseConfig {
+// Binary compatibility with 2.0.0 / 1.7.1: on Scala 2 the synthetic companion of the one-field
+// class was a Function1 (`opt.map(TextResponseConfig)`, `andThen`); a Scala 3 Mirror compiled
+// against it passes one element to `fromProduct`. Only an explicit `unapply` call (Scala 2) - or
+// a codec compiled against 2.0.0 that writes through it - sees the new pair.
+object TextResponseConfig
+    extends scala.runtime.AbstractFunction1[ResponseFormat, TextResponseConfig] {
 
-  // binary compatibility with 2.0.0 / 1.7.1, whose `TextResponseConfig(format)` calls link to
-  // this one-argument apply (a call without `verbosity` still resolves to it)
   def apply(format: ResponseFormat): TextResponseConfig = new TextResponseConfig(format, None)
+
+  def fromProduct(product: Product): TextResponseConfig =
+    new TextResponseConfig(
+      product.productElement(0).asInstanceOf[ResponseFormat],
+      if (product.productArity > 1)
+        product.productElement(1).asInstanceOf[Option[Verbosity]]
+      else
+        None
+    )
 }

@@ -245,6 +245,25 @@ class ReasoningModelsResponsesRoutingSpec extends AnyWordSpec with Matchers {
           None
         )
         .text shouldBe None
+
+      // the o-series takes only 'medium' (live 2026-11-18: o3 'low' / 'high' are 400s on the
+      // Responses API too) - another value is dropped, as on chat completions
+      adapter
+        .toResponsesSettings(
+          CreateChatCompletionSettings(ModelId.o3, verbosity = Some(Verbosity.low)),
+          None,
+          Nil,
+          None
+        )
+        .text shouldBe None
+      adapter
+        .toResponsesSettings(
+          CreateChatCompletionSettings(ModelId.o3, verbosity = Some(Verbosity.medium)),
+          None,
+          Nil,
+          None
+        )
+        .text shouldBe Some(TextResponseConfig(ResponseFormat.Text, Some(Verbosity.medium)))
     }
   }
 }
