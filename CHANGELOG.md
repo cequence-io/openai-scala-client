@@ -1,5 +1,34 @@
 # Changelog
 
+## 2.0.1 (unreleased)
+
+OpenAI's GPT-6.2 Sol and Astra (also on Bedrock), and smaller javadoc jars.
+
+### Upgrading from 2.0.0
+
+Binary compatible with 2.0.0: new model ids and entries in the model rules and the `models-supporting-json-schema`
+list - nothing removed or changed. On GPT-6.2 the client leaves a request's `n` out (the API refuses it, even 1): a
+larger `n` is dropped with a warning and one choice comes back.
+
+### New models
+
+- **GPT-6.2 Sol and Astra** (`ModelId.gpt_6_2_sol` / `gpt_6_2_astra`, Bedrock `bedrock_openai_gpt_6_2_sol` /
+  `bedrock_openai_gpt_6_2_astra`; created 2026-11-02 / 2026-10-31, on OpenRouter since 2026-11-17; 1,050,000 context,
+  Sol $2 / $10 and Astra $8 / $40 per 1M tokens): both follow the GPT-6 Astra rules - reasoning always on
+  (`reasoning_effort` `none` / `minimal` sent as `low`, `max` as `xhigh` on chat completions and kept on the Responses
+  API), sampling params, logprobs, `stop` and `logit_bias` dropped, function tools through the Responses API. New in
+  6.2: `n` is refused even at 1, so the client leaves it out (`ChatCompletionSettingsConversions.gpt6SingleChoice`, for
+  every GPT-6 minor from 2 on), and `service_tier = flex` is refused on both APIs ("Use background=true with
+  background_options.completion_window instead") - left to the API. Strict `json_schema` works (both ids and their
+  Bedrock ids in `models-supporting-json-schema`). On Bedrock through the `us.` / `global.` inference profiles (the bare
+  id is not on-demand). Live 2026-11-18: `examples/OpenAIConversionsAudit` 27 of 27 per model on OpenAI (it has `n`
+  cases now); on Bedrock chat, effort `max`, tool calls and the JSON helper answered in us-east-1 and eu-central-1.
+
+### Build
+
+- The javadoc jars keep one format per web font (`.woff2` / `.woff`, which every current browser reads) instead of
+  three or four - about 30 MB less per release, the same Scaladoc pages on every Scala line (`project/JavadocJars`).
+
 ## 2.0.0 (2026-11-17)
 
 The 1.x API without Akka. Calls go through any ws-client 1.2.2 engine - the JDK's `java.net.http` (`jdk`) by default,

@@ -13,7 +13,7 @@ First you need to provide an implicit execution context, e.g., as
 ```
 
 No `Materializer` or `ActorSystem` is needed to build or call a service, or to consume its streams. Each
-service created via a plain factory (e.g. `OpenAIServiceFactory()`) owns its HTTP engine - 🔥 by default the JDK's
+service created via a plain factory (e.g. `OpenAIServiceFactory()`) owns its HTTP engine - by default the JDK's
 `java.net.http` client, with no actor system (see [HTTP engines](http-engine.md#choosing-an-engine)) - and
 `service.close()` releases it. A streamed result (e.g. of `createChatCompletionStreamed`) is an `AsyncStream`: a cold
 plan, sent only when it is run (each run is a new request), and run with the implicit execution context alone, e.g.:
@@ -98,7 +98,7 @@ Then you can obtain a service in one of the following ways.
 
   The GPT-6 models on the runtime host take an inference profile id - `us.openai.gpt-6.1-sol`,
   `global.openai.gpt-6-luna`, `us.openai.gpt-6.1-terra` (GPT-6.1 Terra, `global.` too; live 2026-10-29), `us.openai.gpt-6.2-sol` /
-  `global.openai.gpt-6.2-astra` (GPT-6.2, both profiles for both; live 2026-11-18): the bare `openai.gpt-6.1-sol` / `openai.gpt-6-sol` / `openai.gpt-6-luna` are a 400
+  `global.openai.gpt-6.2-astra` (🔥 GPT-6.2, both profiles for both; live 2026-11-18): the bare `openai.gpt-6.1-sol` / `openai.gpt-6-sol` / `openai.gpt-6-luna` are a 400
   "on-demand throughput isn't supported" in every region tried (us-east-1, us-east-2, us-west-2, eu-central-1,
   eu-north-1, eu-west-1; live 2026-10-26), and `eu.openai.gpt-6.1-sol` an invalid id in eu-central-1. The mantle
   host serves the bare ids instead, in us-east-1 only of those regions (404 elsewhere).

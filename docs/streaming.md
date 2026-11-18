@@ -8,7 +8,7 @@ mid-stream.
 
 ## AsyncStream
 
-🔥 Since 2.0.0 every streamed call returns an `AsyncStream[A]` where 1.x returned an Akka `Source[A, NotUsed]` - chat
+Since 2.0.0 every streamed call returns an `AsyncStream[A]` where 1.x returned an Akka `Source[A, NotUsed]` - chat
 chunks, typed `ChatChunk`s, Responses API events, Agents API session events, downloaded bytes. `AsyncStream` comes from
 ws-client 1.2.0 (package `io.cequence.wsclient.stream`, in `ws-client-core`): it needs no Akka, no actor system and no
 `Materializer` - the run methods take an implicit `ExecutionContext` and return a `Future`. Coming from 1.x, see
@@ -208,7 +208,7 @@ val shouting = OpenAIChatCompletionIOConversionAdapter(
 
 ## Consuming a stream: Akka, Pekko, fs2, ZIO
 
-🔥 The run methods need only an `ExecutionContext`. To hand a stream to a streaming library, add that library's ws-client
+The run methods need only an `ExecutionContext`. To hand a stream to a streaming library, add that library's ws-client
 interop artifact - `"io.cequence" %% "<artifact>" % "1.2.2"`, the ws-client version this library depends on (every
 ws-client artifact on a classpath must have the same version) - and import one object:
 

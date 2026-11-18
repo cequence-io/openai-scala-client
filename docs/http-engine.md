@@ -7,13 +7,13 @@ many services and providers,
 timeouts, proxy and HTTP version, and embedding the library in an Akka, Pekko or ZIO application.
 
 Every HTTP call goes through an **engine** of [ws-client](https://github.com/cequence-io/ws-client) 1.2.2, which is
-one HTTP backend behind a common contract. 🔥 Since 2.0.0 the default engine is `jdk`, built on the JDK's own
+one HTTP backend behind a common contract. Since 2.0.0 the default engine is `jdk`, built on the JDK's own
 `java.net.http` client. It comes with `openai-scala-core`, needs no Akka and no actor system, and supports streaming.
 To use another engine, add its artifact: engines are picked up from the classpath. An engine keeps no state for any one
 service, since each call carries its own base URL and credentials. So one engine can serve any number of services and
 providers.
 
-Upgrading from 1.x, which ran on Play WS and Akka? See [Migrating to 2.0](migration-2.0.md) 🔥.
+Upgrading from 1.x, which ran on Play WS and Akka? See [Migrating to 2.0](migration-2.0.md).
 
 ## Choosing an engine
 
@@ -90,7 +90,7 @@ See ws-client's [Compatibility](https://github.com/cequence-io/ws-client/blob/ma
   `proxyURL` and logs a warning. On Scala 3 the Pekko engines need 3.3+.
 - **No Akka, no Pekko, fewest dependencies:** `jdk`. There is nothing to add (see [The `jdk` engine](#the-jdk-engine)).
 - **A ZIO application:** `zio-http` (Scala 2.12 / 2.13). Its streams are native ZIO `ZStream`s, also through the
-  [ZIO services](zio.md) 🔥.
+  [ZIO services](zio.md).
 - **fs2 / cats-effect:** there is no fs2 engine. Use `jdk` with `toFs2`
   ([Consuming a stream](streaming.md#consuming-a-stream-akka-pekko-fs2-zio)).
 - **Any other HTTP stack** (OkHttp, Armeria, ...): `sttp` on that stack's sttp `Future` backend. It serves only the
@@ -258,7 +258,7 @@ per call or per service.
   - `pekko-http` ignores this setting and logs a warning.
   - `zio-http` still resolves the target host through local DNS.
   - No factory takes a proxy: set it on an engine and pass the engine to `withEngine`.
-- `httpVersion: Option[HttpVersion]` 🔥: `HttpVersion.Http11` or `HttpVersion.Http2`. Only the `jdk` engine honours it.
+- `httpVersion: Option[HttpVersion]`: `HttpVersion.Http11` or `HttpVersion.Http2`. Only the `jdk` engine honours it.
 
 For a single service, the plain factories take `timeouts: Option[Timeouts]` (OpenAI, Anthropic, Gemini, decision
 models, ...), and no engine code is needed. Perplexity's `SonarServiceFactory` has no such parameter: give it an engine
@@ -389,7 +389,7 @@ val service = OpenAIServiceFactory.withStreaming.withEngine(engine)
 An engine found on the classpath brings its own execution environment: an Akka or Pekko engine has its own daemon actor
 system, and `zio-http` has its own Netty driver. In an application that already runs one, build the engine on the
 application's own runtime with the engine's constructor and pass it to `withEngine`. No factory takes a `Materializer`
-or an `ActorSystem` 🔥; only the engine does. Neither the engine nor a service on it ever shuts down your runtime.
+or an `ActorSystem`; only the engine does. Neither the engine nor a service on it ever shuts down your runtime.
 
 **Akka** (`ws-client-play-akka-stream`):
 
@@ -480,7 +480,7 @@ val engine = PekkoHttpWSClientEngine()
 val service = OpenAIServiceFactory.withStreaming.withEngine(engine)
 ```
 
-**ZIO** 🔥 (`ws-client-zio-http`, Scala 2.12 / 2.13). `ZioHttpWSClientEngine.layer()` builds the engine on your
+**ZIO** (`ws-client-zio-http`, Scala 2.12 / 2.13). `ZioHttpWSClientEngine.layer()` builds the engine on your
 application's zio-http `Client` and runs it on your runtime. It never closes the client. The client's own configuration
 applies (connect and idle timeouts, proxy, TLS); of the engine's `TransportSettings` only `requestTimeout` does.
 Configure the client's TLS yourself, because zio-http's default `ClientSSLConfig` accepts any certificate. With the

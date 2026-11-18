@@ -47,7 +47,7 @@ openai-scala-client {
 ```
 
 
-5. 🔥 _Which HTTP engine should I use?_
+5. _Which HTTP engine should I use?_
 
    The default - the JDK's `java.net.http` client (engine `jdk`), which comes with the library and needs no actor
    system - serves most applications, streaming included. Another engine takes over once its ws-client module is on
@@ -64,7 +64,7 @@ openai-scala-client {
    [Streaming](streaming.md#consuming-a-stream-akka-pekko-fs2-zio).
 
 
-6. 🔥 _Many calls started at once on a fresh service fail with "HTTP connect timed out". Why?_
+6. _Many calls started at once on a fresh service fail with "HTTP connect timed out". Why?_
 
    On the default `jdk` engine, `java.net.http` opens a connection per concurrent call until its first connection to
    the host is up; where new TLS connections are slow, the later calls of the burst pass the connect timeout (5 s by

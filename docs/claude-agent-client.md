@@ -36,7 +36,7 @@ it automatically. `completion` exposes the eventual process exit code and a boun
 To approve a tool call unchanged, reply with `PermissionDecision.Allow(request.input)`; the CLI
 requires an explicit `updated_input` object.
 
-**`events` is hot** - an exception to this library's cold streams. `startSession` spawns the process right away (🔥 it
+**`events` is hot** - an exception to this library's cold streams. `startSession` spawns the process right away (it
 takes only the implicit execution context, no `Materializer`), and the process's output is read whether or not anyone
 consumes it: one broadcast hub per service fans it out. Each run of `events` begins with the replayed `system/init`
 event, then gets the live events from the moment the run starts (or from the oldest event still buffered for a slower

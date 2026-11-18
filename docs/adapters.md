@@ -33,7 +33,7 @@ Note that the adapters can be arbitrarily combined/stacked.
 
 - **Parallel** calls - `parallelTakeFirst` sends every call to all the services at once and completes with the first
   to complete, its response or its failure. The full request reaches every provider, and the losing calls are not
-  cancelled: they complete, and are billed, anyway - only combine providers that may all see the data. 🔥 It needs no
+  cancelled: they complete, and are billed, anyway - only combine providers that may all see the data. It needs no
   `Materializer` since 2.0.0.
 
 ```scala
@@ -95,7 +95,7 @@ class MyCompletionService(apiKey: String)(
 }
 ```
 
-  🔥 Retries need no `ActorSystem` since 2.0.0: the retry adapter, `RetryHelpers`, the failover and JSON helpers of
+  Retries need no `ActorSystem` since 2.0.0: the retry adapter, `RetryHelpers`, the failover and JSON helpers of
   [chat completions](chat-completions.md#failover-policy) and the batch helpers (**Batch processing**, below) wait
   between tries and polls on an implicit `AsyncScheduler` (`io.cequence.wsclient.concurrent`), whose default - one
   daemon thread - is found without an import. To use a timer of your own, put an implicit `AsyncScheduler` in scope:
@@ -296,7 +296,7 @@ class MyCompletionService(apiKey: String)(
   for transforming messages/settings on input or assistant messages on output.
   See [examples](../openai-examples/src/main/scala/io/cequence/openaiscala/examples/adapters).
   For a streamed service, [OpenAIChatCompletionIOConversionAdapter](../openai-client-stream/src/main/scala/io/cequence/openaiscala/service/OpenAIChatCompletionIOConversionAdapter.scala)
-  (`openai-scala-client-stream`) applies the same input conversions and converts the streams' output with 🔥
+  (`openai-scala-client-stream`) applies the same input conversions and converts the streams' output with
   `AsyncPipe`s: `outputChunkMessageConversion` for the OpenAI-shaped chunks' deltas, which must be 1:1 (one output per
   input, in order - a pipe that emits more fails the stream, one that drops elements misaligns them), and
   `outputChatChunkConversion` for the typed chunks. An Akka or Pekko `Flow` becomes a pipe with `.toAsyncPipe`

@@ -2,7 +2,7 @@
 
 [← back to the README](../README.md)
 
-🔥 New in 2.0.0: the `openai-scala-zio` module gives every service of the library as a ZIO view - the same methods,
+New in 2.0.0: the `openai-scala-zio` module gives every service of the library as a ZIO view - the same methods,
 returning `Task` where the service returns a `Future` and `ZStream` where it returns an `AsyncStream`. The views are
 generated from the service traits at build time ([ZioServiceGenerator](../project/ZioServiceGenerator.scala)), so
 they always have the methods, parameters, defaults and Scaladoc of the services they wrap.
@@ -114,7 +114,7 @@ object ZioChat extends ZIOAppDefault {
 `layer(() => service)` is a `ZLayer` that builds the service when the layer is acquired, runs the view on the
 application's runtime and closes the service with the layer's scope (the views of services that close - see
 [Closing](#the-service-behind-a-view-asfuture)). It takes a function, not a by-name parameter (ZIO's `provide` macro
-cannot take a by-name call). 🔥 `layerFromZIO(effect)` builds the service with a ZIO effect instead - its environment
+cannot take a by-name call). `layerFromZIO(effect)` builds the service with a ZIO effect instead - its environment
 becomes the layer's input, e.g. an engine (see [Native ZIO](#native-zio-the-zio-http-engine)):
 
 ```scala

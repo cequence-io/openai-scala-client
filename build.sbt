@@ -12,8 +12,8 @@ val scala33 = "3.3.8"
 
 ThisBuild / organization := "io.cequence"
 ThisBuild / scalaVersion := scala213
-ThisBuild / version := "2.0.1-SNAPSHOT"
-ThisBuild / isSnapshot := true
+ThisBuild / version := "2.0.1"
+ThisBuild / isSnapshot := false
 
 // Scala 3's library pinned to scalaVersion, as sbt did before 1.10: since then a dependency's
 // newer one joins the classpath (sbt's Scala override names only the Scala 2 artifacts), and a

@@ -43,7 +43,7 @@ when not given explicitly:
   )
 ```
 
-🔥 The adapter takes only the implicit execution context (no `Materializer` since 2.0.0), and its streams are cold: a
+The adapter takes only the implicit execution context (no `Materializer` since 2.0.0), and its streams are cold: a
 streamed call that starts a turn creates the turn's session when the stream is run - each run a new session and a new,
 billed turn - so a stream that is never run creates nothing.
 
@@ -56,7 +56,7 @@ first four events (`session.status_running`, `session.thread_status_running`, th
 
 - `streamSessionEvents(sessionId)` is a cold `AsyncStream` (see [Streaming](streaming.md#asyncstream)): it connects
   when it runs, a new subscription per run - for following a session, not for a turn you start.
-- `subscribeSessionEvents(sessionId)` 🔥 connects when it is called. Its `Future` completes once the server confirmed
+- `subscribeSessionEvents(sessionId)` connects when it is called. Its `Future` completes once the server confirmed
   the subscription (its first frame, a `: connected` comment, comes with the response headers), with the events from
   then on as a **single-run** stream - the shape of the official SDKs' `events.stream(...)`. Send the events that start
   or resume a turn after it completed, then run the stream. Run it once, or cancel it: an abandoned one holds its
