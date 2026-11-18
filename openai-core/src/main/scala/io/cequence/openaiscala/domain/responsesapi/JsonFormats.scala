@@ -88,18 +88,27 @@ object JsonFormats {
   }
 
   // text response config
-  // written out: the companion's extra one-argument apply (binary compatibility) would make
-  // the macro's choice of constructor ambiguous
-  implicit lazy val textResponseConfigFormat: Format[TextResponseConfig] = (
-    (__ \ "format").format[ResponseFormat] and
-      (__ \ "verbosity").formatNullable[Verbosity]
-  )(
-    (
-      format,
-      verbosity
-    ) => TextResponseConfig(format, verbosity),
-    (config: TextResponseConfig) => (config.format, config.verbosity)
-  )
+  // a response echoes the request's text object: an unknown verbosity (a value newer than this
+  // client, a compatible host's "") is read as absent, like truncation / reasoning, rather than
+  // failing the whole response
+  implicit lazy val textResponseConfigFormat: Format[TextResponseConfig] = {
+    val reads: Reads[TextResponseConfig] = (
+      (__ \ "format").read[ResponseFormat] and
+        (__ \ "verbosity").readNullable[JsValue].map(_.flatMap(_.asOpt[Verbosity]))
+    )(
+      (
+        format,
+        verbosity
+      ) => TextResponseConfig(format, verbosity)
+    )
+
+    val writes: OWrites[TextResponseConfig] = (
+      (__ \ "format").write[ResponseFormat] and
+        (__ \ "verbosity").writeNullable[Verbosity]
+    )((config: TextResponseConfig) => (config.format, config.verbosity))
+
+    OFormat(reads, writes)
+  }
 
   implicit lazy val reasoningModeFormat: Format[ReasoningMode] =
     enumFormat[ReasoningMode](ReasoningMode.values: _*)

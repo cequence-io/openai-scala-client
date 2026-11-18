@@ -510,20 +510,15 @@ object ChatCompletionSettingsConversions {
     val serviceTierUnsupported: FieldConversionDef =
       unsupported("service_tier", _.service_tier.isDefined, _.copy(service_tier = None))
 
-    // GPT-6.2 (live 2026-11-18, Sol and Astra): "Unsupported parameter: 'n' is not supported
-    // with this model. Omit 'n' from the request." - even n = 1, so the field is left out
-    // whenever it is set; a larger n is dropped with a warning (one choice comes back)
-    val nUnsupported: Seq[FieldConversionDef] = Seq(
-      FieldConversionDef(
-        _.n.exists(_ > 1),
-        _.copy(n = None),
-        Some { settings =>
-          val n = settings.n.getOrElse(1)
-          s"${settings.model} model returns one choice only ('n' is a 400), dropping n = $n."
-        },
-        warning = true
+    // several choices refused: Gemini (candidateCount > 1, every model but 2.x) and GPT-6.2+ -
+    // n > 1 is dropped with a warning (one choice comes back)
+    private[adapter] val severalChoicesUnsupported: FieldConversionDef = FieldConversionDef(
+      _.n.exists(_ > 1),
+      _.copy(n = None),
+      Some(settings =>
+        s"${settings.model} model returns one choice only (n > 1 is a 400), dropping n = ${settings.n.mkString}."
       ),
-      FieldConversionDef(_.n.isDefined, _.copy(n = None), None)
+      warning = true
     )
 
     // o1 and o3-mini (and their dated snapshots) still accept stop; o3 / o4-mini (and any newer
@@ -790,9 +785,18 @@ object ChatCompletionSettingsConversions {
    */
   def gpt6SingleChoice(model: String): SettingsConversion =
     if (gpt6Minor(model).exists(_ >= 2))
-      generic(FieldConversions.nUnsupported)
+      gpt6_2Choices
     else
       identity
+
+  // GPT-6.2 (live 2026-11-18, Sol and Astra): "Unsupported parameter: 'n' is not supported with
+  // this model. Omit 'n' from the request." - even n = 1, which is left out without a warning
+  private lazy val gpt6_2Choices: SettingsConversion = generic(
+    Seq(
+      FieldConversions.severalChoicesUnsupported,
+      FieldConversionDef(_.n.isDefined, _.copy(n = None), None)
+    )
+  )
 
   // Function tools on the CHAT COMPLETIONS API (createChatToolCompletion) - verified live
   // 2026-09-26: GPT-5.3 and older accept tools with any reasoning_effort; GPT-5.4 and 5.5
@@ -812,6 +816,26 @@ object ChatCompletionSettingsConversions {
    * GPT-6.1 Sol also reject 'none' (-> 'low'), GPT-6.1 Terra takes it (live 2026-10-29). Other
    * models are passed through unchanged.
    */
+  /**
+   * The verbosity to send on the Responses API (`text.verbosity`) - the chat rule sets'
+   * counterpart: the o-series and gpt-5-search-api take only 'medium' there too (live
+   * 2026-11-18: o3 answers 'low' / 'high' with a 400 on both APIs), so another value is
+   * dropped with a warning, as `verbosityMediumOnly` does on chat completions. Any other model
+   * gets the value as it is (a non-reasoning model's 400 is left to the API, as on chat
+   * completions).
+   */
+  def responsesVerbosity(
+    model: String,
+    verbosity: Verbosity
+  ): Option[Verbosity] =
+    if ((isOSeries(model) || isGpt5SearchApi(model)) && verbosity != Verbosity.medium) {
+      logger.warn(
+        s"$model model doesn't support verbosity values other than 'medium', dropping it."
+      )
+      None
+    } else
+      Some(verbosity)
+
   def responsesReasoningEffort(
     model: String,
     effort: ReasoningEffort
@@ -1154,16 +1178,6 @@ object ChatCompletionSettingsConversions {
     FieldConversionDef(value(_).contains(0), drop, None)
   )
 
-  private val severalCandidatesUnsupported = FieldConversionDef(
-    _.n.exists(_ > 1),
-    _.copy(n = None),
-    Some { settings =>
-      val n = settings.n.getOrElse(1)
-      s"${settings.model} model returns one candidate only (n > 1 is a 400), dropping n = $n."
-    },
-    warning = true
-  )
-
   /**
    * The settings Gemini refuses, for any model on Google's API (the Gemini adapter applies it
    * to every model, Gemma included; the chat completions body to [[isGemini]] ids).
@@ -1181,7 +1195,7 @@ object ChatCompletionSettingsConversions {
       if (geminiTakesSeveralCandidates(model))
         Nil
       else
-        Seq(severalCandidatesUnsupported)
+        Seq(FieldConversions.severalChoicesUnsupported)
     )
   )
 

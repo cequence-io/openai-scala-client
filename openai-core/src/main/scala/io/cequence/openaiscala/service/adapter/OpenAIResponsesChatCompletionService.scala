@@ -560,11 +560,11 @@ private[service] class OpenAIResponsesChatCompletionService(
         "Responses API adapter: 'extra_params' parameter is not supported, ignoring"
       )
 
-    val format: Option[TextResponseConfig] = settings.response_format_type.flatMap {
+    val responseFormat: Option[ResponseFormat] = settings.response_format_type.flatMap {
       case ChatCompletionResponseFormatType.text => None
 
       case ChatCompletionResponseFormatType.json_object =>
-        Some(TextResponseConfig(ResponseFormat.JsonObject))
+        Some(ResponseFormat.JsonObject)
 
       case ChatCompletionResponseFormatType.json_schema =>
         settings.jsonSchema.map { schemaDef =>
@@ -590,31 +590,31 @@ private[service] class OpenAIResponsesChatCompletionService(
                 else
                   schema
 
-              TextResponseConfig(
-                ResponseFormat.JsonSchemaSpec(
-                  schema = newSchema,
-                  name = Some(schemaDef.name),
-                  strict = Some(schemaDef.strict)
-                )
+              ResponseFormat.JsonSchemaSpec(
+                schema = newSchema,
+                name = Some(schemaDef.name),
+                strict = Some(schemaDef.strict)
               )
 
             case None =>
               logger.warn(
                 "Responses API adapter: the map-based JSON schema could not be read as a typed schema and is NOT sent, using json_object format instead"
               )
-              TextResponseConfig(ResponseFormat.JsonObject)
+              ResponseFormat.JsonObject
           }
         }
     }
 
     // the chat completions API's top-level verbosity is the Responses API's text.verbosity
+    val verbosity = settings.verbosity.flatMap(
+      ChatCompletionSettingsConversions.responsesVerbosity(settings.model, _)
+    )
+
     val text: Option[TextResponseConfig] =
-      format
-        .map(_.copy(verbosity = settings.verbosity))
-        .orElse(
-          settings.verbosity
-            .map(verbosity => TextResponseConfig(ResponseFormat.Text, Some(verbosity)))
-        )
+      if (responseFormat.isEmpty && verbosity.isEmpty)
+        None
+      else
+        Some(TextResponseConfig(responseFormat.getOrElse(ResponseFormat.Text), verbosity))
 
     val reasoning: Option[ReasoningConfig] = {
       val effort = settings.reasoning_effort.map(
