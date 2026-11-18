@@ -3,7 +3,7 @@ package io.cequence.openaiscala.domain.responsesapi
 import io.cequence.openaiscala.domain.JsonSchema
 import io.cequence.openaiscala.domain.responsesapi.tools.JsonFormats._
 import io.cequence.openaiscala.domain.responsesapi.JsonFormats._
-import io.cequence.openaiscala.domain.settings.ReasoningEffort
+import io.cequence.openaiscala.domain.settings.{ReasoningEffort, Verbosity}
 import io.cequence.openaiscala.JsonFormats.reasoningEffortFormat
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpecLike
@@ -2069,6 +2069,27 @@ class JsonFormatsSpecs extends AnyWordSpecLike with Matchers {
           |  }
           |}""".stripMargin,
         Pretty
+      )
+
+      // text.verbosity (since 2.0.1 / 1.7.2), left out when not set
+      testCodec[TextResponseConfig](
+        TextResponseConfig(ResponseFormat.Text, Some(Verbosity.low)),
+        """{
+          |  "format" : {
+          |    "type" : "text"
+          |  },
+          |  "verbosity" : "low"
+          |}""".stripMargin,
+        Pretty
+      )
+      // the one-argument apply and constructor kept for binary compatibility
+      TextResponseConfig(ResponseFormat.Text) shouldBe TextResponseConfig(
+        ResponseFormat.Text,
+        None
+      )
+      new TextResponseConfig(ResponseFormat.Text) shouldBe TextResponseConfig(
+        ResponseFormat.Text,
+        None
       )
     }
 

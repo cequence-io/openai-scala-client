@@ -2,13 +2,18 @@
 
 ## 2.0.1 (unreleased)
 
-OpenAI's GPT-6.2 Sol and Astra (also on Bedrock), and smaller javadoc jars.
+OpenAI's GPT-6.2 Sol and Astra (also on Bedrock), two fixes on the Responses API path (multi-agent responses of
+GPT-6.2 failed to parse; `verbosity` was dropped), and smaller javadoc jars.
 
 ### Upgrading from 2.0.0
 
-Binary compatible with 2.0.0: new model ids and entries in the model rules and the `models-supporting-json-schema`
-list - nothing removed or changed. On GPT-6.2 the client leaves a request's `n` out (the API refuses it, even 1): a
-larger `n` is dropped with a warning and one choice comes back.
+New model ids and entries in the model rules and the `models-supporting-json-schema` list. On GPT-6.2 the client
+leaves a request's `n` out (the API refuses it, even 1): a larger `n` is dropped with a warning and one choice comes
+back.
+
+`TextResponseConfig` (the Responses API's `text` object) has a new field, `verbosity: Option[Verbosity] = None`.
+Source compatible; of its binary interface the one-argument constructor and `apply` are kept, so code compiled against
+2.0.0 that builds one keeps working - only `copy` and pattern matching on a `TextResponseConfig` need a recompile.
 
 ### New models
 
@@ -23,6 +28,22 @@ larger `n` is dropped with a warning and one choice comes back.
   Bedrock ids in `models-supporting-json-schema`). On Bedrock through the `us.` / `global.` inference profiles (the bare
   id is not on-demand). Live 2026-11-18: `examples/OpenAIConversionsAudit` 27 of 27 per model on OpenAI (it has `n`
   cases now); on Bedrock chat, effort `max`, tool calls and the JSON helper answered in us-east-1 and eu-central-1.
+
+### Fixed
+
+- **Multi-agent responses of GPT-6.2** failed to parse (`CequenceWSException: Unexpected JSON`) - `createModelResponse`
+  with `multiAgent` and the chat adapter's sync calls with `setResponsesMultiAgent`. Their output also lists each
+  subagent's task as a `user` message of `input_text` content, which the output reads (the model's messages:
+  `output_text` / `refusal`) refused; such messages are now skipped, like output items of an unknown type. GPT-6.1 Sol
+  never sent them; streams were not affected. Pinned by a recorded GPT-6.2 response and stream in
+  `MultiAgentResponsesSpec`.
+- **`verbosity` on the Responses API path** was dropped with a warning ("'verbosity' parameter is not supported") on
+  every chat call the full service sends through the Responses API - tool calls of GPT-6 Astra and 6.1+ Sol, reasoning
+  summaries, pro mode, multi-agent, the ultrafast tier. It is sent as `text.verbosity` now (new
+  `TextResponseConfig.verbosity`, which `createModelResponse` takes too). Perplexity's `agentAsOpenAI`, whose API has
+  no `text.verbosity` and no text format but `json_schema`, gets a `text` object only for a JSON schema (verbosity
+  dropped with a warning). Live 2026-11-18: GPT-6.2 Sol / Astra answered a tool-call request
+  with `verbosity = low` in 937 / 845 characters, with `high` in 1,083 / 1,114.
 
 ### Build
 

@@ -4,8 +4,12 @@ import java.{util => ju}
 import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.JsonUtil.{enumFormat, snakeEnumFormat}
 import io.cequence.openaiscala.domain.responsesapi.{ModelStatus, ResponseStreamEvent}
-import io.cequence.openaiscala.JsonFormats.{jsonSchemaFormat, reasoningEffortFormat}
-import io.cequence.openaiscala.domain.settings.ReasoningEffort
+import io.cequence.openaiscala.JsonFormats.{
+  jsonSchemaFormat,
+  reasoningEffortFormat,
+  verbosityFormat
+}
+import io.cequence.openaiscala.domain.settings.{ReasoningEffort, Verbosity}
 import io.cequence.openaiscala.domain.responsesapi.{TruncationStrategy, ResponseFormat}
 import io.cequence.openaiscala.domain.responsesapi.tools._
 import io.cequence.openaiscala.domain.responsesapi.InputMessageContent
@@ -84,8 +88,18 @@ object JsonFormats {
   }
 
   // text response config
-  implicit lazy val textResponseConfigFormat: Format[TextResponseConfig] =
-    Json.format[TextResponseConfig]
+  // written out: the companion's extra one-argument apply (binary compatibility) would make
+  // the macro's choice of constructor ambiguous
+  implicit lazy val textResponseConfigFormat: Format[TextResponseConfig] = (
+    (__ \ "format").format[ResponseFormat] and
+      (__ \ "verbosity").formatNullable[Verbosity]
+  )(
+    (
+      format,
+      verbosity
+    ) => TextResponseConfig(format, verbosity),
+    (config: TextResponseConfig) => (config.format, config.verbosity)
+  )
 
   implicit lazy val reasoningModeFormat: Format[ReasoningMode] =
     enumFormat[ReasoningMode](ReasoningMode.values: _*)
@@ -701,8 +715,23 @@ object JsonFormats {
         responsesLogger.warn(
           s"Responses API: skipping output items of unknown type(s): ${unknown.flatMap(i => (i \ "type").asOpt[String]).distinct.mkString(", ")}"
         )
-      Json.toJson(known).validate[Seq[Output]]
+      val (foreign, own) = known.partition(isForeignMessage)
+      if (foreign.nonEmpty)
+        responsesLogger.debug(
+          s"Responses API: skipping ${foreign.size} output message(s) not written by the model (role ${foreign
+              .flatMap(i => (i \ "role").asOpt[String])
+              .distinct
+              .mkString(", ")})"
+        )
+      Json.toJson(own).validate[Seq[Output]]
     }
+
+  // a `message` output item with a role other than assistant - GPT-6.2's multi-agent runs
+  // list each subagent's task as a `user` message of `input_text` content (live 2026-11-18),
+  // which Message.OutputContent (the model's messages: output_text / refusal) cannot hold
+  private def isForeignMessage(item: JsValue): Boolean =
+    (item \ "type").asOpt[String].contains("message") &&
+      (item \ "role").asOpt[String].exists(_ != "assistant")
 
   private lazy val responsesLogger =
     org.slf4j.LoggerFactory.getLogger("io.cequence.openaiscala.responsesapi")
