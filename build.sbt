@@ -64,7 +64,7 @@ lazy val commonSettings = Seq(
     }
     new RuleTransformer(dropTestkit).transform(node).head
   }
-)
+) ++ JavadocJars.settings // small javadoc jars: no duplicate font formats
 
 // A 3.2-line module (its `_3` artifact compiled with 3.2.2) that also builds with 3.3: an sbt
 // project dependency needs one Scala line on both sides, so the 3.3-line ZIO module depends on
