@@ -16,7 +16,7 @@ lazy val commonSettings = Seq(
   libraryDependencies += "org.scalatestplus" %% "mockito-4-11" % "3.2.16.0" % Test,
   libraryDependencies ++= extraTestDependencies(scalaVersion.value),
   crossScalaVersions := List(scala212, scala213, scala3)
-)
+) ++ JavadocJars.settings // small javadoc jars: no duplicate font formats
 
 def extraTestDependencies(scalaVersion: String) =
   CrossVersion.partialVersion(scalaVersion) match {
