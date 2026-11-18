@@ -14,7 +14,7 @@ directly to Anthropic's Managed Agents REST API instead of spawning a local proc
 Add the dependency:
 
 ```
-"io.cequence" %% "openai-scala-claude-agent-client" % "2.0.0"
+"io.cequence" %% "openai-scala-claude-agent-client" % "2.0.1"
 ```
 
 ```scala

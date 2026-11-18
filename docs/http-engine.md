@@ -36,7 +36,7 @@ version, which is 1.2.2, the version this library is built on:
 
 ```scala
 libraryDependencies ++= Seq(
-  "io.cequence" %% "openai-scala-client-stream" % "2.0.0",
+  "io.cequence" %% "openai-scala-client-stream" % "2.0.1",
   "io.cequence" %% "ws-client-play-akka-stream" % "1.2.2" // the Akka engine (priority 11) wins over jdk (0)
 )
 ```

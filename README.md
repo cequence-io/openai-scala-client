@@ -113,7 +113,8 @@ The currently supported Scala versions are **2.12, 2.13**, and **3** (built with
 sbt 1.10+ asks for a `scalaVersion` of at least 2.13.18), on Java 11+.
 
 👉 **Coming from 1.x?** The 1.x line - 1.7.x, on the [`1.7.x` branch](https://github.com/cequence-io/openai-scala-client/tree/1.7.x) - runs
-on Akka (Play WS, Akka `Source` streams); 2.0.0 needs neither. See [Migrating to 2.0](docs/migration-2.0.md).
+on Akka (Play WS, Akka `Source` streams); 2.0.0 needs neither. 1.7.2 is the last 1.x release, so please upgrade: see
+[Migrating to 2.0](docs/migration-2.0.md).
 
 To install the library, add the following dependency to your *build.sbt*
 

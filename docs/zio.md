@@ -10,14 +10,14 @@ they always have the methods, parameters, defaults and Scaladoc of the services 
 ## Installation
 
 ```
-"io.cequence" %% "openai-scala-zio" % "2.0.0"
+"io.cequence" %% "openai-scala-zio" % "2.0.1"
 ```
 
 - Scala 2.12, 2.13 and 3.3+. Its Scala 3 artifact is built with Scala 3.3, as ZIO's and ws-client-zio's are, so a
   Scala 3 project needs 3.3 or later for this module (the library's other modules work on 3.2.2 too).
 - It brings `openai-scala-client`, `openai-scala-client-stream` and ws-client-zio (ZIO 2 streams).
 - The provider modules are `provided` dependencies: the module pulls in none of them. Add the module of every
-  provider whose view you use, e.g. `"io.cequence" %% "openai-scala-anthropic-client" % "2.0.0"`, or
+  provider whose view you use, e.g. `"io.cequence" %% "openai-scala-anthropic-client" % "2.0.1"`, or
   `openai-scala-all` for all of them.
 - The library brings no logging backend; add an SLF4J binding of your choice (see the README).
 

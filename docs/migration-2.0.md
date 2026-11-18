@@ -16,7 +16,7 @@ services, their methods, the domain classes, the settings and the factories are 
 - logback is no longer a dependency.
 
 2.0.0 is not binary compatible with 1.x: recompile. The complete list of changes is in the [changelog](../CHANGELOG.md).
-The 1.x line (1.7.x) stays on Akka.
+The 1.x line (1.7.x) stays on Akka, and 1.7.2 is its last release - new models and fixes go to 2.x only.
 
 ## Which part applies to you
 
@@ -37,7 +37,7 @@ The 1.x line (1.7.x) stays on Akka.
 
 The order that works for an application, whether it makes a few streaming calls or uses the library in hundreds of files:
 
-1. **Dependencies.** Move every `openai-scala-*` artifact to 2.0.0 and add the engine you want to run on. For an Akka
+1. **Dependencies.** Move every `openai-scala-*` artifact to 2.0.1 and add the engine you want to run on. For an Akka
    application that is `ws-client-play-akka-stream`, the engine 1.x ran on. Pin every ws-client artifact on the
    classpath to 1.2.2, including the ones other libraries bring ([Dependencies](#dependencies)).
 2. **Logging.** If logback reached you only through 1.x, add an SLF4J binding ([Logging](#logging)).
@@ -62,14 +62,14 @@ Every engine with its sbt line, what the factories pick and a runnable example: 
 
 ```scala
 libraryDependencies ++= Seq(
-  "io.cequence" %% "openai-scala-client-stream" % "2.0.0", // or openai-scala-client, openai-scala-all, ... as in 1.x
+  "io.cequence" %% "openai-scala-client-stream" % "2.0.1", // or openai-scala-client, openai-scala-all, ... as in 1.x
   "ch.qos.logback" % "logback-classic" % "1.4.14"           // an SLF4J binding of your choice - see Logging
 )
 ```
 
 - 1.x brought Akka 2.6, Play WS and logback through its modules; 2.0.0 brings none of them. openai-core depends on
   ws-client-core, ws-client-jdk (the default engine), json-repair and scala-logging.
-- Every ws-client artifact on a classpath must have the same version - 1.2.2 for 2.0.0. A build that declares a ws-client
+- Every ws-client artifact on a classpath must have the same version - 1.2.2 for 2.0.0 and 2.0.1. A build that declares a ws-client
   artifact of its own (e.g. `ws-client-play-akka-stream` 1.1.5) moves it to 1.2.2. When other libraries bring ws-client
   too, pin it, json-repair included:
 
@@ -396,7 +396,7 @@ val reply: Task[ChatCompletionResponse] =
 After (2.0.0):
 
 ```scala
-libraryDependencies += "io.cequence" %% "openai-scala-zio" % "2.0.0" // Scala 2.12, 2.13 and 3.3+
+libraryDependencies += "io.cequence" %% "openai-scala-zio" % "2.0.1" // Scala 2.12, 2.13 and 3.3+
 ```
 
 ```scala
