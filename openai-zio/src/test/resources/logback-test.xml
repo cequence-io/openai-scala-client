@@ -1,0 +1,16 @@
+<!--
+  Tests log at WARN. Without a config logback logs everything at DEBUG, and the streamed wire
+  specs move frames of several MiB, which the HTTP engine logs whole at DEBUG - one such line
+  stalls the CI runner's log processing for hours.
+-->
+<configuration>
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} -- %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <root level="WARN">
+    <appender-ref ref="STDOUT"/>
+  </root>
+</configuration>

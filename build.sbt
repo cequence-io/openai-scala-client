@@ -117,14 +117,9 @@ lazy val zio = (project in file("openai-zio"))
       name := "openai-scala-zio",
       crossScalaVersions := List(scala212, scala213, scala33),
       libraryDependencies += "io.cequence" %% "ws-client-zio" % Dependencies.Versions.wsClient,
-      // the native ZIO engine for the round-trip specs (src/test/scala-2): zio-http publishes no
-      // Scala 3 artifacts for ws-client's line
-      libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2, _)) =>
-          Seq("io.cequence" %% "ws-client-zio-http" % Dependencies.Versions.wsClient % Test)
-        case _ =>
-          Nil
-      }),
+      // the native ZIO engine for the round-trip specs (on every Scala version since ws-client
+      // 1.3.0, whose zio-http engine has a Scala 3 artifact built with 3.3)
+      libraryDependencies += "io.cequence" %% "ws-client-zio-http" % Dependencies.Versions.wsClient % Test,
       Compile / sourceGenerators += Def.task {
         def traits(
           dir: File,
@@ -204,6 +199,11 @@ lazy val zio = (project in file("openai-zio"))
             coreServices / "OpenAIChatCompletionExtra.scala",
             "OpenAIChatCompletionExtra",
             "OpenAIChatCompletionImplicits"
+          ),
+          ZioServiceGenerator.Extension(
+            typeSafeServices / "DecisionServiceExtra.scala",
+            "DecisionServiceExtra",
+            "DecisionServiceImplicits"
           )
         )
         ZioServiceGenerator

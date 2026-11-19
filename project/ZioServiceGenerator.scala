@@ -11,7 +11,10 @@ import scala.meta._
  * an object, e.g. the JSON / failover helpers) an implicit class `CZIO` over `TZIO`.
  *
  * The mapping, by the declared result type:
- *   - `Future[A]` -> `Task[A]` (`ZIO.fromFuture`)
+ *   - `Future[A]` -> `Task[A]`: through the method's lazy call twin when it has one (since
+ *     2.1.0: `xCall`, the same parameters, returning `AsyncCall[A]` - compiled natively with
+ *     `toZIO`, so a zio-http call stays the engine's own effect), else `ZIO.fromFuture`; the
+ *     twins themselves are not part of the views
  *   - `AsyncStream[A]` -> `ZStream[Any, Throwable, A]`, `AsyncStream[Bytes]` -> `ZStream[Any,
  *     Throwable, Byte]` (via ws-client-zio - a native ZIO leaf stays native)
  *   - `Future[AsyncStream[A]]` / `Future[Option[AsyncStream[A]]]` -> `Task[...]` of the above
@@ -59,10 +62,30 @@ object ZioServiceGenerator {
       (input, text, dialects.Scala213(text).parse[Source].get)
     }
 
-    val closeable = closeableServices(parsed.collect {
-      case (ServiceTrait(file, name), _, source) =>
-        name -> serviceTrait(source, name, file).templ.inits.map(_.tpe.syntax)
-    }.toMap)
+    val traitParents = parsed.collect { case (ServiceTrait(file, name), _, source) =>
+      name -> serviceTrait(source, name, file).templ.inits.map(_.tpe.syntax)
+    }.toMap
+
+    val closeable = closeableServices(traitParents)
+
+    // the call twins each service trait declares - a trait's methods find them in the trait
+    // itself or in its service parents (e.g. OpenAICoreService re-declares createChatCompletion,
+    // whose twin OpenAIChatCompletionService declares)
+    val twinsByTrait = parsed.collect { case (ServiceTrait(file, name), _, source) =>
+      name -> publicDefs(serviceTrait(source, name, file).templ.stats).filter(isCallTwin)
+    }.toMap
+
+    def ancestors(
+      name: String,
+      seen: Set[String]
+    ): Set[String] =
+      traitParents
+        .getOrElse(name, Nil)
+        .filter(p => serviceNames(p) && !seen(p))
+        .toSet
+        .flatMap { (parent: String) =>
+          ancestors(parent, seen + name + parent) + parent
+        }
 
     parsed.map { case (input, text, source) =>
       val (pkg, imports) = packageAndImports(source)
@@ -75,7 +98,8 @@ object ZioServiceGenerator {
             serviceTrait(source, name, file),
             text,
             serviceNames,
-            closeable(name)
+            closeable(name),
+            ancestors(name, Set.empty).toList.flatMap(twinsByTrait.getOrElse(_, Nil))
           )
 
         case Extension(_, objectName, className) =>
@@ -139,7 +163,8 @@ object ZioServiceGenerator {
     defn: Defn.Trait,
     text: String,
     serviceNames: Set[String],
-    closeable: Boolean
+    closeable: Boolean,
+    inheritedTwins: List[Member]
   ): String = {
     val name = defn.name.value
     val parents = defn.templ.inits.map(_.tpe.syntax)
@@ -160,7 +185,7 @@ object ZioServiceGenerator {
       case "CloseableService"            => "CloseableServiceZIODelegate"
     }
 
-    val methods = publicDefs(defn.templ.stats).map(m => (m, mapped(m)))
+    val methods = withTwins(publicDefs(defn.templ.stats), inheritedTwins)
 
     val traitBody = methods.map { case (m, g) =>
       doc(m.tree, text) + annotations(m.mods) + s"  def ${g.signature(true)}: ${g.resultType}\n"
@@ -259,7 +284,7 @@ $layer}
       s"$objectName.$className extends $serviceType, which is not a generated service"
     )
 
-    val methods = publicDefs(cls.templ.stats).map(m => (m, mapped(m)))
+    val methods = withTwins(publicDefs(cls.templ.stats))
     val target = s"new $objectName.$className(service.asFuture)"
 
     val body = methods.map { case (m, g) =>
@@ -301,6 +326,41 @@ $body  }
         Member(d, d.mods, d.name.value, d.tparams, d.paramss, d.decltpe.get)
     }.filterNot(m => m.name == "close" && m.paramss.flatten.isEmpty)
 
+  // the members to mirror, each mapped - a lazy call twin (`xCall` returning `AsyncCall`) is
+  // not mirrored itself, but the Future method it belongs to runs through it
+  private def withTwins(
+    members: List[Member],
+    inheritedTwins: List[Member] = Nil
+  ): List[(Member, Generated)] = {
+    val (twins, rest) = members.partition(isCallTwin)
+    val candidates = twins ++ inheritedTwins
+
+    rest.map { m =>
+      val twin = candidates.find(t => t.name == m.name + "Call" && sameParams(t, m))
+      (m, mapped(m, twin))
+    }
+  }
+
+  private def isCallTwin(m: Member): Boolean =
+    m.name.endsWith("Call") && (m.resultType match {
+      case Type.Apply(Type.Name("AsyncCall"), List(_)) => true
+      case _                                           => false
+    })
+
+  // the same explicit parameter lists (names and types); implicits may differ (a twin takes
+  // no ExecutionContext)
+  private def sameParams(
+    a: Member,
+    b: Member
+  ): Boolean = {
+    def explicit(m: Member) =
+      m.paramss
+        .filterNot(_.exists(_.mods.exists(_.isInstanceOf[Mod.Implicit])))
+        .map(_.map(p => (p.name.value, p.decltpe.map(_.syntax))))
+
+    explicit(a) == explicit(b) && a.tparams.map(_.name.value) == b.tparams.map(_.name.value)
+  }
+
   private def isPublic(mods: List[Mod]): Boolean =
     !mods.exists {
       case _: Mod.Private | _: Mod.Protected | _: Mod.Implicit => true
@@ -313,7 +373,10 @@ $body  }
     body: (String, String) => String // (target, runtime) => the body
   )
 
-  private def mapped(m: Member): Generated = {
+  private def mapped(
+    m: Member,
+    twin: Option[Member] = None
+  ): Generated = {
     // the parameter lists: an implicit ExecutionContext is dropped (ZIO provides one)
     val clauses = m.paramss.map { clause =>
       val implicitClause = clause.exists(_.mods.exists(_.isInstanceOf[Mod.Implicit]))
@@ -352,7 +415,18 @@ $body  }
       runtime: String
     ) => s"$target.${m.name}$typeArgs${callArgs(runtime)}"
     val droppedEc = clauses.exists { case (_, clause, kept) => clause.size != kept.size }
-    val (resultType, body) = result(m.resultType, call, droppedEc)
+    val (resultType, body) = (twin, m.resultType) match {
+      case (Some(t), Type.Apply(Type.Name("Future"), List(inner))) =>
+        (
+          s"_root_.zio.Task[${inner.syntax}]",
+          (
+            target: String,
+            runtime: String
+          ) => s"ZIOConversions.call($target.${t.name}$typeArgs${callArgs(runtime)})"
+        )
+      case _ =>
+        result(m.resultType, call, droppedEc)
+    }
 
     Generated(
       defaults => s"${m.name}$tparams${signatureClauses(defaults).mkString}",
