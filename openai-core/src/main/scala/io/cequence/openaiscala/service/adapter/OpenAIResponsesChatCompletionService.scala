@@ -53,6 +53,7 @@ import io.cequence.openaiscala.domain.response.{
   ToolApprovalDecision
 }
 import io.cequence.wsclient.service.CloseableService
+import io.cequence.wsclient.stream.AsyncCall
 import io.cequence.wsclient.JsonUtil
 import org.slf4j.LoggerFactory
 import play.api.libs.json.Json
@@ -105,7 +106,7 @@ private[service] class OpenAIResponsesChatCompletionService(
           case Success(Left(lookup)) =>
             // nothing is sent before the stream is run - the lookup runs per run
             AsyncStream.futureStream(
-              completeRequest(lookup).map { case (items, responsesSettings) =>
+              completeRequest(lookup).toFuture.map { case (items, responsesSettings) =>
                 streamResponse(streamed, items, responsesSettings, settings)
               }
             )
@@ -133,16 +134,20 @@ private[service] class OpenAIResponsesChatCompletionService(
       .via(ChatChunks.fromResponseEvents)
   }
 
-  private def toResponsesRequest(
+  // built per run: the request (and a stateful resume's lookup of the paused response)
+  private def toResponsesRequestCall(
     messages: Seq[BaseMessage],
     tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
-  ): Future[(Seq[Input], CreateModelResponseSettings)] =
-    Future
-      .fromTry(Try(buildResponsesRequest(messages, tools, responseToolChoice, settings)))
+  ): AsyncCall[(Seq[Input], CreateModelResponseSettings)] =
+    AsyncCall
+      .defer(
+        AsyncCall
+          .fromTry(Try(buildResponsesRequest(messages, tools, responseToolChoice, settings)))
+      )
       .flatMap {
-        case Right(request) => Future.successful(request)
+        case Right(request) => AsyncCall.successful(request)
         case Left(lookup)   => completeRequest(lookup)
       }
 
@@ -155,9 +160,9 @@ private[service] class OpenAIResponsesChatCompletionService(
 
   private def completeRequest(
     lookup: PausedCallsLookup
-  ): Future[(Seq[Input], CreateModelResponseSettings)] =
+  ): AsyncCall[(Seq[Input], CreateModelResponseSettings)] =
     underlying
-      .getModelResponse(lookup.runId)
+      .getModelResponseCall(lookup.runId)
       .map(paused => lookup.complete(paused.outputFunctionCalls.map(_.callId).toSet))
 
   private def buildResponsesRequest(
@@ -356,10 +361,17 @@ private[service] class OpenAIResponsesChatCompletionService(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
   ): Future[ChatCompletionResponse] =
-    toResponsesRequest(messages, Nil, None, settings).flatMap {
+    createChatCompletionCall(messages, settings).toFuture
+
+  // native: the underlying service's own call (on the zio-http engine its effect)
+  override def createChatCompletionCall(
+    messages: Seq[BaseMessage],
+    settings: CreateChatCompletionSettings
+  ): AsyncCall[ChatCompletionResponse] =
+    toResponsesRequestCall(messages, Nil, None, settings).flatMap {
       case (items, responsesSettings) =>
         underlying
-          .createModelResponse(
+          .createModelResponseCall(
             Inputs.Items(items: _*),
             withEncryptedReasoning(
               withReasoningSummary(responsesSettings, settings, streamed = false)
@@ -374,10 +386,18 @@ private[service] class OpenAIResponsesChatCompletionService(
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
   ): Future[ChatToolCompletionResponse] =
-    toResponsesRequest(messages, tools, responseToolChoice, settings).flatMap {
+    createChatToolCompletionCall(messages, tools, responseToolChoice, settings).toFuture
+
+  override def createChatToolCompletionCall(
+    messages: Seq[BaseMessage],
+    tools: Seq[ChatCompletionTool],
+    responseToolChoice: Option[String],
+    settings: CreateChatCompletionSettings
+  ): AsyncCall[ChatToolCompletionResponse] =
+    toResponsesRequestCall(messages, tools, responseToolChoice, settings).flatMap {
       case (items, responsesSettings) =>
         underlying
-          .createModelResponse(
+          .createModelResponseCall(
             Inputs.Items(items: _*),
             withEncryptedReasoning(
               withReasoningSummary(responsesSettings, settings, streamed = false)

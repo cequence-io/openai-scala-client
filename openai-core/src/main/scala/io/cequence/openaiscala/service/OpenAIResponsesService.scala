@@ -11,6 +11,8 @@ import io.cequence.openaiscala.domain.responsesapi.{
 }
 import io.cequence.openaiscala.domain.SortOrder
 
+import io.cequence.wsclient.stream.AsyncCall
+
 import scala.concurrent.Future
 
 /**
@@ -76,6 +78,17 @@ trait OpenAIResponsesService extends OpenAIServiceConsts {
   ): Future[Response]
 
   /**
+   * [[createModelResponse]] as a lazy call (since 2.1.0): nothing is sent until it runs, and
+   * every run is a new request; ZIO runs it natively (`call.toZIO`). The default runs
+   * [[createModelResponse]] per run; OpenAI's implementation overrides it natively.
+   */
+  def createModelResponseCall(
+    inputs: Inputs,
+    settings: CreateModelResponseSettings = DefaultSettings.CreateModelResponse
+  ): AsyncCall[Response] =
+    AsyncCall.future(createModelResponse(inputs, settings))
+
+  /**
    * Retrieves a model response by its ID.
    *
    * @param responseId
@@ -92,6 +105,15 @@ trait OpenAIResponsesService extends OpenAIServiceConsts {
     responseId: String,
     include: Seq[String] = Nil
   ): Future[Response]
+
+  /**
+   * [[getModelResponse]] as a lazy call (since 2.1.0) - see [[createModelResponseCall]].
+   */
+  def getModelResponseCall(
+    responseId: String,
+    include: Seq[String] = Nil
+  ): AsyncCall[Response] =
+    AsyncCall.future(getModelResponse(responseId, include))
 
   /**
    * Deletes a model response by its ID.

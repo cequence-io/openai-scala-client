@@ -8,6 +8,7 @@ import io.cequence.openaiscala.domain.response.{
 }
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.wsclient.service.CloseableService
+import io.cequence.wsclient.stream.AsyncCall
 
 import scala.concurrent.Future
 
@@ -68,4 +69,33 @@ trait OpenAIChatCompletionService extends OpenAIServiceConsts with CloseableServ
     Future.failed(
       new OpenAIScalaClientException("createChatToolCompletion is not supported")
     )
+
+  /**
+   * [[createChatCompletion]] as a lazy call (since 2.1.0): nothing is sent until it runs, and
+   * every run is a new request. ZIO runs it natively (`call.toZIO`, ws-client-zio) - on the
+   * zio-http engine the request is the engine's own effect, so interrupting the fiber aborts
+   * it, with no Future in between; `toFuture` runs it anywhere else.
+   *
+   * The default runs [[createChatCompletion]] per run (a Future leaf - one bridge on ZIO); the
+   * OpenAI implementations (chat completions, the Responses route, the OpenAI-compatible
+   * providers, Azure, Bedrock) override it natively and derive [[createChatCompletion]] from
+   * it.
+   */
+  def createChatCompletionCall(
+    messages: Seq[BaseMessage],
+    settings: CreateChatCompletionSettings = DefaultSettings.CreateChatCompletion
+  ): AsyncCall[ChatCompletionResponse] =
+    AsyncCall.future(createChatCompletion(messages, settings))
+
+  /**
+   * [[createChatToolCompletion]] as a lazy call (since 2.1.0) - see
+   * [[createChatCompletionCall]].
+   */
+  def createChatToolCompletionCall(
+    messages: Seq[BaseMessage],
+    tools: Seq[ChatCompletionTool],
+    responseToolChoice: Option[String] = None,
+    settings: CreateChatCompletionSettings = DefaultSettings.CreateChatToolCompletion
+  ): AsyncCall[ChatToolCompletionResponse] =
+    AsyncCall.future(createChatToolCompletion(messages, tools, responseToolChoice, settings))
 }

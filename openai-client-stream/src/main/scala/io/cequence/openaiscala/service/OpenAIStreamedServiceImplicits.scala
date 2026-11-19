@@ -1,6 +1,6 @@
 package io.cequence.openaiscala.service
 
-import io.cequence.wsclient.stream.AsyncStream
+import io.cequence.wsclient.stream.{AsyncCall, AsyncStream}
 import io.cequence.openaiscala.domain.agents.{
   AgentEnvironment,
   AgentInput,
@@ -12,6 +12,7 @@ import io.cequence.openaiscala.domain.responsesapi.MultiAgentConfig
 import io.cequence.openaiscala.domain.responsesapi.{
   CreateModelResponseSettings,
   Inputs,
+  Response,
   ResponseStreamEvent
 }
 import io.cequence.openaiscala.service.adapter.{
@@ -26,6 +27,8 @@ import io.cequence.openaiscala.domain.response.ChatChunk
 import io.cequence.openaiscala.domain.BaseMessage
 import io.cequence.openaiscala.domain.response.{
   ChatCompletionChunkResponse,
+  ChatCompletionResponse,
+  ChatToolCompletionResponse,
   TextCompletionResponse
 }
 import io.cequence.openaiscala.domain.settings.{
@@ -346,11 +349,34 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
     }
   }
 
+  // the merged services hand their sync service's calls on as they are - natively (a wrapper
+  // with an adapter in between would run them through its Future methods)
+  private trait DelegatedChatCalls extends OpenAIChatCompletionService {
+    protected def callService: OpenAIChatCompletionService
+
+    override def createChatCompletionCall(
+      messages: Seq[BaseMessage],
+      settings: CreateChatCompletionSettings
+    ): AsyncCall[ChatCompletionResponse] =
+      callService.createChatCompletionCall(messages, settings)
+
+    override def createChatToolCompletionCall(
+      messages: Seq[BaseMessage],
+      tools: Seq[ChatCompletionTool],
+      responseToolChoice: Option[String],
+      settings: CreateChatCompletionSettings
+    ): AsyncCall[ChatToolCompletionResponse] =
+      callService.createChatToolCompletionCall(messages, tools, responseToolChoice, settings)
+  }
+
   private class OpenAIChatCompletionStreamedServiceWrapper(
     service: OpenAIChatCompletionService,
     val streamedServiceExtra: OpenAIChatCompletionStreamedServiceExtra,
     alsoClose: Seq[CloseableService] = Nil // e.g. a privately-created shared engine
-  ) extends OpenAIChatCompletionServiceWrapper {
+  ) extends OpenAIChatCompletionServiceWrapper
+      with DelegatedChatCalls {
+
+    override protected def callService: OpenAIChatCompletionService = service
 
     override protected def delegate: CloseableServiceWrapper[OpenAIChatCompletionService] =
       SimpleServiceWrapper(service)
@@ -367,7 +393,10 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
     service: OpenAICoreService,
     val streamedServiceExtra: S,
     alsoClose: Seq[CloseableService] = Nil // e.g. a privately-created shared engine
-  ) extends OpenAICoreServiceWrapper {
+  ) extends OpenAICoreServiceWrapper
+      with DelegatedChatCalls {
+
+    override protected def callService: OpenAIChatCompletionService = service
 
     override protected def delegate: CloseableServiceWrapper[OpenAICoreService] =
       SimpleServiceWrapper(service)
@@ -385,7 +414,22 @@ object OpenAIStreamedServiceImplicits extends OpenAIServiceConsts {
     val streamedServiceExtra: S,
     alsoClose: Seq[CloseableService] = Nil // e.g. a privately-created shared engine
   ) extends OpenAIServiceWrapper
+      with DelegatedChatCalls
       with ProducedReasoning.Delegate {
+
+    override protected def callService: OpenAIChatCompletionService = service
+
+    override def createModelResponseCall(
+      inputs: Inputs,
+      settings: CreateModelResponseSettings
+    ): AsyncCall[Response] =
+      service.createModelResponseCall(inputs, settings)
+
+    override def getModelResponseCall(
+      responseId: String,
+      include: Seq[String]
+    ): AsyncCall[Response] =
+      service.getModelResponseCall(responseId, include)
 
     override protected def delegate: CloseableServiceWrapper[OpenAIService] =
       SimpleServiceWrapper(service)

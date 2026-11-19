@@ -5,7 +5,7 @@ import io.cequence.wsclient.domain.{RichResponse, SiteBinding}
 import io.cequence.wsclient.service.spi.TransportSettings
 import io.cequence.wsclient.service.ws.FilePart
 import io.cequence.wsclient.service.{WSClientEngine, WSClientOutputStreamCore}
-import io.cequence.wsclient.stream.{AsyncStream, Bytes, DeferredPublisher}
+import io.cequence.wsclient.stream.{AsyncCall, AsyncStream, Bytes, DeferredPublisher}
 import play.api.libs.json.JsValue
 
 import java.io.File
@@ -39,7 +39,9 @@ import scala.util.{Failure, Success, Try}
  *   - Streams are signed PER RUN (inside `AsyncStream.defer`, at the moment the request goes
  *     out - the signature carries a timestamp), and keep the underlying engine's native stream
  *     (an Akka engine's `Source` stays native for an Akka consumer). The `Flow.Publisher`
- *     variants are signed when they are subscribed.
+ *     variants are signed when they are subscribed. Likewise the calls (`exec*RichCall`, since
+ *     2.1.0): signed per run, the underlying engine's own call kept (the zio-http engine's
+ *     effect stays native on ZIO).
  *   - A signing failure (e.g. missing credentials) is returned as a failed `Future` / stream
  *     rather than thrown, matching what callers expect from the async API.
  *   - Multipart and raw-file uploads cannot be signed here: their bytes (and the multipart
@@ -352,6 +354,233 @@ class SigningWSClientEngine private[aws] (
         h
       ) =>
         underlying.execPUTBodyRich(
+          s,
+          endPoint,
+          endPointParam,
+          params,
+          body,
+          h,
+          acceptableStatusCodes
+        )
+    }
+
+  // -- calls: signed per run, the underlying engine's own call kept ------------
+
+  protected def signedCall(
+    prepared: => Try[(SiteBinding, Seq[(String, String)])]
+  )(
+    send: (SiteBinding, Seq[(String, String)]) => AsyncCall[RichResponse]
+  ): AsyncCall[RichResponse] =
+    AsyncCall.defer {
+      prepared match {
+        case Success((s, h)) => send(s, h)
+        case Failure(e)      => AsyncCall.failed(e)
+      }
+    }
+
+  override def execGETRichCall(
+    site: SiteBinding,
+    endPoint: String,
+    endPointParam: Option[String],
+    params: Seq[(String, Option[Any])],
+    extraHeaders: Seq[(String, String)],
+    acceptableStatusCodes: Seq[Int]
+  ): AsyncCall[RichResponse] =
+    signedCall(prepare(site, "GET", endPoint, endPointParam, params, "", extraHeaders)) {
+      (
+        s,
+        h
+      ) =>
+        underlying.execGETRichCall(
+          s,
+          endPoint,
+          endPointParam,
+          params,
+          h,
+          acceptableStatusCodes
+        )
+    }
+
+  override def execDELETERichCall(
+    site: SiteBinding,
+    endPoint: String,
+    endPointParam: Option[String],
+    params: Seq[(String, Option[Any])],
+    extraHeaders: Seq[(String, String)],
+    acceptableStatusCodes: Seq[Int]
+  ): AsyncCall[RichResponse] =
+    signedCall(prepare(site, "DELETE", endPoint, endPointParam, params, "", extraHeaders)) {
+      (
+        s,
+        h
+      ) =>
+        underlying.execDELETERichCall(
+          s,
+          endPoint,
+          endPointParam,
+          params,
+          h,
+          acceptableStatusCodes
+        )
+    }
+
+  override def execPOSTRichCall(
+    site: SiteBinding,
+    endPoint: String,
+    endPointParam: Option[String],
+    params: Seq[(String, Option[Any])],
+    bodyParams: Seq[(String, Option[JsValue])],
+    extraHeaders: Seq[(String, String)],
+    acceptableStatusCodes: Seq[Int]
+  ): AsyncCall[RichResponse] =
+    signedCall(
+      prepare(
+        site,
+        "POST",
+        endPoint,
+        endPointParam,
+        params,
+        jsonBody(bodyParams),
+        extraHeaders
+      )
+    ) {
+      (
+        s,
+        h
+      ) =>
+        underlying.execPOSTRichCall(
+          s,
+          endPoint,
+          endPointParam,
+          params,
+          bodyParams,
+          h,
+          acceptableStatusCodes
+        )
+    }
+
+  override def execPATCHRichCall(
+    site: SiteBinding,
+    endPoint: String,
+    endPointParam: Option[String],
+    params: Seq[(String, Option[Any])],
+    bodyParams: Seq[(String, Option[JsValue])],
+    extraHeaders: Seq[(String, String)],
+    acceptableStatusCodes: Seq[Int]
+  ): AsyncCall[RichResponse] =
+    signedCall(
+      prepare(
+        site,
+        "PATCH",
+        endPoint,
+        endPointParam,
+        params,
+        jsonBody(bodyParams),
+        extraHeaders
+      )
+    ) {
+      (
+        s,
+        h
+      ) =>
+        underlying.execPATCHRichCall(
+          s,
+          endPoint,
+          endPointParam,
+          params,
+          bodyParams,
+          h,
+          acceptableStatusCodes
+        )
+    }
+
+  override def execPUTRichCall(
+    site: SiteBinding,
+    endPoint: String,
+    endPointParam: Option[String],
+    params: Seq[(String, Option[Any])],
+    bodyParams: Seq[(String, Option[JsValue])],
+    extraHeaders: Seq[(String, String)],
+    acceptableStatusCodes: Seq[Int]
+  ): AsyncCall[RichResponse] =
+    signedCall(
+      prepare(site, "PUT", endPoint, endPointParam, params, jsonBody(bodyParams), extraHeaders)
+    ) {
+      (
+        s,
+        h
+      ) =>
+        underlying.execPUTRichCall(
+          s,
+          endPoint,
+          endPointParam,
+          params,
+          bodyParams,
+          h,
+          acceptableStatusCodes
+        )
+    }
+
+  override def execPOSTBodyRichCall(
+    site: SiteBinding,
+    endPoint: String,
+    endPointParam: Option[String],
+    params: Seq[(String, Option[Any])],
+    body: JsValue,
+    extraHeaders: Seq[(String, String)],
+    acceptableStatusCodes: Seq[Int]
+  ): AsyncCall[RichResponse] =
+    signedCall(
+      prepare(
+        site,
+        "POST",
+        endPoint,
+        endPointParam,
+        params,
+        underlying.renderJsonBody(body),
+        extraHeaders
+      )
+    ) {
+      (
+        s,
+        h
+      ) =>
+        underlying.execPOSTBodyRichCall(
+          s,
+          endPoint,
+          endPointParam,
+          params,
+          body,
+          h,
+          acceptableStatusCodes
+        )
+    }
+
+  override def execPUTBodyRichCall(
+    site: SiteBinding,
+    endPoint: String,
+    endPointParam: Option[String],
+    params: Seq[(String, Option[Any])],
+    body: JsValue,
+    extraHeaders: Seq[(String, String)],
+    acceptableStatusCodes: Seq[Int]
+  ): AsyncCall[RichResponse] =
+    signedCall(
+      prepare(
+        site,
+        "PUT",
+        endPoint,
+        endPointParam,
+        params,
+        underlying.renderJsonBody(body),
+        extraHeaders
+      )
+    ) {
+      (
+        s,
+        h
+      ) =>
+        underlying.execPUTBodyRichCall(
           s,
           endPoint,
           endPointParam,

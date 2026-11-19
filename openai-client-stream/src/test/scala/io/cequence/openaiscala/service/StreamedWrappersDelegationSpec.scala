@@ -5,6 +5,9 @@ import io.cequence.openaiscala.domain.response.ChatChunk._
 import io.cequence.openaiscala.domain.response.{ChatChunk, ChatCompletionChunkResponse}
 import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import io.cequence.openaiscala.domain.{BaseMessage, ChatCompletionTool, UserMessage}
+import io.cequence.openaiscala.domain.responsesapi.Inputs
+import io.cequence.wsclient.domain.WsRequestContext
+import io.cequence.openaiscala.service.OpenAIStreamedServiceImplicits._
 import io.cequence.openaiscala.service.adapter.MappedModel
 import io.cequence.openaiscala.testkit.StreamSpecSupport
 import org.scalatest.BeforeAndAfterAll
@@ -203,6 +206,38 @@ class StreamedWrappersDelegationSpec
           CreateChatCompletionSettings("m")
         )
       ) shouldBe Seq(Start("guarded", "m"), Text("tools=1 messages=1 choice=fn"))
+    }
+  }
+
+  "the merged (withStreaming) services" should {
+    // the call twin of the wrapped service (built per run: `defer`), not the trait default (a
+    // Future leaf over the wrapper's Future method: `future`) - so a call stays native
+    "hand their sync calls on to the wrapped service" in {
+      val settings = CreateChatCompletionSettings("gpt-5.4")
+      val full = OpenAIServiceFactory.withStreaming(apiKey = "dummy")
+      val chatOnly = OpenAIChatCompletionServiceFactory.withStreaming(
+        "http://localhost:1/",
+        WsRequestContext(),
+        None
+      )
+      val core = OpenAICoreServiceFactory.withStreaming(coreUrl = "http://localhost:1/")
+
+      try {
+        Seq(full, chatOnly, core).foreach { service =>
+          service.createChatCompletionCall(messages, settings).describe should startWith(
+            "defer"
+          )
+          service
+            .createChatToolCompletionCall(messages, Nil, None, settings)
+            .describe should startWith("defer")
+        }
+        full.createModelResponseCall(Inputs.Text("hi")).describe should startWith("defer")
+        full.getModelResponseCall("resp_1").describe should startWith("defer")
+      } finally {
+        full.close()
+        chatOnly.close()
+        core.close()
+      }
     }
   }
 }

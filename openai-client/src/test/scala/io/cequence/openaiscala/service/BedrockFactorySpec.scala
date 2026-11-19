@@ -6,7 +6,9 @@ import io.cequence.openaiscala.domain.settings.CreateChatCompletionSettings
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext}
+import scala.util.Try
 
 /**
  * The unified Bedrock entry point: auth (bearer / SigV4) and endpoint (mantle / runtime) are
@@ -35,9 +37,16 @@ class BedrockFactorySpec extends AnyWordSpec with Matchers {
       isOpenAIModel = isOpenAIModel
     )
 
-    service.createChatCompletion(
-      Seq(UserMessage("hi")),
-      CreateChatCompletionSettings(ModelId.bedrock_openai_gpt_oss_120b)
+    // the engine fails every call ("recorded"); the request reaches it on the service's
+    // ExecutionContext, so wait for the call before reading the record
+    Try(
+      Await.result(
+        service.createChatCompletion(
+          Seq(UserMessage("hi")),
+          CreateChatCompletionSettings(ModelId.bedrock_openai_gpt_oss_120b)
+        ),
+        10.seconds
+      )
     )
     service.close()
 

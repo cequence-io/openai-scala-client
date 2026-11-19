@@ -26,6 +26,7 @@ import io.cequence.openaiscala.service.{
 }
 import io.cequence.wsclient.JsonUtil
 import io.cequence.wsclient.ResponseImplicits._
+import io.cequence.wsclient.stream.AsyncCall
 import org.slf4j.LoggerFactory
 import play.api.libs.json.{JsArray, JsObject, JsString, JsValue, Json}
 
@@ -42,35 +43,50 @@ private[service] trait OpenAIChatCompletionServiceImpl
     with OpenAIServiceWSBase
     with ChatCompletionBodyMaker {
 
+  // the calls go to the engine's own calls - native on zio-http. Safe: no OpenAI service (this
+  // private trait is in all of them, the full one with its Responses calls) overrides an
+  // `execXRich` the calls would bypass
+  override protected def nativeCalls: Boolean = true
+
   override def createChatCompletion(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
   ): Future[ChatCompletionResponse] =
-    if (ChatCompletionSettingsConversions.chatRequiresResponsesAPI(settings))
-      // a run paused for approval, Responses-native tools, a reasoning mode, reasoning
-      // summaries and the Ultrafast tier live on the Responses API
-      responsesBackedChatCompletion match {
-        case Some(service) =>
-          service.createChatCompletion(messages, settings)
+    createChatCompletionCall(messages, settings).toFuture
 
-        case None if settings.toolApprovalDecisions.nonEmpty =>
-          unsupportedToolApprovalDecisions(settings)
+  // native: the engine's own call (on the zio-http engine its effect); the request is built
+  // per run
+  override def createChatCompletionCall(
+    messages: Seq[BaseMessage],
+    settings: CreateChatCompletionSettings
+  ): AsyncCall[ChatCompletionResponse] =
+    AsyncCall.defer {
+      if (ChatCompletionSettingsConversions.chatRequiresResponsesAPI(settings))
+        // a run paused for approval, Responses-native tools, a reasoning mode, reasoning
+        // summaries and the Ultrafast tier live on the Responses API
+        responsesBackedChatCompletion match {
+          case Some(service) =>
+            service.createChatCompletionCall(messages, settings)
 
-        case None =>
-          // refused, never dropped; a chat-only service leaves the tier to the API (another
-          // OpenAI-compatible provider may serve it) and ignores the summary flag
-          unsupportedResponsesSettings(settings)
-            .map(e => Future.failed[ChatCompletionResponse](e))
-            .getOrElse(createChatCompletionAux(messages, settings))
-      }
-    else
-      createChatCompletionAux(messages, settings)
+          case None if settings.toolApprovalDecisions.nonEmpty =>
+            unsupportedToolApprovalDecisions(settings)
+
+          case None =>
+            // refused, never dropped; a chat-only service leaves the tier to the API (another
+            // OpenAI-compatible provider may serve it) and ignores the summary flag
+            unsupportedResponsesSettings(settings)
+              .map(e => AsyncCall.failed[ChatCompletionResponse](e))
+              .getOrElse(createChatCompletionAux(messages, settings))
+        }
+      else
+        createChatCompletionAux(messages, settings)
+    }
 
   private def createChatCompletionAux(
     messages: Seq[BaseMessage],
     settings: CreateChatCompletionSettings
-  ): Future[ChatCompletionResponse] =
-    execPOST(
+  ): AsyncCall[ChatCompletionResponse] =
+    execPOSTCall(
       EndPoint.chat_completions,
       bodyParams =
         createBodyParamsForChatCompletion(messages.toList, settings, stream = false).toList
@@ -93,8 +109,8 @@ private[service] trait OpenAIChatCompletionServiceImpl
 
   private def unsupportedToolApprovalDecisions[T](
     settings: CreateChatCompletionSettings
-  ): Future[T] =
-    Future.failed(
+  ): AsyncCall[T] =
+    AsyncCall.failed(
       ToolApprovalSettingsOps
         .unsupportedDecisions(settings, "A chat-only OpenAI service (chat completions API)")
         .getOrElse(new OpenAIScalaClientException("No tool approval decisions."))
@@ -126,64 +142,76 @@ private[service] trait OpenAIChatCompletionServiceImpl
     responseToolChoice: Option[String] = None,
     settings: CreateChatCompletionSettings = DefaultSettings.CreateChatToolCompletion
   ): Future[ChatToolCompletionResponse] =
-    if (
-      tools.nonEmpty && ChatCompletionSettingsConversions.chatToolsUnsupported(settings.model)
-    )
-      Future.failed(
-        new OpenAIScalaClientException(
-          ChatCompletionBodyMaker.toolsUnsupportedMessage(settings.model)
+    createChatToolCompletionCall(messages, tools, responseToolChoice, settings).toFuture
+
+  override def createChatToolCompletionCall(
+    messages: Seq[BaseMessage],
+    tools: Seq[ChatCompletionTool],
+    responseToolChoice: Option[String] = None,
+    settings: CreateChatCompletionSettings = DefaultSettings.CreateChatToolCompletion
+  ): AsyncCall[ChatToolCompletionResponse] =
+    AsyncCall.defer {
+      if (
+        tools.nonEmpty && ChatCompletionSettingsConversions.chatToolsUnsupported(
+          settings.model
         )
       )
-    else if (ChatCompletionSettingsConversions.chatToolsPreferResponsesAPI(settings, tools))
-      responsesBackedChatCompletion match {
-        case Some(service) =>
-          logger.debug(
-            s"Routing createChatToolCompletion (${settings.model}) through the Responses API - the chat completions API cannot serve it (with reasoning)."
+        AsyncCall.failed(
+          new OpenAIScalaClientException(
+            ChatCompletionBodyMaker.toolsUnsupportedMessage(settings.model)
           )
-          service.createChatToolCompletion(messages, tools, responseToolChoice, settings)
-
-        case None if settings.toolApprovalDecisions.nonEmpty =>
-          unsupportedToolApprovalDecisions(settings)
-
-        case None if unsupportedResponsesSettings(settings).isDefined =>
-          Future.failed(unsupportedResponsesSettings(settings).get)
-
-        // chat-only service: GPT-5.6 / GPT-6 Sol/Luna still work there with reasoning 'none'
-        case None if !chatToolsRequireResponsesAPI(settings.model, tools) =>
-          createChatToolCompletionAux(
-            messages,
-            tools,
-            responseToolChoice,
-            settingsForChatToolCompletion(settings)
-          )
-
-        case None =>
-          Future.failed(
-            new OpenAIScalaClientException(
-              ChatCompletionBodyMaker.responsesOnlyToolsMessage(settings.model, tools) +
-                " Use the full OpenAIService (OpenAIServiceFactory), which routes such tool completions through the Responses API automatically, " +
-                "or wrap a Responses-capable service in OpenAIResponsesChatCompletionService."
+        )
+      else if (ChatCompletionSettingsConversions.chatToolsPreferResponsesAPI(settings, tools))
+        responsesBackedChatCompletion match {
+          case Some(service) =>
+            logger.debug(
+              s"Routing createChatToolCompletion (${settings.model}) through the Responses API - the chat completions API cannot serve it (with reasoning)."
             )
-          )
-      }
-    else
-      createChatToolCompletionAux(
-        messages,
-        tools,
-        responseToolChoice,
-        settingsForChatToolCompletion(settings)
-      )
+            service.createChatToolCompletionCall(messages, tools, responseToolChoice, settings)
+
+          case None if settings.toolApprovalDecisions.nonEmpty =>
+            unsupportedToolApprovalDecisions(settings)
+
+          case None if unsupportedResponsesSettings(settings).isDefined =>
+            AsyncCall.failed(unsupportedResponsesSettings(settings).get)
+
+          // chat-only service: GPT-5.6 / GPT-6 Sol/Luna still work there with reasoning 'none'
+          case None if !chatToolsRequireResponsesAPI(settings.model, tools) =>
+            createChatToolCompletionAux(
+              messages,
+              tools,
+              responseToolChoice,
+              settingsForChatToolCompletion(settings)
+            )
+
+          case None =>
+            AsyncCall.failed(
+              new OpenAIScalaClientException(
+                ChatCompletionBodyMaker.responsesOnlyToolsMessage(settings.model, tools) +
+                  " Use the full OpenAIService (OpenAIServiceFactory), which routes such tool completions through the Responses API automatically, " +
+                  "or wrap a Responses-capable service in OpenAIResponsesChatCompletionService."
+              )
+            )
+        }
+      else
+        createChatToolCompletionAux(
+          messages,
+          tools,
+          responseToolChoice,
+          settingsForChatToolCompletion(settings)
+        )
+    }
 
   private def createChatToolCompletionAux(
     messages: Seq[BaseMessage],
     tools: Seq[ChatCompletionTool],
     responseToolChoice: Option[String],
     settings: CreateChatCompletionSettings
-  ): Future[ChatToolCompletionResponse] = {
+  ): AsyncCall[ChatToolCompletionResponse] = {
     val coreParams =
       createBodyParamsForChatCompletion(messages, settings, stream = false)
 
-    execPOST(
+    execPOSTCall(
       EndPoint.chat_completions,
       bodyParams = coreParams ++ createToolBodyParams(tools, responseToolChoice)
     ).map { json =>

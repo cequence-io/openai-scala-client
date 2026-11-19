@@ -3,6 +3,7 @@ package io.cequence.openaiscala.service.impl
 import io.cequence.openaiscala.domain.SortOrder
 import io.cequence.openaiscala.domain.responsesapi.JsonFormats._
 import io.cequence.wsclient.ResponseImplicits._
+import io.cequence.wsclient.stream.AsyncCall
 import io.cequence.openaiscala.domain.responsesapi.{
   CreateModelResponseSettings,
   GetInputTokensCountSettings,
@@ -22,23 +23,38 @@ trait OpenAIResponseServiceImpl extends OpenAIResponsesService with OpenAIServic
   override def createModelResponse(
     inputs: Inputs,
     settings: CreateModelResponseSettings
-  ): Future[Response] = {
-    val input = inputsWrites.writes(inputs)
-    val body = Json.toJsObject(settings)(createModelResponseSettingsFormat)
+  ): Future[Response] =
+    createModelResponseCall(inputs, settings).toFuture
 
-    execPOSTBody(
-      EndPoint.responses,
-      body = body ++ Json.obj("input" -> input),
-      extraHeaders = CreateModelResponseSettings.betaHeaders(settings)
-    ).map(_.asSafeJson[Response])
-  }
+  // native: the engine's own call; the body is built per run
+  override def createModelResponseCall(
+    inputs: Inputs,
+    settings: CreateModelResponseSettings
+  ): AsyncCall[Response] =
+    AsyncCall.defer {
+      val input = inputsWrites.writes(inputs)
+      val body = Json.toJsObject(settings)(createModelResponseSettingsFormat)
+
+      execPOSTBodyCall(
+        EndPoint.responses,
+        body = body ++ Json.obj("input" -> input),
+        extraHeaders = CreateModelResponseSettings.betaHeaders(settings)
+      ).map(_.asSafeJson[Response])
+    }
 
   override def getModelResponse(
     responseId: String,
     include: Seq[String]
   ): Future[Response] =
-    PathSegment.inFuture {
-      execGET(
+    getModelResponseCall(responseId, include).toFuture
+
+  // a bad id fails the call (PathSegment), never a synchronous throw
+  override def getModelResponseCall(
+    responseId: String,
+    include: Seq[String]
+  ): AsyncCall[Response] =
+    AsyncCall.defer {
+      execGETCall(
         EndPoint.responses,
         endPointParam = Some(PathSegment(responseId)),
         params = Seq(
