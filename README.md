@@ -147,9 +147,9 @@ you use (Anthropic, Gemini, ...) yourself. See [ZIO services](docs/zio.md).
 **Logging:** the library logs through SLF4J and, since 2.0.0, brings no logging backend (1.x brought logback-classic) -
 add the binding of your choice, e.g. logback-classic; without one, nothing is logged.
 
-**HTTP engines**: calls go through an engine of [ws-client](https://github.com/cequence-io/ws-client) 1.2.2. The
+**HTTP engines**: calls go through an engine of [ws-client](https://github.com/cequence-io/ws-client) 1.3.0. The
 default, `jdk` (`java.net.http`), comes with the library: no Akka, no actor system, streaming included. For another
-engine add its artifact - `"io.cequence" %% "<artifact>" % "1.2.2"`, one version for every ws-client artifact - and
+engine add its artifact - `"io.cequence" %% "<artifact>" % "1.3.0"`, one version for every ws-client artifact - and
 the engine with the highest priority on the classpath is used; `-Dws-client.engine=<id>` names one instead. See
 [Choosing an engine](docs/http-engine.md#choosing-an-engine).
 
@@ -160,7 +160,7 @@ the engine with the highest priority on the classpath is used; `-Dws-client.engi
 | `pekko-http` | `ws-client-pekko-http` | 15 | Yes | 2.13, 3.3+ |
 | `play-akka-stream` | `ws-client-play-akka-stream` | 11 | Yes | 2.12, 2.13, 3 |
 | `play-akka` | `ws-client-play-akka` | 10 | – | 2.12, 2.13, 3 |
-| `zio-http` | `ws-client-zio-http` | 7 | Yes | 2.12, 2.13 |
+| `zio-http` | `ws-client-zio-http` | 7 | Yes | 2.12, 2.13, 3.3+ |
 | `sttp` | `ws-client-sttp` | 5 | – | 2.12, 2.13 |
 | `jdk` (the default) | `ws-client-jdk` (included) | 0 | Yes | 2.12, 2.13, 3 |
 
@@ -225,7 +225,7 @@ streamedService
 
 **Consuming a stream**: every stream is a back-pressured, cold `AsyncStream` (ws-client) - nothing is sent until it
 runs, and each run is a new request. Run it on plain `Future`s (`runForeach`, `runFold`, `runToSeq`, ...) or hand it to
-your streaming library with one import (each module is ws-client's, version 1.2.2):
+your streaming library with one import (each module is ws-client's, version 1.3.0):
 
 - Akka (`ws-client-core-akka`): `import io.cequence.wsclient.stream.SourceInterop._`, then `stream.toSource` - on the
   `play-akka-stream` engine it compiles to that engine's own `Source`, with no bridge

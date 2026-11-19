@@ -209,7 +209,7 @@ val shouting = OpenAIChatCompletionIOConversionAdapter(
 ## Consuming a stream: Akka, Pekko, fs2, ZIO
 
 The run methods need only an `ExecutionContext`. To hand a stream to a streaming library, add that library's ws-client
-interop artifact - `"io.cequence" %% "<artifact>" % "1.2.2"`, the ws-client version this library depends on (every
+interop artifact - `"io.cequence" %% "<artifact>" % "1.3.0"`, the ws-client version this library depends on (every
 ws-client artifact on a classpath must have the same version) - and import one object:
 
 | Library | Artifact | Import | From a stream | Into a stream |
@@ -221,7 +221,7 @@ ws-client artifact on a classpath must have the same version) - and import one o
 | Reactive Streams | - | - | `.toPublisher` (an implicit `ExecutionContext`) | `AsyncStream.fromPublisher(() => publisher)` |
 
 The Akka artifacts serve Scala 2.12, 2.13 and 3; the Pekko ones 2.13 and 3.3+; fs2 and ZIO 2.12, 2.13 and 3.3+ (the
-`zio-http` engine 2.12 and 2.13). In the snippets below, `chunks` is the `AsyncStream[ChatChunk]` from
+`zio-http` engine too, since ws-client 1.3.0). In the snippets below, `chunks` is the `AsyncStream[ChatChunk]` from
 [AsyncStream](#asyncstream).
 
 The libraries run a stream alike, with small differences (listed on ws-client's

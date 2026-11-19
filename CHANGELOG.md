@@ -1,5 +1,57 @@
 # Changelog
 
+## 2.1.0 (unreleased)
+
+Native plain calls on ZIO: the calls a ZIO service needs most - chat and tool completion on the OpenAI path, the JSON
+and failover helpers, the decision routines - are lazy calls (ws-client 1.3.0's `AsyncCall`) that the ZIO views run
+natively. On the zio-http engine a call is the engine's own effect: interrupting the `Task` aborts the HTTP request,
+and the request runs in the calling fiber. Needs ws-client 1.3.0.
+
+### Upgrading from 2.0.1
+
+- **ws-client 1.3.0**: every ws-client artifact on the classpath moves to 1.3.0 (one version for all of them, as
+  before). Its zio-http engine now has a Scala 3 artifact (3.3+).
+- **The Future methods now run as calls.** `createChatCompletion`, `createChatToolCompletion` (OpenAI and every
+  OpenAI-shaped service of the factories - the OpenAI-compatible providers, Azure, Bedrock), the Responses API's
+  `createModelResponse` / `getModelResponse`, the JSON and failover helpers and `decide` / `rerank` are their call
+  twin run as a Future. The request is now built and sent on the service's `ExecutionContext` right after the call
+  returns, not on the calling thread - a test that reads what an engine received must wait for the Future first. A
+  failure while preparing the request (e.g. a refused setting) fails the Future instead of being thrown. The decision
+  service's `systemOne` still refuses a request synchronously (`IllegalArgumentException`, before any I/O); its
+  `systemOneCall` fails the call instead.
+- **New trait methods with defaults** (binary compatible for implementers): `OpenAIChatCompletionService`
+  `createChatCompletionCall` / `createChatToolCompletionCall`, `OpenAIResponsesService` `createModelResponseCall` /
+  `getModelResponseCall`, `TypeSafeService.systemOneCall` - each runs the Future method per run unless an
+  implementation overrides it. A wrapper of your own that should keep a service's calls native overrides them to
+  delegate (as the factories' `withStreaming` services do).
+- **The ZIO views** of those methods run the call twin (`ZIOConversions.call`); the helpers' retry delays and try
+  limits run on ZIO's clock there. In a ZIO `Task` on the zio-http engine a try that exceeds
+  `FailoverPolicy.attemptTimeout` is interrupted - its request aborted - and reports no `LateAnswer` / `LateFailure`;
+  on a Future-based engine (jdk, Play, sttp, pekko-http) the try runs on and reports its late outcome, as before. The
+  Future helpers behave as before on every engine.
+
+### New
+
+- **Lazy call twins** (`io.cequence.wsclient.stream.AsyncCall`): nothing is sent until a call runs, every run is a new
+  request; `toFuture` runs it anywhere, `toZIO` (`ZioInterop`) compiles it for ZIO. `createChatCompletionCall`,
+  `createChatToolCompletionCall`, `createModelResponseCall`, `getModelResponseCall`, `systemOneCall`; the helpers
+  `createChatCompletionWithJSONCall` / `...FullResponseCall`, `createChatCompletionWithFailoverCall` /
+  `...SettingsCall`; the decision routines `decideCall`, `rerankCall`, `rerankByCall`.
+- **ZIO views** run them natively (the generator maps a method with a call twin to it), including inherited twins
+  (`OpenAICoreService` re-declares `createChatCompletion`). New: `DecisionServiceExtraZIO` - `decide` / `rerank` /
+  `rerankBy` over a `TypeSafeServiceZIO`.
+- **The retry / failover engine is one lazy call** (`RetryEngine.runCall`); the Future engine runs it over Future tries
+  with the same semantics as before (a synchronous throw is not retried, a timed-out try reports late outcomes).
+- **SigV4 (Bedrock)**: the signing engine's calls are signed per run and keep the underlying engine's own call.
+
+### Tests
+
+- `ZioHttpNativeCallsSpec` (openai-zio): chat, a GPT-6 Astra tool call through the Responses route, the JSON helper,
+  `decide` and `rerank` cost 0 bridges on the zio-http engine (`CallDiagnostics.counted`), 1 on the JDK engine;
+  interrupting a call aborts the request (a local server sees the connection close). The views' remaining
+  `ZIO.fromFuture` hops now count as bridges too (`ZIOConversions.task` is a Future leaf). `ZioHttpNativeRoundTripSpec`
+  runs on Scala 3.3 too.
+
 ## 2.0.1 (2026-11-18)
 
 OpenAI's GPT-6.2 Sol and Astra (also on Bedrock), two fixes on the Responses API path (multi-agent responses of

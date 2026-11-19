@@ -185,8 +185,15 @@ val answer: ZIO[AnthropicServiceZIO, Throwable, String] =
   `completion`) gives every run the same outcome.
 - **A `ZStream` is cold.** Nothing is sent until it runs, and each run is a new request. Interrupting the fiber that
   runs it, or a `take` that stops early, cancels the run, which aborts the HTTP request.
-- **Interrupting a `Task` does not abort its request.** A call is `ZIO.fromFuture` over the Future-based service, on
-  every engine: interruption stops the wait for the answer, while a request already sent runs to its end.
+- **Native calls (since 2.1.0).** The calls with a lazy twin in the service (`createChatCompletionCall`, ...) run
+  as that call, compiled for ZIO: chat and tool completion on OpenAI and every OpenAI-shaped service of
+  `OpenAIServiceFactory` / `OpenAIChatCompletionServiceFactory` (the chat completions API and the Responses route,
+  the OpenAI-compatible providers, Azure, Bedrock), the Responses API's `createModelResponse` / `getModelResponse`,
+  the JSON and failover helpers, and the decision service's `systemOne` with `decide` / `rerank`. On the
+  [zio-http engine](#native-zio-the-zio-http-engine) such a `Task` is the engine's own effect: interrupting it
+  aborts the HTTP request, and it runs in the calling fiber (FiberRefs, log annotations). Every other call is
+  `ZIO.fromFuture` over the Future-based service - interruption stops the wait for the answer, while a request
+  already sent runs to its end; so does every call on a Future-based engine (`jdk`, Play, pekko-http, sttp).
 - **Downloads** (`createAudioSpeech`, `retrieveFileContentAsSource`, `getAgentSessionArtifactContent`, Anthropic's
   `downloadFile`, Perplexity's `downloadAgentResponseFile`): each run of the `Task` starts the download and completes
   once the body began (with `None` for a missing file where the result is an `Option`); the byte `ZStream` it returns
@@ -323,10 +330,24 @@ def approved(
   }
 ```
 
-The helpers' timers (failover deadlines, retry delays) run on the implicit `AsyncScheduler`
-(`io.cequence.wsclient.concurrent`), whose default needs nothing. To run them on ZIO's clock instead, put
-`implicit val scheduler: AsyncScheduler = ZioInterop.scheduler(runtime)` (`io.cequence.wsclient.stream.ZioInterop`,
-with your `Runtime[Any]`) in scope.
+The helpers run natively (since 2.1.0): each try is the service's call, so on the zio-http engine interrupting the
+`Task` aborts the try in flight. A try over its `FailoverPolicy.attemptTimeout` on zio-http is interrupted - its request
+aborted - and reports no `LateAnswer` / `LateFailure`; on a Future-based engine (jdk, Play, sttp, pekko-http) it runs on
+and reports its late outcome, as the Future helpers do on every engine. Their timers (retry delays, try limits, deadlines) run on ZIO's clock - `TestClock`
+works; the implicit `AsyncScheduler` (`io.cequence.wsclient.concurrent`, whose default needs nothing) is taken but
+used only by the Future helpers. A `FailoverPolicy.wrapAttempt` other than the identity sees each try as a Future (one
+bridge), and a `filterModels` callback runs as a Future.
+
+The decision routines come the same way - `DecisionServiceExtraZIO._` over a `TypeSafeServiceZIO`:
+
+```scala
+import io.cequence.openaiscala.typesafe.service.DecisionServiceExtraZIO._
+import io.cequence.openaiscala.typesafe.service.TypeSafeServiceZIO
+import zio._
+
+def ranked(decisions: TypeSafeServiceZIO, query: String, passages: Seq[String]) =
+  decisions.rerank(query, passages) // Task[Seq[Ranked[String]]], best first
+```
 
 ## The service behind a view: `asFuture`
 
@@ -340,9 +361,11 @@ view leaves as it is:
   views' `close` closes nothing and they have no `layer`. Take the view of the whole service instead
   (`OpenAIServiceZIO`, `AnthropicServiceZIO`): it has all their methods.
 - **Helpers without a ZIO form:** the chat batch helpers (`createChatCompletionBatchWithJSON`,
-  `createChatCompletionBatchAndWaitForResults`) and the decision routines `decide` / `rerank`
-  (`io.cequence.openaiscala.typesafe.service.DecisionServiceExtra._`) work on the Future-based service - call them on
-  `asFuture` inside `ZIO.fromFuture`, e.g. `ZIO.fromFuture(implicit ec => decisions.asFuture.rerank(query, passages))`.
+  `createChatCompletionBatchAndWaitForResults`) work on the Future-based service - call them on `asFuture` inside
+  `ZIO.fromFuture`, e.g. `ZIO.fromFuture(implicit ec => service.asFuture.createChatCompletionBatchWithJSON[T](...))`.
+- **The lazy calls themselves:** `view.asFuture.createChatCompletionCall(...)` is an `AsyncCall`
+  (`io.cequence.wsclient.stream`); `import io.cequence.wsclient.stream.ZioInterop._` and `.toZIO` compiles it - what
+  the view does for you.
 - **Your own streams:** to turn any `AsyncStream` into a `ZStream`, `import io.cequence.wsclient.stream.ZioInterop._`
   and call `.toZStream` (`.toZByteStream` for bytes) - see
   [Consuming a stream: Akka, Pekko, fs2, ZIO](streaming.md#consuming-a-stream-akka-pekko-fs2-zio).
@@ -353,20 +376,24 @@ The views work on any engine. Which engine runs them decides whether a stream cr
 
 - **On the default `jdk` engine** an HTTP stream is a `java.util.concurrent.Flow.Publisher`: the view hands it to
   ZIO through one bridge per request, and the operators after it run as ZIO stages.
-- **On the `zio-http` engine** (ws-client-zio-http, zio-http on Netty and the ZIO runtime; Scala 2.12 and 2.13) an
-  HTTP stream is the engine's own `ZStream`: the view hands it on with the operators as ZIO stages - no bridge, for
-  typed chat chunks, raw byte streams and downloads alike (a download's up-front status check runs inside ZIO and
-  keeps the native stream). [ZioHttpNativeRoundTripSpec](../openai-zio/src/test/scala-2/io/cequence/openaiscala/service/ZioHttpNativeRoundTripSpec.scala)
+- **On the `zio-http` engine** (ws-client-zio-http, zio-http on Netty and the ZIO runtime; Scala 2.12, 2.13 and,
+  since ws-client 1.3.0, 3.3+) an HTTP stream is the engine's own `ZStream`: the view hands it on with the operators
+  as ZIO stages - no bridge, for typed chat chunks, raw byte streams and downloads alike (a download's up-front status
+  check runs inside ZIO and keeps the native stream). [ZioHttpNativeRoundTripSpec](../openai-zio/src/test/scala/io/cequence/openaiscala/service/ZioHttpNativeRoundTripSpec.scala)
   counts the bridges with `StreamDiagnostics.counted` (`io.cequence.wsclient.stream`).
-- A plain call is `ZIO.fromFuture` on every engine: on `zio-http` the engine runs it as a ZIO effect to a `Future`,
-  and interrupting the `Task` does not abort the request.
+- **A native plain call** (see [Laziness](#laziness-tasks-and-streams); since 2.1.0) is the engine's own effect on
+  `zio-http`: no bridge, interrupting the `Task` aborts the request, and the request runs in the calling fiber.
+  [ZioHttpNativeCallsSpec](../openai-zio/src/test/scala/io/cequence/openaiscala/service/ZioHttpNativeCallsSpec.scala)
+  counts the bridges with `CallDiagnostics.counted` (0 on `zio-http`, 1 on `jdk`) and checks the abort against a
+  local server. Every other plain call is `ZIO.fromFuture`: on `zio-http` the engine runs it as a ZIO effect to a
+  `Future`, and interrupting the `Task` does not abort the request.
 - The Claude agent's `events` are no HTTP stream: they are fanned out by ws-client's own interpreter, so a `ZStream` of
   them crosses one bridge on every engine.
 
 To run on `zio-http`, add the engine with the same version as the other ws-client artifacts:
 
 ```
-"io.cequence" %% "ws-client-zio-http" % "1.2.2"
+"io.cequence" %% "ws-client-zio-http" % "1.3.0"
 ```
 
 Every factory then picks it (priority 7, above `jdk`'s 0 - an Akka or Pekko engine on the classpath ranks higher;

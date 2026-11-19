@@ -6,7 +6,7 @@ The HTTP client the library runs on and how to pick another, each engine with a 
 many services and providers,
 timeouts, proxy and HTTP version, and embedding the library in an Akka, Pekko or ZIO application.
 
-Every HTTP call goes through an **engine** of [ws-client](https://github.com/cequence-io/ws-client) 1.2.2, which is
+Every HTTP call goes through an **engine** of [ws-client](https://github.com/cequence-io/ws-client) 1.3.0, which is
 one HTTP backend behind a common contract. Since 2.0.0 the default engine is `jdk`, built on the JDK's own
 `java.net.http` client. It comes with `openai-scala-core`, needs no Akka and no actor system, and supports streaming.
 To use another engine, add its artifact: engines are picked up from the classpath. An engine keeps no state for any one
@@ -24,7 +24,7 @@ Upgrading from 1.x, which ran on Play WS and Akka? See [Migrating to 2.0](migrat
 | `pekko-http` | `ws-client-pekko-http` | pekko-http | 2.13, 3.3+ | 15 | Yes |
 | `play-akka-stream` | `ws-client-play-akka-stream` | Play WS 2 on Akka | 2.12, 2.13, 3 | 11 | Yes |
 | `play-akka` | `ws-client-play-akka` | Play WS 2 on Akka | 2.12, 2.13, 3 | 10 | – |
-| `zio-http` | `ws-client-zio-http` | zio-http (Netty) on the ZIO runtime | 2.12, 2.13 | 7 | Yes |
+| `zio-http` | `ws-client-zio-http` | zio-http (Netty) on the ZIO runtime | 2.12, 2.13, 3.3+ | 7 | Yes |
 | `sttp` | `ws-client-sttp` | sttp client4, on any sttp `Future` backend | 2.12, 2.13 | 5 | – |
 | `jdk` (the default) | `ws-client-jdk`, comes with the library | `java.net.http` (JDK 11+) | 2.12, 2.13, 3 | 0 | Yes |
 
@@ -32,12 +32,12 @@ The full table, with capabilities and notes per backend, is on ws-client's
 [Engines](https://github.com/cequence-io/ws-client/blob/main/docs/engines.md) page.
 
 To use an engine, add its artifact next to the library. Every ws-client artifact on a classpath must have the same
-version, which is 1.2.2, the version this library is built on:
+version, which is 1.3.0, the version this library is built on:
 
 ```scala
 libraryDependencies ++= Seq(
   "io.cequence" %% "openai-scala-client-stream" % "2.0.1",
-  "io.cequence" %% "ws-client-play-akka-stream" % "1.2.2" // the Akka engine (priority 11) wins over jdk (0)
+  "io.cequence" %% "ws-client-play-akka-stream" % "1.3.0" // the Akka engine (priority 11) wins over jdk (0)
 )
 ```
 
@@ -89,8 +89,8 @@ See ws-client's [Compatibility](https://github.com/cequence-io/ws-client/blob/ma
 - **A Pekko application:** `play-pekko-stream`, or `pekko-http` if you want no Play WS layer. `pekko-http` ignores
   `proxyURL` and logs a warning. On Scala 3 the Pekko engines need 3.3+.
 - **No Akka, no Pekko, fewest dependencies:** `jdk`. There is nothing to add (see [The `jdk` engine](#the-jdk-engine)).
-- **A ZIO application:** `zio-http` (Scala 2.12 / 2.13). Its streams are native ZIO `ZStream`s, also through the
-  [ZIO services](zio.md).
+- **A ZIO application:** `zio-http` (Scala 2.12, 2.13 and, since ws-client 1.3.0, 3.3+). Its streams are native ZIO
+  `ZStream`s and its calls native ZIO effects (interruptible), also through the [ZIO services](zio.md).
 - **fs2 / cats-effect:** there is no fs2 engine. Use `jdk` with `toFs2`
   ([Consuming a stream](streaming.md#consuming-a-stream-akka-pekko-fs2-zio)).
 - **Any other HTTP stack** (OkHttp, Armeria, ...): `sttp` on that stack's sttp `Future` backend. It serves only the
@@ -480,7 +480,7 @@ val engine = PekkoHttpWSClientEngine()
 val service = OpenAIServiceFactory.withStreaming.withEngine(engine)
 ```
 
-**ZIO** (`ws-client-zio-http`, Scala 2.12 / 2.13). `ZioHttpWSClientEngine.layer()` builds the engine on your
+**ZIO** (`ws-client-zio-http`, Scala 2.12, 2.13 and 3.3+). `ZioHttpWSClientEngine.layer()` builds the engine on your
 application's zio-http `Client` and runs it on your runtime. It never closes the client. The client's own configuration
 applies (connect and idle timeouts, proxy, TLS); of the engine's `TransportSettings` only `requestTimeout` does.
 Configure the client's TLS yourself, because zio-http's default `ClientSSLConfig` accepts any certificate. With the
@@ -518,7 +518,9 @@ val openAI: ZLayer[ZioHttpWSClientEngine, Throwable, OpenAIStreamedServiceZIO] =
 val app: ZLayer[Any, Throwable, OpenAIStreamedServiceZIO] = client >>> engine >>> openAI
 ```
 
-On `zio-http` the services' streams are the engine's own `ZStream`s, so the ZIO services hand them on with no bridge.
+On `zio-http` the services' streams are the engine's own `ZStream`s, so the ZIO services hand them on with no bridge;
+likewise their native plain calls (since 2.1.0 - see [ZIO services](zio.md#laziness-tasks-and-streams)), which
+interrupting the `Task` aborts.
 To build the engine outside a layer, use `ZioHttpWSClientEngine(client)` with an implicit `Runtime[Any]` and
 `ExecutionContext`.
 
