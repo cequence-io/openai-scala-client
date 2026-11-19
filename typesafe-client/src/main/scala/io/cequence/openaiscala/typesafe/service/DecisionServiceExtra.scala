@@ -1,11 +1,11 @@
 package io.cequence.openaiscala.typesafe.service
 
 import io.cequence.openaiscala.JsonFormats.jsonSchemaFormat
-import io.cequence.openaiscala.FutureHelpers.parallelize
 import io.cequence.openaiscala.service.{JsonSchemaOf, QuotedText}
 import io.cequence.openaiscala.typesafe.domain.settings.CreateChatCompletionSettingsOps
 import io.cequence.openaiscala.typesafe.domain.{Decision, NoulQuestion, Ranked, RerankSettings}
 import io.cequence.openaiscala.typesafe.service.impl.SchemaQuestions
+import io.cequence.wsclient.stream.AsyncCall
 import play.api.libs.json.{JsError, JsString, JsSuccess, JsValue, Json, Reads}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -20,6 +20,10 @@ import scala.concurrent.{ExecutionContext, Future}
  * service.decide[Triage](ticket)                      // a case class, decided in one call
  * service.rerank(query, passages)                     // passages, most helpful first
  * }}}
+ *
+ * Every routine has a lazy call twin (`decideCall`, `rerankCall`, `rerankByCall`; since
+ * 2.1.0): nothing is sent until it runs, and ZIO runs it natively (`call.toZIO`) - on the
+ * zio-http engine with every request interruptible. The Future routines run the same call.
  */
 object DecisionServiceExtra {
 
@@ -63,14 +67,22 @@ object DecisionServiceExtra {
     )(
       implicit ec: ExecutionContext
     ): Future[Decision[T]] =
-      Future.unit.flatMap { _ =>
+      decideCall[T](state, model, noulThreshold).toFuture
+
+    /** [[decide]] as a lazy call (since 2.1.0) - over the service's `systemOneCall`. */
+    def decideCall[T: JsonSchemaOf: Reads](
+      state: JsValue,
+      model: String = service.defaultModel,
+      noulThreshold: Double = CreateChatCompletionSettingsOps.DefaultNoulThreshold
+    ): AsyncCall[Decision[T]] =
+      AsyncCall.defer {
         require(
           noulThreshold >= 0 && noulThreshold <= 1,
           s"The noul threshold must be within 0..1, got $noulThreshold."
         )
         val plan = SchemaQuestions.plan(Json.toJson(JsonSchemaOf[T].schema))
 
-        service.systemOne(state, plan.questions, model).map { response =>
+        service.systemOneCall(state, plan.questions, model).map { response =>
           SchemaQuestions.assemble(plan, response.answers, noulThreshold).validate[T] match {
             case JsSuccess(value, _) =>
               Decision(value, response)
@@ -111,6 +123,27 @@ object DecisionServiceExtra {
     ): Future[Decision[T]] =
       decide[T](JsString(state), model, noulThreshold)
 
+    /** [[decideCall]] over a text state. */
+    def decideCall[T: JsonSchemaOf: Reads](
+      state: String
+    ): AsyncCall[Decision[T]] =
+      decideCall[T](JsString(state))
+
+    /** [[decideCall]] over a text state, with an explicit model. */
+    def decideCall[T: JsonSchemaOf: Reads](
+      state: String,
+      model: String
+    ): AsyncCall[Decision[T]] =
+      decideCall[T](JsString(state), model)
+
+    /** [[decideCall]] over a text state, with an explicit model and noul threshold. */
+    def decideCall[T: JsonSchemaOf: Reads](
+      state: String,
+      model: String,
+      noulThreshold: Double
+    ): AsyncCall[Decision[T]] =
+      decideCall[T](JsString(state), model, noulThreshold)
+
     /**
      * Ranks passages by how much each helps answer the query - e.g. to re-rank what a vector
      * store retrieved before it goes into a prompt. Every passage is a yes/no question of its
@@ -130,7 +163,15 @@ object DecisionServiceExtra {
     )(
       implicit ec: ExecutionContext
     ): Future[Seq[Ranked[String]]] =
-      rerankBy(query, passages, settings)(identity)
+      rerankCall(query, passages, settings).toFuture
+
+    /** [[rerank]] as a lazy call (since 2.1.0) - over the service's `systemOneCall`. */
+    def rerankCall(
+      query: String,
+      passages: Seq[String],
+      settings: RerankSettings = RerankSettings()
+    ): AsyncCall[Seq[Ranked[String]]] =
+      rerankByCall(query, passages, settings)(identity)
 
     /** [[rerank]] for any items, by their text. */
     def rerankBy[T](
@@ -142,26 +183,38 @@ object DecisionServiceExtra {
     )(
       implicit ec: ExecutionContext
     ): Future[Seq[Ranked[T]]] =
-      Future.unit.flatMap { _ =>
+      rerankByCall(query, items, settings)(text).toFuture
+
+    /** [[rerankBy]] as a lazy call (since 2.1.0) - see [[rerankCall]]. */
+    def rerankByCall[T](
+      query: String,
+      items: Seq[T],
+      settings: RerankSettings = RerankSettings()
+    )(
+      text: T => String
+    ): AsyncCall[Seq[Ranked[T]]] =
+      AsyncCall.defer {
         val texts = items.map(item => cut(text(item), settings.maxPassageChars))
         val asked = texts.filter(_.trim.nonEmpty).distinct
         val model = settings.model.getOrElse(service.defaultModel)
 
-        parallelize(batches(query, asked, settings), Some(settings.parallelism)) { batch =>
-          scoreBatch(service, query, batch, model, settings)
-        }.map { scored =>
-          val scores = scored.flatten.toMap
-          val ranked = items
-            .zip(texts)
-            .zipWithIndex
-            .map { case ((item, passage), index) =>
-              Ranked(item, scores.getOrElse(passage, 0d), index)
-            }
-            .sortBy(ranked => (-ranked.score, ranked.index))
+        AsyncCall
+          .traverse(batches(query, asked, settings).toVector, settings.parallelism) { batch =>
+            scoreBatch(service, query, batch, model, settings)
+          }
+          .map { scored =>
+            val scores = scored.flatten.toMap
+            val ranked = items
+              .zip(texts)
+              .zipWithIndex
+              .map { case ((item, passage), index) =>
+                Ranked(item, scores.getOrElse(passage, 0d), index)
+              }
+              .sortBy(ranked => (-ranked.score, ranked.index))
 
-          val kept = settings.minScore.fold(ranked)(min => ranked.filter(_.score >= min))
-          settings.topK.fold(kept)(kept.take)
-        }
+            val kept = settings.minScore.fold(ranked)(min => ranked.filter(_.score >= min))
+            settings.topK.fold(kept)(kept.take)
+          }
       }
   }
 
@@ -225,14 +278,12 @@ object DecisionServiceExtra {
     batch: Seq[String],
     model: String,
     settings: RerankSettings
-  )(
-    implicit ec: ExecutionContext
-  ): Future[Seq[(String, Double)]] =
-    Future.unit.flatMap { _ =>
+  ): AsyncCall[Seq[(String, Double)]] =
+    AsyncCall.defer {
       val questions = batch.zipWithIndex.map { case (passage, i) =>
         s"p$i" -> NoulQuestion(question(settings, passage))
       }.toMap
-      service.systemOne(JsString(query), questions, model)
+      service.systemOneCall(JsString(query), questions, model)
     }.map { response =>
       batch.zipWithIndex.map { case (passage, i) => passage -> response.noul(s"p$i").noul }
     }.recoverWith {

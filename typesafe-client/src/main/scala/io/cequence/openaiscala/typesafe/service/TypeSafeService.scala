@@ -2,6 +2,7 @@ package io.cequence.openaiscala.typesafe.service
 
 import io.cequence.openaiscala.typesafe.domain.{ModelMetadata, Question, SystemOneResponse}
 import io.cequence.wsclient.service.CloseableService
+import io.cequence.wsclient.stream.AsyncCall
 import play.api.libs.json.{JsString, JsValue}
 
 import scala.concurrent.Future
@@ -73,6 +74,35 @@ trait TypeSafeService extends CloseableService {
     model: String
   ): Future[SystemOneResponse] =
     systemOne(JsString(state), questions, model)
+
+  /**
+   * [[systemOne]] as a lazy call (since 2.1.0): nothing is sent until it runs, and every run
+   * is a new request; the request checks fail the call instead of throwing. ZIO runs it
+   * natively (`call.toZIO`) - on the zio-http engine the request is the engine's own effect,
+   * so interrupting the fiber aborts it. The default runs [[systemOne]] per run; the service
+   * the factory builds overrides it natively.
+   */
+  def systemOneCall(
+    state: JsValue,
+    questions: Map[String, Question],
+    model: String = defaultModel
+  ): AsyncCall[SystemOneResponse] =
+    AsyncCall.future(systemOne(state, questions, model))
+
+  /** [[systemOneCall]] over a text state. */
+  def systemOneCall(
+    state: String,
+    questions: Map[String, Question]
+  ): AsyncCall[SystemOneResponse] =
+    systemOneCall(JsString(state), questions, defaultModel)
+
+  /** [[systemOneCall]] over a text state, with an explicit model. */
+  def systemOneCall(
+    state: String,
+    questions: Map[String, Question],
+    model: String
+  ): AsyncCall[SystemOneResponse] =
+    systemOneCall(JsString(state), questions, model)
 
   /** The models and aliases available to the account. */
   def listModels: Future[Seq[ModelMetadata]]

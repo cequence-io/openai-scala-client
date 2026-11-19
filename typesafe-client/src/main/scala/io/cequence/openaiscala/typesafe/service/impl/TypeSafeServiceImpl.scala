@@ -44,6 +44,7 @@ import io.cequence.wsclient.service.WSClientEngine
 import io.cequence.wsclient.service.WSClientWithEngineTypes.WSClientWithEngine
 import io.cequence.wsclient.service.spi.{TransportSettings, WSClientEngineRegistry}
 import io.cequence.wsclient.service.ws.Timeouts
+import io.cequence.wsclient.stream.AsyncCall
 import play.api.libs.json.{JsObject, JsValue, Json}
 
 import java.net.UnknownHostException
@@ -88,6 +89,10 @@ private[service] class TypeSafeServiceImpl(
 
   override def readsImages: Boolean = provider.readsImages
 
+  // the calls go to the engine's own calls - native on zio-http (this class overrides no
+  // `execXRich` they would bypass)
+  override protected def nativeCalls: Boolean = true
+
   // a caller-supplied, site-stateless engine (e.g. one shared with other providers), or a
   // privately-owned classpath-discovered engine
   override protected val engine: WSClientEngine =
@@ -109,12 +114,34 @@ private[service] class TypeSafeServiceImpl(
       label = Some(provider.label)
     )
 
+  // the checks throw here, synchronously, before any I/O (IllegalArgumentException)
   override def systemOne(
     state: JsValue,
     questions: Map[String, Question],
     model: String
-  ): Future[SystemOneResponse] = {
-    // fails fast (IllegalArgumentException) before any I/O
+  ): Future[SystemOneResponse] =
+    sendSystemOne(prepareSystemOne(state, questions, model)).toFuture
+
+  // native: the engine's own call; the checks fail the call (per run), never throw
+  override def systemOneCall(
+    state: JsValue,
+    questions: Map[String, Question],
+    model: String
+  ): AsyncCall[SystemOneResponse] =
+    AsyncCall.defer(sendSystemOne(prepareSystemOne(state, questions, model)))
+
+  private final case class PreparedSystemOne(
+    asked: Seq[(String, Question)],
+    codec: DecisionCodec,
+    body: JsValue
+  )
+
+  // fails fast (IllegalArgumentException) before any I/O
+  private def prepareSystemOne(
+    state: JsValue,
+    questions: Map[String, Question],
+    model: String
+  ): PreparedSystemOne = {
     val request = SystemOneRequest(state, model, questions)
     checkQuestionCount(questions.size)
     checkBoxQuestions(questions)
@@ -128,17 +155,18 @@ private[service] class TypeSafeServiceImpl(
     // one order of the questions for the request and for reading the answers back
     val asked = questions.toSeq
     val codec = DecisionCodec(provider, model)
-    val body = codec.body(request, asked)
-
-    execPOSTBodyRich(
-      EndPoint.custom(provider.decisionsPath),
-      body = body,
-      extraHeaders = provider.extraHeaders ++ codec.headers(body)
-    ).map { rich =>
-      val response = codec.response(responseOrError(rich).json, asked)
-      response.copy(requestId = requestId(rich))
-    }.recoverWith(transportErrors).recoverWith(boxHint(asked))
+    PreparedSystemOne(asked, codec, codec.body(request, asked))
   }
+
+  private def sendSystemOne(prepared: PreparedSystemOne): AsyncCall[SystemOneResponse] =
+    execPOSTBodyRichCall(
+      EndPoint.custom(provider.decisionsPath),
+      body = prepared.body,
+      extraHeaders = provider.extraHeaders ++ prepared.codec.headers(prepared.body)
+    ).map { rich =>
+      val response = prepared.codec.response(responseOrError(rich).json, prepared.asked)
+      response.copy(requestId = requestId(rich))
+    }.mapError(transportError).mapError(boxHintError(prepared.asked))
 
   // box questions are TypeSafe's (Jev 1.14+): no other host answers one, so it is refused here,
   // naming the questions, rather than by the host in its own words (OpenRouter: "No matching
@@ -155,22 +183,20 @@ private[service] class TypeSafeServiceImpl(
 
   // a Jev before 1.14 (`jev-latest` until it moves on) answers a box question with a bare 400
   // "Invalid request." - say why
-  private def boxHint[T](
+  private def boxHintError(
     questions: Seq[(String, Question)]
-  ): PartialFunction[Throwable, Future[T]] = {
+  ): PartialFunction[Throwable, Throwable] = {
     case e: TypeSafeScalaApiUsageException
         if e.httpCode.contains(400) &&
           Option(e.getMessage).exists(_.contains("Invalid request.")) &&
           questions.exists(_._2.isInstanceOf[BoxQuestion]) =>
-      Future.failed(
-        new TypeSafeScalaApiUsageException(
-          s"${e.getMessage} - box questions need Jev 1.14 or later (e.g. jev-1.14.0), an " +
-            "older model answers them so",
-          e,
-          e.httpCode,
-          e.errorType,
-          e.requestId
-        )
+      new TypeSafeScalaApiUsageException(
+        s"${e.getMessage} - box questions need Jev 1.14 or later (e.g. jev-1.14.0), an " +
+          "older model answers them so",
+        e,
+        e.httpCode,
+        e.errorType,
+        e.requestId
       )
   }
 
@@ -292,11 +318,14 @@ private[service] class TypeSafeServiceImpl(
   private def requestId(rich: RichResponse): Option[String] =
     TypeSafeServiceImpl.requestId(rich, provider.requestIdHeaders)
 
-  private def transportErrors[T]: PartialFunction[Throwable, Future[T]] = {
+  private def transportErrors[T]: PartialFunction[Throwable, Future[T]] =
+    transportError.andThen(Future.failed[T](_))
+
+  private val transportError: PartialFunction[Throwable, Throwable] = {
     case e @ (_: CequenceWSTimeoutException | _: TimeoutException) =>
-      Future.failed(new TypeSafeScalaClientTimeoutException(e.getMessage, e))
+      new TypeSafeScalaClientTimeoutException(e.getMessage, e)
     case e @ (_: CequenceWSUnknownHostException | _: UnknownHostException) =>
-      Future.failed(new TypeSafeScalaClientUnknownHostException(e.getMessage, e))
+      new TypeSafeScalaClientUnknownHostException(e.getMessage, e)
   }
 }
 
