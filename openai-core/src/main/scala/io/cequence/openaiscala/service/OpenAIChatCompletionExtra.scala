@@ -1,6 +1,7 @@
 package io.cequence.openaiscala.service
 
 import io.cequence.wsclient.concurrent.{AsyncScheduler, Futures}
+import io.cequence.wsclient.stream.AsyncCall
 import io.cequence.jsonrepair.JsonRepair
 import io.cequence.openaiscala.JsonFormats.eitherJsonSchemaFormat
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
@@ -105,48 +106,133 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       implicit ec: ExecutionContext,
       scheduler: AsyncScheduler
     ): Future[ChatCompletionResponse] =
-      for {
-        filteredSettings <- filterSettings(settings +: failoverSettings, filterModels)
+      failoverCall(
+        messages,
+        settings +: failoverSettings,
+        maxRetries,
+        retryOnAnyError,
+        failureMessage,
+        filterModels,
+        policy,
+        futureTriesOn = Some(ec)
+      ).toFuture
 
-        response <- FailoverChain.run[ChatCompletionResponse](
+    /**
+     * [[createChatCompletionWithFailover]] as a lazy call (since 2.1.0): nothing is sent until
+     * it runs, every run is a new chain. Each try is the service's `createChatCompletionCall`,
+     * so ZIO runs it natively (`call.toZIO`) - on the zio-http engine interrupting it aborts
+     * the try in flight. A try over its `attemptTimeout` on zio-http is interrupted (its
+     * request aborted) and reports no `LateAnswer` / `LateFailure`; on a Future-based engine
+     * (jdk, Play, sttp, pekko-http) it runs on and reports its late outcome, as in
+     * [[createChatCompletionWithFailover]].
+     */
+    def createChatCompletionWithFailoverCall(
+      messages: Seq[BaseMessage],
+      settings: CreateChatCompletionSettings,
+      failoverModels: Seq[String],
+      maxRetries: Option[Int] = Some(defaultMaxRetries),
+      retryOnAnyError: Boolean = false,
+      failureMessage: String,
+      filterModels: Option[Seq[String] => Future[Seq[String]]] = None,
+      policy: FailoverPolicy = FailoverPolicy.default
+    )(
+      implicit scheduler: AsyncScheduler
+    ): AsyncCall[ChatCompletionResponse] =
+      createChatCompletionWithFailoverSettingsCall(
+        messages,
+        settings,
+        failoverModels.map(model => settings.copy(model = model)),
+        maxRetries,
+        retryOnAnyError,
+        failureMessage,
+        filterModels,
+        policy
+      )
+
+    /**
+     * [[createChatCompletionWithFailoverSettings]] as a lazy call (since 2.1.0) - see
+     * [[createChatCompletionWithFailoverCall]].
+     */
+    def createChatCompletionWithFailoverSettingsCall(
+      messages: Seq[BaseMessage],
+      settings: CreateChatCompletionSettings,
+      failoverSettings: Seq[CreateChatCompletionSettings],
+      maxRetries: Option[Int] = Some(defaultMaxRetries),
+      retryOnAnyError: Boolean = false,
+      failureMessage: String,
+      filterModels: Option[Seq[String] => Future[Seq[String]]] = None,
+      policy: FailoverPolicy = FailoverPolicy.default
+    )(
+      implicit scheduler: AsyncScheduler
+    ): AsyncCall[ChatCompletionResponse] =
+      failoverCall(
+        messages,
+        settings +: failoverSettings,
+        maxRetries,
+        retryOnAnyError,
+        failureMessage,
+        filterModels,
+        policy,
+        futureTriesOn = None
+      )
+
+    private def failoverCall(
+      messages: Seq[BaseMessage],
+      allSettingsInOrder: Seq[CreateChatCompletionSettings],
+      maxRetries: Option[Int],
+      retryOnAnyError: Boolean,
+      failureMessage: String,
+      filterModels: Option[Seq[String] => Future[Seq[String]]],
+      policy: FailoverPolicy,
+      futureTriesOn: Option[ExecutionContext]
+    )(
+      implicit scheduler: AsyncScheduler
+    ): AsyncCall[ChatCompletionResponse] =
+      filterSettings(allSettingsInOrder, filterModels).flatMap { filteredSettings =>
+        FailoverChain.chainCall[ChatCompletionResponse](
           openAIChatCompletionService,
-          filteredSettings.map(FailoverChain.Step(messages, _)),
+          filteredSettings.map { s =>
+            val step = FailoverChain.Step(messages, s)
+            new FailoverChain.LazyStep(s.model, () => step)
+          },
           accept = response => Right(response),
           policy = policy,
           retrySettings = RetrySettings(maxRetries = maxRetries.getOrElse(0)),
           isRetryable = isRetryable(retryOnAnyError),
           failureMessage = failureMessage,
-          logger = logger
+          logger = logger,
+          futureTriesOn = futureTriesOn
         )
-      } yield response
+      }
 
+    // a call with no filter stays native: the filter, a Future callback, is the only Future
     private def filterSettings(
       allSettingsInOrder: Seq[CreateChatCompletionSettings],
       filterModels: Option[Seq[String] => Future[Seq[String]]]
-    )(
-      implicit ec: ExecutionContext
-    ): Future[Seq[CreateChatCompletionSettings]] =
-      for {
-        filteredSettings <- filterModels match {
-          case Some(filter) =>
-            val allModels = allSettingsInOrder.map(_.model)
-            filter(allModels).map { filteredModelNames =>
+    ): AsyncCall[Seq[CreateChatCompletionSettings]] = {
+      val filtered = filterModels match {
+        case Some(filter) =>
+          AsyncCall.fromFuture { implicit ec =>
+            filter(allSettingsInOrder.map(_.model)).map { filteredModelNames =>
               allSettingsInOrder.filter(s => filteredModelNames.contains(s.model))
             }
-          case None =>
-            Future.successful(allSettingsInOrder)
-        }
+          }
 
-        _ <-
-          if (filteredSettings.isEmpty)
-            Future.failed(
-              new OpenAIScalaClientException(
-                "At least one model/settings must remain after filtering."
-              )
+        case None =>
+          AsyncCall.successful(allSettingsInOrder)
+      }
+
+      filtered.flatMap { filteredSettings =>
+        if (filteredSettings.isEmpty)
+          AsyncCall.failed(
+            new OpenAIScalaClientException(
+              "At least one model/settings must remain after filtering."
             )
-          else
-            Future.successful(())
-      } yield filteredSettings
+          )
+        else
+          AsyncCall.successful(filteredSettings)
+      }
+    }
 
     /**
      * Creates a chat completion that returns a JSON-parseable response and converts it to the
@@ -220,7 +306,7 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       implicit ec: ExecutionContext,
       scheduler: AsyncScheduler
     ): Future[T] =
-      createChatCompletionWithJSONFullResponse[T](
+      jsonCall[T](
         messages,
         settings,
         failoverModels,
@@ -231,8 +317,83 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
         enforceMode,
         parseJson,
         filterModels,
-        policy
+        policy,
+        futureTriesOn = Some(ec)
+      ).map(_._1).toFuture
+
+    /**
+     * [[createChatCompletionWithJSON]] as a lazy call (since 2.1.0): nothing is sent until it
+     * runs, and every run is a new chain (the JSON mode per model, the parse with repair, the
+     * re-asks and failover as in [[createChatCompletionWithJSON]]). Each try is the service's
+     * `createChatCompletionCall`, so ZIO runs it natively (`call.toZIO`) - on the zio-http
+     * engine interrupting it aborts the try in flight. A try over its `attemptTimeout` on
+     * zio-http is interrupted (its request aborted) and reports no `LateAnswer` /
+     * `LateFailure`; on a Future-based engine (jdk, Play, sttp, pekko-http) it runs on and
+     * reports its late outcome, as in [[createChatCompletionWithJSON]].
+     */
+    def createChatCompletionWithJSONCall[T: Format: InferredJsonSchema](
+      messages: Seq[BaseMessage],
+      settings: CreateChatCompletionSettings,
+      failoverModels: Seq[String] = Nil,
+      maxRetries: Option[Int] = Some(defaultMaxRetries),
+      retryOnAnyError: Boolean = false,
+      taskNameForLogging: Option[String] = None,
+      jsonSchemaModels: Seq[String] = Nil,
+      enforceMode: Option[ChatCompletionResponseFormatType] = None,
+      parseJson: String => JsValue = defaultParseJsonOrRepair,
+      filterModels: Option[Seq[String] => Future[Seq[String]]] = None,
+      policy: FailoverPolicy = FailoverPolicy.default
+    )(
+      implicit scheduler: AsyncScheduler
+    ): AsyncCall[T] =
+      jsonCall[T](
+        messages,
+        settings,
+        failoverModels,
+        maxRetries,
+        retryOnAnyError,
+        taskNameForLogging,
+        jsonSchemaModels,
+        enforceMode,
+        parseJson,
+        filterModels,
+        policy,
+        futureTriesOn = None
       ).map(_._1)
+
+    /**
+     * [[createChatCompletionWithJSONFullResponse]] as a lazy call (since 2.1.0) - see
+     * [[createChatCompletionWithJSONCall]].
+     */
+    def createChatCompletionWithJSONFullResponseCall[T: Format: InferredJsonSchema](
+      messages: Seq[BaseMessage],
+      settings: CreateChatCompletionSettings,
+      failoverModels: Seq[String] = Nil,
+      maxRetries: Option[Int] = Some(defaultMaxRetries),
+      retryOnAnyError: Boolean = false,
+      taskNameForLogging: Option[String] = None,
+      jsonSchemaModels: Seq[String] = Nil,
+      enforceMode: Option[ChatCompletionResponseFormatType] = None,
+      parseJson: String => JsValue = defaultParseJsonOrRepair,
+      filterModels: Option[Seq[String] => Future[Seq[String]]] = None,
+      policy: FailoverPolicy = FailoverPolicy.default
+    )(
+      implicit scheduler: AsyncScheduler
+    ): AsyncCall[(T, ChatCompletionResponse)] =
+      jsonCall[T](
+        messages,
+        settings,
+        failoverModels,
+        maxRetries,
+        retryOnAnyError,
+        taskNameForLogging,
+        jsonSchemaModels,
+        enforceMode,
+        parseJson,
+        filterModels,
+        policy,
+        futureTriesOn = None
+      )
 
     /**
      * Creates a chat completion that returns a JSON-parseable response, converts it to the
@@ -264,9 +425,41 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
     )(
       implicit ec: ExecutionContext,
       scheduler: AsyncScheduler
-    ): Future[(T, ChatCompletionResponse)] = {
-      val start = new java.util.Date()
+    ): Future[(T, ChatCompletionResponse)] =
+      jsonCall[T](
+        messages,
+        settings,
+        failoverModels,
+        maxRetries,
+        retryOnAnyError,
+        taskNameForLogging,
+        jsonSchemaModels,
+        enforceMode,
+        parseJson,
+        filterModels,
+        policy,
+        futureTriesOn = Some(ec)
+      ).toFuture
 
+    // the JSON helpers' chain; the schema, the mode lists and the enforceMode refusal are
+    // settled when the call is BUILT, on the caller's thread (the config is read through its
+    // context class loader), everything else per run
+    private def jsonCall[T: Format: InferredJsonSchema](
+      messages: Seq[BaseMessage],
+      settings: CreateChatCompletionSettings,
+      failoverModels: Seq[String],
+      maxRetries: Option[Int],
+      retryOnAnyError: Boolean,
+      taskNameForLogging: Option[String],
+      jsonSchemaModels: Seq[String],
+      enforceMode: Option[ChatCompletionResponseFormatType],
+      parseJson: String => JsValue,
+      filterModels: Option[Seq[String] => Future[Seq[String]]],
+      policy: FailoverPolicy,
+      futureTriesOn: Option[ExecutionContext]
+    )(
+      implicit scheduler: AsyncScheduler
+    ): AsyncCall[(T, ChatCompletionResponse)] = {
       val taskNameForLoggingFinal = taskNameForLogging.getOrElse("JSON-based chat-completion")
 
       val settingsWithSchema = withInferredSchema[T](settings, taskNameForLoggingFinal)
@@ -280,6 +473,8 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
       // OpenAIScalaJsonParseException carrying the response, so callers can account for
       // the token usage of the failed attempt (it was billed by the provider)
       def accept(
+        start: java.util.Date
+      )(
         response: ChatCompletionResponse
       ): Either[OpenAIScalaJsonParseException, (T, ChatCompletionResponse)] = {
         val outcome = Try(parseJsonResponse[T](response, taskNameForLoggingFinal, parseJson))
@@ -335,22 +530,23 @@ object OpenAIChatCompletionExtra extends OpenAIServiceConsts with HasOpenAIConfi
         } else
           FailoverChain.Step(messages, s)
 
-      for {
-        _ <- Future.fromTry(jsonSchemaModelsFinal)
+      AsyncCall.fromTry(jsonSchemaModelsFinal).flatMap { _ =>
+        val start = new java.util.Date()
 
-        filteredSettings <- filterSettings(allSettings, filterModels)
-
-        result <- FailoverChain.runLazy[(T, ChatCompletionResponse)](
-          openAIChatCompletionService,
-          filteredSettings.map(s => new FailoverChain.LazyStep(s.model, () => step(s))),
-          accept = accept,
-          policy = policy,
-          retrySettings = RetrySettings(maxRetries = maxRetries.getOrElse(0)),
-          isRetryable = isRetryable(retryOnAnyError),
-          failureMessage = s"${taskNameForLoggingFinal.capitalize} failed.",
-          logger = logger
-        )
-      } yield result
+        filterSettings(allSettings, filterModels).flatMap { filteredSettings =>
+          FailoverChain.chainCall[(T, ChatCompletionResponse)](
+            openAIChatCompletionService,
+            filteredSettings.map(s => new FailoverChain.LazyStep(s.model, () => step(s))),
+            accept = accept(start),
+            policy = policy,
+            retrySettings = RetrySettings(maxRetries = maxRetries.getOrElse(0)),
+            isRetryable = isRetryable(retryOnAnyError),
+            failureMessage = s"${taskNameForLoggingFinal.capitalize} failed.",
+            logger = logger,
+            futureTriesOn = futureTriesOn
+          )
+        }
+      }
     }
 
     private def isRetryable(

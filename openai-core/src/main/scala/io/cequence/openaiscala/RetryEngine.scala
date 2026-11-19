@@ -1,18 +1,22 @@
 package io.cequence.openaiscala
 
-import io.cequence.wsclient.concurrent.{AsyncScheduler, Futures}
+import io.cequence.wsclient.concurrent.AsyncScheduler
+import io.cequence.wsclient.stream.AsyncCall
 import io.cequence.openaiscala.RetryHelpers.RetrySettings
 import io.cequence.openaiscala.service.{AttemptInfo, AttemptKind, FailoverLogLevel}
 import org.slf4j.Logger
 
 import scala.concurrent.duration.{Deadline, Duration, FiniteDuration, MILLISECONDS}
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success, Try}
 
 /**
  * THE retry / failover engine. Every retry helper (`RetryHelpers.retry`,
- * `retryOnFailureOrFailover`, the chat failover chain) delegates here. Non-blocking: every
- * step is a Future continuation.
+ * `retryOnFailureOrFailover`, the chat failover chain) delegates here. Non-blocking: the
+ * engine is one lazy [[AsyncCall]] ([[runCall]]; since 2.1.0) - ZIO runs it natively, with
+ * every try's request interruptible - and [[run]] is that call over Future tries, run as a
+ * Future.
  *
  * Per step (e.g. a model): a ladder of tries - the first one, then retries of retryable errors
  * (with backoff) and re-asks of rejected answers; when the ladder ends the engine fails over
@@ -114,7 +118,8 @@ private[openaiscala] object RetryEngine {
    * @param onOutcome
    *   Sees every try's outcome, late ones included (may be called from other threads).
    * @param wrap
-   *   Wraps the raw call of every try (not the timeout race).
+   *   Wraps the raw call of every try (not the timeout race); a synchronous throw counts as
+   *   the try's synchronous throw.
    * @param finalError
    *   Picks the error of a run out of steps from each step's final error.
    * @param failureMessage
@@ -140,9 +145,9 @@ private[openaiscala] object RetryEngine {
       _: AttemptInfo,
       _: Outcome[R, E]
     ) => (),
-    wrap: (AttemptInfo, () => Future[R]) => Future[R] = (
+    wrap: (AttemptInfo, () => AsyncCall[R]) => AsyncCall[R] = (
       _: AttemptInfo,
-      call: () => Future[R]
+      call: () => AsyncCall[R]
     ) => call(),
     finalError: Seq[Throwable] => Throwable = (errors: Seq[Throwable]) => errors.last,
     failoverLogLevel: Throwable => FailoverLogLevel = FailoverLogLevel.default,
@@ -159,6 +164,12 @@ private[openaiscala] object RetryEngine {
     lastError: Option[Throwable] // the most recent error of any try
   )
 
+  /**
+   * The engine over Future tries, as a Future: [[runCall]] with each try's Future started when
+   * the try starts (a synchronous throw of `call` is the try's synchronous throw - reported
+   * `Failed`, never retried), run on `ec`. A try that exceeds its limit runs on, its outcome
+   * reported `Late` / `LateFailed`.
+   */
   def run[IN, R, E <: Throwable, A](
     steps: Seq[(IN, String)],
     call: IN => Future[R],
@@ -166,7 +177,40 @@ private[openaiscala] object RetryEngine {
   )(
     implicit ec: ExecutionContext,
     scheduler: AsyncScheduler
-  ): Future[A] = {
+  ): Future[A] =
+    runCall[IN, R, E, A](steps, futureTry(call), config).toFuture
+
+  /**
+   * A try of a Future-based call: the Future starts when the try is built - inside the
+   * engine's synchronous-throw guard - and the call waits for it.
+   */
+  def futureTry[IN, R](call: IN => Future[R]): IN => AsyncCall[R] =
+    (input: IN) => {
+      val started = call(input)
+      AsyncCall.future(started)
+    }
+
+  // the failure the time limit of a try fails it with - told apart from the try's own
+  // failures by identity
+  private final class TryTimedOut(val limit: FiniteDuration)
+      extends RuntimeException
+      with NoStackTrace
+
+  /**
+   * The engine as a lazy call: nothing runs until the call runs, and every run is a new chain
+   * of tries. Each try is `call(input)`, built when the try starts (a synchronous throw while
+   * building it - or in `config.wrap` - is reported `Failed` and never retried). A try with a
+   * limit (`attemptTimeout`, `deadline`) races it: on ZIO and for a native leaf in flight the
+   * losing try is interrupted - its request aborted - and reports nothing more; a Future in
+   * flight runs on and reports `Late` / `LateFailed`.
+   */
+  def runCall[IN, R, E <: Throwable, A](
+    steps: Seq[(IN, String)],
+    call: IN => AsyncCall[R],
+    config: Config[R, E, A]
+  )(
+    implicit scheduler: AsyncScheduler
+  ): AsyncCall[A] = {
     require(steps.nonEmpty, "At least one step is required.")
 
     implicit val retrySettings: RetrySettings = config.retrySettings
@@ -189,14 +233,14 @@ private[openaiscala] object RetryEngine {
     def stopped(
       progress: Progress,
       byDeadline: Boolean
-    ): Future[A] = {
+    ): AsyncCall[A] = {
       val reason =
         if (byDeadline)
           "the deadline"
         else
           "the stop flag"
 
-      Future.failed(
+      AsyncCall.failed(
         new OpenAIScalaChainStoppedException(
           s"The model failover chain was stopped by $reason after ${progress.attempts} tries.",
           progress.attempts,
@@ -211,7 +255,7 @@ private[openaiscala] object RetryEngine {
         .filter(_ != null)
         .getOrElse(FailoverLogLevel.Error)
 
-    def finish(progress: Progress): Future[A] = {
+    def finish(progress: Progress): AsyncCall[A] = {
       val errors = progress.errors
 
       // a throwing (or null-returning) finalError falls back to the last error
@@ -230,7 +274,7 @@ private[openaiscala] object RetryEngine {
         )
       )
 
-      Future.failed(chosen)
+      AsyncCall.failed(chosen)
     }
 
     // records `error` as the final error of the step `idx` and moves on to the next one
@@ -238,7 +282,7 @@ private[openaiscala] object RetryEngine {
       idx: Int,
       error: Throwable,
       progress: Progress
-    ): Future[A] = {
+    ): AsyncCall[A] = {
       config.logFailover.foreach { sink =>
         val next = steps.lift(idx + 1).map(_._2).getOrElse("N/A")
 
@@ -266,7 +310,7 @@ private[openaiscala] object RetryEngine {
     def runStep(
       idx: Int,
       progress: Progress
-    ): Future[A] =
+    ): AsyncCall[A] =
       if (idx >= steps.size)
         finish(progress)
       else
@@ -279,14 +323,14 @@ private[openaiscala] object RetryEngine {
       transientDone: Int,
       rejectDone: Int,
       progress: Progress
-    ): Future[A] = {
+    ): AsyncCall[A] = {
       val timeLeft = config.deadline.map(_.timeLeft)
 
       if (timeLeft.exists(_ <= Duration.Zero))
         stopped(progress, byDeadline = true)
       else
         Try(config.shouldStop()) match {
-          case Failure(e)    => Future.failed(e)
+          case Failure(e)    => AsyncCall.failed(e)
           case Success(true) => stopped(progress, byDeadline = false)
           case Success(false) =>
             launch(
@@ -309,7 +353,7 @@ private[openaiscala] object RetryEngine {
       rejectDone: Int,
       limit: Option[FiniteDuration],
       progress: Progress
-    ): Future[A] = {
+    ): AsyncCall[A] = {
       val (input, label) = steps(idx)
       val info = AttemptInfo(label, idx, tryNumber, kind)
 
@@ -318,13 +362,13 @@ private[openaiscala] object RetryEngine {
         newTransientDone: Int,
         newRejectDone: Int,
         newProgress: Progress
-      ): Future[A] =
+      ): AsyncCall[A] =
         attempt(idx, tryNumber + 1, newKind, newTransientDone, newRejectDone, newProgress)
 
       def handleFailure(
         e: Throwable,
         syncThrow: Boolean
-      ): Future[A] = {
+      ): AsyncCall[A] = {
         val progressNow = progress.copy(lastError = Some(e))
 
         val retry =
@@ -344,20 +388,20 @@ private[openaiscala] object RetryEngine {
             s"${messagePart(idx)}Attempt ${attemptNo}.${exceptionMessagePart} Retrying..."
           )
 
-          Futures.delay(RetryHelpers.delay(transientDone))(scheduler).flatMap { _ =>
+          AsyncCall.sleep(RetryHelpers.delay(transientDone)).flatMap { _ =>
             next(AttemptKind.TransientRetry, transientDone + 1, rejectDone, progressNow)
           }
         } else
           failOver(idx, e, progressNow)
       }
 
-      def handleResponse(response: R): Future[A] =
+      def handleResponse(response: R): AsyncCall[A] =
         Try(config.accept(response)) match {
-          case Failure(e) => Future.failed(e)
+          case Failure(e) => AsyncCall.failed(e)
 
           case Success(Right(value)) =>
             config.onOutcome(info, Outcome.Accepted(response))
-            Future.successful(value)
+            AsyncCall.successful(value)
 
           case Success(Left(rejection)) =>
             config.onOutcome(info, Outcome.Rejected(response, rejection))
@@ -372,7 +416,7 @@ private[openaiscala] object RetryEngine {
             } else if (config.failoverOnReject)
               failOver(idx, rejection, progressNow)
             else
-              Future.failed(rejection)
+              AsyncCall.failed(rejection)
         }
 
       def reportLate(outcome: Try[R]): Unit =
@@ -387,38 +431,33 @@ private[openaiscala] object RetryEngine {
           handleFailure(e, syncThrow = true)
 
         case Success(raw) =>
-          val race = Promise[Either[FiniteDuration, Try[R]]]()
+          val timedOut = limit.map(new TryTimedOut(_))
 
-          limit match {
+          val limited = timedOut match {
             case None =>
-              raw.onComplete(t => race.trySuccess(Right(t)))
+              raw
 
-            case Some(l) =>
-              Try(scheduler.scheduleOnce(l) { () =>
-                race.trySuccess(Left(l))
-                ()
-              }) match {
-                case Success(timer) =>
-                  raw.onComplete { t =>
-                    timer.cancel()
-                    if (!race.trySuccess(Right(t)))
-                      reportLate(t)
-                  }
+            case Some(marker) =>
+              val l = marker.limit
 
+              raw.timeout(
+                l,
+                marker,
+                onLate = reportLate,
                 // the call is already running: e.g. a limit beyond the scheduler's maximum
-                // delay (an actor system's scheduler adapted via ActorSchedulers takes ~248 days
-                // at most with Akka's default tick) or a scheduler shut down - the try runs
-                // without a limit rather than its outcome being lost
-                case Failure(e) =>
+                // delay (an actor system's scheduler adapted via ActorSchedulers takes ~248
+                // days at most with Akka's default tick) or a scheduler shut down - the try
+                // runs without a limit rather than its outcome being lost
+                onUnscheduled = e =>
                   logLine(
                     s"$label - the time limit of $l could not be scheduled (${e.getMessage}); the try runs without one."
                   )
-                  raw.onComplete(t => race.trySuccess(Right(t)))
-              }
+              )
           }
 
-          race.future.flatMap {
-            case Left(l) =>
+          limited.transformWith {
+            case Failure(e) if timedOut.exists(_ eq e) =>
+              val l = timedOut.get.limit
               config.onOutcome(info, Outcome.TimedOut(l))
 
               handleFailure(
@@ -430,16 +469,16 @@ private[openaiscala] object RetryEngine {
                 syncThrow = false
               )
 
-            case Right(Success(response)) =>
+            case Success(response) =>
               handleResponse(response)
 
-            case Right(Failure(e)) =>
+            case Failure(e) =>
               config.onOutcome(info, Outcome.Failed(e))
               handleFailure(e, syncThrow = false)
           }
       }
     }
 
-    runStep(0, Progress(Vector.empty, 0, None))
+    AsyncCall.defer(runStep(0, Progress(Vector.empty, 0, None)))
   }
 }
