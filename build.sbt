@@ -8,7 +8,7 @@ val scala212 = "2.12.18"
 val scala213 = "2.13.18"
 val scala3 = "3.2.2"
 // the Scala 3 line of the ZIO module: ws-client-zio's `_3` is built with 3.3 (TASTy 28.3)
-val scala33 = "3.3.8"
+val scala33 = "3.3.9"
 
 ThisBuild / organization := "io.cequence"
 ThisBuild / scalaVersion := scala213
