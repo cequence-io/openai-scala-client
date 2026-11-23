@@ -6,7 +6,7 @@ description := "Scala client for Perplexity - Sonar API implemented using Play W
 
 libraryDependencies ++= Seq(
   "io.cequence" %% "ws-client-core" % wsClient,
-  "org.scalactic" %% "scalactic" % "3.2.18",
+  "org.scalactic" %% "scalactic" % "3.2.20",
   "org.scalatest" %% "scalatest" % "3.2.18" % Test,
   "org.scalamock" %% "scalamock" % scalaMock % Test
 )
