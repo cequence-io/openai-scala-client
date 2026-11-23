@@ -6,6 +6,6 @@ description := "Scala client for the Claude Code CLI subprocess transport (Claud
 
 libraryDependencies ++= Seq(
   "org.scalactic" %% "scalactic" % "3.2.20",
-  "org.scalatest" %% "scalatest" % "3.2.18" % Test,
+  "org.scalatest" %% "scalatest" % "3.2.20" % Test,
   "org.scalamock" %% "scalamock" % scalaMock % Test
 )
