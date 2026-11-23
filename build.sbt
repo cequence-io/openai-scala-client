@@ -30,7 +30,7 @@ lazy val pinnedScalaLibrary =
 lazy val commonSettings = Seq(
   libraryDependencies += "org.scalactic" %% "scalactic" % "3.2.16",
   libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.16" % Test,
-  libraryDependencies += "org.scalatestplus" %% "mockito-4-11" % "3.2.16.0" % Test,
+  libraryDependencies += "org.scalatestplus" %% "mockito-4-11" % "3.2.18.0" % Test,
   // logging is the caller's choice since 2.0.0 - logback only for our own tests
   libraryDependencies += "ch.qos.logback" % "logback-classic" % Dependencies.Versions.logback % Test,
   scalacOptions += "-feature",
